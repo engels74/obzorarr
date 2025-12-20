@@ -19,16 +19,26 @@
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
-	// Local state for form fields
-	let plexServerUrl = $state(data.settings.plexServerUrl);
-	let plexToken = $state(data.settings.plexToken);
-	let openaiApiKey = $state(data.settings.openaiApiKey);
-	let openaiBaseUrl = $state(data.settings.openaiBaseUrl);
+	// Local form state (initialized and synced via $effect)
+	let plexServerUrl = $state('');
+	let plexToken = $state('');
+	let openaiApiKey = $state('');
+	let openaiBaseUrl = $state('');
 	let showPlexToken = $state(false);
 	let showOpenaiKey = $state(false);
-	let selectedTheme = $state(data.currentTheme);
-	let selectedAnonymization = $state(data.anonymizationMode);
+	let selectedTheme = $state('');
+	let selectedAnonymization = $state('');
 	let isTesting = $state(false);
+
+	// Sync local state with data (initial load and after form submission)
+	$effect(() => {
+		plexServerUrl = data.settings.plexServerUrl;
+		plexToken = data.settings.plexToken;
+		openaiApiKey = data.settings.openaiApiKey;
+		openaiBaseUrl = data.settings.openaiBaseUrl;
+		selectedTheme = data.currentTheme;
+		selectedAnonymization = data.anonymizationMode;
+	});
 
 	// Theme display names
 	const themeLabels: Record<string, string> = {

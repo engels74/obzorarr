@@ -20,10 +20,15 @@
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
-	// Local state
+	// Local state (cronExpression synced via $effect)
 	let selectedBackfillYear = $state<string>('');
-	let cronExpression = $state(data.schedulerStatus.cronExpression ?? '0 0 * * *');
+	let cronExpression = $state('0 0 * * *');
 	let isSyncing = $state(false);
+
+	// Sync cron expression with data (initial load and after form submission)
+	$effect(() => {
+		cronExpression = data.schedulerStatus.cronExpression ?? '0 0 * * *';
+	});
 
 	// Format date nicely
 	function formatDate(isoDate: string | null): string {
