@@ -155,20 +155,20 @@ This plan implements Obzorarr incrementally, starting with project setup and cor
   - Ensure caching works correctly
   - Ask user if questions arise
 
-- [ ] 9. Sharing System
-  - [ ] 9.1 Implement sharing service
+- [x] 9. Sharing System
+  - [x] 9.1 Implement sharing service
     - Create `src/lib/server/sharing/service.ts`
     - Implement share settings CRUD
     - Generate unique share tokens
     - _Requirements: 7.1, 7.2, 7.3_
 
-  - [ ] 9.2 Implement access control
+  - [x] 9.2 Implement access control
     - Check share mode in route guards
     - Validate share tokens
     - Enforce admin permissions
     - _Requirements: 7.4, 7.5, 7.6_
 
-  - [ ] 9.3 Write property tests for sharing
+  - [x] 9.3 Write property tests for sharing
     - **Property 15: Share Mode Access Control**
     - **Property 16: Share Token Uniqueness**
     - **Property 17: Permission Enforcement**
