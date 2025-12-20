@@ -108,11 +108,7 @@ export async function getCachedStats(
  * @param userId - User ID (null for server stats)
  * @param year - Year
  */
-export async function cacheStats(
-	stats: Stats,
-	userId: number | null,
-	year: number
-): Promise<void> {
+export async function cacheStats(stats: Stats, userId: number | null, year: number): Promise<void> {
 	const statsType = userId === null ? 'server' : 'user';
 	const statsJson = serializeStats(stats);
 
@@ -430,9 +426,8 @@ export async function getServerStatsWithAnonymization(
 	options: CalculateStatsOptions = {}
 ): Promise<ServerStats> {
 	// Import here to avoid circular dependency
-	const { applyAnonymization, getAnonymizationModeForStat } = await import(
-		'$lib/server/anonymization/service'
-	);
+	const { applyAnonymization, getAnonymizationModeForStat } =
+		await import('$lib/server/anonymization/service');
 
 	// Get base stats (from cache or calculate)
 	const stats = await calculateServerStats(year, options);

@@ -62,21 +62,13 @@
 
 		// Animate title
 		if (titleEl) {
-			const titleAnim = animate(
-				titleEl,
-				{ opacity: [0, 1] },
-				{ duration: 0.4, delay: 0.2 }
-			);
+			const titleAnim = animate(titleEl, { opacity: [0, 1] }, { duration: 0.4, delay: 0.2 });
 			animations.push(titleAnim);
 		}
 
 		// Animate content
 		if (contentEl) {
-			const contentAnim = animate(
-				contentEl,
-				{ opacity: [0, 1] },
-				{ duration: 0.4, delay: 0.3 }
-			);
+			const contentAnim = animate(contentEl, { opacity: [0, 1] }, { duration: 0.4, delay: 0.3 });
 			animations.push(contentAnim);
 
 			contentAnim.finished.then(() => {

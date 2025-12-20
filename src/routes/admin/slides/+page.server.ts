@@ -17,7 +17,11 @@ import {
 } from '$lib/server/slides/custom.service';
 import { renderMarkdownSync } from '$lib/server/slides/renderer';
 import type { SlideType } from '$lib/components/slides/types';
-import { CreateCustomSlideSchema, UpdateCustomSlideSchema, SlideTypeSchema } from '$lib/server/slides/types';
+import {
+	CreateCustomSlideSchema,
+	UpdateCustomSlideSchema,
+	SlideTypeSchema
+} from '$lib/server/slides/types';
 
 /**
  * Admin Slides Page Server

@@ -147,39 +147,48 @@ describe('Property 8: Year Date Range Filtering', () => {
 describe('Property 9: Watch Time Aggregation', () => {
 	it('total watch time equals sum of durations', () => {
 		fc.assert(
-			fc.property(fc.array(playHistoryRecordArbitrary, { minLength: 0, maxLength: 100 }), (records) => {
-				const expectedSeconds = records.reduce((sum, r) => sum + (r.duration ?? 0), 0);
-				const expectedMinutes = expectedSeconds / 60;
+			fc.property(
+				fc.array(playHistoryRecordArbitrary, { minLength: 0, maxLength: 100 }),
+				(records) => {
+					const expectedSeconds = records.reduce((sum, r) => sum + (r.duration ?? 0), 0);
+					const expectedMinutes = expectedSeconds / 60;
 
-				const result = calculateWatchTime(records);
+					const result = calculateWatchTime(records);
 
-				// Allow for small floating point differences
-				return Math.abs(result.totalWatchTimeMinutes - expectedMinutes) < 0.001;
-			}),
+					// Allow for small floating point differences
+					return Math.abs(result.totalWatchTimeMinutes - expectedMinutes) < 0.001;
+				}
+			),
 			{ numRuns: 100 }
 		);
 	});
 
 	it('total plays equals number of records', () => {
 		fc.assert(
-			fc.property(fc.array(playHistoryRecordArbitrary, { minLength: 0, maxLength: 100 }), (records) => {
-				const result = calculateWatchTime(records);
-				return result.totalPlays === records.length;
-			}),
+			fc.property(
+				fc.array(playHistoryRecordArbitrary, { minLength: 0, maxLength: 100 }),
+				(records) => {
+					const result = calculateWatchTime(records);
+					return result.totalPlays === records.length;
+				}
+			),
 			{ numRuns: 100 }
 		);
 	});
 
 	it('handles null durations as zero', () => {
 		fc.assert(
-			fc.property(fc.array(playHistoryRecordArbitrary, { minLength: 1, maxLength: 50 }), (records) => {
-				// Force all durations to null
-				const nullDurationRecords = records.map((r) => ({ ...r, duration: null }));
-				const result = calculateWatchTime(nullDurationRecords);
+			fc.property(
+				fc.array(playHistoryRecordArbitrary, { minLength: 1, maxLength: 50 }),
+				(records) => {
+					// Force all durations to null
+					const nullDurationRecords = records.map((r) => ({ ...r, duration: null }));
+					const result = calculateWatchTime(nullDurationRecords);
 
-				// Total time should be 0, but plays should equal record count
-				return result.totalWatchTimeMinutes === 0 && result.totalPlays === records.length;
-			}),
+					// Total time should be 0, but plays should equal record count
+					return result.totalWatchTimeMinutes === 0 && result.totalPlays === records.length;
+				}
+			),
 			{ numRuns: 100 }
 		);
 	});
@@ -268,35 +277,44 @@ describe('Property 10: Ranking Correctness', () => {
 describe('Property 11: Monthly Distribution Completeness', () => {
 	it('monthly distribution sum equals total watch time', () => {
 		fc.assert(
-			fc.property(fc.array(playHistoryRecordArbitrary, { minLength: 0, maxLength: 100 }), (records) => {
-				const distribution = calculateMonthlyDistribution(records);
-				const distributionSum = distribution.reduce((a, b) => a + b, 0);
+			fc.property(
+				fc.array(playHistoryRecordArbitrary, { minLength: 0, maxLength: 100 }),
+				(records) => {
+					const distribution = calculateMonthlyDistribution(records);
+					const distributionSum = distribution.reduce((a, b) => a + b, 0);
 
-				const totalSeconds = records.reduce((sum, r) => sum + (r.duration ?? 0), 0);
-				const totalMinutes = totalSeconds / 60;
+					const totalSeconds = records.reduce((sum, r) => sum + (r.duration ?? 0), 0);
+					const totalMinutes = totalSeconds / 60;
 
-				return Math.abs(distributionSum - totalMinutes) < 0.001;
-			}),
+					return Math.abs(distributionSum - totalMinutes) < 0.001;
+				}
+			),
 			{ numRuns: 100 }
 		);
 	});
 
 	it('monthly distribution has exactly 12 buckets', () => {
 		fc.assert(
-			fc.property(fc.array(playHistoryRecordArbitrary, { minLength: 0, maxLength: 50 }), (records) => {
-				const distribution = calculateMonthlyDistribution(records);
-				return distribution.length === 12;
-			}),
+			fc.property(
+				fc.array(playHistoryRecordArbitrary, { minLength: 0, maxLength: 50 }),
+				(records) => {
+					const distribution = calculateMonthlyDistribution(records);
+					return distribution.length === 12;
+				}
+			),
 			{ numRuns: 100 }
 		);
 	});
 
 	it('all monthly values are non-negative', () => {
 		fc.assert(
-			fc.property(fc.array(playHistoryRecordArbitrary, { minLength: 0, maxLength: 50 }), (records) => {
-				const distribution = calculateMonthlyDistribution(records);
-				return distribution.every((v) => v >= 0);
-			}),
+			fc.property(
+				fc.array(playHistoryRecordArbitrary, { minLength: 0, maxLength: 50 }),
+				(records) => {
+					const distribution = calculateMonthlyDistribution(records);
+					return distribution.every((v) => v >= 0);
+				}
+			),
 			{ numRuns: 100 }
 		);
 	});
@@ -309,35 +327,44 @@ describe('Property 11: Monthly Distribution Completeness', () => {
 describe('Property 12: Hourly Distribution Completeness', () => {
 	it('hourly distribution sum equals total watch time', () => {
 		fc.assert(
-			fc.property(fc.array(playHistoryRecordArbitrary, { minLength: 0, maxLength: 100 }), (records) => {
-				const distribution = calculateHourlyDistribution(records);
-				const distributionSum = distribution.reduce((a, b) => a + b, 0);
+			fc.property(
+				fc.array(playHistoryRecordArbitrary, { minLength: 0, maxLength: 100 }),
+				(records) => {
+					const distribution = calculateHourlyDistribution(records);
+					const distributionSum = distribution.reduce((a, b) => a + b, 0);
 
-				const totalSeconds = records.reduce((sum, r) => sum + (r.duration ?? 0), 0);
-				const totalMinutes = totalSeconds / 60;
+					const totalSeconds = records.reduce((sum, r) => sum + (r.duration ?? 0), 0);
+					const totalMinutes = totalSeconds / 60;
 
-				return Math.abs(distributionSum - totalMinutes) < 0.001;
-			}),
+					return Math.abs(distributionSum - totalMinutes) < 0.001;
+				}
+			),
 			{ numRuns: 100 }
 		);
 	});
 
 	it('hourly distribution has exactly 24 buckets', () => {
 		fc.assert(
-			fc.property(fc.array(playHistoryRecordArbitrary, { minLength: 0, maxLength: 50 }), (records) => {
-				const distribution = calculateHourlyDistribution(records);
-				return distribution.length === 24;
-			}),
+			fc.property(
+				fc.array(playHistoryRecordArbitrary, { minLength: 0, maxLength: 50 }),
+				(records) => {
+					const distribution = calculateHourlyDistribution(records);
+					return distribution.length === 24;
+				}
+			),
 			{ numRuns: 100 }
 		);
 	});
 
 	it('all hourly values are non-negative', () => {
 		fc.assert(
-			fc.property(fc.array(playHistoryRecordArbitrary, { minLength: 0, maxLength: 50 }), (records) => {
-				const distribution = calculateHourlyDistribution(records);
-				return distribution.every((v) => v >= 0);
-			}),
+			fc.property(
+				fc.array(playHistoryRecordArbitrary, { minLength: 0, maxLength: 50 }),
+				(records) => {
+					const distribution = calculateHourlyDistribution(records);
+					return distribution.every((v) => v >= 0);
+				}
+			),
 			{ numRuns: 100 }
 		);
 	});
@@ -401,7 +428,10 @@ describe('Property 13: Percentile Calculation', () => {
 					const expected = ((watchTimes.length - 1) / watchTimes.length) * 100;
 
 					// Allow for ties affecting the result
-					return percentile >= expected - 0.001 || watchTimes.filter((t) => t === maxWatchTime).length > 1;
+					return (
+						percentile >= expected - 0.001 ||
+						watchTimes.filter((t) => t === maxWatchTime).length > 1
+					);
 				}
 			),
 			{ numRuns: 100 }
@@ -439,16 +469,19 @@ describe('Property 14: Binge Session Detection', () => {
 
 	it('binge sessions have non-negative values', () => {
 		fc.assert(
-			fc.property(fc.array(playHistoryRecordArbitrary, { minLength: 1, maxLength: 50 }), (records) => {
-				const sessions = detectAllBingeSessions(records);
+			fc.property(
+				fc.array(playHistoryRecordArbitrary, { minLength: 1, maxLength: 50 }),
+				(records) => {
+					const sessions = detectAllBingeSessions(records);
 
-				return sessions.every(
-					(session) =>
-						session.plays >= 1 &&
-						session.totalMinutes >= 0 &&
-						session.startTime <= session.endTime
-				);
-			}),
+					return sessions.every(
+						(session) =>
+							session.plays >= 1 &&
+							session.totalMinutes >= 0 &&
+							session.startTime <= session.endTime
+					);
+				}
+			),
 			{ numRuns: 100 }
 		);
 	});

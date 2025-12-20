@@ -189,7 +189,10 @@ export async function getCustomSlideById(id: number): Promise<CustomSlide | null
  * @param updates - The fields to update
  * @returns Updated custom slide
  */
-export async function updateCustomSlide(id: number, updates: UpdateCustomSlide): Promise<CustomSlide> {
+export async function updateCustomSlide(
+	id: number,
+	updates: UpdateCustomSlide
+): Promise<CustomSlide> {
 	// Validate input
 	const parsed = UpdateCustomSlideSchema.safeParse(updates);
 	if (!parsed.success) {

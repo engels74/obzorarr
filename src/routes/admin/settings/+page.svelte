@@ -104,7 +104,11 @@
 						bind:value={plexToken}
 						placeholder="Enter Plex token"
 					/>
-					<button type="button" class="toggle-visibility" onclick={() => (showPlexToken = !showPlexToken)}>
+					<button
+						type="button"
+						class="toggle-visibility"
+						onclick={() => (showPlexToken = !showPlexToken)}
+					>
 						{showPlexToken ? 'Hide' : 'Show'}
 					</button>
 				</div>
@@ -131,7 +135,11 @@
 		>
 			<input type="hidden" name="plexServerUrl" value={plexServerUrl} />
 			<input type="hidden" name="plexToken" value={plexToken} />
-			<button type="submit" class="test-button" disabled={isTesting || !plexServerUrl || !plexToken}>
+			<button
+				type="submit"
+				class="test-button"
+				disabled={isTesting || !plexServerUrl || !plexToken}
+			>
 				{#if isTesting}
 					Testing...
 				{:else}
@@ -158,7 +166,11 @@
 						bind:value={openaiApiKey}
 						placeholder="sk-..."
 					/>
-					<button type="button" class="toggle-visibility" onclick={() => (showOpenaiKey = !showOpenaiKey)}>
+					<button
+						type="button"
+						class="toggle-visibility"
+						onclick={() => (showOpenaiKey = !showOpenaiKey)}
+					>
 						{showOpenaiKey ? 'Hide' : 'Show'}
 					</button>
 				</div>
@@ -185,20 +197,13 @@
 	<!-- Theme Section -->
 	<section class="section">
 		<h2>Theme</h2>
-		<p class="section-description">
-			Select a color theme for all wrapped pages.
-		</p>
+		<p class="section-description">Select a color theme for all wrapped pages.</p>
 
 		<form method="POST" action="?/updateTheme" use:enhance class="theme-form">
 			<div class="theme-options">
 				{#each data.themeOptions as theme}
 					<label class="theme-option" class:selected={selectedTheme === theme.value}>
-						<input
-							type="radio"
-							name="theme"
-							value={theme.value}
-							bind:group={selectedTheme}
-						/>
+						<input type="radio" name="theme" value={theme.value} bind:group={selectedTheme} />
 						<span class="theme-preview {theme.value}"></span>
 						<span class="theme-label">{themeLabels[theme.value] ?? theme.label}</span>
 					</label>
@@ -214,14 +219,15 @@
 	<!-- Anonymization Section -->
 	<section class="section">
 		<h2>Privacy & Anonymization</h2>
-		<p class="section-description">
-			Control how usernames appear in server-wide statistics.
-		</p>
+		<p class="section-description">Control how usernames appear in server-wide statistics.</p>
 
 		<form method="POST" action="?/updateAnonymization" use:enhance class="anonymization-form">
 			<div class="anonymization-options">
 				{#each data.anonymizationOptions as option}
-					<label class="anonymization-option" class:selected={selectedAnonymization === option.value}>
+					<label
+						class="anonymization-option"
+						class:selected={selectedAnonymization === option.value}
+					>
 						<input
 							type="radio"
 							name="anonymizationMode"
@@ -245,9 +251,7 @@
 	<!-- Year/Archive Section -->
 	<section class="section">
 		<h2>Year & Archive</h2>
-		<p class="section-description">
-			Manage available years and clear cached statistics.
-		</p>
+		<p class="section-description">Manage available years and clear cached statistics.</p>
 
 		<div class="years-info">
 			<p><strong>Available Years:</strong> {data.availableYears.join(', ') || 'None'}</p>
@@ -255,9 +259,7 @@
 		</div>
 
 		<h3>Clear Statistics Cache</h3>
-		<p class="subsection-description">
-			Force recalculation of statistics by clearing the cache.
-		</p>
+		<p class="subsection-description">Force recalculation of statistics by clearing the cache.</p>
 
 		<div class="cache-actions">
 			{#each data.availableYears as year}

@@ -101,9 +101,7 @@
 	<!-- Sync Trigger Section -->
 	<section class="section">
 		<h2>Manual Sync</h2>
-		<p class="section-description">
-			Trigger a sync to fetch the latest viewing history from Plex.
-		</p>
+		<p class="section-description">Trigger a sync to fetch the latest viewing history from Plex.</p>
 
 		{#if data.isRunning}
 			<div class="sync-running">
@@ -165,9 +163,7 @@
 	<!-- Scheduler Section -->
 	<section class="section">
 		<h2>Sync Schedule</h2>
-		<p class="section-description">
-			Configure automatic sync schedule using cron expressions.
-		</p>
+		<p class="section-description">Configure automatic sync schedule using cron expressions.</p>
 
 		<div class="scheduler-status">
 			<div class="status-row">

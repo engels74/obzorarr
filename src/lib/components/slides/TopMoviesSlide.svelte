@@ -50,11 +50,7 @@
 		}
 
 		// Animate container
-		const containerAnim = animate(
-			container,
-			{ opacity: [0, 1] },
-			{ duration: 0.4 }
-		);
+		const containerAnim = animate(container, { opacity: [0, 1] }, { duration: 0.4 });
 
 		// Animate list items with stagger
 		const validItems = listItems.filter(Boolean);

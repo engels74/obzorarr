@@ -1,11 +1,7 @@
 import { eq, lt, and } from 'drizzle-orm';
 import { db } from '$lib/server/db/client';
 import { sessions, users } from '$lib/server/db/schema';
-import {
-	SESSION_DURATION_MS,
-	type SessionData,
-	type CreateSessionOptions
-} from './types';
+import { SESSION_DURATION_MS, type SessionData, type CreateSessionOptions } from './types';
 
 /**
  * Session Management Module
@@ -233,8 +229,5 @@ export async function extendSession(
 ): Promise<void> {
 	const expiresAt = new Date(Date.now() + durationMs);
 
-	await db
-		.update(sessions)
-		.set({ expiresAt })
-		.where(eq(sessions.id, sessionId));
+	await db.update(sessions).set({ expiresAt }).where(eq(sessions.id, sessionId));
 }

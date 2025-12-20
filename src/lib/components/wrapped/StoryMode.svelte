@@ -166,22 +166,28 @@
 		}
 
 		// Animate current slide entering (using any to bypass Motion overload inference issue)
-		const enterKeyframes = { opacity: [0, 1], transform: [enterFrom, 'translateX(0)'] } as Record<string, unknown>;
-		const enterAnim = (animate as (el: Element, kf: Record<string, unknown>, opts: Record<string, unknown>) => { finished: Promise<void>; stop: () => void })(
-			slideEl,
-			enterKeyframes,
-			{ duration: ANIMATION_DURATION / 1000, easing: [0.4, 0, 0.2, 1] }
-		);
+		const enterKeyframes = { opacity: [0, 1], transform: [enterFrom, 'translateX(0)'] } as Record<
+			string,
+			unknown
+		>;
+		const enterAnim = (
+			animate as (
+				el: Element,
+				kf: Record<string, unknown>,
+				opts: Record<string, unknown>
+			) => { finished: Promise<void>; stop: () => void }
+		)(slideEl, enterKeyframes, { duration: ANIMATION_DURATION / 1000, easing: [0.4, 0, 0.2, 1] });
 
 		// Animate previous slide exiting
 		const prevEl = previousSlideEl;
 		if (prevEl && showPreviousSlide) {
-			const exitKeyframes = { opacity: [1, 0], transform: ['translateX(0)', exitTo] } as Record<string, unknown>;
-			(animate as (el: Element, kf: Record<string, unknown>, opts: Record<string, unknown>) => void)(
-				prevEl,
-				exitKeyframes,
-				{ duration: ANIMATION_DURATION / 1000, easing: [0.4, 0, 0.2, 1] }
-			);
+			const exitKeyframes = { opacity: [1, 0], transform: ['translateX(0)', exitTo] } as Record<
+				string,
+				unknown
+			>;
+			(
+				animate as (el: Element, kf: Record<string, unknown>, opts: Record<string, unknown>) => void
+			)(prevEl, exitKeyframes, { duration: ANIMATION_DURATION / 1000, easing: [0.4, 0, 0.2, 1] });
 		}
 
 		enterAnim.finished.then(() => {
@@ -353,13 +359,7 @@
 		<!-- Previous slide (for exit animation) -->
 		{#if showPreviousSlide && previousSlide}
 			<div bind:this={previousSlideEl} class="slide previous-slide">
-				<SlideRenderer
-					slide={previousSlide}
-					{stats}
-					{customSlides}
-					{funFacts}
-					active={false}
-				/>
+				<SlideRenderer slide={previousSlide} {stats} {customSlides} {funFacts} active={false} />
 			</div>
 		{/if}
 

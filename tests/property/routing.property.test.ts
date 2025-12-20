@@ -18,7 +18,9 @@ const variantChars = '89ab';
 
 // Helper to generate a hex string of specific length
 const hexStringArb = (length: number) =>
-	fc.array(fc.constantFrom(...hexChars.split('')), { minLength: length, maxLength: length }).map((arr) => arr.join(''));
+	fc
+		.array(fc.constantFrom(...hexChars.split('')), { minLength: length, maxLength: length })
+		.map((arr) => arr.join(''));
 
 const uuidV4Arbitrary = fc
 	.tuple(
@@ -166,10 +168,7 @@ describe('Property 22: URL Route Parsing', () => {
 		it('parseYear returns null for invalid years', () => {
 			fc.assert(
 				fc.property(
-					fc.oneof(
-						fc.integer({ min: -10000, max: 1999 }),
-						fc.integer({ min: 2101, max: 10000 })
-					),
+					fc.oneof(fc.integer({ min: -10000, max: 1999 }), fc.integer({ min: 2101, max: 10000 })),
 					(invalidYear) => {
 						return parseYear(String(invalidYear)) === null;
 					}

@@ -464,7 +464,9 @@ describe('Property 7: Incremental Sync Filtering', () => {
 					if (!mostRecent) return false;
 
 					// Find expected most recent from our data
-					const sortedSyncs = [...syncs].sort((a, b) => b.completedAtSeconds - a.completedAtSeconds);
+					const sortedSyncs = [...syncs].sort(
+						(a, b) => b.completedAtSeconds - a.completedAtSeconds
+					);
 					const expected = sortedSyncs[0];
 					if (!expected) return false;
 

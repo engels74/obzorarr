@@ -26,7 +26,9 @@
 	// Limit and calculate percentages
 	const displayedGenres = $derived(topGenres.slice(0, limit));
 	const hasGenres = $derived(displayedGenres.length > 0);
-	const maxCount = $derived(displayedGenres.length > 0 ? Math.max(...displayedGenres.map((g) => g.count)) : 0);
+	const maxCount = $derived(
+		displayedGenres.length > 0 ? Math.max(...displayedGenres.map((g) => g.count)) : 0
+	);
 
 	// Calculate bar width percentages
 	const genresWithPercentage = $derived(
@@ -56,11 +58,7 @@
 		}
 
 		// Animate container
-		const containerAnim = animate(
-			container,
-			{ opacity: [0, 1] },
-			{ duration: 0.4 }
-		);
+		const containerAnim = animate(container, { opacity: [0, 1] }, { duration: 0.4 });
 
 		// Animate bars with stagger
 		const validBars = bars.filter(Boolean);
@@ -105,11 +103,7 @@
 							<span class="genre-count">{genre.count}</span>
 						</div>
 						<div class="bar-container">
-							<div
-								bind:this={bars[i]}
-								class="bar"
-								style="width: {genre.percentage}%"
-							></div>
+							<div bind:this={bars[i]} class="bar" style="width: {genre.percentage}%"></div>
 						</div>
 					</div>
 				{/each}

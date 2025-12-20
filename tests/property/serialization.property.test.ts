@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'bun:test';
 import * as fc from 'fast-check';
-import type { UserStats, ServerStats, RankedItem, BingeSession, WatchRecord } from '$lib/server/stats/types';
+import type {
+	UserStats,
+	ServerStats,
+	RankedItem,
+	BingeSession,
+	WatchRecord
+} from '$lib/server/stats/types';
 import {
 	serializeStats,
 	parseUserStats,
@@ -35,16 +41,18 @@ const rankedItemArbitrary: fc.Arbitrary<RankedItem> = fc.record({
 /**
  * Generate a valid BingeSession
  */
-const bingeSessionArbitrary: fc.Arbitrary<BingeSession> = fc.record({
-	startTime: fc.integer({ min: 1577836800, max: 1893456000 }), // 2020-2030
-	endTime: fc.integer({ min: 1577836800, max: 1893456000 }),
-	plays: fc.integer({ min: 1, max: 100 }),
-	totalMinutes: fc.float({ min: 0, max: 10000, noNaN: true })
-}).map((session) => ({
-	...session,
-	// Ensure endTime >= startTime
-	endTime: Math.max(session.startTime, session.endTime)
-}));
+const bingeSessionArbitrary: fc.Arbitrary<BingeSession> = fc
+	.record({
+		startTime: fc.integer({ min: 1577836800, max: 1893456000 }), // 2020-2030
+		endTime: fc.integer({ min: 1577836800, max: 1893456000 }),
+		plays: fc.integer({ min: 1, max: 100 }),
+		totalMinutes: fc.float({ min: 0, max: 10000, noNaN: true })
+	})
+	.map((session) => ({
+		...session,
+		// Ensure endTime >= startTime
+		endTime: Math.max(session.startTime, session.endTime)
+	}));
 
 /**
  * Generate a valid WatchRecord
@@ -59,50 +67,54 @@ const watchRecordArbitrary: fc.Arbitrary<WatchRecord> = fc.record({
 /**
  * Generate an array of exactly 12 non-negative numbers (monthly distribution)
  */
-const monthlyDistributionArbitrary: fc.Arbitrary<number[]> = fc.tuple(
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true })
-).map((tuple) => [...tuple]);
+const monthlyDistributionArbitrary: fc.Arbitrary<number[]> = fc
+	.tuple(
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true })
+	)
+	.map((tuple) => [...tuple]);
 
 /**
  * Generate an array of exactly 24 non-negative numbers (hourly distribution)
  */
-const hourlyDistributionArbitrary: fc.Arbitrary<number[]> = fc.tuple(
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true }),
-	fc.float({ min: 0, max: 100000, noNaN: true })
-).map((tuple) => [...tuple]);
+const hourlyDistributionArbitrary: fc.Arbitrary<number[]> = fc
+	.tuple(
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true }),
+		fc.float({ min: 0, max: 100000, noNaN: true })
+	)
+	.map((tuple) => [...tuple]);
 
 /**
  * Generate a valid UserStats object
@@ -324,7 +336,9 @@ describe('Serialization edge cases', () => {
 			topShows: [],
 			topGenres: [],
 			watchTimeByMonth: [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200],
-			watchTimeByHour: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24],
+			watchTimeByHour: [
+				1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24
+			],
 			percentileRank: 75.5,
 			longestBinge: null,
 			firstWatch: null,
@@ -346,17 +360,14 @@ describe('Serialization edge cases', () => {
 			topMovies: [
 				{ rank: 1, title: 'Movie 1', count: 100, thumb: 'https://example.com/thumb1.jpg' }
 			],
-			topShows: [
-				{ rank: 1, title: 'Show 1', count: 200, thumb: 'https://example.com/thumb2.jpg' }
-			],
-			topGenres: [
-				{ rank: 1, title: 'Action', count: 300, thumb: null }
-			],
+			topShows: [{ rank: 1, title: 'Show 1', count: 200, thumb: 'https://example.com/thumb2.jpg' }],
+			topGenres: [{ rank: 1, title: 'Action', count: 300, thumb: null }],
 			watchTimeByMonth: [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000, 12000],
-			watchTimeByHour: [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000, 2100, 2200, 2300, 2400],
-			topViewers: [
-				{ rank: 1, userId: 1, username: 'TopViewer', totalMinutes: 10000 }
+			watchTimeByHour: [
+				100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700,
+				1800, 1900, 2000, 2100, 2200, 2300, 2400
 			],
+			topViewers: [{ rank: 1, userId: 1, username: 'TopViewer', totalMinutes: 10000 }],
 			longestBinge: {
 				startTime: 1704067200,
 				endTime: 1704096000,
@@ -403,7 +414,9 @@ describe('Serialization edge cases', () => {
 			topShows: [],
 			topGenres: [],
 			watchTimeByMonth: [1, 2, 3], // Wrong length - should be 12
-			watchTimeByHour: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24],
+			watchTimeByHour: [
+				1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24
+			],
 			percentileRank: 50,
 			longestBinge: null,
 			firstWatch: null,

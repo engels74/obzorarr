@@ -73,10 +73,7 @@
 				<div class="form-group">
 					<label for="defaultShareMode">Default Share Mode</label>
 					<select id="defaultShareMode" name="defaultShareMode">
-						<option
-							value="public"
-							selected={data.globalDefaults.defaultShareMode === 'public'}
-						>
+						<option value="public" selected={data.globalDefaults.defaultShareMode === 'public'}>
 							Public (Anyone can view)
 						</option>
 						<option

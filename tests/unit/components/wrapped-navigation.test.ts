@@ -70,7 +70,9 @@ function getSwipeNavigation(
  * @param key - Keyboard key pressed
  * @returns Navigation action or null
  */
-function getKeyboardNavigation(key: string): 'next' | 'previous' | 'first' | 'last' | 'close' | null {
+function getKeyboardNavigation(
+	key: string
+): 'next' | 'previous' | 'first' | 'last' | 'close' | null {
 	switch (key) {
 		case 'ArrowRight':
 		case 'ArrowDown':
@@ -156,7 +158,9 @@ describe('Edge Zone Navigation', () => {
 		});
 
 		it('handles edge case of click at full width', () => {
-			expect(getNavigationDirection(CONTAINER_WIDTH, CONTAINER_WIDTH, EDGE_ZONE_PERCENT)).toBe('next');
+			expect(getNavigationDirection(CONTAINER_WIDTH, CONTAINER_WIDTH, EDGE_ZONE_PERCENT)).toBe(
+				'next'
+			);
 		});
 	});
 });

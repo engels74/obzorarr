@@ -83,11 +83,7 @@
 		}
 
 		if (detailsEl) {
-			const detailsAnim = animate(
-				detailsEl,
-				{ opacity: [0, 1] },
-				{ duration: 0.4, delay: 0.5 }
-			);
+			const detailsAnim = animate(detailsEl, { opacity: [0, 1] }, { duration: 0.4, delay: 0.5 });
 			animations.push(detailsAnim);
 
 			detailsAnim.finished.then(() => {
@@ -112,15 +108,23 @@
 		{#if hasBinge && longestBinge}
 			<div bind:this={statEl} class="stat-container">
 				<span class="duration">{duration}</span>
-				<span class="plays">{longestBinge.plays} {longestBinge.plays === 1 ? 'episode' : 'episodes'}</span>
+				<span class="plays"
+					>{longestBinge.plays} {longestBinge.plays === 1 ? 'episode' : 'episodes'}</span
+				>
 			</div>
 
 			<div bind:this={detailsEl} class="details">
 				<p class="date">On {bingeDate}</p>
 				<p class="time-range">
-					{new Date(longestBinge.startTime * 1000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+					{new Date(longestBinge.startTime * 1000).toLocaleTimeString('en-US', {
+						hour: 'numeric',
+						minute: '2-digit'
+					})}
 					-
-					{new Date(longestBinge.endTime * 1000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+					{new Date(longestBinge.endTime * 1000).toLocaleTimeString('en-US', {
+						hour: 'numeric',
+						minute: '2-digit'
+					})}
 				</p>
 			</div>
 		{:else}

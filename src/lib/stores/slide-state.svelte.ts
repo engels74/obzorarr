@@ -39,7 +39,9 @@ export class SlideStateStore {
 	isLast = $derived(this.currentSlide >= this.totalSlides - 1);
 
 	/** Progress as a percentage (0-100) */
-	progress = $derived(this.totalSlides > 0 ? ((this.currentSlide + 1) / this.totalSlides) * 100 : 0);
+	progress = $derived(
+		this.totalSlides > 0 ? ((this.currentSlide + 1) / this.totalSlides) * 100 : 0
+	);
 
 	/**
 	 * Initialize the store with total slide count

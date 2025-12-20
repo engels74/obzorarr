@@ -119,7 +119,9 @@ describe('Property 19: Slide Order Persistence', () => {
 
 				// Load and verify
 				const configs = await getAllSlideConfigs();
-				const loadedOrder = [...configs].sort((a, b) => a.sortOrder - b.sortOrder).map((c) => c.slideType);
+				const loadedOrder = [...configs]
+					.sort((a, b) => a.sortOrder - b.sortOrder)
+					.map((c) => c.slideType);
 
 				return (
 					loadedOrder.length === newOrder.length &&
@@ -330,7 +332,17 @@ describe('Slide Configuration Service', () => {
 	});
 
 	it('reorder updates all sortOrder values', async () => {
-		const newOrder: SlideType[] = ['binge', 'total-time', 'percentile', 'top-movies', 'top-shows', 'genres', 'distribution', 'first-last', 'fun-fact'];
+		const newOrder: SlideType[] = [
+			'binge',
+			'total-time',
+			'percentile',
+			'top-movies',
+			'top-shows',
+			'genres',
+			'distribution',
+			'first-last',
+			'fun-fact'
+		];
 		await reorderSlides(newOrder);
 
 		const configs = await getAllSlideConfigs();
@@ -348,7 +360,17 @@ describe('Slide Configuration Service', () => {
 
 	it('enabled slides are in sorted order', async () => {
 		// Reorder slides
-		const newOrder: SlideType[] = ['fun-fact', 'binge', 'total-time', 'percentile', 'top-movies', 'top-shows', 'genres', 'distribution', 'first-last'];
+		const newOrder: SlideType[] = [
+			'fun-fact',
+			'binge',
+			'total-time',
+			'percentile',
+			'top-movies',
+			'top-shows',
+			'genres',
+			'distribution',
+			'first-last'
+		];
 		await reorderSlides(newOrder);
 
 		// Disable some
@@ -392,7 +414,9 @@ describe('Slide Order Edge Cases', () => {
 	});
 
 	it('disabling all slides except one returns only that slide', async () => {
-		const slidesToDisable = [...DEFAULT_SLIDE_ORDER].filter((t) => t !== 'total-time') as SlideType[];
+		const slidesToDisable = [...DEFAULT_SLIDE_ORDER].filter(
+			(t) => t !== 'total-time'
+		) as SlideType[];
 
 		for (const slideType of slidesToDisable) {
 			await updateSlideConfig(slideType, { enabled: false });

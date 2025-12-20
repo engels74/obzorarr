@@ -76,8 +76,7 @@ export function applyAnonymization<T extends AnonymizableUser>(
 			// Requirement 8.3: Show viewing user's name, anonymize others
 			return users.map((user, index) => ({
 				...user,
-				username:
-					user.userId === viewingUserId ? user.username : generateAnonymousIdentifier(index)
+				username: user.userId === viewingUserId ? user.username : generateAnonymousIdentifier(index)
 			}));
 	}
 }
@@ -175,7 +174,9 @@ export async function getPerStatAnonymization(): Promise<PerStatAnonymizationSet
  *
  * @param settings - The per-stat settings to save
  */
-export async function setPerStatAnonymization(settings: PerStatAnonymizationSettings): Promise<void> {
+export async function setPerStatAnonymization(
+	settings: PerStatAnonymizationSettings
+): Promise<void> {
 	const value = JSON.stringify(settings);
 
 	await db

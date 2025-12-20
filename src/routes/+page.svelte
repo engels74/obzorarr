@@ -97,9 +97,7 @@
 						return;
 					}
 
-					const result = (await pollResponse.json()) as
-						| { pending: true }
-						| { authToken: string };
+					const result = (await pollResponse.json()) as { pending: true } | { authToken: string };
 
 					if ('authToken' in result && result.authToken) {
 						if (pollIntervalId) clearInterval(pollIntervalId);
@@ -115,9 +113,7 @@
 
 						if (!callbackResponse.ok) {
 							const errData = await callbackResponse.json().catch(() => ({}));
-							throw new Error(
-								(errData as { message?: string }).message || 'Login failed'
-							);
+							throw new Error((errData as { message?: string }).message || 'Login failed');
 						}
 
 						const userData = (await callbackResponse.json()) as {
@@ -138,16 +134,19 @@
 			}, 2000);
 
 			// Clean up after 5 minutes (PIN expires)
-			timeoutId = setTimeout(() => {
-				if (pollIntervalId) {
-					clearInterval(pollIntervalId);
-					pollIntervalId = null;
-				}
-				if (isLoading) {
-					isLoading = false;
-					error = 'Authentication timed out. Please try again.';
-				}
-			}, 5 * 60 * 1000);
+			timeoutId = setTimeout(
+				() => {
+					if (pollIntervalId) {
+						clearInterval(pollIntervalId);
+						pollIntervalId = null;
+					}
+					if (isLoading) {
+						isLoading = false;
+						error = 'Authentication timed out. Please try again.';
+					}
+				},
+				5 * 60 * 1000
+			);
 		} catch (err) {
 			isLoading = false;
 			error = err instanceof Error ? err.message : 'Login failed';
@@ -168,17 +167,12 @@
 			</h1>
 
 			<p class="hero-description">
-				Discover your Plex viewing journey. Beautiful statistics, stunning animations, and
-				shareable summaries of your media consumption.
+				Discover your Plex viewing journey. Beautiful statistics, stunning animations, and shareable
+				summaries of your media consumption.
 			</p>
 
 			<!-- Login Button -->
-			<button
-				type="button"
-				class="login-button"
-				onclick={handlePlexLogin}
-				disabled={isLoading}
-			>
+			<button type="button" class="login-button" onclick={handlePlexLogin} disabled={isLoading}>
 				{#if isLoading}
 					<span class="button-loading">
 						<span class="spinner" aria-hidden="true"></span>
@@ -259,11 +253,7 @@
 		content: '';
 		position: absolute;
 		inset: 0;
-		background: radial-gradient(
-			ellipse at center,
-			hsl(var(--primary) / 0.1) 0%,
-			transparent 70%
-		);
+		background: radial-gradient(ellipse at center, hsl(var(--primary) / 0.1) 0%, transparent 70%);
 		pointer-events: none;
 	}
 

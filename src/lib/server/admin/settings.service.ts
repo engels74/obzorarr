@@ -90,13 +90,10 @@ export async function getAppSetting(key: AppSettingsKeyType): Promise<string | n
  * @param value - The setting value
  */
 export async function setAppSetting(key: AppSettingsKeyType, value: string): Promise<void> {
-	await db
-		.insert(appSettings)
-		.values({ key, value })
-		.onConflictDoUpdate({
-			target: appSettings.key,
-			set: { value }
-		});
+	await db.insert(appSettings).values({ key, value }).onConflictDoUpdate({
+		target: appSettings.key,
+		set: { value }
+	});
 }
 
 /**

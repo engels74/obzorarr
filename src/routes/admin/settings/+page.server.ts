@@ -67,7 +67,10 @@ export const load: PageServerLoad = async () => {
 		anonymizationMode,
 		themeOptions: Object.entries(ThemePresets).map(([key, value]) => ({
 			value,
-			label: key.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
+			label: key
+				.replace(/_/g, ' ')
+				.toLowerCase()
+				.replace(/\b\w/g, (c) => c.toUpperCase())
 		})),
 		anonymizationOptions: Object.entries(AnonymizationMode).map(([key, value]) => ({
 			value,

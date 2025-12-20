@@ -47,9 +47,7 @@
 	let dragOverIndex = $state<number | null>(null);
 
 	// Derived sorted configs
-	const sortedConfigs = $derived(
-		[...data.configs].sort((a, b) => a.sortOrder - b.sortOrder)
-	);
+	const sortedConfigs = $derived([...data.configs].sort((a, b) => a.sortOrder - b.sortOrder));
 
 	// Get configs for built-in slides only (not custom)
 	const builtInConfigs = $derived(
@@ -135,17 +133,13 @@
 	{/if}
 
 	{#if form?.success}
-		<div class="success-banner" role="status">
-			Operation completed successfully
-		</div>
+		<div class="success-banner" role="status">Operation completed successfully</div>
 	{/if}
 
 	<!-- Slide Order Section -->
 	<section class="section">
 		<h2>Slide Order</h2>
-		<p class="section-description">
-			Drag and drop to reorder. Toggle to enable or disable slides.
-		</p>
+		<p class="section-description">Drag and drop to reorder. Toggle to enable or disable slides.</p>
 
 		<!-- Hidden form for reordering -->
 		<form id="reorder-form" method="POST" action="?/reorder" use:enhance>
@@ -191,13 +185,9 @@
 	<section class="section">
 		<div class="section-header">
 			<h2>Custom Slides</h2>
-			<button type="button" class="add-button" onclick={openNewEditor}>
-				+ Add Custom Slide
-			</button>
+			<button type="button" class="add-button" onclick={openNewEditor}> + Add Custom Slide </button>
 		</div>
-		<p class="section-description">
-			Create custom slides with Markdown content.
-		</p>
+		<p class="section-description">Create custom slides with Markdown content.</p>
 
 		{#if data.customSlides.length === 0}
 			<p class="empty-message">No custom slides yet. Create one to get started.</p>
@@ -216,11 +206,7 @@
 						</div>
 
 						<div class="custom-slide-actions">
-							<button
-								type="button"
-								class="edit-button"
-								onclick={() => openEditEditor(slide)}
-							>
+							<button type="button" class="edit-button" onclick={() => openEditEditor(slide)}>
 								Edit
 							</button>
 
@@ -261,12 +247,7 @@
 					<h2 id="editor-title">
 						{editingSlide ? 'Edit Custom Slide' : 'Create Custom Slide'}
 					</h2>
-					<button
-						type="button"
-						class="close-button"
-						onclick={closeEditor}
-						aria-label="Close"
-					>
+					<button type="button" class="close-button" onclick={closeEditor} aria-label="Close">
 						&times;
 					</button>
 				</header>
@@ -327,12 +308,7 @@
 
 						<div class="form-group">
 							<label class="checkbox-label">
-								<input
-									type="checkbox"
-									name="enabled"
-									bind:checked={editorEnabled}
-									value="true"
-								/>
+								<input type="checkbox" name="enabled" bind:checked={editorEnabled} value="true" />
 								Enabled
 							</label>
 						</div>
@@ -365,17 +341,13 @@
 								<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 								{@html previewHtml}
 							{:else}
-								<p class="preview-placeholder">
-									Click "Update Preview" to see rendered Markdown
-								</p>
+								<p class="preview-placeholder">Click "Update Preview" to see rendered Markdown</p>
 							{/if}
 						</div>
 					</div>
 
 					<div class="modal-actions">
-						<button type="button" class="cancel-button" onclick={closeEditor}>
-							Cancel
-						</button>
+						<button type="button" class="cancel-button" onclick={closeEditor}> Cancel </button>
 						<button type="submit" class="save-button">
 							{editingSlide ? 'Save Changes' : 'Create Slide'}
 						</button>

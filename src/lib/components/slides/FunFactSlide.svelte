@@ -48,11 +48,7 @@
 		const animations: ReturnType<typeof animate>[] = [];
 
 		// Animate container
-		const containerAnim = animate(
-			container,
-			{ opacity: [0, 1] },
-			{ duration: 0.4 }
-		);
+		const containerAnim = animate(container, { opacity: [0, 1] }, { duration: 0.4 });
 		animations.push(containerAnim);
 
 		// Animate icon with bounce
@@ -60,7 +56,11 @@
 			const iconAnim = animate(
 				iconEl,
 				{
-					transform: ['scale(0) rotate(-180deg)', 'scale(1.2) rotate(10deg)', 'scale(1) rotate(0deg)'],
+					transform: [
+						'scale(0) rotate(-180deg)',
+						'scale(1.2) rotate(10deg)',
+						'scale(1) rotate(0deg)'
+					],
 					opacity: [0, 1, 1]
 				},
 				{ type: 'spring', stiffness: 200, damping: 10, delay: 0.2 }

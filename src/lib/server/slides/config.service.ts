@@ -88,7 +88,11 @@ export async function getAllSlideConfigs(): Promise<SlideConfig[]> {
  * @returns Slide configuration or null if not found
  */
 export async function getSlideConfigByType(type: SlideType): Promise<SlideConfig | null> {
-	const result = await db.select().from(slideConfig).where(eq(slideConfig.slideType, type)).limit(1);
+	const result = await db
+		.select()
+		.from(slideConfig)
+		.where(eq(slideConfig.slideType, type))
+		.limit(1);
 
 	const record = result[0];
 	if (!record) {

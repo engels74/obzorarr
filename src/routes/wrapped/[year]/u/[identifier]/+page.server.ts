@@ -4,15 +4,9 @@ import type { PageServerLoad } from './$types';
 import { db } from '$lib/server/db/client';
 import { users } from '$lib/server/db/schema';
 import { calculateUserStats } from '$lib/server/stats/engine';
-import {
-	checkWrappedAccess,
-	checkTokenAccess
-} from '$lib/server/sharing/access-control';
+import { checkWrappedAccess, checkTokenAccess } from '$lib/server/sharing/access-control';
 import { isValidTokenFormat } from '$lib/server/sharing/service';
-import {
-	ShareAccessDeniedError,
-	InvalidShareTokenError
-} from '$lib/server/sharing/types';
+import { ShareAccessDeniedError, InvalidShareTokenError } from '$lib/server/sharing/types';
 import {
 	initializeDefaultSlideConfig,
 	getEnabledSlides,
@@ -98,11 +92,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 	// Get user from database to retrieve plexId (needed for stats)
 	// The stats engine uses playHistory.accountId which is the Plex ID
-	const userResult = await db
-		.select()
-		.from(users)
-		.where(eq(users.id, userId))
-		.limit(1);
+	const userResult = await db.select().from(users).where(eq(users.id, userId)).limit(1);
 
 	const user = userResult[0];
 	if (!user) {

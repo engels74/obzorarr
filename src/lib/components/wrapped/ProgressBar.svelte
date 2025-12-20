@@ -25,7 +25,13 @@
 	const progressPercent = $derived(total > 0 ? ((current + 1) / total) * 100 : 0);
 </script>
 
-<div class="progress-bar {klass}" role="progressbar" aria-valuenow={current + 1} aria-valuemin={1} aria-valuemax={total}>
+<div
+	class="progress-bar {klass}"
+	role="progressbar"
+	aria-valuenow={current + 1}
+	aria-valuemin={1}
+	aria-valuemax={total}
+>
 	<div class="segments">
 		{#each Array(total) as _, index}
 			<div

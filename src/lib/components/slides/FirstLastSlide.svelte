@@ -49,20 +49,28 @@
 	const firstTypeLabel = $derived.by(() => {
 		if (!firstWatch) return '';
 		switch (firstWatch.type) {
-			case 'movie': return 'Movie';
-			case 'episode': return 'Episode';
-			case 'track': return 'Track';
-			default: return '';
+			case 'movie':
+				return 'Movie';
+			case 'episode':
+				return 'Episode';
+			case 'track':
+				return 'Track';
+			default:
+				return '';
 		}
 	});
 
 	const lastTypeLabel = $derived.by(() => {
 		if (!lastWatch) return '';
 		switch (lastWatch.type) {
-			case 'movie': return 'Movie';
-			case 'episode': return 'Episode';
-			case 'track': return 'Track';
-			default: return '';
+			case 'movie':
+				return 'Movie';
+			case 'episode':
+				return 'Episode';
+			case 'track':
+				return 'Track';
+			default:
+				return '';
 		}
 	});
 
@@ -94,11 +102,7 @@
 		const animations: ReturnType<typeof animate>[] = [];
 
 		// Animate container
-		const containerAnim = animate(
-			container,
-			{ opacity: [0, 1] },
-			{ duration: 0.4 }
-		);
+		const containerAnim = animate(container, { opacity: [0, 1] }, { duration: 0.4 });
 		animations.push(containerAnim);
 
 		// Animate first card

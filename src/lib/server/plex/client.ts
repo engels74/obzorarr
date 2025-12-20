@@ -133,7 +133,13 @@ async function fetchHistoryPage(
 	offset: number,
 	options: FetchHistoryOptions = {}
 ): Promise<HistoryPageResult> {
-	const { pageSize = DEFAULT_PAGE_SIZE, minViewedAt, accountId, librarySectionId, signal } = options;
+	const {
+		pageSize = DEFAULT_PAGE_SIZE,
+		minViewedAt,
+		accountId,
+		librarySectionId,
+		signal
+	} = options;
 
 	// Build query parameters
 	const params = new URLSearchParams();

@@ -118,8 +118,7 @@ export const TIME_EQUIVALENCY_TEMPLATES: FactTemplate[] = [
 		id: 'mcu-marathon',
 		category: 'time-equivalency',
 		factTemplate: 'You watched {hours} hours of content',
-		comparisonTemplate:
-			"That's like binging the entire MCU Infinity Saga {mcuCount} times over!",
+		comparisonTemplate: "That's like binging the entire MCU Infinity Saga {mcuCount} times over!",
 		icon: '🦸',
 		requiredStats: ['hours'],
 		minThresholds: { hours: 50 } // At least one MCU marathon
@@ -148,7 +147,7 @@ export const CONTENT_COMPARISON_TEMPLATES: FactTemplate[] = [
 		id: 'top-movie-obsession',
 		category: 'content-comparison',
 		factTemplate: 'You watched "{topMovie}" {topMovieCount} times this year',
-		comparisonTemplate: "You could practically recite it by heart!",
+		comparisonTemplate: 'You could practically recite it by heart!',
 		icon: '🎥',
 		requiredStats: ['topMovie', 'topMovieCount'],
 		minThresholds: { topMovieCount: 3 }
@@ -204,7 +203,7 @@ export const BEHAVIORAL_TEMPLATES: FactTemplate[] = [
 		id: 'top-percentile-high',
 		category: 'behavioral-insight',
 		factTemplate: 'You outpaced {percentile}% of fellow viewers',
-		comparisonTemplate: "That puts you in the top viewing tier!",
+		comparisonTemplate: 'That puts you in the top viewing tier!',
 		icon: '🥇',
 		requiredStats: ['percentile'],
 		minThresholds: { percentile: 75 }

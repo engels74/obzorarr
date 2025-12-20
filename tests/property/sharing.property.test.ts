@@ -293,8 +293,7 @@ describe('Property 16: Share Token Uniqueness', () => {
 				fc
 					.string({ minLength: 1, maxLength: 50 })
 					.filter(
-						(s) =>
-							!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s)
+						(s) => !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s)
 					),
 				(invalidToken) => {
 					return !isValidTokenFormat(invalidToken);
@@ -601,7 +600,11 @@ describe('Access Control Logic', () => {
 	});
 
 	it('owner access overrides all modes', () => {
-		const modes: ShareModeType[] = [ShareMode.PUBLIC, ShareMode.PRIVATE_OAUTH, ShareMode.PRIVATE_LINK];
+		const modes: ShareModeType[] = [
+			ShareMode.PUBLIC,
+			ShareMode.PRIVATE_OAUTH,
+			ShareMode.PRIVATE_LINK
+		];
 
 		for (const mode of modes) {
 			const result = checkAccess({

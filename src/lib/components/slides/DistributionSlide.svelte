@@ -25,7 +25,20 @@
 	}: Props = $props();
 
 	// Month labels
-	const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+	const months = [
+		'Jan',
+		'Feb',
+		'Mar',
+		'Apr',
+		'May',
+		'Jun',
+		'Jul',
+		'Aug',
+		'Sep',
+		'Oct',
+		'Nov',
+		'Dec'
+	];
 
 	// Calculate max values for scaling
 	const maxMonthly = $derived(Math.max(...watchTimeByMonth, 1));
@@ -80,11 +93,7 @@
 		}
 
 		// Animate container
-		const containerAnim = animate(
-			container,
-			{ opacity: [0, 1] },
-			{ duration: 0.4 }
-		);
+		const containerAnim = animate(container, { opacity: [0, 1] }, { duration: 0.4 });
 
 		// Animate bars with stagger
 		const validBars = bars.filter(Boolean);

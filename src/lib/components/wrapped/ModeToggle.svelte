@@ -33,9 +33,7 @@
 	const targetMode = $derived<ViewMode>(mode === 'story' ? 'scroll' : 'story');
 
 	/** Label for accessibility and tooltip */
-	const label = $derived(
-		mode === 'story' ? 'Switch to Scroll Mode' : 'Switch to Story Mode'
-	);
+	const label = $derived(mode === 'story' ? 'Switch to Scroll Mode' : 'Switch to Story Mode');
 
 	/** Display text (shows target mode name) */
 	const displayText = $derived(mode === 'story' ? 'Scroll' : 'Story');

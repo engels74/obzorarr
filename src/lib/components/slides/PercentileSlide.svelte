@@ -33,8 +33,8 @@
 		if (topPercentage <= 5) return "You're in the top 5%!";
 		if (topPercentage <= 10) return "You're a super fan!";
 		if (topPercentage <= 25) return "You're in the top quarter!";
-		if (topPercentage <= 50) return "You watch more than most!";
-		return "Keep watching!";
+		if (topPercentage <= 50) return 'You watch more than most!';
+		return 'Keep watching!';
 	});
 
 	// Element references
@@ -58,11 +58,7 @@
 		}
 
 		// Animate container
-		const containerAnim = animate(
-			container,
-			{ opacity: [0, 1] },
-			{ duration: 0.4 }
-		);
+		const containerAnim = animate(container, { opacity: [0, 1] }, { duration: 0.4 });
 
 		// Animate number with bounce
 		const numberAnim = animate(
@@ -98,7 +94,11 @@
 	});
 </script>
 
-<BaseSlide {active} class="percentile-slide {klass}" variant={isTopPerformer ? 'highlight' : 'default'}>
+<BaseSlide
+	{active}
+	class="percentile-slide {klass}"
+	variant={isTopPerformer ? 'highlight' : 'default'}
+>
 	<div bind:this={container} class="content">
 		<h2 class="title">Your Ranking</h2>
 

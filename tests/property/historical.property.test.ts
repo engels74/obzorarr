@@ -100,7 +100,9 @@ async function getAllUsersWatchTime(
 	const results = await db
 		.select({
 			accountId: schema.playHistory.accountId,
-			totalSeconds: sql<number>`COALESCE(SUM(${schema.playHistory.duration}), 0)`.as('total_seconds')
+			totalSeconds: sql<number>`COALESCE(SUM(${schema.playHistory.duration}), 0)`.as(
+				'total_seconds'
+			)
 		})
 		.from(schema.playHistory)
 		.where(
@@ -324,13 +326,15 @@ describe('Property 23: Historical Data Preservation', () => {
 					const recordsWithoutUsers = historyRecords.slice(halfIndex);
 
 					// Create users with specific plexIds matching some accountIds
-					const usersToInsert = recordsWithUsers.slice(0, Math.min(3, recordsWithUsers.length)).map((record, index) => ({
-						plexId: record.accountId,
-						username: `User_${record.accountId}`,
-						email: null,
-						thumb: null,
-						isAdmin: false
-					}));
+					const usersToInsert = recordsWithUsers
+						.slice(0, Math.min(3, recordsWithUsers.length))
+						.map((record, index) => ({
+							plexId: record.accountId,
+							username: `User_${record.accountId}`,
+							email: null,
+							thumb: null,
+							isAdmin: false
+						}));
 
 					// Ensure unique plexIds
 					const uniqueUsers = usersToInsert.filter(
@@ -365,7 +369,10 @@ describe('Property 23: Historical Data Preservation', () => {
 
 					// Expected values from input records
 					const expectedPlays = historyRecords.length;
-					const expectedWatchTimeSeconds = historyRecords.reduce((sum, r) => sum + (r.duration ?? 0), 0);
+					const expectedWatchTimeSeconds = historyRecords.reduce(
+						(sum, r) => sum + (r.duration ?? 0),
+						0
+					);
 
 					// Server stats should include ALL records, not just those with users
 					expect(totalPlays).toBe(expectedPlays);

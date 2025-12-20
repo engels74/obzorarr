@@ -292,18 +292,12 @@ describe('interpolateTemplate', () => {
 	});
 
 	it('interpolates multiple placeholders', () => {
-		const result = interpolateTemplate(
-			'{topMovie} ({topMovieCount} times)',
-			mockContext
-		);
+		const result = interpolateTemplate('{topMovie} ({topMovieCount} times)', mockContext);
 		expect(result).toBe('The Matrix (5 times)');
 	});
 
 	it('interpolates calculated equivalencies', () => {
-		const result = interpolateTemplate(
-			'{flightCount} flights to Tokyo',
-			mockContext
-		);
+		const result = interpolateTemplate('{flightCount} flights to Tokyo', mockContext);
 		// 100 hours / 14 hours per flight = 7.14...
 		expect(result).toContain('7');
 	});
@@ -506,9 +500,7 @@ describe('generateFromTemplates', () => {
 		});
 		const context = buildGenerationContext(stats);
 
-		expect(() => generateFromTemplates(context, { count: 3 })).toThrow(
-			'No applicable templates'
-		);
+		expect(() => generateFromTemplates(context, { count: 3 })).toThrow('No applicable templates');
 	});
 });
 

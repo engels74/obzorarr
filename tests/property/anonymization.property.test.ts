@@ -2,10 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import * as fc from 'fast-check';
 
 // Import the pure functions for testing
-import {
-	applyAnonymization,
-	generateAnonymousIdentifier
-} from '$lib/server/anonymization/service';
+import { applyAnonymization, generateAnonymousIdentifier } from '$lib/server/anonymization/service';
 import { AnonymizationMode, type AnonymizationModeType } from '$lib/server/anonymization/types';
 
 /**
