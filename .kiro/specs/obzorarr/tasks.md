@@ -208,15 +208,15 @@ This plan implements Obzorarr incrementally, starting with project setup and cor
     - **Property 20: Disabled Slide Exclusion**
     - **Validates: Requirements 9.4, 9.5**
 
-- [ ] 12. Wrapped Page - Story Mode
-  - [ ] 12.1 Create StoryMode component
+- [x] 12. Wrapped Page - Story Mode
+  - [x] 12.1 Create StoryMode component
     - Create `src/lib/components/wrapped/StoryMode.svelte`
     - Implement full-screen slide display
     - Add tap/click/swipe navigation
     - Add progress indicator
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
-  - [ ] 12.2 Add slide transitions
+  - [x] 12.2 Add slide transitions
     - Implement smooth animations between slides
     - Use Motion One for hardware acceleration
     - _Requirements: 5.6_
