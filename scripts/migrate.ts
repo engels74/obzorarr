@@ -4,6 +4,8 @@
  * Run with: bun run scripts/migrate.ts
  */
 
+import { mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { Database } from 'bun:sqlite';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { migrate } from 'drizzle-orm/bun-sqlite/migrator';
@@ -11,6 +13,11 @@ import { migrate } from 'drizzle-orm/bun-sqlite/migrator';
 const databasePath = process.env.DATABASE_PATH ?? 'data/obzorarr.db';
 
 console.log(`Migrating database at: ${databasePath}`);
+
+// Ensure the directory exists before opening the database
+if (databasePath !== ':memory:') {
+	mkdirSync(dirname(databasePath), { recursive: true });
+}
 
 // Create database connection
 const sqlite = new Database(databasePath, {
