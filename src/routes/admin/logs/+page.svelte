@@ -30,7 +30,7 @@
 	$effect.pre(() => {
 		searchText = data.filters.search;
 	});
-	let autoScroll = $state(false);
+	let autoScroll = $state(true);
 
 	// SSE connection state
 	let eventSource: EventSource | null = $state(null);
@@ -229,6 +229,13 @@
 			}
 		};
 	});
+
+	// Connect to SSE on mount if autoScroll is enabled
+	$effect(() => {
+		if (autoScroll && !eventSource) {
+			connectSSE();
+		}
+	});
 </script>
 
 <div class="logs-page">
@@ -331,9 +338,9 @@
 			>
 				{#if autoScroll}
 					<span class="pulse-dot"></span>
-					Live (Connected)
+					Pause Live View
 				{:else}
-					Start Live View
+					Resume Live View
 				{/if}
 			</button>
 
