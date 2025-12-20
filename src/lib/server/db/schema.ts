@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
 
 /**
  * Plex users table
@@ -140,14 +140,22 @@ export const sessions = sqliteTable('sessions', {
  * Application logs table
  * Stores persistent logs for admin viewing
  */
-export const logs = sqliteTable('logs', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	level: text('level').notNull(), // 'DEBUG', 'INFO', 'WARN', 'ERROR'
-	message: text('message').notNull(),
-	source: text('source'), // Component name (e.g., 'Scheduler', 'Sync')
-	metadata: text('metadata'), // JSON-serialized additional data
-	timestamp: integer('timestamp').notNull() // Unix timestamp in ms
-});
+export const logs = sqliteTable(
+	'logs',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		level: text('level').notNull(), // 'DEBUG', 'INFO', 'WARN', 'ERROR'
+		message: text('message').notNull(),
+		source: text('source'), // Component name (e.g., 'Scheduler', 'Sync')
+		metadata: text('metadata'), // JSON-serialized additional data
+		timestamp: integer('timestamp').notNull() // Unix timestamp in ms
+	},
+	(table) => [
+		index('idx_logs_timestamp').on(table.timestamp),
+		index('idx_logs_level').on(table.level),
+		index('idx_logs_level_timestamp').on(table.level, table.timestamp)
+	]
+);
 
 // Export table types for type inference
 export type User = typeof users.$inferSelect;
