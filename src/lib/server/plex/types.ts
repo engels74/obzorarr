@@ -55,11 +55,16 @@ export class PlexValidationError extends Error {
  * - Content info (title, type, thumb)
  * - Playback context (viewedAt, accountID, librarySectionID)
  * - Episode-specific fields (grandparentTitle, parentTitle)
+ *
+ * Note: ratingKey is optional because Plex can return history items without it
+ * for deleted media, corrupted entries, trailers, or non-library content.
+ * Items without ratingKey are filtered out before database insertion.
  */
 export const PlexHistoryMetadataSchema = z.object({
 	// Required identification fields
 	historyKey: z.string(),
-	ratingKey: z.string(),
+	// Optional: Plex may return items without ratingKey for deleted/corrupted content
+	ratingKey: z.string().optional(),
 	librarySectionID: z.union([z.string(), z.number()]).transform((val) => String(val)),
 
 	// Content information
@@ -124,6 +129,26 @@ export type PlexHistoryMetadata = z.infer<typeof PlexHistoryMetadataSchema>;
 export type PlexMediaContainer = z.infer<typeof PlexMediaContainerSchema>;
 export type PlexHistoryResponse = z.infer<typeof PlexHistoryResponseSchema>;
 
+/**
+ * Validated history metadata with guaranteed ratingKey
+ *
+ * Use this type for records that have passed validation and filtering.
+ * The ratingKey is guaranteed to be present and non-empty.
+ */
+export type ValidPlexHistoryMetadata = PlexHistoryMetadata & { ratingKey: string };
+
+/**
+ * Type guard to check if a history item has a valid ratingKey
+ *
+ * Use this to filter out items without ratingKey before database insertion.
+ *
+ * @param item - History metadata item to check
+ * @returns true if item has a non-empty ratingKey
+ */
+export function hasRatingKey(item: PlexHistoryMetadata): item is ValidPlexHistoryMetadata {
+	return typeof item.ratingKey === 'string' && item.ratingKey.length > 0;
+}
+
 // =============================================================================
 // Fetch Options
 // =============================================================================
@@ -165,9 +190,10 @@ export interface FetchHistoryOptions {
  */
 export interface HistoryPageResult {
 	/**
-	 * Array of history metadata items for this page
+	 * Array of validated history metadata items for this page
+	 * Items without ratingKey have been filtered out
 	 */
-	items: PlexHistoryMetadata[];
+	items: ValidPlexHistoryMetadata[];
 
 	/**
 	 * Total number of records available

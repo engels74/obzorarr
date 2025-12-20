@@ -1,7 +1,7 @@
 import { db } from '$lib/server/db/client';
 import { playHistory, syncStatus } from '$lib/server/db/schema';
 import { fetchAllHistory } from '$lib/server/plex/client';
-import type { PlexHistoryMetadata } from '$lib/server/plex/types';
+import type { ValidPlexHistoryMetadata } from '$lib/server/plex/types';
 import { eq, desc } from 'drizzle-orm';
 import type { StartSyncOptions, SyncResult, SyncProgress, SyncStatusRecord } from './types';
 
@@ -70,12 +70,14 @@ export function getYearStartTimestamp(year: number): number {
 }
 
 /**
- * Convert PlexHistoryMetadata to database insert format
+ * Convert ValidPlexHistoryMetadata to database insert format
  *
  * Maps Plex API fields to database columns.
  * Implements Requirement 2.3: Store required fields.
+ *
+ * Note: Uses ValidPlexHistoryMetadata which guarantees ratingKey is present.
  */
-function mapPlexRecordToDbInsert(record: PlexHistoryMetadata) {
+function mapPlexRecordToDbInsert(record: ValidPlexHistoryMetadata) {
 	return {
 		historyKey: record.historyKey,
 		ratingKey: record.ratingKey,
@@ -235,11 +237,11 @@ async function updateSyncProgress(syncId: number, recordsProcessed: number): Pro
  * Uses INSERT OR IGNORE (via onConflictDoNothing) to skip duplicate historyKeys
  * without failing the entire batch.
  *
- * @param records - Array of Plex history metadata records
+ * @param records - Array of validated Plex history metadata records (with ratingKey guaranteed)
  * @returns Count of inserted and skipped records
  */
 async function insertHistoryBatch(
-	records: PlexHistoryMetadata[]
+	records: ValidPlexHistoryMetadata[]
 ): Promise<{ inserted: number; skipped: number }> {
 	if (records.length === 0) {
 		return { inserted: 0, skipped: 0 };

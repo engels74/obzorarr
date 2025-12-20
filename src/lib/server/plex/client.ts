@@ -3,8 +3,8 @@ import {
 	PlexHistoryResponseSchema,
 	PlexApiError,
 	PlexValidationError,
-	type PlexHistoryMetadata,
-	type PlexHistoryResponse,
+	hasRatingKey,
+	type ValidPlexHistoryMetadata,
 	type FetchHistoryOptions,
 	type HistoryPageResult
 } from './types';
@@ -175,8 +175,18 @@ async function fetchHistoryPage(
 
 	const container = result.data.MediaContainer;
 
+	// Filter out items without ratingKey (deleted media, corrupted entries, etc.)
+	const rawItems = container.Metadata;
+	const validItems = rawItems.filter(hasRatingKey);
+
+	// Log filtered items for visibility
+	const skippedCount = rawItems.length - validItems.length;
+	if (skippedCount > 0) {
+		console.warn(`[Plex] Skipped ${skippedCount} history items without ratingKey`);
+	}
+
 	return {
-		items: container.Metadata,
+		items: validItems,
 		totalSize: container.totalSize ?? container.size,
 		offset: container.offset,
 		size: container.size
@@ -206,7 +216,7 @@ async function fetchHistoryPage(
  * }
  *
  * // Collect all items into a single array
- * const allItems: PlexHistoryMetadata[] = [];
+ * const allItems: ValidPlexHistoryMetadata[] = [];
  * for await (const page of fetchAllHistory()) {
  *   allItems.push(...page);
  * }
@@ -214,7 +224,7 @@ async function fetchHistoryPage(
  */
 export async function* fetchAllHistory(
 	options: FetchHistoryOptions = {}
-): AsyncGenerator<PlexHistoryMetadata[], void, unknown> {
+): AsyncGenerator<ValidPlexHistoryMetadata[], void, unknown> {
 	const { pageSize = DEFAULT_PAGE_SIZE } = options;
 	let offset = 0;
 	let totalSize: number | undefined;
@@ -247,7 +257,7 @@ export async function* fetchAllHistory(
  * Use fetchAllHistory() generator for memory-efficient processing of large datasets.
  *
  * @param options - Fetch options including page size and filters
- * @returns Array of all history metadata items
+ * @returns Array of all validated history metadata items (with ratingKey guaranteed)
  *
  * @example
  * ```typescript
@@ -257,8 +267,8 @@ export async function* fetchAllHistory(
  */
 export async function fetchAllHistoryArray(
 	options: FetchHistoryOptions = {}
-): Promise<PlexHistoryMetadata[]> {
-	const allItems: PlexHistoryMetadata[] = [];
+): Promise<ValidPlexHistoryMetadata[]> {
+	const allItems: ValidPlexHistoryMetadata[] = [];
 
 	for await (const page of fetchAllHistory(options)) {
 		allItems.push(...page);
