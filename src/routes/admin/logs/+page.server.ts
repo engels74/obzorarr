@@ -36,7 +36,7 @@ import {
 
 const LogLevelFilterSchema = z
 	.string()
-	.optional()
+	.nullish()
 	.transform((val) => {
 		if (!val) return undefined;
 		const levels = val.split(',').filter((l) => l in LogLevel) as LogLevelType[];
@@ -45,7 +45,7 @@ const LogLevelFilterSchema = z
 
 const TimestampSchema = z
 	.string()
-	.optional()
+	.nullish()
 	.transform((val) => {
 		if (!val) return undefined;
 		const parsed = parseInt(val, 10);
@@ -54,7 +54,7 @@ const TimestampSchema = z
 
 const LimitSchema = z
 	.string()
-	.optional()
+	.nullish()
 	.transform((val) => {
 		if (!val) return 100;
 		const parsed = parseInt(val, 10);
@@ -63,7 +63,7 @@ const LimitSchema = z
 
 const CursorSchema = z
 	.string()
-	.optional()
+	.nullish()
 	.transform((val) => {
 		if (!val) return undefined;
 		const parsed = parseInt(val, 10);
