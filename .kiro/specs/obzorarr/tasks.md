@@ -1,0 +1,342 @@
+# Implementation Plan: Obzorarr
+
+## Overview
+
+This plan implements Obzorarr incrementally, starting with project setup and core infrastructure, then building out features layer by layer. Each task builds on previous work with no orphaned code.
+
+## Tasks
+
+- [ ] 1. Project Setup and Core Infrastructure
+  - [ ] 1.1 Initialize SvelteKit project with Bun
+    - Run `bun create svelte@latest` with TypeScript, strict mode
+    - Configure `tsconfig.json` with `noUncheckedIndexedAccess: true`
+    - Set up `bunfig.toml` for testing
+    - _Requirements: 15.1, 15.2_
+
+  - [ ] 1.2 Configure UnoCSS and shadcn-svelte
+    - Install UnoCSS with `unocss-preset-shadcn` and `presetAnimations`
+    - Initialize shadcn-svelte with Soviet/communist theme colors
+    - Set up `uno.config.ts` with presets
+    - _Requirements: 16.1, 16.4_
+
+  - [ ] 1.3 Set up Drizzle ORM with Bun SQLite
+    - Create `src/lib/server/db/client.ts` with WAL mode
+    - Create `src/lib/server/db/schema.ts` with all tables
+    - Create `drizzle.config.ts`
+    - Run initial migration
+    - _Requirements: 2.8_
+
+  - [ ] 1.4 Write property test for database round-trip
+    - **Property 21: Statistics Serialization Round-Trip**
+    - **Validates: Requirements 17.4**
+
+- [ ] 2. Checkpoint - Verify project builds and tests pass
+  - Ensure `bun run build` succeeds
+  - Ensure `bun test` runs
+  - Ask user if questions arise
+
+- [ ] 3. Plex API Client
+  - [ ] 3.1 Create Plex client module
+    - Create `src/lib/server/plex/client.ts`
+    - Implement `plexRequest<T>()` with proper headers
+    - Use `$env/static/private` for PLEX_TOKEN
+    - _Requirements: 2.1_
+
+  - [ ] 3.2 Implement paginated history fetch
+    - Implement `fetchAllHistory()` with pagination
+    - Handle `X-Plex-Container-Start` and `X-Plex-Container-Size`
+    - _Requirements: 2.2_
+
+  - [ ] 3.3 Write property test for pagination completeness
+    - **Property 4: Pagination Completeness**
+    - **Validates: Requirements 2.2**
+
+- [ ] 4. Authentication System
+  - [ ] 4.1 Implement Plex OAuth flow
+    - Create `src/lib/server/auth/plex-oauth.ts`
+    - Implement `initiateOAuth()` and `handleCallback()`
+    - Create `src/routes/auth/plex/+server.ts` endpoint
+    - _Requirements: 1.1, 1.2_
+
+  - [ ] 4.2 Implement session management
+    - Create `src/lib/server/auth/session.ts`
+    - Implement session creation, validation, invalidation
+    - Store sessions in SQLite
+    - _Requirements: 1.6, 1.7_
+
+  - [ ] 4.3 Create auth hook
+    - Implement `src/hooks.server.ts` with auth handle
+    - Populate `event.locals.user`
+    - Protect `/admin` routes
+    - _Requirements: 1.3, 1.4, 1.5_
+
+  - [ ] 4.4 Write property tests for auth
+    - **Property 1: Role Assignment Correctness**
+    - **Property 2: Non-Member Access Denial**
+    - **Property 3: Session Invalidation**
+    - **Validates: Requirements 1.3, 1.4, 1.5, 1.7**
+
+- [ ] 5. Checkpoint - Auth flow works end-to-end
+  - Test OAuth redirect and callback
+  - Verify session creation and admin detection
+  - Ask user if questions arise
+
+- [ ] 6. Sync Service
+  - [ ] 6.1 Implement sync service core
+    - Create `src/lib/server/sync/service.ts`
+    - Implement `startSync()` with backfill support
+    - Store records in `play_history` table
+    - Track sync status in `sync_status` table
+    - _Requirements: 2.1, 2.3, 2.6_
+
+  - [ ] 6.2 Implement incremental sync
+    - Track `lastViewedAt` timestamp
+    - Filter subsequent syncs by timestamp
+    - _Requirements: 2.4, 2.5_
+
+  - [ ] 6.3 Implement sync scheduler with Croner
+    - Create `src/lib/server/sync/scheduler.ts`
+    - Use Croner with overrun protection
+    - _Requirements: 3.3_
+
+  - [ ] 6.4 Write property tests for sync
+    - **Property 5: History Record Field Completeness**
+    - **Property 6: Sync Timestamp Tracking**
+    - **Property 7: Incremental Sync Filtering**
+    - **Validates: Requirements 2.3, 2.4, 2.5**
+
+- [ ] 7. Statistics Engine
+  - [ ] 7.1 Implement watch time calculator
+    - Create `src/lib/server/stats/calculators/watch-time.ts`
+    - Sum durations for total watch time
+    - _Requirements: 4.2_
+
+  - [ ] 7.2 Implement ranking calculator
+    - Create `src/lib/server/stats/calculators/ranking.ts`
+    - Calculate top movies, shows, genres
+    - _Requirements: 4.3, 4.4, 4.5_
+
+  - [ ] 7.3 Implement distribution calculators
+    - Create `src/lib/server/stats/calculators/distributions.ts`
+    - Calculate monthly and hourly distributions
+    - _Requirements: 4.6, 4.7_
+
+  - [ ] 7.4 Implement percentile calculator
+    - Calculate user percentile rank
+    - _Requirements: 4.8_
+
+  - [ ] 7.5 Implement binge detector
+    - Create `src/lib/server/stats/calculators/binge-detector.ts`
+    - Find longest consecutive session (30min gap)
+    - _Requirements: 4.9_
+
+  - [ ] 7.6 Implement first/last watch finder
+    - Find first and last content of year
+    - _Requirements: 4.10_
+
+  - [ ] 7.7 Create stats engine facade
+    - Create `src/lib/server/stats/engine.ts`
+    - Implement `calculateUserStats()` and `calculateServerStats()`
+    - Add caching to `cached_stats` table
+    - _Requirements: 4.1, 4.11_
+
+  - [ ] 7.8 Write property tests for stats
+    - **Property 8: Year Date Range Filtering**
+    - **Property 9: Watch Time Aggregation**
+    - **Property 10: Ranking Correctness**
+    - **Property 11: Monthly Distribution Completeness**
+    - **Property 12: Hourly Distribution Completeness**
+    - **Property 13: Percentile Calculation**
+    - **Property 14: Binge Session Detection**
+    - **Validates: Requirements 4.1-4.9**
+
+- [ ] 8. Checkpoint - Stats engine complete
+  - Verify all calculators work with test data
+  - Ensure caching works correctly
+  - Ask user if questions arise
+
+- [ ] 9. Sharing System
+  - [ ] 9.1 Implement sharing service
+    - Create `src/lib/server/sharing/service.ts`
+    - Implement share settings CRUD
+    - Generate unique share tokens
+    - _Requirements: 7.1, 7.2, 7.3_
+
+  - [ ] 9.2 Implement access control
+    - Check share mode in route guards
+    - Validate share tokens
+    - Enforce admin permissions
+    - _Requirements: 7.4, 7.5, 7.6_
+
+  - [ ] 9.3 Write property tests for sharing
+    - **Property 15: Share Mode Access Control**
+    - **Property 16: Share Token Uniqueness**
+    - **Property 17: Permission Enforcement**
+    - **Validates: Requirements 7.1-7.6**
+
+- [ ] 10. Anonymization System
+  - [ ] 10.1 Implement anonymization service
+    - Create anonymization logic for usernames
+    - Support real/anonymous/hybrid modes
+    - _Requirements: 8.1, 8.2, 8.3, 8.4_
+
+  - [ ] 10.2 Write property test for anonymization
+    - **Property 18: Anonymization Mode Display**
+    - **Validates: Requirements 8.1, 8.2, 8.3**
+
+- [ ] 11. Slide System
+  - [ ] 11.1 Create slide components
+    - Create `src/lib/components/slides/` directory
+    - Implement TotalTimeSlide, TopMoviesSlide, TopShowsSlide
+    - Implement GenresSlide, DistributionSlide, PercentileSlide
+    - Implement BingeSlide, FirstLastSlide, FunFactSlide
+    - Use Motion One with `$effect` cleanup
+    - _Requirements: 5.6_
+
+  - [ ] 11.2 Implement slide configuration
+    - Create slide config table operations
+    - Support enable/disable and reordering
+    - _Requirements: 9.4, 9.5_
+
+  - [ ] 11.3 Implement custom slides
+    - Create CustomSlide component with Markdown rendering
+    - Create admin editor for custom slides
+    - _Requirements: 9.1, 9.2, 9.3_
+
+  - [ ] 11.4 Write property tests for slides
+    - **Property 19: Slide Order Persistence**
+    - **Property 20: Disabled Slide Exclusion**
+    - **Validates: Requirements 9.4, 9.5**
+
+- [ ] 12. Wrapped Page - Story Mode
+  - [ ] 12.1 Create StoryMode component
+    - Create `src/lib/components/wrapped/StoryMode.svelte`
+    - Implement full-screen slide display
+    - Add tap/click/swipe navigation
+    - Add progress indicator
+    - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
+
+  - [ ] 12.2 Add slide transitions
+    - Implement smooth animations between slides
+    - Use Motion One for hardware acceleration
+    - _Requirements: 5.6_
+
+- [ ] 13. Wrapped Page - Scroll Mode
+  - [ ] 13.1 Create ScrollMode component
+    - Create `src/lib/components/wrapped/ScrollMode.svelte`
+    - Display all stats on scrollable page
+    - _Requirements: 6.1_
+
+  - [ ] 13.2 Add scroll-triggered animations
+    - Use GSAP ScrollTrigger with `$effect` cleanup
+    - Animate sections on viewport entry
+    - _Requirements: 6.2_
+
+  - [ ] 13.3 Implement mode toggle
+    - Create ModeToggle component
+    - Preserve position when switching modes
+    - _Requirements: 6.3, 6.4_
+
+- [ ] 14. Wrapped Routes
+  - [ ] 14.1 Create wrapped page routes
+    - Create `src/routes/wrapped/[year]/+page.svelte` for server wrapped
+    - Create `src/routes/wrapped/[year]/u/[identifier]/+page.svelte` for user wrapped
+    - Implement load functions with access control
+    - _Requirements: 12.1, 14.3, 14.4_
+
+  - [ ] 14.2 Write property test for URL routing
+    - **Property 22: URL Route Parsing**
+    - **Validates: Requirements 12.1, 14.3, 14.4**
+
+- [ ] 15. Checkpoint - Wrapped pages functional
+  - Test story mode navigation
+  - Test scroll mode animations
+  - Verify access control works
+  - Ask user if questions arise
+
+- [ ] 16. Admin Panel
+  - [ ] 16.1 Create admin layout and dashboard
+    - Create `src/routes/admin/+layout.svelte`
+    - Create dashboard with server overview
+    - Show total users, watch time, sync status
+    - _Requirements: 11.1, 14.2_
+
+  - [ ] 16.2 Create sync management page
+    - Create `src/routes/admin/sync/+page.svelte`
+    - Add manual sync button
+    - Show sync history and status
+    - Add cron schedule configuration
+    - _Requirements: 3.1, 3.2, 3.4, 3.5_
+
+  - [ ] 16.3 Create user management page
+    - Create `src/routes/admin/users/+page.svelte`
+    - List all server users
+    - Per-user permission settings
+    - Preview user wrapped
+    - _Requirements: 11.2, 11.7_
+
+  - [ ] 16.4 Create slide configuration page
+    - Create `src/routes/admin/slides/+page.svelte`
+    - Toggle slides on/off
+    - Reorder slides
+    - Custom slide editor
+    - _Requirements: 11.3_
+
+  - [ ] 16.5 Create settings page
+    - Create `src/routes/admin/settings/+page.svelte`
+    - Plex server configuration
+    - OpenAI API configuration
+    - Theme selection with tweakcn
+    - Year/archive settings
+    - _Requirements: 11.4, 11.5, 11.6_
+
+- [ ] 17. Fun Facts Service
+  - [ ] 17.1 Implement fun facts service
+    - Create `src/lib/server/funfacts/service.ts`
+    - Create predefined templates
+    - Implement AI generation (optional)
+    - _Requirements: 10.1, 10.2, 10.3, 10.4_
+
+- [ ] 18. Landing Page
+  - [ ] 18.1 Create public landing page
+    - Create `src/routes/+page.svelte`
+    - Soviet/communist themed design
+    - Explain Obzorarr
+    - Plex OAuth login button
+    - _Requirements: 14.1_
+
+- [ ] 19. Historical User Handling
+  - [ ] 19.1 Implement data preservation
+    - Ensure removed users' history is retained
+    - Allow re-auth to restore access
+    - _Requirements: 13.1, 13.2, 13.3_
+
+  - [ ] 19.2 Write property test for data preservation
+    - **Property 23: Historical Data Preservation**
+    - **Validates: Requirements 13.1, 13.3**
+
+- [ ] 20. Docker Deployment
+  - [ ] 20.1 Create Dockerfile
+    - Multi-stage build with Bun
+    - Copy built application
+    - Set up volume for SQLite
+    - _Requirements: 15.1, 15.3, 15.5_
+
+  - [ ] 20.2 Create docker-compose.yml
+    - Configure environment variables
+    - Set up volume mounts
+    - _Requirements: 15.2, 15.4_
+
+- [ ] 21. Final Checkpoint
+  - Run all tests
+  - Verify Docker build works
+  - Test full user flow
+  - Ask user if questions arise
+
+## Notes
+
+- All property-based tests are required for comprehensive coverage
+- Each task references specific requirements for traceability
+- Checkpoints ensure incremental validation
+- Property tests validate universal correctness properties
+- Unit tests validate specific examples and edge cases
