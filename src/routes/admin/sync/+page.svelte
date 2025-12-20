@@ -37,6 +37,7 @@
 	let cronExpression = $state('0 0 * * *');
 	let isSyncing = $state(false);
 	let isCancelling = $state(false);
+	let dismissFormSuccess = $state(false);
 
 	// SSE state
 	let eventSource = $state<EventSource | null>(null);
@@ -97,6 +98,8 @@
 					}
 					// Mark sync as completed to prevent auto-reconnection
 					syncCompleted = true;
+					// Dismiss the form success banner (e.g., "Sync started")
+					dismissFormSuccess = true;
 					// Keep showing the final state briefly, then disconnect
 					setTimeout(() => {
 						disconnectSSE();
@@ -219,7 +222,7 @@
 		</div>
 	{/if}
 
-	{#if form?.success}
+	{#if form?.success && !dismissFormSuccess}
 		<div class="success-banner" role="status">
 			{form.message ?? 'Operation completed successfully'}
 		</div>
@@ -342,6 +345,7 @@
 				use:enhance={() => {
 					isSyncing = true;
 					syncCompleted = false; // Reset for new sync
+					dismissFormSuccess = false; // Reset to show new form messages
 					// Connect to SSE immediately to catch progress updates
 					connectSSE();
 					return async ({ update }) => {
