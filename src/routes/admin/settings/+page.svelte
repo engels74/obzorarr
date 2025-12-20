@@ -287,7 +287,9 @@
 	<section class="section">
 		<h2>Logging</h2>
 		<p class="section-description">
-			Configure log retention and debug settings. <a href="/admin/logs" class="section-link">View logs</a>
+			Configure log retention and debug settings. <a href="/admin/logs" class="section-link"
+				>View logs</a
+			>
 		</p>
 
 		<form method="POST" action="?/updateLogSettings" use:enhance class="logging-form">
@@ -322,15 +324,12 @@
 
 			<div class="form-group">
 				<label class="checkbox-label">
-					<input
-						type="checkbox"
-						name="debugEnabled"
-						bind:checked={logDebugEnabled}
-					/>
+					<input type="checkbox" name="debugEnabled" bind:checked={logDebugEnabled} />
 					<span class="checkbox-text">Enable DEBUG level logging</span>
 				</label>
 				<span class="form-hint checkbox-hint">
-					When enabled, detailed debug logs will be recorded. This may generate a large volume of logs.
+					When enabled, detailed debug logs will be recorded. This may generate a large volume of
+					logs.
 				</span>
 			</div>
 

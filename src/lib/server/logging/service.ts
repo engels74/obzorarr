@@ -217,10 +217,7 @@ export async function deleteAllLogs(): Promise<number> {
  * @returns Number of logs deleted
  */
 export async function deleteLogsOlderThan(olderThanTimestamp: number): Promise<number> {
-	const result = await db
-		.delete(logs)
-		.where(lt(logs.timestamp, olderThanTimestamp))
-		.returning();
+	const result = await db.delete(logs).where(lt(logs.timestamp, olderThanTimestamp)).returning();
 	return result.length;
 }
 
