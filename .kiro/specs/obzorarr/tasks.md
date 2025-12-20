@@ -6,20 +6,20 @@ This plan implements Obzorarr incrementally, starting with project setup and cor
 
 ## Tasks
 
-- [ ] 1. Project Setup and Core Infrastructure
-  - [ ] 1.1 Initialize SvelteKit project with Bun
+- [x] 1. Project Setup and Core Infrastructure
+  - [x] 1.1 Initialize SvelteKit project with Bun
     - Run `bun create svelte@latest` with TypeScript, strict mode
     - Configure `tsconfig.json` with `noUncheckedIndexedAccess: true`
     - Set up `bunfig.toml` for testing
     - _Requirements: 15.1, 15.2_
 
-  - [ ] 1.2 Configure UnoCSS and shadcn-svelte
+  - [x] 1.2 Configure UnoCSS and shadcn-svelte
     - Install UnoCSS with `unocss-preset-shadcn` and `presetAnimations`
     - Initialize shadcn-svelte with Soviet/communist theme colors
     - Set up `uno.config.ts` with presets
     - _Requirements: 16.1, 16.4_
 
-  - [ ] 1.3 Set up Drizzle ORM with Bun SQLite
+  - [x] 1.3 Set up Drizzle ORM with Bun SQLite
     - Create `src/lib/server/db/client.ts` with WAL mode
     - Create `src/lib/server/db/schema.ts` with all tables
     - Create `drizzle.config.ts`
@@ -30,7 +30,7 @@ This plan implements Obzorarr incrementally, starting with project setup and cor
     - **Property 21: Statistics Serialization Round-Trip**
     - **Validates: Requirements 17.4**
 
-- [ ] 2. Checkpoint - Verify project builds and tests pass
+- [x] 2. Checkpoint - Verify project builds and tests pass
   - Ensure `bun run build` succeeds
   - Ensure `bun test` runs
   - Ask user if questions arise
