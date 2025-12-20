@@ -315,17 +315,24 @@ This plan implements Obzorarr incrementally, starting with project setup and cor
     - **Property 23: Historical Data Preservation**
     - **Validates: Requirements 13.1, 13.3**
 
-- [ ] 20. Docker Deployment
-  - [ ] 20.1 Create Dockerfile
-    - Multi-stage build with Bun
+- [x] 20. Docker Deployment
+  - [x] 20.1 Create Dockerfile
+    - Multi-stage build with Bun (oven/bun:1-alpine)
+    - Non-root user, health checks, volume support
     - Copy built application
     - Set up volume for SQLite
     - _Requirements: 15.1, 15.3, 15.5_
 
-  - [ ] 20.2 Create docker-compose.yml
+  - [x] 20.2 Create docker-compose.yml
     - Configure environment variables
     - Set up volume mounts
+    - Health checks and restart policy
     - _Requirements: 15.2, 15.4_
+
+  - [x] 20.3 Create GitHub Actions CI/CD workflow
+    - Multi-platform builds (amd64, arm64)
+    - Push to GHCR on main/tags
+    - BuildKit cache for faster builds
 
 - [ ] 21. Final Checkpoint
   - Run all tests

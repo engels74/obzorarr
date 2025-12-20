@@ -1,0 +1,42 @@
+# =============================================================================
+# Obzorarr Docker Compose Configuration
+# Year in Review for Plex Media Server
+# =============================================================================
+
+services:
+  obzorarr:
+    build: .
+    image: ghcr.io/engels74/obzorarr:latest
+    container_name: obzorarr
+    ports:
+      - "3000:3000"
+    volumes:
+      # Persist SQLite database
+      - ./data:/app/data
+    environment:
+      # Database Configuration
+      - DATABASE_PATH=/app/data/obzorarr.db
+
+      # Plex Configuration (required)
+      - PLEX_SERVER_URL=${PLEX_SERVER_URL}
+      - PLEX_TOKEN=${PLEX_TOKEN}
+
+      # Application Configuration
+      - ORIGIN=${ORIGIN:-http://localhost:3000}
+      - PORT=${PORT:-3000}
+      - HOST=${HOST:-0.0.0.0}
+
+      # Optional: OpenAI-compatible API for fun facts
+      - OPENAI_API_URL=${OPENAI_API_URL:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_MODEL=${OPENAI_MODEL:-}
+
+      # Optional: Sync schedule (cron expression)
+      - SYNC_CRON_SCHEDULE=${SYNC_CRON_SCHEDULE:-0 */6 * * *}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bun", "--eval", "fetch('http://localhost:3000/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
