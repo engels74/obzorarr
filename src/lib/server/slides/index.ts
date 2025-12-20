@@ -45,3 +45,6 @@ export {
 	getWordCount,
 	getReadingTime
 } from './renderer';
+
+// Utilities
+export { buildSlideRenderConfigs, customSlidesToMap } from './utils';

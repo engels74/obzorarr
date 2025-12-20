@@ -237,14 +237,14 @@ This plan implements Obzorarr incrementally, starting with project setup and cor
     - Preserve position when switching modes
     - _Requirements: 6.3, 6.4_
 
-- [ ] 14. Wrapped Routes
-  - [ ] 14.1 Create wrapped page routes
+- [x] 14. Wrapped Routes
+  - [x] 14.1 Create wrapped page routes
     - Create `src/routes/wrapped/[year]/+page.svelte` for server wrapped
     - Create `src/routes/wrapped/[year]/u/[identifier]/+page.svelte` for user wrapped
     - Implement load functions with access control
     - _Requirements: 12.1, 14.3, 14.4_
 
-  - [ ] 14.2 Write property test for URL routing
+  - [x] 14.2 Write property test for URL routing
     - **Property 22: URL Route Parsing**
     - **Validates: Requirements 12.1, 14.3, 14.4**
 
