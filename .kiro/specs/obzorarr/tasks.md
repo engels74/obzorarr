@@ -105,42 +105,42 @@ This plan implements Obzorarr incrementally, starting with project setup and cor
     - **Property 7: Incremental Sync Filtering**
     - **Validates: Requirements 2.3, 2.4, 2.5**
 
-- [ ] 7. Statistics Engine
-  - [ ] 7.1 Implement watch time calculator
+- [x] 7. Statistics Engine
+  - [x] 7.1 Implement watch time calculator
     - Create `src/lib/server/stats/calculators/watch-time.ts`
     - Sum durations for total watch time
     - _Requirements: 4.2_
 
-  - [ ] 7.2 Implement ranking calculator
+  - [x] 7.2 Implement ranking calculator
     - Create `src/lib/server/stats/calculators/ranking.ts`
     - Calculate top movies, shows, genres
     - _Requirements: 4.3, 4.4, 4.5_
 
-  - [ ] 7.3 Implement distribution calculators
+  - [x] 7.3 Implement distribution calculators
     - Create `src/lib/server/stats/calculators/distributions.ts`
     - Calculate monthly and hourly distributions
     - _Requirements: 4.6, 4.7_
 
-  - [ ] 7.4 Implement percentile calculator
+  - [x] 7.4 Implement percentile calculator
     - Calculate user percentile rank
     - _Requirements: 4.8_
 
-  - [ ] 7.5 Implement binge detector
+  - [x] 7.5 Implement binge detector
     - Create `src/lib/server/stats/calculators/binge-detector.ts`
     - Find longest consecutive session (30min gap)
     - _Requirements: 4.9_
 
-  - [ ] 7.6 Implement first/last watch finder
+  - [x] 7.6 Implement first/last watch finder
     - Find first and last content of year
     - _Requirements: 4.10_
 
-  - [ ] 7.7 Create stats engine facade
+  - [x] 7.7 Create stats engine facade
     - Create `src/lib/server/stats/engine.ts`
     - Implement `calculateUserStats()` and `calculateServerStats()`
     - Add caching to `cached_stats` table
     - _Requirements: 4.1, 4.11_
 
-  - [ ] 7.8 Write property tests for stats
+  - [x] 7.8 Write property tests for stats
     - **Property 8: Year Date Range Filtering**
     - **Property 9: Watch Time Aggregation**
     - **Property 10: Ranking Correctness**
