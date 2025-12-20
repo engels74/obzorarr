@@ -297,8 +297,8 @@ This plan implements Obzorarr incrementally, starting with project setup and cor
     - Implement AI generation (optional)
     - _Requirements: 10.1, 10.2, 10.3, 10.4_
 
-- [ ] 18. Landing Page
-  - [ ] 18.1 Create public landing page
+- [x] 18. Landing Page
+  - [x] 18.1 Create public landing page
     - Create `src/routes/+page.svelte`
     - Soviet/communist themed design
     - Explain Obzorarr
