@@ -45,8 +45,9 @@
 	let syncCompleted = $state(false); // Tracks if sync completed to prevent reconnection
 
 	// Derived: sync is active (either from server state or SSE progress)
+	// Exclude stale data.isRunning after we've completed a sync
 	const syncActive = $derived(
-		data.isRunning || (progress !== null && progress.status === 'running')
+		(data.isRunning && !syncCompleted) || (progress !== null && progress.status === 'running')
 	);
 
 	// Status text for display
