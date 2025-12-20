@@ -1,5 +1,5 @@
 import { db } from '$lib/server/db/client';
-import { slideConfig } from '$lib/server/db/schema';
+import { slideConfig, appSettings } from '$lib/server/db/schema';
 import { eq, asc } from 'drizzle-orm';
 import { DEFAULT_SLIDE_ORDER, type SlideType } from '$lib/components/slides/types';
 import {
@@ -9,6 +9,9 @@ import {
 	type UpdateSlideConfig,
 	type SlideTypeValue
 } from './types';
+
+// Key for tracking whether slides have been migrated to enabled state
+const SLIDES_ENABLED_MIGRATION_KEY = 'slides_enabled_migration_v1';
 
 /**
  * Slide Configuration Service
@@ -36,10 +39,21 @@ import {
  *
  * Creates entries for all standard slide types if they don't exist.
  * New slides are appended after existing ones to avoid sortOrder conflicts.
+ * Also applies a one-time migration to enable all default slides (fixes a bug
+ * where slides were created with enabled: false).
  *
  * Implements Requirement 9.4 (default ordering)
  */
 export async function initializeDefaultSlideConfig(): Promise<void> {
+	// Check if the enabled migration has been applied
+	const migrationApplied = await db
+		.select()
+		.from(appSettings)
+		.where(eq(appSettings.key, SLIDES_ENABLED_MIGRATION_KEY))
+		.limit(1);
+
+	const needsMigration = migrationApplied.length === 0;
+
 	// Fetch all existing configs in a single query
 	const existingConfigs = await db.select().from(slideConfig);
 	const existingTypes = new Set(existingConfigs.map((c) => c.slideType));
@@ -50,15 +64,31 @@ export async function initializeDefaultSlideConfig(): Promise<void> {
 
 	let nextSortOrder = maxSortOrder + 1;
 
-	// Insert missing slides with enabled: true
+	// Process default slides
 	for (const slideType of DEFAULT_SLIDE_ORDER) {
 		if (!existingTypes.has(slideType)) {
+			// Insert missing slide with enabled: true
 			await db.insert(slideConfig).values({
 				slideType,
 				enabled: true,
 				sortOrder: nextSortOrder++
 			});
+		} else if (needsMigration) {
+			// One-time migration: ensure existing default slides are enabled
+			// This fixes slides that were created with enabled: false from a previous bug
+			await db
+				.update(slideConfig)
+				.set({ enabled: true })
+				.where(eq(slideConfig.slideType, slideType));
 		}
+	}
+
+	// Mark migration as applied
+	if (needsMigration) {
+		await db
+			.insert(appSettings)
+			.values({ key: SLIDES_ENABLED_MIGRATION_KEY, value: 'applied' })
+			.onConflictDoNothing();
 	}
 }
 
