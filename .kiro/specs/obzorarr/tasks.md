@@ -305,13 +305,13 @@ This plan implements Obzorarr incrementally, starting with project setup and cor
     - Plex OAuth login button
     - _Requirements: 14.1_
 
-- [ ] 19. Historical User Handling
-  - [ ] 19.1 Implement data preservation
+- [x] 19. Historical User Handling
+  - [x] 19.1 Implement data preservation
     - Ensure removed users' history is retained
     - Allow re-auth to restore access
     - _Requirements: 13.1, 13.2, 13.3_
 
-  - [ ] 19.2 Write property test for data preservation
+  - [x] 19.2 Write property test for data preservation
     - **Property 23: Historical Data Preservation**
     - **Validates: Requirements 13.1, 13.3**
 

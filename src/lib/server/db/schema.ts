@@ -17,6 +17,13 @@ export const users = sqliteTable('users', {
 /**
  * Play history table
  * Stores viewing history from Plex sync
+ *
+ * Historical Data Preservation (Requirements 13.1, 13.3):
+ * The accountId field is intentionally NOT a foreign key to users.plexId.
+ * This design ensures that viewing history is preserved when users are
+ * removed from the Plex server, allowing:
+ * - Server-wide statistics to include all historical viewing data
+ * - Re-authenticated users to regain access to their wrapped pages
  */
 export const playHistory = sqliteTable('play_history', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
@@ -25,6 +32,17 @@ export const playHistory = sqliteTable('play_history', {
 	title: text('title').notNull(),
 	type: text('type').notNull(), // 'movie', 'episode', etc.
 	viewedAt: integer('viewed_at').notNull(), // Unix timestamp
+	/**
+	 * Plex account ID of the user who viewed this content.
+	 *
+	 * IMPORTANT: This field is intentionally NOT a foreign key to users.plexId.
+	 * This design ensures historical data preservation (Requirements 13.1, 13.3):
+	 * - Viewing history remains in database when users are removed from Plex server
+	 * - Server-wide statistics include all historical viewing data
+	 * - When removed users re-authenticate, their plexId matches this accountId
+	 *
+	 * The accountId value comes from Plex's accountID in the history API response.
+	 */
 	accountId: integer('account_id').notNull(),
 	librarySectionId: integer('library_section_id').notNull(),
 	thumb: text('thumb'),
