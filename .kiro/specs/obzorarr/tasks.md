@@ -174,13 +174,13 @@ This plan implements Obzorarr incrementally, starting with project setup and cor
     - **Property 17: Permission Enforcement**
     - **Validates: Requirements 7.1-7.6**
 
-- [ ] 10. Anonymization System
-  - [ ] 10.1 Implement anonymization service
+- [x] 10. Anonymization System
+  - [x] 10.1 Implement anonymization service
     - Create anonymization logic for usernames
     - Support real/anonymous/hybrid modes
     - _Requirements: 8.1, 8.2, 8.3, 8.4_
 
-  - [ ] 10.2 Write property test for anonymization
+  - [x] 10.2 Write property test for anonymization
     - **Property 18: Anonymization Mode Display**
     - **Validates: Requirements 8.1, 8.2, 8.3**
 

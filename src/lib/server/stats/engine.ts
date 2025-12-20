@@ -400,3 +400,51 @@ async function calculateTopViewers(
 
 	return topViewers;
 }
+
+// =============================================================================
+// Anonymized Stats Retrieval
+// =============================================================================
+
+/**
+ * Get server stats with anonymization applied
+ *
+ * This function retrieves server statistics and applies anonymization
+ * to user-identifying fields (topViewers) based on the configured settings.
+ *
+ * Implements Requirements 8.1-8.4:
+ * - 8.1: Real mode - display actual usernames
+ * - 8.2: Anonymous mode - display generic identifiers
+ * - 8.3: Hybrid mode - show viewing user's name, anonymize others
+ * - 8.4: Per-stat anonymization (uses override for topViewers if set)
+ *
+ * Property 18: Anonymization Mode Display
+ *
+ * @param year - The year to get stats for
+ * @param viewingUserId - The ID of the viewing user (null if unauthenticated)
+ * @param options - Calculation options
+ * @returns Server stats with anonymization applied to topViewers
+ */
+export async function getServerStatsWithAnonymization(
+	year: number,
+	viewingUserId: number | null,
+	options: CalculateStatsOptions = {}
+): Promise<ServerStats> {
+	// Import here to avoid circular dependency
+	const { applyAnonymization, getAnonymizationModeForStat } = await import(
+		'$lib/server/anonymization/service'
+	);
+
+	// Get base stats (from cache or calculate)
+	const stats = await calculateServerStats(year, options);
+
+	// Get the effective anonymization mode for topViewers
+	const topViewersMode = await getAnonymizationModeForStat('topViewers');
+
+	// Apply anonymization to topViewers
+	const anonymizedTopViewers = applyAnonymization(stats.topViewers, topViewersMode, viewingUserId);
+
+	return {
+		...stats,
+		topViewers: anonymizedTopViewers
+	};
+}
