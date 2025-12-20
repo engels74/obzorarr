@@ -2,6 +2,29 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Codebase Search
+
+**Always use the `mcp__auggie-mcp__codebase-retrieval` tool as the primary method for:**
+- Exploring the codebase and understanding architecture
+- Finding existing patterns before implementing new features
+- Locating relevant code when the exact file location is unknown
+- Gathering context before making edits
+- Planning tasks in plan mode
+
+This semantic search tool provides better results than grep/find for understanding code relationships. Use grep only for finding exact string matches or all occurrences of a known identifier.
+
+## Coding Guidelines
+
+**All code must follow the guidelines in `.augment/rules/bun-svelte-pro.md`**. 
+
+Key requirements:
+- **Svelte 5 Runes**: Use `$state()`, `$derived()`, `$props()` - no Svelte 4 patterns
+- **Snippets over slots**: Use `{#snippet}` and `{@render}` for component composition
+- **Form actions over API endpoints**: Use SvelteKit form actions with `use:enhance` for mutations
+- **Parameterized queries**: Always use `?` placeholders for SQL - never string interpolation
+- **$effect sparingly**: Only for side effects (localStorage, DOM manipulation, third-party libs)
+- **Server hooks for auth**: Authentication/authorization in `hooks.server.ts`, not layouts
+
 ## Project Overview
 
 Obzorarr is a "Plex Wrapped" application - a SvelteKit web app that syncs viewing history from Plex Media Server and generates yearly statistics with an animated slideshow presentation (similar to Spotify Wrapped). It uses Bun as the runtime, SQLite for data storage, and supports Plex OAuth for authentication.
