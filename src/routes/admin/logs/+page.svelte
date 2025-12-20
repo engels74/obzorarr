@@ -21,10 +21,15 @@
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
-	// Filter state (synced with URL params)
-	let selectedLevels = $state<LogLevelType[]>(data.filters.levels);
-	let searchText = $state(data.filters.search);
-	let selectedSource = $state(data.filters.source);
+	// Filter state (reactive to URL params via data)
+	let selectedLevels = $derived<LogLevelType[]>(data.filters.levels);
+	let selectedSource = $derived(data.filters.source);
+
+	// Search needs local state for debounce pattern, synced from data
+	let searchText = $state('');
+	$effect.pre(() => {
+		searchText = data.filters.search;
+	});
 	let autoScroll = $state(false);
 
 	// SSE connection state
@@ -77,18 +82,21 @@
 		}
 	}
 
-	// Apply filters to URL
-	function applyFilters() {
+	// Apply filters to URL (accepts overrides for derived values)
+	function applyFilters(overrides?: { levels?: LogLevelType[]; search?: string; source?: string }) {
 		const params = new URLSearchParams();
+		const levels = overrides?.levels ?? selectedLevels;
+		const search = overrides?.search ?? searchText;
+		const source = overrides?.source ?? selectedSource;
 
-		if (selectedLevels.length > 0) {
-			params.set('levels', selectedLevels.join(','));
+		if (levels.length > 0) {
+			params.set('levels', levels.join(','));
 		}
-		if (searchText) {
-			params.set('search', searchText);
+		if (search) {
+			params.set('search', search);
 		}
-		if (selectedSource) {
-			params.set('source', selectedSource);
+		if (source) {
+			params.set('source', source);
 		}
 
 		const queryString = params.toString();
@@ -97,12 +105,10 @@
 
 	// Toggle level filter
 	function toggleLevel(level: LogLevelType) {
-		if (selectedLevels.includes(level)) {
-			selectedLevels = selectedLevels.filter((l) => l !== level);
-		} else {
-			selectedLevels = [...selectedLevels, level];
-		}
-		applyFilters();
+		const newLevels = selectedLevels.includes(level)
+			? selectedLevels.filter((l) => l !== level)
+			: [...selectedLevels, level];
+		applyFilters({ levels: newLevels });
 	}
 
 	// Handle search input with debounce
@@ -115,22 +121,18 @@
 		}
 
 		searchDebounce = setTimeout(() => {
-			applyFilters();
+			applyFilters({ search: searchText });
 		}, 300);
 	}
 
 	// Handle source change
 	function handleSourceChange(event: Event) {
 		const target = event.target as HTMLSelectElement;
-		selectedSource = target.value;
-		applyFilters();
+		applyFilters({ source: target.value });
 	}
 
 	// Clear all filters
 	function clearFilters() {
-		selectedLevels = [];
-		searchText = '';
-		selectedSource = '';
 		goto('/admin/logs', { replaceState: true });
 	}
 
@@ -277,7 +279,7 @@
 		<div class="filters-grid">
 			<!-- Level Filters -->
 			<div class="filter-group">
-				<label class="filter-label">Log Level</label>
+				<span class="filter-label">Log Level</span>
 				<div class="level-checkboxes">
 					{#each logLevels as level}
 						<button
