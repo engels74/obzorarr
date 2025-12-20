@@ -70,15 +70,78 @@ function normalizeUrl(url: string): string {
 }
 
 /**
+ * Extract the machine identifier from a .plex.direct URL
+ *
+ * .plex.direct URLs follow the pattern:
+ * https://{IP-with-dashes}.{machineIdentifier}.plex.direct:{port}
+ *
+ * The machine identifier is a 32-character hex string that uniquely
+ * identifies a Plex server and never changes, unlike the IP portion.
+ *
+ * @param url - URL to extract from
+ * @returns Machine identifier if URL is a .plex.direct URL, undefined otherwise
+ */
+export function extractPlexDirectMachineId(url: string): string | undefined {
+	try {
+		const parsed = new URL(url);
+		const host = parsed.hostname.toLowerCase();
+
+		// Check if this is a .plex.direct domain
+		if (!host.endsWith('.plex.direct')) {
+			return undefined;
+		}
+
+		// Split by dots: [ip-part, machineId, 'plex', 'direct']
+		const parts = host.split('.');
+
+		// Need at least 4 parts: ip.machineId.plex.direct
+		if (parts.length < 4) {
+			return undefined;
+		}
+
+		// Machine ID is the second-to-last before 'plex.direct'
+		// Format: {ip}.{machineId}.plex.direct
+		const machineId = parts[parts.length - 3];
+
+		// Machine ID should be a 32-character hex string
+		if (machineId && /^[a-f0-9]{32}$/i.test(machineId)) {
+			return machineId.toLowerCase();
+		}
+
+		return undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+/**
  * Check if two URLs point to the same server
  *
- * Compares origin (protocol + host + port) only.
+ * For .plex.direct domains, compares the machine identifier portion
+ * since the IP portion can vary based on network conditions.
+ * For other domains, compares origin exactly.
  *
  * @param url1 - First URL
  * @param url2 - Second URL
  * @returns True if URLs point to the same server
  */
 function urlsMatch(url1: string, url2: string): boolean {
+	// First, try extracting machine IDs for .plex.direct domains
+	const machineId1 = extractPlexDirectMachineId(url1);
+	const machineId2 = extractPlexDirectMachineId(url2);
+
+	// If both are .plex.direct URLs with valid machine IDs, compare machine IDs and ports
+	if (machineId1 && machineId2) {
+		try {
+			const parsed1 = new URL(url1);
+			const parsed2 = new URL(url2);
+			return machineId1 === machineId2 && parsed1.port === parsed2.port;
+		} catch {
+			return machineId1 === machineId2;
+		}
+	}
+
+	// Fall back to exact origin comparison
 	return normalizeUrl(url1) === normalizeUrl(url2);
 }
 
@@ -159,7 +222,9 @@ function filterServerResources(resources: PlexResource[]): PlexResource[] {
 /**
  * Find the configured server in the user's accessible servers
  *
- * Matches servers by comparing connection URIs against PLEX_SERVER_URL.
+ * Matches servers using multiple strategies:
+ * 1. For .plex.direct URLs: Extract machine ID and match against clientIdentifier
+ * 2. Fall back to comparing connection URIs against PLEX_SERVER_URL
  *
  * @param servers - Array of server resources
  * @returns The matching server resource, or undefined if not found
@@ -167,8 +232,26 @@ function filterServerResources(resources: PlexResource[]): PlexResource[] {
 function findConfiguredServer(servers: PlexResource[]): PlexResource | undefined {
 	const configuredUrl = PLEX_SERVER_URL;
 
+	// Strategy 1: For .plex.direct URLs, try matching by machine ID (most reliable)
+	const configuredMachineId = extractPlexDirectMachineId(configuredUrl);
+
+	if (configuredMachineId) {
+		const serverByMachineId = servers.find(
+			(s) => s.clientIdentifier.toLowerCase() === configuredMachineId
+		);
+		if (serverByMachineId) {
+			console.log(
+				'[Membership] Matched server by machineId:',
+				configuredMachineId,
+				'->',
+				serverByMachineId.name
+			);
+			return serverByMachineId;
+		}
+	}
+
+	// Strategy 2: Fall back to connection URI matching
 	return servers.find((server) => {
-		// Check if any connection URI matches the configured URL
 		if (server.connections) {
 			return server.connections.some((conn) => urlsMatch(conn.uri, configuredUrl));
 		}
@@ -202,15 +285,43 @@ export async function verifyServerMembership(userToken: string): Promise<Members
 	// Filter to only server resources
 	const servers = filterServerResources(resources);
 
+	// Debug logging to help diagnose membership issues
+	console.log('[Membership] Configured PLEX_SERVER_URL:', PLEX_SERVER_URL);
+	console.log('[Membership] Found', servers.length, 'server(s) accessible to user');
+
+	for (const server of servers) {
+		console.log(
+			'[Membership] Server:',
+			server.name,
+			'| clientIdentifier:',
+			server.clientIdentifier,
+			'| owned:',
+			server.owned
+		);
+		if (server.connections) {
+			for (const conn of server.connections) {
+				console.log('  - Connection URI:', conn.uri, '| local:', conn.local, '| relay:', conn.relay);
+			}
+		}
+	}
+
 	// Find the configured server
 	const configuredServer = findConfiguredServer(servers);
 
 	if (!configuredServer) {
+		console.log('[Membership] No matching server found for configured URL');
 		return {
 			isMember: false,
 			isOwner: false
 		};
 	}
+
+	console.log(
+		'[Membership] Matched server:',
+		configuredServer.name,
+		'| isOwner:',
+		configuredServer.owned
+	);
 
 	return {
 		isMember: true,
