@@ -254,35 +254,35 @@ This plan implements Obzorarr incrementally, starting with project setup and cor
   - Verify access control works
   - Ask user if questions arise
 
-- [ ] 16. Admin Panel
-  - [ ] 16.1 Create admin layout and dashboard
+- [x] 16. Admin Panel
+  - [x] 16.1 Create admin layout and dashboard
     - Create `src/routes/admin/+layout.svelte`
     - Create dashboard with server overview
     - Show total users, watch time, sync status
     - _Requirements: 11.1, 14.2_
 
-  - [ ] 16.2 Create sync management page
+  - [x] 16.2 Create sync management page
     - Create `src/routes/admin/sync/+page.svelte`
     - Add manual sync button
     - Show sync history and status
     - Add cron schedule configuration
     - _Requirements: 3.1, 3.2, 3.4, 3.5_
 
-  - [ ] 16.3 Create user management page
+  - [x] 16.3 Create user management page
     - Create `src/routes/admin/users/+page.svelte`
     - List all server users
     - Per-user permission settings
     - Preview user wrapped
     - _Requirements: 11.2, 11.7_
 
-  - [ ] 16.4 Create slide configuration page
+  - [x] 16.4 Create slide configuration page
     - Create `src/routes/admin/slides/+page.svelte`
     - Toggle slides on/off
     - Reorder slides
     - Custom slide editor
     - _Requirements: 11.3_
 
-  - [ ] 16.5 Create settings page
+  - [x] 16.5 Create settings page
     - Create `src/routes/admin/settings/+page.svelte`
     - Plex server configuration
     - OpenAI API configuration
