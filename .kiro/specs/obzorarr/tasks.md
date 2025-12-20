@@ -248,7 +248,7 @@ This plan implements Obzorarr incrementally, starting with project setup and cor
     - **Property 22: URL Route Parsing**
     - **Validates: Requirements 12.1, 14.3, 14.4**
 
-- [ ] 15. Checkpoint - Wrapped pages functional
+- [x] 15. Checkpoint - Wrapped pages functional
   - Test story mode navigation
   - Test scroll mode animations
   - Verify access control works
