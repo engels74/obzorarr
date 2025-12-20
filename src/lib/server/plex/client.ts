@@ -1,6 +1,7 @@
 import { PLEX_TOKEN, PLEX_SERVER_URL } from '$env/static/private';
 import {
 	PlexHistoryResponseSchema,
+	PlexLibraryMetadataResponseSchema,
 	PlexApiError,
 	PlexValidationError,
 	hasRequiredFields,
@@ -312,4 +313,94 @@ export async function checkConnection(): Promise<boolean> {
  */
 export function getServerUrl(): string {
 	return PLEX_SERVER_URL;
+}
+
+// =============================================================================
+// Metadata Fetching (for duration enrichment)
+// =============================================================================
+
+/**
+ * Concurrency limit for metadata batch requests
+ */
+const METADATA_CONCURRENCY = 5;
+
+/**
+ * Fetch duration for a single media item from Plex library metadata
+ *
+ * @param ratingKey - The rating key of the media item
+ * @param signal - Optional abort signal for cancellation
+ * @returns Duration in seconds, or null if not available
+ */
+export async function fetchMediaDuration(
+	ratingKey: string,
+	signal?: AbortSignal
+): Promise<number | null> {
+	try {
+		const response = await plexRequest<unknown>(
+			`/library/metadata/${ratingKey}`,
+			undefined,
+			signal
+		);
+
+		const result = PlexLibraryMetadataResponseSchema.safeParse(response);
+		if (!result.success) {
+			return null;
+		}
+
+		const item = result.data.MediaContainer.Metadata[0];
+		if (!item?.duration) {
+			return null;
+		}
+
+		// Convert from milliseconds to seconds
+		return Math.floor(item.duration / 1000);
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Fetch durations for multiple media items with concurrency control
+ *
+ * Makes parallel requests to the Plex library metadata endpoint,
+ * limited to METADATA_CONCURRENCY concurrent requests to avoid
+ * overwhelming the server.
+ *
+ * @param ratingKeys - Array of rating keys to fetch durations for
+ * @param signal - Optional abort signal for cancellation
+ * @returns Map of ratingKey to duration in seconds (null if unavailable)
+ *
+ * @example
+ * ```typescript
+ * const durations = await fetchMetadataBatch(['12345', '67890']);
+ * const duration = durations.get('12345'); // number or null
+ * ```
+ */
+export async function fetchMetadataBatch(
+	ratingKeys: string[],
+	signal?: AbortSignal
+): Promise<Map<string, number | null>> {
+	const results = new Map<string, number | null>();
+
+	if (ratingKeys.length === 0) {
+		return results;
+	}
+
+	// Process in batches with concurrency limit
+	for (let i = 0; i < ratingKeys.length; i += METADATA_CONCURRENCY) {
+		// Check for cancellation before each batch
+		if (signal?.aborted) {
+			break;
+		}
+
+		const batch = ratingKeys.slice(i, i + METADATA_CONCURRENCY);
+		const promises = batch.map(async (ratingKey) => {
+			const duration = await fetchMediaDuration(ratingKey, signal);
+			results.set(ratingKey, duration);
+		});
+
+		await Promise.all(promises);
+	}
+
+	return results;
 }

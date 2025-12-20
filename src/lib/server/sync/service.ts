@@ -1,10 +1,11 @@
 import { db } from '$lib/server/db/client';
 import { playHistory, syncStatus } from '$lib/server/db/schema';
-import { fetchAllHistory } from '$lib/server/plex/client';
+import { fetchAllHistory, fetchMetadataBatch } from '$lib/server/plex/client';
 import type { ValidPlexHistoryMetadata } from '$lib/server/plex/types';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, isNull } from 'drizzle-orm';
 import type { StartSyncOptions, SyncResult, SyncProgress, SyncStatusRecord } from './types';
 import { logger } from '$lib/server/logging';
+import { invalidateCache } from '$lib/server/stats/engine';
 
 /**
  * Sync Service
@@ -375,6 +376,46 @@ export async function startSync(options: StartSyncOptions = {}): Promise<SyncRes
 		// Complete the sync
 		await completeSyncRecord(syncId, recordsProcessed, maxViewedAt);
 
+		// Invalidate stats cache for affected years
+		if (recordsInserted > 0) {
+			const minYear = minViewedAt
+				? new Date(minViewedAt * 1000).getUTCFullYear()
+				: new Date().getUTCFullYear();
+			const maxYear = maxViewedAt
+				? new Date(maxViewedAt * 1000).getUTCFullYear()
+				: new Date().getUTCFullYear();
+
+			for (let year = minYear; year <= maxYear; year++) {
+				await invalidateCache(undefined, year);
+			}
+
+			logger.info(`Invalidated stats cache for years ${minYear}-${maxYear}`, `Sync-${syncId}`);
+		}
+
+		// Enrich records with duration data from Plex metadata
+		if (recordsInserted > 0) {
+			logger.info('Starting duration enrichment...', `Sync-${syncId}`);
+			const enrichResult = await enrichDurations({ signal });
+			logger.info(
+				`Duration enrichment: ${enrichResult.enriched} enriched, ${enrichResult.failed} failed`,
+				`Sync-${syncId}`
+			);
+
+			// Invalidate cache again after enrichment to include duration data
+			if (enrichResult.enriched > 0) {
+				const enrichMinYear = minViewedAt
+					? new Date(minViewedAt * 1000).getUTCFullYear()
+					: new Date().getUTCFullYear();
+				const enrichMaxYear = maxViewedAt
+					? new Date(maxViewedAt * 1000).getUTCFullYear()
+					: new Date().getUTCFullYear();
+
+				for (let year = enrichMinYear; year <= enrichMaxYear; year++) {
+					await invalidateCache(undefined, year);
+				}
+			}
+		}
+
 		// Final progress update
 		onProgress?.({
 			recordsProcessed,
@@ -456,4 +497,92 @@ export async function getSyncHistory(limit: number = 10): Promise<SyncStatusReco
 export async function getPlayHistoryCount(): Promise<number> {
 	const result = await db.select({ id: playHistory.id }).from(playHistory);
 	return result.length;
+}
+
+// =============================================================================
+// Duration Enrichment
+// =============================================================================
+
+/**
+ * Options for duration enrichment
+ */
+export interface EnrichDurationsOptions {
+	/** Number of records to process per batch (default: 50) */
+	batchSize?: number;
+	/** Abort signal for cancellation */
+	signal?: AbortSignal;
+	/** Progress callback */
+	onProgress?: (processed: number, total: number) => void;
+}
+
+/**
+ * Result of duration enrichment
+ */
+export interface EnrichDurationsResult {
+	/** Number of records successfully enriched with duration */
+	enriched: number;
+	/** Number of records where duration fetch failed */
+	failed: number;
+}
+
+/**
+ * Enrich play history records with duration from Plex library metadata
+ *
+ * The Plex history endpoint does not include duration for each play.
+ * This function fetches duration from the library metadata endpoint
+ * for records that are missing duration data.
+ *
+ * @param options - Enrichment options
+ * @returns Count of enriched and failed records
+ */
+export async function enrichDurations(
+	options: EnrichDurationsOptions = {}
+): Promise<EnrichDurationsResult> {
+	const { batchSize = 50, signal, onProgress } = options;
+
+	// Get records with NULL duration
+	const records = await db
+		.select({ id: playHistory.id, ratingKey: playHistory.ratingKey })
+		.from(playHistory)
+		.where(isNull(playHistory.duration));
+
+	if (records.length === 0) {
+		return { enriched: 0, failed: 0 };
+	}
+
+	logger.info(`Found ${records.length} records needing duration enrichment`, 'Enrichment');
+
+	let enriched = 0;
+	let failed = 0;
+
+	// Process in batches
+	for (let i = 0; i < records.length; i += batchSize) {
+		// Check for cancellation before each batch
+		if (signal?.aborted) {
+			logger.info('Duration enrichment cancelled', 'Enrichment');
+			break;
+		}
+
+		const batch = records.slice(i, i + batchSize);
+		const ratingKeys = batch.map((r) => r.ratingKey);
+
+		// Fetch durations from Plex
+		const durations = await fetchMetadataBatch(ratingKeys, signal);
+
+		// Update records with durations
+		for (const record of batch) {
+			const duration = durations.get(record.ratingKey);
+			if (duration !== null && duration !== undefined) {
+				await db.update(playHistory).set({ duration }).where(eq(playHistory.id, record.id));
+				enriched++;
+			} else {
+				failed++;
+			}
+		}
+
+		// Report progress
+		onProgress?.(i + batch.length, records.length);
+	}
+
+	return { enriched, failed };
 }

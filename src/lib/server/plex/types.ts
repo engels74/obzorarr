@@ -123,6 +123,40 @@ export const PlexHistoryResponseSchema = z.object({
 });
 
 // =============================================================================
+// Zod Schemas for Plex Library Metadata API
+// =============================================================================
+
+/**
+ * Individual metadata item from Plex library metadata endpoint
+ *
+ * Contains media information including duration which is not available
+ * in the history endpoint. Used for enriching play history records.
+ */
+export const PlexLibraryMetadataItemSchema = z.object({
+	ratingKey: z.string(),
+	// Duration in milliseconds
+	duration: z.number().int().optional()
+});
+
+/**
+ * MediaContainer wrapper for library metadata responses
+ */
+export const PlexLibraryMetadataContainerSchema = z.object({
+	Metadata: z.array(PlexLibraryMetadataItemSchema).optional().default([])
+});
+
+/**
+ * Root response object from Plex library metadata endpoint
+ * Endpoint: /library/metadata/{ratingKey}
+ */
+export const PlexLibraryMetadataResponseSchema = z.object({
+	MediaContainer: PlexLibraryMetadataContainerSchema
+});
+
+export type PlexLibraryMetadataItem = z.infer<typeof PlexLibraryMetadataItemSchema>;
+export type PlexLibraryMetadataResponse = z.infer<typeof PlexLibraryMetadataResponseSchema>;
+
+// =============================================================================
 // TypeScript Types (inferred from Zod schemas)
 // =============================================================================
 
