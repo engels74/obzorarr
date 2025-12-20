@@ -115,6 +115,115 @@ export function extractPlexDirectMachineId(url: string): string | undefined {
 }
 
 /**
+ * Extract the IP address and port from a .plex.direct URL
+ *
+ * .plex.direct URLs follow the pattern:
+ * https://{IP-with-dashes}.{machineIdentifier}.plex.direct:{port}
+ *
+ * The IP portion uses dashes instead of dots (e.g., 89-150-152-18 for 89.150.152.18)
+ *
+ * @param url - URL to extract from
+ * @returns Object with ip and port if URL is a valid .plex.direct URL, undefined otherwise
+ */
+export function extractPlexDirectIpAndPort(url: string): { ip: string; port: string } | undefined {
+	try {
+		const parsed = new URL(url);
+		const host = parsed.hostname.toLowerCase();
+
+		// Check if this is a .plex.direct domain
+		if (!host.endsWith('.plex.direct')) {
+			return undefined;
+		}
+
+		// Split by dots: [ip-part, machineId, 'plex', 'direct']
+		const parts = host.split('.');
+
+		// Need at least 4 parts: ip.machineId.plex.direct
+		if (parts.length < 4) {
+			return undefined;
+		}
+
+		// IP part is the first segment (everything before the machineId)
+		const ipPart = parts[0];
+		if (!ipPart) {
+			return undefined;
+		}
+
+		// Validate that ipPart looks like an IPv4 address with dashes
+		// Format: digits separated by exactly 3 dashes (e.g., 89-150-152-18)
+		const ipSegments = ipPart.split('-');
+
+		// IPv4 has exactly 4 octets
+		if (ipSegments.length !== 4) {
+			return undefined;
+		}
+
+		// Validate each segment is a valid octet (0-255)
+		for (const segment of ipSegments) {
+			const num = parseInt(segment, 10);
+			if (isNaN(num) || num < 0 || num > 255 || segment !== num.toString()) {
+				return undefined;
+			}
+		}
+
+		// Convert dashes to dots to get the actual IP
+		const ip = ipSegments.join('.');
+
+		// Get port (default to empty string if not specified)
+		const port = parsed.port || '';
+
+		return { ip, port };
+	} catch {
+		return undefined;
+	}
+}
+
+/**
+ * Check if a .plex.direct URL matches a server's connection by IP and port
+ *
+ * Compares the IP address embedded in the .plex.direct URL against
+ * the address in each of the server's connection URIs. This is useful
+ * when the machineId embedded in the URL doesn't match the server's
+ * clientIdentifier.
+ *
+ * @param plexDirectUrl - The configured .plex.direct URL
+ * @param connections - Array of connection objects from the server resource
+ * @returns True if any connection matches by IP and port
+ */
+function matchesByIpAndPort(
+	plexDirectUrl: string,
+	connections: Array<{ address: string; port: number }> | undefined
+): boolean {
+	if (!connections || connections.length === 0) {
+		return false;
+	}
+
+	const extracted = extractPlexDirectIpAndPort(plexDirectUrl);
+	if (!extracted) {
+		return false;
+	}
+
+	const { ip: configuredIp, port: configuredPort } = extracted;
+
+	return connections.some((conn) => {
+		// Compare IP addresses (case-insensitive for safety)
+		const connectionIp = conn.address.toLowerCase();
+		const matchesIp = connectionIp === configuredIp.toLowerCase();
+
+		// Compare ports - handle default ports and string/number conversion
+		let matchesPort = false;
+		if (configuredPort === '') {
+			// No port in configured URL - match typical Plex defaults
+			matchesPort = conn.port === 32400 || conn.port === 443;
+		} else {
+			matchesPort = conn.port.toString() === configuredPort;
+		}
+
+		return matchesIp && matchesPort;
+	});
+}
+
+/**
  * Check if two URLs point to the same server
  *
  * For .plex.direct domains, compares the machine identifier portion
@@ -224,7 +333,8 @@ function filterServerResources(resources: PlexResource[]): PlexResource[] {
  *
  * Matches servers using multiple strategies:
  * 1. For .plex.direct URLs: Extract machine ID and match against clientIdentifier
- * 2. Fall back to comparing connection URIs against PLEX_SERVER_URL
+ * 2. For .plex.direct URLs: Extract embedded IP and match against connection addresses
+ * 3. Fall back to comparing connection URIs against PLEX_SERVER_URL
  *
  * @param servers - Array of server resources
  * @returns The matching server resource, or undefined if not found
@@ -232,7 +342,7 @@ function filterServerResources(resources: PlexResource[]): PlexResource[] {
 function findConfiguredServer(servers: PlexResource[]): PlexResource | undefined {
 	const configuredUrl = PLEX_SERVER_URL;
 
-	// Strategy 1: For .plex.direct URLs, try matching by machine ID (most reliable)
+	// Strategy 1: For .plex.direct URLs, try matching by machine ID (most reliable when IDs match)
 	const configuredMachineId = extractPlexDirectMachineId(configuredUrl);
 
 	if (configuredMachineId) {
@@ -248,9 +358,23 @@ function findConfiguredServer(servers: PlexResource[]): PlexResource | undefined
 			);
 			return serverByMachineId;
 		}
+
+		// Strategy 2: For .plex.direct URLs, try matching by embedded IP address
+		// This handles cases where the machineId in the URL differs from clientIdentifier
+		const serverByIp = servers.find((s) => matchesByIpAndPort(configuredUrl, s.connections));
+		if (serverByIp) {
+			const extracted = extractPlexDirectIpAndPort(configuredUrl);
+			console.log(
+				'[Membership] Matched server by IP address from .plex.direct URL:',
+				extracted?.ip,
+				'->',
+				serverByIp.name
+			);
+			return serverByIp;
+		}
 	}
 
-	// Strategy 2: Fall back to connection URI matching
+	// Strategy 3: Fall back to connection URI matching
 	return servers.find((server) => {
 		if (server.connections) {
 			return server.connections.some((conn) => urlsMatch(conn.uri, configuredUrl));

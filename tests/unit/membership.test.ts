@@ -5,6 +5,70 @@ import { describe, expect, it } from 'bun:test';
 // This is the same pattern used in auth.property.test.ts.
 
 /**
+ * Extract the IP address and port from a .plex.direct URL
+ *
+ * .plex.direct URLs follow the pattern:
+ * https://{IP-with-dashes}.{machineIdentifier}.plex.direct:{port}
+ *
+ * The IP portion uses dashes instead of dots (e.g., 89-150-152-18 for 89.150.152.18)
+ *
+ * @param url - URL to extract from
+ * @returns Object with ip and port if URL is a valid .plex.direct URL, undefined otherwise
+ */
+function extractPlexDirectIpAndPort(url: string): { ip: string; port: string } | undefined {
+	try {
+		const parsed = new URL(url);
+		const host = parsed.hostname.toLowerCase();
+
+		// Check if this is a .plex.direct domain
+		if (!host.endsWith('.plex.direct')) {
+			return undefined;
+		}
+
+		// Split by dots: [ip-part, machineId, 'plex', 'direct']
+		const parts = host.split('.');
+
+		// Need at least 4 parts: ip.machineId.plex.direct
+		if (parts.length < 4) {
+			return undefined;
+		}
+
+		// IP part is the first segment (everything before the machineId)
+		const ipPart = parts[0];
+		if (!ipPart) {
+			return undefined;
+		}
+
+		// Validate that ipPart looks like an IPv4 address with dashes
+		// Format: digits separated by exactly 3 dashes (e.g., 89-150-152-18)
+		const ipSegments = ipPart.split('-');
+
+		// IPv4 has exactly 4 octets
+		if (ipSegments.length !== 4) {
+			return undefined;
+		}
+
+		// Validate each segment is a valid octet (0-255)
+		for (const segment of ipSegments) {
+			const num = parseInt(segment, 10);
+			if (isNaN(num) || num < 0 || num > 255 || segment !== num.toString()) {
+				return undefined;
+			}
+		}
+
+		// Convert dashes to dots to get the actual IP
+		const ip = ipSegments.join('.');
+
+		// Get port (default to empty string if not specified)
+		const port = parsed.port || '';
+
+		return { ip, port };
+	} catch {
+		return undefined;
+	}
+}
+
+/**
  * Extract the machine identifier from a .plex.direct URL
  *
  * .plex.direct URLs follow the pattern:
@@ -187,5 +251,174 @@ describe('.plex.direct URL Matching Logic', () => {
 			// Machine IDs are the same, but urlsMatch should check ports separately
 			expect(id1).toBe(id2);
 		});
+	});
+});
+
+/**
+ * Unit tests for extractPlexDirectIpAndPort
+ *
+ * Tests the extraction of IP address and port from .plex.direct URLs.
+ * This is used for matching servers when the machineId doesn't match clientIdentifier.
+ */
+describe('extractPlexDirectIpAndPort', () => {
+	describe('valid .plex.direct URLs', () => {
+		it('extracts IP and port from standard .plex.direct URL', () => {
+			const url = 'https://89-150-152-18.241d8bc0ff5b413799df831a83ba172d.plex.direct:32400';
+			const result = extractPlexDirectIpAndPort(url);
+			expect(result).toEqual({ ip: '89.150.152.18', port: '32400' });
+		});
+
+		it('extracts IP and port with different IP format', () => {
+			const url = 'https://192-168-1-100.a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4.plex.direct:32400';
+			const result = extractPlexDirectIpAndPort(url);
+			expect(result).toEqual({ ip: '192.168.1.100', port: '32400' });
+		});
+
+		it('handles non-standard port', () => {
+			const url = 'https://10-0-2-123.93b10b279ff8456686414add109854cd.plex.direct:8443';
+			const result = extractPlexDirectIpAndPort(url);
+			expect(result).toEqual({ ip: '10.0.2.123', port: '8443' });
+		});
+
+		it('handles HTTP protocol', () => {
+			const url = 'http://10-0-2-123.93b10b279ff8456686414add109854cd.plex.direct:32400';
+			const result = extractPlexDirectIpAndPort(url);
+			expect(result).toEqual({ ip: '10.0.2.123', port: '32400' });
+		});
+
+		it('handles URL without explicit port', () => {
+			const url = 'https://10-0-2-123.93b10b279ff8456686414add109854cd.plex.direct';
+			const result = extractPlexDirectIpAndPort(url);
+			expect(result).toEqual({ ip: '10.0.2.123', port: '' });
+		});
+
+		it('handles zero octet', () => {
+			const url = 'https://0-0-0-0.93b10b279ff8456686414add109854cd.plex.direct:32400';
+			const result = extractPlexDirectIpAndPort(url);
+			expect(result).toEqual({ ip: '0.0.0.0', port: '32400' });
+		});
+
+		it('handles 255 octet', () => {
+			const url = 'https://255-255-255-255.93b10b279ff8456686414add109854cd.plex.direct:32400';
+			const result = extractPlexDirectIpAndPort(url);
+			expect(result).toEqual({ ip: '255.255.255.255', port: '32400' });
+		});
+	});
+
+	describe('invalid inputs', () => {
+		it('returns undefined for non-.plex.direct URLs', () => {
+			expect(extractPlexDirectIpAndPort('http://localhost:32400')).toBeUndefined();
+			expect(extractPlexDirectIpAndPort('http://192.168.1.100:32400')).toBeUndefined();
+			expect(extractPlexDirectIpAndPort('https://plex.example.com:32400')).toBeUndefined();
+		});
+
+		it('returns undefined for invalid IP format (too few octets)', () => {
+			const url = 'https://10-0-2.93b10b279ff8456686414add109854cd.plex.direct:32400';
+			expect(extractPlexDirectIpAndPort(url)).toBeUndefined();
+		});
+
+		it('returns undefined for invalid IP format (too many octets)', () => {
+			const url = 'https://10-0-2-123-45.93b10b279ff8456686414add109854cd.plex.direct:32400';
+			expect(extractPlexDirectIpAndPort(url)).toBeUndefined();
+		});
+
+		it('returns undefined for invalid octet values (> 255)', () => {
+			const url = 'https://10-0-256-123.93b10b279ff8456686414add109854cd.plex.direct:32400';
+			expect(extractPlexDirectIpAndPort(url)).toBeUndefined();
+		});
+
+		it('returns undefined for negative octet values', () => {
+			const url = 'https://10-0--1-123.93b10b279ff8456686414add109854cd.plex.direct:32400';
+			expect(extractPlexDirectIpAndPort(url)).toBeUndefined();
+		});
+
+		it('returns undefined for non-numeric octets', () => {
+			const url = 'https://10-abc-2-123.93b10b279ff8456686414add109854cd.plex.direct:32400';
+			expect(extractPlexDirectIpAndPort(url)).toBeUndefined();
+		});
+
+		it('returns undefined for leading zeros in octets', () => {
+			// Leading zeros are invalid (e.g., 010 !== 10)
+			const url = 'https://010-0-2-123.93b10b279ff8456686414add109854cd.plex.direct:32400';
+			expect(extractPlexDirectIpAndPort(url)).toBeUndefined();
+		});
+
+		it('returns undefined for empty string', () => {
+			expect(extractPlexDirectIpAndPort('')).toBeUndefined();
+		});
+
+		it('returns undefined for invalid URL', () => {
+			expect(extractPlexDirectIpAndPort('not-a-url')).toBeUndefined();
+		});
+
+		it('returns undefined for too few subdomain parts', () => {
+			const url = 'https://93b10b279ff8456686414add109854cd.plex.direct:32400';
+			expect(extractPlexDirectIpAndPort(url)).toBeUndefined();
+		});
+	});
+});
+
+/**
+ * Tests for IP and Port Matching scenario from bug report
+ *
+ * Verifies that the IP extraction correctly handles the real-world
+ * scenario where a .plex.direct URL needs to match against connection URIs.
+ */
+describe('IP and Port Matching for .plex.direct URLs', () => {
+	it('matches .plex.direct URL to connection by IP and port', () => {
+		// Simulates the real-world scenario from the bug report
+		const plexDirectUrl =
+			'https://89-150-152-18.241d8bc0ff5b413799df831a83ba172d.plex.direct:32400';
+
+		const extracted = extractPlexDirectIpAndPort(plexDirectUrl);
+		expect(extracted).toEqual({ ip: '89.150.152.18', port: '32400' });
+
+		// This IP should match one of the connections
+		const connections = [
+			{ address: '172.26.0.2', port: 32400, uri: 'http://172.26.0.2:32400' },
+			{ address: '172.20.0.2', port: 32400, uri: 'http://172.20.0.2:32400' },
+			{ address: '89.150.152.18', port: 32400, uri: 'http://89.150.152.18:32400' }
+		];
+
+		// The extracted IP should match the third connection
+		const matchingConnection = connections.find(
+			(conn) => conn.address === extracted?.ip && conn.port.toString() === extracted?.port
+		);
+		expect(matchingConnection).toBeDefined();
+		expect(matchingConnection?.address).toBe('89.150.152.18');
+	});
+
+	it('does not match when IP differs', () => {
+		const plexDirectUrl =
+			'https://89-150-152-18.241d8bc0ff5b413799df831a83ba172d.plex.direct:32400';
+
+		const extracted = extractPlexDirectIpAndPort(plexDirectUrl);
+
+		const connections = [
+			{ address: '172.26.0.2', port: 32400, uri: 'http://172.26.0.2:32400' },
+			{ address: '172.20.0.2', port: 32400, uri: 'http://172.20.0.2:32400' }
+			// Note: 89.150.152.18 is not in the connections
+		];
+
+		const matchingConnection = connections.find(
+			(conn) => conn.address === extracted?.ip && conn.port.toString() === extracted?.port
+		);
+		expect(matchingConnection).toBeUndefined();
+	});
+
+	it('does not match when port differs', () => {
+		const plexDirectUrl =
+			'https://89-150-152-18.241d8bc0ff5b413799df831a83ba172d.plex.direct:32400';
+
+		const extracted = extractPlexDirectIpAndPort(plexDirectUrl);
+
+		const connections = [
+			{ address: '89.150.152.18', port: 8443, uri: 'http://89.150.152.18:8443' }
+		];
+
+		const matchingConnection = connections.find(
+			(conn) => conn.address === extracted?.ip && conn.port.toString() === extracted?.port
+		);
+		expect(matchingConnection).toBeUndefined();
 	});
 });
