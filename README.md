@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/icon/svg/obzorarr-icon.svg" alt="Obzorarr Logo" width="128" height="128">
+  <img src="public/icon/svg/obzorarr-icon.svg" alt="Obzorarr Logo" width="256" height="256">
 </p>
 
 <h1 align="center">Obzorarr</h1>
