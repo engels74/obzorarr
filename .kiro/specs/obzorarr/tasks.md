@@ -26,7 +26,7 @@ This plan implements Obzorarr incrementally, starting with project setup and cor
     - Run initial migration
     - _Requirements: 2.8_
 
-  - [ ] 1.4 Write property test for database round-trip
+  - [x] 1.4 Write property test for database round-trip
     - **Property 21: Statistics Serialization Round-Trip**
     - **Validates: Requirements 17.4**
 
