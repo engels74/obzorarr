@@ -121,7 +121,7 @@ export const PlexPinResponseSchema = z.object({
 			country: z.string().optional(),
 			city: z.string().optional(),
 			time_zone: z.string().optional(),
-			subdivisions: z.string().optional(),
+			subdivisions: z.string().nullable().optional(),
 			coordinates: z.string().optional()
 		})
 		.optional(),
