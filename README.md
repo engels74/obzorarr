@@ -22,17 +22,17 @@
 
 Obzorarr is a **"Plex Wrapped"** application that syncs viewing history from your Plex Media Server and generates yearly statistics with an animated slideshow presentation—similar to Spotify Wrapped.
 
-## ✨ Features
+## Features
 
-- 📊 **Yearly Statistics** — Total watch time, top movies, shows, and genres
-- 🎬 **Animated Slideshow** — Beautiful, interactive presentation of your viewing habits
-- 📈 **Watch Patterns** — Monthly and hourly distribution charts
-- 🏆 **Percentile Rankings** — See how you compare to other users on your server
-- 🔐 **Plex OAuth** — Secure authentication with your Plex account
-- 🔄 **Automatic Sync** — Scheduled background sync of viewing history
-- 🤖 **AI Fun Facts** — Optional AI-generated personalized insights
+- **Yearly Statistics** — Total watch time, top movies, shows, and genres
+- **Animated Slideshow** — Beautiful, interactive presentation of your viewing habits
+- **Watch Patterns** — Monthly and hourly distribution charts
+- **Percentile Rankings** — See how you compare to other users on your server
+- **Plex OAuth** — Secure authentication with your Plex account
+- **Automatic Sync** — Scheduled background sync of viewing history
+- **AI Fun Facts** — Optional AI-generated personalized insights
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Component | Technology |
 |-----------|------------|
@@ -42,7 +42,7 @@ Obzorarr is a **"Plex Wrapped"** application that syncs viewing history from you
 | Styling | UnoCSS + shadcn-svelte |
 | Animation | GSAP + Motion |
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Docker (Recommended)
 
@@ -77,7 +77,7 @@ bun run dev
 
 Visit `http://localhost:3000` and sign in with your Plex account.
 
-## ⚙️ Configuration
+## Configuration
 
 | Variable | Description | Required |
 |----------|-------------|----------|
@@ -87,6 +87,6 @@ Visit `http://localhost:3000` and sign in with your Plex account.
 | `DATABASE_PATH` | SQLite database file path | No |
 | `SYNC_CRON_SCHEDULE` | Cron schedule for auto-sync (default: `0 */6 * * *`) | No |
 
-## 📄 License
+## License
 
 This project is licensed under the [GNU Affero General Public License v3.0](LICENSE).
