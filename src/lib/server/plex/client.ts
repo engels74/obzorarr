@@ -3,7 +3,7 @@ import {
 	PlexHistoryResponseSchema,
 	PlexApiError,
 	PlexValidationError,
-	hasRatingKey,
+	hasRequiredFields,
 	type ValidPlexHistoryMetadata,
 	type FetchHistoryOptions,
 	type HistoryPageResult
@@ -175,14 +175,16 @@ async function fetchHistoryPage(
 
 	const container = result.data.MediaContainer;
 
-	// Filter out items without ratingKey (deleted media, corrupted entries, etc.)
+	// Filter out items without required fields (deleted media, corrupted entries, etc.)
 	const rawItems = container.Metadata;
-	const validItems = rawItems.filter(hasRatingKey);
+	const validItems = rawItems.filter(hasRequiredFields);
 
 	// Log filtered items for visibility
 	const skippedCount = rawItems.length - validItems.length;
 	if (skippedCount > 0) {
-		console.warn(`[Plex] Skipped ${skippedCount} history items without ratingKey`);
+		console.warn(
+			`[Plex] Skipped ${skippedCount} history items without required fields (ratingKey/title)`
+		);
 	}
 
 	return {

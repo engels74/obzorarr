@@ -56,9 +56,9 @@ export class PlexValidationError extends Error {
  * - Playback context (viewedAt, accountID, librarySectionID)
  * - Episode-specific fields (grandparentTitle, parentTitle)
  *
- * Note: ratingKey is optional because Plex can return history items without it
- * for deleted media, corrupted entries, trailers, or non-library content.
- * Items without ratingKey are filtered out before database insertion.
+ * Note: ratingKey and title are optional because Plex can return history items
+ * without them for deleted media, corrupted entries, trailers, or non-library content.
+ * Items without these required fields are filtered out before database insertion.
  */
 export const PlexHistoryMetadataSchema = z.object({
 	// Required identification fields
@@ -68,7 +68,8 @@ export const PlexHistoryMetadataSchema = z.object({
 	librarySectionID: z.union([z.string(), z.number()]).transform((val) => String(val)),
 
 	// Content information
-	title: z.string(),
+	// Optional: Plex may return items without title for deleted/corrupted content
+	title: z.string().optional(),
 	type: z.string(),
 
 	// Playback information
@@ -130,23 +131,28 @@ export type PlexMediaContainer = z.infer<typeof PlexMediaContainerSchema>;
 export type PlexHistoryResponse = z.infer<typeof PlexHistoryResponseSchema>;
 
 /**
- * Validated history metadata with guaranteed ratingKey
+ * Validated history metadata with guaranteed required fields
  *
  * Use this type for records that have passed validation and filtering.
- * The ratingKey is guaranteed to be present and non-empty.
+ * Both ratingKey and title are guaranteed to be present and non-empty.
  */
-export type ValidPlexHistoryMetadata = PlexHistoryMetadata & { ratingKey: string };
+export type ValidPlexHistoryMetadata = PlexHistoryMetadata & { ratingKey: string; title: string };
 
 /**
- * Type guard to check if a history item has a valid ratingKey
+ * Type guard to check if a history item has all required fields
  *
- * Use this to filter out items without ratingKey before database insertion.
+ * Use this to filter out items without ratingKey or title before database insertion.
  *
  * @param item - History metadata item to check
- * @returns true if item has a non-empty ratingKey
+ * @returns true if item has non-empty ratingKey and title
  */
-export function hasRatingKey(item: PlexHistoryMetadata): item is ValidPlexHistoryMetadata {
-	return typeof item.ratingKey === 'string' && item.ratingKey.length > 0;
+export function hasRequiredFields(item: PlexHistoryMetadata): item is ValidPlexHistoryMetadata {
+	return (
+		typeof item.ratingKey === 'string' &&
+		item.ratingKey.length > 0 &&
+		typeof item.title === 'string' &&
+		item.title.length > 0
+	);
 }
 
 // =============================================================================
