@@ -76,7 +76,7 @@ This plan implements Obzorarr incrementally, starting with project setup and cor
     - **Property 3: Session Invalidation**
     - **Validates: Requirements 1.3, 1.4, 1.5, 1.7**
 
-- [ ] 5. Checkpoint - Auth flow works end-to-end
+- [x] 5. Checkpoint - Auth flow works end-to-end
   - Test OAuth redirect and callback
   - Verify session creation and admin detection
   - Ask user if questions arise
