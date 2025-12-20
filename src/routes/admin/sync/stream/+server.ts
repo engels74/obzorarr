@@ -27,6 +27,7 @@ export const GET: RequestHandler = async ({ request }) => {
 
 			// Poll for progress updates
 			let lastProgress: LiveSyncProgress | null = initialProgress;
+			let terminalEventSent = false; // Track if terminal event was already sent
 			const intervalId = setInterval(() => {
 				try {
 					const currentProgress = getSyncProgress();
@@ -48,11 +49,12 @@ export const GET: RequestHandler = async ({ request }) => {
 							lastProgress = { ...currentProgress };
 						}
 
-						// Send completion events
+						// Send completion events (only once per sync)
 						if (
-							currentProgress.status === 'completed' ||
-							currentProgress.status === 'failed' ||
-							currentProgress.status === 'cancelled'
+							!terminalEventSent &&
+							(currentProgress.status === 'completed' ||
+								currentProgress.status === 'failed' ||
+								currentProgress.status === 'cancelled')
 						) {
 							controller.enqueue(
 								formatSSE({
@@ -60,12 +62,14 @@ export const GET: RequestHandler = async ({ request }) => {
 									progress: currentProgress
 								})
 							);
+							terminalEventSent = true;
 							// Client should disconnect after receiving completion event
 						}
 					} else if (lastProgress !== null) {
 						// Progress was cleared (sync ended)
 						controller.enqueue(formatSSE({ type: 'idle' }));
 						lastProgress = null;
+						terminalEventSent = false; // Reset for next sync
 					}
 				} catch (error) {
 					// Send error event but keep connection open

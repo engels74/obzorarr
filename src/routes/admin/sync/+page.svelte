@@ -42,6 +42,7 @@
 	let eventSource = $state<EventSource | null>(null);
 	let progress = $state<SyncProgress | null>(null);
 	let isConnected = $state(false);
+	let syncCompleted = $state(false); // Tracks if sync completed to prevent reconnection
 
 	// Derived: sync is active (either from server state or SSE progress)
 	const syncActive = $derived(
@@ -50,7 +51,7 @@
 
 	// Status text for display
 	const statusText = $derived(() => {
-		if (!progress) return 'Syncing...';
+		if (!progress) return 'Idle';
 		switch (progress.status) {
 			case 'running':
 				return 'Syncing...';
@@ -61,7 +62,7 @@
 			case 'cancelled':
 				return 'Cancelled';
 			default:
-				return 'Syncing...';
+				return 'Idle';
 		}
 	});
 
@@ -93,6 +94,8 @@
 					if (data.progress) {
 						progress = data.progress;
 					}
+					// Mark sync as completed to prevent auto-reconnection
+					syncCompleted = true;
 					// Keep showing the final state briefly, then disconnect
 					setTimeout(() => {
 						disconnectSSE();
@@ -138,9 +141,9 @@
 		cronExpression = data.schedulerStatus.cronExpression ?? '0 0 * * *';
 	});
 
-	// Connect to SSE if sync is running on page load
+	// Connect to SSE if sync is running on page load (but not if we just completed one)
 	$effect(() => {
-		if (data.isRunning && !eventSource) {
+		if (data.isRunning && !eventSource && !syncCompleted) {
 			isSyncing = true;
 			connectSSE();
 		}
@@ -337,6 +340,7 @@
 				action="?/startSync"
 				use:enhance={() => {
 					isSyncing = true;
+					syncCompleted = false; // Reset for new sync
 					// Connect to SSE immediately to catch progress updates
 					connectSSE();
 					return async ({ update }) => {
