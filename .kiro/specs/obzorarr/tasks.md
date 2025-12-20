@@ -36,13 +36,13 @@ This plan implements Obzorarr incrementally, starting with project setup and cor
   - Ask user if questions arise
 
 - [ ] 3. Plex API Client
-  - [ ] 3.1 Create Plex client module
+  - [x] 3.1 Create Plex client module
     - Create `src/lib/server/plex/client.ts`
     - Implement `plexRequest<T>()` with proper headers
     - Use `$env/static/private` for PLEX_TOKEN
     - _Requirements: 2.1_
 
-  - [ ] 3.2 Implement paginated history fetch
+  - [x] 3.2 Implement paginated history fetch
     - Implement `fetchAllHistory()` with pagination
     - Handle `X-Plex-Container-Start` and `X-Plex-Container-Size`
     - _Requirements: 2.2_
