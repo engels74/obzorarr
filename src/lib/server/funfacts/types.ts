@@ -77,6 +77,7 @@ export const FunFactsConfigSchema = z.object({
 	aiEnabled: z.boolean().default(false),
 	openaiApiKey: z.string().optional(),
 	openaiBaseUrl: z.string().url().optional(),
+	openaiModel: z.string().optional(),
 	maxAIRetries: z.number().int().min(0).max(3).default(2),
 	aiTimeoutMs: z.number().int().min(1000).max(30000).default(10000)
 });

@@ -5,11 +5,24 @@
  * Use it for global test configuration, mocks, and utilities.
  */
 
+import { mock } from 'bun:test';
+
 // Ensure tests run in a clean environment
 process.env.NODE_ENV = 'test';
 
 // Set a test database path to avoid conflicts with development database
 process.env.DATABASE_PATH = ':memory:';
+
+// Mock SvelteKit's $env/dynamic/private module for tests
+mock.module('$env/dynamic/private', () => ({
+	env: {
+		PLEX_SERVER_URL: '',
+		PLEX_TOKEN: '',
+		OPENAI_API_KEY: '',
+		OPENAI_API_URL: '',
+		OPENAI_MODEL: ''
+	}
+}));
 
 // Import database client after setting environment variables
 import { sqlite } from '$lib/server/db/client';

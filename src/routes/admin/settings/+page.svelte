@@ -24,6 +24,7 @@
 	let plexToken = $state('');
 	let openaiApiKey = $state('');
 	let openaiBaseUrl = $state('');
+	let openaiModel = $state('');
 	let showPlexToken = $state(false);
 	let showOpenaiKey = $state(false);
 	let selectedTheme = $state('');
@@ -35,18 +36,43 @@
 	let logMaxCount = $state(50000);
 	let logDebugEnabled = $state(false);
 
+	// Track sources for display
+	let plexServerUrlSource = $state<'env' | 'db' | 'default'>('default');
+	let plexTokenSource = $state<'env' | 'db' | 'default'>('default');
+	let openaiApiKeySource = $state<'env' | 'db' | 'default'>('default');
+	let openaiBaseUrlSource = $state<'env' | 'db' | 'default'>('default');
+	let openaiModelSource = $state<'env' | 'db' | 'default'>('default');
+
 	// Sync local state with data (initial load and after form submission)
 	$effect(() => {
-		plexServerUrl = data.settings.plexServerUrl;
-		plexToken = data.settings.plexToken;
-		openaiApiKey = data.settings.openaiApiKey;
-		openaiBaseUrl = data.settings.openaiBaseUrl;
+		plexServerUrl = data.settings.plexServerUrl.value;
+		plexToken = data.settings.plexToken.value;
+		openaiApiKey = data.settings.openaiApiKey.value;
+		openaiBaseUrl = data.settings.openaiBaseUrl.value;
+		openaiModel = data.settings.openaiModel.value;
+		plexServerUrlSource = data.settings.plexServerUrl.source;
+		plexTokenSource = data.settings.plexToken.source;
+		openaiApiKeySource = data.settings.openaiApiKey.source;
+		openaiBaseUrlSource = data.settings.openaiBaseUrl.source;
+		openaiModelSource = data.settings.openaiModel.source;
 		selectedTheme = data.currentTheme;
 		selectedAnonymization = data.anonymizationMode;
 		logRetentionDays = data.logSettings.retentionDays;
 		logMaxCount = data.logSettings.maxCount;
 		logDebugEnabled = data.logSettings.debugEnabled;
 	});
+
+	// Source label helper
+	function getSourceLabel(source: 'env' | 'db' | 'default'): string {
+		switch (source) {
+			case 'env':
+				return 'from environment variable';
+			case 'db':
+				return 'saved in database';
+			default:
+				return '';
+		}
+	}
 
 	// Theme display names
 	const themeLabels: Record<string, string> = {
@@ -91,19 +117,39 @@
 
 		<form method="POST" action="?/updateApiConfig" use:enhance class="api-form">
 			<div class="form-group">
-				<label for="plexServerUrl">Plex Server URL</label>
+				<label for="plexServerUrl">
+					Plex Server URL
+					{#if plexServerUrlSource === 'env'}
+						<span class="source-badge env">ENV</span>
+					{:else if plexServerUrlSource === 'db'}
+						<span class="source-badge db">Saved</span>
+					{/if}
+				</label>
 				<input
 					type="url"
 					id="plexServerUrl"
 					name="plexServerUrl"
 					bind:value={plexServerUrl}
 					placeholder="http://192.168.1.100:32400"
+					class:from-env={plexServerUrlSource === 'env'}
 				/>
-				<span class="form-hint">The URL of your Plex Media Server</span>
+				<span class="form-hint">
+					The URL of your Plex Media Server
+					{#if plexServerUrlSource === 'env'}
+						<em class="source-hint">({getSourceLabel(plexServerUrlSource)})</em>
+					{/if}
+				</span>
 			</div>
 
 			<div class="form-group">
-				<label for="plexToken">Plex Token</label>
+				<label for="plexToken">
+					Plex Token
+					{#if plexTokenSource === 'env'}
+						<span class="source-badge env">ENV</span>
+					{:else if plexTokenSource === 'db'}
+						<span class="source-badge db">Saved</span>
+					{/if}
+				</label>
 				<div class="password-input">
 					<input
 						type={showPlexToken ? 'text' : 'password'}
@@ -111,6 +157,7 @@
 						name="plexToken"
 						bind:value={plexToken}
 						placeholder="Enter Plex token"
+						class:from-env={plexTokenSource === 'env'}
 					/>
 					<button
 						type="button"
@@ -120,7 +167,12 @@
 						{showPlexToken ? 'Hide' : 'Show'}
 					</button>
 				</div>
-				<span class="form-hint">Your X-Plex-Token for authentication</span>
+				<span class="form-hint">
+					Your X-Plex-Token for authentication
+					{#if plexTokenSource === 'env'}
+						<em class="source-hint">({getSourceLabel(plexTokenSource)})</em>
+					{/if}
+				</span>
 			</div>
 
 			<div class="form-actions">
@@ -165,7 +217,14 @@
 			</p>
 
 			<div class="form-group">
-				<label for="openaiApiKey">OpenAI API Key</label>
+				<label for="openaiApiKey">
+					OpenAI API Key
+					{#if openaiApiKeySource === 'env'}
+						<span class="source-badge env">ENV</span>
+					{:else if openaiApiKeySource === 'db'}
+						<span class="source-badge db">Saved</span>
+					{/if}
+				</label>
 				<div class="password-input">
 					<input
 						type={showOpenaiKey ? 'text' : 'password'}
@@ -173,6 +232,7 @@
 						name="openaiApiKey"
 						bind:value={openaiApiKey}
 						placeholder="sk-..."
+						class:from-env={openaiApiKeySource === 'env'}
 					/>
 					<button
 						type="button"
@@ -182,18 +242,61 @@
 						{showOpenaiKey ? 'Hide' : 'Show'}
 					</button>
 				</div>
+				{#if openaiApiKeySource === 'env'}
+					<span class="form-hint">
+						<em class="source-hint">({getSourceLabel(openaiApiKeySource)})</em>
+					</span>
+				{/if}
 			</div>
 
 			<div class="form-group">
-				<label for="openaiBaseUrl">OpenAI Base URL (Optional)</label>
+				<label for="openaiBaseUrl">
+					OpenAI Base URL (Optional)
+					{#if openaiBaseUrlSource === 'env'}
+						<span class="source-badge env">ENV</span>
+					{:else if openaiBaseUrlSource === 'db'}
+						<span class="source-badge db">Saved</span>
+					{/if}
+				</label>
 				<input
 					type="url"
 					id="openaiBaseUrl"
 					name="openaiBaseUrl"
 					bind:value={openaiBaseUrl}
 					placeholder="https://api.openai.com/v1"
+					class:from-env={openaiBaseUrlSource === 'env'}
 				/>
-				<span class="form-hint">For custom OpenAI-compatible endpoints</span>
+				<span class="form-hint">
+					For custom OpenAI-compatible endpoints
+					{#if openaiBaseUrlSource === 'env'}
+						<em class="source-hint">({getSourceLabel(openaiBaseUrlSource)})</em>
+					{/if}
+				</span>
+			</div>
+
+			<div class="form-group">
+				<label for="openaiModel">
+					OpenAI Model
+					{#if openaiModelSource === 'env'}
+						<span class="source-badge env">ENV</span>
+					{:else if openaiModelSource === 'db'}
+						<span class="source-badge db">Saved</span>
+					{/if}
+				</label>
+				<input
+					type="text"
+					id="openaiModel"
+					name="openaiModel"
+					bind:value={openaiModel}
+					placeholder="gpt-4o-mini"
+					class:from-env={openaiModelSource === 'env'}
+				/>
+				<span class="form-hint">
+					The model to use for fun facts generation (default: gpt-4o-mini)
+					{#if openaiModelSource === 'env'}
+						<em class="source-hint">({getSourceLabel(openaiModelSource)})</em>
+					{/if}
+				</span>
 			</div>
 
 			<div class="form-actions">
@@ -455,6 +558,47 @@
 		font-size: 0.75rem;
 		color: hsl(var(--muted-foreground));
 		margin-top: 0.25rem;
+	}
+
+	/* Source badges and indicators */
+	.source-badge {
+		display: inline-flex;
+		align-items: center;
+		padding: 0.125rem 0.375rem;
+		font-size: 0.625rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.025em;
+		border-radius: calc(var(--radius) / 2);
+		margin-left: 0.5rem;
+		vertical-align: middle;
+	}
+
+	.source-badge.env {
+		background: hsl(210 80% 40% / 0.2);
+		color: hsl(210 80% 50%);
+		border: 1px solid hsl(210 80% 40% / 0.3);
+	}
+
+	.source-badge.db {
+		background: hsl(140 50% 35% / 0.2);
+		color: hsl(140 50% 45%);
+		border: 1px solid hsl(140 50% 35% / 0.3);
+	}
+
+	.source-hint {
+		color: hsl(210 80% 50%);
+		font-style: italic;
+	}
+
+	.form-group input.from-env {
+		border-color: hsl(210 80% 40% / 0.4);
+		background: hsl(210 80% 50% / 0.05);
+	}
+
+	.form-group input.from-env:focus {
+		border-color: hsl(210 80% 50%);
+		box-shadow: 0 0 0 2px hsl(210 80% 50% / 0.2);
 	}
 
 	.password-input {

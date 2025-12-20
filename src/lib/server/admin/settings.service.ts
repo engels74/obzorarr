@@ -1,6 +1,7 @@
 import { db } from '$lib/server/db/client';
 import { appSettings, cachedStats } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { env } from '$env/dynamic/private';
 
 /**
  * Admin Settings Service
@@ -27,6 +28,7 @@ export const AppSettingsKey = {
 	PLEX_TOKEN: 'plex_token',
 	OPENAI_API_KEY: 'openai_api_key',
 	OPENAI_BASE_URL: 'openai_base_url',
+	OPENAI_MODEL: 'openai_model',
 
 	// Theme
 	CURRENT_THEME: 'current_theme',
@@ -232,4 +234,119 @@ export async function clearUserStatsCache(userId: number, year?: number): Promis
 		const result = await db.delete(cachedStats).where(eq(cachedStats.userId, userId)).returning();
 		return result.length;
 	}
+}
+
+// =============================================================================
+// Environment Variable Configuration
+// =============================================================================
+
+/**
+ * Source of a configuration value
+ */
+export type ConfigSource = 'env' | 'db' | 'default';
+
+/**
+ * Configuration value with its source
+ */
+export interface ConfigValue<T> {
+	value: T;
+	source: ConfigSource;
+}
+
+/**
+ * API configuration with source information
+ */
+export interface ApiConfigWithSources {
+	plex: {
+		serverUrl: ConfigValue<string>;
+		token: ConfigValue<string>;
+	};
+	openai: {
+		apiKey: ConfigValue<string>;
+		baseUrl: ConfigValue<string>;
+		model: ConfigValue<string>;
+	};
+}
+
+/**
+ * Get environment variable values for Plex configuration
+ */
+function getPlexEnvConfig() {
+	return {
+		serverUrl: env.PLEX_SERVER_URL ?? '',
+		token: env.PLEX_TOKEN ?? ''
+	};
+}
+
+/**
+ * Get environment variable values for OpenAI configuration
+ */
+function getOpenAIEnvConfig() {
+	return {
+		apiKey: env.OPENAI_API_KEY ?? '',
+		baseUrl: env.OPENAI_API_URL ?? '',
+		model: env.OPENAI_MODEL ?? 'gpt-4o-mini'
+	};
+}
+
+/**
+ * Get API configuration with source information
+ *
+ * Priority order:
+ * 1. Database settings (user-configured via UI)
+ * 2. Environment variables (from .env or Docker)
+ * 3. Default values
+ *
+ * @returns API configuration with source information for each value
+ */
+export async function getApiConfigWithSources(): Promise<ApiConfigWithSources> {
+	const dbSettings = await getAllAppSettings();
+	const plexEnv = getPlexEnvConfig();
+	const openaiEnv = getOpenAIEnvConfig();
+
+	// Helper to determine value and source
+	function getConfigValue(
+		dbKey: string,
+		envValue: string,
+		defaultValue: string = ''
+	): ConfigValue<string> {
+		const dbValue = dbSettings[dbKey];
+		if (dbValue) {
+			return { value: dbValue, source: 'db' };
+		}
+		if (envValue) {
+			return { value: envValue, source: 'env' };
+		}
+		return { value: defaultValue, source: 'default' };
+	}
+
+	return {
+		plex: {
+			serverUrl: getConfigValue(AppSettingsKey.PLEX_SERVER_URL, plexEnv.serverUrl),
+			token: getConfigValue(AppSettingsKey.PLEX_TOKEN, plexEnv.token)
+		},
+		openai: {
+			apiKey: getConfigValue(AppSettingsKey.OPENAI_API_KEY, openaiEnv.apiKey),
+			baseUrl: getConfigValue(
+				AppSettingsKey.OPENAI_BASE_URL,
+				openaiEnv.baseUrl,
+				'https://api.openai.com/v1'
+			),
+			model: getConfigValue(AppSettingsKey.OPENAI_MODEL, openaiEnv.model, 'gpt-4o-mini')
+		}
+	};
+}
+
+/**
+ * Check if environment variables are configured for Plex
+ */
+export function hasPlexEnvConfig(): boolean {
+	return Boolean(env.PLEX_SERVER_URL || env.PLEX_TOKEN);
+}
+
+/**
+ * Check if environment variables are configured for OpenAI
+ */
+export function hasOpenAIEnvConfig(): boolean {
+	return Boolean(env.OPENAI_API_KEY || env.OPENAI_API_URL || env.OPENAI_MODEL);
 }

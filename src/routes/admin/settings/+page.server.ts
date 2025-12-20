@@ -2,18 +2,19 @@ import { fail } from '@sveltejs/kit';
 import { z } from 'zod';
 import type { PageServerLoad, Actions } from './$types';
 import {
-	getAllAppSettings,
 	setAppSetting,
 	getCurrentTheme,
 	setCurrentTheme,
 	getAnonymizationMode,
 	setAnonymizationMode,
 	clearStatsCache,
+	getApiConfigWithSources,
 	AppSettingsKey,
 	ThemePresets,
 	AnonymizationMode,
 	type ThemePresetType,
-	type AnonymizationModeType
+	type AnonymizationModeType,
+	type ConfigSource
 } from '$lib/server/admin/settings.service';
 import { getAvailableYears } from '$lib/server/admin/users.service';
 import {
@@ -48,7 +49,8 @@ const ApiConfigSchema = z.object({
 	plexServerUrl: z.string().url('Invalid URL format').optional().or(z.literal('')),
 	plexToken: z.string().optional(),
 	openaiApiKey: z.string().optional(),
-	openaiBaseUrl: z.string().url('Invalid URL format').optional().or(z.literal(''))
+	openaiBaseUrl: z.string().url('Invalid URL format').optional().or(z.literal('')),
+	openaiModel: z.string().optional()
 });
 
 const LogSettingsSchema = z.object({
@@ -58,12 +60,24 @@ const LogSettingsSchema = z.object({
 });
 
 // =============================================================================
+// Types
+// =============================================================================
+
+/**
+ * Settings value with source information for UI display
+ */
+interface SettingValue {
+	value: string;
+	source: ConfigSource;
+}
+
+// =============================================================================
 // Load Function
 // =============================================================================
 
 export const load: PageServerLoad = async () => {
 	const [
-		settings,
+		apiConfig,
 		currentTheme,
 		anonymizationMode,
 		availableYears,
@@ -71,7 +85,7 @@ export const load: PageServerLoad = async () => {
 		logMaxCount,
 		logDebugEnabled
 	] = await Promise.all([
-		getAllAppSettings(),
+		getApiConfigWithSources(),
 		getCurrentTheme(),
 		getAnonymizationMode(),
 		getAvailableYears(),
@@ -84,10 +98,11 @@ export const load: PageServerLoad = async () => {
 
 	return {
 		settings: {
-			plexServerUrl: settings[AppSettingsKey.PLEX_SERVER_URL] ?? '',
-			plexToken: settings[AppSettingsKey.PLEX_TOKEN] ?? '',
-			openaiApiKey: settings[AppSettingsKey.OPENAI_API_KEY] ?? '',
-			openaiBaseUrl: settings[AppSettingsKey.OPENAI_BASE_URL] ?? ''
+			plexServerUrl: apiConfig.plex.serverUrl as SettingValue,
+			plexToken: apiConfig.plex.token as SettingValue,
+			openaiApiKey: apiConfig.openai.apiKey as SettingValue,
+			openaiBaseUrl: apiConfig.openai.baseUrl as SettingValue,
+			openaiModel: apiConfig.openai.model as SettingValue
 		},
 		currentTheme,
 		anonymizationMode,
@@ -127,7 +142,8 @@ export const actions: Actions = {
 			plexServerUrl: formData.get('plexServerUrl')?.toString() ?? '',
 			plexToken: formData.get('plexToken')?.toString() ?? '',
 			openaiApiKey: formData.get('openaiApiKey')?.toString() ?? '',
-			openaiBaseUrl: formData.get('openaiBaseUrl')?.toString() ?? ''
+			openaiBaseUrl: formData.get('openaiBaseUrl')?.toString() ?? '',
+			openaiModel: formData.get('openaiModel')?.toString() ?? ''
 		};
 
 		const parsed = ApiConfigSchema.safeParse(data);
@@ -151,6 +167,9 @@ export const actions: Actions = {
 			}
 			if (parsed.data.openaiBaseUrl) {
 				await setAppSetting(AppSettingsKey.OPENAI_BASE_URL, parsed.data.openaiBaseUrl);
+			}
+			if (parsed.data.openaiModel) {
+				await setAppSetting(AppSettingsKey.OPENAI_MODEL, parsed.data.openaiModel);
 			}
 
 			return { success: true, message: 'API configuration updated' };

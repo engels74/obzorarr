@@ -36,15 +36,17 @@ import { AIGenerationError, InsufficientStatsError } from './types';
  * Get fun facts service configuration from app settings
  */
 export async function getFunFactsConfig(): Promise<FunFactsConfig> {
-	const [apiKey, baseUrl] = await Promise.all([
+	const [apiKey, baseUrl, model] = await Promise.all([
 		getAppSetting(AppSettingsKey.OPENAI_API_KEY),
-		getAppSetting(AppSettingsKey.OPENAI_BASE_URL)
+		getAppSetting(AppSettingsKey.OPENAI_BASE_URL),
+		getAppSetting(AppSettingsKey.OPENAI_MODEL)
 	]);
 
 	return {
 		aiEnabled: Boolean(apiKey),
 		openaiApiKey: apiKey ?? undefined,
 		openaiBaseUrl: baseUrl ?? 'https://api.openai.com/v1',
+		openaiModel: model ?? 'gpt-4o-mini',
 		maxAIRetries: 2,
 		aiTimeoutMs: 10000
 	};
@@ -370,6 +372,7 @@ export async function generateWithAI(
 
 	try {
 		const baseUrl = config.openaiBaseUrl ?? 'https://api.openai.com/v1';
+		const model = config.openaiModel ?? 'gpt-4o-mini';
 		const response = await fetch(`${baseUrl}/chat/completions`, {
 			method: 'POST',
 			headers: {
@@ -377,7 +380,7 @@ export async function generateWithAI(
 				Authorization: `Bearer ${config.openaiApiKey}`
 			},
 			body: JSON.stringify({
-				model: 'gpt-4o-mini',
+				model,
 				messages: [
 					{ role: 'system', content: AI_SYSTEM_PROMPT },
 					{ role: 'user', content: prompt }
