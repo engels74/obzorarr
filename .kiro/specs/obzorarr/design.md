@@ -13,7 +13,7 @@ Obzorarr is a SvelteKit application built with Bun runtime that generates Spotif
 - **UnoCSS + unocss-preset-shadcn** for styling
 - **shadcn-svelte** UI components
 - **tweakcn** for theme customization
-- **Motion One + GSAP** for animations
+- **Motion + GSAP** for animations
 - **Croner** for cron scheduling
 - **Zod** for runtime validation
 
@@ -45,7 +45,7 @@ Calculates watch time, rankings, distributions, percentiles, and binge detection
 
 ### Slide System
 
-Modular slide components with Motion One animations and GSAP ScrollTrigger.
+Modular slide components with Motion animations and GSAP ScrollTrigger.
 
 ## Data Models
 

@@ -90,7 +90,7 @@ Obzorarr is a self-hosted "Year in Review" application for Plex Media Server adm
 3. WHEN a user swipes left or taps the right edge, THE Wrapped_Page SHALL advance to the next slide
 4. WHEN a user swipes right or taps the left edge, THE Wrapped_Page SHALL return to the previous slide
 5. THE Wrapped_Page SHALL display a progress indicator showing current position in the slide sequence
-6. WHEN transitioning between slides, THE Wrapped_Page SHALL apply smooth animations using Motion One or GSAP
+6. WHEN transitioning between slides, THE Wrapped_Page SHALL apply smooth animations using Motion or GSAP
 7. THE Wrapped_Page SHALL be responsive and optimized for mobile devices
 
 ### Requirement 6: Wrapped Page Display - Scroll Mode

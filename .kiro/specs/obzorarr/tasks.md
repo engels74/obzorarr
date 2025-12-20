@@ -190,7 +190,7 @@ This plan implements Obzorarr incrementally, starting with project setup and cor
     - Implement TotalTimeSlide, TopMoviesSlide, TopShowsSlide
     - Implement GenresSlide, DistributionSlide, PercentileSlide
     - Implement BingeSlide, FirstLastSlide, FunFactSlide
-    - Use Motion One with `$effect` cleanup
+    - Use Motion with `$effect` cleanup
     - _Requirements: 5.6_
 
   - [x] 11.2 Implement slide configuration
@@ -218,7 +218,7 @@ This plan implements Obzorarr incrementally, starting with project setup and cor
 
   - [x] 12.2 Add slide transitions
     - Implement smooth animations between slides
-    - Use Motion One for hardware acceleration
+    - Use Motion for hardware acceleration
     - _Requirements: 5.6_
 
 - [ ] 13. Wrapped Page - Scroll Mode
