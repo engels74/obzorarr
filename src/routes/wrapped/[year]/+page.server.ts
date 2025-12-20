@@ -8,6 +8,7 @@ import {
 	buildSlideRenderConfigs,
 	customSlidesToMap
 } from '$lib/server/slides';
+import { generateFunFacts, type FunFact } from '$lib/server/funfacts';
 
 /**
  * Server-wide Wrapped Page Load Function
@@ -48,10 +49,20 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	// Convert custom slides to map for component usage
 	const customSlidesMap = customSlidesToMap(customSlides);
 
+	// Generate fun facts for the stats
+	let funFacts: FunFact[] = [];
+	try {
+		funFacts = await generateFunFacts(stats, { count: 3 });
+	} catch (err) {
+		console.warn('Failed to generate fun facts:', err);
+		// Continue without fun facts rather than failing the page
+	}
+
 	return {
 		stats,
 		slides,
 		customSlidesMap,
+		funFacts,
 		year,
 		isServerWrapped: true
 	};

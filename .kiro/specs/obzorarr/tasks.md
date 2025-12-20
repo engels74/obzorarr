@@ -290,8 +290,8 @@ This plan implements Obzorarr incrementally, starting with project setup and cor
     - Year/archive settings
     - _Requirements: 11.4, 11.5, 11.6_
 
-- [ ] 17. Fun Facts Service
-  - [ ] 17.1 Implement fun facts service
+- [x] 17. Fun Facts Service
+  - [x] 17.1 Implement fun facts service
     - Create `src/lib/server/funfacts/service.ts`
     - Create predefined templates
     - Implement AI generation (optional)

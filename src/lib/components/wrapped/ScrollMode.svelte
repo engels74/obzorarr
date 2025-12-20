@@ -5,6 +5,7 @@
 	import type { SlideRenderConfig } from '$lib/components/slides/types';
 	import type { UserStats, ServerStats } from '$lib/server/stats/types';
 	import type { CustomSlide } from '$lib/server/slides/types';
+	import type { FunFact } from '$lib/server/funfacts';
 	import SlideRenderer from './SlideRenderer.svelte';
 
 	// Register GSAP plugin at module level (per bun-svelte-pro.md)
@@ -32,6 +33,8 @@
 		slides: SlideRenderConfig[];
 		/** Custom slides data (keyed by id) */
 		customSlides?: Map<number, CustomSlide>;
+		/** Fun facts data for fun-fact slides */
+		funFacts?: FunFact[];
 		/** Initial scroll position (slide index from Story Mode) */
 		initialSlideIndex?: number;
 		/** Callback when mode toggle requested, provides current visible slide index */
@@ -46,6 +49,7 @@
 		stats,
 		slides,
 		customSlides,
+		funFacts,
 		initialSlideIndex = 0,
 		onModeSwitch,
 		onClose,
@@ -220,7 +224,7 @@
 				data-slide-index={index}
 			>
 				<div class="slide-content">
-					<SlideRenderer {slide} {stats} {customSlides} active={true} />
+					<SlideRenderer {slide} {stats} {customSlides} {funFacts} active={true} />
 				</div>
 			</section>
 		{/each}
