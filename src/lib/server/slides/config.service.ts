@@ -35,27 +35,28 @@ import {
  * Initialize default slide configuration
  *
  * Creates entries for all standard slide types if they don't exist.
- * Uses upsert semantics to avoid duplicates.
+ * New slides are appended after existing ones to avoid sortOrder conflicts.
  *
  * Implements Requirement 9.4 (default ordering)
  */
 export async function initializeDefaultSlideConfig(): Promise<void> {
-	for (let i = 0; i < DEFAULT_SLIDE_ORDER.length; i++) {
-		const slideType = DEFAULT_SLIDE_ORDER[i];
-		if (!slideType) continue;
+	// Fetch all existing configs in a single query
+	const existingConfigs = await db.select().from(slideConfig);
+	const existingTypes = new Set(existingConfigs.map((c) => c.slideType));
 
-		// Check if already exists
-		const existing = await db
-			.select()
-			.from(slideConfig)
-			.where(eq(slideConfig.slideType, slideType))
-			.limit(1);
+	// Calculate next sortOrder (after all existing slides)
+	const maxSortOrder =
+		existingConfigs.length > 0 ? Math.max(...existingConfigs.map((c) => c.sortOrder)) : -1;
 
-		if (existing.length === 0) {
+	let nextSortOrder = maxSortOrder + 1;
+
+	// Insert missing slides with enabled: true
+	for (const slideType of DEFAULT_SLIDE_ORDER) {
+		if (!existingTypes.has(slideType)) {
 			await db.insert(slideConfig).values({
 				slideType,
 				enabled: true,
-				sortOrder: i
+				sortOrder: nextSortOrder++
 			});
 		}
 	}
