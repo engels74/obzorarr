@@ -51,26 +51,26 @@ This plan implements Obzorarr incrementally, starting with project setup and cor
     - **Property 4: Pagination Completeness**
     - **Validates: Requirements 2.2**
 
-- [ ] 4. Authentication System
-  - [ ] 4.1 Implement Plex OAuth flow
+- [x] 4. Authentication System
+  - [x] 4.1 Implement Plex OAuth flow
     - Create `src/lib/server/auth/plex-oauth.ts`
     - Implement `initiateOAuth()` and `handleCallback()`
     - Create `src/routes/auth/plex/+server.ts` endpoint
     - _Requirements: 1.1, 1.2_
 
-  - [ ] 4.2 Implement session management
+  - [x] 4.2 Implement session management
     - Create `src/lib/server/auth/session.ts`
     - Implement session creation, validation, invalidation
     - Store sessions in SQLite
     - _Requirements: 1.6, 1.7_
 
-  - [ ] 4.3 Create auth hook
+  - [x] 4.3 Create auth hook
     - Implement `src/hooks.server.ts` with auth handle
     - Populate `event.locals.user`
     - Protect `/admin` routes
     - _Requirements: 1.3, 1.4, 1.5_
 
-  - [ ] 4.4 Write property tests for auth
+  - [x] 4.4 Write property tests for auth
     - **Property 1: Role Assignment Correctness**
     - **Property 2: Non-Member Access Denial**
     - **Property 3: Session Invalidation**
