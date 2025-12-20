@@ -184,8 +184,8 @@ This plan implements Obzorarr incrementally, starting with project setup and cor
     - **Property 18: Anonymization Mode Display**
     - **Validates: Requirements 8.1, 8.2, 8.3**
 
-- [ ] 11. Slide System
-  - [ ] 11.1 Create slide components
+- [x] 11. Slide System
+  - [x] 11.1 Create slide components
     - Create `src/lib/components/slides/` directory
     - Implement TotalTimeSlide, TopMoviesSlide, TopShowsSlide
     - Implement GenresSlide, DistributionSlide, PercentileSlide
@@ -193,17 +193,17 @@ This plan implements Obzorarr incrementally, starting with project setup and cor
     - Use Motion One with `$effect` cleanup
     - _Requirements: 5.6_
 
-  - [ ] 11.2 Implement slide configuration
+  - [x] 11.2 Implement slide configuration
     - Create slide config table operations
     - Support enable/disable and reordering
     - _Requirements: 9.4, 9.5_
 
-  - [ ] 11.3 Implement custom slides
+  - [x] 11.3 Implement custom slides
     - Create CustomSlide component with Markdown rendering
     - Create admin editor for custom slides
     - _Requirements: 9.1, 9.2, 9.3_
 
-  - [ ] 11.4 Write property tests for slides
+  - [x] 11.4 Write property tests for slides
     - **Property 19: Slide Order Persistence**
     - **Property 20: Disabled Slide Exclusion**
     - **Validates: Requirements 9.4, 9.5**

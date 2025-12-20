@@ -1,0 +1,202 @@
+<script lang="ts">
+	import { animate } from 'motion';
+	import { prefersReducedMotion } from 'svelte/motion';
+	import BaseSlide from './BaseSlide.svelte';
+	import type { PercentileSlideProps } from './types';
+
+	/**
+	 * PercentileSlide Component
+	 *
+	 * Displays the user's percentile ranking among all server users.
+	 *
+	 * Implements Requirement 5.6 (Motion One animations with $effect cleanup)
+	 */
+
+	interface Props extends PercentileSlideProps {}
+
+	let {
+		percentileRank,
+		totalUsers,
+		active = true,
+		onAnimationComplete,
+		class: klass = '',
+		children
+	}: Props = $props();
+
+	// Compute the "top X%" value
+	const topPercentage = $derived(Math.max(1, Math.round(100 - percentileRank)));
+	const isTopPerformer = $derived(topPercentage <= 10);
+
+	// Generate message based on percentile
+	const message = $derived.by(() => {
+		if (topPercentage <= 1) return "You're the #1 viewer!";
+		if (topPercentage <= 5) return "You're in the top 5%!";
+		if (topPercentage <= 10) return "You're a super fan!";
+		if (topPercentage <= 25) return "You're in the top quarter!";
+		if (topPercentage <= 50) return "You watch more than most!";
+		return "Keep watching!";
+	});
+
+	// Element references
+	let container: HTMLElement | undefined = $state();
+	let numberEl: HTMLElement | undefined = $state();
+	let messageEl: HTMLElement | undefined = $state();
+
+	// Animation effect with cleanup
+	$effect(() => {
+		if (!container || !numberEl || !messageEl || !active) return;
+
+		const shouldAnimate = !prefersReducedMotion.current;
+
+		if (!shouldAnimate) {
+			container.style.opacity = '1';
+			numberEl.style.opacity = '1';
+			numberEl.style.transform = 'none';
+			messageEl.style.opacity = '1';
+			onAnimationComplete?.();
+			return;
+		}
+
+		// Animate container
+		const containerAnim = animate(
+			container,
+			{ opacity: [0, 1] },
+			{ duration: 0.4 }
+		);
+
+		// Animate number with bounce
+		const numberAnim = animate(
+			numberEl,
+			{
+				transform: ['scale(0)', 'scale(1.2)', 'scale(1)'],
+				opacity: [0, 1, 1]
+			},
+			{
+				type: 'spring',
+				stiffness: 300,
+				damping: 15,
+				delay: 0.2
+			}
+		);
+
+		// Animate message
+		const messageAnim = animate(
+			messageEl,
+			{ opacity: [0, 1], transform: ['translateY(10px)', 'translateY(0)'] },
+			{ duration: 0.5, delay: 0.6 }
+		);
+
+		messageAnim.finished.then(() => {
+			onAnimationComplete?.();
+		});
+
+		return () => {
+			containerAnim.stop();
+			numberAnim.stop();
+			messageAnim.stop();
+		};
+	});
+</script>
+
+<BaseSlide {active} class="percentile-slide {klass}" variant={isTopPerformer ? 'highlight' : 'default'}>
+	<div bind:this={container} class="content">
+		<h2 class="title">Your Ranking</h2>
+
+		<div bind:this={numberEl} class="stat-container" class:top-performer={isTopPerformer}>
+			<span class="prefix">Top</span>
+			<span class="percentage">{topPercentage}%</span>
+		</div>
+
+		<p bind:this={messageEl} class="message">
+			{message}
+		</p>
+
+		{#if totalUsers && totalUsers > 1}
+			<p class="total-users">
+				Out of {totalUsers} viewers on this server
+			</p>
+		{/if}
+
+		{#if children}
+			<div class="extra">
+				{@render children()}
+			</div>
+		{/if}
+	</div>
+</BaseSlide>
+
+<style>
+	.content {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 1rem;
+		z-index: 1;
+	}
+
+	.title {
+		font-size: 1.5rem;
+		font-weight: 600;
+		color: var(--muted-foreground);
+		text-transform: uppercase;
+		letter-spacing: 0.1em;
+	}
+
+	.stat-container {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		padding: 2rem;
+		border-radius: 50%;
+		background: rgba(255, 255, 255, 0.05);
+		border: 4px solid var(--primary);
+		width: 200px;
+		height: 200px;
+		justify-content: center;
+	}
+
+	.top-performer {
+		border-color: oklch(0.7 0.2 60);
+		box-shadow: 0 0 40px rgba(255, 215, 0, 0.3);
+	}
+
+	.prefix {
+		font-size: 1.25rem;
+		color: var(--muted-foreground);
+		text-transform: uppercase;
+	}
+
+	.percentage {
+		font-size: clamp(3rem, 8vw, 4.5rem);
+		font-weight: 800;
+		color: var(--primary);
+	}
+
+	.top-performer .percentage {
+		color: oklch(0.7 0.2 60);
+	}
+
+	.message {
+		font-size: 1.5rem;
+		font-weight: 600;
+		color: var(--foreground);
+		text-align: center;
+	}
+
+	.total-users {
+		font-size: 0.875rem;
+		color: var(--muted-foreground);
+	}
+
+	.extra {
+		margin-top: 1.5rem;
+	}
+
+	@media (max-width: 768px) {
+		.stat-container {
+			width: 150px;
+			height: 150px;
+			padding: 1.5rem;
+		}
+	}
+</style>
