@@ -3,517 +3,510 @@ type: "agent_requested"
 description: "Modern Bun + Svelte 5 + SvelteKit best practices for 2025"
 ---
 
-# Modern Bun + Svelte 5 + SvelteKit best practices for 2025
+# Bun + Svelte 5 + SvelteKit: 2025 Full-Stack Best Practices
 
-**Svelte 5's runes system fundamentally changes how reactivity works**, replacing stores with `$state`, reactive statements with `$derived`, and enabling fine-grained updates that significantly improve performance. Combined with Bun's native SQLite driver, SvelteKit 2's enhanced type safety, and modern animation libraries, this stack delivers exceptional developer experience with production-grade performance. The patterns below represent verified best practices from official documentation, core maintainer guidance, and authoritative community sources.
+Modern full-stack development with this stack requires understanding Svelte 5's runes-based reactivity, SvelteKit's data loading patterns, Bun's native SQLite driver, and proper integration of animation, styling, and testing tools. This guide synthesizes **authoritative, cross-verified recommendations** from official documentation, core maintainer content, and trusted community sources—excluding all Svelte 4 patterns and deprecated APIs.
 
 ---
 
-## Code design and TypeScript patterns
+## 1. Code Design
 
-### Svelte 5 Runes: The new reactivity primitives
+### TypeScript strict patterns
 
-**Use `$state` for reactive primitives and objects, `$state.raw` for large immutable data structures.** The `$state` rune creates deeply reactive Proxy objects that trigger updates when properties change. For data replaced wholesale (API responses, large arrays), `$state.raw` avoids proxy overhead by only reacting to reassignment, not mutation. Use `$state.snapshot()` to get a plain object for APIs like `structuredClone()`.
+- **Enable strict mode with Svelte-specific settings.** Use `verbatimModuleSyntax: true` and `isolatedModules: true`—Svelte/Vite cannot determine value vs type imports, and cross-file analysis isn't supported. Extend `@tsconfig/svelte` as your base configuration.
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "moduleResolution": "bundler"
+  }
+}
+```
+*Source: @tsconfig/svelte npm package (2024-12); svelte.dev/docs/svelte/typescript*
 
+### Svelte 5 Runes ($state, $derived, $effect, $props)
+
+- **Use `$state()` for any value requiring reactivity.** Objects and arrays become deeply reactive Proxies automatically. Class instances are NOT proxied—use `$state` in class fields instead.
 ```svelte
-<script lang="ts">
-  // Deep reactivity - mutations trigger updates
-  let editor = $state({ theme: 'dark', content: '' });
-  editor.content = 'updated'; // ✓ triggers UI update
-  
-  // Shallow reactivity - better for large immutable data
-  let items = $state.raw<Item[]>([]);
-  items = [...items, newItem]; // ✓ must reassign, not mutate
-  
-  // Get plain object from proxy
-  const snapshot = $state.snapshot(editor);
+<script>
+  let count = $state(0);
+  let todos = $state([{ done: false, text: 'Learn runes' }]);
 </script>
 ```
+*Source: svelte.dev/docs/svelte/$state (2024-12)*
 
-*When to deviate*: Use `$state.raw` when working with immutable data patterns, external libraries that don't work with Proxies, or datasets exceeding hundreds of items.
-
-**Source**: "$state • Svelte Docs", svelte.dev, 2024-10
-
----
-
-**Use `$derived(expression)` for simple computations; use `$derived.by(() => {})` when you need loops, conditionals, or multiple statements.** Derived values are memoized and recalculate only when dependencies change. Unlike the legacy `$:` syntax, `$derived` tracks dependencies at runtime. Never set `$state` inside `$derived`—this causes infinite loops and compilation errors.
-
+- **Use `$derived()` for computed values—not `$effect`.** Derived values automatically update when dependencies change. Expression must be side-effect-free. As of Svelte 5.25, derived values can be directly overridden for optimistic UI patterns.
 ```svelte
-<script lang="ts">
-  let width = $state(100);
-  let numbers = $state([1, 2, 3]);
-  
-  // Simple expression
-  const area = $derived(width * width);
-  
-  // Complex logic requires $derived.by
-  const total = $derived.by(() => {
+<script>
+  let count = $state(0);
+  let doubled = $derived(count * 2);
+</script>
+```
+*Source: svelte.dev/docs/svelte/$derived (2024-12)*
+
+- **Use `$derived.by()` for complex multi-step derivations** requiring loops, conditionals, or multiple statements.
+```svelte
+<script>
+  let cart = $state([{ item: '🍎', total: 10 }, { item: '🍌', total: 10 }]);
+  let total = $derived.by(() => {
     let sum = 0;
-    for (const n of numbers) sum += n;
+    for (const item of cart) sum += item.total;
     return sum;
   });
 </script>
 ```
+*Source: joyofcode.xyz/learn-svelte (2024)*
 
-**Source**: "$derived • Svelte Docs", svelte.dev, 2024-10
-
----
-
-**Use `$effect` sparingly as an "escape hatch" for side effects—DOM manipulation, analytics, third-party libraries—never for state synchronization.** Effects run after DOM updates and track dependencies automatically. **90% of cases where you think you need `$effect`, you actually want `$derived`**. Always return a cleanup function for resource disposal to prevent memory leaks.
-
+- **Use `$effect()` ONLY as an escape hatch for side effects**: localStorage persistence, API calls on dependency change, third-party library integration, DOM manipulation. Never update state inside effects—use `$derived` instead.
 ```svelte
-<script lang="ts">
-  let canvas: HTMLCanvasElement;
-  let size = $state(50);
-
+<script>
+  let count = $state(0);
   $effect(() => {
-    const ctx = canvas.getContext('2d');
-    ctx.fillRect(0, 0, size, size);
-    
-    // Cleanup runs before re-run AND on unmount
-    return () => ctx.clearRect(0, 0, canvas.width, canvas.height);
+    localStorage.setItem('count', count.toString());
+    return () => console.log('cleanup');
   });
-  
-  // ❌ WRONG: Don't synchronize state with effects
-  // $effect(() => { doubled = count * 2; });
-  
-  // ✓ CORRECT: Use $derived instead
-  const doubled = $derived(count * 2);
 </script>
 ```
+*Source: svelte.dev/docs/svelte/$effect "When not to use $effect" section (2024-12)*
 
-*Variants*: `$effect.pre()` runs before DOM updates; `$effect.tracking()` checks if inside reactive context; `$effect.root()` provides manual cleanup control.
-
-**Source**: "$effect • Svelte Docs", svelte.dev, 2024-10; "Understanding Svelte 5 Runes", HTML All The Things, 2024
-
----
-
-### Component composition: Props and snippets
-
-**Destructure props with `$props()`, define an interface for TypeScript safety, use default values in destructuring, and spread rest props.** The `$props()` rune replaces `export let` declarations. TypeScript requires an explicit interface since types cannot be inferred from destructuring assignment.
-
+- **Declare props via `$props()` destructuring.** Use rest props for wrapper components. Supports renaming reserved words and default values.
 ```svelte
-<script lang="ts">
-  interface Props {
-    title: string;
-    count?: number;
-    children?: import('svelte').Snippet;
-  }
-
-  let { 
-    title, 
-    count = 0, 
-    class: klass = '', // rename reserved keywords
-    ...rest 
-  }: Props = $props();
-
-  // For bindable two-way binding props
-  let { value = $bindable() } = $props();
+<script>
+  let { name = 'World', class: className, ...rest } = $props();
 </script>
-
-<div class={klass} {...rest}>{title}: {count}</div>
 ```
+*Source: svelte.dev/docs/svelte/v5-migration-guide (2024-12)*
 
-**Source**: "$props • Svelte Docs", svelte.dev, 2024-10
+### Snippets vs slots in Svelte 5
 
----
-
-**Use `{#snippet}` and `{@render}` for component composition—slots are deprecated in Svelte 5.** Snippets are reusable markup blocks that accept parameters, can be passed as props, and render multiple times. They solve slots' limitations: more readable, flexible positioning, explicit data passing.
-
+- **Replace slots with snippets for all new code.** Snippets offer explicit scope, data passing, and better TypeScript support. Slots remain only for Web Components.
 ```svelte
 <!-- Parent.svelte -->
-<Card>
-  <!-- Default children snippet -->
-  <h1>Title</h1>
-  
-  <!-- Named snippet with parameters -->
-  {#snippet footer(date: string)}
-    <footer>{date}</footer>
+<List {items}>
+  {#snippet item(data)}
+    <li>{data.name}</li>
   {/snippet}
-</Card>
+  {#snippet empty()}
+    <p>No items</p>
+  {/snippet}
+</List>
 
-<!-- Card.svelte -->
-<script lang="ts">
-  import type { Snippet } from 'svelte';
-  
-  interface Props {
-    children: Snippet;
-    footer?: Snippet<[string]>;
-  }
-  
-  let { children, footer }: Props = $props();
+<!-- List.svelte -->
+<script>
+  let { items, item, empty } = $props();
 </script>
-
-<article>
-  {@render children()}
-  {#if footer}
-    {@render footer(new Date().toISOString())}
-  {/if}
-</article>
+{#each items as entry}
+  {@render item(entry)}
+{:else}
+  {@render empty?.()}
+{/each}
 ```
+*Source: svelte.dev/docs/svelte/snippet; frontendmasters.com/blog/snippets-in-svelte-5 (2024)*
 
-**Source**: "{#snippet ...} • Svelte Docs", svelte.dev, 2024-10; "Snippets in Svelte 5", Frontend Masters, 2024-10
-
----
+- **Type snippets explicitly** using Svelte's `Snippet` type for props that accept render functions.
+```typescript
+import type { Snippet } from 'svelte';
+interface Props {
+  header: Snippet;
+  row: Snippet<[{ name: string; value: number }]>;
+}
+```
+*Source: svelte.dev/docs/svelte/snippet (2024-12)*
 
 ### SvelteKit API design (+server.ts patterns)
 
-**Export HTTP verb functions (GET, POST, PUT, DELETE) from `+server.ts` files; use the `json()` helper for responses.** SvelteKit's server routes provide full control over responses using web-standard Request/Response objects. Place API routes in `/routes/api/` for clarity.
+- **Use form actions for mutations, not +server.ts POST endpoints.** Form actions provide progressive enhancement, automatic CSRF protection, and integrate with SvelteKit's data flow. Reserve +server.ts for REST APIs and external integrations.
+```typescript
+// +page.server.ts
+export const actions = {
+  create: async ({ request }) => {
+    const data = await request.formData();
+    // validate and process
+    return { success: true };
+  }
+} satisfies Actions;
+```
+*Source: svelte.dev/docs/kit/form-actions (2024-12)*
 
+- **Import `RequestHandler` from `./$types` for type-safe API endpoints.**
 ```typescript
 // routes/api/posts/+server.ts
-import { json, error } from '@sveltejs/kit';
+import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ url }) => {
-  const limit = Number(url.searchParams.get('limit') ?? 10);
-  const posts = await db.getPosts(limit);
+export const GET: RequestHandler = async () => {
+  const posts = await db.query('SELECT * FROM posts').all();
   return json(posts);
 };
-
-export const POST: RequestHandler = async ({ request, locals }) => {
-  if (!locals.user) error(401, 'Unauthorized');
-  
-  const data = await request.json();
-  const post = await db.createPost(data);
-  return json(post, { status: 201 });
-};
 ```
+*Source: svelte.dev/docs/kit/routing (2024-12)*
 
-*When to deviate*: Prefer form actions over API routes when handling form submissions—they provide better progressive enhancement and type safety.
+### Bun SQLite schema design
 
-**Source**: "SvelteKit API Endpoints", Joy of Code, 2024
-
----
-
-### Error handling and separation of concerns
-
-**Implement `handleError` in hooks.server.ts for error logging; return sanitized error messages to users.** The hook catches unexpected errors for logging services while protecting sensitive information. Use Zod's `safeParse()` in form actions to prevent exceptions and enable graceful error handling.
-
-```typescript
-// src/hooks.server.ts
-export const handleError: HandleServerError = async ({ error, event }) => {
-  console.error('Unexpected error:', error);
-  // Send to error tracking (Sentry, etc.)
-  await reportError(error, event.url.pathname);
-  
-  // Return sanitized message to user
-  return { message: 'An unexpected error occurred' };
-};
+- **Use INTEGER PRIMARY KEY AUTOINCREMENT for most tables.** For distributed systems, consider UUID with `randomblob(16)`.
+```sql
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
 ```
+*Source: bun.sh/docs/runtime/sqlite (2024)*
 
-**Source**: "SvelteKit Hooks", svelte.dev/docs/kit/hooks, 2024
-
----
-
-## Reactivity and state management
-
-### Migration from stores to Runes
-
-**Replace Svelte 4 writable stores with `$state` in `.svelte.ts` files for shared reactive state; migrate bottom-up (child components first).** Runes unify reactivity inside and outside components. Files with the `.svelte.ts` extension can use runes and export reactive state that works everywhere.
-
+- **Create indexes on frequently queried columns.** Use composite indexes for multi-column WHERE clauses and partial indexes for filtered queries.
 ```typescript
-// OLD: store.ts (Svelte 4)
-import { writable } from 'svelte/store';
-export const count = writable(0);
+db.run("CREATE INDEX idx_orders_user_date ON orders(user_id, created_at)");
+db.run("CREATE INDEX idx_active_users ON users(email) WHERE active = 1");
+```
+*Source: SQLite documentation; bun.sh/docs/runtime/sqlite*
 
-// NEW: store.svelte.ts (Svelte 5)
-class CounterStore {
-  count = $state(0);
-  doubled = $derived(this.count * 2);
-  
-  increment() { this.count++; }
+### Error handling patterns
+
+- **Use SvelteKit's `error()` helper for expected errors.** Returns proper HTTP status and renders +error.svelte. Never expose stack traces to users.
+```typescript
+import { error } from '@sveltejs/kit';
+
+export function load({ locals }) {
+  if (!locals.user) error(401, 'Not logged in');
+  if (!locals.user.isAdmin) error(403, 'Not authorized');
 }
-export const counterStore = new CounterStore();
 ```
+*Source: svelte.dev/docs/kit/load#Errors (2024-12)*
 
-**Key migration rules**:
-- `let x = 0` → `let x = $state(0)`
-- `$: doubled = x * 2` → `const doubled = $derived(x * 2)`
-- `$: { sideEffect() }` → `$effect(() => { sideEffect() })`
-- `export let prop` → `let { prop } = $props()`
-- Rename `.ts` to `.svelte.ts` when using runes
+- **Implement `handleError` hook for unexpected errors.** Log securely server-side, return generic message to client.
+```typescript
+// hooks.server.ts
+export async function handleError({ error, event }) {
+  console.error(error);
+  return { message: 'Something went wrong', code: generateErrorId() };
+}
+```
+*Source: svelte.dev/tutorial/kit/handleerror (2024-12)*
 
-**Source**: "Svelte 5 migration guide", svelte.dev, 2024-10; "Converting global Svelte stores to runes", Inorganik, 2025-01
+### Separation of concerns
+
+- **Place shared state in `.svelte.js` or `.svelte.ts` files.** These files enable runes outside components. Export objects (not primitives) for reactivity to work correctly.
+```javascript
+// counter.svelte.js
+export const counter = $state({ count: 0 });
+export function increment() { counter.count += 1; }
+```
+*Source: svelte.dev/docs/svelte/v5-migration-guide (2024-12)*
+
+- **Use callback props instead of events for component communication.** Better TypeScript inference and explicit contracts.
+```svelte
+<!-- Pump.svelte -->
+<script>
+  let { inflate, deflate } = $props();
+</script>
+<button onclick={() => inflate(5)}>Inflate</button>
+```
+*Source: svelte.dev/docs/svelte/v5-migration-guide (2024-12)*
 
 ---
+
+## 2. Reactivity & State
+
+### Runes migration from stores
+
+- **Replace `writable()` stores with `$state()` in `.svelte.js` modules.** Export an object containing state properties; consumers import and use directly without `$` prefix.
+
+| Svelte 4 | Svelte 5 |
+|----------|----------|
+| `let count = 0` (implicit) | `let count = $state(0)` |
+| `$: doubled = count * 2` | `let doubled = $derived(count * 2)` |
+| `$: { console.log(count) }` | `$effect(() => { console.log(count) })` |
+| `export let prop` | `let { prop } = $props()` |
+| `writable(0)` | `$state()` in `.svelte.js` file |
+
+*Source: svelte.dev/docs/svelte/v5-migration-guide (2024-12)*
+
+### Fine-grained reactivity patterns
+
+- **Svelte 5 uses signals under the hood.** Changes to specific object properties only update DOM nodes referencing those properties—no full re-renders.
+```svelte
+<script>
+  let todos = $state([{ done: false, text: 'Learn' }]);
+  todos[0].done = true; // Only updates UI where todos[0].done is used
+</script>
+```
+*Source: frontendmasters.com/blog/fine-grained-reactivity-in-svelte-5 (2024)*
+
+- **Use Svelte's reactive built-in classes for Map, Set, Date, URL.**
+```svelte
+<script>
+  import { SvelteSet, SvelteMap } from 'svelte/reactivity';
+  let selectedItems = new SvelteSet();
+</script>
+```
+*Source: svelte.dev/docs/svelte/svelte-reactivity (2024-12)*
+
+### $state.raw vs $state
+
+- **Use `$state.raw()` for large immutable data.** Avoids Proxy overhead; objects aren't deeply reactive. Requires full reassignment to trigger updates.
+```svelte
+<script>
+  let person = $state.raw({ name: 'Heraclitus', age: 49 });
+  person.age += 1;  // ❌ NO effect
+  person = { ...person, age: 50 };  // ✅ Must reassign
+</script>
+```
+*When to use:* Large arrays from APIs, performance-critical scenarios, data you won't mutate in place.
+
+*Source: svelte.dev/docs/svelte/$state#$state.raw (2024-12)*
+
+- **Use `$state.snapshot()` when passing reactive state to external APIs** that don't expect Proxies.
+```typescript
+const snapshot = $state.snapshot(reactiveObject);
+externalLibrary.process(snapshot);
+```
+*Source: svelte.dev/docs/svelte/$state (2024-12)*
+
+### $derived.by patterns
+
+- **Use `$derived.by()` when derivation logic requires intermediate variables, loops, or conditionals.**
+```svelte
+<script>
+  let items = $state([1, 2, 3, 4, 5]);
+  let stats = $derived.by(() => {
+    const sum = items.reduce((a, b) => a + b, 0);
+    return { sum, avg: sum / items.length, count: items.length };
+  });
+</script>
+```
+*Source: svelte.dev/docs/svelte/$derived (2024-12)*
 
 ### Context API with Runes
 
-**Store reactive `$state` objects in context (not primitives) for proper mutation propagation; use context for SSR-safe global state.** Context is bound during component initialization and scoped per-request in SSR, preventing data leakage between users. Pass objects so mutations propagate correctly.
-
-```typescript
-// context.ts - Type-safe context pattern
-import { createContext } from 'svelte';
-
-interface User { name: string; }
-export const [getUser, setUser] = createContext<User>();
-
-// Parent.svelte
-<script lang="ts">
-  import { setUser } from './context';
-  let user = $state({ name: 'Alice' });
-  setUser(user);
+- **Pass reactive objects to context for child reactivity.** Alternatively, pass getter functions.
+```svelte
+<!-- Parent.svelte -->
+<script>
+  import { setContext } from 'svelte';
+  let counter = $state({ count: 0 });
+  setContext('counter', counter);
 </script>
 
-// Child.svelte
-<script lang="ts">
-  import { getUser } from './context';
-  const user = getUser();
+<!-- Child.svelte -->
+<script>
+  import { getContext } from 'svelte';
+  const counter = getContext('counter');
 </script>
-<p>{user.name}</p> <!-- reactive! -->
+<p>{counter.count}</p>
 ```
+*Source: svelte.dev/docs/svelte/context (2024-12)*
 
-*Critical*: For SSR/SvelteKit apps, **always use context instead of module-level state** to avoid data leakage between requests.
-
-**Source**: "Context • Svelte Docs", svelte.dev, 2024-10; "Runes and Global state", Mainmatter, 2025-03
-
----
+- **Use typed `createContext()` (Svelte 5.x) for type-safe context.**
+```typescript
+import { createContext } from 'svelte';
+export const [getUserContext, setUserContext] = createContext<User>();
+```
+*Source: mainmatter.com/blog/2025/03/11/global-state-in-svelte-5 (2025-03)*
 
 ### Avoiding reactivity pitfalls
 
-| Anti-pattern | Why it's bad | Correct approach |
-|-------------|--------------|------------------|
-| `$effect(() => { stateVar = derived })` | Infinite loops | Use `$derived()` |
-| Setting `$state` inside `$derived` | Compilation error | Keep `$derived` pure |
-| Module-level `$state` in SvelteKit | SSR data leakage | Use context API |
-| Mutating `$state.raw` objects | Changes won't trigger updates | Reassign entire object |
-| Reading state after `await` in `$effect` | Loses reactivity tracking | Capture before await |
-
+- **Never destructure reactive objects in the script block**—this breaks reactivity.
 ```svelte
 <script>
-  // ❌ BAD: State read after await loses tracking
-  $effect(async () => {
-    await somePromise;
-    console.log(count); // Not tracked!
-  });
+  // ❌ BAD - loses reactivity
+  let { done, text } = todos[0];
   
-  // ✓ GOOD: Capture before await
-  $effect(() => {
-    const currentCount = count; // Tracked
-    doAsyncWork(currentCount);
-  });
+  // ✅ GOOD - maintain reference
+  let todo = todos[0]; // Access as todo.done
 </script>
 ```
+*Source: jamesy.dev/blog/svelte-5-states-avoiding-common-reactivity-traps (2024)*
 
-**Source**: "Runtime warnings • Svelte Docs", svelte.dev, 2024-10
+- **Read all reactive values upfront in `$effect`** to avoid short-circuit tracking issues.
+```typescript
+$effect(() => {
+  const isInit = initialized;
+  const nodeChanged = nodeRef !== prevNodeRef;
+  if (!isInit || nodeChanged) { /* ... */ }
+});
+```
+*Source: github.com/sveltejs/svelte/issues/11806 (2024)*
+
+- **Use `tick()` before imperative DOM operations** after state changes.
+```typescript
+import { tick } from 'svelte';
+async function submit() {
+  inputValue = 'new value';
+  await tick();
+  form.submit();
+}
+```
+*Source: svelte.dev/docs/svelte (2024-12)*
 
 ---
 
-## Data loading and mutations
+## 3. Data Loading & Mutations
 
-### Load functions: +page.ts vs +page.server.ts
+### SvelteKit load functions
 
-**Use `+page.server.ts` for database access, secrets, and sensitive operations; use `+page.ts` for external APIs and non-serializable data.** Server load functions run only on the server, providing security. Universal load functions run on both server (SSR) and client (navigation), reducing round-trips.
-
+- **Use `+page.server.ts` for database access, private env vars, cookies.** Data is serializable only.
 ```typescript
-// +page.server.ts - Server-only (database, secrets)
+// +page.server.ts
 import type { PageServerLoad } from './$types';
-import db from '$lib/server/database';
+import * as db from '$lib/server/database';
 
 export const load: PageServerLoad = async ({ params }) => {
   return { post: await db.getPost(params.slug) };
 };
-
-// +page.ts - Universal (external APIs, component constructors)
-import type { PageLoad } from './$types';
-
-export const load: PageLoad = async ({ fetch, data }) => {
-  const comments = await fetch('/api/comments');
-  return { ...data, comments: await comments.json() };
-};
 ```
+*Source: svelte.dev/docs/kit/load (2024-12)*
 
-*When to deviate*: Use server load exclusively when you need `cookies`, `locals`, or `request` access. Use universal load for returning component constructors or non-serializable values.
-
-**Source**: "SvelteKit Loading data", kit.svelte.dev/docs/load, 2024
-
----
-
-### Form actions and progressive enhancement
-
-**Use named actions (`?/login`, `?/register`) when a page has multiple forms; always return `fail()` for validation errors to preserve form state.** Form actions work without JavaScript as a baseline. Using `fail()` returns a 4xx status while preserving user input.
-
+- **Use `+page.ts` (universal) when returning non-serializable values** (components, custom classes) or fetching from public APIs.
 ```typescript
-// +page.server.ts
-import { fail, redirect } from '@sveltejs/kit';
-import type { Actions } from './$types';
-
-export const actions: Actions = {
-  login: async ({ request, cookies }) => {
-    const data = await request.formData();
-    const email = data.get('email');
-    
-    if (!email) return fail(400, { email, missing: true });
-    
-    cookies.set('session', 'token', { path: '/' });
-    redirect(303, '/dashboard');
-  }
+// +page.ts
+export const load: PageLoad = async ({ data }) => {
+  const module = data.cool 
+    ? await import('./CoolComponent.svelte') 
+    : await import('./BoringComponent.svelte');
+  return { component: module.default };
 };
 ```
+*Source: svelte.dev/tutorial/kit/universal-load-functions (2024-12)*
 
-**Always add `use:enhance` to forms for seamless JavaScript-enhanced submissions** while maintaining the no-JS baseline. It prevents full page reloads, updates `form` and `$page.status` automatically, and handles redirects.
+### Form actions
 
+- **Always add `use:enhance` for progressive enhancement.** Forms work without JavaScript; enhancement adds smoothness.
 ```svelte
-<script lang="ts">
+<script>
   import { enhance } from '$app/forms';
-  let { form } = $props();
 </script>
-
 <form method="POST" action="?/login" use:enhance>
-  {#if form?.missing}<p class="error">Email required</p>{/if}
-  <input name="email" value={form?.email ?? ''}>
+  <input name="email" />
   <button>Login</button>
 </form>
 ```
+*Source: svelte.dev/docs/kit/form-actions (2024-12)*
 
-**Source**: "Form Actions", svelte.dev/docs/kit/form-actions, 2024
-
----
-
-### Streaming with nested promises
-
-**Return nested promises (not top-level) from server load to stream non-essential data; use `{#await}` blocks for loading states.** Top-level promises are awaited; only nested promises stream. This improves perceived performance.
-
+- **Use `fail()` for validation errors, `redirect()` for success.**
 ```typescript
-// +page.server.ts
+import { fail, redirect } from '@sveltejs/kit';
+
+export const actions = {
+  login: async ({ request }) => {
+    const data = await request.formData();
+    if (!data.get('email')) return fail(400, { missing: true });
+    // ... validate
+    redirect(303, '/dashboard');
+  }
+} satisfies Actions;
+```
+*Source: svelte.dev/docs/kit/form-actions (2024-12)*
+
+### Streaming with defer
+
+- **Stream non-essential data by returning unwrapped promises.** Essential data should be awaited.
+```typescript
 export const load: PageServerLoad = async ({ params }) => {
   return {
-    post: await loadPost(params.slug),      // Essential - blocks render
-    comments: loadComments(params.slug)      // Non-essential - streams (no await!)
+    post: await loadPost(params.slug),      // Essential - await
+    comments: loadComments(params.slug)     // Non-essential - stream
   };
 };
 ```
-
 ```svelte
 {#await data.comments}
   <p>Loading comments...</p>
 {:then comments}
-  {#each comments as comment}<Comment {comment} />{/each}
-{:catch error}
-  <p>Failed: {error.message}</p>
+  {#each comments as c}<p>{c.content}</p>{/each}
 {/await}
 ```
+*Caveat:* Streaming requires JavaScript—only stream non-essential data.
 
-*When to deviate*: Avoid streaming for essential SEO content. Streaming requires JavaScript.
-
-**Source**: "Streaming, snapshots, and other new features", svelte.dev/blog, 2023
-
----
+*Source: svelte.dev/blog/streaming-snapshots-sveltekit (2023)*
 
 ### Invalidation patterns
 
-**Use `invalidate(url)` for targeted reloading; use `invalidateAll()` sparingly; define custom dependencies with `depends()`.** SvelteKit tracks dependencies automatically via `fetch()` calls. Custom dependencies enable fine-grained control.
-
+- **Use `depends()` to register custom dependencies, `invalidate()` to selectively rerun load functions.**
 ```typescript
 // +page.ts
-export const load: PageLoad = async ({ fetch, depends }) => {
-  depends('app:user-posts'); // Custom dependency
-  const posts = await fetch('/api/posts');
-  return { posts: await posts.json() };
-};
-```
+export async function load({ fetch, depends }) {
+  depends('app:todos');
+  return { todos: await fetch('/api/todos').then(r => r.json()) };
+}
 
+// Component
+import { invalidate } from '$app/navigation';
+await invalidate('app:todos');
+```
+*Source: svelte.dev/docs/kit/$app-navigation (2024-12)*
+
+### Optimistic UI patterns
+
+- **Update UI immediately before server confirms using `use:enhance` callbacks.**
 ```svelte
-<script>
-  import { invalidate, invalidateAll } from '$app/navigation';
-  
-  async function refresh() {
-    await invalidate('app:user-posts'); // Targeted
-    // await invalidateAll(); // Nuclear option - reruns ALL loads
-  }
-</script>
+<form method="POST" action="?/delete"
+  use:enhance={() => {
+    deleting = [...deleting, todo.id];
+    return async ({ update }) => {
+      await update();
+      deleting = deleting.filter(id => id !== todo.id);
+    };
+  }}>
 ```
+*Source: svelte.dev/tutorial/kit/customizing-use-enhance (2024-12)*
 
-**Source**: "Invalidation", svelte.dev/tutorial/kit/invalidation, 2024
+### Bun SQLite query patterns
 
----
-
-### Superforms integration
-
-**Use Superforms with Zod adapters for comprehensive server and client-side form validation.** Define schemas outside load functions for caching. Superforms provides auto-focusing on errors, tainted field detection, and seamless ActionResult handling.
-
+- **Use `db.query()` for cached prepared statements (repeated queries), `db.prepare()` for one-off dynamic SQL.**
 ```typescript
-// schema.ts
-import { z } from 'zod';
-export const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8)
-});
-
-// +page.server.ts
-import { superValidate, fail } from 'sveltekit-superforms';
-import { zod } from 'sveltekit-superforms/adapters';
-
-export const load: PageServerLoad = async () => {
-  const form = await superValidate(zod(loginSchema));
-  return { form };
-};
-
-export const actions: Actions = {
-  default: async ({ request }) => {
-    const form = await superValidate(request, zod(loginSchema));
-    if (!form.valid) return fail(400, { form });
-    return { form };
-  }
-};
+const stmt = db.query<User, [number]>("SELECT * FROM users WHERE id = ?");
+const user = stmt.get(1);
+const users = stmt.all();
 ```
+*Source: bun.sh/docs/runtime/sqlite (2024)*
 
-**Source**: "Superforms Documentation", superforms.rocks, 2024
-
----
-
-## Animations
-
-### Motion One vs GSAP: Decision criteria
-
-| Factor | Motion One | GSAP |
-|--------|-----------|------|
-| **Bundle size** | 2.6-18kb | 23kb + plugins |
-| **GPU acceleration** | ✓ Native WAAPI | ✗ JavaScript-based |
-| **Spring physics** | ✓ Built-in | ✗ Not supported |
-| **Mutable timelines** | ✗ | ✓ Add/remove during playback |
-| **SVG morphing** | Requires Flubber | ✓ MorphSVG plugin |
-| **ScrollTrigger** | 0.5kb | 12kb |
-
-**Choose Motion for performance-critical, smaller bundles with hardware acceleration; choose GSAP for complex timelines, mutable sequences, and advanced plugins.**
-
-**Source**: "GSAP vs Motion: A detailed comparison", motion.dev, 2025-01
+- **Use transactions for batch operations**—dramatically faster.
+```typescript
+const insert = db.prepare("INSERT INTO users (name) VALUES (?)");
+const insertMany = db.transaction((users) => {
+  for (const user of users) insert.run(user);
+});
+insertMany(['Alice', 'Bob', 'Charlie']);
+```
+*Source: bun.sh/docs/runtime/sqlite (2024)*
 
 ---
 
-### Motion One with Svelte 5
+## 4. Animations
 
-**Use Motion's `animate()` function with `$effect` for hardware-accelerated animations; return a cleanup function to stop animations on unmount.**
+### Motion (motiondivision/motion) integration with Svelte 5
 
+- **Use Motion's vanilla JavaScript API with `$effect` for lifecycle management.** No official Svelte 5 wrapper exists yet (Issue #2895).
 ```svelte
 <script>
-  import { animate, spring, stagger } from 'motion';
-  
-  let box: HTMLElement;
+  import { animate } from 'motion';
+  let element;
   
   $effect(() => {
-    if (!box) return;
-    const animation = animate(box, { 
-      transform: 'rotate(360deg)',
-      opacity: [0, 1]
-    }, { duration: 2, easing: spring() });
-    
+    if (!element) return;
+    const animation = animate(element, 
+      { opacity: [0, 1], x: [-100, 0] }, 
+      { duration: 0.5 }
+    );
     return () => animation.stop();
   });
 </script>
-
-<div bind:this={box}></div>
+<div bind:this={element}>Animated</div>
 ```
+*Source: motion.dev Quick Start (2024-12); github.com/motiondivision/motion*
 
-**Source**: "Motion Documentation", motion.dev, 2024-12
+- **For declarative components, use community wrappers:** `motion-svelte`, `@humanspeak/svelte-motion`, or `motion-sv`.
+```bash
+bun i motion-svelte
+```
+*Source: github.com/epavanello/motion-svelte (2024-11)*
 
----
+### GSAP ScrollTrigger and timeline patterns
 
-### GSAP ScrollTrigger with Svelte 5
-
-**Register ScrollTrigger once at module scope, create instances inside `$effect`, and use `gsap.context()` for easy batch cleanup.** Always kill both the tween AND its ScrollTrigger in cleanup to prevent memory leaks.
-
+- **Register GSAP plugins at module level, use `gsap.context()` for cleanup.**
 ```svelte
 <script>
   import { gsap } from 'gsap';
@@ -521,198 +514,228 @@ export const actions: Actions = {
   
   gsap.registerPlugin(ScrollTrigger);
   
-  let section: HTMLElement;
+  let container;
   
   $effect(() => {
-    if (!section) return;
-    
     const ctx = gsap.context(() => {
-      gsap.from('.animate-in', {
-        y: 50,
-        opacity: 0,
-        stagger: 0.2,
-        scrollTrigger: {
-          trigger: section,
-          start: 'top 70%',
-          toggleActions: 'play none none reverse'
-        }
+      gsap.from('.element', {
+        scrollTrigger: { trigger: '.element', start: 'top 80%' },
+        y: 50, opacity: 0
       });
-    }, section);
-    
-    return () => ctx.revert(); // Kills all animations + ScrollTriggers
+    }, container);
+    return () => ctx.revert();
   });
 </script>
 ```
+*Source: GSAP Forum "SvelteKit 2 + GSAP - ScrollTrigger" (2024-06)*
 
-**Source**: "GSAP & ScrollTrigger Playground", svelte.dev Playground, 2024-11
-
----
-
-### Performance: GPU acceleration
-
-**Animate only `transform`, `opacity`, `filter`, and `clipPath` for GPU acceleration; apply `will-change` sparingly and remove after animations complete.** These properties can be composited on the GPU without triggering layout/paint.
-
-```svelte
-<script>
-  let isAnimating = $state(false);
-</script>
-
-<div 
-  style:will-change={isAnimating ? 'transform, opacity' : 'auto'}
-  class="transform-gpu"
->
-  Animated content
-</div>
+- **Use timeline position parameters for precise sequencing.**
+```javascript
+const tl = gsap.timeline({ defaults: { duration: 1 } });
+tl.to('.element-1', { x: 100 })
+  .to('.element-2', { y: 50 }, '<')      // Same time as previous
+  .to('.element-3', { opacity: 0 }, '+=0.5'); // 0.5s after previous
 ```
+*Source: gsap.com/docs/v3/GSAP/Timeline (2024)*
 
-**Performance tier list**: S-Tier = Hardware-accelerated WAAPI (Motion); A-Tier = JS animations with composited properties; C-Tier = Paint-triggering (color, background); D-Tier = Layout-triggering (width, height, top).
+### Animation composition
 
-**Source**: "The Web Animation Performance Tier List", motion.dev, 2025-01
+- **Use Motion's stagger for multi-element coordination.**
+```javascript
+import { animate, stagger } from 'motion';
+animate("li", { opacity: 1, y: 0 }, { delay: stagger(0.1) });
+```
+*Source: motion.dev/docs/stagger (2024-12)*
 
----
+- **Use GSAP context's `add()` method for dynamic animations.**
+```javascript
+let ctx = gsap.context((self) => {
+  self.add("playIntro", () => gsap.from('.intro', { opacity: 0 }));
+});
+ctx.playIntro();
+```
+*Source: gsap.com/docs/v3/GSAP/gsap.context() (2024)*
 
-### Accessibility: prefers-reduced-motion
+### Performance considerations
 
-**Use Svelte 5's built-in `prefersReducedMotion` from `svelte/motion` to disable or reduce animations for users with vestibular disorders.**
+- **Animate only `transform` and `opacity` for GPU acceleration.** Avoid `width`, `height`, `left`, `top`.
+```javascript
+// ✅ GPU-accelerated
+animate(element, { transform: "translateX(100px) scale(2)" });
 
+// ❌ Triggers layout
+animate(element, { width: "200px" });
+```
+*Source: motion.dev/docs/performance (2024-12)*
+
+- **Motion's shorthand properties (x, y, scale) use CSS variables which are NOT hardware accelerated.** Use full `transform` strings for critical animations.
+```javascript
+// ❌ Uses CSS variables
+animate(".box", { x: 100, scale: 2 });
+
+// ✅ Hardware accelerated
+animate(".box", { transform: "translateX(100px) scale(2)" });
+```
+*Source: motion.dev/docs/performance (2024-12)*
+
+- **Use `will-change` sparingly**—each layer uses GPU memory.
+```javascript
+element.style.willChange = "transform";
+animate(element, { borderRadius: "50%" });
+```
+*Source: motion.dev/docs/performance (2024-12)*
+
+### Reduced motion accessibility
+
+- **Use Svelte 5's built-in `prefersReducedMotion` (v5.7.0+).**
 ```svelte
 <script>
   import { prefersReducedMotion } from 'svelte/motion';
   import { fly } from 'svelte/transition';
 </script>
-
 {#if visible}
-  <p transition:fly={{ y: prefersReducedMotion.current ? 0 : 200 }}>
-    Animated content
-  </p>
+  <p transition:fly={{ y: prefersReducedMotion.current ? 0 : 200 }}>Content</p>
 {/if}
 ```
+*Source: svelte.dev/docs/svelte/svelte-motion (2024-12)*
 
-**Source**: "svelte/motion Documentation", svelte.dev, 2024-12
-
----
-
-## Performance optimization
-
-### Bun runtime and bun:sqlite setup
-
-**Use `new Database()` with `{ strict: true }` for type-safe parameter binding; enable WAL mode immediately after opening for concurrent read performance.**
-
-```typescript
-import { Database } from 'bun:sqlite';
-
-const db = new Database('app.db', { strict: true, create: true });
-
-// Enable WAL mode (persistent - set once)
-db.run('PRAGMA journal_mode = WAL;');
-db.run('PRAGMA synchronous = NORMAL;');  // Safe with WAL
-db.run('PRAGMA cache_size = 10000;');
-db.run('PRAGMA busy_timeout = 5000;');
-```
-
-**WAL (Write-Ahead Logging)** allows concurrent readers while writing, improving throughput **4-10x** in read-heavy workloads.
-
-**Source**: "Bun SQLite", bun.sh/docs, 2024-12
-
----
-
-### Prepared statements and SQL injection prevention
-
-**Use `db.query()` for cached/reusable statements; always use parameterized queries to prevent SQL injection.** `db.query()` caches compiled SQL bytecode, avoiding recompilation overhead on repeated queries.
-
-```typescript
-// CACHED: Same Statement instance for same SQL
-const getUserQuery = db.query<User, [number]>(
-  'SELECT * FROM users WHERE id = ?'
-);
-const user = getUserQuery.get(1);
-
-// Named parameters with strict mode
-const insertStmt = db.query(
-  'INSERT INTO users (name, email) VALUES ($name, $email)'
-);
-insertStmt.run({ name: 'Alice', email: 'alice@example.com' });
-
-// ❌ NEVER: SQL injection risk!
-// db.run(`SELECT * FROM users WHERE id = ${userId}`);
-```
-
-**Source**: "Bun SQLite", bun.sh/docs, 2024-12
-
----
-
-### bunfig.toml configuration
-
-**Place `bunfig.toml` in project root; use `preload` for plugins, `[test]` for test runner, `[install]` for package manager options.**
-
-```toml
-# bunfig.toml
-preload = ["./setup.ts"]
-
-[test]
-root = "./__tests__"
-preload = ["./test-setup.ts"]
-coverage = true
-coverageThreshold = { line = 0.8, function = 0.8 }
-
-[install]
-frozenLockfile = true
-
-[loader]
-".sql" = "text"
-".graphql" = "text"
-```
-
-**Source**: "bunfig.toml", bun.sh/docs/runtime/bunfig, 2024-12
-
----
-
-### UnoCSS + unocss-preset-shadcn integration
-
-**Use `unocss-preset-shadcn` with `presetAnimations` to replace Tailwind while maintaining full shadcn component compatibility.**
-
-```typescript
-// uno.config.ts
-import { defineConfig } from 'unocss';
-import { presetWind } from '@unocss/preset-wind3';
-import presetAnimations from 'unocss-preset-animations';
-import { presetShadcn } from 'unocss-preset-shadcn';
-
-export default defineConfig({
-  presets: [
-    presetWind(),
-    presetAnimations(),
-    presetShadcn({ color: 'slate' })
-  ],
-  shortcuts: {
-    'btn': 'py-2 px-4 font-semibold rounded-lg shadow-md cursor-pointer',
-    'btn-primary': 'btn bg-blue-500 text-white hover:bg-blue-700'
-  }
+- **Use `gsap.matchMedia()` for GSAP accessibility.**
+```javascript
+let mm = gsap.matchMedia();
+mm.add("(prefers-reduced-motion: no-preference)", () => {
+  gsap.from(".box", { rotation: 360 });
+});
+mm.add("(prefers-reduced-motion: reduce)", () => {
+  gsap.from(".box", { opacity: 0 }); // Fade only
 });
 ```
+*Source: gsap.com/docs/v3/GSAP/gsap.matchMedia() (2024)*
 
-**Source**: "unocss-preset-shadcn", GitHub, 2024-12
+### Coordinating Motion with GSAP
+
+| Feature | Motion | GSAP |
+|---------|--------|------|
+| Best for | Simple UI transitions, declarative API | Complex timelines, scroll, SVG morphing |
+| Bundle size | ~32KB | ~23KB core |
+| API style | Declarative | Imperative |
+| License | MIT | Free (Webflow-owned restrictions) |
+| ScrollTrigger | Less mature | Excellent, mature |
+
+*Recommendation:* Use Motion for entry/exit animations and simple interactions; use GSAP for complex scroll-linked animations and precise timeline control.
+
+*Source: motion.dev "GSAP vs Motion: A detailed comparison" (2024)*
+
+### Svelte 5 lifecycle integration
+
+- **Use `$effect` for both Motion and GSAP, always return cleanup functions.**
+```svelte
+$effect(() => {
+  const animation = animate(element, { x: 100 });
+  return () => animation.stop();
+});
+```
+*Source: Svelte 5 documentation (2024-12)*
 
 ---
+
+## 5. Performance
+
+### Bun runtime optimizations
+
+- **Bun achieves 28% lower latency for SSR** vs Node.js, **4x more requests/second** for React SSR.
+- Use `bun --hot` for development hot reload without restarts.
+- Create single-file executables: `bun build --compile --minify ./server.ts --outfile server`
+
+*Source: vercel.com/blog/bun-runtime-on-vercel-functions (2024-12)*
+
+### Svelte 5 compiler improvements
+
+- **Fine-grained reactivity** means only affected DOM nodes update—no virtual DOM diffing.
+- **Smaller runtime** due to signals-based architecture.
+
+*Source: vercel.com/blog/whats-new-in-svelte-5 (2024)*
+
+### UnoCSS configuration
+
+- **Use `@unocss/svelte-scoped` for large apps** to inject styles into component `<style>` blocks, avoiding global CSS bloat.
+```typescript
+// vite.config.ts
+import UnoCSS from '@unocss/svelte-scoped/vite';
+export default defineConfig({
+  plugins: [UnoCSS({ injectReset: '@unocss/reset/tailwind.css' }), sveltekit()]
+});
+```
+*Source: unocss.dev/integrations/svelte-scoped (2024)*
+
+- **Enable attributify mode for cleaner markup.**
+```svelte
+<button bg="blue-400 hover:blue-500" text="sm white" p="y-2 x-4">
+  Button
+</button>
+```
+*Source: unocss.dev/presets/attributify (2024)*
 
 ### SSR/SSG strategies
 
-**Return non-essential promises without await in load functions to enable streaming; use `+layout.ts` for shared data to avoid duplicate fetches.** Configure adapter-static for SSG when appropriate.
+- **Use `export const prerender = true` for static content.**
+- **Disable SSR per route with `export const ssr = false`** for GSAP-heavy pages.
+```typescript
+// +page.js
+export const ssr = false;
+```
+*Source: svelte.dev/docs/kit/page-options (2024-12)*
+
+### Bundle optimization
+
+- **Import Lucide icons via direct paths** to avoid loading entire library.
+```svelte
+<!-- ✅ Optimized -->
+<script>
+  import CircleAlert from '@lucide/svelte/icons/circle-alert';
+</script>
+
+<!-- ❌ Loads entire library -->
+<script>
+  import { User, Settings } from 'lucide-svelte';
+</script>
+```
+*Source: lucide.dev/guide/packages/lucide-svelte (2024)*
+
+### Bun SQLite query optimization
+
+- **Enable WAL mode for concurrent reads.**
+```typescript
+const db = new Database("mydb.sqlite");
+db.run("PRAGMA journal_mode = WAL;");
+```
+*Source: bun.sh/docs/runtime/sqlite (2024)*
+
+- **Use `EXPLAIN QUERY PLAN` to debug slow queries.**
+```typescript
+const plan = db.query("EXPLAIN QUERY PLAN SELECT * FROM users WHERE email = ?")
+  .all("[email protected]");
+```
+*Source: bun.sh/docs/runtime/sqlite (2024)*
 
 ---
 
-## Tooling and QA
+## 6. Tooling & QA
 
-### Testing setup comparison
+### Bun test runner
 
-| Tool | Use case | Configuration |
-|------|----------|---------------|
-| **Bun test** | Fast unit tests | `bunfig.toml` + svelte-loader plugin |
-| **Vitest Browser Mode** | Real browser component tests | `vitest-browser-svelte` + Playwright |
-| **Playwright** | E2E tests | `webServer` config for build+preview |
+- **Bun test is 10-30x faster than Jest** but lacks some features.
+```bash
+bun test                    # Run all tests
+bun test --coverage         # With coverage
+bun test --watch            # Watch mode with HMR
+```
+*Source: bun.sh/docs/cli/test (2024)*
 
-**Use `vitest-browser-svelte` with Playwright for real browser testing—superior to jsdom for Svelte 5 runes.**
+- **For SvelteKit, use `bun run test` (not `bun test`)** to invoke Vitest via package scripts.
 
+### Vitest integration
+
+- **Use browser mode with `vitest-browser-svelte` for modern testing (2025 recommendation).**
 ```typescript
 // vite.config.ts
 export default defineConfig({
@@ -725,344 +748,550 @@ export default defineConfig({
   }
 });
 ```
+*Source: scottspence.com "Testing Svelte with Vitest Browser Mode" (2025)*
 
-**Source**: "From JSDOM to Real Browsers", sveltest.dev, 2024-12
+### Playwright for E2E
 
----
+- **Use Playwright Docker container in CI** to save ~30% on browser downloads.
+```yaml
+container:
+  image: mcr.microsoft.com/playwright:v1.52.0-noble
+```
+*Source: playwright.dev; svelte.dev/docs/svelte/testing (2024-12)*
 
-### Biome for Svelte
+### @testing-library/svelte
 
-**Enable experimental Svelte support in Biome v2.3+; disable false-positive rules for `.svelte` files.**
+- **Use `flushSync()` when testing external state with runes.**
+```typescript
+import { flushSync } from 'svelte';
+double.set(5);
+flushSync();
+expect(double.value).toEqual(10);
+```
+*Source: svelte.dev/docs/svelte/testing (2024-12)*
 
+- **Test files using runes must include `.svelte` in filename** (e.g., `*.svelte.test.ts`).
+
+### biome vs eslint+prettier
+
+- **Biome v2.3.0+ supports Svelte files experimentally**, ~35x faster than ESLint+Prettier.
+- **For production stability, use ESLint+Prettier.** Biome lacks Svelte-specific lint rules.
 ```json
+// biome.json
 {
-  "overrides": [{
-    "includes": ["**/*.svelte"],
-    "linter": {
-      "rules": {
-        "style": { "useConst": "off", "useImportType": "off" },
-        "correctness": { "noUnusedVariables": "off" }
-      }
-    }
-  }]
+  "html": { "experimentalFullSupportEnabled": true }
 }
 ```
+*Source: biomejs.dev/blog/biome-v2-3 (2025)*
 
-**Source**: "Biome Language Support", biomejs.dev, 2024-12
+### svelte-check
 
----
-
-### svelte-check and TypeScript strict mode
-
-**Run `svelte-check` alongside `tsc` in CI to catch type errors in both `.svelte` templates and TypeScript files.**
-
+- **Run `svelte-check` in CI before deployment.**
 ```json
-// tsconfig.json
 {
-  "compilerOptions": {
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "strictNullChecks": true
+  "scripts": {
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "build": "npm run check && vite build"
   }
 }
 ```
+*Source: svelte.dev/docs/svelte/typescript (2024-12)*
 
-**The `noUncheckedIndexedAccess` option adds `undefined` to array/object index access types**, catching null pointer errors at compile time.
+### bunfig.toml configuration
 
-**Source**: "Svelte ❤ TypeScript", svelte.dev/blog, 2020-07 (updated)
+```toml
+[test]
+preload = ["./test-setup.ts"]
+coverage = true
+coverageThreshold = { lines = 0.85 }
+timeout = 10000
 
----
-
-## Type safety
-
-### Generated types ($types)
-
-**Import types from `./$types` for full type safety; use `PageProps` (SvelteKit 2.16+) for component props.**
-
-```svelte
-<script lang="ts">
-  import type { PageProps } from './$types';
-  let { data, form }: PageProps = $props();
-</script>
+[install]
+frozenLockfile = false
 ```
+*Source: bun.sh/docs/runtime/bunfig (2024)*
 
-**Source**: "SvelteKit Types", svelte.dev/docs/kit/types, 2024
+### SQLite migrations
+
+- **Use Drizzle Kit for structured migrations.**
+```bash
+bunx drizzle-kit generate   # Generate from schema changes
+bunx drizzle-kit migrate    # Apply migrations
+```
+*Source: orm.drizzle.team (2024-2025)*
 
 ---
 
-### Zod/Valibot runtime validation
+## 7. Type Safety
 
-**Use `safeParse()` for validation to prevent exceptions; integrate with Superforms for comprehensive form handling.**
+### TypeScript 5.x strict configuration
 
-```typescript
-const result = schema.safeParse(data);
-if (!result.success) {
-  return fail(400, { errors: result.error.flatten().fieldErrors });
+- **Extend `.svelte-kit/tsconfig.json`** and enable strict mode.
+```json
+{
+  "extends": "./.svelte-kit/tsconfig.json",
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true
+  }
 }
 ```
+*Source: svelte.dev/docs/kit/types (2024-12)*
 
----
+### SvelteKit's generated types ($types)
 
-### TypeScript satisfies operator
+- **Import from `./$types` for automatic route-specific typing.**
+```typescript
+import type { PageServerLoad, Actions, PageProps } from './$types';
 
-**Use `satisfies` to validate object shapes while preserving inferred literal types.**
+export const load: PageServerLoad = async ({ params }) => { /* ... */ };
+
+// In component
+let { data, form }: PageProps = $props();
+```
+*Source: svelte.dev/docs/kit/types (2024-12)*
+
+### zod/valibot for runtime validation
+
+- **Zod:** Larger community, better docs, ~13.5KB.
+- **Valibot:** Up to 98% smaller (~1.37KB), better for client-side.
 
 ```typescript
-const routes = {
-  home: { path: '/', exact: true },
-  users: { path: '/users' }
-} satisfies Record<string, Route>;
+// Zod
+const schema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8)
+});
 
-routes.home.path; // '/' (literal preserved, not widened to string)
+// Valibot
+const schema = v.object({
+  email: v.pipe(v.string(), v.email()),
+  password: v.pipe(v.string(), v.minLength(8))
+});
 ```
+*Source: valibot.dev/guides/comparison (2024); builder.io/blog/introducing-valibot (2024)*
 
-**Source**: "TypeScript 4.9 Release Notes", typescriptlang.org, 2022-11
+### satisfies operator patterns
+
+- **Use `satisfies` to validate structure while preserving literal types.**
+```typescript
+const routes = {
+  HOME: { path: '/' },
+  AUTH: { path: '/auth' }
+} as const satisfies Record<string, { path: string }>;
+
+// routes.HOME.path is "/" (literal, not string)
+```
+*Source: typescriptlang.org/docs/handbook/release-notes/typescript-4-9 (2022)*
+
+### Bun SQLite type patterns
+
+- **Use generics on queries for type inference.**
+```typescript
+interface User { id: number; name: string; email: string; }
+const user = db.query<User, [number]>("SELECT * FROM users WHERE id = ?").get(1);
+```
+*Source: bun.sh/docs/runtime/sqlite (2024)*
+
+- **Enable strict mode to catch parameter binding errors.**
+```typescript
+const db = new Database(":memory:", { strict: true });
+```
+*Source: bun.sh/docs/runtime/sqlite (2024)*
+
+### Generic components
+
+- **Use the `generics` attribute for reusable type-safe components.**
+```svelte
+<script lang="ts" generics="T extends { id: string }">
+  interface Props { items: T[]; onSelect: (item: T) => void; }
+  let { items, onSelect }: Props = $props();
+</script>
+```
+*Source: svelte.dev/docs/svelte/typescript#Generic-$props (2024-12)*
 
 ---
 
-## Security
+## 8. Security
+
+### SQL injection prevention
+
+- **Always use parameterized queries with `?` placeholders.**
+```typescript
+// ✅ SAFE
+const stmt = db.prepare("SELECT * FROM users WHERE email = ?");
+stmt.all(userInput);
+
+// ❌ DANGEROUS
+const query = db.query(`SELECT * FROM users WHERE email = '${userInput}'`);
+```
+*Source: bun.sh/docs/runtime/sqlite (2024); OWASP SQL Injection Prevention*
 
 ### CSRF protection
 
-**Keep SvelteKit's default `checkOrigin: true`; use `trustedOrigins` for specific allowed cross-origin sources.**
-
-```typescript
+- **SvelteKit has built-in CSRF protection** checking Origin headers. Keep `checkOrigin: true` (default).
+```javascript
 // svelte.config.js
-kit: {
-  csrf: {
-    checkOrigin: true,
-    trustedOrigins: ['https://payment-gateway.com']
+export default {
+  kit: {
+    csrf: {
+      checkOrigin: true,
+      trustedOrigins: ['https://trusted-payment-gateway.com']
+    }
   }
-}
+};
 ```
+*Source: svelte.dev/docs/kit/configuration#csrf (2024-12)*
 
-**Source**: "SvelteKit Configuration", svelte.dev/docs/kit/configuration, 2024-12
+### Input validation
 
----
+- **Use sveltekit-superforms with Zod for validated form actions.**
+```typescript
+import { superValidate } from 'sveltekit-superforms';
+import { zod } from 'sveltekit-superforms/adapters';
 
-### Authentication hooks
+export const actions = {
+  default: async ({ request }) => {
+    const form = await superValidate(request, zod(schema));
+    if (!form.valid) return fail(400, { form });
+    // form.data is validated
+  }
+};
+```
+*Source: superforms.rocks (2024)*
 
-**Use the `handle` hook to validate sessions and populate `event.locals` with auth state.**
+### SvelteKit hooks for auth
 
+- **Use `handle` hook for global auth, not layouts.**
 ```typescript
 // hooks.server.ts
-const authHandle: Handle = async ({ event, resolve }) => {
-  const sessionId = event.cookies.get('session');
-  if (sessionId) {
-    event.locals.user = await validateSession(sessionId);
-  }
-  
+import { sequence } from '@sveltejs/kit/hooks';
+
+const auth: Handle = async ({ event, resolve }) => {
+  const session = event.cookies.get('session');
+  event.locals.user = session ? await verifySession(session) : null;
+  return resolve(event);
+};
+
+const authorize: Handle = async ({ event, resolve }) => {
   if (event.url.pathname.startsWith('/admin') && !event.locals.user) {
     throw redirect(303, '/login');
   }
-  
   return resolve(event);
 };
+
+export const handle = sequence(auth, authorize);
 ```
+*Source: svelte.dev/docs/kit/hooks (2024-12)*
 
-**Source**: "SvelteKit Auth Docs", svelte.dev/docs/kit/auth, 2024-12
+### Secure headers
 
----
+- **Configure CSP in svelte.config.js.**
+```javascript
+export default {
+  kit: {
+    csp: {
+      mode: 'auto',
+      directives: {
+        'default-src': ['self'],
+        'script-src': ['self'],
+        'style-src': ['self', 'unsafe-inline']
+      }
+    }
+  }
+};
+```
+*Source: svelte.dev/docs/kit/configuration#csp (2024-12)*
 
 ### Environment variable handling
 
-**Use `$env/static/private` for server-only secrets; prefix client-accessible values with `PUBLIC_`.**
-
+- **Use `$env/static/private` for secrets** (build-time, tree-shakeable).
+- **Prefix public vars with `PUBLIC_`.**
 ```typescript
-// Server-only - build error if imported client-side
-import { DATABASE_URL } from '$env/static/private';
+// Server only
+import { PLEX_TOKEN } from '$env/static/private';
 
-// Client-accessible
-import { PUBLIC_APP_NAME } from '$env/static/public';
+// Safe for browser
+import { PUBLIC_API_URL } from '$env/static/public';
 ```
-
-**Source**: "$env/static/private Docs", svelte.dev/docs/kit, 2024-12
-
----
+*Source: svelte.dev/tutorial/kit/env-static-private (2024-12)*
 
 ### Plex API authentication
 
-**Store `X-Plex-Token` as a server-side environment variable; never expose to clients.**
-
+- **Use X-Plex-Token header (preferred over URL parameter).**
 ```typescript
-// $lib/server/plex.server.ts
-import { PLEX_TOKEN, PLEX_SERVER_URL } from '$env/static/private';
+const response = await fetch(`http://${PLEX_IP}:32400/library/sections`, {
+  headers: {
+    'X-Plex-Token': process.env.PLEX_TOKEN,
+    'X-Plex-Client-Identifier': 'unique-app-uuid',
+    'Accept': 'application/json'
+  }
+});
+```
+*Source: support.plex.tv "Finding an authentication token" (2024)*
 
-export async function plexRequest(endpoint: string) {
-  return fetch(new URL(endpoint, PLEX_SERVER_URL), {
-    headers: {
-      'Accept': 'application/json',
-      'X-Plex-Token': PLEX_TOKEN,
-      'X-Plex-Client-Identifier': 'your-app-id',
-      'X-Plex-Product': 'Your App',
-      'X-Plex-Version': '1.0.0'
-    }
-  });
+---
+
+## 9. UI Patterns
+
+### shadcn-svelte component customization
+
+- **Initialize with `shadcn-svelte@next` for Svelte 5.**
+```bash
+pnpm dlx shadcn-svelte@next init
+```
+*Source: shadcn-svelte.com/docs/installation/sveltekit (2024)*
+
+- **Use the `cn()` utility for conditional class merging.**
+```typescript
+// src/lib/utils.ts
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
 }
 ```
+*Source: shadcn-svelte.com/docs/installation/manual (2024)*
 
-**Key Plex endpoints**: `/library/sections` (libraries), `/library/sections/{id}/all` (items), `/status/sessions` (active streams), `/library/recentlyAdded`, `/library/onDeck`.
+### tweakcn theming system
 
-**Source**: "Finding an authentication token / X-Plex-Token", Plex Support, 2024
-
----
-
-## UI patterns
-
-### shadcn-svelte philosophy
-
-**Components are copied into your project for full ownership—not installed as dependencies.** This solves the common problem of needing to wrap components or override styles. Updates come through the headless foundation (bits-ui).
-
-```bash
-npx shadcn-svelte@latest init
-npx shadcn-svelte@latest add button dialog
-```
-
-**Source**: "Introduction - shadcn-svelte", shadcn-svelte.com, 2024-12
-
----
-
-### tweakcn theming
-
-**Use tweakcn's visual editor to generate custom CSS variable themes; export Tailwind-compatible configuration with OKLCH color values.**
-
+- **tweakcn is a visual theme editor outputting CSS variables** compatible with both Tailwind and UnoCSS.
 ```css
 :root {
-  --background: oklch(0.9491 0.0085 197.0126);
-  --foreground: oklch(0.3772 0.0619 212.6640);
   --primary: oklch(0.5624 0.0947 203.2755);
-}
-.dark {
-  --background: oklch(0.2500 0.0200 212.0000);
+  --primary-foreground: oklch(1.0000 0 0);
 }
 ```
+*Source: tweakcn.com (2024-2025)*
 
-**Source**: "tweakcn — Theme Generator", tweakcn.com, 2024-12
-
----
-
-### Lucide icon optimization
-
-**Import from `@lucide/svelte/icons/{icon-name}` for optimal tree-shaking.** Barrel imports include all icons in the bundle.
-
-```svelte
-<!-- ✓ Correct: Direct path import -->
-<script>
-  import CircleAlert from '@lucide/svelte/icons/circle-alert';
-</script>
-
-<!-- ❌ Avoid: Barrel import -->
-<script>
-  import * as icons from '@lucide/svelte';
-</script>
-```
-
-**Source**: "Lucide Svelte", lucide.dev, 2024-12
-
----
-
-### Dark mode with mode-watcher
-
-**Use `mode-watcher` in root layout for system preference detection, persistence, and `.dark` class management.**
-
-```svelte
-<!-- +layout.svelte -->
-<script>
-  import { ModeWatcher } from 'mode-watcher';
-</script>
-
-<ModeWatcher />
-{@render children?.()}
-```
-
-```svelte
-<script>
-  import { toggleMode, setMode } from 'mode-watcher';
-</script>
-<button onclick={() => toggleMode()}>Toggle theme</button>
-```
-
-**Source**: "Dark Mode - shadcn-svelte", shadcn-svelte.com, 2024-12
-
----
-
-## Backend patterns
-
-### Croner scheduling
-
-**Use Croner for timezone-aware cron scheduling with built-in overrun protection and error handling.**
+### UnoCSS + unocss-preset-shadcn
 
 ```typescript
+// uno.config.ts
+import presetAnimations from "unocss-preset-animations";
+import { presetShadcn } from "unocss-preset-shadcn";
+
+export default defineConfig({
+  presets: [
+    presetWind(),
+    presetAnimations(),
+    presetShadcn({ color: "slate" })
+  ]
+});
+```
+*Source: github.com/unocss-community/unocss-preset-shadcn (2024)*
+
+### Form handling with superforms
+
+```svelte
+<script>
+  import { superForm } from 'sveltekit-superforms';
+  import { zodClient } from 'sveltekit-superforms/adapters';
+  
+  const form = superForm(data.form, { validators: zodClient(schema) });
+  const { form: formData, enhance } = form;
+</script>
+
+<form method="POST" use:enhance>
+  <Form.Field {form} name="email">
+    <Form.Control>
+      {#snippet children({ props })}
+        <Input {...props} bind:value={$formData.email} />
+      {/snippet}
+    </Form.Control>
+    <Form.FieldErrors />
+  </Form.Field>
+</form>
+```
+*Source: shadcn-svelte.com/docs/components/form (2024); superforms.rocks (2024)*
+
+### Accessible component patterns
+
+- **shadcn-svelte uses Bits UI (WAI-ARIA compliant)** with keyboard navigation and screen reader support built-in.
+- **Form components automatically spread ARIA attributes** via the `props` snippet parameter.
+
+*Source: shadcn-svelte.com/docs/components/form (2024)*
+
+---
+
+## 10. Backend Patterns
+
+### Bun native SQLite driver (bun:sqlite)
+
+```typescript
+import { Database } from "bun:sqlite";
+
+// File-based with strict mode
+const db = new Database("mydb.sqlite", { strict: true });
+
+// Enable WAL mode
+db.run("PRAGMA journal_mode = WAL;");
+
+// Prevent persistent WAL files on macOS
+import { constants } from "bun:sqlite";
+db.fileControl(constants.SQLITE_FCNTL_PERSIST_WAL, 0);
+```
+*Source: bun.sh/docs/runtime/sqlite (2024)*
+
+### Prepared statements
+
+- **Use `db.query()` for cached statements, `db.prepare()` for one-off queries.**
+```typescript
+// Cached (reuse for repeated queries)
+const users = db.query("SELECT * FROM users WHERE active = ?");
+users.all(true);
+
+// Non-cached (dynamic SQL)
+const stmt = db.prepare(`SELECT * FROM ${validatedTable}`);
+```
+*Source: bun.sh/docs/runtime/sqlite (2024)*
+
+### Using statement with automatic cleanup
+
+```typescript
+{
+  using db = new Database("mydb.sqlite");
+  using query = db.query("SELECT * FROM users");
+  console.log(query.all());
+} // Automatically closed
+```
+*Source: bun.sh/docs/runtime/sqlite (2024)*
+
+### Croner scheduling patterns
+
+```typescript
+import { Cron } from "croner";
+
+// Every 5 minutes
+new Cron('0 */5 * * * *', async () => {
+  await performCleanup();
+});
+
+// Daily at 2 AM with error handling
+new Cron('0 0 2 * * *', {
+  name: 'daily-backup',
+  catch: (err, job) => console.error(`${job.name} failed:`, err)
+}, runBackup);
+
+// One-time scheduled task
+new Cron('2025-01-23T14:30:00', { timezone: 'America/New_York' }, () => {
+  console.log('One-time task');
+});
+```
+*Source: github.com/Hexagon/croner (2024); croner.56k.guru (2024)*
+
+### SvelteKit integration for scheduled jobs
+
+```typescript
+// hooks.server.ts
 import { Cron } from 'croner';
+import { building } from '$app/environment';
 
-const job = new Cron('0 */15 * * * *', {
-  name: 'data-sync',
-  timezone: 'UTC',
-  protect: true,  // Overrun protection
-  catch: (err, job) => console.error(`Job ${job.name} failed:`, err)
-}, async () => {
-  await syncData();
+if (!building) {
+  new Cron('0 */10 * * * *', { name: 'health-check' }, checkHealth);
+  console.log('Scheduled jobs initialized');
+}
+```
+*Source: dev.to/ranjanpurbey/background-jobs-in-sveltekit-with-bullmq (2025-01)*
+
+### Plex Media Server API integration
+
+- **Use @lukehagar/plexjs for typed Plex API access.**
+```typescript
+import { PlexAPI } from "@lukehagar/plexjs";
+
+const plex = new PlexAPI({
+  accessToken: process.env.PLEX_TOKEN,
+  serverURL: "http://192.168.1.100:32400"
 });
 
-// Pattern features: L = last day, # = nth weekday
-const lastFriday = new Cron('0 0 * * 5#L', () => {});
+const history = await plex.sessions.getSessionHistory();
+const stats = await plex.statistics.getStatistics({ timespan: 4 });
 ```
+*Source: plexapi.dev/SDKs (2024); npm @lukehagar/plexjs*
 
-**Source**: "Croner Documentation", croner.56k.guru, 2024
+### Key Plex endpoints
 
----
+| Endpoint | Purpose |
+|----------|---------|
+| `/status/sessions/history/all` | Watch history |
+| `/statistics/media?timespan=4` | Media statistics |
+| `/status/sessions` | Currently playing |
+| `/library/sections` | Library structure |
+| `/library/recentlyAdded` | New content |
 
-### Database migrations with Drizzle
+*Source: plexapi.dev/api-reference (2024)*
 
-**Use Drizzle ORM with `drizzle-kit` for production migrations; it integrates seamlessly with bun:sqlite.**
+### Webhook handling
 
 ```typescript
-// drizzle.config.ts
-import { defineConfig } from 'drizzle-kit';
-export default defineConfig({
-  out: './drizzle',
-  schema: './src/db/schema.ts',
-  dialect: 'sqlite',
-  dbCredentials: { url: process.env.DB_FILE! }
-});
-
-// migrate.ts
-import { migrate } from 'drizzle-orm/bun-sqlite/migrator';
-import { drizzle } from 'drizzle-orm/bun-sqlite';
-import { Database } from 'bun:sqlite';
-
-const sqlite = new Database('app.db');
-const db = drizzle(sqlite);
-migrate(db, { migrationsFolder: './drizzle' });
+// routes/api/webhooks/plex/+server.ts
+export const POST: RequestHandler = async ({ request }) => {
+  const formData = await request.formData();
+  const payload = JSON.parse(formData.get('payload') as string);
+  
+  // Validate sender (Plex doesn't sign webhooks)
+  if (payload.Account?.id !== expectedAccountId) {
+    throw error(403, 'Unauthorized');
+  }
+  
+  await enqueueWebhookJob(payload);
+  return json({ received: true });
+};
 ```
+*Source: support.plex.tv/articles/115002267687-webhooks (2024)*
 
-**Source**: "Drizzle ORM + Bun SQLite", orm.drizzle.team, 2024
-
----
-
-### OpenAPI TypeScript client generation
-
-**Use `@hey-api/openapi-ts` to generate typed clients from OpenAPI specs like Plex's.**
+### Graceful shutdown
 
 ```typescript
-// openapi-ts.config.ts
-import { defineConfig } from '@hey-api/openapi-ts';
+import { scheduledJobs } from 'croner';
 
-export default defineConfig({
-  input: './openapi/plex-api.json',
-  output: { path: 'src/lib/generated/plex-client' },
-  plugins: ['@hey-api/types', '@hey-api/sdk']
+process.on('SIGTERM', async () => {
+  for (const job of scheduledJobs) job.stop();
+  
+  // Wait for busy jobs
+  const maxWait = 10000;
+  const start = Date.now();
+  while (scheduledJobs.some(j => j.isBusy()) && Date.now() - start < maxWait) {
+    await new Promise(r => setTimeout(r, 100));
+  }
+  
+  process.exit(0);
 });
 ```
-
-**Source**: "@hey-api/openapi-ts", GitHub, 2024
+*Source: github.com/Hexagon/croner (2024)*
 
 ---
 
-## Conclusion
+## Migration Quick Reference: Svelte 4 → 5
 
-The Svelte 5 + SvelteKit 2 + Bun stack represents a significant evolution in full-stack JavaScript development. **The runes system eliminates the cognitive overhead of stores** while providing fine-grained reactivity that outperforms React's virtual DOM. Bun's native SQLite driver delivers **3-6x better performance** than Node alternatives, and the combination with Motion One's hardware-accelerated animations creates a foundation for high-performance web applications.
+| Svelte 4 | Svelte 5 |
+|----------|----------|
+| `let count = 0` | `let count = $state(0)` |
+| `$: doubled = count * 2` | `let doubled = $derived(count * 2)` |
+| `$: { sideEffect() }` | `$effect(() => { sideEffect() })` |
+| `export let prop` | `let { prop } = $props()` |
+| `<slot>` | `{@render children()}` |
+| `<slot name="header">` | `{@render header?.()}` |
+| `<slot let:item>` | `{#snippet item(data)}...{/snippet}` |
+| `createEventDispatcher()` | Callback props |
+| `$$restProps` | `let { ...rest } = $props()` |
+| `writable()` store | `$state()` in `.svelte.js` |
 
-Key architectural decisions that differ from Svelte 4: prefer `$derived` over `$effect` for computed values, use `.svelte.ts` files for shared reactive state, adopt snippets instead of slots for component composition, and leverage SvelteKit's generated `$types` for end-to-end type safety. For animation-heavy applications, Motion One provides the best performance for most use cases, with GSAP reserved for complex timelines requiring mutable sequences.
+---
 
-The integration of shadcn-svelte with UnoCSS via `unocss-preset-shadcn` offers Tailwind-like ergonomics with superior build-time performance, while tweakcn enables visual theme customization without breaking the component system. Combined with Superforms for type-safe form handling and Croner for background scheduling, this stack provides production-ready patterns for modern web applications.
+## Key Decision Matrix
+
+| Scenario | Recommendation |
+|----------|----------------|
+| Package manager | Bun |
+| Test runner | Vitest (browser mode for 2025) |
+| Component testing | vitest-browser-svelte |
+| E2E testing | Playwright |
+| Linting | ESLint+Prettier (production); Biome (experimental) |
+| Validation | Zod (server); Valibot (client-heavy) |
+| Animation (simple) | Motion or Svelte transitions |
+| Animation (complex) | GSAP |
+| Styling | UnoCSS + shadcn-svelte |
+| Scheduling | Croner |
+| Database | bun:sqlite with Drizzle ORM |
