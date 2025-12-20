@@ -1,0 +1,34 @@
+# Build outputs
+build/
+.svelte-kit/
+
+# Dependencies
+node_modules/
+
+# Package manager files
+bun.lock
+package-lock.json
+
+# Database
+data/
+*.db
+*.db-shm
+*.db-wal
+drizzle/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# IDE and editor files
+.vscode/
+.idea/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Generated types
+src/app.d.ts
+
