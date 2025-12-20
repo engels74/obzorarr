@@ -424,7 +424,14 @@ export async function verifyServerMembership(userToken: string): Promise<Members
 		);
 		if (server.connections) {
 			for (const conn of server.connections) {
-				console.log('  - Connection URI:', conn.uri, '| local:', conn.local, '| relay:', conn.relay);
+				console.log(
+					'  - Connection URI:',
+					conn.uri,
+					'| local:',
+					conn.local,
+					'| relay:',
+					conn.relay
+				);
 			}
 		}
 	}

@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Codebase Search
 
 **Always use the `mcp__auggie-mcp__codebase-retrieval` tool as the primary method for:**
+
 - Exploring the codebase and understanding architecture
 - Finding existing patterns before implementing new features
 - Locating relevant code when the exact file location is unknown
@@ -15,9 +16,10 @@ This semantic search tool provides better results than grep/find for understandi
 
 ## Coding Guidelines
 
-**All code must follow the guidelines in `.augment/rules/bun-svelte-pro.md`**. 
+**All code must follow the guidelines in `.augment/rules/bun-svelte-pro.md`**.
 
 Key requirements:
+
 - **Svelte 5 Runes**: Use `$state()`, `$derived()`, `$props()` - no Svelte 4 patterns
 - **Snippets over slots**: Use `{#snippet}` and `{@render}` for component composition
 - **Form actions over API endpoints**: Use SvelteKit form actions with `use:enhance` for mutations
@@ -60,6 +62,7 @@ bun run db:studio        # Open Drizzle Studio
 ## Architecture
 
 ### Tech Stack
+
 - **Runtime**: Bun
 - **Framework**: SvelteKit with Svelte 5
 - **Database**: SQLite via Drizzle ORM
@@ -108,6 +111,7 @@ bun run db:studio        # Open Drizzle Studio
 ### Database
 
 SQLite with Drizzle ORM. Schema is in `src/lib/server/db/schema.ts`. Key tables:
+
 - `users` - Plex users with OAuth info
 - `playHistory` - Synced viewing history from Plex
 - `cachedStats` - Pre-calculated statistics JSON
@@ -120,6 +124,7 @@ Migrations are in `drizzle/` and applied via `bun run db:migrate`.
 ### Environment Variables
 
 See `.env.example` for all variables. Key ones:
+
 - `PLEX_SERVER_URL` / `PLEX_TOKEN` - Plex server connection
 - `DATABASE_PATH` - SQLite database file location
 - `ORIGIN` - App URL for CSRF protection and OAuth callbacks
@@ -130,6 +135,7 @@ See `.env.example` for all variables. Key ones:
 Tests use Bun's built-in test runner. Property-based tests use fast-check for exhaustive input testing. Test setup (`tests/setup.ts`) creates an in-memory SQLite database with all tables.
 
 Run specific property tests:
+
 ```bash
 bun test tests/property/stats.property.test.ts
 ```
