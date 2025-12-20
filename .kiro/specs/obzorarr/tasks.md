@@ -81,25 +81,25 @@ This plan implements Obzorarr incrementally, starting with project setup and cor
   - Verify session creation and admin detection
   - Ask user if questions arise
 
-- [ ] 6. Sync Service
-  - [ ] 6.1 Implement sync service core
+- [x] 6. Sync Service
+  - [x] 6.1 Implement sync service core
     - Create `src/lib/server/sync/service.ts`
     - Implement `startSync()` with backfill support
     - Store records in `play_history` table
     - Track sync status in `sync_status` table
     - _Requirements: 2.1, 2.3, 2.6_
 
-  - [ ] 6.2 Implement incremental sync
+  - [x] 6.2 Implement incremental sync
     - Track `lastViewedAt` timestamp
     - Filter subsequent syncs by timestamp
     - _Requirements: 2.4, 2.5_
 
-  - [ ] 6.3 Implement sync scheduler with Croner
+  - [x] 6.3 Implement sync scheduler with Croner
     - Create `src/lib/server/sync/scheduler.ts`
     - Use Croner with overrun protection
     - _Requirements: 3.3_
 
-  - [ ] 6.4 Write property tests for sync
+  - [x] 6.4 Write property tests for sync
     - **Property 5: History Record Field Completeness**
     - **Property 6: Sync Timestamp Tracking**
     - **Property 7: Incremental Sync Filtering**

@@ -34,6 +34,7 @@
 	"dependencies": {
 		"bits-ui": "^2.14.4",
 		"clsx": "^2.1.1",
+		"croner": "^9.1.0",
 		"drizzle-orm": "^0.45.1",
 		"tailwind-variants": "^3.2.2",
 		"zod": "^4.2.1"
