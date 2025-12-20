@@ -16,6 +16,15 @@ import {
 	type AnonymizationModeType
 } from '$lib/server/admin/settings.service';
 import { getAvailableYears } from '$lib/server/admin/users.service';
+import {
+	getLogRetentionDays,
+	getLogMaxCount,
+	isDebugEnabled,
+	setLogRetentionDays,
+	setLogMaxCount,
+	setDebugEnabled,
+	logger
+} from '$lib/server/logging';
 
 /**
  * Admin Settings Page Server
@@ -42,16 +51,33 @@ const ApiConfigSchema = z.object({
 	openaiBaseUrl: z.string().url('Invalid URL format').optional().or(z.literal(''))
 });
 
+const LogSettingsSchema = z.object({
+	retentionDays: z.number().min(1).max(365),
+	maxCount: z.number().min(1000).max(1000000),
+	debugEnabled: z.boolean()
+});
+
 // =============================================================================
 // Load Function
 // =============================================================================
 
 export const load: PageServerLoad = async () => {
-	const [settings, currentTheme, anonymizationMode, availableYears] = await Promise.all([
+	const [
+		settings,
+		currentTheme,
+		anonymizationMode,
+		availableYears,
+		logRetentionDays,
+		logMaxCount,
+		logDebugEnabled
+	] = await Promise.all([
 		getAllAppSettings(),
 		getCurrentTheme(),
 		getAnonymizationMode(),
-		getAvailableYears()
+		getAvailableYears(),
+		getLogRetentionDays(),
+		getLogMaxCount(),
+		isDebugEnabled()
 	]);
 
 	const currentYear = new Date().getFullYear();
@@ -77,7 +103,12 @@ export const load: PageServerLoad = async () => {
 			label: key.charAt(0).toUpperCase() + key.slice(1).toLowerCase()
 		})),
 		availableYears: availableYears.length > 0 ? availableYears : [currentYear],
-		currentYear
+		currentYear,
+		logSettings: {
+			retentionDays: logRetentionDays,
+			maxCount: logMaxCount,
+			debugEnabled: logDebugEnabled
+		}
 	};
 };
 
@@ -230,6 +261,47 @@ export const actions: Actions = {
 			return { success: true, message };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to clear cache';
+			return fail(500, { error: message });
+		}
+	},
+
+	/**
+	 * Update logging settings
+	 */
+	updateLogSettings: async ({ request }) => {
+		const formData = await request.formData();
+
+		const retentionDaysStr = formData.get('retentionDays')?.toString();
+		const maxCountStr = formData.get('maxCount')?.toString();
+		const debugEnabledStr = formData.get('debugEnabled')?.toString();
+
+		const data = {
+			retentionDays: retentionDaysStr ? parseInt(retentionDaysStr, 10) : 7,
+			maxCount: maxCountStr ? parseInt(maxCountStr, 10) : 50000,
+			debugEnabled: debugEnabledStr === 'true'
+		};
+
+		const parsed = LogSettingsSchema.safeParse(data);
+		if (!parsed.success) {
+			return fail(400, {
+				error: 'Invalid input',
+				fieldErrors: parsed.error.flatten().fieldErrors
+			});
+		}
+
+		try {
+			await Promise.all([
+				setLogRetentionDays(parsed.data.retentionDays),
+				setLogMaxCount(parsed.data.maxCount),
+				setDebugEnabled(parsed.data.debugEnabled)
+			]);
+
+			// Clear the debug cache in the logger
+			logger.clearDebugCache();
+
+			return { success: true, message: 'Logging settings updated' };
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to update settings';
 			return fail(500, { error: message });
 		}
 	}

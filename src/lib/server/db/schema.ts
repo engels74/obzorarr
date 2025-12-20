@@ -136,6 +136,19 @@ export const sessions = sqliteTable('sessions', {
 	expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull()
 });
 
+/**
+ * Application logs table
+ * Stores persistent logs for admin viewing
+ */
+export const logs = sqliteTable('logs', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
+	level: text('level').notNull(), // 'DEBUG', 'INFO', 'WARN', 'ERROR'
+	message: text('message').notNull(),
+	source: text('source'), // Component name (e.g., 'Scheduler', 'Sync')
+	metadata: text('metadata'), // JSON-serialized additional data
+	timestamp: integer('timestamp').notNull() // Unix timestamp in ms
+});
+
 // Export table types for type inference
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -148,3 +161,5 @@ export type CustomSlideRecord = typeof customSlides.$inferSelect;
 export type SlideConfigRecord = typeof slideConfig.$inferSelect;
 export type AppSettingRecord = typeof appSettings.$inferSelect;
 export type SessionRecord = typeof sessions.$inferSelect;
+export type LogRecord = typeof logs.$inferSelect;
+export type NewLogRecord = typeof logs.$inferInsert;

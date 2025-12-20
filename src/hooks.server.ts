@@ -2,6 +2,7 @@ import type { Handle, HandleServerError } from '@sveltejs/kit';
 import { redirect } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { validateSession } from '$lib/server/auth/session';
+import { logger } from '$lib/server/logging';
 
 /**
  * Server Hooks
@@ -97,8 +98,10 @@ const authorizationHandle: Handle = async ({ event, resolve }) => {
  */
 export const handleError: HandleServerError = async ({ error, event }) => {
 	// Log the full error for debugging
-	console.error('Unexpected error:', error);
-	console.error('Request path:', event.url.pathname);
+	logger.error(`Unexpected error: ${error}`, 'ErrorHandler', {
+		path: event.url.pathname,
+		method: event.request.method
+	});
 
 	// Return sanitized error message to client
 	return {

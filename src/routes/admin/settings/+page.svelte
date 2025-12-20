@@ -30,6 +30,11 @@
 	let selectedAnonymization = $state('');
 	let isTesting = $state(false);
 
+	// Logging settings state
+	let logRetentionDays = $state(7);
+	let logMaxCount = $state(50000);
+	let logDebugEnabled = $state(false);
+
 	// Sync local state with data (initial load and after form submission)
 	$effect(() => {
 		plexServerUrl = data.settings.plexServerUrl;
@@ -38,6 +43,9 @@
 		openaiBaseUrl = data.settings.openaiBaseUrl;
 		selectedTheme = data.currentTheme;
 		selectedAnonymization = data.anonymizationMode;
+		logRetentionDays = data.logSettings.retentionDays;
+		logMaxCount = data.logSettings.maxCount;
+		logDebugEnabled = data.logSettings.debugEnabled;
 	});
 
 	// Theme display names
@@ -273,6 +281,65 @@
 				<button type="submit" class="cache-button all">Clear All Cache</button>
 			</form>
 		</div>
+	</section>
+
+	<!-- Logging Section -->
+	<section class="section">
+		<h2>Logging</h2>
+		<p class="section-description">
+			Configure log retention and debug settings. <a href="/admin/logs" class="section-link">View logs</a>
+		</p>
+
+		<form method="POST" action="?/updateLogSettings" use:enhance class="logging-form">
+			<div class="form-row">
+				<div class="form-group half">
+					<label for="retentionDays">Retention Period (days)</label>
+					<input
+						type="number"
+						id="retentionDays"
+						name="retentionDays"
+						bind:value={logRetentionDays}
+						min="1"
+						max="365"
+					/>
+					<span class="form-hint">Logs older than this will be automatically deleted (1-365)</span>
+				</div>
+
+				<div class="form-group half">
+					<label for="maxCount">Maximum Log Count</label>
+					<input
+						type="number"
+						id="maxCount"
+						name="maxCount"
+						bind:value={logMaxCount}
+						min="1000"
+						max="1000000"
+						step="1000"
+					/>
+					<span class="form-hint">Maximum logs to retain (1,000-1,000,000)</span>
+				</div>
+			</div>
+
+			<div class="form-group">
+				<label class="checkbox-label">
+					<input
+						type="checkbox"
+						name="debugEnabled"
+						bind:checked={logDebugEnabled}
+					/>
+					<span class="checkbox-text">Enable DEBUG level logging</span>
+				</label>
+				<span class="form-hint checkbox-hint">
+					When enabled, detailed debug logs will be recorded. This may generate a large volume of logs.
+				</span>
+			</div>
+
+			<input type="hidden" name="debugEnabled" value={logDebugEnabled.toString()} />
+
+			<div class="form-actions">
+				<button type="submit" class="save-button">Save Logging Settings</button>
+			</div>
+		</form>
 	</section>
 </div>
 
@@ -623,6 +690,52 @@
 		font-weight: 500;
 	}
 
+	/* Section Link */
+	.section-link {
+		color: hsl(var(--primary));
+		text-decoration: underline;
+	}
+
+	.section-link:hover {
+		opacity: 0.8;
+	}
+
+	/* Form Row (for side-by-side inputs) */
+	.form-row {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		gap: 1rem;
+		margin-bottom: 1rem;
+	}
+
+	.form-group.half {
+		margin-bottom: 0;
+	}
+
+	/* Checkbox Styles */
+	.checkbox-label {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		cursor: pointer;
+		font-size: 0.875rem;
+	}
+
+	.checkbox-label input[type='checkbox'] {
+		width: auto;
+		accent-color: hsl(var(--primary));
+		cursor: pointer;
+	}
+
+	.checkbox-text {
+		font-weight: 500;
+		color: hsl(var(--foreground));
+	}
+
+	.checkbox-hint {
+		margin-left: 1.5rem;
+	}
+
 	/* Responsive */
 	@media (max-width: 640px) {
 		.settings-page {
@@ -631,6 +744,14 @@
 
 		.theme-options {
 			grid-template-columns: repeat(2, 1fr);
+		}
+
+		.form-row {
+			grid-template-columns: 1fr;
+		}
+
+		.form-group.half {
+			margin-bottom: 1rem;
 		}
 	}
 </style>

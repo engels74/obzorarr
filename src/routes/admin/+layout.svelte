@@ -30,6 +30,7 @@
 		{ href: '/admin/sync', label: 'Sync', icon: 'sync' },
 		{ href: '/admin/users', label: 'Users', icon: 'users' },
 		{ href: '/admin/slides', label: 'Slides', icon: 'slides' },
+		{ href: '/admin/logs', label: 'Logs', icon: 'logs' },
 		{ href: '/admin/settings', label: 'Settings', icon: 'settings' }
 	];
 
@@ -107,6 +108,8 @@
 									&#9787;
 								{:else if item.icon === 'slides'}
 									&#9998;
+								{:else if item.icon === 'logs'}
+									&#128196;
 								{:else if item.icon === 'settings'}
 									&#9881;
 								{/if}

@@ -1,6 +1,7 @@
 import { Cron, type CronOptions } from 'croner';
 import { startSync, isSyncRunning } from './service';
 import type { SchedulerOptions, SchedulerStatus, SyncResult } from './types';
+import { logger } from '$lib/server/logging';
 
 /**
  * Sync Scheduler
@@ -80,17 +81,17 @@ export function setupSyncScheduler(options: SchedulerOptions = {}): Cron {
 		protect, // Overrun protection - prevents overlapping runs
 		paused: !startImmediately,
 		catch: (error: unknown, job: Cron) => {
-			console.error(`[Scheduler] Sync job "${job.name}" failed:`, error);
+			logger.error(`Sync job "${job.name}" failed: ${error}`, 'Scheduler');
 		}
 	};
 
 	schedulerInstance = new Cron(cronExpression, cronOptions, async () => {
-		console.log(`[Scheduler] Starting scheduled sync at ${new Date().toISOString()}`);
+		logger.info(`Starting scheduled sync at ${new Date().toISOString()}`, 'Scheduler');
 
 		try {
 			// Double-check no sync is running (extra safety with protect: true)
 			if (await isSyncRunning()) {
-				console.log('[Scheduler] Sync already in progress, skipping scheduled run');
+				logger.info('Sync already in progress, skipping scheduled run', 'Scheduler');
 				return;
 			}
 
@@ -98,30 +99,30 @@ export function setupSyncScheduler(options: SchedulerOptions = {}): Cron {
 				onProgress: (progress) => {
 					// Log progress periodically
 					if (progress.currentPage % PROGRESS_LOG_INTERVAL === 0) {
-						console.log(
-							`[Scheduler] Progress: page ${progress.currentPage}, ` +
-								`${progress.recordsProcessed} records processed`
+						logger.info(
+							`Progress: page ${progress.currentPage}, ${progress.recordsProcessed} records processed`,
+							'Scheduler'
 						);
 					}
 				}
 			});
 
 			if (result.status === 'completed') {
-				console.log(
-					`[Scheduler] Sync completed: ${result.recordsInserted} records inserted ` +
-						`in ${result.durationMs}ms`
+				logger.info(
+					`Sync completed: ${result.recordsInserted} records inserted in ${result.durationMs}ms`,
+					'Scheduler'
 				);
 			} else {
-				console.error(`[Scheduler] Sync failed: ${result.error}`);
+				logger.error(`Sync failed: ${result.error}`, 'Scheduler');
 			}
 		} catch (error) {
-			console.error('[Scheduler] Unexpected error during sync:', error);
+			logger.error(`Unexpected error during sync: ${error}`, 'Scheduler');
 		}
 	});
 
-	console.log(
-		`[Scheduler] Sync scheduler configured with cron "${cronExpression}" ` +
-			`(timezone: ${timezone}, protect: ${protect})`
+	logger.info(
+		`Sync scheduler configured with cron "${cronExpression}" (timezone: ${timezone}, protect: ${protect})`,
+		'Scheduler'
 	);
 
 	return schedulerInstance;
@@ -136,7 +137,7 @@ export function stopSyncScheduler(): void {
 	if (schedulerInstance) {
 		schedulerInstance.stop();
 		schedulerInstance = null;
-		console.log('[Scheduler] Sync scheduler stopped');
+		logger.info('Sync scheduler stopped', 'Scheduler');
 	}
 }
 
@@ -149,7 +150,7 @@ export function stopSyncScheduler(): void {
 export function pauseSyncScheduler(): void {
 	if (schedulerInstance) {
 		schedulerInstance.pause();
-		console.log('[Scheduler] Sync scheduler paused');
+		logger.info('Sync scheduler paused', 'Scheduler');
 	}
 }
 
@@ -161,7 +162,7 @@ export function pauseSyncScheduler(): void {
 export function resumeSyncScheduler(): void {
 	if (schedulerInstance) {
 		schedulerInstance.resume();
-		console.log('[Scheduler] Sync scheduler resumed');
+		logger.info('Sync scheduler resumed', 'Scheduler');
 	}
 }
 
@@ -200,15 +201,15 @@ export function getSchedulerStatus(): SchedulerStatus {
  * @returns Result of the sync operation
  */
 export async function triggerImmediateSync(backfillYear?: number): Promise<SyncResult> {
-	console.log('[Scheduler] Manual sync triggered');
+	logger.info('Manual sync triggered', 'Scheduler');
 
 	return startSync({
 		backfillYear,
 		onProgress: (progress) => {
 			if (progress.currentPage % PROGRESS_LOG_INTERVAL === 0) {
-				console.log(
-					`[Manual Sync] Progress: page ${progress.currentPage}, ` +
-						`${progress.recordsProcessed} records processed`
+				logger.info(
+					`Progress: page ${progress.currentPage}, ${progress.recordsProcessed} records processed`,
+					'ManualSync'
 				);
 			}
 		}

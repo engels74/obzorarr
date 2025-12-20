@@ -4,6 +4,7 @@ import { fetchAllHistory } from '$lib/server/plex/client';
 import type { ValidPlexHistoryMetadata } from '$lib/server/plex/types';
 import { eq, desc } from 'drizzle-orm';
 import type { StartSyncOptions, SyncResult, SyncProgress, SyncStatusRecord } from './types';
+import { logger } from '$lib/server/logging';
 
 /**
  * Sync Service
@@ -304,8 +305,9 @@ export async function startSync(options: StartSyncOptions = {}): Promise<SyncRes
 			// Backfill mode: start from Jan 1 of the specified year
 			// Implements Requirement 2.6
 			minViewedAt = getYearStartTimestamp(backfillYear);
-			console.log(
-				`[Sync ${syncId}] Starting backfill from ${new Date(minViewedAt * 1000).toISOString()}`
+			logger.info(
+				`Starting backfill from ${new Date(minViewedAt * 1000).toISOString()}`,
+				`Sync-${syncId}`
 			);
 		} else {
 			// Incremental mode: start from last successful sync's lastViewedAt
@@ -313,11 +315,12 @@ export async function startSync(options: StartSyncOptions = {}): Promise<SyncRes
 			const lastSync = await getLastSuccessfulSync();
 			if (lastSync?.lastViewedAt) {
 				minViewedAt = lastSync.lastViewedAt;
-				console.log(
-					`[Sync ${syncId}] Starting incremental sync from ${new Date(minViewedAt * 1000).toISOString()}`
+				logger.info(
+					`Starting incremental sync from ${new Date(minViewedAt * 1000).toISOString()}`,
+					`Sync-${syncId}`
 				);
 			} else {
-				console.log(`[Sync ${syncId}] No previous sync found, fetching all history`);
+				logger.info('No previous sync found, fetching all history', `Sync-${syncId}`);
 			}
 		}
 
@@ -379,9 +382,9 @@ export async function startSync(options: StartSyncOptions = {}): Promise<SyncRes
 		});
 
 		const durationMs = Date.now() - startTime;
-		console.log(
-			`[Sync ${syncId}] Completed: ${recordsProcessed} processed, ` +
-				`${recordsInserted} inserted, ${recordsSkipped} skipped in ${durationMs}ms`
+		logger.info(
+			`Completed: ${recordsProcessed} processed, ${recordsInserted} inserted, ${recordsSkipped} skipped in ${durationMs}ms`,
+			`Sync-${syncId}`
 		);
 
 		return {
@@ -401,7 +404,7 @@ export async function startSync(options: StartSyncOptions = {}): Promise<SyncRes
 		// Mark sync as failed
 		await failSyncRecord(syncId, errorMessage);
 
-		console.error(`[Sync ${syncId}] Failed: ${errorMessage}`);
+		logger.error(`Failed: ${errorMessage}`, `Sync-${syncId}`);
 
 		return {
 			syncId,

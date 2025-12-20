@@ -9,6 +9,7 @@ import {
 	type PlexResource,
 	type MembershipResult
 } from './types';
+import { logger } from '$lib/server/logging';
 
 /**
  * Server Membership Verification Module
@@ -350,11 +351,9 @@ function findConfiguredServer(servers: PlexResource[]): PlexResource | undefined
 			(s) => s.clientIdentifier.toLowerCase() === configuredMachineId
 		);
 		if (serverByMachineId) {
-			console.log(
-				'[Membership] Matched server by machineId:',
-				configuredMachineId,
-				'->',
-				serverByMachineId.name
+			logger.debug(
+				`Matched server by machineId: ${configuredMachineId} -> ${serverByMachineId.name}`,
+				'Membership'
 			);
 			return serverByMachineId;
 		}
@@ -364,11 +363,9 @@ function findConfiguredServer(servers: PlexResource[]): PlexResource | undefined
 		const serverByIp = servers.find((s) => matchesByIpAndPort(configuredUrl, s.connections));
 		if (serverByIp) {
 			const extracted = extractPlexDirectIpAndPort(configuredUrl);
-			console.log(
-				'[Membership] Matched server by IP address from .plex.direct URL:',
-				extracted?.ip,
-				'->',
-				serverByIp.name
+			logger.debug(
+				`Matched server by IP address from .plex.direct URL: ${extracted?.ip} -> ${serverByIp.name}`,
+				'Membership'
 			);
 			return serverByIp;
 		}
@@ -410,27 +407,19 @@ export async function verifyServerMembership(userToken: string): Promise<Members
 	const servers = filterServerResources(resources);
 
 	// Debug logging to help diagnose membership issues
-	console.log('[Membership] Configured PLEX_SERVER_URL:', PLEX_SERVER_URL);
-	console.log('[Membership] Found', servers.length, 'server(s) accessible to user');
+	logger.debug(`Configured PLEX_SERVER_URL: ${PLEX_SERVER_URL}`, 'Membership');
+	logger.debug(`Found ${servers.length} server(s) accessible to user`, 'Membership');
 
 	for (const server of servers) {
-		console.log(
-			'[Membership] Server:',
-			server.name,
-			'| clientIdentifier:',
-			server.clientIdentifier,
-			'| owned:',
-			server.owned
+		logger.debug(
+			`Server: ${server.name} | clientIdentifier: ${server.clientIdentifier} | owned: ${server.owned}`,
+			'Membership'
 		);
 		if (server.connections) {
 			for (const conn of server.connections) {
-				console.log(
-					'  - Connection URI:',
-					conn.uri,
-					'| local:',
-					conn.local,
-					'| relay:',
-					conn.relay
+				logger.debug(
+					`  - Connection URI: ${conn.uri} | local: ${conn.local} | relay: ${conn.relay}`,
+					'Membership'
 				);
 			}
 		}
@@ -440,18 +429,16 @@ export async function verifyServerMembership(userToken: string): Promise<Members
 	const configuredServer = findConfiguredServer(servers);
 
 	if (!configuredServer) {
-		console.log('[Membership] No matching server found for configured URL');
+		logger.debug('No matching server found for configured URL', 'Membership');
 		return {
 			isMember: false,
 			isOwner: false
 		};
 	}
 
-	console.log(
-		'[Membership] Matched server:',
-		configuredServer.name,
-		'| isOwner:',
-		configuredServer.owned
+	logger.debug(
+		`Matched server: ${configuredServer.name} | isOwner: ${configuredServer.owned}`,
+		'Membership'
 	);
 
 	return {
