@@ -36,6 +36,7 @@
 		"clsx": "^2.1.1",
 		"croner": "^9.1.0",
 		"drizzle-orm": "^0.45.1",
+		"gsap": "^3.14.2",
 		"marked": "^17.0.1",
 		"motion": "^12.23.26",
 		"tailwind-variants": "^3.2.2",

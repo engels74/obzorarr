@@ -221,18 +221,18 @@ This plan implements Obzorarr incrementally, starting with project setup and cor
     - Use Motion for hardware acceleration
     - _Requirements: 5.6_
 
-- [ ] 13. Wrapped Page - Scroll Mode
-  - [ ] 13.1 Create ScrollMode component
+- [x] 13. Wrapped Page - Scroll Mode
+  - [x] 13.1 Create ScrollMode component
     - Create `src/lib/components/wrapped/ScrollMode.svelte`
     - Display all stats on scrollable page
     - _Requirements: 6.1_
 
-  - [ ] 13.2 Add scroll-triggered animations
+  - [x] 13.2 Add scroll-triggered animations
     - Use GSAP ScrollTrigger with `$effect` cleanup
     - Animate sections on viewport entry
     - _Requirements: 6.2_
 
-  - [ ] 13.3 Implement mode toggle
+  - [x] 13.3 Implement mode toggle
     - Create ModeToggle component
     - Preserve position when switching modes
     - _Requirements: 6.3, 6.4_
