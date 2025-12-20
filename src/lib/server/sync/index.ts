@@ -62,6 +62,24 @@ export {
 	resumeSyncScheduler,
 	getSchedulerStatus,
 	triggerImmediateSync,
+	startBackgroundSync,
 	updateSchedulerCron,
 	isSchedulerConfigured
 } from './scheduler';
+
+// =============================================================================
+// Progress Tracking Exports
+// =============================================================================
+
+export type { LiveSyncProgress, LiveSyncStatus } from './progress';
+
+export {
+	startSyncProgress,
+	updateSyncProgress,
+	getSyncProgress,
+	cancelSync,
+	completeSyncProgress,
+	failSyncProgress,
+	clearSyncProgress,
+	hasSyncProgress
+} from './progress';

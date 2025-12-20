@@ -2,6 +2,13 @@ import { Cron, type CronOptions } from 'croner';
 import { startSync, isSyncRunning } from './service';
 import type { SchedulerOptions, SchedulerStatus, SyncResult } from './types';
 import { logger } from '$lib/server/logging';
+import {
+	startSyncProgress,
+	updateSyncProgress as updateProgressStore,
+	completeSyncProgress,
+	failSyncProgress,
+	clearSyncProgress
+} from './progress';
 
 /**
  * Sync Scheduler
@@ -214,6 +221,97 @@ export async function triggerImmediateSync(backfillYear?: number): Promise<SyncR
 			}
 		}
 	});
+}
+
+/**
+ * Start a manual sync in the background with progress tracking
+ *
+ * Starts the sync operation without blocking. Progress is tracked
+ * in the in-memory store and can be streamed to clients via SSE.
+ *
+ * @param backfillYear - Optional year to backfill from
+ * @returns Object indicating if sync was started successfully
+ */
+export async function startBackgroundSync(
+	backfillYear?: number
+): Promise<{ started: boolean; error?: string }> {
+	logger.info('Background sync triggered', 'ManualSync');
+
+	// Check if sync is already running
+	if (await isSyncRunning()) {
+		return { started: false, error: 'A sync is already in progress' };
+	}
+
+	// Generate a temporary sync ID (will be replaced when startSync creates the record)
+	// We use a negative number to distinguish from real DB IDs
+	const tempSyncId = -Date.now();
+
+	// Initialize progress tracking and get abort signal
+	const signal = startSyncProgress(tempSyncId);
+
+	// Start sync in background (don't await)
+	startSync({
+		backfillYear,
+		signal,
+		onProgress: (progress) => {
+			// Update progress store on every callback
+			updateProgressStore({
+				recordsProcessed: progress.recordsProcessed,
+				recordsInserted: progress.recordsInserted,
+				recordsSkipped: progress.recordsSkipped,
+				currentPage: progress.currentPage
+			});
+
+			// Log progress periodically
+			if (progress.currentPage % PROGRESS_LOG_INTERVAL === 0) {
+				logger.info(
+					`Progress: page ${progress.currentPage}, ${progress.recordsProcessed} records processed`,
+					'ManualSync'
+				);
+			}
+		}
+	})
+		.then((result) => {
+			// Update progress store with final result
+			if (result.status === 'completed') {
+				completeSyncProgress(
+					result.recordsProcessed,
+					result.recordsInserted,
+					result.recordsSkipped
+				);
+				logger.info(
+					`Sync completed: ${result.recordsInserted} records inserted in ${result.durationMs}ms`,
+					'ManualSync'
+				);
+			} else {
+				failSyncProgress(result.error ?? 'Unknown error');
+				logger.error(`Sync failed: ${result.error}`, 'ManualSync');
+			}
+
+			// Clear progress after a delay to allow clients to see the final state
+			setTimeout(() => {
+				clearSyncProgress();
+			}, 5000);
+		})
+		.catch((error) => {
+			const message = error instanceof Error ? error.message : 'Unknown error';
+
+			// Check if this was a cancellation
+			if (message === 'Sync cancelled') {
+				logger.info('Sync was cancelled by user', 'ManualSync');
+				// Status already set to 'cancelled' by cancelSync()
+			} else {
+				failSyncProgress(message);
+				logger.error(`Sync error: ${message}`, 'ManualSync');
+			}
+
+			// Clear progress after a delay
+			setTimeout(() => {
+				clearSyncProgress();
+			}, 5000);
+		});
+
+	return { started: true };
 }
 
 /**

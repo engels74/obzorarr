@@ -12,22 +12,145 @@
 	 *
 	 * Implements Requirements:
 	 * - 3.1: Manual sync button
-	 * - 3.2: Progress indicator
+	 * - 3.2: Progress indicator with real-time updates via SSE
 	 * - 3.3: Cron schedule configuration
 	 * - 3.4: Display sync status
 	 * - 3.5: History log of syncs
 	 */
 
+	// Progress data from SSE
+	interface SyncProgress {
+		syncId: number;
+		status: 'running' | 'completed' | 'failed' | 'cancelled';
+		recordsProcessed: number;
+		recordsInserted: number;
+		recordsSkipped: number;
+		currentPage: number;
+		startedAt: string;
+		error?: string;
+	}
+
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
-	// Local state (cronExpression synced via $effect)
+	// Local state
 	let selectedBackfillYear = $state<string>('');
 	let cronExpression = $state('0 0 * * *');
 	let isSyncing = $state(false);
+	let isCancelling = $state(false);
+
+	// SSE state
+	let eventSource = $state<EventSource | null>(null);
+	let progress = $state<SyncProgress | null>(null);
+	let isConnected = $state(false);
+
+	// Derived: sync is active (either from server state or SSE progress)
+	const syncActive = $derived(
+		data.isRunning || (progress !== null && progress.status === 'running')
+	);
+
+	// Status text for display
+	const statusText = $derived(() => {
+		if (!progress) return 'Syncing...';
+		switch (progress.status) {
+			case 'running':
+				return 'Syncing...';
+			case 'completed':
+				return 'Completed';
+			case 'failed':
+				return 'Failed';
+			case 'cancelled':
+				return 'Cancelled';
+			default:
+				return 'Syncing...';
+		}
+	});
+
+	// Connect to SSE stream
+	function connectSSE() {
+		if (eventSource) {
+			eventSource.close();
+		}
+
+		eventSource = new EventSource('/admin/sync/stream');
+
+		eventSource.onopen = () => {
+			isConnected = true;
+		};
+
+		eventSource.onmessage = (event) => {
+			try {
+				const data = JSON.parse(event.data);
+
+				if (data.type === 'connected' || data.type === 'progress') {
+					if (data.progress) {
+						progress = data.progress;
+					}
+				} else if (
+					data.type === 'completed' ||
+					data.type === 'failed' ||
+					data.type === 'cancelled'
+				) {
+					if (data.progress) {
+						progress = data.progress;
+					}
+					// Keep showing the final state briefly, then disconnect
+					setTimeout(() => {
+						disconnectSSE();
+						isSyncing = false;
+						isCancelling = false;
+						// Clear progress after showing final state
+						setTimeout(() => {
+							progress = null;
+						}, 3000);
+					}, 500);
+				} else if (data.type === 'idle') {
+					// No sync running
+					progress = null;
+					isSyncing = false;
+				}
+			} catch (e) {
+				console.error('Failed to parse SSE event:', e);
+			}
+		};
+
+		eventSource.onerror = () => {
+			isConnected = false;
+			// Attempt to reconnect after 2 seconds if we think a sync is running
+			setTimeout(() => {
+				if (isSyncing && !eventSource) {
+					connectSSE();
+				}
+			}, 2000);
+		};
+	}
+
+	// Disconnect from SSE stream
+	function disconnectSSE() {
+		if (eventSource) {
+			eventSource.close();
+			eventSource = null;
+		}
+		isConnected = false;
+	}
 
 	// Sync cron expression with data (initial load and after form submission)
 	$effect(() => {
 		cronExpression = data.schedulerStatus.cronExpression ?? '0 0 * * *';
+	});
+
+	// Connect to SSE if sync is running on page load
+	$effect(() => {
+		if (data.isRunning && !eventSource) {
+			isSyncing = true;
+			connectSSE();
+		}
+	});
+
+	// Cleanup on unmount
+	$effect(() => {
+		return () => {
+			disconnectSSE();
+		};
 	});
 
 	// Format date nicely
@@ -103,10 +226,110 @@
 		<h2>Manual Sync</h2>
 		<p class="section-description">Trigger a sync to fetch the latest viewing history from Plex.</p>
 
-		{#if data.isRunning}
-			<div class="sync-running">
-				<span class="spinner"></span>
-				<span>Sync in progress...</span>
+		{#if syncActive || progress}
+			<!-- Progress Display -->
+			<div
+				class="sync-progress-card"
+				class:completed={progress?.status === 'completed'}
+				class:failed={progress?.status === 'failed'}
+				class:cancelled={progress?.status === 'cancelled'}
+			>
+				<!-- Indeterminate Progress Bar -->
+				<div
+					class="progress-bar-container"
+					role="progressbar"
+					aria-label="Sync in progress"
+					aria-busy={progress?.status === 'running'}
+				>
+					<div
+						class="progress-bar"
+						class:running={progress?.status === 'running'}
+						class:completed={progress?.status === 'completed'}
+						class:failed={progress?.status === 'failed'}
+						class:cancelled={progress?.status === 'cancelled'}
+					></div>
+				</div>
+
+				<!-- Status and Stats -->
+				<div class="progress-content">
+					<div class="progress-status">
+						<span
+							class="status-indicator"
+							class:running={progress?.status === 'running'}
+							class:completed={progress?.status === 'completed'}
+							class:failed={progress?.status === 'failed'}
+							class:cancelled={progress?.status === 'cancelled'}
+						></span>
+						<span class="status-text">{statusText()}</span>
+					</div>
+
+					{#if progress}
+						<div class="progress-stats">
+							<span class="stat">
+								<span class="stat-value">{progress.recordsProcessed.toLocaleString()}</span>
+								<span class="stat-label">processed</span>
+							</span>
+							<span class="stat-divider">•</span>
+							<span class="stat">
+								<span class="stat-value">{progress.recordsInserted.toLocaleString()}</span>
+								<span class="stat-label">new</span>
+							</span>
+							<span class="stat-divider">•</span>
+							<span class="stat">
+								<span class="stat-value">{progress.recordsSkipped.toLocaleString()}</span>
+								<span class="stat-label">skipped</span>
+							</span>
+						</div>
+
+						{#if progress.error}
+							<div class="progress-error">
+								{progress.error}
+							</div>
+						{/if}
+					{/if}
+				</div>
+
+				<!-- Cancel Button -->
+				{#if progress?.status === 'running'}
+					<form
+						method="POST"
+						action="?/cancelSync"
+						use:enhance={() => {
+							isCancelling = true;
+							return async ({ update }) => {
+								await update();
+							};
+						}}
+						class="cancel-form"
+					>
+						<button
+							type="submit"
+							class="cancel-button"
+							disabled={isCancelling}
+							aria-label="Cancel sync"
+							title="Cancel sync"
+						>
+							{#if isCancelling}
+								<span class="spinner small"></span>
+							{:else}
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									width="16"
+									height="16"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<line x1="18" y1="6" x2="6" y2="18"></line>
+									<line x1="6" y1="6" x2="18" y2="18"></line>
+								</svg>
+							{/if}
+						</button>
+					</form>
+				{/if}
 			</div>
 		{:else}
 			<form
@@ -114,8 +337,9 @@
 				action="?/startSync"
 				use:enhance={() => {
 					isSyncing = true;
+					// Connect to SSE immediately to catch progress updates
+					connectSSE();
 					return async ({ update }) => {
-						isSyncing = false;
 						await update();
 					};
 				}}
@@ -135,7 +359,7 @@
 					<button type="submit" class="sync-button" disabled={isSyncing}>
 						{#if isSyncing}
 							<span class="spinner small"></span>
-							Syncing...
+							Starting...
 						{:else}
 							Start Sync
 						{/if}
@@ -144,7 +368,7 @@
 			</form>
 		{/if}
 
-		{#if data.lastSync}
+		{#if data.lastSync && !syncActive && !progress}
 			<div class="last-sync-info">
 				<strong>Last sync:</strong>
 				{formatRelativeTime(data.lastSync.completedAt)} -
@@ -455,14 +679,200 @@
 		cursor: not-allowed;
 	}
 
-	.sync-running {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
+	/* Progress Card */
+	.sync-progress-card {
+		position: relative;
 		padding: 1rem;
 		background: hsl(var(--muted));
 		border-radius: var(--radius);
+		border: 1px solid hsl(var(--border));
+		overflow: hidden;
+	}
+
+	.sync-progress-card.completed {
+		border-color: hsl(120 40% 35%);
+	}
+
+	.sync-progress-card.failed {
+		border-color: hsl(var(--destructive));
+	}
+
+	.sync-progress-card.cancelled {
+		border-color: hsl(45 80% 40%);
+	}
+
+	/* Indeterminate Progress Bar */
+	.progress-bar-container {
+		height: 4px;
+		background: hsl(var(--primary) / 0.2);
+		border-radius: 2px;
+		overflow: hidden;
+		margin-bottom: 1rem;
+	}
+
+	.progress-bar {
+		height: 100%;
+		width: 100%;
+		border-radius: 2px;
+	}
+
+	.progress-bar.running {
+		background: linear-gradient(
+			90deg,
+			hsl(var(--primary) / 0.3) 0%,
+			hsl(var(--primary)) 50%,
+			hsl(var(--primary) / 0.3) 100%
+		);
+		background-size: 200% 100%;
+		animation: shimmer 1.5s ease-in-out infinite;
+	}
+
+	.progress-bar.completed {
+		background: hsl(120 40% 45%);
+		animation: none;
+	}
+
+	.progress-bar.failed {
+		background: hsl(var(--destructive));
+		animation: none;
+	}
+
+	.progress-bar.cancelled {
+		background: hsl(45 80% 45%);
+		animation: none;
+	}
+
+	@keyframes shimmer {
+		0% {
+			background-position: 200% 0;
+		}
+		100% {
+			background-position: -200% 0;
+		}
+	}
+
+	/* Progress Content */
+	.progress-content {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.progress-status {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.status-indicator {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: hsl(var(--muted-foreground));
+	}
+
+	.status-indicator.running {
+		background: hsl(var(--primary));
+		animation: pulse-dot 1.5s ease-in-out infinite;
+	}
+
+	.status-indicator.completed {
+		background: hsl(120 50% 50%);
+	}
+
+	.status-indicator.failed {
+		background: hsl(var(--destructive));
+	}
+
+	.status-indicator.cancelled {
+		background: hsl(45 80% 50%);
+	}
+
+	@keyframes pulse-dot {
+		0%,
+		100% {
+			opacity: 1;
+			transform: scale(1);
+		}
+		50% {
+			opacity: 0.6;
+			transform: scale(0.9);
+		}
+	}
+
+	.status-text {
+		font-weight: 600;
 		color: hsl(var(--foreground));
+	}
+
+	.progress-stats {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.875rem;
+		color: hsl(var(--muted-foreground));
+	}
+
+	.stat {
+		display: flex;
+		align-items: baseline;
+		gap: 0.25rem;
+	}
+
+	.stat-value {
+		font-weight: 600;
+		color: hsl(var(--foreground));
+		font-variant-numeric: tabular-nums;
+	}
+
+	.stat-label {
+		font-size: 0.75rem;
+	}
+
+	.stat-divider {
+		color: hsl(var(--border));
+	}
+
+	.progress-error {
+		margin-top: 0.5rem;
+		padding: 0.5rem 0.75rem;
+		background: hsl(var(--destructive) / 0.1);
+		border-radius: var(--radius);
+		font-size: 0.875rem;
+		color: hsl(var(--destructive));
+	}
+
+	/* Cancel Button */
+	.cancel-form {
+		position: absolute;
+		top: 0.75rem;
+		right: 0.75rem;
+	}
+
+	.cancel-button {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 28px;
+		height: 28px;
+		padding: 0;
+		background: hsl(var(--background));
+		border: 1px solid hsl(var(--border));
+		border-radius: var(--radius);
+		color: hsl(var(--muted-foreground));
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.cancel-button:hover:not(:disabled) {
+		background: hsl(var(--destructive) / 0.1);
+		border-color: hsl(var(--destructive));
+		color: hsl(var(--destructive));
+	}
+
+	.cancel-button:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
 	}
 
 	.last-sync-info {

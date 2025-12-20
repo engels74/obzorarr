@@ -9,7 +9,7 @@ import {
 	getYearStartTimestamp
 } from '$lib/server/sync/service';
 import {
-	triggerImmediateSync,
+	startBackgroundSync,
 	getSchedulerStatus,
 	updateSchedulerCron,
 	pauseSyncScheduler,
@@ -17,6 +17,7 @@ import {
 	setupSyncScheduler,
 	isSchedulerConfigured
 } from '$lib/server/sync/scheduler';
+import { cancelSync } from '$lib/server/sync/progress';
 
 /**
  * Admin Sync Page Server
@@ -98,14 +99,9 @@ export const load: PageServerLoad = async () => {
 
 export const actions: Actions = {
 	/**
-	 * Start a manual sync
+	 * Start a manual sync (runs in background with progress tracking)
 	 */
 	startSync: async ({ request }) => {
-		// Check if sync is already running
-		if (await isSyncRunning()) {
-			return fail(400, { error: 'A sync is already in progress' });
-		}
-
 		const formData = await request.formData();
 		const backfillYearRaw = formData.get('backfillYear');
 
@@ -120,21 +116,38 @@ export const actions: Actions = {
 		}
 
 		try {
-			// Start sync (this runs in the foreground - could be made async with SSE)
-			const result = await triggerImmediateSync(backfillYear);
+			// Start sync in background (returns immediately)
+			const result = await startBackgroundSync(backfillYear);
 
-			if (result.status === 'failed') {
-				return fail(500, { error: result.error ?? 'Sync failed' });
+			if (!result.started) {
+				return fail(400, { error: result.error ?? 'Failed to start sync' });
 			}
 
 			return {
 				success: true,
-				message: `Sync completed: ${result.recordsInserted} records added`
+				started: true,
+				message: 'Sync started'
 			};
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to start sync';
 			return fail(500, { error: message });
 		}
+	},
+
+	/**
+	 * Cancel a running sync
+	 */
+	cancelSync: async () => {
+		const cancelled = cancelSync();
+
+		if (!cancelled) {
+			return fail(400, { error: 'No sync is currently running' });
+		}
+
+		return {
+			success: true,
+			message: 'Sync cancelled'
+		};
 	},
 
 	/**
