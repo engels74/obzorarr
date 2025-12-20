@@ -6,7 +6,8 @@ import {
 	hasRequiredFields,
 	type ValidPlexHistoryMetadata,
 	type FetchHistoryOptions,
-	type HistoryPageResult
+	type HistoryPageResult,
+	type HistoryPageWithStats
 } from './types';
 
 /**
@@ -191,14 +192,15 @@ async function fetchHistoryPage(
 		items: validItems,
 		totalSize: container.totalSize ?? container.size,
 		offset: container.offset,
-		size: container.size
+		size: container.size,
+		skippedCount
 	};
 }
 
 /**
  * Fetch all play history from Plex with automatic pagination
  *
- * This is an async generator that yields pages of history items.
+ * This is an async generator that yields pages of history items with stats.
  * Use this for memory-efficient processing of large history datasets.
  *
  * Implements Requirements 2.1 and 2.2:
@@ -206,27 +208,28 @@ async function fetchHistoryPage(
  * - Uses X-Plex-Container-Start and X-Plex-Container-Size for pagination
  *
  * @param options - Fetch options including page size and filters
- * @yields Arrays of PlexHistoryMetadata for each page
+ * @yields Objects with items array and skippedCount for each page
  *
  * @example
  * ```typescript
  * // Process all history pages
- * for await (const page of fetchAllHistory({ pageSize: 100 })) {
- *   for (const item of page) {
+ * for await (const { items, skippedCount } of fetchAllHistory({ pageSize: 100 })) {
+ *   for (const item of items) {
  *     console.log(item.title, item.viewedAt);
  *   }
+ *   console.log(`Skipped ${skippedCount} items without required fields`);
  * }
  *
  * // Collect all items into a single array
  * const allItems: ValidPlexHistoryMetadata[] = [];
- * for await (const page of fetchAllHistory()) {
- *   allItems.push(...page);
+ * for await (const { items } of fetchAllHistory()) {
+ *   allItems.push(...items);
  * }
  * ```
  */
 export async function* fetchAllHistory(
 	options: FetchHistoryOptions = {}
-): AsyncGenerator<ValidPlexHistoryMetadata[], void, unknown> {
+): AsyncGenerator<HistoryPageWithStats, void, unknown> {
 	const { pageSize = DEFAULT_PAGE_SIZE } = options;
 	let offset = 0;
 	let totalSize: number | undefined;
@@ -239,9 +242,13 @@ export async function* fetchAllHistory(
 			totalSize = pageResult.totalSize;
 		}
 
-		// Yield the items from this page
-		if (pageResult.items.length > 0) {
-			yield pageResult.items;
+		// Yield the items and skipped count from this page
+		// Always yield to propagate skipped count even if no valid items
+		if (pageResult.items.length > 0 || pageResult.skippedCount > 0) {
+			yield {
+				items: pageResult.items,
+				skippedCount: pageResult.skippedCount
+			};
 		}
 
 		// Move to next page
@@ -272,8 +279,8 @@ export async function fetchAllHistoryArray(
 ): Promise<ValidPlexHistoryMetadata[]> {
 	const allItems: ValidPlexHistoryMetadata[] = [];
 
-	for await (const page of fetchAllHistory(options)) {
-		allItems.push(...page);
+	for await (const { items } of fetchAllHistory(options)) {
+		allItems.push(...items);
 	}
 
 	return allItems;

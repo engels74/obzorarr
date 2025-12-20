@@ -326,20 +326,23 @@ export async function startSync(options: StartSyncOptions = {}): Promise<SyncRes
 
 		// Fetch and process history pages
 		// Implements Requirement 2.1
-		for await (const page of fetchAllHistory({
+		for await (const { items: page, skippedCount } of fetchAllHistory({
 			pageSize: DEFAULT_PAGE_SIZE,
 			minViewedAt,
 			signal
 		})) {
 			currentPage++;
 
+			// Accumulate items skipped due to missing required fields (validation)
+			recordsSkipped += skippedCount;
+
 			// Insert batch and track results
 			// Implements Requirement 2.3
-			const { inserted, skipped } = await insertHistoryBatch(page);
+			const { inserted, skipped: dbSkipped } = await insertHistoryBatch(page);
 
 			recordsProcessed += page.length;
 			recordsInserted += inserted;
-			recordsSkipped += skipped;
+			recordsSkipped += dbSkipped;
 
 			// Track maximum viewedAt for this sync
 			// Implements Requirement 2.4

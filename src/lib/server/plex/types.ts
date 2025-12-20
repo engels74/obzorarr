@@ -215,4 +215,24 @@ export interface HistoryPageResult {
 	 * Number of items in this page
 	 */
 	size: number;
+
+	/**
+	 * Number of items skipped due to missing required fields (ratingKey/title)
+	 */
+	skippedCount: number;
+}
+
+/**
+ * Page result with stats for async generator yields
+ */
+export interface HistoryPageWithStats {
+	/**
+	 * Array of validated history metadata items for this page
+	 */
+	items: ValidPlexHistoryMetadata[];
+
+	/**
+	 * Number of items skipped due to missing required fields (ratingKey/title)
+	 */
+	skippedCount: number;
 }
