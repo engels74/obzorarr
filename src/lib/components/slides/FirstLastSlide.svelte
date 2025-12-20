@@ -3,6 +3,7 @@
 	import { prefersReducedMotion } from 'svelte/motion';
 	import BaseSlide from './BaseSlide.svelte';
 	import type { FirstLastSlideProps } from './types';
+	import { getThumbUrl } from '$lib/utils/plex-thumb';
 
 	/**
 	 * FirstLastSlide Component
@@ -148,8 +149,8 @@
 				{#if hasFirst && firstWatch}
 					<div bind:this={firstCard} class="card first">
 						<span class="card-label">First Watch</span>
-						{#if firstWatch.thumb}
-							<img src={firstWatch.thumb} alt="" class="thumb" loading="lazy" />
+						{#if getThumbUrl(firstWatch.thumb)}
+							<img src={getThumbUrl(firstWatch.thumb)} alt="" class="thumb" loading="lazy" />
 						{:else}
 							<div class="thumb-placeholder"></div>
 						{/if}
@@ -163,8 +164,8 @@
 				{#if hasLast && lastWatch}
 					<div bind:this={lastCard} class="card last">
 						<span class="card-label">Last Watch</span>
-						{#if lastWatch.thumb}
-							<img src={lastWatch.thumb} alt="" class="thumb" loading="lazy" />
+						{#if getThumbUrl(lastWatch.thumb)}
+							<img src={getThumbUrl(lastWatch.thumb)} alt="" class="thumb" loading="lazy" />
 						{:else}
 							<div class="thumb-placeholder"></div>
 						{/if}

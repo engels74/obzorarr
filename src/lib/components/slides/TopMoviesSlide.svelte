@@ -3,6 +3,7 @@
 	import { prefersReducedMotion } from 'svelte/motion';
 	import BaseSlide from './BaseSlide.svelte';
 	import type { TopMoviesSlideProps } from './types';
+	import { getThumbUrl } from '$lib/utils/plex-thumb';
 
 	/**
 	 * TopMoviesSlide Component
@@ -91,8 +92,8 @@
 				{#each displayedMovies as movie, i}
 					<li bind:this={listItems[i]} class="movie-item">
 						<span class="rank">#{movie.rank}</span>
-						{#if movie.thumb}
-							<img src={movie.thumb} alt="" class="thumb" loading="lazy" />
+						{#if getThumbUrl(movie.thumb)}
+							<img src={getThumbUrl(movie.thumb)} alt="" class="thumb" loading="lazy" />
 						{:else}
 							<div class="thumb-placeholder"></div>
 						{/if}
