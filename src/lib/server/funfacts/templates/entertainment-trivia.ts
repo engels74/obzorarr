@@ -48,7 +48,7 @@ export const ENTERTAINMENT_TRIVIA_TEMPLATES = defineTemplateCategory('entertainm
 		id: 'star-wars-saga',
 		factTemplate: 'With {hours} hours on screen',
 		comparisonTemplate:
-			"You could watch the original Star Wars trilogy {starWarsCount} times - may the Force be with you!",
+			'You could watch the original Star Wars trilogy {starWarsCount} times - may the Force be with you!',
 		icon: '⭐',
 		requiredStats: ['hours'],
 		minThresholds: { hours: 6.4 } // At least one original trilogy

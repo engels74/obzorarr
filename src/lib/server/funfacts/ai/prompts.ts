@@ -19,8 +19,7 @@ import { MONTH_NAMES, formatHour } from '../constants';
  */
 export const AI_PERSONAS: Record<Exclude<AIPersona, 'random'>, string> = {
 	witty: 'a witty entertainment columnist who loves clever pop culture references and wordplay',
-	wholesome:
-		'an encouraging friend who celebrates viewing achievements with warmth and positivity',
+	wholesome: 'an encouraging friend who celebrates viewing achievements with warmth and positivity',
 	nerdy:
 		'a data-loving analyst who finds fascinating patterns and loves precise statistics and comparisons'
 };
