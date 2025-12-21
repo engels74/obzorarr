@@ -395,7 +395,50 @@ export async function startSync(options: StartSyncOptions = {}): Promise<SyncRes
 		// Enrich records with metadata (duration, genres) from Plex
 		if (recordsInserted > 0) {
 			logger.info('Starting metadata enrichment...', `Sync-${syncId}`);
-			const enrichResult = await enrichMetadata({ signal });
+
+			// Signal phase change to enriching
+			onProgress?.({
+				recordsProcessed,
+				recordsInserted,
+				recordsSkipped,
+				currentPage,
+				isComplete: false,
+				phase: 'enriching',
+				enrichmentTotal: 0,
+				enrichmentProcessed: 0
+			});
+
+			// Track last logged percentage for 5% interval logging
+			let lastLoggedPercent = -5;
+
+			const enrichResult = await enrichMetadata({
+				signal,
+				onProgress: (processed, total) => {
+					const percent = total > 0 ? Math.round((processed / total) * 100) : 0;
+
+					// Log at 5% intervals (5%, 10%, 15%, ... 100%)
+					if (percent >= lastLoggedPercent + 5 || processed === total) {
+						logger.info(
+							`Enriched ${processed.toLocaleString()}/${total.toLocaleString()} (${percent}%)`,
+							'Enrichment'
+						);
+						lastLoggedPercent = percent;
+					}
+
+					// Update external progress callback on every batch
+					onProgress?.({
+						recordsProcessed,
+						recordsInserted,
+						recordsSkipped,
+						currentPage,
+						isComplete: false,
+						phase: 'enriching',
+						enrichmentTotal: total,
+						enrichmentProcessed: processed
+					});
+				}
+			});
+
 			logger.info(
 				`Metadata enrichment: ${enrichResult.enriched} enriched, ${enrichResult.failed} failed`,
 				`Sync-${syncId}`

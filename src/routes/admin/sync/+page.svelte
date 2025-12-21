@@ -28,6 +28,9 @@
 		currentPage: number;
 		startedAt: string;
 		error?: string;
+		phase?: 'fetching' | 'enriching';
+		enrichmentTotal?: number;
+		enrichmentProcessed?: number;
 	}
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -74,11 +77,20 @@
 		(data.isRunning && !syncCompleted) || (progress !== null && progress.status === 'running')
 	);
 
+	// Enrichment percentage for display
+	const enrichmentPercent = $derived(() => {
+		if (!progress?.enrichmentTotal || progress.enrichmentTotal === 0) return 0;
+		return Math.round(((progress.enrichmentProcessed ?? 0) / progress.enrichmentTotal) * 100);
+	});
+
 	// Status text for display
 	const statusText = $derived(() => {
 		if (!progress) return 'Idle';
 		switch (progress.status) {
 			case 'running':
+				if (progress.phase === 'enriching') {
+					return `Enriching metadata... ${enrichmentPercent()}%`;
+				}
 				return 'Syncing...';
 			case 'completed':
 				return 'Completed';
@@ -264,19 +276,24 @@
 				class:failed={progress?.status === 'failed'}
 				class:cancelled={progress?.status === 'cancelled'}
 			>
-				<!-- Indeterminate Progress Bar -->
+				<!-- Progress Bar (indeterminate during fetch, determinate during enrichment) -->
 				<div
 					class="progress-bar-container"
 					role="progressbar"
 					aria-label="Sync in progress"
 					aria-busy={progress?.status === 'running'}
+					aria-valuenow={progress?.phase === 'enriching' ? enrichmentPercent() : undefined}
+					aria-valuemin={progress?.phase === 'enriching' ? 0 : undefined}
+					aria-valuemax={progress?.phase === 'enriching' ? 100 : undefined}
 				>
 					<div
 						class="progress-bar"
-						class:running={progress?.status === 'running'}
+						class:running={progress?.status === 'running' && progress?.phase !== 'enriching'}
+						class:enriching={progress?.phase === 'enriching'}
 						class:completed={progress?.status === 'completed'}
 						class:failed={progress?.status === 'failed'}
 						class:cancelled={progress?.status === 'cancelled'}
+						style:width={progress?.phase === 'enriching' ? `${enrichmentPercent()}%` : '100%'}
 					></div>
 				</div>
 
@@ -310,6 +327,19 @@
 								<span class="stat-label">skipped</span>
 							</span>
 						</div>
+
+						{#if progress.phase === 'enriching' && progress.enrichmentTotal}
+							<div class="progress-stats enrichment">
+								<span class="stat">
+									<span class="stat-value">
+										{(
+											progress.enrichmentProcessed ?? 0
+										).toLocaleString()}/{progress.enrichmentTotal.toLocaleString()}
+									</span>
+									<span class="stat-label">enriched ({enrichmentPercent()}%)</span>
+								</span>
+							</div>
+						{/if}
 
 						{#if progress.error}
 							<div class="progress-error">
@@ -774,6 +804,12 @@
 		animation: none;
 	}
 
+	.progress-bar.enriching {
+		background: hsl(var(--primary));
+		animation: none;
+		transition: width 0.3s ease;
+	}
+
 	@keyframes shimmer {
 		0% {
 			background-position: 200% 0;
@@ -843,6 +879,12 @@
 		gap: 0.5rem;
 		font-size: 0.875rem;
 		color: hsl(var(--muted-foreground));
+	}
+
+	.progress-stats.enrichment {
+		margin-top: 0.25rem;
+		padding-top: 0.5rem;
+		border-top: 1px solid hsl(var(--border) / 0.5);
 	}
 
 	.stat {

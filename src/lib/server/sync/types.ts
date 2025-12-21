@@ -48,6 +48,11 @@ export interface StartSyncOptions {
 }
 
 /**
+ * Sync operation phase
+ */
+export type SyncPhase = 'fetching' | 'enriching';
+
+/**
  * Progress information during sync
  */
 export interface SyncProgress {
@@ -61,6 +66,12 @@ export interface SyncProgress {
 	currentPage: number;
 	/** Whether the sync is complete */
 	isComplete: boolean;
+	/** Current phase of the sync operation */
+	phase?: SyncPhase;
+	/** Total records needing enrichment (only during enriching phase) */
+	enrichmentTotal?: number;
+	/** Records processed during enrichment (only during enriching phase) */
+	enrichmentProcessed?: number;
 }
 
 /**

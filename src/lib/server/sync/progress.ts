@@ -17,6 +17,11 @@
 export type LiveSyncStatus = 'running' | 'completed' | 'failed' | 'cancelled';
 
 /**
+ * Sync operation phase
+ */
+export type SyncPhase = 'fetching' | 'enriching';
+
+/**
  * Live sync progress data
  */
 export interface LiveSyncProgress {
@@ -36,6 +41,12 @@ export interface LiveSyncProgress {
 	startedAt: Date;
 	/** Error message if sync failed */
 	error?: string;
+	/** Current phase of the sync operation */
+	phase?: SyncPhase;
+	/** Total records needing enrichment (only during enriching phase) */
+	enrichmentTotal?: number;
+	/** Records processed during enrichment (only during enriching phase) */
+	enrichmentProcessed?: number;
 }
 
 // =============================================================================

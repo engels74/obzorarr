@@ -254,20 +254,25 @@ export async function startBackgroundSync(
 		backfillYear,
 		signal,
 		onProgress: (progress) => {
-			// Update progress store on every callback
+			// Update progress store on every callback (including enrichment fields)
 			updateProgressStore({
 				recordsProcessed: progress.recordsProcessed,
 				recordsInserted: progress.recordsInserted,
 				recordsSkipped: progress.recordsSkipped,
-				currentPage: progress.currentPage
+				currentPage: progress.currentPage,
+				phase: progress.phase,
+				enrichmentTotal: progress.enrichmentTotal,
+				enrichmentProcessed: progress.enrichmentProcessed
 			});
 
-			// Log progress periodically
-			if (progress.currentPage % PROGRESS_LOG_INTERVAL === 0) {
-				logger.info(
-					`Progress: page ${progress.currentPage}, ${progress.recordsProcessed} records processed`,
-					'ManualSync'
-				);
+			// Log progress periodically (only during fetch phase, enrichment logging is in service.ts)
+			if (!progress.phase || progress.phase === 'fetching') {
+				if (progress.currentPage % PROGRESS_LOG_INTERVAL === 0) {
+					logger.info(
+						`Progress: page ${progress.currentPage}, ${progress.recordsProcessed} records processed`,
+						'ManualSync'
+					);
+				}
 			}
 		}
 	})
