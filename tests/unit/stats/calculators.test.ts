@@ -250,9 +250,117 @@ describe('Ranking Calculator', () => {
 	});
 
 	describe('calculateTopGenres', () => {
-		it('returns empty array (genres not implemented)', () => {
-			const records = [createRecord()];
+		it('returns empty array when records have no genres', () => {
+			const records = [createRecord({ genres: null })];
 			const result = calculateTopGenres(records);
+			expect(result).toEqual([]);
+		});
+
+		it('parses and counts genres from JSON array', () => {
+			const records = [
+				createRecord({ genres: '["Action","Drama"]' }),
+				createRecord({ id: 2, historyKey: 'key-2', genres: '["Action","Comedy"]' }),
+				createRecord({ id: 3, historyKey: 'key-3', genres: '["Drama"]' })
+			];
+
+			const result = calculateTopGenres(records);
+
+			expect(result.length).toBe(3);
+			expect(result[0]?.title).toBe('Action');
+			expect(result[0]?.count).toBe(2);
+			expect(result[0]?.rank).toBe(1);
+			expect(result[1]?.title).toBe('Drama');
+			expect(result[1]?.count).toBe(2);
+			expect(result[1]?.rank).toBe(2);
+			expect(result[2]?.title).toBe('Comedy');
+			expect(result[2]?.count).toBe(1);
+			expect(result[2]?.rank).toBe(3);
+		});
+
+		it('skips records with invalid JSON genres', () => {
+			const records = [
+				createRecord({ genres: '["Action"]' }),
+				createRecord({ id: 2, historyKey: 'key-2', genres: 'not-valid-json' }),
+				createRecord({ id: 3, historyKey: 'key-3', genres: '["Drama"]' })
+			];
+
+			const result = calculateTopGenres(records);
+
+			expect(result.length).toBe(2);
+			expect(result[0]?.title).toBe('Action');
+			expect(result[1]?.title).toBe('Drama');
+		});
+
+		it('skips records where genres JSON is not an array', () => {
+			const records = [
+				createRecord({ genres: '["Action"]' }),
+				createRecord({ id: 2, historyKey: 'key-2', genres: '"just a string"' }),
+				createRecord({ id: 3, historyKey: 'key-3', genres: '{"genre": "Drama"}' }),
+				createRecord({ id: 4, historyKey: 'key-4', genres: '123' })
+			];
+
+			const result = calculateTopGenres(records);
+
+			expect(result.length).toBe(1);
+			expect(result[0]?.title).toBe('Action');
+		});
+
+		it('filters out non-string genres in array', () => {
+			const records = [createRecord({ genres: '[1, "Action", null, true, "Drama"]' })];
+
+			const result = calculateTopGenres(records);
+
+			expect(result.length).toBe(2);
+			expect(result[0]?.title).toBe('Action');
+			expect(result[1]?.title).toBe('Drama');
+		});
+
+		it('filters out empty string genres', () => {
+			const records = [createRecord({ genres: '["Action", "", "Drama", ""]' })];
+
+			const result = calculateTopGenres(records);
+
+			expect(result.length).toBe(2);
+			expect(result[0]?.title).toBe('Action');
+			expect(result[1]?.title).toBe('Drama');
+		});
+
+		it('breaks ties alphabetically', () => {
+			const records = [
+				createRecord({ genres: '["Zebra"]' }),
+				createRecord({ id: 2, historyKey: 'key-2', genres: '["Apple"]' })
+			];
+
+			const result = calculateTopGenres(records);
+
+			expect(result[0]?.title).toBe('Apple');
+			expect(result[1]?.title).toBe('Zebra');
+		});
+
+		it('respects limit option', () => {
+			const records = [createRecord({ genres: '["Action","Drama","Comedy","Horror","SciFi"]' })];
+
+			const result = calculateTopGenres(records, { limit: 3 });
+
+			expect(result.length).toBe(3);
+		});
+
+		it('handles empty genres array', () => {
+			const records = [createRecord({ genres: '[]' })];
+			const result = calculateTopGenres(records);
+			expect(result).toEqual([]);
+		});
+
+		it('sets thumb to null for all genre results', () => {
+			const records = [createRecord({ genres: '["Action"]', thumb: '/some/thumb.jpg' })];
+
+			const result = calculateTopGenres(records);
+
+			expect(result[0]?.thumb).toBeNull();
+		});
+
+		it('handles empty records array', () => {
+			const result = calculateTopGenres([]);
 			expect(result).toEqual([]);
 		});
 	});

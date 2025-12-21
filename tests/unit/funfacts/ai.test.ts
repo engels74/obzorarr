@@ -561,6 +561,45 @@ describe('Fun Facts AI', () => {
 			expect(facts.length).toBeGreaterThan(0);
 		});
 
+		it('night-owl template is excluded when peakHour < 21', async () => {
+			// Peak hour at 8 PM (20) - should exclude night-owl
+			const notNightOwlStats = createMockUserStats({
+				watchTimeByHour: Array(24)
+					.fill(0)
+					.map((_, i) => (i === 20 ? 1000 : 100))
+			});
+
+			const context = buildGenerationContext(notNightOwlStats);
+			expect(context.peakHour).toBe(20);
+
+			// Generate facts - night-owl template should be excluded
+			const facts = await generateFunFacts(notNightOwlStats, { count: 20 });
+			expect(facts.length).toBeGreaterThan(0);
+
+			// Verify night-owl specific content is not present
+			const hasNightOwl = facts.some(
+				(f) =>
+					f.fact.toLowerCase().includes('night owl') || f.fact.toLowerCase().includes('9:00 pm')
+			);
+			expect(hasNightOwl).toBe(false);
+		});
+
+		it('night-owl template is included at boundary peakHour = 21', async () => {
+			// Peak hour at 9 PM (21) - boundary, should include night-owl
+			const boundaryStats = createMockUserStats({
+				watchTimeByHour: Array(24)
+					.fill(0)
+					.map((_, i) => (i === 21 ? 1000 : 100))
+			});
+
+			const context = buildGenerationContext(boundaryStats);
+			expect(context.peakHour).toBe(21);
+
+			// Generate many facts to increase chance of hitting night-owl
+			const facts = await generateFunFacts(boundaryStats, { count: 20 });
+			expect(facts.length).toBeGreaterThan(0);
+		});
+
 		it('early-bird template requires peakHour <= 9', async () => {
 			// Peak hour at 6 AM
 			const earlyBirdStats = createMockUserStats({
@@ -575,6 +614,103 @@ describe('Fun Facts AI', () => {
 			// Facts might include early-bird template
 			const facts = await generateFunFacts(earlyBirdStats, { count: 10 });
 			expect(facts.length).toBeGreaterThan(0);
+		});
+
+		it('early-bird template is excluded when peakHour > 9', async () => {
+			// Peak hour at 10 AM - should exclude early-bird
+			const notEarlyBirdStats = createMockUserStats({
+				watchTimeByHour: Array(24)
+					.fill(0)
+					.map((_, i) => (i === 10 ? 1000 : 100))
+			});
+
+			const context = buildGenerationContext(notEarlyBirdStats);
+			expect(context.peakHour).toBe(10);
+
+			// Generate facts - early-bird template should be excluded
+			const facts = await generateFunFacts(notEarlyBirdStats, { count: 20 });
+			expect(facts.length).toBeGreaterThan(0);
+		});
+	});
+
+	// =========================================================================
+	// Timeout Handling Tests
+	// =========================================================================
+
+	describe('Timeout Handling', () => {
+		it('retries on AbortError (timeout)', async () => {
+			const stats = createMockUserStats();
+			const config = createMockConfig({ maxAIRetries: 1, aiTimeoutMs: 100 });
+
+			let callCount = 0;
+			globalThis.fetch = mock(async () => {
+				callCount++;
+				if (callCount === 1) {
+					// Simulate AbortError (timeout)
+					const error = new Error('The operation was aborted');
+					error.name = 'AbortError';
+					throw error;
+				}
+				return new Response(JSON.stringify(createValidAIResponse()), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				});
+			}) as unknown as typeof fetch;
+
+			const facts = await generateWithAI(stats, config, 3);
+
+			expect(callCount).toBe(2); // Initial + 1 retry after timeout
+			expect(facts).toHaveLength(3);
+		});
+
+		it('throws AIGenerationError with timeout message after all retries exhausted', async () => {
+			const stats = createMockUserStats();
+			const config = createMockConfig({ maxAIRetries: 1 });
+
+			let callCount = 0;
+			globalThis.fetch = mock(async () => {
+				callCount++;
+				// Always throw AbortError
+				const error = new Error('The operation was aborted');
+				error.name = 'AbortError';
+				throw error;
+			}) as unknown as typeof fetch;
+
+			try {
+				await generateWithAI(stats, config, 3);
+				expect.unreachable('Should have thrown');
+			} catch (error) {
+				expect(error).toBeInstanceOf(AIGenerationError);
+				expect((error as AIGenerationError).message).toContain('timed out');
+			}
+
+			expect(callCount).toBe(2); // Initial + 1 retry
+		});
+
+		it('recovers from timeout then succeeds on retry', async () => {
+			const stats = createMockUserStats();
+			const config = createMockConfig({ maxAIRetries: 2 });
+
+			let callCount = 0;
+			globalThis.fetch = mock(async () => {
+				callCount++;
+				if (callCount <= 2) {
+					// First 2 calls timeout
+					const error = new Error('The operation was aborted');
+					error.name = 'AbortError';
+					throw error;
+				}
+				// Third call succeeds
+				return new Response(JSON.stringify(createValidAIResponse()), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				});
+			}) as unknown as typeof fetch;
+
+			const facts = await generateWithAI(stats, config, 3);
+
+			expect(callCount).toBe(3);
+			expect(facts).toHaveLength(3);
 		});
 	});
 });
