@@ -127,4 +127,23 @@ sqlite.exec(`
 		is_admin INTEGER DEFAULT 0,
 		expires_at INTEGER NOT NULL
 	);
+
+	-- Logs table
+	CREATE TABLE IF NOT EXISTS logs (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		level TEXT NOT NULL,
+		message TEXT NOT NULL,
+		source TEXT,
+		metadata TEXT,
+		timestamp INTEGER NOT NULL
+	);
+
+	-- Metadata cache table
+	CREATE TABLE IF NOT EXISTS metadata_cache (
+		rating_key TEXT PRIMARY KEY,
+		duration INTEGER,
+		genres TEXT,
+		fetched_at INTEGER NOT NULL,
+		fetch_failed INTEGER DEFAULT 0
+	);
 `);
