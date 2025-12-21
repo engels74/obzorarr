@@ -36,8 +36,7 @@ const slideTypeArbitrary: fc.Arbitrary<SlideType> = fc.constantFrom(
 	'distribution',
 	'percentile',
 	'binge',
-	'first-last',
-	'fun-fact'
+	'first-last'
 );
 
 // Generate a shuffled order of all default slides
@@ -340,8 +339,7 @@ describe('Slide Configuration Service', () => {
 			'top-shows',
 			'genres',
 			'distribution',
-			'first-last',
-			'fun-fact'
+			'first-last'
 		];
 		await reorderSlides(newOrder);
 
@@ -361,7 +359,6 @@ describe('Slide Configuration Service', () => {
 	it('enabled slides are in sorted order', async () => {
 		// Reorder slides
 		const newOrder: SlideType[] = [
-			'fun-fact',
 			'binge',
 			'total-time',
 			'percentile',

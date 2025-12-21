@@ -494,7 +494,7 @@ describe('generateFromTemplates', () => {
 		expect(result.length).toBeGreaterThan(0);
 	});
 
-	it('returns empty array when no templates apply (graceful degradation)', () => {
+	it('returns year-participant template when no other templates apply (graceful degradation)', () => {
 		const stats = createMockUserStats({
 			totalWatchTimeMinutes: 0,
 			totalPlays: 0,
@@ -510,7 +510,9 @@ describe('generateFromTemplates', () => {
 		const context = buildGenerationContext(stats);
 
 		const result = generateFromTemplates(context, { count: 3 });
-		expect(result).toEqual([]);
+		// The year-participant template always applies as a fallback
+		expect(result.length).toBeGreaterThanOrEqual(1);
+		expect(result[0]?.fact).toContain('active viewer');
 	});
 });
 

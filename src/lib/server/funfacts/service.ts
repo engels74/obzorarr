@@ -175,7 +175,10 @@ export function interpolateTemplate(template: string, context: FactGenerationCon
 		WALKING_SPEED_MPH,
 		SLEEP_CYCLE_HOURS,
 		MCU_MARATHON_HOURS,
-		HARRY_POTTER_TOTAL_HOURS
+		HARRY_POTTER_TOTAL_HOURS,
+		COFFEE_BREAK_HOURS,
+		COMMUTE_HOURS,
+		PODCAST_EPISODE_HOURS
 	} = EQUIVALENCY_FACTORS;
 
 	// Calculate derived values
@@ -188,6 +191,13 @@ export function interpolateTemplate(template: string, context: FactGenerationCon
 	const hpCount = Math.round((context.hours / HARRY_POTTER_TOTAL_HOURS) * 10) / 10;
 	const daysBetweenMovies = Math.max(1, Math.round(365 / Math.max(1, context.uniqueMovies)));
 	const playsPerDay = Math.round((context.plays / 365) * 10) / 10;
+
+	// New calculated values for low-threshold templates
+	const coffeeBreaks = Math.round(context.hours / COFFEE_BREAK_HOURS);
+	const commuteTrips = Math.round(context.hours / COMMUTE_HOURS);
+	const podcastEpisodes = Math.round(context.hours / PODCAST_EPISODE_HOURS);
+	const topPercentile = 100 - Math.round(context.percentile);
+	const year = new Date().getFullYear(); // Current year for the year-participant template
 
 	const replacements: Record<string, string | number> = {
 		hours: context.hours,
@@ -218,7 +228,14 @@ export function interpolateTemplate(template: string, context: FactGenerationCon
 		mcuCount,
 		hpCount,
 		daysBetweenMovies,
-		playsPerDay
+		playsPerDay,
+
+		// New low-threshold equivalencies
+		coffeeBreaks,
+		commuteTrips,
+		podcastEpisodes,
+		topPercentile,
+		year
 	};
 
 	return template.replace(/\{(\w+)\}/g, (_, key) => {

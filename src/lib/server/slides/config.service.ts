@@ -12,6 +12,8 @@ import {
 
 // Key for tracking whether slides have been migrated to enabled state
 const SLIDES_ENABLED_MIGRATION_KEY = 'slides_enabled_migration_v1';
+// Key for tracking whether fun-fact slide type has been removed
+const FUN_FACT_REMOVAL_MIGRATION_KEY = 'fun_fact_slide_removal_v1';
 
 /**
  * Slide Configuration Service
@@ -39,8 +41,10 @@ const SLIDES_ENABLED_MIGRATION_KEY = 'slides_enabled_migration_v1';
  *
  * Creates entries for all standard slide types if they don't exist.
  * New slides are appended after existing ones to avoid sortOrder conflicts.
- * Also applies a one-time migration to enable all default slides (fixes a bug
- * where slides were created with enabled: false).
+ * Also applies migrations:
+ * - One-time migration to enable all default slides (fixes a bug
+ *   where slides were created with enabled: false).
+ * - One-time migration to remove fun-fact slide type (now interspersed dynamically)
  *
  * Implements Requirement 9.4 (default ordering)
  */
@@ -53,6 +57,27 @@ export async function initializeDefaultSlideConfig(): Promise<void> {
 		.limit(1);
 
 	const needsMigration = migrationApplied.length === 0;
+
+	// Check if fun-fact removal migration has been applied
+	const funFactRemovalApplied = await db
+		.select()
+		.from(appSettings)
+		.where(eq(appSettings.key, FUN_FACT_REMOVAL_MIGRATION_KEY))
+		.limit(1);
+
+	const needsFunFactRemoval = funFactRemovalApplied.length === 0;
+
+	// Apply fun-fact removal migration if needed
+	if (needsFunFactRemoval) {
+		// Delete any fun-fact entries from slideConfig
+		await db.delete(slideConfig).where(eq(slideConfig.slideType, 'fun-fact'));
+
+		// Mark migration as applied
+		await db
+			.insert(appSettings)
+			.values({ key: FUN_FACT_REMOVAL_MIGRATION_KEY, value: 'applied' })
+			.onConflictDoNothing();
+	}
 
 	// Fetch all existing configs in a single query
 	const existingConfigs = await db.select().from(slideConfig);

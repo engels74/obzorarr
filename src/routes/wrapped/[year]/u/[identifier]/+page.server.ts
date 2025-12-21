@@ -12,10 +12,12 @@ import {
 	getEnabledSlides,
 	getEnabledCustomSlides,
 	buildSlideRenderConfigs,
-	customSlidesToMap
+	customSlidesToMap,
+	intersperseFunFacts
 } from '$lib/server/slides';
-import { generateFunFacts, type FunFact } from '$lib/server/funfacts';
+import { generateFunFacts } from '$lib/server/funfacts';
 import { getLogoVisibility, setUserLogoPreference } from '$lib/server/logo';
+import { getFunFactFrequency } from '$lib/server/admin/settings.service';
 
 /**
  * Per-user Wrapped Page Load Function
@@ -112,20 +114,24 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		getEnabledCustomSlides(year)
 	]);
 
-	// Build slide render configs
-	const slides = buildSlideRenderConfigs(slideConfigs, customSlides);
+	// Build base slide render configs
+	const baseSlides = buildSlideRenderConfigs(slideConfigs, customSlides);
 
 	// Convert custom slides to map for component usage
 	const customSlidesMap = customSlidesToMap(customSlides);
 
-	// Generate fun facts for the stats
-	let funFacts: FunFact[] = [];
+	// Get fun fact frequency setting and generate fun facts
+	const frequencyConfig = await getFunFactFrequency();
+	let funFacts: Awaited<ReturnType<typeof generateFunFacts>> = [];
 	try {
-		funFacts = await generateFunFacts(stats, { count: 3 });
+		funFacts = await generateFunFacts(stats, { count: frequencyConfig.count });
 	} catch (err) {
 		console.warn('Failed to generate fun facts:', err);
 		// Continue without fun facts rather than failing the page
 	}
+
+	// Intersperse fun facts into slides
+	const slides = intersperseFunFacts(baseSlides, funFacts);
 
 	// Get logo visibility (per-user pages can have user control if mode is USER_CHOICE)
 	const logoVisibility = await getLogoVisibility(userId, year);
@@ -134,7 +140,6 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		stats,
 		slides,
 		customSlidesMap,
-		funFacts,
 		year,
 		userId,
 		username: user.username,

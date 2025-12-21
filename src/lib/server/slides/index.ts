@@ -47,4 +47,4 @@ export {
 } from './renderer';
 
 // Utilities
-export { buildSlideRenderConfigs, customSlidesToMap } from './utils';
+export { buildSlideRenderConfigs, customSlidesToMap, intersperseFunFacts } from './utils';

@@ -2,7 +2,6 @@
 	import type { SlideRenderConfig, SlideType } from '$lib/components/slides/types';
 	import type { UserStats, ServerStats } from '$lib/server/stats/types';
 	import type { CustomSlide } from '$lib/server/slides/types';
-	import type { FunFact } from '$lib/server/funfacts';
 	import type { SlideMessagingContext } from '$lib/components/slides/messaging-context';
 	import { createPersonalContext } from '$lib/components/slides/messaging-context';
 	import {
@@ -34,8 +33,6 @@
 		stats: UserStats | ServerStats;
 		/** Custom slides data for custom type slides */
 		customSlides?: Map<number, CustomSlide>;
-		/** Fun facts data for fun-fact slides */
-		funFacts?: FunFact[];
 		/** Whether this slide is currently active/visible */
 		active?: boolean;
 		/** Callback when slide animation completes */
@@ -50,7 +47,6 @@
 		slide,
 		stats,
 		customSlides,
-		funFacts,
 		active = true,
 		onAnimationComplete,
 		class: klass = '',
@@ -120,26 +116,15 @@
 			{onAnimationComplete}
 			{messagingContext}
 		/>
-	{:else if slide.type === 'fun-fact'}
-		{#if funFacts && funFacts.length > 0}
-			{@const fact = funFacts[0]}
-			<FunFactSlide
-				fact={fact?.fact ?? "You've watched an incredible amount of content this year!"}
-				comparison={fact?.comparison}
-				icon={fact?.icon}
-				{active}
-				{onAnimationComplete}
-				{messagingContext}
-			/>
-		{:else}
-			<FunFactSlide
-				fact="You've watched an incredible amount of content this year!"
-				comparison="That's more than the average viewer!"
-				{active}
-				{onAnimationComplete}
-				{messagingContext}
-			/>
-		{/if}
+	{:else if slide.type === 'fun-fact' && slide.funFact}
+		<FunFactSlide
+			fact={slide.funFact.fact}
+			comparison={slide.funFact.comparison}
+			icon={slide.funFact.icon}
+			{active}
+			{onAnimationComplete}
+			{messagingContext}
+		/>
 	{:else if slide.type === 'custom' && customSlideData}
 		<CustomSlideComponent
 			title={customSlideData.title}

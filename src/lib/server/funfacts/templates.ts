@@ -38,7 +38,13 @@ export const EQUIVALENCY_FACTORS = {
 	/** Full Marvel Cinematic Universe marathon (first 23 films) in hours */
 	MCU_MARATHON_HOURS: 50,
 	/** Full Harry Potter film series in hours */
-	HARRY_POTTER_TOTAL_HOURS: 19.7
+	HARRY_POTTER_TOTAL_HOURS: 19.7,
+	/** Average coffee break duration in hours (15 min) */
+	COFFEE_BREAK_HOURS: 0.25,
+	/** Average one-way commute time in hours (30 min) */
+	COMMUTE_HOURS: 0.5,
+	/** Average podcast episode length in hours (45 min) */
+	PODCAST_EPISODE_HOURS: 0.75
 } as const;
 
 /**
@@ -131,6 +137,33 @@ export const TIME_EQUIVALENCY_TEMPLATES: FactTemplate[] = [
 		icon: '⚡',
 		requiredStats: ['hours'],
 		minThresholds: { hours: 20 } // At least one HP marathon
+	},
+	{
+		id: 'coffee-breaks',
+		category: 'time-equivalency',
+		factTemplate: 'You watched {hours} hours of content this year',
+		comparisonTemplate: "That's enough time for {coffeeBreaks} coffee breaks!",
+		icon: '☕',
+		requiredStats: ['hours'],
+		minThresholds: { hours: 1 } // Very low threshold
+	},
+	{
+		id: 'commute-time',
+		category: 'time-equivalency',
+		factTemplate: 'Your {hours} hours of viewing',
+		comparisonTemplate: 'Would cover {commuteTrips} average work commutes!',
+		icon: '🚗',
+		requiredStats: ['hours'],
+		minThresholds: { hours: 1 } // Low threshold
+	},
+	{
+		id: 'podcast-episodes',
+		category: 'time-equivalency',
+		factTemplate: 'With {hours} hours of content consumed',
+		comparisonTemplate: "That's like listening to {podcastEpisodes} podcast episodes!",
+		icon: '🎙️',
+		requiredStats: ['hours'],
+		minThresholds: { hours: 1 } // Low threshold
 	}
 ];
 
@@ -178,6 +211,24 @@ export const CONTENT_COMPARISON_TEMPLATES: FactTemplate[] = [
 		icon: '🔍',
 		requiredStats: ['uniqueShows'],
 		minThresholds: { uniqueShows: 5 }
+	},
+	{
+		id: 'movie-starter',
+		category: 'content-comparison',
+		factTemplate: 'You watched {uniqueMovies} unique movies this year',
+		comparisonTemplate: 'Every movie is a new adventure!',
+		icon: '🎬',
+		requiredStats: ['uniqueMovies'],
+		minThresholds: { uniqueMovies: 1 } // Very low threshold
+	},
+	{
+		id: 'show-sampler',
+		category: 'content-comparison',
+		factTemplate: 'You explored {uniqueShows} different TV shows',
+		comparisonTemplate: "That's some serious channel surfing!",
+		icon: '📺',
+		requiredStats: ['uniqueShows'],
+		minThresholds: { uniqueShows: 1 } // Very low threshold
 	}
 ];
 
@@ -244,6 +295,24 @@ export const BEHAVIORAL_TEMPLATES: FactTemplate[] = [
 		icon: '📊',
 		requiredStats: ['plays'],
 		minThresholds: { plays: 100 } // At least ~every 3-4 days
+	},
+	{
+		id: 'consistent-viewer',
+		category: 'behavioral-insight',
+		factTemplate: 'You had {plays} viewing sessions this year',
+		comparisonTemplate: 'Each session a moment of entertainment!',
+		icon: '▶️',
+		requiredStats: ['plays'],
+		minThresholds: { plays: 1 } // Very low threshold
+	},
+	{
+		id: 'any-percentile',
+		category: 'behavioral-insight',
+		factTemplate: "You're in the top {topPercentile}% of viewers on this server",
+		comparisonTemplate: 'Keep on watching!',
+		icon: '📊',
+		requiredStats: ['percentile'],
+		minThresholds: {} // No minimum - always applicable
 	}
 ];
 
@@ -317,6 +386,15 @@ export const TEMPORAL_TEMPLATES: FactTemplate[] = [
 		comparisonTemplate: 'A fitting finale to the year!',
 		icon: '🎬',
 		requiredStats: ['lastWatchTitle']
+	},
+	{
+		id: 'year-participant',
+		category: 'temporal-pattern',
+		factTemplate: 'You were an active viewer in {year}',
+		comparisonTemplate: "Here's to another year of great content!",
+		icon: '🎊',
+		requiredStats: [],
+		minThresholds: {} // Always applicable
 	}
 ];
 

@@ -47,7 +47,11 @@ export const AppSettingsKey = {
 	WRAPPED_LOGO_MODE: 'wrapped_logo_mode',
 
 	// Server Name (cached from Plex)
-	SERVER_NAME: 'server_name'
+	SERVER_NAME: 'server_name',
+
+	// Fun Fact Frequency
+	FUN_FACT_FREQUENCY: 'fun_fact_frequency',
+	FUN_FACT_CUSTOM_COUNT: 'fun_fact_custom_count'
 } as const;
 
 export type AppSettingsKeyType = (typeof AppSettingsKey)[keyof typeof AppSettingsKey];
@@ -85,6 +89,26 @@ export const WrappedLogoMode = {
 } as const;
 
 export type WrappedLogoModeType = (typeof WrappedLogoMode)[keyof typeof WrappedLogoMode];
+
+/**
+ * Fun fact frequency modes
+ */
+export const FunFactFrequency = {
+	FEW: 'few',
+	NORMAL: 'normal',
+	MANY: 'many',
+	CUSTOM: 'custom'
+} as const;
+
+export type FunFactFrequencyType = (typeof FunFactFrequency)[keyof typeof FunFactFrequency];
+
+/**
+ * Fun fact frequency configuration
+ */
+export interface FunFactFrequencyConfig {
+	mode: FunFactFrequencyType;
+	count: number;
+}
 
 // =============================================================================
 // App Settings CRUD
@@ -251,6 +275,67 @@ export async function getCachedServerName(): Promise<string | null> {
  */
 export async function setCachedServerName(name: string): Promise<void> {
 	await setAppSetting(AppSettingsKey.SERVER_NAME, name);
+}
+
+/**
+ * Get the fun fact frequency configuration
+ *
+ * Returns the mode and calculated count based on the mode.
+ * For 'custom' mode, returns the stored custom count.
+ *
+ * @returns The frequency configuration with mode and count
+ */
+export async function getFunFactFrequency(): Promise<FunFactFrequencyConfig> {
+	const mode = await getAppSetting(AppSettingsKey.FUN_FACT_FREQUENCY);
+	const customCountStr = await getAppSetting(AppSettingsKey.FUN_FACT_CUSTOM_COUNT);
+
+	// Validate mode or default to 'normal'
+	const validMode =
+		mode && Object.values(FunFactFrequency).includes(mode as FunFactFrequencyType)
+			? (mode as FunFactFrequencyType)
+			: FunFactFrequency.NORMAL;
+
+	// Calculate count based on mode
+	let count: number;
+	switch (validMode) {
+		case FunFactFrequency.FEW:
+			count = 2; // 1-2, we use 2 as the target
+			break;
+		case FunFactFrequency.NORMAL:
+			count = 4; // 3-5, we use 4 as the target
+			break;
+		case FunFactFrequency.MANY:
+			count = 8; // 6-10, we use 8 as the target
+			break;
+		case FunFactFrequency.CUSTOM:
+			count = customCountStr ? parseInt(customCountStr, 10) : 4;
+			if (isNaN(count) || count < 1) count = 1;
+			if (count > 15) count = 15;
+			break;
+		default:
+			count = 4;
+	}
+
+	return { mode: validMode, count };
+}
+
+/**
+ * Set the fun fact frequency
+ *
+ * @param mode - The frequency mode (few, normal, many, custom)
+ * @param customCount - The custom count (only used when mode is 'custom')
+ */
+export async function setFunFactFrequency(
+	mode: FunFactFrequencyType,
+	customCount?: number
+): Promise<void> {
+	await setAppSetting(AppSettingsKey.FUN_FACT_FREQUENCY, mode);
+
+	if (mode === FunFactFrequency.CUSTOM && customCount !== undefined) {
+		// Clamp custom count to valid range
+		const clampedCount = Math.max(1, Math.min(15, customCount));
+		await setAppSetting(AppSettingsKey.FUN_FACT_CUSTOM_COUNT, clampedCount.toString());
+	}
 }
 
 // =============================================================================

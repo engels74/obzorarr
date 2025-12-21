@@ -43,9 +43,18 @@
 		percentile: 'Percentile Ranking',
 		binge: 'Longest Binge',
 		'first-last': 'First & Last Watch',
-		'fun-fact': 'Fun Fact',
 		custom: 'Custom Slide'
 	};
+
+	// Fun Fact frequency state (reactive from server data)
+	let selectedFrequencyMode = $state(data.funFactFrequency.mode);
+	let customCount = $state(data.funFactFrequency.count);
+
+	// Sync state when data changes
+	$effect(() => {
+		selectedFrequencyMode = data.funFactFrequency.mode;
+		customCount = data.funFactFrequency.count;
+	});
 
 	// State for custom slide editor
 	let showEditor = $state(false);
@@ -243,6 +252,89 @@
 				{/each}
 			</ul>
 		{/if}
+	</section>
+
+	<!-- Fun Fact Frequency Section -->
+	<section class="section">
+		<h2>Fun Fact Frequency</h2>
+		<p class="section-description">
+			Control how many fun facts appear interspersed throughout the wrapped presentation.
+		</p>
+
+		<form method="POST" action="?/setFunFactFrequency" use:enhance>
+			<div class="frequency-options">
+				<label class="frequency-option">
+					<input
+						type="radio"
+						name="mode"
+						value="few"
+						bind:group={selectedFrequencyMode}
+					/>
+					<span class="frequency-label">
+						<span class="frequency-name">Few</span>
+						<span class="frequency-desc">1-2 fun facts</span>
+					</span>
+				</label>
+
+				<label class="frequency-option">
+					<input
+						type="radio"
+						name="mode"
+						value="normal"
+						bind:group={selectedFrequencyMode}
+					/>
+					<span class="frequency-label">
+						<span class="frequency-name">Normal</span>
+						<span class="frequency-desc">3-5 fun facts</span>
+					</span>
+				</label>
+
+				<label class="frequency-option">
+					<input
+						type="radio"
+						name="mode"
+						value="many"
+						bind:group={selectedFrequencyMode}
+					/>
+					<span class="frequency-label">
+						<span class="frequency-name">Many</span>
+						<span class="frequency-desc">6-10 fun facts</span>
+					</span>
+				</label>
+
+				<label class="frequency-option">
+					<input
+						type="radio"
+						name="mode"
+						value="custom"
+						bind:group={selectedFrequencyMode}
+					/>
+					<span class="frequency-label">
+						<span class="frequency-name">Custom</span>
+						<span class="frequency-desc">Specific number</span>
+					</span>
+				</label>
+			</div>
+
+			{#if selectedFrequencyMode === 'custom'}
+				<div class="custom-count-input">
+					<label for="customCount">Number of fun facts:</label>
+					<input
+						type="number"
+						id="customCount"
+						name="customCount"
+						bind:value={customCount}
+						min="1"
+						max="15"
+						required
+					/>
+				</div>
+			{/if}
+
+			<button type="submit" class="save-frequency-button">
+				Save Frequency Settings
+			</button>
+		</form>
 	</section>
 
 	<!-- Custom Slide Editor Modal -->
@@ -853,5 +945,104 @@
 		margin: 0.75rem 0;
 		color: hsl(var(--muted-foreground));
 		font-style: italic;
+	}
+
+	/* Fun Fact Frequency Styles */
+	.frequency-options {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+		gap: 0.75rem;
+		margin-bottom: 1rem;
+	}
+
+	.frequency-option {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		padding: 0.75rem 1rem;
+		background: hsl(var(--secondary));
+		border-radius: var(--radius);
+		cursor: pointer;
+		transition: background 0.15s ease;
+	}
+
+	.frequency-option:hover {
+		background: hsl(var(--muted));
+	}
+
+	.frequency-option:has(input:checked) {
+		background: hsl(var(--primary) / 0.15);
+		outline: 2px solid hsl(var(--primary));
+	}
+
+	.frequency-option input[type='radio'] {
+		width: 1rem;
+		height: 1rem;
+		accent-color: hsl(var(--primary));
+		margin: 0;
+	}
+
+	.frequency-label {
+		display: flex;
+		flex-direction: column;
+		gap: 0.125rem;
+	}
+
+	.frequency-name {
+		font-weight: 600;
+		font-size: 0.875rem;
+		color: hsl(var(--foreground));
+	}
+
+	.frequency-desc {
+		font-size: 0.75rem;
+		color: hsl(var(--muted-foreground));
+	}
+
+	.custom-count-input {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		margin-bottom: 1rem;
+		padding: 0.75rem 1rem;
+		background: hsl(var(--secondary));
+		border-radius: var(--radius);
+	}
+
+	.custom-count-input label {
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: hsl(var(--foreground));
+	}
+
+	.custom-count-input input[type='number'] {
+		width: 80px;
+		padding: 0.375rem 0.5rem;
+		background: hsl(var(--input));
+		border: 1px solid hsl(var(--border));
+		border-radius: var(--radius);
+		color: hsl(var(--foreground));
+		font-size: 0.875rem;
+	}
+
+	.custom-count-input input[type='number']:focus {
+		outline: none;
+		border-color: hsl(var(--ring));
+		box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+	}
+
+	.save-frequency-button {
+		padding: 0.5rem 1rem;
+		background: hsl(var(--primary));
+		color: hsl(var(--primary-foreground));
+		border: none;
+		border-radius: var(--radius);
+		font-weight: 500;
+		cursor: pointer;
+		transition: opacity 0.15s ease;
+	}
+
+	.save-frequency-button:hover {
+		opacity: 0.9;
 	}
 </style>

@@ -12,7 +12,6 @@ export const SlideTypeSchema = z.enum([
 	'percentile',
 	'binge',
 	'first-last',
-	'fun-fact',
 	'custom'
 ]);
 

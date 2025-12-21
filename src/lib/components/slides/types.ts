@@ -3,6 +3,7 @@ import type { RankedItem, BingeSession, WatchRecord } from '$lib/server/stats/ty
 
 /**
  * Slide type identifiers matching slideConfig.slideType
+ * Note: 'fun-fact' is no longer a configurable slide type - it's interspersed dynamically
  */
 export type SlideType =
 	| 'total-time'
@@ -13,7 +14,6 @@ export type SlideType =
 	| 'percentile'
 	| 'binge'
 	| 'first-last'
-	| 'fun-fact'
 	| 'custom';
 
 /**
@@ -27,8 +27,7 @@ export const DEFAULT_SLIDE_ORDER: readonly SlideType[] = [
 	'distribution',
 	'percentile',
 	'binge',
-	'first-last',
-	'fun-fact'
+	'first-last'
 ] as const;
 
 /**
@@ -137,14 +136,26 @@ export interface CustomSlideProps extends BaseSlideProps {
 }
 
 /**
+ * Fun fact data for interspersed slides
+ */
+export interface FunFactData {
+	fact: string;
+	comparison?: string;
+	icon?: string;
+}
+
+/**
  * Slide configuration for rendering
+ * Note: 'fun-fact' type is used for interspersed fun facts (render-only, not configurable)
  */
 export interface SlideRenderConfig {
-	type: SlideType;
+	type: SlideType | 'fun-fact';
 	enabled: boolean;
 	sortOrder: number;
 	/** Only present for custom slides */
 	customSlideId?: number;
 	customTitle?: string;
 	customContent?: string;
+	/** Only present for interspersed fun-fact slides */
+	funFact?: FunFactData;
 }

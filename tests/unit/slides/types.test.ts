@@ -116,7 +116,6 @@ describe('SlideTypeSchema', () => {
 			'percentile',
 			'binge',
 			'first-last',
-			'fun-fact',
 			'custom'
 		];
 

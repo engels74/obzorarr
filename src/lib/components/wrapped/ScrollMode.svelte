@@ -5,7 +5,6 @@
 	import type { SlideRenderConfig } from '$lib/components/slides/types';
 	import type { UserStats, ServerStats } from '$lib/server/stats/types';
 	import type { CustomSlide } from '$lib/server/slides/types';
-	import type { FunFact } from '$lib/server/funfacts';
 	import type { SlideMessagingContext } from '$lib/components/slides/messaging-context';
 	import { createPersonalContext } from '$lib/components/slides/messaging-context';
 	import SlideRenderer from './SlideRenderer.svelte';
@@ -35,8 +34,6 @@
 		slides: SlideRenderConfig[];
 		/** Custom slides data (keyed by id) */
 		customSlides?: Map<number, CustomSlide>;
-		/** Fun facts data for fun-fact slides */
-		funFacts?: FunFact[];
 		/** Initial scroll position (slide index from Story Mode) */
 		initialSlideIndex?: number;
 		/** Callback when mode toggle requested, provides current visible slide index */
@@ -53,7 +50,6 @@
 		stats,
 		slides,
 		customSlides,
-		funFacts,
 		initialSlideIndex = 0,
 		onModeSwitch,
 		onClose,
@@ -233,7 +229,6 @@
 						{slide}
 						{stats}
 						{customSlides}
-						{funFacts}
 						active={true}
 						{messagingContext}
 					/>

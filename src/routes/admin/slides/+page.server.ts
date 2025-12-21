@@ -22,6 +22,12 @@ import {
 	UpdateCustomSlideSchema,
 	SlideTypeSchema
 } from '$lib/server/slides/types';
+import {
+	getFunFactFrequency,
+	setFunFactFrequency,
+	FunFactFrequency,
+	type FunFactFrequencyType
+} from '$lib/server/admin/settings.service';
 
 /**
  * Admin Slides Page Server
@@ -41,7 +47,11 @@ export const load: PageServerLoad = async () => {
 	await initializeDefaultSlideConfig();
 
 	// Load all configurations
-	const [configs, customSlides] = await Promise.all([getAllSlideConfigs(), getAllCustomSlides()]);
+	const [configs, customSlides, funFactFrequency] = await Promise.all([
+		getAllSlideConfigs(),
+		getAllCustomSlides(),
+		getFunFactFrequency()
+	]);
 
 	// Pre-render custom slides for preview
 	const customSlidesWithPreview = customSlides.map((slide) => ({
@@ -51,7 +61,8 @@ export const load: PageServerLoad = async () => {
 
 	return {
 		configs,
-		customSlides: customSlidesWithPreview
+		customSlides: customSlidesWithPreview,
+		funFactFrequency
 	};
 };
 
@@ -255,6 +266,38 @@ export const actions: Actions = {
 			return { success: true, html };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to render Markdown';
+			return fail(500, { error: message });
+		}
+	},
+
+	/**
+	 * Set fun fact frequency
+	 */
+	setFunFactFrequency: async ({ request }) => {
+		const formData = await request.formData();
+		const mode = formData.get('mode');
+		const customCountStr = formData.get('customCount');
+
+		// Validate mode
+		const validModes = Object.values(FunFactFrequency);
+		if (typeof mode !== 'string' || !validModes.includes(mode as FunFactFrequencyType)) {
+			return fail(400, { error: 'Invalid frequency mode' });
+		}
+
+		// Parse custom count if provided
+		let customCount: number | undefined;
+		if (mode === FunFactFrequency.CUSTOM && customCountStr) {
+			customCount = parseInt(customCountStr as string, 10);
+			if (isNaN(customCount) || customCount < 1 || customCount > 15) {
+				return fail(400, { error: 'Custom count must be between 1 and 15' });
+			}
+		}
+
+		try {
+			await setFunFactFrequency(mode as FunFactFrequencyType, customCount);
+			return { success: true };
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to update frequency';
 			return fail(500, { error: message });
 		}
 	}

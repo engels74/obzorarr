@@ -95,7 +95,6 @@
 			stats={data.stats}
 			slides={data.slides}
 			customSlides={data.customSlidesMap}
-			funFacts={data.funFacts}
 			onComplete={handleComplete}
 			onClose={handleClose}
 			{messagingContext}
@@ -105,7 +104,6 @@
 			stats={data.stats}
 			slides={data.slides}
 			customSlides={data.customSlidesMap}
-			funFacts={data.funFacts}
 			initialSlideIndex={currentSlideIndex}
 			onModeSwitch={handleScrollModeSwitch}
 			onClose={handleClose}

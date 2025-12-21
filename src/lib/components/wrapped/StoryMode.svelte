@@ -5,7 +5,6 @@
 	import type { SlideRenderConfig } from '$lib/components/slides/types';
 	import type { UserStats, ServerStats } from '$lib/server/stats/types';
 	import type { CustomSlide } from '$lib/server/slides/types';
-	import type { FunFact } from '$lib/server/funfacts';
 	import type { SlideMessagingContext } from '$lib/components/slides/messaging-context';
 	import { createPersonalContext } from '$lib/components/slides/messaging-context';
 	import ProgressBar from './ProgressBar.svelte';
@@ -35,8 +34,6 @@
 		slides: SlideRenderConfig[];
 		/** Custom slides data (keyed by id) */
 		customSlides?: Map<number, CustomSlide>;
-		/** Fun facts data for fun-fact slides */
-		funFacts?: FunFact[];
 		/** Callback when presentation completes (last slide advanced) */
 		onComplete?: () => void;
 		/** Callback to close/exit story mode */
@@ -51,7 +48,6 @@
 		stats,
 		slides,
 		customSlides,
-		funFacts,
 		onComplete,
 		onClose,
 		class: klass = '',
@@ -368,7 +364,6 @@
 					slide={previousSlide}
 					{stats}
 					{customSlides}
-					{funFacts}
 					active={false}
 					{messagingContext}
 				/>
@@ -383,7 +378,6 @@
 						slide={currentSlide}
 						{stats}
 						{customSlides}
-						{funFacts}
 						active={!isTransitioning}
 						onAnimationComplete={handleSlideAnimationComplete}
 						{messagingContext}
