@@ -495,18 +495,6 @@ export async function generateFunFacts(
 	const config = await getFunFactsConfig();
 	const context = buildGenerationContext(stats);
 
-	// Debug logging to help diagnose fun facts generation issues
-	console.debug('Fun facts generation context:', {
-		hours: context.hours,
-		plays: context.plays,
-		topMovie: context.topMovie,
-		topShow: context.topShow,
-		hasFirstWatch: context.firstWatchTitle !== null,
-		hasLastWatch: context.lastWatchTitle !== null,
-		bingeHours: context.bingeHours,
-		aiEnabled: config.aiEnabled
-	});
-
 	// Try AI generation first if preferred and available
 	if (preferAI && config.aiEnabled && config.openaiApiKey) {
 		try {
