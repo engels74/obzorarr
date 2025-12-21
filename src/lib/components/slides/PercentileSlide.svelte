@@ -3,6 +3,8 @@
 	import { prefersReducedMotion } from 'svelte/motion';
 	import BaseSlide from './BaseSlide.svelte';
 	import type { PercentileSlideProps } from './types';
+	import type { SlideMessagingContext } from './messaging-context';
+	import { getPossessive, createPersonalContext } from './messaging-context';
 
 	/**
 	 * PercentileSlide Component
@@ -12,7 +14,9 @@
 	 * Implements Requirement 5.6 (Motion One animations with $effect cleanup)
 	 */
 
-	interface Props extends PercentileSlideProps {}
+	interface Props extends PercentileSlideProps {
+		messagingContext?: SlideMessagingContext;
+	}
 
 	let {
 		percentileRank,
@@ -20,8 +24,12 @@
 		active = true,
 		onAnimationComplete,
 		class: klass = '',
-		children
+		children,
+		messagingContext = createPersonalContext()
 	}: Props = $props();
+
+	// Get possessive for messaging
+	const possessive = $derived(getPossessive(messagingContext));
 
 	// Compute the "top X%" value
 	const topPercentage = $derived(Math.max(1, Math.round(100 - percentileRank)));
@@ -100,7 +108,7 @@
 	variant={isTopPerformer ? 'highlight' : 'default'}
 >
 	<div bind:this={container} class="content">
-		<h2 class="title">Your Ranking</h2>
+		<h2 class="title">{possessive} Ranking</h2>
 
 		<div bind:this={numberEl} class="stat-container" class:top-performer={isTopPerformer}>
 			<span class="prefix">Top</span>

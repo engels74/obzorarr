@@ -18,6 +18,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 			id: locals.user!.id,
 			username: locals.user!.username,
 			isAdmin: locals.user!.isAdmin
-		}
+		},
+		currentYear: new Date().getFullYear()
 	};
 };

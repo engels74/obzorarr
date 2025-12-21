@@ -106,9 +106,7 @@
 						};
 
 						// 5. Redirect based on role
-						window.location.href = userData.user.isAdmin
-							? '/admin'
-							: `/wrapped/${new Date().getFullYear()}`;
+						window.location.href = userData.user.isAdmin ? '/admin' : '/dashboard';
 					}
 				} catch (err) {
 					if (pollIntervalId) clearInterval(pollIntervalId);
@@ -366,7 +364,6 @@
 			width: 100%;
 			min-width: unset;
 		}
-
 	}
 
 	/* Reduced motion */

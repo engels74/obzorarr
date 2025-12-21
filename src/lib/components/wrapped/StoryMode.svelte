@@ -6,6 +6,8 @@
 	import type { UserStats, ServerStats } from '$lib/server/stats/types';
 	import type { CustomSlide } from '$lib/server/slides/types';
 	import type { FunFact } from '$lib/server/funfacts';
+	import type { SlideMessagingContext } from '$lib/components/slides/messaging-context';
+	import { createPersonalContext } from '$lib/components/slides/messaging-context';
 	import ProgressBar from './ProgressBar.svelte';
 	import SlideRenderer from './SlideRenderer.svelte';
 
@@ -41,6 +43,8 @@
 		onClose?: () => void;
 		/** Additional CSS classes */
 		class?: string;
+		/** Messaging context for server-wide vs personal wrapped */
+		messagingContext?: SlideMessagingContext;
 	}
 
 	let {
@@ -50,7 +54,8 @@
 		funFacts,
 		onComplete,
 		onClose,
-		class: klass = ''
+		class: klass = '',
+		messagingContext = createPersonalContext()
 	}: Props = $props();
 
 	// ==========================================================================
@@ -359,7 +364,14 @@
 		<!-- Previous slide (for exit animation) -->
 		{#if showPreviousSlide && previousSlide}
 			<div bind:this={previousSlideEl} class="slide previous-slide">
-				<SlideRenderer slide={previousSlide} {stats} {customSlides} {funFacts} active={false} />
+				<SlideRenderer
+					slide={previousSlide}
+					{stats}
+					{customSlides}
+					{funFacts}
+					active={false}
+					{messagingContext}
+				/>
 			</div>
 		{/if}
 
@@ -374,6 +386,7 @@
 						{funFacts}
 						active={!isTransitioning}
 						onAnimationComplete={handleSlideAnimationComplete}
+						{messagingContext}
 					/>
 				</div>
 			{/key}

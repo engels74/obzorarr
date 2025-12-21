@@ -3,6 +3,8 @@
 	import { prefersReducedMotion } from 'svelte/motion';
 	import BaseSlide from './BaseSlide.svelte';
 	import type { BingeSlideProps } from './types';
+	import type { SlideMessagingContext } from './messaging-context';
+	import { createPersonalContext } from './messaging-context';
 
 	/**
 	 * BingeSlide Component
@@ -12,14 +14,17 @@
 	 * Implements Requirement 5.6 (Motion One animations with $effect cleanup)
 	 */
 
-	interface Props extends BingeSlideProps {}
+	interface Props extends BingeSlideProps {
+		messagingContext?: SlideMessagingContext;
+	}
 
 	let {
 		longestBinge,
 		active = true,
 		onAnimationComplete,
 		class: klass = '',
-		children
+		children,
+		messagingContext = createPersonalContext()
 	}: Props = $props();
 
 	// Check if we have binge data

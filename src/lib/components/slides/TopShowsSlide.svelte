@@ -4,6 +4,8 @@
 	import BaseSlide from './BaseSlide.svelte';
 	import type { TopShowsSlideProps } from './types';
 	import { getThumbUrl } from '$lib/utils/plex-thumb';
+	import type { SlideMessagingContext } from './messaging-context';
+	import { getPossessive, createPersonalContext } from './messaging-context';
 
 	/**
 	 * TopShowsSlide Component
@@ -13,7 +15,9 @@
 	 * Implements Requirement 5.6 (Motion One animations with $effect cleanup)
 	 */
 
-	interface Props extends TopShowsSlideProps {}
+	interface Props extends TopShowsSlideProps {
+		messagingContext?: SlideMessagingContext;
+	}
 
 	let {
 		topShows,
@@ -21,8 +25,12 @@
 		active = true,
 		onAnimationComplete,
 		class: klass = '',
-		children
+		children,
+		messagingContext = createPersonalContext()
 	}: Props = $props();
+
+	// Get possessive for messaging
+	const possessive = $derived(getPossessive(messagingContext));
 
 	// Limit the displayed shows
 	const displayedShows = $derived(topShows.slice(0, limit));
@@ -85,7 +93,7 @@
 
 <BaseSlide {active} class="top-shows-slide {klass}">
 	<div bind:this={container} class="content">
-		<h2 class="title">Your Top Shows</h2>
+		<h2 class="title">{possessive} Top Shows</h2>
 
 		{#if hasShows}
 			<ol class="show-list">

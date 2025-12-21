@@ -10,6 +10,7 @@ import {
 } from '$lib/server/slides';
 import { generateFunFacts, type FunFact } from '$lib/server/funfacts';
 import { getLogoVisibility } from '$lib/server/logo';
+import { getServerName } from '$lib/server/plex/server-name.service';
 
 /**
  * Server-wide Wrapped Page Load Function
@@ -62,6 +63,9 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	// Get logo visibility (server-wide pages don't have per-user control)
 	const logoVisibility = await getLogoVisibility(null, year);
 
+	// Get server name for messaging
+	const serverName = await getServerName();
+
 	return {
 		stats,
 		slides,
@@ -69,6 +73,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		funFacts,
 		year,
 		isServerWrapped: true,
+		serverName,
 		showLogo: logoVisibility.showLogo,
 		canUserControlLogo: false // Server-wide pages don't have per-user logo control
 	};

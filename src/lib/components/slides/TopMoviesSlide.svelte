@@ -4,6 +4,8 @@
 	import BaseSlide from './BaseSlide.svelte';
 	import type { TopMoviesSlideProps } from './types';
 	import { getThumbUrl } from '$lib/utils/plex-thumb';
+	import type { SlideMessagingContext } from './messaging-context';
+	import { getPossessive, createPersonalContext } from './messaging-context';
 
 	/**
 	 * TopMoviesSlide Component
@@ -13,7 +15,9 @@
 	 * Implements Requirement 5.6 (Motion One animations with $effect cleanup)
 	 */
 
-	interface Props extends TopMoviesSlideProps {}
+	interface Props extends TopMoviesSlideProps {
+		messagingContext?: SlideMessagingContext;
+	}
 
 	let {
 		topMovies,
@@ -21,8 +25,12 @@
 		active = true,
 		onAnimationComplete,
 		class: klass = '',
-		children
+		children,
+		messagingContext = createPersonalContext()
 	}: Props = $props();
+
+	// Get possessive for messaging (e.g., "Your", "Our", or "MovieNight's")
+	const possessive = $derived(getPossessive(messagingContext));
 
 	// Limit the displayed movies
 	const displayedMovies = $derived(topMovies.slice(0, limit));
@@ -85,7 +93,7 @@
 
 <BaseSlide {active} class="top-movies-slide {klass}">
 	<div bind:this={container} class="content">
-		<h2 class="title">Your Top Movies</h2>
+		<h2 class="title">{possessive} Top Movies</h2>
 
 		{#if hasMovies}
 			<ol class="movie-list">

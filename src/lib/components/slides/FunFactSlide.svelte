@@ -3,6 +3,8 @@
 	import { prefersReducedMotion } from 'svelte/motion';
 	import BaseSlide from './BaseSlide.svelte';
 	import type { FunFactSlideProps } from './types';
+	import type { SlideMessagingContext } from './messaging-context';
+	import { createPersonalContext } from './messaging-context';
 
 	/**
 	 * FunFactSlide Component
@@ -12,7 +14,9 @@
 	 * Implements Requirement 5.6 (Motion One animations with $effect cleanup)
 	 */
 
-	interface Props extends FunFactSlideProps {}
+	interface Props extends FunFactSlideProps {
+		messagingContext?: SlideMessagingContext;
+	}
 
 	let {
 		fact,
@@ -21,7 +25,8 @@
 		active = true,
 		onAnimationComplete,
 		class: klass = '',
-		children
+		children,
+		messagingContext = createPersonalContext()
 	}: Props = $props();
 
 	// Element references

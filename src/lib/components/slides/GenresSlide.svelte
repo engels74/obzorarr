@@ -3,6 +3,8 @@
 	import { prefersReducedMotion } from 'svelte/motion';
 	import BaseSlide from './BaseSlide.svelte';
 	import type { GenresSlideProps } from './types';
+	import type { SlideMessagingContext } from './messaging-context';
+	import { getPossessive, createPersonalContext } from './messaging-context';
 
 	/**
 	 * GenresSlide Component
@@ -12,7 +14,9 @@
 	 * Implements Requirement 5.6 (Motion One animations with $effect cleanup)
 	 */
 
-	interface Props extends GenresSlideProps {}
+	interface Props extends GenresSlideProps {
+		messagingContext?: SlideMessagingContext;
+	}
 
 	let {
 		topGenres,
@@ -20,8 +24,12 @@
 		active = true,
 		onAnimationComplete,
 		class: klass = '',
-		children
+		children,
+		messagingContext = createPersonalContext()
 	}: Props = $props();
+
+	// Get possessive for messaging
+	const possessive = $derived(getPossessive(messagingContext));
 
 	// Limit and calculate percentages
 	const displayedGenres = $derived(topGenres.slice(0, limit));
@@ -92,7 +100,7 @@
 
 <BaseSlide {active} class="genres-slide {klass}">
 	<div bind:this={container} class="content">
-		<h2 class="title">Your Favorite Genres</h2>
+		<h2 class="title">{possessive} Favorite Genres</h2>
 
 		{#if hasGenres}
 			<div class="genre-list">

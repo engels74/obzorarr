@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { StoryMode, ScrollMode, ModeToggle } from '$lib/components/wrapped';
 	import Logo from '$lib/components/Logo.svelte';
+	import { createServerContext } from '$lib/components/slides/messaging-context';
 	import type { PageProps } from './$types';
 
 	/**
@@ -19,6 +20,9 @@
 	 */
 
 	let { data }: PageProps = $props();
+
+	// Create messaging context for server-wide wrapped
+	const messagingContext = createServerContext(data.serverName);
 
 	// ==========================================================================
 	// State
@@ -94,6 +98,7 @@
 			funFacts={data.funFacts}
 			onComplete={handleComplete}
 			onClose={handleClose}
+			{messagingContext}
 		/>
 	{:else}
 		<ScrollMode
@@ -104,6 +109,7 @@
 			initialSlideIndex={currentSlideIndex}
 			onModeSwitch={handleScrollModeSwitch}
 			onClose={handleClose}
+			{messagingContext}
 		/>
 	{/if}
 </div>

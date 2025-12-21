@@ -4,6 +4,8 @@
 	import BaseSlide from './BaseSlide.svelte';
 	import type { FirstLastSlideProps } from './types';
 	import { getThumbUrl } from '$lib/utils/plex-thumb';
+	import type { SlideMessagingContext } from './messaging-context';
+	import { getPossessive, createPersonalContext } from './messaging-context';
 
 	/**
 	 * FirstLastSlide Component
@@ -13,7 +15,9 @@
 	 * Implements Requirement 5.6 (Motion One animations with $effect cleanup)
 	 */
 
-	interface Props extends FirstLastSlideProps {}
+	interface Props extends FirstLastSlideProps {
+		messagingContext?: SlideMessagingContext;
+	}
 
 	let {
 		firstWatch,
@@ -21,8 +25,12 @@
 		active = true,
 		onAnimationComplete,
 		class: klass = '',
-		children
+		children,
+		messagingContext = createPersonalContext()
 	}: Props = $props();
+
+	// Get possessive for messaging
+	const possessive = $derived(getPossessive(messagingContext));
 
 	// Check if we have data
 	const hasFirst = $derived(firstWatch !== null);
@@ -142,7 +150,7 @@
 
 <BaseSlide {active} class="first-last-slide {klass}">
 	<div bind:this={container} class="content">
-		<h2 class="title">Your Year in Review</h2>
+		<h2 class="title">{possessive} Year in Review</h2>
 
 		{#if hasAny}
 			<div class="cards">

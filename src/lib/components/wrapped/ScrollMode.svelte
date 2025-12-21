@@ -6,6 +6,8 @@
 	import type { UserStats, ServerStats } from '$lib/server/stats/types';
 	import type { CustomSlide } from '$lib/server/slides/types';
 	import type { FunFact } from '$lib/server/funfacts';
+	import type { SlideMessagingContext } from '$lib/components/slides/messaging-context';
+	import { createPersonalContext } from '$lib/components/slides/messaging-context';
 	import SlideRenderer from './SlideRenderer.svelte';
 
 	// Register GSAP plugin at module level (per bun-svelte-pro.md)
@@ -43,6 +45,8 @@
 		onClose?: () => void;
 		/** Additional CSS classes */
 		class?: string;
+		/** Messaging context for server-wide vs personal wrapped */
+		messagingContext?: SlideMessagingContext;
 	}
 
 	let {
@@ -53,7 +57,8 @@
 		initialSlideIndex = 0,
 		onModeSwitch,
 		onClose,
-		class: klass = ''
+		class: klass = '',
+		messagingContext = createPersonalContext()
 	}: Props = $props();
 
 	// ==========================================================================
@@ -224,7 +229,14 @@
 				data-slide-index={index}
 			>
 				<div class="slide-content">
-					<SlideRenderer {slide} {stats} {customSlides} {funFacts} active={true} />
+					<SlideRenderer
+						{slide}
+						{stats}
+						{customSlides}
+						{funFacts}
+						active={true}
+						{messagingContext}
+					/>
 				</div>
 			</section>
 		{/each}

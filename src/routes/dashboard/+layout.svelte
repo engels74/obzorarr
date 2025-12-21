@@ -6,16 +6,12 @@
 	import Logo from '$lib/components/Logo.svelte';
 
 	/**
-	 * Admin Layout
+	 * User Dashboard Layout
 	 *
-	 * Provides a consistent wrapper for all admin pages with:
+	 * Provides a consistent wrapper for user dashboard pages with:
 	 * - Sidebar navigation
-	 * - Admin user info
-	 * - Soviet-themed styling
-	 *
-	 * Implements Requirements:
-	 * - 11.1: Admin panel dashboard
-	 * - 14.2: Admin panel routing at /admin/*
+	 * - User info
+	 * - Links to wrapped presentations
 	 */
 
 	interface Props {
@@ -27,26 +23,20 @@
 
 	// Navigation items with dynamic wrapped links
 	const navItems = $derived([
-		{ href: '/admin', label: 'Dashboard', icon: 'dashboard' },
+		{ href: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
 		{
-			href: `/wrapped/${data.currentYear}/u/${data.adminUser.id}`,
+			href: `/wrapped/${data.currentYear}/u/${data.user.id}`,
 			label: 'My Wrapped',
 			icon: 'user'
 		},
-		{ href: `/wrapped/${data.currentYear}`, label: 'Server Wrapped', icon: 'server' },
-		{ href: '/admin/slides', label: 'Slides', icon: 'slides' },
-		{ href: '/admin/sync', label: 'Sync', icon: 'sync' },
-		{ href: '/admin/users', label: 'Users', icon: 'users' },
-		{ href: '/admin/logs', label: 'Logs', icon: 'logs' },
-		{ href: '/admin/settings', label: 'Settings', icon: 'settings' }
+		{ href: `/wrapped/${data.currentYear}`, label: 'Server Wrapped', icon: 'server' }
 	]);
 
 	// Determine if a nav item is active
 	const isActive = $derived((href: string) => {
 		const currentPath = $page.url.pathname;
-		// Exact match for dashboard, prefix match for others
-		if (href === '/admin') {
-			return currentPath === '/admin';
+		if (href === '/dashboard') {
+			return currentPath === '/dashboard';
 		}
 		return currentPath.startsWith(href);
 	});
@@ -63,7 +53,7 @@
 	}
 </script>
 
-<div class="admin-layout">
+<div class="dashboard-layout">
 	<!-- Mobile header -->
 	<header class="mobile-header">
 		<button
@@ -76,7 +66,7 @@
 		</button>
 		<div class="mobile-branding">
 			<Logo size="sm" />
-			<h1 class="mobile-title">Admin</h1>
+			<h1 class="mobile-title">Obzorarr</h1>
 		</div>
 	</header>
 
@@ -99,12 +89,12 @@
 				<Logo size="md" />
 				<div class="sidebar-text">
 					<h2 class="sidebar-title">Obzorarr</h2>
-					<span class="sidebar-subtitle">Admin Panel</span>
+					<span class="sidebar-subtitle">Your Wrapped</span>
 				</div>
 			</div>
 		</div>
 
-		<nav class="sidebar-nav" aria-label="Admin navigation">
+		<nav class="sidebar-nav" aria-label="Dashboard navigation">
 			<ul class="nav-list">
 				{#each navItems as item (item.href)}
 					<li>
@@ -121,16 +111,6 @@
 									&#9733;
 								{:else if item.icon === 'server'}
 									&#127919;
-								{:else if item.icon === 'sync'}
-									&#8635;
-								{:else if item.icon === 'users'}
-									&#9787;
-								{:else if item.icon === 'slides'}
-									&#9998;
-								{:else if item.icon === 'logs'}
-									&#128196;
-								{:else if item.icon === 'settings'}
-									&#9881;
 								{/if}
 							</span>
 							<span class="nav-label">{item.label}</span>
@@ -143,7 +123,7 @@
 		<div class="sidebar-footer">
 			<div class="user-info">
 				<span class="user-avatar">&#9787;</span>
-				<span class="user-name">{data.adminUser.username}</span>
+				<span class="user-name">{data.user.username}</span>
 			</div>
 			<form method="POST" action="/auth/logout" use:enhance>
 				<button type="submit" class="logout-button">Logout</button>
@@ -158,7 +138,7 @@
 </div>
 
 <style>
-	.admin-layout {
+	.dashboard-layout {
 		display: flex;
 		min-height: 100vh;
 		background: hsl(var(--background));

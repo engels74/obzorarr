@@ -137,6 +137,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		userId,
 		username: user.username,
 		isServerWrapped: false,
+		serverName: null, // Personal wrapped doesn't use server name
 		showLogo: logoVisibility.showLogo,
 		canUserControlLogo: logoVisibility.canUserControl
 	};

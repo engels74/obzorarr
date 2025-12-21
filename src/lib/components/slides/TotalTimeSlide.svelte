@@ -3,6 +3,8 @@
 	import { prefersReducedMotion } from 'svelte/motion';
 	import BaseSlide from './BaseSlide.svelte';
 	import type { TotalTimeSlideProps } from './types';
+	import type { SlideMessagingContext } from './messaging-context';
+	import { getSubject, createPersonalContext } from './messaging-context';
 
 	/**
 	 * TotalTimeSlide Component
@@ -12,15 +14,21 @@
 	 * Implements Requirement 5.6 (Motion One animations with $effect cleanup)
 	 */
 
-	interface Props extends TotalTimeSlideProps {}
+	interface Props extends TotalTimeSlideProps {
+		messagingContext?: SlideMessagingContext;
+	}
 
 	let {
 		totalWatchTimeMinutes,
 		active = true,
 		onAnimationComplete,
 		class: klass = '',
-		children
+		children,
+		messagingContext = createPersonalContext()
 	}: Props = $props();
+
+	// Get subject for messaging (e.g., "You", "We", or server name)
+	const subject = $derived(getSubject(messagingContext));
 
 	// Derived computed values
 	const hours = $derived(Math.floor(totalWatchTimeMinutes / 60));
@@ -109,7 +117,7 @@
 
 <BaseSlide {active} class="total-time-slide {klass}" variant="highlight">
 	<div bind:this={container} class="content">
-		<h2 class="title">You watched</h2>
+		<h2 class="title">{subject} watched</h2>
 
 		<p bind:this={numberEl} class="stat-number">
 			{formattedTime}

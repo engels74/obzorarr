@@ -44,7 +44,10 @@ export const AppSettingsKey = {
 	SYNC_CRON_EXPRESSION: 'sync_cron_expression',
 
 	// Wrapped Page Logo
-	WRAPPED_LOGO_MODE: 'wrapped_logo_mode'
+	WRAPPED_LOGO_MODE: 'wrapped_logo_mode',
+
+	// Server Name (cached from Plex)
+	SERVER_NAME: 'server_name'
 } as const;
 
 export type AppSettingsKeyType = (typeof AppSettingsKey)[keyof typeof AppSettingsKey];
@@ -230,6 +233,24 @@ export async function getWrappedLogoMode(): Promise<WrappedLogoModeType> {
  */
 export async function setWrappedLogoMode(mode: WrappedLogoModeType): Promise<void> {
 	await setAppSetting(AppSettingsKey.WRAPPED_LOGO_MODE, mode);
+}
+
+/**
+ * Get the cached server name
+ *
+ * @returns The server name or null if not cached
+ */
+export async function getCachedServerName(): Promise<string | null> {
+	return getAppSetting(AppSettingsKey.SERVER_NAME);
+}
+
+/**
+ * Set the cached server name
+ *
+ * @param name - The server name to cache
+ */
+export async function setCachedServerName(name: string): Promise<void> {
+	await setAppSetting(AppSettingsKey.SERVER_NAME, name);
 }
 
 // =============================================================================

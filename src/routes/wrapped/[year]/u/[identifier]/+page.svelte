@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { StoryMode, ScrollMode, ModeToggle } from '$lib/components/wrapped';
 	import Logo from '$lib/components/Logo.svelte';
+	import { createPersonalContext } from '$lib/components/slides/messaging-context';
 	import type { PageProps } from './$types';
 
 	/**
@@ -20,6 +21,9 @@
 	 */
 
 	let { data }: PageProps = $props();
+
+	// Create messaging context for personal wrapped
+	const messagingContext = createPersonalContext();
 
 	/** Local state for logo visibility (optimistic update) */
 	let showLogo = $state(data.showLogo);
@@ -161,6 +165,7 @@
 			funFacts={data.funFacts}
 			onComplete={handleComplete}
 			onClose={handleClose}
+			{messagingContext}
 		/>
 	{:else}
 		<ScrollMode
@@ -171,6 +176,7 @@
 			initialSlideIndex={currentSlideIndex}
 			onModeSwitch={handleScrollModeSwitch}
 			onClose={handleClose}
+			{messagingContext}
 		/>
 	{/if}
 </div>

@@ -3,6 +3,8 @@
 	import { prefersReducedMotion } from 'svelte/motion';
 	import BaseSlide from './BaseSlide.svelte';
 	import type { DistributionSlideProps } from './types';
+	import type { SlideMessagingContext } from './messaging-context';
+	import { getSubject, getPossessive, createPersonalContext } from './messaging-context';
 
 	/**
 	 * DistributionSlide Component
@@ -12,7 +14,9 @@
 	 * Implements Requirement 5.6 (Motion One animations with $effect cleanup)
 	 */
 
-	interface Props extends DistributionSlideProps {}
+	interface Props extends DistributionSlideProps {
+		messagingContext?: SlideMessagingContext;
+	}
 
 	let {
 		watchTimeByMonth,
@@ -21,8 +25,13 @@
 		active = true,
 		onAnimationComplete,
 		class: klass = '',
-		children
+		children,
+		messagingContext = createPersonalContext()
 	}: Props = $props();
+
+	// Get messaging helpers
+	const subject = $derived(getSubject(messagingContext));
+	const possessive = $derived(getPossessive(messagingContext));
 
 	// Month labels
 	const months = [
@@ -63,7 +72,9 @@
 
 	// Active dataset based on view
 	const activeData = $derived(view === 'hourly' ? hourlyData : monthlyData);
-	const title = $derived(view === 'hourly' ? 'When You Watch' : 'Your Year in Months');
+	const title = $derived(
+		view === 'hourly' ? `When ${subject} Watch` : `${possessive} Year in Months`
+	);
 
 	// Find peak
 	const peakIndex = $derived(

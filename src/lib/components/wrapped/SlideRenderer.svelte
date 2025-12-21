@@ -3,6 +3,8 @@
 	import type { UserStats, ServerStats } from '$lib/server/stats/types';
 	import type { CustomSlide } from '$lib/server/slides/types';
 	import type { FunFact } from '$lib/server/funfacts';
+	import type { SlideMessagingContext } from '$lib/components/slides/messaging-context';
+	import { createPersonalContext } from '$lib/components/slides/messaging-context';
 	import {
 		TotalTimeSlide,
 		TopMoviesSlide,
@@ -40,6 +42,8 @@
 		onAnimationComplete?: () => void;
 		/** Additional CSS classes */
 		class?: string;
+		/** Messaging context for server-wide vs personal wrapped */
+		messagingContext?: SlideMessagingContext;
 	}
 
 	let {
@@ -49,7 +53,8 @@
 		funFacts,
 		active = true,
 		onAnimationComplete,
-		class: klass = ''
+		class: klass = '',
+		messagingContext = createPersonalContext()
 	}: Props = $props();
 
 	// Type guard for user stats
@@ -75,13 +80,14 @@
 			totalWatchTimeMinutes={stats.totalWatchTimeMinutes}
 			{active}
 			{onAnimationComplete}
+			{messagingContext}
 		/>
 	{:else if slide.type === 'top-movies'}
-		<TopMoviesSlide topMovies={stats.topMovies} {active} {onAnimationComplete} />
+		<TopMoviesSlide topMovies={stats.topMovies} {active} {onAnimationComplete} {messagingContext} />
 	{:else if slide.type === 'top-shows'}
-		<TopShowsSlide topShows={stats.topShows} {active} {onAnimationComplete} />
+		<TopShowsSlide topShows={stats.topShows} {active} {onAnimationComplete} {messagingContext} />
 	{:else if slide.type === 'genres'}
-		<GenresSlide topGenres={stats.topGenres} {active} {onAnimationComplete} />
+		<GenresSlide topGenres={stats.topGenres} {active} {onAnimationComplete} {messagingContext} />
 	{:else if slide.type === 'distribution'}
 		<DistributionSlide
 			watchTimeByMonth={stats.watchTimeByMonth}
@@ -89,17 +95,30 @@
 			view="monthly"
 			{active}
 			{onAnimationComplete}
+			{messagingContext}
 		/>
 	{:else if slide.type === 'percentile'}
-		<PercentileSlide {percentileRank} {totalUsers} {active} {onAnimationComplete} />
+		<PercentileSlide
+			{percentileRank}
+			{totalUsers}
+			{active}
+			{onAnimationComplete}
+			{messagingContext}
+		/>
 	{:else if slide.type === 'binge'}
-		<BingeSlide longestBinge={stats.longestBinge} {active} {onAnimationComplete} />
+		<BingeSlide
+			longestBinge={stats.longestBinge}
+			{active}
+			{onAnimationComplete}
+			{messagingContext}
+		/>
 	{:else if slide.type === 'first-last'}
 		<FirstLastSlide
 			firstWatch={stats.firstWatch}
 			lastWatch={stats.lastWatch}
 			{active}
 			{onAnimationComplete}
+			{messagingContext}
 		/>
 	{:else if slide.type === 'fun-fact'}
 		{#if funFacts && funFacts.length > 0}
@@ -110,6 +129,7 @@
 				icon={fact?.icon}
 				{active}
 				{onAnimationComplete}
+				{messagingContext}
 			/>
 		{:else}
 			<FunFactSlide
@@ -117,6 +137,7 @@
 				comparison="That's more than the average viewer!"
 				{active}
 				{onAnimationComplete}
+				{messagingContext}
 			/>
 		{/if}
 	{:else if slide.type === 'custom' && customSlideData}

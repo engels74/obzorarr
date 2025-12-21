@@ -11,6 +11,7 @@ import {
 	setWrappedLogoMode,
 	clearStatsCache,
 	getApiConfigWithSources,
+	setCachedServerName,
 	AppSettingsKey,
 	ThemePresets,
 	AnonymizationMode,
@@ -221,6 +222,11 @@ export const actions: Actions = {
 
 			const data = (await response.json()) as { MediaContainer?: { friendlyName?: string } };
 			const serverName = data?.MediaContainer?.friendlyName ?? 'Unknown';
+
+			// Cache the server name for use in wrapped presentations
+			if (serverName !== 'Unknown') {
+				await setCachedServerName(serverName);
+			}
 
 			return { success: true, message: `Connected to: ${serverName}` };
 		} catch (error) {
