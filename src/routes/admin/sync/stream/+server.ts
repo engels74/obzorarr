@@ -37,7 +37,10 @@ export const GET: RequestHandler = async ({ request }) => {
 						const hasChanged =
 							!lastProgress ||
 							currentProgress.recordsProcessed !== lastProgress.recordsProcessed ||
-							currentProgress.status !== lastProgress.status;
+							currentProgress.status !== lastProgress.status ||
+							currentProgress.phase !== lastProgress.phase ||
+							currentProgress.enrichmentProcessed !== lastProgress.enrichmentProcessed ||
+							currentProgress.enrichmentTotal !== lastProgress.enrichmentTotal;
 
 						if (hasChanged) {
 							controller.enqueue(
