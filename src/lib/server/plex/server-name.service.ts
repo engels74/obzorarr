@@ -16,9 +16,9 @@ import { logger } from '$lib/server/logging';
 // =============================================================================
 
 /**
- * Plex identity endpoint
+ * Plex root endpoint (returns server capabilities including friendlyName)
  */
-const IDENTITY_ENDPOINT = '/identity';
+const ROOT_ENDPOINT = '/';
 
 // =============================================================================
 // Server Name Functions
@@ -27,8 +27,8 @@ const IDENTITY_ENDPOINT = '/identity';
 /**
  * Fetch the server name directly from Plex API
  *
- * Makes a request to the /identity endpoint to get the server's
- * friendlyName. Does not cache the result.
+ * Makes a request to the root endpoint to get the server's
+ * friendlyName from capabilities. Does not cache the result.
  *
  * @returns The server's friendly name or null if unavailable
  */
@@ -43,7 +43,7 @@ export async function fetchServerNameFromPlex(): Promise<string | null> {
 			return null;
 		}
 
-		const response = await fetch(`${serverUrl}${IDENTITY_ENDPOINT}`, {
+		const response = await fetch(`${serverUrl}${ROOT_ENDPOINT}`, {
 			headers: {
 				Accept: 'application/json',
 				'X-Plex-Token': token
@@ -52,7 +52,7 @@ export async function fetchServerNameFromPlex(): Promise<string | null> {
 
 		if (!response.ok) {
 			logger.debug(
-				`Failed to fetch server identity: ${response.status} ${response.statusText}`,
+				`Failed to fetch server capabilities: ${response.status} ${response.statusText}`,
 				'ServerName'
 			);
 			return null;

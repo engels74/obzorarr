@@ -208,8 +208,8 @@ export const actions: Actions = {
 		}
 
 		try {
-			// Try to fetch server identity
-			const response = await fetch(`${plexServerUrl}/identity`, {
+			// Try to fetch server capabilities (includes friendlyName)
+			const response = await fetch(`${plexServerUrl}/`, {
 				headers: {
 					Accept: 'application/json',
 					'X-Plex-Token': plexToken
