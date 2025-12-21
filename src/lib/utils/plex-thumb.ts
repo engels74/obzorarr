@@ -61,4 +61,3 @@ export function getThumbUrl(thumb: string | null | undefined): string | null {
 	// Unknown format - return as-is (shouldn't happen in practice)
 	return thumb;
 }
-

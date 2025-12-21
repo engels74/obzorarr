@@ -34,13 +34,13 @@ Obzorarr is a **"Plex Wrapped"** application that syncs viewing history from you
 
 ## Tech Stack
 
-| Component | Technology |
-|-----------|------------|
-| Runtime | Bun |
-| Framework | SvelteKit + Svelte 5 |
-| Database | SQLite (Drizzle ORM) |
-| Styling | UnoCSS + shadcn-svelte |
-| Animation | GSAP + Motion |
+| Component | Technology             |
+| --------- | ---------------------- |
+| Runtime   | Bun                    |
+| Framework | SvelteKit + Svelte 5   |
+| Database  | SQLite (Drizzle ORM)   |
+| Styling   | UnoCSS + shadcn-svelte |
+| Animation | GSAP + Motion          |
 
 ## Quick Start
 
@@ -79,13 +79,13 @@ Visit `http://localhost:3000` and sign in with your Plex account.
 
 ## Configuration
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `PLEX_SERVER_URL` | Your Plex server URL (e.g., `http://192.168.1.100:32400`) | Yes |
-| `PLEX_TOKEN` | Plex authentication token ([how to find](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/)) | Yes |
-| `ORIGIN` | Application URL for OAuth callbacks | Yes |
-| `DATABASE_PATH` | SQLite database file path | No |
-| `SYNC_CRON_SCHEDULE` | Cron schedule for auto-sync (default: `0 */6 * * *`) | No |
+| Variable             | Description                                                                                                                         | Required |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| `PLEX_SERVER_URL`    | Your Plex server URL (e.g., `http://192.168.1.100:32400`)                                                                           | Yes      |
+| `PLEX_TOKEN`         | Plex authentication token ([how to find](https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/)) | Yes      |
+| `ORIGIN`             | Application URL for OAuth callbacks                                                                                                 | Yes      |
+| `DATABASE_PATH`      | SQLite database file path                                                                                                           | No       |
+| `SYNC_CRON_SCHEDULE` | Cron schedule for auto-sync (default: `0 */6 * * *`)                                                                                | No       |
 
 ## License
 

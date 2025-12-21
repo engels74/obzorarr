@@ -83,7 +83,9 @@ export const GET: RequestHandler = async ({ params }) => {
 			}
 
 			// Return 502 for other Plex errors
-			console.error(`[Plex Thumb] Error fetching thumbnail: ${response.status} ${response.statusText}`);
+			console.error(
+				`[Plex Thumb] Error fetching thumbnail: ${response.status} ${response.statusText}`
+			);
 			error(502, { message: 'Failed to fetch thumbnail from Plex' });
 		}
 
@@ -113,4 +115,3 @@ export const GET: RequestHandler = async ({ params }) => {
 		error(502, { message: 'Unable to connect to Plex server' });
 	}
 };
-
