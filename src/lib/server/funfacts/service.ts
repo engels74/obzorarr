@@ -354,6 +354,9 @@ function parseAIResponse(data: unknown): FunFact[] {
 /**
  * Generate fun facts using AI (OpenAI-compatible API)
  * Implements Requirement 10.1: AI generation when enabled
+ *
+ * Includes retry logic for transient failures (network errors, timeouts, 5xx errors).
+ * Non-retryable errors (4xx) are thrown immediately.
  */
 export async function generateWithAI(
 	stats: Stats,
@@ -366,49 +369,83 @@ export async function generateWithAI(
 
 	const context = buildGenerationContext(stats);
 	const prompt = buildAIPrompt(context, count);
+	const maxRetries = config.maxAIRetries ?? 2;
+	const baseUrl = config.openaiBaseUrl ?? 'https://api.openai.com/v1';
+	const model = config.openaiModel ?? 'gpt-4o-mini';
 
-	const controller = new AbortController();
-	const timeoutId = setTimeout(() => controller.abort(), config.aiTimeoutMs);
+	let lastError: Error | null = null;
 
-	try {
-		const baseUrl = config.openaiBaseUrl ?? 'https://api.openai.com/v1';
-		const model = config.openaiModel ?? 'gpt-4o-mini';
-		const response = await fetch(`${baseUrl}/chat/completions`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${config.openaiApiKey}`
-			},
-			body: JSON.stringify({
-				model,
-				messages: [
-					{ role: 'system', content: AI_SYSTEM_PROMPT },
-					{ role: 'user', content: prompt }
-				],
-				temperature: 0.8,
-				max_tokens: 500
-			}),
-			signal: controller.signal
-		});
+	for (let attempt = 0; attempt <= maxRetries; attempt++) {
+		const controller = new AbortController();
+		const timeoutId = setTimeout(() => controller.abort(), config.aiTimeoutMs);
 
-		if (!response.ok) {
-			const errorText = await response.text().catch(() => 'Unknown error');
-			throw new AIGenerationError(`OpenAI API error: ${response.status} - ${errorText}`);
+		try {
+			const response = await fetch(`${baseUrl}/chat/completions`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${config.openaiApiKey}`
+				},
+				body: JSON.stringify({
+					model,
+					messages: [
+						{ role: 'system', content: AI_SYSTEM_PROMPT },
+						{ role: 'user', content: prompt }
+					],
+					temperature: 0.8,
+					max_tokens: 500
+				}),
+				signal: controller.signal
+			});
+
+			if (!response.ok) {
+				const errorText = await response.text().catch(() => 'Unknown error');
+				const statusError = new AIGenerationError(
+					`OpenAI API error: ${response.status} - ${errorText}`
+				);
+
+				// Don't retry client errors (4xx) except rate limiting (429)
+				if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+					throw statusError;
+				}
+
+				// Retryable error - store and continue
+				lastError = statusError;
+				continue;
+			}
+
+			const data: unknown = await response.json();
+			return parseAIResponse(data);
+		} catch (error) {
+			// Clear timeout before handling error
+			clearTimeout(timeoutId);
+
+			// Don't retry AIGenerationErrors from parsing or non-retryable conditions
+			if (error instanceof AIGenerationError) {
+				// Check if it's a client error (non-retryable)
+				if ((error as AIGenerationError).message.includes('OpenAI API error: 4')) {
+					throw error;
+				}
+				lastError = error;
+				continue;
+			}
+
+			// Handle timeout
+			if ((error as Error).name === 'AbortError') {
+				lastError = new AIGenerationError('AI generation timed out');
+				continue;
+			}
+
+			// Network error - retryable
+			lastError = new AIGenerationError(`AI generation failed: ${(error as Error).message}`, error);
+			continue;
+		} finally {
+			clearTimeout(timeoutId);
 		}
-
-		const data: unknown = await response.json();
-		return parseAIResponse(data);
-	} catch (error) {
-		if (error instanceof AIGenerationError) {
-			throw error;
-		}
-		if ((error as Error).name === 'AbortError') {
-			throw new AIGenerationError('AI generation timed out');
-		}
-		throw new AIGenerationError(`AI generation failed: ${(error as Error).message}`, error);
-	} finally {
-		clearTimeout(timeoutId);
 	}
+
+	// All retries exhausted
+	throw lastError ?? new AIGenerationError('AI generation failed after retries');
 }
 
 // =============================================================================

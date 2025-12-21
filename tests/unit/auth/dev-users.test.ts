@@ -30,15 +30,8 @@ mock.module('$lib/server/auth/plex-oauth', () => ({
 	getPlexUserInfo: mockGetPlexUserInfo
 }));
 
-// Mock logger to prevent console noise in tests
-mock.module('$lib/server/logging', () => ({
-	logger: {
-		debug: () => {},
-		info: () => {},
-		warn: () => {},
-		error: () => {}
-	}
-}));
+// Note: We don't mock the logger to avoid contaminating the module cache
+// for other test files that test the actual logger implementation
 
 // Helper to create mock headers
 function createMockHeaders(contentType = 'application/json') {

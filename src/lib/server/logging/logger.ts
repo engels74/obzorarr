@@ -111,14 +111,19 @@ class Logger {
 
 		this.isFlushing = true;
 
-		// Take current buffer and reset
+		// Take current buffer (keep reference for potential restore)
 		const entries = this.buffer;
 		this.buffer = [];
 
 		try {
 			await insertLogsBatch(entries);
 		} catch (error) {
-			// Log to console but don't re-buffer (avoid infinite loop)
+			// Restore entries to buffer on failure (at the start, to preserve order)
+			// Only restore if the buffer hasn't grown too large (avoid memory issues)
+			if (this.buffer.length + entries.length <= BATCH_SIZE * 2) {
+				this.buffer = [...entries, ...this.buffer];
+			}
+			// Log to console for visibility
 			console.error('[Logger] Failed to flush logs to database:', error);
 		} finally {
 			this.isFlushing = false;
