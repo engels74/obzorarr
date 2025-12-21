@@ -33,6 +33,14 @@ CREATE TABLE `logs` (
 CREATE INDEX `idx_logs_timestamp` ON `logs` (`timestamp`);--> statement-breakpoint
 CREATE INDEX `idx_logs_level` ON `logs` (`level`);--> statement-breakpoint
 CREATE INDEX `idx_logs_level_timestamp` ON `logs` (`level`,`timestamp`);--> statement-breakpoint
+CREATE TABLE `metadata_cache` (
+	`rating_key` text PRIMARY KEY NOT NULL,
+	`duration` integer,
+	`genres` text,
+	`fetched_at` integer NOT NULL,
+	`fetch_failed` integer DEFAULT false
+);
+--> statement-breakpoint
 CREATE TABLE `play_history` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`history_key` text NOT NULL,
@@ -50,6 +58,7 @@ CREATE TABLE `play_history` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `play_history_history_key_unique` ON `play_history` (`history_key`);--> statement-breakpoint
+CREATE INDEX `idx_play_history_rating_key` ON `play_history` (`rating_key`);--> statement-breakpoint
 CREATE TABLE `sessions` (
 	`id` text PRIMARY KEY NOT NULL,
 	`user_id` integer NOT NULL,
@@ -89,6 +98,7 @@ CREATE TABLE `sync_status` (
 CREATE TABLE `users` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`plex_id` integer NOT NULL,
+	`account_id` integer,
 	`username` text NOT NULL,
 	`email` text,
 	`thumb` text,

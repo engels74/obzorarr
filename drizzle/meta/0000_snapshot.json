@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "29aa25bf-d192-43f5-b799-de673bc45fd4",
+  "id": "d6783299-dc96-440c-892f-5232d4e18e58",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "app_settings": {
@@ -208,6 +208,52 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
+    "metadata_cache": {
+      "name": "metadata_cache",
+      "columns": {
+        "rating_key": {
+          "name": "rating_key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "duration": {
+          "name": "duration",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "genres": {
+          "name": "genres",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "fetched_at": {
+          "name": "fetched_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "fetch_failed": {
+          "name": "fetch_failed",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
     "play_history": {
       "name": "play_history",
       "columns": {
@@ -310,6 +356,13 @@
             "history_key"
           ],
           "isUnique": true
+        },
+        "idx_play_history_rating_key": {
+          "name": "idx_play_history_rating_key",
+          "columns": [
+            "rating_key"
+          ],
+          "isUnique": false
         }
       },
       "foreignKeys": {},
@@ -546,6 +599,13 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
+          "autoincrement": false
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
           "autoincrement": false
         },
         "username": {
