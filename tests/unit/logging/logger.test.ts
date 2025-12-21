@@ -209,13 +209,13 @@ describe('Logger', () => {
 			let callCount = 0;
 
 			// Replace the function temporarily
-			const mockInsert = mock(async () => {
+			const mockInsert = mock(async (...args: Parameters<typeof originalInsertLogsBatch>) => {
 				callCount++;
 				if (callCount === 1) {
 					throw new Error('Simulated DB failure');
 				}
 				// On second call, use original
-				return originalInsertLogsBatch.apply(null, arguments as any);
+				return originalInsertLogsBatch.apply(null, args);
 			});
 
 			// We can't easily mock module-level imports in Bun, so we'll test

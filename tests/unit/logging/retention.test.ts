@@ -84,8 +84,8 @@ mock.module('croner', () => ({
 }));
 
 // Mock logger
-const mockLoggerInfo = mock(() => {});
-const mockLoggerError = mock(() => {});
+const mockLoggerInfo = mock((_message: string, ..._args: unknown[]) => {});
+const mockLoggerError = mock((_message: string, ..._args: unknown[]) => {});
 
 mock.module('$lib/server/logging/logger', () => ({
 	logger: {

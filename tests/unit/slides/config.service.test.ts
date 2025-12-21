@@ -244,8 +244,9 @@ describe('Slide Config Service', () => {
 			const original = await getSlideConfigByType('total-time');
 			const updated = await updateSlideConfig('total-time', {});
 
-			expect(updated.enabled).toBe(original?.enabled);
-			expect(updated.sortOrder).toBe(original?.sortOrder);
+			expect(original).not.toBeNull();
+			expect(updated.enabled).toBe(original!.enabled);
+			expect(updated.sortOrder).toBe(original!.sortOrder);
 		});
 	});
 
