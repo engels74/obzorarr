@@ -1,8 +1,8 @@
 import { db } from '$lib/server/db/client';
-import { playHistory, syncStatus } from '$lib/server/db/schema';
+import { playHistory, syncStatus, metadataCache } from '$lib/server/db/schema';
 import { fetchAllHistory, fetchMetadataBatch } from '$lib/server/plex/client';
 import type { ValidPlexHistoryMetadata } from '$lib/server/plex/types';
-import { eq, desc, isNull, or } from 'drizzle-orm';
+import { eq, desc, isNull, or, inArray } from 'drizzle-orm';
 import type { StartSyncOptions, SyncResult, SyncProgress, SyncStatusRecord } from './types';
 import { logger } from '$lib/server/logging';
 import { invalidateCache } from '$lib/server/stats/engine';
@@ -575,6 +575,11 @@ export interface EnrichMetadataResult {
  * This function fetches metadata from the library metadata endpoint
  * for records that are missing duration or genres data.
  *
+ * Optimizations:
+ * - Deduplicates by ratingKey to avoid redundant API calls
+ * - Uses metadata cache to avoid refetching known metadata
+ * - Batches database updates for efficiency
+ *
  * @param options - Enrichment options
  * @returns Count of enriched and failed records
  */
@@ -583,7 +588,7 @@ export async function enrichMetadata(
 ): Promise<EnrichMetadataResult> {
 	const { batchSize = 50, signal, onProgress } = options;
 
-	// Get records with NULL duration OR NULL genres
+	// 1. Query records needing enrichment (uses partial index if available)
 	const records = await db
 		.select({
 			id: playHistory.id,
@@ -598,55 +603,139 @@ export async function enrichMetadata(
 		return { enriched: 0, failed: 0 };
 	}
 
-	logger.info(`Found ${records.length} records needing metadata enrichment`, 'Enrichment');
+	// 2. Deduplicate by ratingKey - group records that share the same media
+	const ratingKeyToRecords = new Map<string, typeof records>();
+	for (const record of records) {
+		const existing = ratingKeyToRecords.get(record.ratingKey) ?? [];
+		existing.push(record);
+		ratingKeyToRecords.set(record.ratingKey, existing);
+	}
 
+	const uniqueRatingKeys = Array.from(ratingKeyToRecords.keys());
+	logger.info(
+		`Found ${records.length} records needing enrichment (${uniqueRatingKeys.length} unique media items)`,
+		'Enrichment'
+	);
+
+	// 3. Check metadata cache first
+	const cached = await db
+		.select()
+		.from(metadataCache)
+		.where(inArray(metadataCache.ratingKey, uniqueRatingKeys));
+
+	const cachedMap = new Map(cached.map((c) => [c.ratingKey, c]));
+	const needsFetch = uniqueRatingKeys.filter((rk) => !cachedMap.has(rk));
+
+	logger.info(`Cache: ${cached.length} hits, ${needsFetch.length} need API fetch`, 'Enrichment');
+
+	// 4. Fetch metadata from Plex API for missing keys only
+	let totalProcessed = 0;
+
+	if (needsFetch.length > 0) {
+		for (let i = 0; i < needsFetch.length; i += batchSize) {
+			if (signal?.aborted) {
+				logger.info('Metadata enrichment cancelled', 'Enrichment');
+				break;
+			}
+
+			const batch = needsFetch.slice(i, i + batchSize);
+			const metadataMap = await fetchMetadataBatch(batch, signal);
+
+			// 5. Update cache with fetched metadata
+			const cacheEntries = batch.map((rk) => {
+				const data = metadataMap.get(rk);
+				return {
+					ratingKey: rk,
+					duration: data?.duration ?? null,
+					genres: data?.genres?.length ? JSON.stringify(data.genres) : null,
+					fetchedAt: Math.floor(Date.now() / 1000),
+					fetchFailed: data === null
+				};
+			});
+
+			// Upsert cache entries
+			for (const entry of cacheEntries) {
+				await db
+					.insert(metadataCache)
+					.values(entry)
+					.onConflictDoUpdate({
+						target: metadataCache.ratingKey,
+						set: {
+							duration: entry.duration,
+							genres: entry.genres,
+							fetchedAt: entry.fetchedAt,
+							fetchFailed: entry.fetchFailed
+						}
+					});
+
+				// Also add to cachedMap for the update phase
+				cachedMap.set(entry.ratingKey, entry);
+			}
+
+			totalProcessed += batch.length;
+			onProgress?.(totalProcessed, needsFetch.length);
+		}
+	}
+
+	// 6. Batch update play_history records
+	// Group records by their update values for efficient batch updates
+	const updateBatches = new Map<string, number[]>(); // "duration|genres" -> [record ids]
 	let enriched = 0;
 	let failed = 0;
 
-	// Process in batches
-	for (let i = 0; i < records.length; i += batchSize) {
-		// Check for cancellation before each batch
-		if (signal?.aborted) {
-			logger.info('Metadata enrichment cancelled', 'Enrichment');
-			break;
+	for (const [ratingKey, recordGroup] of ratingKeyToRecords) {
+		const metadata = cachedMap.get(ratingKey);
+		if (!metadata || metadata.fetchFailed) {
+			failed += recordGroup.length;
+			continue;
 		}
 
-		const batch = records.slice(i, i + batchSize);
-		const ratingKeys = batch.map((r) => r.ratingKey);
+		for (const record of recordGroup) {
+			const updates: { duration?: number; genres?: string } = {};
 
-		// Fetch metadata from Plex
-		const metadataMap = await fetchMetadataBatch(ratingKeys, signal);
+			if (record.duration === null && metadata.duration != null) {
+				updates.duration = metadata.duration;
+			}
 
-		// Update records with metadata
-		for (const record of batch) {
-			const metadata = metadataMap.get(record.ratingKey);
-			if (metadata) {
-				// Only update fields that are currently NULL
-				const updates: { duration?: number; genres?: string } = {};
+			if (record.genres === null && metadata.genres != null) {
+				updates.genres = metadata.genres;
+			}
 
-				if (record.duration === null && metadata.duration !== null) {
-					updates.duration = metadata.duration;
-				}
-
-				if (record.genres === null && metadata.genres.length > 0) {
-					updates.genres = JSON.stringify(metadata.genres);
-				}
-
-				if (Object.keys(updates).length > 0) {
-					await db.update(playHistory).set(updates).where(eq(playHistory.id, record.id));
-					enriched++;
-				} else {
-					// Nothing to update (metadata had no useful data)
-					failed++;
-				}
+			if (Object.keys(updates).length > 0) {
+				// Create a key for grouping records with same update values
+				const key = `${updates.duration ?? 'null'}|${updates.genres ?? 'null'}`;
+				const ids = updateBatches.get(key) ?? [];
+				ids.push(record.id);
+				updateBatches.set(key, ids);
+				enriched++;
 			} else {
+				// Metadata had no useful data for this record
 				failed++;
 			}
 		}
-
-		// Report progress
-		onProgress?.(i + batch.length, records.length);
 	}
+
+	// Execute batched updates - one UPDATE per unique combination of values
+	for (const [key, ids] of updateBatches) {
+		const parts = key.split('|');
+		const durStr = parts[0] ?? 'null';
+		const genStr = parts[1] ?? 'null';
+		const updates: { duration?: number; genres?: string } = {};
+
+		if (durStr !== 'null') {
+			updates.duration = parseInt(durStr, 10);
+		}
+		if (genStr !== 'null') {
+			updates.genres = genStr;
+		}
+
+		await db.update(playHistory).set(updates).where(inArray(playHistory.id, ids));
+	}
+
+	logger.info(
+		`Enrichment complete: ${enriched} enriched, ${failed} failed, ${updateBatches.size} batch updates`,
+		'Enrichment'
+	);
 
 	return { enriched, failed };
 }

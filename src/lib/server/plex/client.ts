@@ -1,4 +1,5 @@
 import { PLEX_TOKEN, PLEX_SERVER_URL } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import {
 	PlexHistoryResponseSchema,
 	PlexLibraryMetadataResponseSchema,
@@ -321,8 +322,12 @@ export function getServerUrl(): string {
 
 /**
  * Concurrency limit for metadata batch requests
+ * Configurable via METADATA_CONCURRENCY env var (1-20, default: 5)
  */
-const METADATA_CONCURRENCY = 5;
+const METADATA_CONCURRENCY = Math.max(
+	1,
+	Math.min(20, parseInt(env.METADATA_CONCURRENCY ?? '5', 10) || 5)
+);
 
 /**
  * Enrichment data returned from Plex metadata endpoint

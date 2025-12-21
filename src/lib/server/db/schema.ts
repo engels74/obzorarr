@@ -25,32 +25,36 @@ export const users = sqliteTable('users', {
  * - Server-wide statistics to include all historical viewing data
  * - Re-authenticated users to regain access to their wrapped pages
  */
-export const playHistory = sqliteTable('play_history', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	historyKey: text('history_key').unique().notNull(),
-	ratingKey: text('rating_key').notNull(),
-	title: text('title').notNull(),
-	type: text('type').notNull(), // 'movie', 'episode', etc.
-	viewedAt: integer('viewed_at').notNull(), // Unix timestamp
-	/**
-	 * Plex account ID of the user who viewed this content.
-	 *
-	 * IMPORTANT: This field is intentionally NOT a foreign key to users.plexId.
-	 * This design ensures historical data preservation (Requirements 13.1, 13.3):
-	 * - Viewing history remains in database when users are removed from Plex server
-	 * - Server-wide statistics include all historical viewing data
-	 * - When removed users re-authenticate, their plexId matches this accountId
-	 *
-	 * The accountId value comes from Plex's accountID in the history API response.
-	 */
-	accountId: integer('account_id').notNull(),
-	librarySectionId: integer('library_section_id').notNull(),
-	thumb: text('thumb'),
-	duration: integer('duration'), // Duration in seconds
-	grandparentTitle: text('grandparent_title'), // Show name for episodes
-	parentTitle: text('parent_title'), // Season name for episodes
-	genres: text('genres') // JSON array of genre names, e.g., '["Action", "Drama"]'
-});
+export const playHistory = sqliteTable(
+	'play_history',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		historyKey: text('history_key').unique().notNull(),
+		ratingKey: text('rating_key').notNull(),
+		title: text('title').notNull(),
+		type: text('type').notNull(), // 'movie', 'episode', etc.
+		viewedAt: integer('viewed_at').notNull(), // Unix timestamp
+		/**
+		 * Plex account ID of the user who viewed this content.
+		 *
+		 * IMPORTANT: This field is intentionally NOT a foreign key to users.plexId.
+		 * This design ensures historical data preservation (Requirements 13.1, 13.3):
+		 * - Viewing history remains in database when users are removed from Plex server
+		 * - Server-wide statistics include all historical viewing data
+		 * - When removed users re-authenticate, their plexId matches this accountId
+		 *
+		 * The accountId value comes from Plex's accountID in the history API response.
+		 */
+		accountId: integer('account_id').notNull(),
+		librarySectionId: integer('library_section_id').notNull(),
+		thumb: text('thumb'),
+		duration: integer('duration'), // Duration in seconds
+		grandparentTitle: text('grandparent_title'), // Show name for episodes
+		parentTitle: text('parent_title'), // Season name for episodes
+		genres: text('genres') // JSON array of genre names, e.g., '["Action", "Drama"]'
+	},
+	(table) => [index('idx_play_history_rating_key').on(table.ratingKey)]
+);
 
 /**
  * Sync status table
@@ -159,6 +163,19 @@ export const logs = sqliteTable(
 	]
 );
 
+/**
+ * Metadata cache table
+ * Caches media metadata fetched from Plex to reduce API calls during enrichment.
+ * Metadata (duration, genres) rarely changes, so caching is safe.
+ */
+export const metadataCache = sqliteTable('metadata_cache', {
+	ratingKey: text('rating_key').primaryKey(),
+	duration: integer('duration'), // Duration in seconds
+	genres: text('genres'), // JSON array of genre names
+	fetchedAt: integer('fetched_at').notNull(), // Unix timestamp when fetched
+	fetchFailed: integer('fetch_failed', { mode: 'boolean' }).default(false) // True if API fetch failed
+});
+
 // Export table types for type inference
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -173,3 +190,5 @@ export type AppSettingRecord = typeof appSettings.$inferSelect;
 export type SessionRecord = typeof sessions.$inferSelect;
 export type LogRecord = typeof logs.$inferSelect;
 export type NewLogRecord = typeof logs.$inferInsert;
+export type MetadataCacheRecord = typeof metadataCache.$inferSelect;
+export type NewMetadataCacheRecord = typeof metadataCache.$inferInsert;
