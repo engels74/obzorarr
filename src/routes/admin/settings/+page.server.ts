@@ -7,13 +7,17 @@ import {
 	setCurrentTheme,
 	getAnonymizationMode,
 	setAnonymizationMode,
+	getWrappedLogoMode,
+	setWrappedLogoMode,
 	clearStatsCache,
 	getApiConfigWithSources,
 	AppSettingsKey,
 	ThemePresets,
 	AnonymizationMode,
+	WrappedLogoMode,
 	type ThemePresetType,
 	type AnonymizationModeType,
+	type WrappedLogoModeType,
 	type ConfigSource
 } from '$lib/server/admin/settings.service';
 import { getAvailableYears } from '$lib/server/admin/users.service';
@@ -44,6 +48,7 @@ import {
 
 const ThemeSchema = z.enum(['soviet-red', 'midnight-blue', 'forest-green', 'royal-purple']);
 const AnonymizationSchema = z.enum(['real', 'anonymous', 'hybrid']);
+const WrappedLogoModeSchema = z.enum(['always_show', 'always_hide', 'user_choice']);
 
 const ApiConfigSchema = z.object({
 	plexServerUrl: z.string().url('Invalid URL format').optional().or(z.literal('')),
@@ -80,6 +85,7 @@ export const load: PageServerLoad = async () => {
 		apiConfig,
 		currentTheme,
 		anonymizationMode,
+		wrappedLogoMode,
 		availableYears,
 		logRetentionDays,
 		logMaxCount,
@@ -88,6 +94,7 @@ export const load: PageServerLoad = async () => {
 		getApiConfigWithSources(),
 		getCurrentTheme(),
 		getAnonymizationMode(),
+		getWrappedLogoMode(),
 		getAvailableYears(),
 		getLogRetentionDays(),
 		getLogMaxCount(),
@@ -106,6 +113,7 @@ export const load: PageServerLoad = async () => {
 		},
 		currentTheme,
 		anonymizationMode,
+		wrappedLogoMode,
 		themeOptions: Object.entries(ThemePresets).map(([key, value]) => ({
 			value,
 			label: key
@@ -116,6 +124,13 @@ export const load: PageServerLoad = async () => {
 		anonymizationOptions: Object.entries(AnonymizationMode).map(([key, value]) => ({
 			value,
 			label: key.charAt(0).toUpperCase() + key.slice(1).toLowerCase()
+		})),
+		wrappedLogoOptions: Object.entries(WrappedLogoMode).map(([key, value]) => ({
+			value,
+			label: key
+				.replace(/_/g, ' ')
+				.toLowerCase()
+				.replace(/\b\w/g, (c) => c.toUpperCase())
 		})),
 		availableYears: availableYears.length > 0 ? availableYears : [currentYear],
 		currentYear,
@@ -250,6 +265,27 @@ export const actions: Actions = {
 		try {
 			await setAnonymizationMode(parsed.data as AnonymizationModeType);
 			return { success: true, message: 'Anonymization mode updated' };
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to update mode';
+			return fail(500, { error: message });
+		}
+	},
+
+	/**
+	 * Update wrapped page logo mode
+	 */
+	updateWrappedLogoMode: async ({ request }) => {
+		const formData = await request.formData();
+		const mode = formData.get('logoMode');
+
+		const parsed = WrappedLogoModeSchema.safeParse(mode);
+		if (!parsed.success) {
+			return fail(400, { error: 'Invalid logo mode' });
+		}
+
+		try {
+			await setWrappedLogoMode(parsed.data as WrappedLogoModeType);
+			return { success: true, message: 'Logo visibility mode updated' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to update mode';
 			return fail(500, { error: message });

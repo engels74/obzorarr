@@ -3,6 +3,7 @@
 	import { enhance } from '$app/forms';
 	import type { LayoutData } from './$types';
 	import type { Snippet } from 'svelte';
+	import Logo from '$lib/components/Logo.svelte';
 
 	/**
 	 * Admin Layout
@@ -67,7 +68,10 @@
 		>
 			<span class="menu-icon">&#9776;</span>
 		</button>
-		<h1 class="mobile-title">Obzorarr Admin</h1>
+		<div class="mobile-branding">
+			<Logo size="sm" />
+			<h1 class="mobile-title">Admin</h1>
+		</div>
 	</header>
 
 	<!-- Sidebar overlay for mobile -->
@@ -85,8 +89,13 @@
 	<!-- Sidebar -->
 	<aside class="sidebar" class:open={sidebarOpen}>
 		<div class="sidebar-header">
-			<h2 class="sidebar-title">Obzorarr</h2>
-			<span class="sidebar-subtitle">Admin Panel</span>
+			<div class="sidebar-branding">
+				<Logo size="md" />
+				<div class="sidebar-text">
+					<h2 class="sidebar-title">Obzorarr</h2>
+					<span class="sidebar-subtitle">Admin Panel</span>
+				</div>
+			</div>
 		</div>
 
 		<nav class="sidebar-nav" aria-label="Admin navigation">
@@ -179,6 +188,12 @@
 		background: hsl(var(--muted));
 	}
 
+	.mobile-branding {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+	}
+
 	.mobile-title {
 		font-size: 1.125rem;
 		font-weight: 600;
@@ -214,11 +229,23 @@
 		border-bottom: 1px solid hsl(var(--border));
 	}
 
+	.sidebar-branding {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+	}
+
+	.sidebar-text {
+		display: flex;
+		flex-direction: column;
+	}
+
 	.sidebar-title {
-		font-size: 1.5rem;
+		font-size: 1.25rem;
 		font-weight: 700;
 		color: hsl(var(--primary));
-		margin: 0 0 0.25rem;
+		margin: 0;
+		line-height: 1.2;
 	}
 
 	.sidebar-subtitle {

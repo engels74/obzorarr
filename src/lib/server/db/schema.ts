@@ -80,7 +80,7 @@ export const cachedStats = sqliteTable('cached_stats', {
 
 /**
  * Share settings table
- * Controls wrapped page visibility
+ * Controls wrapped page visibility and user preferences
  */
 export const shareSettings = sqliteTable('share_settings', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
@@ -88,7 +88,8 @@ export const shareSettings = sqliteTable('share_settings', {
 	year: integer('year').notNull(),
 	mode: text('mode').notNull().default('public'), // 'public', 'private-oauth', 'private-link'
 	shareToken: text('share_token').unique(),
-	canUserControl: integer('can_user_control', { mode: 'boolean' }).default(false)
+	canUserControl: integer('can_user_control', { mode: 'boolean' }).default(false),
+	showLogo: integer('show_logo', { mode: 'boolean' }) // null = inherit from global setting
 });
 
 /**

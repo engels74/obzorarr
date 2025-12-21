@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
 	import { StoryMode, ScrollMode, ModeToggle } from '$lib/components/wrapped';
+	import Logo from '$lib/components/Logo.svelte';
 	import type { PageProps } from './$types';
 
 	/**
@@ -18,6 +20,9 @@
 	 */
 
 	let { data }: PageProps = $props();
+
+	/** Local state for logo visibility (optimistic update) */
+	let showLogo = $state(data.showLogo);
 
 	// ==========================================================================
 	// State
@@ -64,6 +69,13 @@
 		// Navigate back to home or previous page
 		window.history.back();
 	}
+
+	/**
+	 * Handle logo toggle (optimistic update)
+	 */
+	function handleLogoToggle(): void {
+		showLogo = !showLogo;
+	}
 </script>
 
 <svelte:head>
@@ -72,13 +84,45 @@
 </svelte:head>
 
 <div class="wrapped-page">
-	<!-- Mode Toggle Button -->
-	<div class="mode-toggle-container">
+	<!-- Logo Watermark -->
+	{#if showLogo}
+		<div class="logo-watermark">
+			<Logo size="sm" />
+		</div>
+	{/if}
+
+	<!-- Controls Container (top right) -->
+	<div class="controls-container">
+		{#if data.canUserControlLogo}
+			<form method="POST" action="?/toggleLogo" use:enhance={() => {
+				handleLogoToggle();
+				return async () => {
+					// Form submitted - state already updated optimistically
+				};
+			}}>
+				<input type="hidden" name="showLogo" value={!showLogo} />
+				<button type="submit" class="logo-toggle" title={showLogo ? 'Hide logo' : 'Show logo'}>
+					{#if showLogo}
+						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+							<circle cx="12" cy="12" r="3"/>
+						</svg>
+					{:else}
+						<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>
+							<path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/>
+							<path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/>
+							<line x1="2" x2="22" y1="2" y2="22"/>
+						</svg>
+					{/if}
+				</button>
+			</form>
+		{/if}
 		<ModeToggle mode={viewMode} onModeChange={handleModeChange} />
 	</div>
 
 	<!-- User Header -->
-	<div class="user-header">
+	<div class="user-header" class:with-logo={showLogo}>
 		<h1 class="user-title">{data.username}'s Year in Review</h1>
 	</div>
 
@@ -113,11 +157,44 @@
 		background: var(--background);
 	}
 
-	.mode-toggle-container {
+	.logo-watermark {
+		position: fixed;
+		top: 1rem;
+		left: 1rem;
+		z-index: 99;
+		opacity: 0.8;
+		pointer-events: none;
+	}
+
+	.controls-container {
 		position: fixed;
 		top: 1rem;
 		right: 1rem;
 		z-index: 100;
+		display: flex;
+		gap: 0.5rem;
+		align-items: center;
+	}
+
+	.logo-toggle {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 2rem;
+		height: 2rem;
+		padding: 0;
+		border: none;
+		border-radius: 0.375rem;
+		background: var(--card);
+		color: var(--foreground);
+		cursor: pointer;
+		opacity: 0.8;
+		transition: opacity 0.2s, background 0.2s;
+	}
+
+	.logo-toggle:hover {
+		opacity: 1;
+		background: var(--muted);
 	}
 
 	.user-header {
@@ -126,6 +203,10 @@
 		left: 1rem;
 		z-index: 100;
 		pointer-events: none;
+	}
+
+	.user-header.with-logo {
+		left: 3.5rem;
 	}
 
 	.user-title {

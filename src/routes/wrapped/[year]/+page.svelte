@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { StoryMode, ScrollMode, ModeToggle } from '$lib/components/wrapped';
+	import Logo from '$lib/components/Logo.svelte';
 	import type { PageProps } from './$types';
 
 	/**
@@ -72,6 +73,13 @@
 </svelte:head>
 
 <div class="wrapped-page">
+	<!-- Logo Watermark -->
+	{#if data.showLogo}
+		<div class="logo-watermark">
+			<Logo size="sm" />
+		</div>
+	{/if}
+
 	<!-- Mode Toggle Button -->
 	<div class="mode-toggle-container">
 		<ModeToggle mode={viewMode} onModeChange={handleModeChange} />
@@ -106,6 +114,15 @@
 		width: 100%;
 		min-height: 100vh;
 		background: var(--background);
+	}
+
+	.logo-watermark {
+		position: fixed;
+		top: 1rem;
+		left: 1rem;
+		z-index: 99;
+		opacity: 0.8;
+		pointer-events: none;
 	}
 
 	.mode-toggle-container {

@@ -41,7 +41,10 @@ export const AppSettingsKey = {
 	ANONYMIZATION_MODE: 'anonymization_mode',
 
 	// Sync
-	SYNC_CRON_EXPRESSION: 'sync_cron_expression'
+	SYNC_CRON_EXPRESSION: 'sync_cron_expression',
+
+	// Wrapped Page Logo
+	WRAPPED_LOGO_MODE: 'wrapped_logo_mode'
 } as const;
 
 export type AppSettingsKeyType = (typeof AppSettingsKey)[keyof typeof AppSettingsKey];
@@ -68,6 +71,17 @@ export const AnonymizationMode = {
 } as const;
 
 export type AnonymizationModeType = (typeof AnonymizationMode)[keyof typeof AnonymizationMode];
+
+/**
+ * Wrapped page logo visibility modes
+ */
+export const WrappedLogoMode = {
+	ALWAYS_SHOW: 'always_show',
+	ALWAYS_HIDE: 'always_hide',
+	USER_CHOICE: 'user_choice'
+} as const;
+
+export type WrappedLogoModeType = (typeof WrappedLogoMode)[keyof typeof WrappedLogoMode];
 
 // =============================================================================
 // App Settings CRUD
@@ -194,6 +208,28 @@ export async function getDefaultYear(): Promise<number> {
  */
 export async function setDefaultYear(year: number): Promise<void> {
 	await setAppSetting(AppSettingsKey.DEFAULT_YEAR, year.toString());
+}
+
+/**
+ * Get the wrapped page logo visibility mode
+ *
+ * @returns The current logo mode or default (always_show)
+ */
+export async function getWrappedLogoMode(): Promise<WrappedLogoModeType> {
+	const mode = await getAppSetting(AppSettingsKey.WRAPPED_LOGO_MODE);
+	if (mode && Object.values(WrappedLogoMode).includes(mode as WrappedLogoModeType)) {
+		return mode as WrappedLogoModeType;
+	}
+	return WrappedLogoMode.ALWAYS_SHOW;
+}
+
+/**
+ * Set the wrapped page logo visibility mode
+ *
+ * @param mode - The logo visibility mode to set
+ */
+export async function setWrappedLogoMode(mode: WrappedLogoModeType): Promise<void> {
+	await setAppSetting(AppSettingsKey.WRAPPED_LOGO_MODE, mode);
 }
 
 // =============================================================================

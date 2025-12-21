@@ -1,6 +1,6 @@
-import { error } from '@sveltejs/kit';
+import { error, fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
-import type { PageServerLoad } from './$types';
+import type { PageServerLoad, Actions } from './$types';
 import { db } from '$lib/server/db/client';
 import { users } from '$lib/server/db/schema';
 import { calculateUserStats } from '$lib/server/stats/engine';
@@ -15,6 +15,7 @@ import {
 	customSlidesToMap
 } from '$lib/server/slides';
 import { generateFunFacts, type FunFact } from '$lib/server/funfacts';
+import { getLogoVisibility, setUserLogoPreference } from '$lib/server/logo';
 
 /**
  * Per-user Wrapped Page Load Function
@@ -124,6 +125,9 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		// Continue without fun facts rather than failing the page
 	}
 
+	// Get logo visibility (per-user pages can have user control if mode is USER_CHOICE)
+	const logoVisibility = await getLogoVisibility(userId, year);
+
 	return {
 		stats,
 		slides,
@@ -132,6 +136,41 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		year,
 		userId,
 		username: user.username,
-		isServerWrapped: false
+		isServerWrapped: false,
+		showLogo: logoVisibility.showLogo,
+		canUserControlLogo: logoVisibility.canUserControl
 	};
+};
+
+// =============================================================================
+// Actions
+// =============================================================================
+
+export const actions: Actions = {
+	/**
+	 * Toggle user's logo preference for this wrapped page
+	 */
+	toggleLogo: async ({ request, params, locals }) => {
+		// Require authentication for preference changes
+		if (!locals.user) {
+			return fail(401, { error: 'Authentication required' });
+		}
+
+		const year = parseInt(params.year, 10);
+		if (isNaN(year)) {
+			return fail(400, { error: 'Invalid year' });
+		}
+
+		const formData = await request.formData();
+		const showLogoStr = formData.get('showLogo')?.toString();
+		const showLogo = showLogoStr === 'true';
+
+		try {
+			await setUserLogoPreference(locals.user.id, year, showLogo);
+			return { success: true };
+		} catch (err) {
+			const message = err instanceof Error ? err.message : 'Failed to update preference';
+			return fail(500, { error: message });
+		}
+	}
 };

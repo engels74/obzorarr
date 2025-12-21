@@ -29,6 +29,7 @@
 	let showOpenaiKey = $state(false);
 	let selectedTheme = $state('');
 	let selectedAnonymization = $state('');
+	let selectedWrappedLogoMode = $state('');
 	let isTesting = $state(false);
 
 	// Logging settings state
@@ -57,6 +58,7 @@
 		openaiModelSource = data.settings.openaiModel.source;
 		selectedTheme = data.currentTheme;
 		selectedAnonymization = data.anonymizationMode;
+		selectedWrappedLogoMode = data.wrappedLogoMode;
 		logRetentionDays = data.logSettings.retentionDays;
 		logMaxCount = data.logSettings.maxCount;
 		logDebugEnabled = data.logSettings.debugEnabled;
@@ -87,6 +89,13 @@
 		real: 'Show actual usernames in all statistics',
 		anonymous: 'Replace all usernames with "User #1", "User #2", etc.',
 		hybrid: 'Users see their own name, but others are anonymized'
+	};
+
+	// Wrapped logo mode descriptions
+	const wrappedLogoDescriptions: Record<string, string> = {
+		always_show: 'Logo is always visible on all wrapped pages',
+		always_hide: 'Logo is hidden on all wrapped pages',
+		user_choice: 'Users can choose to show or hide the logo on their wrapped page'
 	};
 </script>
 
@@ -355,6 +364,38 @@
 
 			<div class="form-actions">
 				<button type="submit" class="save-button">Save Privacy Settings</button>
+			</div>
+		</form>
+	</section>
+
+	<!-- Wrapped Page Logo Section -->
+	<section class="section">
+		<h2>Wrapped Page Logo</h2>
+		<p class="section-description">Control logo visibility on wrapped pages.</p>
+
+		<form method="POST" action="?/updateWrappedLogoMode" use:enhance class="logo-mode-form">
+			<div class="anonymization-options">
+				{#each data.wrappedLogoOptions as option}
+					<label
+						class="anonymization-option"
+						class:selected={selectedWrappedLogoMode === option.value}
+					>
+						<input
+							type="radio"
+							name="logoMode"
+							value={option.value}
+							bind:group={selectedWrappedLogoMode}
+						/>
+						<div class="option-content">
+							<span class="option-label">{option.label}</span>
+							<span class="option-desc">{wrappedLogoDescriptions[option.value]}</span>
+						</div>
+					</label>
+				{/each}
+			</div>
+
+			<div class="form-actions">
+				<button type="submit" class="save-button">Save Logo Settings</button>
 			</div>
 		</form>
 	</section>

@@ -9,6 +9,7 @@ import {
 	customSlidesToMap
 } from '$lib/server/slides';
 import { generateFunFacts, type FunFact } from '$lib/server/funfacts';
+import { getLogoVisibility } from '$lib/server/logo';
 
 /**
  * Server-wide Wrapped Page Load Function
@@ -58,12 +59,17 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		// Continue without fun facts rather than failing the page
 	}
 
+	// Get logo visibility (server-wide pages don't have per-user control)
+	const logoVisibility = await getLogoVisibility(null, year);
+
 	return {
 		stats,
 		slides,
 		customSlidesMap,
 		funFacts,
 		year,
-		isServerWrapped: true
+		isServerWrapped: true,
+		showLogo: logoVisibility.showLogo,
+		canUserControlLogo: false // Server-wide pages don't have per-user logo control
 	};
 };

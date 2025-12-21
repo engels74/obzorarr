@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { animate } from 'motion';
 	import { prefersReducedMotion } from 'svelte/motion';
+	import Logo from '$lib/components/Logo.svelte';
 
 	/**
 	 * Public Landing Page
@@ -158,8 +159,10 @@
 	<!-- Hero Section -->
 	<section class="hero" bind:this={heroContainer}>
 		<div class="hero-content">
-			<!-- Soviet Star Decorative Element -->
-			<div class="soviet-star" aria-hidden="true">&#9733;</div>
+			<!-- Logo Decorative Element -->
+			<div class="logo-glow" aria-hidden="true">
+				<Logo size={80} />
+			</div>
 
 			<h1 class="hero-title">
 				<span class="title-main">OBZORARR</span>
@@ -264,13 +267,10 @@
 		z-index: 1;
 	}
 
-	.soviet-star {
-		font-size: 4rem;
-		color: hsl(var(--primary));
+	.logo-glow {
 		margin-bottom: 1rem;
-		text-shadow:
-			0 0 20px hsl(var(--primary) / 0.5),
-			0 0 40px hsl(var(--primary) / 0.3);
+		filter: drop-shadow(0 0 20px hsl(var(--primary) / 0.5))
+			drop-shadow(0 0 40px hsl(var(--primary) / 0.3));
 	}
 
 	.hero-title {
@@ -453,8 +453,9 @@
 			padding: 1.5rem;
 		}
 
-		.soviet-star {
-			font-size: 3rem;
+		.logo-glow :global(.logo) {
+			width: 64px;
+			height: 64px;
 		}
 
 		.hero-description {
