@@ -118,6 +118,10 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		let userId: number;
 		const isAdmin = membership.isOwner;
 
+		// Determine accountId for matching with playHistory
+		// Server owners have local accountId = 1, shared users have accountId = plexId
+		const accountId = membership.isOwner ? 1 : plexUser.id;
+
 		if (existingUser) {
 			// Update existing user
 			await db
@@ -126,7 +130,8 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 					username: plexUser.username,
 					email: plexUser.email,
 					thumb: plexUser.thumb ?? null,
-					isAdmin
+					isAdmin,
+					accountId
 				})
 				.where(eq(users.id, existingUser.id));
 
@@ -137,6 +142,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 				.insert(users)
 				.values({
 					plexId: plexUser.id,
+					accountId,
 					username: plexUser.username,
 					email: plexUser.email,
 					thumb: plexUser.thumb ?? null,

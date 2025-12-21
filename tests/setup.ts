@@ -39,6 +39,7 @@ sqlite.exec(`
 	CREATE TABLE IF NOT EXISTS users (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		plex_id INTEGER UNIQUE NOT NULL,
+		account_id INTEGER,
 		username TEXT NOT NULL,
 		email TEXT,
 		thumb TEXT,

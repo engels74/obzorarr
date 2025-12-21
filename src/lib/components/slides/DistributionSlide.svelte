@@ -224,7 +224,7 @@
 
 	.bar {
 		width: 100%;
-		background: linear-gradient(180deg, var(--primary), oklch(0.4 0.1 25));
+		background: linear-gradient(180deg, hsl(var(--primary)), oklch(0.4 0.1 25));
 		border-radius: 2px 2px 0 0;
 		transform-origin: bottom center;
 		min-height: 4px;
@@ -252,7 +252,7 @@
 	}
 
 	.peak-info strong {
-		color: var(--primary);
+		color: hsl(var(--primary));
 	}
 
 	.extra {

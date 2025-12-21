@@ -262,6 +262,10 @@ async function resolveTargetUser(): Promise<NormalizedServerUser> {
  * @returns The database user ID
  */
 async function getOrCreateDevUser(targetUser: NormalizedServerUser): Promise<number> {
+	// Determine accountId for matching with playHistory
+	// Server owners have local accountId = 1, shared users have accountId = plexId
+	const accountId = targetUser.isOwner ? 1 : targetUser.plexId;
+
 	// Check if user already exists
 	const existingUser = await db.query.users.findFirst({
 		where: eq(users.plexId, targetUser.plexId)
@@ -275,7 +279,8 @@ async function getOrCreateDevUser(targetUser: NormalizedServerUser): Promise<num
 				username: targetUser.username,
 				email: targetUser.email,
 				thumb: targetUser.thumb,
-				isAdmin: targetUser.isOwner
+				isAdmin: targetUser.isOwner,
+				accountId
 			})
 			.where(eq(users.id, existingUser.id));
 
@@ -287,6 +292,7 @@ async function getOrCreateDevUser(targetUser: NormalizedServerUser): Promise<num
 		.insert(users)
 		.values({
 			plexId: targetUser.plexId,
+			accountId,
 			username: targetUser.username,
 			email: targetUser.email,
 			thumb: targetUser.thumb,
