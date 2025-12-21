@@ -2,7 +2,7 @@ import { env } from '$env/dynamic/private';
 import { dev } from '$app/environment';
 import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db/client';
-import { users, sessions } from '$lib/server/db/schema';
+import { users, sessions, playHistory } from '$lib/server/db/schema';
 import { SESSION_DURATION_MS, type NormalizedServerUser } from './types';
 import { logger } from '$lib/server/logging';
 import {
@@ -81,9 +81,81 @@ export function isDevBypassEnabled(): boolean {
 // =============================================================================
 
 /**
- * Get the fallback mock user when Plex API is unavailable
+ * Get the fallback user when Plex API is unavailable
+ *
+ * Attempts to use an existing user from the database to provide
+ * a functional dev experience with real statistics:
+ * 1. First, try to find an existing admin user
+ * 2. Then, try to find any user with play history
+ * 3. Fall back to mock user (will have empty stats)
  */
-function getFallbackUser(): NormalizedServerUser {
+async function getFallbackUser(): Promise<NormalizedServerUser> {
+	// Try to find an existing admin user in the database
+	const adminUser = await db.query.users.findFirst({
+		where: eq(users.isAdmin, true)
+	});
+
+	if (adminUser) {
+		logger.info(
+			`Dev bypass: Using existing admin user ${adminUser.plexId} (${adminUser.username}) as fallback`,
+			'DevBypass'
+		);
+		return {
+			plexId: adminUser.plexId,
+			username: adminUser.username,
+			email: adminUser.email,
+			thumb: adminUser.thumb,
+			isOwner: true
+		};
+	}
+
+	// Try to find any user who has play history (so stats aren't empty)
+	const userWithHistory = await db
+		.selectDistinct({ accountId: playHistory.accountId })
+		.from(playHistory)
+		.limit(1);
+
+	const firstUserWithHistory = userWithHistory[0];
+	if (firstUserWithHistory) {
+		const accountId = firstUserWithHistory.accountId;
+		// Check if this accountId has a corresponding user in the database
+		const existingUser = await db.query.users.findFirst({
+			where: eq(users.plexId, accountId)
+		});
+
+		if (existingUser) {
+			logger.info(
+				`Dev bypass: Using user with play history ${existingUser.plexId} (${existingUser.username}) as fallback`,
+				'DevBypass'
+			);
+			return {
+				plexId: existingUser.plexId,
+				username: existingUser.username,
+				email: existingUser.email,
+				thumb: existingUser.thumb,
+				isOwner: existingUser.isAdmin ?? false
+			};
+		}
+
+		// User doesn't exist in users table but has history - use their accountId
+		logger.info(
+			`Dev bypass: Using orphaned play history accountId ${accountId} as fallback (user may be deleted)`,
+			'DevBypass'
+		);
+		return {
+			plexId: accountId,
+			username: `user-${accountId}`,
+			email: null,
+			thumb: null,
+			isOwner: true
+		};
+	}
+
+	// No existing users with history - fall back to mock user
+	logger.warn(
+		'Dev bypass: No existing users found in database, using mock user (stats will be empty)',
+		'DevBypass'
+	);
 	return {
 		plexId: FALLBACK_PLEX_ID,
 		username: FALLBACK_USERNAME,
@@ -170,12 +242,12 @@ async function resolveTargetUser(): Promise<NormalizedServerUser> {
 
 		return owner;
 	} catch (error) {
-		// Plex API failed - fall back to mock user
+		// Plex API failed - fall back to existing user from database
 		logger.warn(
-			`Dev bypass: Failed to fetch Plex users, using fallback mock user. Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			`Dev bypass: Failed to fetch Plex users, attempting to use existing database user. Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
 			'DevBypass'
 		);
-		return getFallbackUser();
+		return await getFallbackUser();
 	}
 }
 
