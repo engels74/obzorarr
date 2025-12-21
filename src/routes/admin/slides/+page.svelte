@@ -46,12 +46,12 @@
 		custom: 'Custom Slide'
 	};
 
-	// Fun Fact frequency state (reactive from server data)
-	let selectedFrequencyMode = $state(data.funFactFrequency.mode);
-	let customCount = $state(data.funFactFrequency.count);
+	// Fun Fact frequency state (synced from server data)
+	let selectedFrequencyMode = $state<typeof data.funFactFrequency.mode>('normal');
+	let customCount = $state(0);
 
-	// Sync state when data changes
-	$effect(() => {
+	// Sync state from data before DOM updates
+	$effect.pre(() => {
 		selectedFrequencyMode = data.funFactFrequency.mode;
 		customCount = data.funFactFrequency.count;
 	});

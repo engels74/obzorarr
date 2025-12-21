@@ -51,7 +51,10 @@ export const AppSettingsKey = {
 
 	// Fun Fact Frequency
 	FUN_FACT_FREQUENCY: 'fun_fact_frequency',
-	FUN_FACT_CUSTOM_COUNT: 'fun_fact_custom_count'
+	FUN_FACT_CUSTOM_COUNT: 'fun_fact_custom_count',
+
+	// Fun Facts AI Persona
+	FUN_FACTS_AI_PERSONA: 'fun_facts_ai_persona'
 } as const;
 
 export type AppSettingsKeyType = (typeof AppSettingsKey)[keyof typeof AppSettingsKey];

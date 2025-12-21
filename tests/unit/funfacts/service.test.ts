@@ -681,7 +681,8 @@ describe('generateWithAI', () => {
 			openaiBaseUrl: 'https://api.openai.com/v1',
 			openaiModel: 'gpt-4o-mini',
 			maxAIRetries: 2,
-			aiTimeoutMs: 10000
+			aiTimeoutMs: 10000,
+			aiPersona: 'witty' as const
 		};
 
 		const facts = await generateWithAI(mockStats, config, 2);
@@ -705,7 +706,8 @@ describe('generateWithAI', () => {
 			openaiBaseUrl: 'https://api.openai.com/v1',
 			openaiModel: 'gpt-4o-mini',
 			maxAIRetries: 2,
-			aiTimeoutMs: 10000
+			aiTimeoutMs: 10000,
+			aiPersona: 'witty' as const
 		};
 
 		await expect(generateWithAI(mockStats, config, 3)).rejects.toThrow('OpenAI API error: 401');
@@ -745,7 +747,8 @@ describe('generateWithAI', () => {
 			openaiBaseUrl: 'https://api.openai.com/v1',
 			openaiModel: 'gpt-4o-mini',
 			maxAIRetries: 2,
-			aiTimeoutMs: 10000
+			aiTimeoutMs: 10000,
+			aiPersona: 'witty' as const
 		};
 
 		const facts = await generateWithAI(mockStats, config, 1);
@@ -767,7 +770,8 @@ describe('generateWithAI', () => {
 			openaiBaseUrl: 'https://api.openai.com/v1',
 			openaiModel: 'gpt-4o-mini',
 			maxAIRetries: 0, // No retries for this test
-			aiTimeoutMs: 10000
+			aiTimeoutMs: 10000,
+			aiPersona: 'witty' as const
 		};
 
 		await expect(generateWithAI(mockStats, config, 3)).rejects.toBeInstanceOf(AIGenerationError);
@@ -789,7 +793,8 @@ describe('generateWithAI', () => {
 			openaiBaseUrl: 'https://api.openai.com/v1',
 			openaiModel: 'gpt-4o-mini',
 			maxAIRetries: 0,
-			aiTimeoutMs: 10000
+			aiTimeoutMs: 10000,
+			aiPersona: 'witty' as const
 		};
 
 		await expect(generateWithAI(mockStats, config, 3)).rejects.toBeInstanceOf(AIGenerationError);

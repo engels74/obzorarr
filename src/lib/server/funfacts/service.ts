@@ -1,14 +1,18 @@
 import { getAppSetting, AppSettingsKey } from '$lib/server/admin/settings.service';
 import type { UserStats, ServerStats, Stats } from '$lib/server/stats/types';
 import { isUserStats } from '$lib/server/stats/types';
-import { ALL_TEMPLATES, EQUIVALENCY_FACTORS, MONTH_NAMES } from './templates';
+import { ALL_TEMPLATES } from './templates';
+import { EQUIVALENCY_FACTORS, MONTH_NAMES, ENTERTAINMENT_FACTORS, formatHour } from './constants';
+import { selectWeightedTemplates, getAllTemplates } from './registry';
+import { enrichContext, buildEnhancedPrompt } from './ai';
 import type {
 	FunFact,
 	FactTemplate,
 	FactGenerationContext,
 	GenerateFunFactsOptions,
 	FunFactsConfig,
-	FactCategory
+	FactCategory,
+	AIPersona
 } from './types';
 import { AIGenerationError, InsufficientStatsError } from './types';
 
@@ -36,10 +40,11 @@ import { AIGenerationError, InsufficientStatsError } from './types';
  * Get fun facts service configuration from app settings
  */
 export async function getFunFactsConfig(): Promise<FunFactsConfig> {
-	const [apiKey, baseUrl, model] = await Promise.all([
+	const [apiKey, baseUrl, model, persona] = await Promise.all([
 		getAppSetting(AppSettingsKey.OPENAI_API_KEY),
 		getAppSetting(AppSettingsKey.OPENAI_BASE_URL),
-		getAppSetting(AppSettingsKey.OPENAI_MODEL)
+		getAppSetting(AppSettingsKey.OPENAI_MODEL),
+		getAppSetting(AppSettingsKey.FUN_FACTS_AI_PERSONA)
 	]);
 
 	return {
@@ -48,7 +53,8 @@ export async function getFunFactsConfig(): Promise<FunFactsConfig> {
 		openaiBaseUrl: baseUrl ?? 'https://api.openai.com/v1',
 		openaiModel: model ?? 'gpt-4o-mini',
 		maxAIRetries: 2,
-		aiTimeoutMs: 10000
+		aiTimeoutMs: 10000,
+		aiPersona: (persona as AIPersona) ?? 'witty'
 	};
 }
 
@@ -67,6 +73,7 @@ export async function isAIAvailable(): Promise<boolean> {
 /**
  * Build generation context from stats
  * Extracts and computes values needed for template interpolation
+ * Also enriches context with entertainment trivia calculations
  */
 export function buildGenerationContext(stats: UserStats | ServerStats): FactGenerationContext {
 	// Use Math.floor to avoid rounding < 30 mins to 0 hours
@@ -83,7 +90,7 @@ export function buildGenerationContext(stats: UserStats | ServerStats): FactGene
 	const uniqueMovies = stats.topMovies.length;
 	const uniqueShows = stats.topShows.length;
 
-	return {
+	const baseContext: FactGenerationContext = {
 		hours,
 		days,
 		plays: stats.totalPlays,
@@ -103,6 +110,9 @@ export function buildGenerationContext(stats: UserStats | ServerStats): FactGene
 		uniqueMovies,
 		uniqueShows
 	};
+
+	// Enrich with entertainment trivia calculations
+	return enrichContext(baseContext);
 }
 
 // =============================================================================
@@ -153,15 +163,6 @@ export function isTemplateApplicable(
 	}
 
 	return true;
-}
-
-/**
- * Format hour for display (e.g., "9:00 PM")
- */
-function formatHour(hour: number): string {
-	const period = hour >= 12 ? 'PM' : 'AM';
-	const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-	return `${displayHour}:00 ${period}`;
 }
 
 /**
@@ -235,7 +236,17 @@ export function interpolateTemplate(template: string, context: FactGenerationCon
 		commuteTrips,
 		podcastEpisodes,
 		topPercentile,
-		year
+		year,
+
+		// Entertainment trivia (from enriched context)
+		gotCount: context.gotCount ?? 0,
+		friendsCount: context.friendsCount ?? 0,
+		theOfficeCount: context.theOfficeCount ?? 0,
+		strangerThingsCount: context.strangerThingsCount ?? 0,
+		starWarsCount: context.starWarsCount ?? 0,
+		breakingBadCount: context.breakingBadCount ?? 0,
+		theWireCount: context.theWireCount ?? 0,
+		sopranosCount: context.sopranosCount ?? 0
 	};
 
 	return template.replace(/\{(\w+)\}/g, (_, key) => {
@@ -292,48 +303,6 @@ export function selectRandomTemplates(
 // =============================================================================
 
 /**
- * System prompt for AI fun fact generation
- */
-const AI_SYSTEM_PROMPT = `You are a creative writer generating fun facts for a "Year in Review" viewing statistics summary.
-Generate engaging, witty comparisons based on viewing data.
-Keep facts family-friendly and positive.
-Use emojis for icons.
-
-IMPORTANT: Respond ONLY with valid JSON in this exact format:
-{
-  "facts": [
-    { "fact": "The main fact statement", "comparison": "A witty comparison or follow-up", "icon": "emoji" }
-  ]
-}`;
-
-/**
- * Build the AI prompt from context
- */
-function buildAIPrompt(context: FactGenerationContext, count: number): string {
-	const monthName = MONTH_NAMES[context.peakMonth] ?? 'Unknown';
-	const peakHourFormatted = formatHour(context.peakHour);
-
-	return `Generate ${count} unique fun facts based on these viewing statistics:
-- Total watch time: ${context.hours} hours (${context.days} days)
-- Total plays: ${context.plays}
-- Top movie: "${context.topMovie ?? 'None'}" (watched ${context.topMovieCount} times)
-- Top show: "${context.topShow ?? 'None'}" (${context.topShowCount} episodes)
-- Percentile rank: Top ${100 - Math.round(context.percentile)}%
-- Longest binge: ${context.bingeHours ?? 0} hours (${context.bingePlays ?? 0} items)
-- Peak viewing time: ${peakHourFormatted}
-- Peak viewing month: ${monthName}
-- First watch: "${context.firstWatchTitle ?? 'None'}"
-- Last watch: "${context.lastWatchTitle ?? 'None'}"
-
-Create creative, varied comparisons. Examples:
-- "That's equivalent to X flights to Tokyo"
-- "You could have read X books in that time"
-- "You're in the top X% of viewers"
-
-Make each fact unique and interesting. Include an emoji icon for each.`;
-}
-
-/**
  * Parse AI response into FunFact array
  */
 function parseAIResponse(data: unknown): FunFact[] {
@@ -386,7 +355,8 @@ export async function generateWithAI(
 	}
 
 	const context = buildGenerationContext(stats);
-	const prompt = buildAIPrompt(context, count);
+	const persona = config.aiPersona ?? 'witty';
+	const { system: systemPrompt, user: userPrompt } = buildEnhancedPrompt(context, count, persona);
 	const maxRetries = config.maxAIRetries ?? 2;
 	const baseUrl = config.openaiBaseUrl ?? 'https://api.openai.com/v1';
 	const model = config.openaiModel ?? 'gpt-4o-mini';
@@ -407,8 +377,8 @@ export async function generateWithAI(
 				body: JSON.stringify({
 					model,
 					messages: [
-						{ role: 'system', content: AI_SYSTEM_PROMPT },
-						{ role: 'user', content: prompt }
+						{ role: 'system', content: systemPrompt },
+						{ role: 'user', content: userPrompt }
 					],
 					temperature: 0.8,
 					max_tokens: 500
@@ -473,17 +443,21 @@ export async function generateWithAI(
 /**
  * Generate fun facts from templates only
  * Implements Requirement 10.2: Template-based generation
+ * Uses weighted selection from registry for variety
  */
 export function generateFromTemplates(
 	context: FactGenerationContext,
-	options: Omit<GenerateFunFactsOptions, 'preferAI'> = {}
+	options: Omit<GenerateFunFactsOptions, 'preferAI'> & { useWeightedSelection?: boolean } = {}
 ): FunFact[] {
-	const { count = 3, categories, excludeIds = [] } = options;
+	const { count = 3, categories, excludeIds = [], useWeightedSelection = true } = options;
+
+	// Get templates from registry (includes new categories)
+	let templates = getAllTemplates();
 
 	// Filter by category if specified
-	let templates = categories
-		? ALL_TEMPLATES.filter((t) => categories.includes(t.category as FactCategory))
-		: ALL_TEMPLATES;
+	if (categories) {
+		templates = templates.filter((t) => categories.includes(t.category as FactCategory));
+	}
 
 	// Filter by applicability
 	const applicableTemplates = templates.filter((t) => isTemplateApplicable(t, context));
@@ -494,8 +468,10 @@ export function generateFromTemplates(
 		return [];
 	}
 
-	// Select random templates (Requirement 10.4: Randomized selection)
-	const selected = selectRandomTemplates(applicableTemplates, count, excludeIds);
+	// Select templates (weighted or random)
+	const selected = useWeightedSelection
+		? selectWeightedTemplates(applicableTemplates, count, excludeIds)
+		: selectRandomTemplates(applicableTemplates, count, excludeIds);
 
 	// Generate facts from templates
 	return selected.map((template) => generateFromTemplate(template, context));

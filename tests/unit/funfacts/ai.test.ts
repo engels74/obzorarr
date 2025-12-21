@@ -64,6 +64,7 @@ function createMockConfig(overrides: Partial<FunFactsConfig> = {}): FunFactsConf
 		openaiModel: 'gpt-4o-mini',
 		maxAIRetries: 2,
 		aiTimeoutMs: 10000,
+		aiPersona: 'witty',
 		...overrides
 	};
 }

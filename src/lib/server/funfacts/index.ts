@@ -42,7 +42,9 @@ export type {
 	FactTemplate,
 	FactGenerationContext,
 	GenerateFunFactsOptions,
-	FunFactsConfig
+	FunFactsConfig,
+	AIPersona,
+	SeasonalConfig
 } from './types';
 
 // =============================================================================
@@ -54,7 +56,9 @@ export {
 	FactCategorySchema,
 	FactTemplateSchema,
 	GenerateFunFactsOptionsSchema,
-	FunFactsConfigSchema
+	FunFactsConfigSchema,
+	AIPersonaSchema,
+	SeasonalConfigSchema
 } from './types';
 
 // =============================================================================
@@ -90,17 +94,65 @@ export {
 } from './service';
 
 // =============================================================================
+// Registry Exports (new modular system)
+// =============================================================================
+
+export {
+	registerTemplate,
+	registerTemplates,
+	getAllTemplates,
+	getTemplatesByCategory,
+	getTemplateById,
+	getTemplateWeight,
+	selectWeightedTemplates,
+	clearRegistry,
+	isRegistryInitialized
+} from './registry';
+
+// =============================================================================
 // Template Exports (for testing/customization)
 // =============================================================================
 
 export {
+	// All templates combined
 	ALL_TEMPLATES,
+	TEMPLATES_BY_CATEGORY,
+
+	// Original categories
 	TIME_EQUIVALENCY_TEMPLATES,
 	CONTENT_COMPARISON_TEMPLATES,
 	BEHAVIORAL_TEMPLATES,
 	BINGE_TEMPLATES,
 	TEMPORAL_TEMPLATES,
-	TEMPLATES_BY_CATEGORY,
-	EQUIVALENCY_FACTORS,
-	MONTH_NAMES
+
+	// New categories
+	ACHIEVEMENT_TEMPLATES,
+	SOCIAL_COMPARISON_TEMPLATES,
+	ENTERTAINMENT_TRIVIA_TEMPLATES,
+
+	// Initialization
+	initializeTemplates,
+	resetTemplates
 } from './templates';
+
+// =============================================================================
+// Constants Exports
+// =============================================================================
+
+export { EQUIVALENCY_FACTORS, ENTERTAINMENT_FACTORS, MONTH_NAMES, formatHour } from './constants';
+
+// =============================================================================
+// AI Module Exports
+// =============================================================================
+
+export {
+	AI_PERSONAS,
+	getRandomPersona,
+	resolvePersona,
+	buildEnhancedPrompt,
+	buildSystemPrompt,
+	buildUserPrompt,
+	enrichContext,
+	isContextEnriched,
+	ensureEnrichedContext
+} from './ai';
