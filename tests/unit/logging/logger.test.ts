@@ -1,28 +1,29 @@
 import { describe, expect, it, beforeEach, afterEach, mock, spyOn } from 'bun:test';
 import { db } from '$lib/server/db/client';
 import { logs, appSettings } from '$lib/server/db/schema';
-import { logger } from '$lib/server/logging/logger';
+// Import Logger class directly to create fresh instances (avoids mock interference)
+import { Logger } from '$lib/server/logging/logger';
 import { LogLevel, LogSettingsKey } from '$lib/server/logging/types';
 import * as loggingService from '$lib/server/logging/service';
 
 /**
  * Unit tests for Logger class
  *
- * Tests the singleton logger with batched database writes.
+ * Tests the Logger with batched database writes.
+ * Uses fresh Logger instances to avoid mock interference from other test files.
  * Uses in-memory SQLite from test setup.
  */
 
 describe('Logger', () => {
+	// Create fresh logger instance for each test to avoid mock interference
+	let logger: InstanceType<typeof Logger>;
+
 	// Clean up tables before each test
 	beforeEach(async () => {
 		await db.delete(logs);
 		await db.delete(appSettings);
-		// Clear any cached debug state
-		logger.clearDebugCache();
-		// Force flush any pending logs from previous tests
-		await logger.forceFlush();
-		// Clean up again in case flush added logs
-		await db.delete(logs);
+		// Create a fresh logger instance for each test
+		logger = new Logger();
 	});
 
 	// =========================================================================

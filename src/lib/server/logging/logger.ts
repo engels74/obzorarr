@@ -188,3 +188,6 @@ class Logger {
  * ```
  */
 export const logger = new Logger();
+
+// Export the class for testing purposes (allows creating fresh instances)
+export { Logger };

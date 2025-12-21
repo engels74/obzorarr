@@ -4,11 +4,14 @@
  * Tests the Croner-based scheduling for automatic log cleanup.
  */
 
-import { describe, expect, it, beforeEach, afterEach, mock } from 'bun:test';
+import { describe, expect, it, beforeEach, afterEach, mock, spyOn } from 'bun:test';
+
+// Import service for spying (we don't mock.module it to preserve real functions for service.test.ts)
+import * as serviceModule from '$lib/server/logging/service';
 
 // Track mock instances for assertions
 let mockCronInstances: MockCron[] = [];
-let mockRunRetentionCleanup: ReturnType<typeof mock>;
+let mockRunRetentionCleanup: ReturnType<typeof spyOn>;
 
 // Mock Cron class
 class MockCron {
@@ -83,27 +86,15 @@ mock.module('croner', () => ({
 	Cron: MockCron
 }));
 
-// Mock logger
-const mockLoggerInfo = mock((_message: string, ..._args: unknown[]) => {});
-const mockLoggerError = mock((_message: string, ..._args: unknown[]) => {});
+// Import the real logger for spying - don't use mock.module to avoid affecting logger.test.ts
+import { logger as realLogger } from '$lib/server/logging/logger';
 
-mock.module('$lib/server/logging/logger', () => ({
-	logger: {
-		info: mockLoggerInfo,
-		error: mockLoggerError,
-		warn: mock(() => {}),
-		debug: mock(() => {})
-	}
-}));
+// These will be set up in beforeEach as spies on the real logger
+let mockLoggerInfo: ReturnType<typeof spyOn>;
+let mockLoggerError: ReturnType<typeof spyOn>;
 
-// Mock service functions
-mockRunRetentionCleanup = mock(async () => ({ byAge: 5, byCount: 3 }));
-
-mock.module('$lib/server/logging/service', () => ({
-	runRetentionCleanup: mockRunRetentionCleanup,
-	getLogRetentionDays: mock(async () => 30),
-	getLogMaxCount: mock(async () => 10000)
-}));
+// Don't mock the service module at all - use spyOn in beforeEach instead
+// This preserves real service functions for service.test.ts
 
 // Import after mocking
 import {
@@ -118,15 +109,27 @@ describe('Log Retention Scheduler', () => {
 	beforeEach(() => {
 		// Reset mock tracking
 		mockCronInstances = [];
-		mockLoggerInfo.mockClear();
-		mockLoggerError.mockClear();
-		mockRunRetentionCleanup.mockClear();
+
+		// Set up spies on real logger methods
+		mockLoggerInfo = spyOn(realLogger, 'info');
+		mockLoggerError = spyOn(realLogger, 'error');
+
+		// Set up spy on runRetentionCleanup with mock return value
+		mockRunRetentionCleanup = spyOn(serviceModule, 'runRetentionCleanup').mockResolvedValue({
+			byAge: 5,
+			byCount: 3
+		});
 
 		// Stop any existing scheduler
 		stopLogRetentionScheduler();
 	});
 
 	afterEach(() => {
+		// Restore all spies
+		mockLoggerInfo.mockRestore();
+		mockLoggerError.mockRestore();
+		mockRunRetentionCleanup.mockRestore();
+
 		// Cleanup
 		stopLogRetentionScheduler();
 	});
