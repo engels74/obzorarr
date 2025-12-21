@@ -91,8 +91,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		}
 	}
 
-	// Get user from database to retrieve plexId (needed for stats)
-	// The stats engine uses playHistory.accountId which is the Plex ID
+	// Get user from database to retrieve accountId (needed for stats)
+	// The stats engine uses playHistory.accountId to match viewing history
 	const userResult = await db.select().from(users).where(eq(users.id, userId)).limit(1);
 
 	const user = userResult[0];
@@ -100,8 +100,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		error(404, 'User not found');
 	}
 
-	// Fetch user stats using plexId (accountId in play_history)
-	const stats = await calculateUserStats(user.plexId, year);
+	// Use accountId for stats queries (falls back to plexId for backward compatibility)
+	// Note: accountId is the Plex server's local ID, which may differ from plexId (Plex.tv ID)
+	const statsAccountId = user.accountId ?? user.plexId;
+	const stats = await calculateUserStats(statsAccountId, year);
 
 	// Initialize default slide config if needed and fetch configurations
 	await initializeDefaultSlideConfig();

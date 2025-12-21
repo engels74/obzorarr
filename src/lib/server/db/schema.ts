@@ -7,6 +7,17 @@ import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
 export const users = sqliteTable('users', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
 	plexId: integer('plex_id').unique().notNull(),
+	/**
+	 * The Plex server's local account ID for this user.
+	 *
+	 * This is used to match viewing history in playHistory.accountId.
+	 * For shared users, this typically equals plexId.
+	 * For server owners, this is often 1 (the local admin account ID).
+	 *
+	 * Note: This differs from plexId which is the Plex.tv account ID
+	 * used for OAuth authentication.
+	 */
+	accountId: integer('account_id'),
 	username: text('username').notNull(),
 	email: text('email'),
 	thumb: text('thumb'),
