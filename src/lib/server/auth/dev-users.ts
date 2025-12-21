@@ -188,10 +188,7 @@ export async function getServerUsers(): Promise<{
 		fetchedAt: Date.now()
 	};
 
-	logger.debug(
-		`Fetched ${sharedUsers.length} shared users from Plex server`,
-		'DevUsers'
-	);
+	logger.debug(`Fetched ${sharedUsers.length} shared users from Plex server`, 'DevUsers');
 
 	return { owner, sharedUsers };
 }
@@ -279,4 +276,3 @@ export async function resolveUserIdentifier(
 export function clearUsersCache(): void {
 	usersCache = null;
 }
-
