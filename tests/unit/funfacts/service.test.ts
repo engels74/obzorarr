@@ -494,7 +494,7 @@ describe('generateFromTemplates', () => {
 		expect(result.length).toBeGreaterThan(0);
 	});
 
-	it('throws InsufficientStatsError when no templates apply', () => {
+	it('returns empty array when no templates apply (graceful degradation)', () => {
 		const stats = createMockUserStats({
 			totalWatchTimeMinutes: 0,
 			totalPlays: 0,
@@ -509,7 +509,8 @@ describe('generateFromTemplates', () => {
 		});
 		const context = buildGenerationContext(stats);
 
-		expect(() => generateFromTemplates(context, { count: 3 })).toThrow('No applicable templates');
+		const result = generateFromTemplates(context, { count: 3 });
+		expect(result).toEqual([]);
 	});
 });
 

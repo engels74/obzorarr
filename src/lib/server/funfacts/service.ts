@@ -69,7 +69,8 @@ export async function isAIAvailable(): Promise<boolean> {
  * Extracts and computes values needed for template interpolation
  */
 export function buildGenerationContext(stats: UserStats | ServerStats): FactGenerationContext {
-	const hours = Math.round(stats.totalWatchTimeMinutes / 60);
+	// Use Math.floor to avoid rounding < 30 mins to 0 hours
+	const hours = Math.floor(stats.totalWatchTimeMinutes / 60);
 	const days = Math.round((hours / 24) * 10) / 10;
 
 	// Find peak hour (0-23)
@@ -471,7 +472,9 @@ export function generateFromTemplates(
 	const applicableTemplates = templates.filter((t) => isTemplateApplicable(t, context));
 
 	if (applicableTemplates.length === 0) {
-		throw new InsufficientStatsError('No applicable templates for the given statistics');
+		// Graceful degradation - return empty array instead of throwing
+		// The page will simply not display fun facts
+		return [];
 	}
 
 	// Select random templates (Requirement 10.4: Randomized selection)
@@ -498,6 +501,18 @@ export async function generateFunFacts(
 
 	const config = await getFunFactsConfig();
 	const context = buildGenerationContext(stats);
+
+	// Debug logging to help diagnose fun facts generation issues
+	console.debug('Fun facts generation context:', {
+		hours: context.hours,
+		plays: context.plays,
+		topMovie: context.topMovie,
+		topShow: context.topShow,
+		hasFirstWatch: context.firstWatchTitle !== null,
+		hasLastWatch: context.lastWatchTitle !== null,
+		bingeHours: context.bingeHours,
+		aiEnabled: config.aiEnabled
+	});
 
 	// Try AI generation first if preferred and available
 	if (preferAI && config.aiEnabled && config.openaiApiKey) {
