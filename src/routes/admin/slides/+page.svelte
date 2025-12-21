@@ -19,6 +19,20 @@
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
+	// Auto-dismiss state for success/error banners
+	let dismissBanner = $state(false);
+
+	// Auto-dismiss banners after 4 seconds when form result changes
+	$effect(() => {
+		if (form?.success || form?.error) {
+			dismissBanner = false;
+			const timeout = setTimeout(() => {
+				dismissBanner = true;
+			}, 4000);
+			return () => clearTimeout(timeout);
+		}
+	});
+
 	// Slide display names
 	const SLIDE_NAMES: Record<SlideType, string> = {
 		'total-time': 'Total Watch Time',
@@ -126,13 +140,13 @@
 		<p class="subtitle">Manage slides for Year in Review presentations</p>
 	</header>
 
-	{#if form?.error}
+	{#if form?.error && !dismissBanner}
 		<div class="error-banner" role="alert">
 			{form.error}
 		</div>
 	{/if}
 
-	{#if form?.success}
+	{#if form?.success && !dismissBanner}
 		<div class="success-banner" role="status">Operation completed successfully</div>
 	{/if}
 

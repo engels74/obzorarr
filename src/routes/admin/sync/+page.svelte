@@ -38,6 +38,29 @@
 	let isSyncing = $state(false);
 	let isCancelling = $state(false);
 	let dismissFormSuccess = $state(false);
+	let dismissFormError = $state(false);
+
+	// Auto-dismiss error banners after 4 seconds when form error changes
+	$effect(() => {
+		if (form?.error) {
+			dismissFormError = false;
+			const timeout = setTimeout(() => {
+				dismissFormError = true;
+			}, 4000);
+			return () => clearTimeout(timeout);
+		}
+	});
+
+	// Auto-dismiss success banners after 4 seconds (for non-sync actions like scheduler updates)
+	$effect(() => {
+		if (form?.success && !isSyncing) {
+			dismissFormSuccess = false;
+			const timeout = setTimeout(() => {
+				dismissFormSuccess = true;
+			}, 4000);
+			return () => clearTimeout(timeout);
+		}
+	});
 
 	// SSE state
 	let eventSource = $state<EventSource | null>(null);
@@ -216,7 +239,7 @@
 		<p class="subtitle">Manage Plex data synchronization</p>
 	</header>
 
-	{#if form?.error}
+	{#if form?.error && !dismissFormError}
 		<div class="error-banner" role="alert">
 			{form.error}
 		</div>

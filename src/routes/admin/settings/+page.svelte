@@ -97,6 +97,20 @@
 		always_hide: 'Logo is hidden on all wrapped pages',
 		user_choice: 'Users can choose to show or hide the logo on their wrapped page'
 	};
+
+	// Auto-dismiss state for success/error banners
+	let dismissBanner = $state(false);
+
+	// Auto-dismiss banners after 4 seconds when form result changes
+	$effect(() => {
+		if (form?.success || form?.error) {
+			dismissBanner = false;
+			const timeout = setTimeout(() => {
+				dismissBanner = true;
+			}, 4000);
+			return () => clearTimeout(timeout);
+		}
+	});
 </script>
 
 <div class="settings-page">
@@ -105,13 +119,13 @@
 		<p class="subtitle">Configure application settings</p>
 	</header>
 
-	{#if form?.error}
+	{#if form?.error && !dismissBanner}
 		<div class="error-banner" role="alert">
 			{form.error}
 		</div>
 	{/if}
 
-	{#if form?.success}
+	{#if form?.success && !dismissBanner}
 		<div class="success-banner" role="status">
 			{form.message ?? 'Settings updated successfully'}
 		</div>
