@@ -5,22 +5,8 @@
     {
       "idx": 0,
       "version": "6",
-      "when": 1766263156344,
-      "tag": "0000_old_war_machine",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1766275865229,
-      "tag": "0001_stale_molly_hayes",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1766277786839,
-      "tag": "0002_swift_nekra",
+      "when": 1766278258174,
+      "tag": "0000_last_ender_wiggin",
       "breakpoints": true
     }
   ]

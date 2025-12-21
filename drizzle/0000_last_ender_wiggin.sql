@@ -45,7 +45,8 @@ CREATE TABLE `play_history` (
 	`thumb` text,
 	`duration` integer,
 	`grandparent_title` text,
-	`parent_title` text
+	`parent_title` text,
+	`genres` text
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `play_history_history_key_unique` ON `play_history` (`history_key`);--> statement-breakpoint
@@ -63,7 +64,8 @@ CREATE TABLE `share_settings` (
 	`year` integer NOT NULL,
 	`mode` text DEFAULT 'public' NOT NULL,
 	`share_token` text,
-	`can_user_control` integer DEFAULT false
+	`can_user_control` integer DEFAULT false,
+	`show_logo` integer
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `share_settings_share_token_unique` ON `share_settings` (`share_token`);--> statement-breakpoint

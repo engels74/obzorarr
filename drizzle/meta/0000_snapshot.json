@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "2de4175c-1e87-44f6-92c2-266801741668",
+  "id": "29aa25bf-d192-43f5-b799-de673bc45fd4",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "app_settings": {
@@ -294,6 +294,13 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "genres": {
+          "name": "genres",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {
@@ -402,6 +409,13 @@
           "notNull": false,
           "autoincrement": false,
           "default": false
+        },
+        "show_logo": {
+          "name": "show_logo",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {

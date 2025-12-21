@@ -1,1 +1,0 @@
-ALTER TABLE `share_settings` ADD `show_logo` integer;
