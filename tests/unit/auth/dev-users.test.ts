@@ -112,7 +112,7 @@ describe('dev-users module', () => {
 	];
 
 	function setupFetchMock(sharedUsers = mockSharedUsers) {
-		fetchMock = spyOn(globalThis, 'fetch').mockImplementation((url) => {
+		fetchMock = spyOn(globalThis, 'fetch').mockImplementation(((url: URL | RequestInfo) => {
 			const urlStr = url.toString();
 			if (urlStr.includes('/identity')) {
 				return Promise.resolve(createMockIdentityResponse() as Response);
@@ -121,7 +121,7 @@ describe('dev-users module', () => {
 				return Promise.resolve(createMockSharedServersResponse(sharedUsers) as Response);
 			}
 			return Promise.reject(new Error(`Unexpected URL: ${urlStr}`));
-		});
+		}) as typeof fetch);
 	}
 
 	describe('getServerUsers', () => {
@@ -264,7 +264,8 @@ describe('dev-users module', () => {
 			expect(user).not.toBeNull();
 			expect(user?.isOwner).toBe(false);
 			// Verify it's one of the shared users
-			expect([1001, 1002, 1003]).toContain(user?.plexId);
+			expect(user).toBeDefined();
+			expect([1001, 1002, 1003]).toContain(user!.plexId);
 		});
 
 		it('returns null when no shared users exist', async () => {
@@ -342,7 +343,7 @@ describe('dev-users module', () => {
 
 	describe('error handling', () => {
 		it('throws error when identity endpoint returns non-ok response', async () => {
-			fetchMock = spyOn(globalThis, 'fetch').mockImplementation((url) => {
+			fetchMock = spyOn(globalThis, 'fetch').mockImplementation(((url: URL | RequestInfo) => {
 				const urlStr = url.toString();
 				if (urlStr.includes('/identity')) {
 					return Promise.resolve({
@@ -352,13 +353,13 @@ describe('dev-users module', () => {
 					} as Response);
 				}
 				return Promise.resolve(createMockSharedServersResponse([]) as Response);
-			});
+			}) as typeof fetch);
 
 			await expect(getServerUsers()).rejects.toThrow('Failed to get server identity');
 		});
 
 		it('throws error when shared_servers endpoint returns non-ok response', async () => {
-			fetchMock = spyOn(globalThis, 'fetch').mockImplementation((url) => {
+			fetchMock = spyOn(globalThis, 'fetch').mockImplementation(((url: URL | RequestInfo) => {
 				const urlStr = url.toString();
 				if (urlStr.includes('/identity')) {
 					return Promise.resolve(createMockIdentityResponse() as Response);
@@ -371,13 +372,13 @@ describe('dev-users module', () => {
 					} as Response);
 				}
 				return Promise.reject(new Error(`Unexpected URL: ${urlStr}`));
-			});
+			}) as typeof fetch);
 
 			await expect(getServerUsers()).rejects.toThrow('Failed to get shared servers');
 		});
 
 		it('throws error when identity response has invalid schema', async () => {
-			fetchMock = spyOn(globalThis, 'fetch').mockImplementation((url) => {
+			fetchMock = spyOn(globalThis, 'fetch').mockImplementation(((url: URL | RequestInfo) => {
 				const urlStr = url.toString();
 				if (urlStr.includes('/identity')) {
 					return Promise.resolve({
@@ -386,13 +387,13 @@ describe('dev-users module', () => {
 					} as Response);
 				}
 				return Promise.resolve(createMockSharedServersResponse([]) as Response);
-			});
+			}) as typeof fetch);
 
 			await expect(getServerUsers()).rejects.toThrow('Invalid server identity response');
 		});
 
 		it('throws error when shared_servers response has invalid schema', async () => {
-			fetchMock = spyOn(globalThis, 'fetch').mockImplementation((url) => {
+			fetchMock = spyOn(globalThis, 'fetch').mockImplementation(((url: URL | RequestInfo) => {
 				const urlStr = url.toString();
 				if (urlStr.includes('/identity')) {
 					return Promise.resolve(createMockIdentityResponse() as Response);
@@ -404,7 +405,7 @@ describe('dev-users module', () => {
 					} as Response);
 				}
 				return Promise.reject(new Error(`Unexpected URL: ${urlStr}`));
-			});
+			}) as typeof fetch);
 
 			await expect(getServerUsers()).rejects.toThrow('Invalid shared servers response');
 		});
