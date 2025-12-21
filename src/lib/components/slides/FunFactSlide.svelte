@@ -56,19 +56,20 @@
 		const containerAnim = animate(container, { opacity: [0, 1] }, { duration: 0.4 });
 		animations.push(containerAnim);
 
-		// Animate icon with bounce
+		// Animate icon with bounce (spring physics creates natural overshoot)
 		if (iconEl) {
 			const iconAnim = animate(
 				iconEl,
 				{
-					transform: [
-						'scale(0) rotate(-180deg)',
-						'scale(1.2) rotate(10deg)',
-						'scale(1) rotate(0deg)'
-					],
-					opacity: [0, 1, 1]
+					transform: ['scale(0) rotate(-180deg)', 'scale(1) rotate(0deg)'],
+					opacity: [0, 1]
 				},
-				{ type: 'spring', stiffness: 200, damping: 10, delay: 0.2 }
+				{
+					type: 'spring',
+					stiffness: 150,
+					damping: 10,
+					delay: 0.2
+				}
 			);
 			animations.push(iconAnim);
 		}

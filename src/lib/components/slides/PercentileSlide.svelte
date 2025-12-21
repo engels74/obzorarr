@@ -68,17 +68,17 @@
 		// Animate container
 		const containerAnim = animate(container, { opacity: [0, 1] }, { duration: 0.4 });
 
-		// Animate number with bounce
+		// Animate number with bounce (spring physics creates natural overshoot)
 		const numberAnim = animate(
 			numberEl,
 			{
-				transform: ['scale(0)', 'scale(1.2)', 'scale(1)'],
-				opacity: [0, 1, 1]
+				transform: ['scale(0)', 'scale(1)'],
+				opacity: [0, 1]
 			},
 			{
 				type: 'spring',
-				stiffness: 300,
-				damping: 15,
+				stiffness: 180,
+				damping: 12,
 				delay: 0.2
 			}
 		);
