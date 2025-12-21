@@ -21,16 +21,8 @@
 
 	let { data, children }: Props = $props();
 
-	// Navigation items with dynamic wrapped links
-	const navItems = $derived([
-		{ href: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
-		{
-			href: `/wrapped/${data.currentYear}/u/${data.user.id}`,
-			label: 'My Wrapped',
-			icon: 'user'
-		},
-		{ href: `/wrapped/${data.currentYear}`, label: 'Server Wrapped', icon: 'server' }
-	]);
+	// Navigation items - simplified since dashboard shows wrapped cards prominently
+	const navItems = $derived([{ href: '/dashboard', label: 'Dashboard', icon: 'dashboard' }]);
 
 	// Determine if a nav item is active
 	const isActive = $derived((href: string) => {
@@ -107,10 +99,6 @@
 							<span class="nav-icon" aria-hidden="true">
 								{#if item.icon === 'dashboard'}
 									&#9632;
-								{:else if item.icon === 'user'}
-									&#9733;
-								{:else if item.icon === 'server'}
-									&#127919;
 								{/if}
 							</span>
 							<span class="nav-label">{item.label}</span>

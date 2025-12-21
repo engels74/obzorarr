@@ -25,16 +25,10 @@
 
 	let { data, children }: Props = $props();
 
-	// Navigation items with dynamic wrapped links
+	// Navigation items - consolidated wrapped navigation
 	const navItems = $derived([
 		{ href: '/admin', label: 'Dashboard', icon: 'dashboard' },
-		{
-			href: `/wrapped/${data.currentYear}/u/${data.adminUser.id}`,
-			label: 'My Wrapped',
-			icon: 'user'
-		},
-		{ href: `/wrapped/${data.currentYear}`, label: 'Server Wrapped', icon: 'server' },
-		{ href: '/admin/slides', label: 'Slides', icon: 'slides' },
+		{ href: '/admin/wrapped', label: 'Wrapped', icon: 'wrapped' },
 		{ href: '/admin/sync', label: 'Sync', icon: 'sync' },
 		{ href: '/admin/users', label: 'Users', icon: 'users' },
 		{ href: '/admin/logs', label: 'Logs', icon: 'logs' },
@@ -117,16 +111,12 @@
 							<span class="nav-icon" aria-hidden="true">
 								{#if item.icon === 'dashboard'}
 									&#9632;
-								{:else if item.icon === 'user'}
-									&#9733;
-								{:else if item.icon === 'server'}
-									&#127919;
+								{:else if item.icon === 'wrapped'}
+									&#127873;
 								{:else if item.icon === 'sync'}
 									&#8635;
 								{:else if item.icon === 'users'}
 									&#9787;
-								{:else if item.icon === 'slides'}
-									&#9998;
 								{:else if item.icon === 'logs'}
 									&#128196;
 								{:else if item.icon === 'settings'}

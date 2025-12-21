@@ -157,6 +157,31 @@
 		</div>
 	</section>
 
+	<!-- Wrapped Section -->
+	<section class="section">
+		<div class="section-header">
+			<h2>Wrapped</h2>
+			<a href="/admin/wrapped" class="section-link">View All &rarr;</a>
+		</div>
+
+		<div class="wrapped-mini-grid">
+			<a href="/wrapped/{data.year}/u/{data.adminUser.id}" class="wrapped-mini-card personal">
+				<span class="wrapped-mini-icon">&#9733;</span>
+				<span class="wrapped-mini-label">My Wrapped</span>
+			</a>
+
+			<a href="/wrapped/{data.year}" class="wrapped-mini-card server">
+				<span class="wrapped-mini-icon">&#127919;</span>
+				<span class="wrapped-mini-label">Server Wrapped</span>
+			</a>
+
+			<a href="/admin/slides" class="wrapped-mini-card config">
+				<span class="wrapped-mini-icon">&#9998;</span>
+				<span class="wrapped-mini-label">Configure</span>
+			</a>
+		</div>
+	</section>
+
 	<!-- Quick Actions Section -->
 	<section class="section">
 		<h2>Quick Actions</h2>
@@ -174,16 +199,10 @@
 				<span class="action-desc">Manage permissions</span>
 			</a>
 
-			<a href="/admin/slides" class="action-card">
-				<span class="action-icon">&#9998;</span>
-				<span class="action-label">Slide Configuration</span>
-				<span class="action-desc">Customize slides</span>
-			</a>
-
-			<a href="/wrapped/{data.year}" class="action-card" target="_blank">
-				<span class="action-icon">&#127881;</span>
-				<span class="action-label">View Wrapped</span>
-				<span class="action-desc">Server wrapped {data.year}</span>
+			<a href="/admin/settings" class="action-card">
+				<span class="action-icon">&#9881;</span>
+				<span class="action-label">Settings</span>
+				<span class="action-desc">Configure app settings</span>
 			</a>
 		</div>
 	</section>
@@ -362,6 +381,61 @@
 		color: hsl(var(--muted-foreground));
 	}
 
+	/* Wrapped Mini Grid */
+	.wrapped-mini-grid {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 1rem;
+	}
+
+	.wrapped-mini-card {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		padding: 1.25rem 1rem;
+		background: hsl(var(--secondary));
+		border: 1px solid hsl(var(--border));
+		border-radius: var(--radius);
+		text-decoration: none;
+		text-align: center;
+		transition: all 0.2s ease;
+		min-height: 100px;
+	}
+
+	.wrapped-mini-card:hover {
+		border-color: hsl(var(--primary));
+		transform: translateY(-2px);
+		box-shadow: 0 4px 12px hsl(var(--primary) / 0.15);
+	}
+
+	.wrapped-mini-icon {
+		font-size: 1.75rem;
+		margin-bottom: 0.5rem;
+	}
+
+	.wrapped-mini-card.personal .wrapped-mini-icon {
+		color: hsl(var(--primary));
+	}
+
+	.wrapped-mini-card.server .wrapped-mini-icon {
+		color: oklch(0.7 0.15 200);
+	}
+
+	.wrapped-mini-card.config .wrapped-mini-icon {
+		color: hsl(var(--muted-foreground));
+	}
+
+	.wrapped-mini-card.config:hover .wrapped-mini-icon {
+		color: hsl(var(--primary));
+	}
+
+	.wrapped-mini-label {
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: hsl(var(--foreground));
+	}
+
 	/* Actions Grid */
 	.actions-grid {
 		display: grid;
@@ -426,6 +500,24 @@
 
 		.stat-value {
 			font-size: 1.25rem;
+		}
+
+		.wrapped-mini-grid {
+			grid-template-columns: repeat(3, 1fr);
+			gap: 0.5rem;
+		}
+
+		.wrapped-mini-card {
+			padding: 1rem 0.5rem;
+			min-height: 80px;
+		}
+
+		.wrapped-mini-icon {
+			font-size: 1.5rem;
+		}
+
+		.wrapped-mini-label {
+			font-size: 0.75rem;
 		}
 	}
 </style>
