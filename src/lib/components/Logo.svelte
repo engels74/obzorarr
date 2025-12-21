@@ -8,6 +8,8 @@
 	 * @module components/Logo
 	 */
 
+	import obzorarrIcon from '$lib/assets/obzorarr-icon.svg';
+
 	interface Props {
 		/** Size preset or pixel value */
 		size?: 'sm' | 'md' | 'lg' | 'xl' | number;
@@ -22,7 +24,7 @@
 </script>
 
 <img
-	src="/icon/svg/obzorarr-icon.svg"
+	src={obzorarrIcon}
 	alt=""
 	aria-hidden="true"
 	width={pixelSize}
