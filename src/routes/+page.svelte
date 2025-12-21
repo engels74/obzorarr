@@ -8,7 +8,6 @@
 	 *
 	 * Soviet/communist themed landing page for Obzorarr with:
 	 * - Hero section explaining the app
-	 * - Features overview
 	 * - Plex OAuth login button
 	 *
 	 * Implements Requirement 14.1:
@@ -23,7 +22,6 @@
 
 	// Element refs for animation
 	let heroContainer: HTMLElement | undefined = $state();
-	let featuresContainer: HTMLElement | undefined = $state();
 
 	// Entrance animation for hero
 	$effect(() => {
@@ -34,20 +32,6 @@
 			{ type: 'spring', stiffness: 100, damping: 15 }
 		);
 		return () => animation.stop();
-	});
-
-	// Staggered animation for features
-	$effect(() => {
-		if (!featuresContainer || prefersReducedMotion.current) return;
-		const featureCards = featuresContainer.querySelectorAll('.feature-card');
-		const animations = Array.from(featureCards).map((card, i) =>
-			animate(
-				card as HTMLElement,
-				{ opacity: [0, 1], transform: ['translateY(20px)', 'translateY(0)'] },
-				{ duration: 0.5, delay: 0.3 + i * 0.1 }
-			)
-		);
-		return () => animations.forEach((a) => a.stop());
 	});
 
 	// Cleanup polling on unmount
@@ -192,37 +176,6 @@
 			{#if error}
 				<p class="error-message" role="alert">{error}</p>
 			{/if}
-		</div>
-	</section>
-
-	<!-- Features Section -->
-	<section class="features" bind:this={featuresContainer}>
-		<h2 class="features-title">Your Viewing Statistics</h2>
-
-		<div class="features-grid">
-			<div class="feature-card">
-				<span class="feature-icon" aria-hidden="true">&#128200;</span>
-				<h3>Watch Time</h3>
-				<p>See how many hours you've spent watching movies and shows throughout the year.</p>
-			</div>
-
-			<div class="feature-card">
-				<span class="feature-icon" aria-hidden="true">&#127942;</span>
-				<h3>Top Content</h3>
-				<p>Discover your most-watched movies, shows, and genres ranked beautifully.</p>
-			</div>
-
-			<div class="feature-card">
-				<span class="feature-icon" aria-hidden="true">&#127881;</span>
-				<h3>Fun Facts</h3>
-				<p>Learn interesting comparisons and facts about your viewing habits.</p>
-			</div>
-
-			<div class="feature-card">
-				<span class="feature-icon" aria-hidden="true">&#128279;</span>
-				<h3>Share</h3>
-				<p>Share your wrapped with friends or keep it private. You choose.</p>
-			</div>
 		</div>
 	</section>
 
@@ -379,59 +332,6 @@
 		font-size: 0.875rem;
 	}
 
-	/* Features Section */
-	.features {
-		padding: 4rem 2rem;
-		background: hsl(var(--card));
-		border-top: 1px solid hsl(var(--border));
-	}
-
-	.features-title {
-		text-align: center;
-		font-size: 1.5rem;
-		font-weight: 700;
-		color: hsl(var(--foreground));
-		margin: 0 0 2.5rem;
-		letter-spacing: 0.05em;
-	}
-
-	.features-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-		gap: 1.5rem;
-		max-width: 1000px;
-		margin: 0 auto;
-	}
-
-	.feature-card {
-		padding: 1.5rem;
-		background: hsl(var(--secondary));
-		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius);
-		text-align: center;
-		opacity: 0;
-	}
-
-	.feature-icon {
-		display: block;
-		font-size: 2rem;
-		margin-bottom: 0.75rem;
-	}
-
-	.feature-card h3 {
-		font-size: 1rem;
-		font-weight: 600;
-		color: hsl(var(--primary));
-		margin: 0 0 0.5rem;
-	}
-
-	.feature-card p {
-		font-size: 0.875rem;
-		color: hsl(var(--muted-foreground));
-		line-height: 1.5;
-		margin: 0;
-	}
-
 	/* Footer */
 	.footer {
 		padding: 1.5rem 2rem;
@@ -467,13 +367,6 @@
 			min-width: unset;
 		}
 
-		.features {
-			padding: 3rem 1.5rem;
-		}
-
-		.features-grid {
-			grid-template-columns: 1fr;
-		}
 	}
 
 	/* Reduced motion */
@@ -484,10 +377,6 @@
 
 		.login-button {
 			transition: none;
-		}
-
-		.feature-card {
-			opacity: 1;
 		}
 	}
 </style>
