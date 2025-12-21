@@ -82,7 +82,7 @@ const authHandle: Handle = async ({ event, resolve }) => {
 			// Log dev bypass activation once per server instance
 			if (!devBypassLogged) {
 				logger.warn(
-					'🔓 DEV_BYPASS_AUTH is enabled - using simulated admin user (dev-admin)',
+					`🔓 DEV_BYPASS_AUTH is enabled - using simulated user (${session.username})`,
 					'DevBypass'
 				);
 				devBypassLogged = true;

@@ -37,6 +37,19 @@ const PLEX_TV_HEADERS = {
 	'X-Plex-Version': PLEX_VERSION
 } as const;
 
+/**
+ * Headers for local Plex Media Server requests
+ *
+ * The Plex server requires client identification headers to return JSON responses.
+ * Without these, the server may return XML instead.
+ */
+const PLEX_SERVER_HEADERS = {
+	Accept: 'application/json',
+	'X-Plex-Client-Identifier': PLEX_CLIENT_ID,
+	'X-Plex-Product': PLEX_PRODUCT,
+	'X-Plex-Version': PLEX_VERSION
+} as const;
+
 /** Cache duration for server users (5 minutes) */
 const CACHE_DURATION_MS = 5 * 60 * 1000;
 
@@ -72,7 +85,7 @@ async function getServerMachineIdentifier(): Promise<string> {
 
 	const response = await fetch(endpoint, {
 		headers: {
-			Accept: 'application/json',
+			...PLEX_SERVER_HEADERS,
 			'X-Plex-Token': PLEX_TOKEN
 		}
 	});
@@ -106,6 +119,11 @@ async function getServerMachineIdentifier(): Promise<string> {
 
 /**
  * Fetch users who have access to the server (excluding owner)
+ *
+ * Note: The Plex API /api/servers/{id}/shared_servers endpoint returns XML,
+ * not JSON, despite the Accept header. We handle this gracefully by returning
+ * an empty array when XML is received. For dev bypass, the owner info is
+ * usually sufficient.
  */
 async function fetchSharedUsers(machineIdentifier: string): Promise<PlexSharedServerUser[]> {
 	const endpoint = `${PLEX_TV_URL}/api/servers/${machineIdentifier}/shared_servers`;
@@ -125,7 +143,29 @@ async function fetchSharedUsers(machineIdentifier: string): Promise<PlexSharedSe
 		);
 	}
 
-	const data = await response.json();
+	// Check content type - Plex API may return XML instead of JSON for this endpoint
+	const contentType = response.headers.get('content-type') ?? '';
+	if (contentType.includes('xml')) {
+		logger.warn(
+			'Plex API returned XML for shared_servers endpoint (expected JSON). Shared users will not be available for dev bypass.',
+			'DevUsers'
+		);
+		return [];
+	}
+
+	// Try to parse as JSON
+	let data: unknown;
+	try {
+		data = await response.json();
+	} catch (error) {
+		// JSON parse failed - likely XML response
+		logger.warn(
+			`Failed to parse shared_servers response as JSON: ${error instanceof Error ? error.message : 'Unknown error'}. Shared users will not be available for dev bypass.`,
+			'DevUsers'
+		);
+		return [];
+	}
+
 	const result = PlexSharedServersResponseSchema.safeParse(data);
 
 	if (!result.success) {
