@@ -201,6 +201,7 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
+		justify-content: flex-end;
 		flex: 1;
 		max-width: 40px;
 		height: 100%;
