@@ -25,8 +25,10 @@
 	// Create messaging context for personal wrapped
 	const messagingContext = createPersonalContext();
 
-	/** Local state for logo visibility (optimistic update) */
-	let showLogo = $state(data.showLogo);
+	/** Override for optimistic updates (null means use server value) */
+	let showLogoOverride = $state<boolean | null>(null);
+	/** Effective logo visibility - uses override if pending, otherwise server value */
+	let showLogo = $derived(showLogoOverride ?? data.showLogo);
 
 	// ==========================================================================
 	// State
@@ -78,7 +80,7 @@
 	 * Handle logo toggle (optimistic update)
 	 */
 	function handleLogoToggle(): void {
-		showLogo = !showLogo;
+		showLogoOverride = !showLogo;
 	}
 </script>
 
@@ -104,7 +106,8 @@
 				use:enhance={() => {
 					handleLogoToggle();
 					return async () => {
-						// Form submitted - state already updated optimistically
+						// Form submitted - reset override so server value takes precedence
+						showLogoOverride = null;
 					};
 				}}
 			>

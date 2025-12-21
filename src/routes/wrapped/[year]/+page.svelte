@@ -21,8 +21,8 @@
 
 	let { data }: PageProps = $props();
 
-	// Create messaging context for server-wide wrapped
-	const messagingContext = createServerContext(data.serverName);
+	// Create messaging context for server-wide wrapped (reactive to data changes)
+	const messagingContext = $derived(createServerContext(data.serverName));
 
 	// ==========================================================================
 	// State
