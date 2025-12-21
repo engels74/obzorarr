@@ -225,13 +225,7 @@
 				data-slide-index={index}
 			>
 				<div class="slide-content">
-					<SlideRenderer
-						{slide}
-						{stats}
-						{customSlides}
-						active={true}
-						{messagingContext}
-					/>
+					<SlideRenderer {slide} {stats} {customSlides} active={true} {messagingContext} />
 				</div>
 			</section>
 		{/each}

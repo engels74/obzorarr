@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Codebase Search Strategy
 
 **Always use `mcp__auggie-mcp__codebase-retrieval` as your primary method for:**
+
 - Exploring the codebase and understanding architecture
 - Finding existing patterns before implementing new features
 - Locating relevant code when the exact file location is unknown
@@ -89,6 +90,7 @@ bun run db:studio        # Open Drizzle Studio GUI
 ### Database Schema
 
 Key tables in `src/lib/server/db/schema.ts`:
+
 - `users`: Plex user accounts
 - `playHistory`: Viewing history records (not FK-linked to users for data preservation)
 - `syncStatus`: Sync operation tracking
@@ -100,6 +102,7 @@ Key tables in `src/lib/server/db/schema.ts`:
 ### Hooks
 
 `src/hooks.server.ts` handles:
+
 1. Authentication middleware (validates session cookie)
 2. Authorization middleware (protects `/admin/*` routes)
 3. Dev bypass mode (`DEV_BYPASS_AUTH=true` skips Plex OAuth in development)
@@ -107,6 +110,7 @@ Key tables in `src/lib/server/db/schema.ts`:
 ## Testing
 
 Tests use Bun's built-in test runner with `bun:test`:
+
 - **Unit tests**: `tests/unit/` - standard unit tests
 - **Property tests**: `tests/property/` - property-based tests using `fast-check`
 
@@ -115,6 +119,7 @@ Test setup in `tests/setup.ts`.
 ## Environment Variables
 
 See `.env.example` for all options. Key variables:
+
 - `PLEX_SERVER_URL` / `PLEX_TOKEN`: Plex server connection
 - `DATABASE_PATH`: SQLite database location
 - `ORIGIN`: Application URL for OAuth callbacks

@@ -264,12 +264,7 @@
 		<form method="POST" action="?/setFunFactFrequency" use:enhance>
 			<div class="frequency-options">
 				<label class="frequency-option">
-					<input
-						type="radio"
-						name="mode"
-						value="few"
-						bind:group={selectedFrequencyMode}
-					/>
+					<input type="radio" name="mode" value="few" bind:group={selectedFrequencyMode} />
 					<span class="frequency-label">
 						<span class="frequency-name">Few</span>
 						<span class="frequency-desc">1-2 fun facts</span>
@@ -277,12 +272,7 @@
 				</label>
 
 				<label class="frequency-option">
-					<input
-						type="radio"
-						name="mode"
-						value="normal"
-						bind:group={selectedFrequencyMode}
-					/>
+					<input type="radio" name="mode" value="normal" bind:group={selectedFrequencyMode} />
 					<span class="frequency-label">
 						<span class="frequency-name">Normal</span>
 						<span class="frequency-desc">3-5 fun facts</span>
@@ -290,12 +280,7 @@
 				</label>
 
 				<label class="frequency-option">
-					<input
-						type="radio"
-						name="mode"
-						value="many"
-						bind:group={selectedFrequencyMode}
-					/>
+					<input type="radio" name="mode" value="many" bind:group={selectedFrequencyMode} />
 					<span class="frequency-label">
 						<span class="frequency-name">Many</span>
 						<span class="frequency-desc">6-10 fun facts</span>
@@ -303,12 +288,7 @@
 				</label>
 
 				<label class="frequency-option">
-					<input
-						type="radio"
-						name="mode"
-						value="custom"
-						bind:group={selectedFrequencyMode}
-					/>
+					<input type="radio" name="mode" value="custom" bind:group={selectedFrequencyMode} />
 					<span class="frequency-label">
 						<span class="frequency-name">Custom</span>
 						<span class="frequency-desc">Specific number</span>
@@ -331,9 +311,7 @@
 				</div>
 			{/if}
 
-			<button type="submit" class="save-frequency-button">
-				Save Frequency Settings
-			</button>
+			<button type="submit" class="save-frequency-button"> Save Frequency Settings </button>
 		</form>
 	</section>
 
