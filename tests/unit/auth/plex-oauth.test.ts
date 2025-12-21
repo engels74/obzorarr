@@ -76,8 +76,8 @@ describe('Plex OAuth Module', () => {
 
 	beforeEach(() => {
 		// Default mock that rejects (tests should set up their own)
-		fetchMock = spyOn(globalThis, 'fetch').mockImplementation(() =>
-			Promise.reject(new Error('Fetch not mocked for this test'))
+		fetchMock = spyOn(globalThis, 'fetch').mockImplementation(
+			(() => Promise.reject(new Error('Fetch not mocked for this test'))) as unknown as typeof fetch
 		);
 	});
 
