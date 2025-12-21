@@ -195,10 +195,14 @@ describe('Log Retention Scheduler', () => {
 			// Should have logged start and completion
 			const infoCalls = mockLoggerInfo.mock.calls;
 			expect(
-				infoCalls.some((call: [string, ...unknown[]]) => call[0].includes('Starting log retention cleanup'))
+				infoCalls.some((call: [string, ...unknown[]]) =>
+					call[0].includes('Starting log retention cleanup')
+				)
 			).toBe(true);
 			expect(
-				infoCalls.some((call: [string, ...unknown[]]) => call[0].includes('Retention cleanup completed'))
+				infoCalls.some((call: [string, ...unknown[]]) =>
+					call[0].includes('Retention cleanup completed')
+				)
 			).toBe(true);
 		});
 

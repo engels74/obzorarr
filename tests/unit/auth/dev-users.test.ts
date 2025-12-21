@@ -439,5 +439,27 @@ describe('dev-users module', () => {
 			expect(result.owner).toBeDefined();
 			expect(result.sharedUsers).toHaveLength(0);
 		});
+
+		it('returns empty shared users when JSON parse fails (non-XML content)', async () => {
+			fetchMock = spyOn(globalThis, 'fetch').mockImplementation(((url: URL | RequestInfo) => {
+				const urlStr = url.toString();
+				if (urlStr.includes('/identity')) {
+					return Promise.resolve(createMockIdentityResponse() as Response);
+				}
+				if (urlStr.includes('/shared_servers')) {
+					return Promise.resolve({
+						ok: true,
+						headers: createMockHeaders('application/json'), // JSON content type
+						json: () => Promise.reject(new Error('Unexpected end of JSON input'))
+					} as Response);
+				}
+				return Promise.reject(new Error(`Unexpected URL: ${urlStr}`));
+			}) as typeof fetch);
+
+			// Should gracefully handle JSON parse failure and return empty shared users
+			const result = await getServerUsers();
+			expect(result.owner).toBeDefined();
+			expect(result.sharedUsers).toHaveLength(0);
+		});
 	});
 });

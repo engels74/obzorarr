@@ -424,5 +424,56 @@ describe('Plex OAuth Module', () => {
 				expect(error).toBe(originalError);
 			}
 		});
+
+		it('checkPinStatus wraps network errors', async () => {
+			const networkError = new Error('Network failure');
+			fetchMock.mockImplementation(() => Promise.reject(networkError));
+
+			try {
+				await checkPinStatus(12345);
+				expect(true).toBe(false);
+			} catch (error) {
+				expect(error).toBeInstanceOf(PlexAuthApiError);
+				expect((error as PlexAuthApiError).message).toContain('Network failure');
+			}
+		});
+
+		it('checkPinStatus handles non-Error thrown values', async () => {
+			// Some libraries throw strings or other non-Error values
+			fetchMock.mockImplementation(() => Promise.reject('string error'));
+
+			try {
+				await checkPinStatus(12345);
+				expect(true).toBe(false);
+			} catch (error) {
+				expect(error).toBeInstanceOf(PlexAuthApiError);
+				expect((error as PlexAuthApiError).message).toContain('Unknown error');
+			}
+		});
+
+		it('getPlexUserInfo wraps network errors', async () => {
+			const networkError = new Error('Connection timeout');
+			fetchMock.mockImplementation(() => Promise.reject(networkError));
+
+			try {
+				await getPlexUserInfo('test-token');
+				expect(true).toBe(false);
+			} catch (error) {
+				expect(error).toBeInstanceOf(PlexAuthApiError);
+				expect((error as PlexAuthApiError).message).toContain('Connection timeout');
+			}
+		});
+
+		it('getPlexUserInfo handles non-Error thrown values', async () => {
+			fetchMock.mockImplementation(() => Promise.reject({ code: 'TIMEOUT' }));
+
+			try {
+				await getPlexUserInfo('test-token');
+				expect(true).toBe(false);
+			} catch (error) {
+				expect(error).toBeInstanceOf(PlexAuthApiError);
+				expect((error as PlexAuthApiError).message).toContain('Unknown error');
+			}
+		});
 	});
 });

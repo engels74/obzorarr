@@ -5,7 +5,10 @@
  * and random selection functions.
  */
 
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it, beforeEach, afterEach, spyOn } from 'bun:test';
+import { db } from '$lib/server/db/client';
+import { appSettings } from '$lib/server/db/schema';
+import { AppSettingsKey } from '$lib/server/admin/settings.service';
 
 import {
 	buildGenerationContext,
@@ -13,8 +16,14 @@ import {
 	interpolateTemplate,
 	generateFromTemplate,
 	selectRandomTemplates,
-	generateFromTemplates
+	generateFromTemplates,
+	getFunFactsConfig,
+	isAIAvailable,
+	generateWithAI,
+	generateFunFacts
 } from '$lib/server/funfacts';
+
+import { AIGenerationError } from '$lib/server/funfacts';
 
 import {
 	ALL_TEMPLATES,
@@ -544,5 +553,341 @@ describe('Template Constants', () => {
 		expect(MONTH_NAMES.length).toBe(12);
 		expect(MONTH_NAMES[0]).toBe('January');
 		expect(MONTH_NAMES[11]).toBe('December');
+	});
+});
+
+// =============================================================================
+// Configuration Tests
+// =============================================================================
+
+describe('getFunFactsConfig', () => {
+	beforeEach(async () => {
+		await db.delete(appSettings);
+	});
+
+	it('returns config with defaults when no settings configured', async () => {
+		const config = await getFunFactsConfig();
+
+		expect(config.aiEnabled).toBe(false);
+		expect(config.openaiApiKey).toBeUndefined();
+		expect(config.openaiBaseUrl).toBe('https://api.openai.com/v1');
+		expect(config.openaiModel).toBe('gpt-4o-mini');
+		expect(config.maxAIRetries).toBe(2);
+		expect(config.aiTimeoutMs).toBe(10000);
+	});
+
+	it('returns aiEnabled true when API key is set', async () => {
+		await db.insert(appSettings).values({
+			key: AppSettingsKey.OPENAI_API_KEY,
+			value: 'sk-test-key-12345'
+		});
+
+		const config = await getFunFactsConfig();
+
+		expect(config.aiEnabled).toBe(true);
+		expect(config.openaiApiKey).toBe('sk-test-key-12345');
+	});
+
+	it('uses custom base URL and model when configured', async () => {
+		await db.insert(appSettings).values([
+			{ key: AppSettingsKey.OPENAI_API_KEY, value: 'sk-test' },
+			{ key: AppSettingsKey.OPENAI_BASE_URL, value: 'https://custom.api.com/v1' },
+			{ key: AppSettingsKey.OPENAI_MODEL, value: 'gpt-4' }
+		]);
+
+		const config = await getFunFactsConfig();
+
+		expect(config.openaiBaseUrl).toBe('https://custom.api.com/v1');
+		expect(config.openaiModel).toBe('gpt-4');
+	});
+});
+
+describe('isAIAvailable', () => {
+	beforeEach(async () => {
+		await db.delete(appSettings);
+	});
+
+	it('returns false when API key is not configured', async () => {
+		const available = await isAIAvailable();
+		expect(available).toBe(false);
+	});
+
+	it('returns true when API key is configured', async () => {
+		await db.insert(appSettings).values({
+			key: AppSettingsKey.OPENAI_API_KEY,
+			value: 'sk-test-key'
+		});
+
+		const available = await isAIAvailable();
+		expect(available).toBe(true);
+	});
+});
+
+// =============================================================================
+// AI Generation Tests
+// =============================================================================
+
+describe('generateWithAI', () => {
+	let fetchMock: ReturnType<typeof spyOn>;
+	const mockStats = createMockUserStats();
+
+	beforeEach(async () => {
+		await db.delete(appSettings);
+	});
+
+	afterEach(() => {
+		if (fetchMock) {
+			fetchMock.mockRestore();
+		}
+	});
+
+	it('throws AIGenerationError when no API key configured', async () => {
+		const config = await getFunFactsConfig();
+
+		await expect(generateWithAI(mockStats, config, 3)).rejects.toBeInstanceOf(AIGenerationError);
+		await expect(generateWithAI(mockStats, config, 3)).rejects.toThrow(
+			'OpenAI API key not configured'
+		);
+	});
+
+	it('parses successful AI response', async () => {
+		const mockResponse = {
+			choices: [
+				{
+					message: {
+						content: JSON.stringify({
+							facts: [
+								{ fact: 'AI generated fact 1', comparison: 'Comparison 1', icon: '🎬' },
+								{ fact: 'AI generated fact 2', comparison: 'Comparison 2', icon: '📺' }
+							]
+						})
+					}
+				}
+			]
+		};
+
+		fetchMock = spyOn(globalThis, 'fetch').mockImplementation(() =>
+			Promise.resolve({
+				ok: true,
+				json: () => Promise.resolve(mockResponse)
+			} as Response)
+		);
+
+		const config = {
+			aiEnabled: true,
+			openaiApiKey: 'sk-test',
+			openaiBaseUrl: 'https://api.openai.com/v1',
+			openaiModel: 'gpt-4o-mini',
+			maxAIRetries: 2,
+			aiTimeoutMs: 10000
+		};
+
+		const facts = await generateWithAI(mockStats, config, 2);
+
+		expect(facts).toHaveLength(2);
+		expect(facts[0]?.fact).toBe('AI generated fact 1');
+		expect(facts[1]?.icon).toBe('📺');
+	});
+
+	it('throws on 4xx errors without retry (except 429)', async () => {
+		fetchMock = spyOn(globalThis, 'fetch').mockImplementation(() =>
+			Promise.resolve({
+				ok: false,
+				status: 401,
+				text: () => Promise.resolve('Unauthorized')
+			} as Response)
+		);
+
+		const config = {
+			aiEnabled: true,
+			openaiApiKey: 'sk-invalid',
+			openaiBaseUrl: 'https://api.openai.com/v1',
+			openaiModel: 'gpt-4o-mini',
+			maxAIRetries: 2,
+			aiTimeoutMs: 10000
+		};
+
+		await expect(generateWithAI(mockStats, config, 3)).rejects.toThrow('OpenAI API error: 401');
+	});
+
+	it('retries on 5xx errors', async () => {
+		let callCount = 0;
+		fetchMock = spyOn(globalThis, 'fetch').mockImplementation(() => {
+			callCount++;
+			if (callCount === 1) {
+				return Promise.resolve({
+					ok: false,
+					status: 500,
+					text: () => Promise.resolve('Internal Server Error')
+				} as Response);
+			}
+			return Promise.resolve({
+				ok: true,
+				json: () =>
+					Promise.resolve({
+						choices: [
+							{
+								message: {
+									content: JSON.stringify({
+										facts: [{ fact: 'Retried fact', icon: '✅' }]
+									})
+								}
+							}
+						]
+					})
+			} as Response);
+		});
+
+		const config = {
+			aiEnabled: true,
+			openaiApiKey: 'sk-test',
+			openaiBaseUrl: 'https://api.openai.com/v1',
+			openaiModel: 'gpt-4o-mini',
+			maxAIRetries: 2,
+			aiTimeoutMs: 10000
+		};
+
+		const facts = await generateWithAI(mockStats, config, 1);
+
+		expect(callCount).toBe(2);
+		expect(facts[0]?.fact).toBe('Retried fact');
+	});
+
+	it('throws AIGenerationError on empty AI response', async () => {
+		fetchMock = spyOn(globalThis, 'fetch').mockImplementation(() =>
+			Promise.resolve({
+				ok: true,
+				json: () => Promise.resolve({ choices: [] })
+			} as Response)
+		);
+
+		const config = {
+			aiEnabled: true,
+			openaiApiKey: 'sk-test',
+			openaiBaseUrl: 'https://api.openai.com/v1',
+			openaiModel: 'gpt-4o-mini',
+			maxAIRetries: 0, // No retries for this test
+			aiTimeoutMs: 10000
+		};
+
+		await expect(generateWithAI(mockStats, config, 3)).rejects.toBeInstanceOf(AIGenerationError);
+	});
+
+	it('throws AIGenerationError on invalid JSON in response', async () => {
+		fetchMock = spyOn(globalThis, 'fetch').mockImplementation(() =>
+			Promise.resolve({
+				ok: true,
+				json: () =>
+					Promise.resolve({
+						choices: [{ message: { content: 'not valid json' } }]
+					})
+			} as Response)
+		);
+
+		const config = {
+			aiEnabled: true,
+			openaiApiKey: 'sk-test',
+			openaiBaseUrl: 'https://api.openai.com/v1',
+			openaiModel: 'gpt-4o-mini',
+			maxAIRetries: 0,
+			aiTimeoutMs: 10000
+		};
+
+		await expect(generateWithAI(mockStats, config, 3)).rejects.toBeInstanceOf(AIGenerationError);
+	});
+});
+
+// =============================================================================
+// Main generateFunFacts Tests
+// =============================================================================
+
+describe('generateFunFacts', () => {
+	let fetchMock: ReturnType<typeof spyOn>;
+
+	beforeEach(async () => {
+		await db.delete(appSettings);
+	});
+
+	afterEach(() => {
+		if (fetchMock) {
+			fetchMock.mockRestore();
+		}
+	});
+
+	it('uses templates when AI is not available', async () => {
+		const stats = createMockUserStats();
+		const facts = await generateFunFacts(stats, { count: 3 });
+
+		expect(facts).toHaveLength(3);
+		// Template facts should have string facts
+		for (const fact of facts) {
+			expect(typeof fact.fact).toBe('string');
+			expect(fact.fact.length).toBeGreaterThan(0);
+		}
+	});
+
+	it('uses templates when preferAI is false', async () => {
+		await db.insert(appSettings).values({
+			key: AppSettingsKey.OPENAI_API_KEY,
+			value: 'sk-test'
+		});
+
+		const stats = createMockUserStats();
+		const facts = await generateFunFacts(stats, { count: 3, preferAI: false });
+
+		expect(facts).toHaveLength(3);
+	});
+
+	it('falls back to templates when AI fails', async () => {
+		await db.insert(appSettings).values({
+			key: AppSettingsKey.OPENAI_API_KEY,
+			value: 'sk-test'
+		});
+
+		fetchMock = spyOn(globalThis, 'fetch').mockImplementation(() =>
+			Promise.resolve({
+				ok: false,
+				status: 401,
+				text: () => Promise.resolve('Unauthorized')
+			} as Response)
+		);
+
+		const stats = createMockUserStats();
+		const facts = await generateFunFacts(stats, { count: 3 });
+
+		// Should have fallen back to templates
+		expect(facts).toHaveLength(3);
+	});
+
+	it('supplements with templates when AI returns fewer facts', async () => {
+		await db.insert(appSettings).values({
+			key: AppSettingsKey.OPENAI_API_KEY,
+			value: 'sk-test'
+		});
+
+		fetchMock = spyOn(globalThis, 'fetch').mockImplementation(() =>
+			Promise.resolve({
+				ok: true,
+				json: () =>
+					Promise.resolve({
+						choices: [
+							{
+								message: {
+									content: JSON.stringify({
+										facts: [{ fact: 'Only one AI fact', icon: '🎬' }]
+									})
+								}
+							}
+						]
+					})
+			} as Response)
+		);
+
+		const stats = createMockUserStats();
+		const facts = await generateFunFacts(stats, { count: 3 });
+
+		// Should have 3 facts total (1 AI + 2 templates)
+		expect(facts).toHaveLength(3);
+		expect(facts[0]?.fact).toBe('Only one AI fact');
 	});
 });
