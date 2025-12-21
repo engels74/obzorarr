@@ -666,12 +666,12 @@ describe('generateWithAI', () => {
 			]
 		};
 
-		fetchMock = spyOn(globalThis, 'fetch').mockImplementation(() =>
+		fetchMock = spyOn(globalThis, 'fetch').mockImplementation((() =>
 			Promise.resolve({
 				ok: true,
 				json: () => Promise.resolve(mockResponse)
 			} as Response)
-		);
+		) as unknown as typeof fetch);
 
 		const config = {
 			aiEnabled: true,
@@ -690,13 +690,13 @@ describe('generateWithAI', () => {
 	});
 
 	it('throws on 4xx errors without retry (except 429)', async () => {
-		fetchMock = spyOn(globalThis, 'fetch').mockImplementation(() =>
+		fetchMock = spyOn(globalThis, 'fetch').mockImplementation((() =>
 			Promise.resolve({
 				ok: false,
 				status: 401,
 				text: () => Promise.resolve('Unauthorized')
 			} as Response)
-		);
+		) as unknown as typeof fetch);
 
 		const config = {
 			aiEnabled: true,
@@ -712,7 +712,7 @@ describe('generateWithAI', () => {
 
 	it('retries on 5xx errors', async () => {
 		let callCount = 0;
-		fetchMock = spyOn(globalThis, 'fetch').mockImplementation(() => {
+		fetchMock = spyOn(globalThis, 'fetch').mockImplementation((() => {
 			callCount++;
 			if (callCount === 1) {
 				return Promise.resolve({
@@ -736,7 +736,7 @@ describe('generateWithAI', () => {
 						]
 					})
 			} as Response);
-		});
+		}) as unknown as typeof fetch);
 
 		const config = {
 			aiEnabled: true,
@@ -754,12 +754,12 @@ describe('generateWithAI', () => {
 	});
 
 	it('throws AIGenerationError on empty AI response', async () => {
-		fetchMock = spyOn(globalThis, 'fetch').mockImplementation(() =>
+		fetchMock = spyOn(globalThis, 'fetch').mockImplementation((() =>
 			Promise.resolve({
 				ok: true,
 				json: () => Promise.resolve({ choices: [] })
 			} as Response)
-		);
+		) as unknown as typeof fetch);
 
 		const config = {
 			aiEnabled: true,
@@ -774,7 +774,7 @@ describe('generateWithAI', () => {
 	});
 
 	it('throws AIGenerationError on invalid JSON in response', async () => {
-		fetchMock = spyOn(globalThis, 'fetch').mockImplementation(() =>
+		fetchMock = spyOn(globalThis, 'fetch').mockImplementation((() =>
 			Promise.resolve({
 				ok: true,
 				json: () =>
@@ -782,7 +782,7 @@ describe('generateWithAI', () => {
 						choices: [{ message: { content: 'not valid json' } }]
 					})
 			} as Response)
-		);
+		) as unknown as typeof fetch);
 
 		const config = {
 			aiEnabled: true,
@@ -844,13 +844,13 @@ describe('generateFunFacts', () => {
 			value: 'sk-test'
 		});
 
-		fetchMock = spyOn(globalThis, 'fetch').mockImplementation(() =>
+		fetchMock = spyOn(globalThis, 'fetch').mockImplementation((() =>
 			Promise.resolve({
 				ok: false,
 				status: 401,
 				text: () => Promise.resolve('Unauthorized')
 			} as Response)
-		);
+		) as unknown as typeof fetch);
 
 		const stats = createMockUserStats();
 		const facts = await generateFunFacts(stats, { count: 3 });
@@ -865,7 +865,7 @@ describe('generateFunFacts', () => {
 			value: 'sk-test'
 		});
 
-		fetchMock = spyOn(globalThis, 'fetch').mockImplementation(() =>
+		fetchMock = spyOn(globalThis, 'fetch').mockImplementation((() =>
 			Promise.resolve({
 				ok: true,
 				json: () =>
@@ -881,7 +881,7 @@ describe('generateFunFacts', () => {
 						]
 					})
 			} as Response)
-		);
+		) as unknown as typeof fetch);
 
 		const stats = createMockUserStats();
 		const facts = await generateFunFacts(stats, { count: 3 });
