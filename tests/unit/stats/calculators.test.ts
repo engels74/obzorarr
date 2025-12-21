@@ -49,6 +49,7 @@ function createRecord(overrides: Partial<PlayHistoryRecord> = {}): PlayHistoryRe
 		duration: 3600, // 1 hour
 		grandparentTitle: null,
 		parentTitle: null,
+		genres: null,
 		...overrides
 	};
 }

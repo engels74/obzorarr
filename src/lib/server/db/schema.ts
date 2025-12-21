@@ -48,7 +48,8 @@ export const playHistory = sqliteTable('play_history', {
 	thumb: text('thumb'),
 	duration: integer('duration'), // Duration in seconds
 	grandparentTitle: text('grandparent_title'), // Show name for episodes
-	parentTitle: text('parent_title') // Season name for episodes
+	parentTitle: text('parent_title'), // Season name for episodes
+	genres: text('genres') // JSON array of genre names, e.g., '["Action", "Drama"]'
 });
 
 /**

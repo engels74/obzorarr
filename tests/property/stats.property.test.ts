@@ -50,7 +50,16 @@ const playHistoryRecordArbitrary: fc.Arbitrary<PlayHistoryRecord> = fc.record({
 	thumb: fc.option(fc.webUrl(), { nil: null }),
 	duration: fc.option(fc.integer({ min: 0, max: 14400 }), { nil: null }), // Up to 4 hours in seconds
 	grandparentTitle: fc.option(fc.string({ minLength: 1, maxLength: 100 }), { nil: null }),
-	parentTitle: fc.option(fc.string({ minLength: 1, maxLength: 100 }), { nil: null })
+	parentTitle: fc.option(fc.string({ minLength: 1, maxLength: 100 }), { nil: null }),
+	genres: fc.option(
+		fc
+			.array(fc.constantFrom('Action', 'Comedy', 'Drama', 'Sci-Fi', 'Horror'), {
+				minLength: 1,
+				maxLength: 3
+			})
+			.map((arr) => JSON.stringify(arr)),
+		{ nil: null }
+	)
 });
 
 /**
@@ -81,7 +90,16 @@ const episodeRecordArbitrary: fc.Arbitrary<PlayHistoryRecord> = fc
 		thumb: fc.option(fc.webUrl(), { nil: null }),
 		duration: fc.option(fc.integer({ min: 0, max: 14400 }), { nil: null }),
 		grandparentTitle: fc.string({ minLength: 1, maxLength: 100 }), // Show name
-		parentTitle: fc.option(fc.string({ minLength: 1, maxLength: 50 }), { nil: null }) // Season
+		parentTitle: fc.option(fc.string({ minLength: 1, maxLength: 50 }), { nil: null }), // Season
+		genres: fc.option(
+			fc
+				.array(fc.constantFrom('Action', 'Comedy', 'Drama', 'Sci-Fi', 'Horror'), {
+					minLength: 1,
+					maxLength: 3
+				})
+				.map((arr) => JSON.stringify(arr)),
+			{ nil: null }
+		)
 	})
 	.map((record) => record as PlayHistoryRecord);
 
@@ -531,7 +549,8 @@ describe('Property 14: Binge Session Detection', () => {
 							thumb: null,
 							duration,
 							grandparentTitle: null,
-							parentTitle: null
+							parentTitle: null,
+							genres: null
 						});
 					}
 
@@ -560,7 +579,8 @@ describe('Property 14: Binge Session Detection', () => {
 				thumb: null,
 				duration: 3600,
 				grandparentTitle: null,
-				parentTitle: null
+				parentTitle: null,
+				genres: null
 			},
 			{
 				id: 2,
@@ -574,7 +594,8 @@ describe('Property 14: Binge Session Detection', () => {
 				thumb: null,
 				duration: 3600,
 				grandparentTitle: null,
-				parentTitle: null
+				parentTitle: null,
+				genres: null
 			}
 		];
 

@@ -63,7 +63,8 @@ function createTestDatabase() {
 			thumb TEXT,
 			duration INTEGER,
 			grandparent_title TEXT,
-			parent_title TEXT
+			parent_title TEXT,
+			genres TEXT
 		)
 	`);
 

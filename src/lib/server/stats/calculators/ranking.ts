@@ -165,23 +165,64 @@ export function calculateTopShows(
 /**
  * Calculate top genres by play count
  *
- * NOTE: Genre data is not currently stored in play_history.
- * This function returns an empty array until genre metadata enrichment is implemented.
+ * Aggregates genre counts across all plays. Each play can contribute
+ * to multiple genres (e.g., a movie can be both "Action" and "Drama").
+ * Genres are stored as JSON arrays in the play history records.
  *
- * Future implementation options:
- * 1. Add genre column to play_history during sync
- * 2. Create a separate genres lookup table
- * 3. Fetch genres from Plex metadata API on-demand
+ * @param records - Play history records with optional genre data
+ * @param options - Ranking options including limit
+ * @returns Top genres ranked by play count
  *
- * @param _records - Play history records (unused for now)
- * @param _options - Ranking options (unused for now)
- * @returns Empty array (genres not yet implemented)
+ * @example
+ * ```ts
+ * const topGenres = calculateTopGenres(records);
+ * // [{ rank: 1, title: 'Action', count: 42, thumb: null }, ...]
+ * ```
  */
 export function calculateTopGenres(
-	_records: PlayHistoryRecord[],
-	_options: RankingOptions = {}
+	records: PlayHistoryRecord[],
+	options: RankingOptions = {}
 ): RankedItem[] {
-	// Genre data is not available in current schema
-	// Return empty array for MVP - can be implemented when genre data is added
-	return [];
+	const { limit = DEFAULT_LIMIT } = options;
+
+	// Aggregate genre counts
+	const genreCounts = new Map<string, number>();
+
+	for (const record of records) {
+		if (!record.genres) continue;
+
+		// Parse JSON array of genre names
+		let genres: unknown;
+		try {
+			genres = JSON.parse(record.genres);
+			if (!Array.isArray(genres)) continue;
+		} catch {
+			continue;
+		}
+
+		// Count each genre
+		for (const genre of genres) {
+			if (typeof genre === 'string' && genre.length > 0) {
+				genreCounts.set(genre, (genreCounts.get(genre) ?? 0) + 1);
+			}
+		}
+	}
+
+	// Convert to array and sort by count desc, then title asc for tie-breaking
+	const sorted = Array.from(genreCounts.entries())
+		.map(([title, count]) => ({ title, count, thumb: null }))
+		.sort((a, b) => {
+			if (b.count !== a.count) {
+				return b.count - a.count;
+			}
+			return a.title.localeCompare(b.title);
+		});
+
+	// Assign ranks and limit
+	return sorted.slice(0, limit).map((item, index) => ({
+		rank: index + 1,
+		title: item.title,
+		count: item.count,
+		thumb: null // Genres don't have thumbnails
+	}));
 }

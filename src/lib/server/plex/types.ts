@@ -127,15 +127,29 @@ export const PlexHistoryResponseSchema = z.object({
 // =============================================================================
 
 /**
+ * Genre tag from Plex metadata
+ *
+ * Plex returns genres as an array of tag objects with a 'tag' property
+ * containing the genre name (e.g., "Action", "Drama").
+ */
+export const PlexGenreTagSchema = z.object({
+	tag: z.string()
+});
+
+export type PlexGenreTag = z.infer<typeof PlexGenreTagSchema>;
+
+/**
  * Individual metadata item from Plex library metadata endpoint
  *
- * Contains media information including duration which is not available
- * in the history endpoint. Used for enriching play history records.
+ * Contains media information including duration and genres which are not
+ * available in the history endpoint. Used for enriching play history records.
  */
 export const PlexLibraryMetadataItemSchema = z.object({
 	ratingKey: z.string(),
 	// Duration in milliseconds
-	duration: z.number().int().optional()
+	duration: z.number().int().optional(),
+	// Genres as an array of tag objects
+	Genre: z.array(PlexGenreTagSchema).optional().default([])
 });
 
 /**

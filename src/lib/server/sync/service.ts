@@ -2,7 +2,7 @@ import { db } from '$lib/server/db/client';
 import { playHistory, syncStatus } from '$lib/server/db/schema';
 import { fetchAllHistory, fetchMetadataBatch } from '$lib/server/plex/client';
 import type { ValidPlexHistoryMetadata } from '$lib/server/plex/types';
-import { eq, desc, isNull } from 'drizzle-orm';
+import { eq, desc, isNull, or } from 'drizzle-orm';
 import type { StartSyncOptions, SyncResult, SyncProgress, SyncStatusRecord } from './types';
 import { logger } from '$lib/server/logging';
 import { invalidateCache } from '$lib/server/stats/engine';
@@ -392,12 +392,12 @@ export async function startSync(options: StartSyncOptions = {}): Promise<SyncRes
 			logger.info(`Invalidated stats cache for years ${minYear}-${maxYear}`, `Sync-${syncId}`);
 		}
 
-		// Enrich records with duration data from Plex metadata
+		// Enrich records with metadata (duration, genres) from Plex
 		if (recordsInserted > 0) {
-			logger.info('Starting duration enrichment...', `Sync-${syncId}`);
-			const enrichResult = await enrichDurations({ signal });
+			logger.info('Starting metadata enrichment...', `Sync-${syncId}`);
+			const enrichResult = await enrichMetadata({ signal });
 			logger.info(
-				`Duration enrichment: ${enrichResult.enriched} enriched, ${enrichResult.failed} failed`,
+				`Metadata enrichment: ${enrichResult.enriched} enriched, ${enrichResult.failed} failed`,
 				`Sync-${syncId}`
 			);
 
@@ -500,13 +500,13 @@ export async function getPlayHistoryCount(): Promise<number> {
 }
 
 // =============================================================================
-// Duration Enrichment
+// Metadata Enrichment (Duration and Genres)
 // =============================================================================
 
 /**
- * Options for duration enrichment
+ * Options for metadata enrichment
  */
-export interface EnrichDurationsOptions {
+export interface EnrichMetadataOptions {
 	/** Number of records to process per batch (default: 50) */
 	batchSize?: number;
 	/** Abort signal for cancellation */
@@ -516,41 +516,46 @@ export interface EnrichDurationsOptions {
 }
 
 /**
- * Result of duration enrichment
+ * Result of metadata enrichment
  */
-export interface EnrichDurationsResult {
-	/** Number of records successfully enriched with duration */
+export interface EnrichMetadataResult {
+	/** Number of records successfully enriched */
 	enriched: number;
-	/** Number of records where duration fetch failed */
+	/** Number of records where metadata fetch failed */
 	failed: number;
 }
 
 /**
- * Enrich play history records with duration from Plex library metadata
+ * Enrich play history records with metadata from Plex library
  *
- * The Plex history endpoint does not include duration for each play.
- * This function fetches duration from the library metadata endpoint
- * for records that are missing duration data.
+ * The Plex history endpoint does not include duration or genres.
+ * This function fetches metadata from the library metadata endpoint
+ * for records that are missing duration or genres data.
  *
  * @param options - Enrichment options
  * @returns Count of enriched and failed records
  */
-export async function enrichDurations(
-	options: EnrichDurationsOptions = {}
-): Promise<EnrichDurationsResult> {
+export async function enrichMetadata(
+	options: EnrichMetadataOptions = {}
+): Promise<EnrichMetadataResult> {
 	const { batchSize = 50, signal, onProgress } = options;
 
-	// Get records with NULL duration
+	// Get records with NULL duration OR NULL genres
 	const records = await db
-		.select({ id: playHistory.id, ratingKey: playHistory.ratingKey })
+		.select({
+			id: playHistory.id,
+			ratingKey: playHistory.ratingKey,
+			duration: playHistory.duration,
+			genres: playHistory.genres
+		})
 		.from(playHistory)
-		.where(isNull(playHistory.duration));
+		.where(or(isNull(playHistory.duration), isNull(playHistory.genres)));
 
 	if (records.length === 0) {
 		return { enriched: 0, failed: 0 };
 	}
 
-	logger.info(`Found ${records.length} records needing duration enrichment`, 'Enrichment');
+	logger.info(`Found ${records.length} records needing metadata enrichment`, 'Enrichment');
 
 	let enriched = 0;
 	let failed = 0;
@@ -559,22 +564,38 @@ export async function enrichDurations(
 	for (let i = 0; i < records.length; i += batchSize) {
 		// Check for cancellation before each batch
 		if (signal?.aborted) {
-			logger.info('Duration enrichment cancelled', 'Enrichment');
+			logger.info('Metadata enrichment cancelled', 'Enrichment');
 			break;
 		}
 
 		const batch = records.slice(i, i + batchSize);
 		const ratingKeys = batch.map((r) => r.ratingKey);
 
-		// Fetch durations from Plex
-		const durations = await fetchMetadataBatch(ratingKeys, signal);
+		// Fetch metadata from Plex
+		const metadataMap = await fetchMetadataBatch(ratingKeys, signal);
 
-		// Update records with durations
+		// Update records with metadata
 		for (const record of batch) {
-			const duration = durations.get(record.ratingKey);
-			if (duration !== null && duration !== undefined) {
-				await db.update(playHistory).set({ duration }).where(eq(playHistory.id, record.id));
-				enriched++;
+			const metadata = metadataMap.get(record.ratingKey);
+			if (metadata) {
+				// Only update fields that are currently NULL
+				const updates: { duration?: number; genres?: string } = {};
+
+				if (record.duration === null && metadata.duration !== null) {
+					updates.duration = metadata.duration;
+				}
+
+				if (record.genres === null && metadata.genres.length > 0) {
+					updates.genres = JSON.stringify(metadata.genres);
+				}
+
+				if (Object.keys(updates).length > 0) {
+					await db.update(playHistory).set(updates).where(eq(playHistory.id, record.id));
+					enriched++;
+				} else {
+					// Nothing to update (metadata had no useful data)
+					failed++;
+				}
 			} else {
 				failed++;
 			}
@@ -585,4 +606,14 @@ export async function enrichDurations(
 	}
 
 	return { enriched, failed };
+}
+
+/**
+ * @deprecated Use enrichMetadata instead
+ * Kept for backwards compatibility
+ */
+export async function enrichDurations(
+	options: EnrichMetadataOptions = {}
+): Promise<EnrichMetadataResult> {
+	return enrichMetadata(options);
 }
