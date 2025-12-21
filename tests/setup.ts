@@ -24,6 +24,12 @@ mock.module('$env/dynamic/private', () => ({
 	}
 }));
 
+// Mock SvelteKit's $env/static/private module for tests
+mock.module('$env/static/private', () => ({
+	PLEX_SERVER_URL: 'http://test-plex-server:32400',
+	PLEX_TOKEN: 'test-plex-token'
+}));
+
 // Import database client after setting environment variables
 import { sqlite } from '$lib/server/db/client';
 
