@@ -670,8 +670,7 @@ describe('generateWithAI', () => {
 			Promise.resolve({
 				ok: true,
 				json: () => Promise.resolve(mockResponse)
-			} as Response)
-		) as unknown as typeof fetch);
+			} as Response)) as unknown as typeof fetch);
 
 		const config = {
 			aiEnabled: true,
@@ -695,8 +694,7 @@ describe('generateWithAI', () => {
 				ok: false,
 				status: 401,
 				text: () => Promise.resolve('Unauthorized')
-			} as Response)
-		) as unknown as typeof fetch);
+			} as Response)) as unknown as typeof fetch);
 
 		const config = {
 			aiEnabled: true,
@@ -758,8 +756,7 @@ describe('generateWithAI', () => {
 			Promise.resolve({
 				ok: true,
 				json: () => Promise.resolve({ choices: [] })
-			} as Response)
-		) as unknown as typeof fetch);
+			} as Response)) as unknown as typeof fetch);
 
 		const config = {
 			aiEnabled: true,
@@ -781,8 +778,7 @@ describe('generateWithAI', () => {
 					Promise.resolve({
 						choices: [{ message: { content: 'not valid json' } }]
 					})
-			} as Response)
-		) as unknown as typeof fetch);
+			} as Response)) as unknown as typeof fetch);
 
 		const config = {
 			aiEnabled: true,
@@ -849,8 +845,7 @@ describe('generateFunFacts', () => {
 				ok: false,
 				status: 401,
 				text: () => Promise.resolve('Unauthorized')
-			} as Response)
-		) as unknown as typeof fetch);
+			} as Response)) as unknown as typeof fetch);
 
 		const stats = createMockUserStats();
 		const facts = await generateFunFacts(stats, { count: 3 });
@@ -880,8 +875,7 @@ describe('generateFunFacts', () => {
 							}
 						]
 					})
-			} as Response)
-		) as unknown as typeof fetch);
+			} as Response)) as unknown as typeof fetch);
 
 		const stats = createMockUserStats();
 		const facts = await generateFunFacts(stats, { count: 3 });
