@@ -3,15 +3,27 @@ import { dev } from '$app/environment';
 import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db/client';
 import { users, sessions } from '$lib/server/db/schema';
-import { SESSION_DURATION_MS } from './types';
+import { SESSION_DURATION_MS, type NormalizedServerUser } from './types';
 import { logger } from '$lib/server/logging';
+import {
+	getServerOwner,
+	getRandomNonOwnerUser,
+	resolveUserIdentifier,
+	getServerUsers
+} from './dev-users';
 
 /**
  * Development Authentication Bypass Module
  *
  * Provides a way to bypass Plex OAuth during development.
  * When DEV_BYPASS_AUTH=true is set, automatically creates/uses
- * a simulated admin user with credentials from environment variables.
+ * a user based on the DEV_BYPASS_USER setting:
+ *
+ * - Not set or empty: Uses the actual server owner/admin from Plex
+ * - "random": Selects a random non-admin user from the server
+ * - <plexId or username>: Simulates that specific user
+ *
+ * Falls back to a mock admin user if Plex API is unavailable.
  *
  * SECURITY: This bypass ONLY works in development mode (dev === true).
  * It will never activate in production builds.
@@ -22,20 +34,25 @@ import { logger } from '$lib/server/logging';
 // =============================================================================
 
 /**
- * Plex ID for the development bypass user
- * Uses a fixed value to ensure the same user is reused across restarts
+ * Fallback Plex ID for when Plex API is unavailable
  */
-const DEV_USER_PLEX_ID = 999999999;
+const FALLBACK_PLEX_ID = 999999999;
 
 /**
- * Username for the development bypass user
+ * Fallback username for when Plex API is unavailable
  */
-const DEV_USER_USERNAME = 'dev-admin';
+const FALLBACK_USERNAME = 'dev-admin';
 
 /**
  * Well-known session ID for dev bypass (persists across requests)
  */
 const DEV_SESSION_ID = 'dev-bypass-session-00000000-0000-0000-0000-000000000000';
+
+/**
+ * Cache the selected random user for the session lifetime
+ * This ensures the same random user is used consistently
+ */
+let cachedRandomUser: NormalizedServerUser | null = null;
 
 // =============================================================================
 // Bypass Detection
@@ -60,40 +77,148 @@ export function isDevBypassEnabled(): boolean {
 }
 
 // =============================================================================
+// User Resolution
+// =============================================================================
+
+/**
+ * Get the fallback mock user when Plex API is unavailable
+ */
+function getFallbackUser(): NormalizedServerUser {
+	return {
+		plexId: FALLBACK_PLEX_ID,
+		username: FALLBACK_USERNAME,
+		email: null,
+		thumb: null,
+		isOwner: true
+	};
+}
+
+/**
+ * Determine which user to simulate based on DEV_BYPASS_USER setting
+ *
+ * - Not set or empty: Uses the actual server owner/admin
+ * - "random": Selects a random non-admin user (cached for session)
+ * - <plexId or username>: Simulates that specific user
+ *
+ * Falls back to mock admin user if Plex API fails.
+ */
+async function resolveTargetUser(): Promise<NormalizedServerUser> {
+	const bypassUserSetting = env.DEV_BYPASS_USER?.trim() ?? '';
+
+	try {
+		// Case 1: No setting - use server owner
+		if (!bypassUserSetting) {
+			const owner = await getServerOwner();
+			logger.info(
+				`Dev bypass: Using server owner ${owner.plexId} (${owner.username})`,
+				'DevBypass'
+			);
+			return owner;
+		}
+
+		// Case 2: Random user selection
+		if (bypassUserSetting.toLowerCase() === 'random') {
+			// Return cached random user if available
+			if (cachedRandomUser) {
+				return cachedRandomUser;
+			}
+
+			const randomUser = await getRandomNonOwnerUser();
+
+			if (randomUser) {
+				cachedRandomUser = randomUser;
+				logger.info(
+					`Dev bypass: Randomly selected user ${randomUser.plexId} (${randomUser.username})`,
+					'DevBypass'
+				);
+				return randomUser;
+			}
+
+			// No shared users - fall back to owner
+			logger.warn(
+				'Dev bypass: No shared users found for random selection, using server owner',
+				'DevBypass'
+			);
+			const owner = await getServerOwner();
+			cachedRandomUser = owner;
+			return owner;
+		}
+
+		// Case 3: Specific user by ID or username
+		const specificUser = await resolveUserIdentifier(bypassUserSetting);
+
+		if (specificUser) {
+			logger.info(
+				`Dev bypass: Using specified user ${specificUser.plexId} (${specificUser.username})`,
+				'DevBypass'
+			);
+			return specificUser;
+		}
+
+		// User not found - warn and fall back to owner
+		logger.warn(
+			`Dev bypass: User "${bypassUserSetting}" not found on server, falling back to owner`,
+			'DevBypass'
+		);
+
+		// List available users for developer convenience
+		const { owner, sharedUsers } = await getServerUsers();
+		const availableUsers = [owner, ...sharedUsers]
+			.map((u) => `${u.plexId} (${u.username})`)
+			.join(', ');
+		logger.info(`Dev bypass: Available users: ${availableUsers}`, 'DevBypass');
+
+		return owner;
+	} catch (error) {
+		// Plex API failed - fall back to mock user
+		logger.warn(
+			`Dev bypass: Failed to fetch Plex users, using fallback mock user. Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			'DevBypass'
+		);
+		return getFallbackUser();
+	}
+}
+
+// =============================================================================
 // User and Session Management
 // =============================================================================
 
 /**
- * Get or create the development bypass user
+ * Get or create a user in the database based on the resolved target user
  *
- * Creates a user with admin privileges if it doesn't exist.
- * Uses environment PLEX_TOKEN for the simulated session.
- *
- * @returns The user ID of the dev bypass user
+ * @param targetUser - The normalized user data from Plex
+ * @returns The database user ID
  */
-async function getOrCreateDevUser(): Promise<number> {
+async function getOrCreateDevUser(targetUser: NormalizedServerUser): Promise<number> {
 	// Check if user already exists
 	const existingUser = await db.query.users.findFirst({
-		where: eq(users.plexId, DEV_USER_PLEX_ID)
+		where: eq(users.plexId, targetUser.plexId)
 	});
 
 	if (existingUser) {
-		// Ensure user is admin (in case it was previously created without admin)
-		if (!existingUser.isAdmin) {
-			await db.update(users).set({ isAdmin: true }).where(eq(users.id, existingUser.id));
-		}
+		// Update user data to match current Plex data
+		await db
+			.update(users)
+			.set({
+				username: targetUser.username,
+				email: targetUser.email,
+				thumb: targetUser.thumb,
+				isAdmin: targetUser.isOwner
+			})
+			.where(eq(users.id, existingUser.id));
+
 		return existingUser.id;
 	}
 
-	// Create new dev user with admin privileges
+	// Create new user
 	const result = await db
 		.insert(users)
 		.values({
-			plexId: DEV_USER_PLEX_ID,
-			username: DEV_USER_USERNAME,
-			email: 'dev@localhost',
-			thumb: null,
-			isAdmin: true
+			plexId: targetUser.plexId,
+			username: targetUser.username,
+			email: targetUser.email,
+			thumb: targetUser.thumb,
+			isAdmin: targetUser.isOwner
 		})
 		.returning({ id: users.id });
 
@@ -102,7 +227,10 @@ async function getOrCreateDevUser(): Promise<number> {
 		throw new Error('Failed to create dev bypass user');
 	}
 
-	logger.info(`Created dev bypass user with ID ${newUser.id}`, 'DevBypass');
+	logger.info(
+		`Created dev bypass user: ${targetUser.plexId} (${targetUser.username}) with ID ${newUser.id}`,
+		'DevBypass'
+	);
 	return newUser.id;
 }
 
@@ -115,7 +243,11 @@ async function getOrCreateDevUser(): Promise<number> {
  * @returns The session ID for the dev bypass
  */
 export async function getOrCreateDevSession(): Promise<string> {
-	const userId = await getOrCreateDevUser();
+	// Resolve which user to simulate
+	const targetUser = await resolveTargetUser();
+
+	// Get or create the user in database
+	const userId = await getOrCreateDevUser(targetUser);
 
 	// Check if dev session exists and is valid
 	const existingSession = await db.query.sessions.findFirst({
@@ -125,11 +257,14 @@ export async function getOrCreateDevSession(): Promise<string> {
 	const now = new Date();
 
 	if (existingSession && existingSession.expiresAt > now) {
-		return DEV_SESSION_ID;
-	}
-
-	// Delete old session if exists
-	if (existingSession) {
+		// Check if session is for the same user
+		if (existingSession.userId === userId) {
+			return DEV_SESSION_ID;
+		}
+		// Different user - delete old session
+		await db.delete(sessions).where(eq(sessions.id, DEV_SESSION_ID));
+	} else if (existingSession) {
+		// Expired session - delete it
 		await db.delete(sessions).where(eq(sessions.id, DEV_SESSION_ID));
 	}
 
@@ -143,14 +278,21 @@ export async function getOrCreateDevSession(): Promise<string> {
 		id: DEV_SESSION_ID,
 		userId,
 		plexToken,
-		isAdmin: true,
+		isAdmin: targetUser.isOwner,
 		expiresAt
 	});
 
 	logger.info(
-		`Dev bypass session created/renewed (expires: ${expiresAt.toISOString()})`,
+		`Dev bypass session created for ${targetUser.username} (expires: ${expiresAt.toISOString()})`,
 		'DevBypass'
 	);
 
 	return DEV_SESSION_ID;
+}
+
+/**
+ * Clear the cached random user (useful for testing or forcing re-selection)
+ */
+export function clearCachedRandomUser(): void {
+	cachedRandomUser = null;
 }

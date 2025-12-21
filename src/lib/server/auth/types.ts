@@ -309,3 +309,93 @@ export interface PollPinOptions {
 	maxAttempts?: number;
 	intervalMs?: number;
 }
+
+// =============================================================================
+// Zod Schemas for Plex Shared Servers API
+// =============================================================================
+
+/**
+ * Section shared with a user from GET /api/servers/{machineId}/shared_servers
+ */
+export const PlexSharedSectionSchema = z.object({
+	id: z.number().int(),
+	key: z.number().int(),
+	title: z.string(),
+	type: z.string().optional(),
+	shared: z.boolean().optional()
+});
+
+/**
+ * Shared server user from GET /api/servers/{machineId}/shared_servers
+ *
+ * Represents a user who has access to the Plex server.
+ */
+export const PlexSharedServerUserSchema = z.object({
+	id: z.number().int(),
+	username: z.string(),
+	email: z.string().optional(),
+	thumb: z.string().optional(),
+	protected: z.boolean().optional(),
+	home: z.boolean().optional(),
+	allowSync: z.boolean().optional(),
+	allowCameraUpload: z.boolean().optional(),
+	allowChannels: z.boolean().optional(),
+	allowTuners: z.boolean().optional(),
+	allowSubtitleAdmin: z.boolean().optional(),
+	filterAll: z.string().optional(),
+	filterMovies: z.string().optional(),
+	filterMusic: z.string().optional(),
+	filterPhotos: z.string().optional(),
+	filterTelevision: z.string().optional(),
+	restricted: z.boolean().optional(),
+	sections: z.array(PlexSharedSectionSchema).optional()
+});
+
+/**
+ * Response from GET /api/servers/{machineId}/shared_servers
+ *
+ * Contains the MediaContainer with SharedServer array.
+ */
+export const PlexSharedServersResponseSchema = z.object({
+	MediaContainer: z.object({
+		friendlyName: z.string().optional(),
+		identifier: z.string().optional(),
+		machineIdentifier: z.string().optional(),
+		size: z.number().int().optional(),
+		SharedServer: z.array(PlexSharedServerUserSchema).optional()
+	})
+});
+
+/**
+ * Server identity response from GET /identity
+ */
+export const PlexServerIdentitySchema = z.object({
+	MediaContainer: z.object({
+		machineIdentifier: z.string(),
+		friendlyName: z.string().optional(),
+		version: z.string().optional(),
+		claimed: z.boolean().optional()
+	})
+});
+
+// =============================================================================
+// TypeScript Types for Shared Servers
+// =============================================================================
+
+export type PlexSharedSection = z.infer<typeof PlexSharedSectionSchema>;
+export type PlexSharedServerUser = z.infer<typeof PlexSharedServerUserSchema>;
+export type PlexSharedServersResponse = z.infer<typeof PlexSharedServersResponseSchema>;
+export type PlexServerIdentity = z.infer<typeof PlexServerIdentitySchema>;
+
+/**
+ * Normalized server user for dev-bypass
+ *
+ * Combines data from either the owner (PlexUser) or shared users (PlexSharedServerUser)
+ */
+export interface NormalizedServerUser {
+	plexId: number;
+	username: string;
+	email: string | null;
+	thumb: string | null;
+	isOwner: boolean;
+}
