@@ -371,10 +371,12 @@ async function calculateTopViewers(
 	// Note: accountId in playHistory may correspond to plexId in users table
 	const userResults = await db.select().from(users);
 
-	// Create a map of plexId to username
+	// Create a map of accountId to username for matching with playHistory.accountId
+	// Fall back to plexId for legacy users without accountId set
 	const userMap = new Map<number, string>();
 	for (const user of userResults) {
-		userMap.set(user.plexId, user.username);
+		const mapKey = user.accountId ?? user.plexId;
+		userMap.set(mapKey, user.username);
 	}
 
 	// Build top viewers list

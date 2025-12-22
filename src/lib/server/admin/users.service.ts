@@ -97,7 +97,8 @@ export async function getAllUsersWithStats(year: number): Promise<UserWithStats[
 
 	// Combine user data with stats
 	return allUsers.map((user) => {
-		const watchTimeSeconds = watchTimeMap.get(user.plexId) ?? 0;
+		// Use accountId for matching with playHistory.accountId
+		const watchTimeSeconds = watchTimeMap.get(user.accountId ?? user.plexId) ?? 0;
 		const settings = shareSettingsMap.get(user.id);
 
 		return {
