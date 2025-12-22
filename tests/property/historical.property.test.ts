@@ -543,9 +543,17 @@ describe('Historical User Data Edge Cases', () => {
 
 		// Get all users from users table
 		const usersResult = await db.select().from(schema.users);
+		// Build userMap with dual-key lookup (matching engine.ts behavior)
 		const userMap = new Map<number, string>();
 		for (const user of usersResult) {
-			userMap.set(user.plexId, user.username);
+			// Register by accountId if set
+			if (user.accountId !== null) {
+				userMap.set(user.accountId, user.username);
+			}
+			// Also register by plexId for backward compatibility
+			if (!userMap.has(user.plexId)) {
+				userMap.set(user.plexId, user.username);
+			}
 		}
 
 		// Get watch times by accountId
@@ -555,7 +563,8 @@ describe('Historical User Data Edge Cases', () => {
 		// Build top viewers with fallback (simulating engine.ts behavior)
 		const topViewers: Array<{ accountId: number; username: string; minutes: number }> = [];
 		for (const [accountId, minutes] of watchTimeMap.entries()) {
-			const username = userMap.get(accountId) ?? `User ${accountId}`;
+			// Fallback format is distinct from anonymized names (which use "User #1", "User #2", etc.)
+			const username = userMap.get(accountId) ?? `Unknown User (ID: ${accountId})`;
 			topViewers.push({ accountId, username, minutes });
 		}
 
@@ -565,7 +574,7 @@ describe('Historical User Data Edge Cases', () => {
 		// Verify fallback username for removed user
 		expect(topViewers.length).toBe(2);
 		expect(topViewers[0]?.accountId).toBe(999);
-		expect(topViewers[0]?.username).toBe('User 999'); // Fallback
+		expect(topViewers[0]?.username).toBe('Unknown User (ID: 999)'); // Fallback - distinct from anonymized format
 		expect(topViewers[1]?.accountId).toBe(1);
 		expect(topViewers[1]?.username).toBe('ActiveUser'); // Real name
 	});

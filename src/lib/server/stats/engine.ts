@@ -371,12 +371,20 @@ async function calculateTopViewers(
 	// Note: accountId in playHistory may correspond to plexId in users table
 	const userResults = await db.select().from(users);
 
-	// Create a map of accountId to username for matching with playHistory.accountId
-	// Fall back to plexId for legacy users without accountId set
+	// Create a map for username lookup by both accountId and plexId
+	// This handles the accountId/plexId mismatch for server owners (accountId=1, plexId=large number)
+	// and ensures lookup succeeds regardless of which ID is stored in playHistory
 	const userMap = new Map<number, string>();
 	for (const user of userResults) {
-		const mapKey = user.accountId ?? user.plexId;
-		userMap.set(mapKey, user.username);
+		// Register by accountId if set (primary lookup key for playHistory.accountId)
+		if (user.accountId !== null) {
+			userMap.set(user.accountId, user.username);
+		}
+		// Also register by plexId for backward compatibility
+		// Only set if not already registered (avoids overwriting for shared users where accountId === plexId)
+		if (!userMap.has(user.plexId)) {
+			userMap.set(user.plexId, user.username);
+		}
 	}
 
 	// Build top viewers list
@@ -386,7 +394,8 @@ async function calculateTopViewers(
 		if (!entry) continue;
 
 		const [accountId, totalMinutes] = entry;
-		const username = userMap.get(accountId) ?? `User ${accountId}`;
+		// Fallback format is distinct from anonymized names (which use "User #1", "User #2", etc.)
+		const username = userMap.get(accountId) ?? `Unknown User (ID: ${accountId})`;
 
 		topViewers.push({
 			rank: i + 1,
