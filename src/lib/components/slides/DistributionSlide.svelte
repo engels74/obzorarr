@@ -272,6 +272,13 @@
 		position: relative;
 	}
 
+	.bar-wrapper :global(button[data-slot='tooltip-trigger']) {
+		display: flex;
+		align-items: flex-end;
+		flex: 1;
+		width: 100%;
+	}
+
 	.hourly .bar-wrapper {
 		max-width: 20px;
 	}
