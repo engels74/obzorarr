@@ -108,6 +108,25 @@ export interface PercentileSlideProps extends BaseSlideProps {
 }
 
 /**
+ * Top viewer entry for server-wide wrapped
+ */
+export interface TopViewer {
+	rank: number;
+	userId: number;
+	username: string;
+	totalMinutes: number;
+}
+
+/**
+ * Props for TopViewersSlide component
+ */
+export interface TopViewersSlideProps extends BaseSlideProps {
+	topViewers: TopViewer[];
+	/** Maximum items to display (default: 5) */
+	limit?: number;
+}
+
+/**
  * Props for BingeSlide component
  */
 export interface BingeSlideProps extends BaseSlideProps {

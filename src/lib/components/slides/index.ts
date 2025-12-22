@@ -16,6 +16,7 @@ export { default as TopShowsSlide } from './TopShowsSlide.svelte';
 export { default as GenresSlide } from './GenresSlide.svelte';
 export { default as DistributionSlide } from './DistributionSlide.svelte';
 export { default as PercentileSlide } from './PercentileSlide.svelte';
+export { default as TopViewersSlide } from './TopViewersSlide.svelte';
 export { default as BingeSlide } from './BingeSlide.svelte';
 export { default as FirstLastSlide } from './FirstLastSlide.svelte';
 export { default as FunFactSlide } from './FunFactSlide.svelte';

@@ -11,6 +11,7 @@
 		GenresSlide,
 		DistributionSlide,
 		PercentileSlide,
+		TopViewersSlide,
 		BingeSlide,
 		FirstLastSlide,
 		FunFactSlide,
@@ -68,6 +69,9 @@
 	// Get percentile rank (only available in UserStats)
 	const percentileRank = $derived(isUserStats(stats) ? stats.percentileRank : 50);
 	const totalUsers = $derived(!isUserStats(stats) ? stats.totalUsers : undefined);
+
+	// Get top viewers (only available in ServerStats)
+	const topViewers = $derived(!isUserStats(stats) ? stats.topViewers : []);
 </script>
 
 <div class="slide-renderer {klass}">
@@ -94,13 +98,17 @@
 			{messagingContext}
 		/>
 	{:else if slide.type === 'percentile'}
-		<PercentileSlide
-			{percentileRank}
-			{totalUsers}
-			{active}
-			{onAnimationComplete}
-			{messagingContext}
-		/>
+		{#if isUserStats(stats)}
+			<PercentileSlide
+				{percentileRank}
+				{totalUsers}
+				{active}
+				{onAnimationComplete}
+				{messagingContext}
+			/>
+		{:else}
+			<TopViewersSlide {topViewers} {active} {onAnimationComplete} />
+		{/if}
 	{:else if slide.type === 'binge'}
 		<BingeSlide
 			longestBinge={stats.longestBinge}
