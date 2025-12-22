@@ -277,6 +277,19 @@
 		align-items: flex-end;
 		flex: 1;
 		width: 100%;
+		/* Reset browser button defaults */
+		background: transparent;
+		border: none;
+		padding: 0;
+		margin: 0;
+		outline: none;
+		-webkit-appearance: none;
+		appearance: none;
+	}
+
+	.bar-wrapper :global(button[data-slot='tooltip-trigger']:focus-visible) {
+		outline: 2px solid hsl(var(--primary) / 0.5);
+		outline-offset: 2px;
 	}
 
 	.hourly .bar-wrapper {
