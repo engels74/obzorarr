@@ -5,11 +5,13 @@
 	import type { GenresSlideProps } from './types';
 	import type { SlideMessagingContext } from './messaging-context';
 	import { getPossessive, createPersonalContext } from './messaging-context';
+	import * as Tooltip from '$lib/components/ui/tooltip';
 
 	/**
 	 * GenresSlide Component
 	 *
 	 * Displays the user's top genres with visual representation.
+	 * Each genre has a unique color and interactive tooltips.
 	 *
 	 * Implements Requirement 5.6 (Motion One animations with $effect cleanup)
 	 */
@@ -27,6 +29,39 @@
 		children,
 		messagingContext = createPersonalContext()
 	}: Props = $props();
+
+	// Genre color palette - unique colors for visual distinction
+	const GENRE_COLORS: Record<string, string> = {
+		Action: 'oklch(0.55 0.18 25)',
+		Adventure: 'oklch(0.60 0.15 50)',
+		Animation: 'oklch(0.65 0.16 145)',
+		Comedy: 'oklch(0.70 0.18 85)',
+		Crime: 'oklch(0.45 0.10 260)',
+		Documentary: 'oklch(0.55 0.12 180)',
+		Drama: 'oklch(0.50 0.20 15)',
+		Family: 'oklch(0.65 0.14 120)',
+		Fantasy: 'oklch(0.55 0.18 290)',
+		History: 'oklch(0.55 0.10 60)',
+		Horror: 'oklch(0.40 0.15 350)',
+		Music: 'oklch(0.60 0.20 320)',
+		Mystery: 'oklch(0.50 0.12 240)',
+		Romance: 'oklch(0.60 0.18 10)',
+		'Science Fiction': 'oklch(0.55 0.15 210)',
+		'Sci-Fi': 'oklch(0.55 0.15 210)',
+		Thriller: 'oklch(0.45 0.12 280)',
+		War: 'oklch(0.50 0.08 90)',
+		Western: 'oklch(0.55 0.12 55)'
+	};
+
+	const DEFAULT_GENRE_COLOR = 'hsl(var(--primary))';
+
+	function getGenreColor(genreTitle: string): string {
+		return GENRE_COLORS[genreTitle.trim()] ?? DEFAULT_GENRE_COLOR;
+	}
+
+	function formatPlays(plays: number): string {
+		return `${plays} ${plays === 1 ? 'play' : 'plays'}`;
+	}
 
 	// Get possessive for messaging
 	const possessive = $derived(getPossessive(messagingContext));
@@ -103,19 +138,39 @@
 		<h2 class="title">{possessive} Favorite Genres</h2>
 
 		{#if hasGenres}
-			<div class="genre-list">
-				{#each genresWithPercentage as genre, i}
-					<div class="genre-item">
-						<div class="genre-header">
-							<span class="genre-name">{genre.title}</span>
-							<span class="genre-count">{genre.count}</span>
+			<Tooltip.Provider>
+				<div class="genre-list">
+					{#each genresWithPercentage as genre, i}
+						<div class="genre-item">
+							<div class="genre-header">
+								<span class="genre-name">{genre.title}</span>
+								<span class="genre-count">{formatPlays(genre.count)}</span>
+							</div>
+							<div class="bar-container">
+								<Tooltip.Root>
+									<Tooltip.Trigger>
+										<div
+											bind:this={bars[i]}
+											class="bar"
+											style="width: {genre.percentage}%; --genre-color: {getGenreColor(
+												genre.title
+											)};"
+											role="img"
+											aria-label="{genre.title}: {formatPlays(genre.count)}"
+										></div>
+									</Tooltip.Trigger>
+									<Tooltip.Content side="top" class="tooltip-content">
+										<div class="tooltip-inner">
+											<strong class="tooltip-title">{genre.title}</strong>
+											<p class="tooltip-stat">{formatPlays(genre.count)}</p>
+										</div>
+									</Tooltip.Content>
+								</Tooltip.Root>
+							</div>
 						</div>
-						<div class="bar-container">
-							<div bind:this={bars[i]} class="bar" style="width: {genre.percentage}%"></div>
-						</div>
-					</div>
-				{/each}
-			</div>
+					{/each}
+				</div>
+			</Tooltip.Provider>
 		{:else}
 			<p class="empty-message">No genre data available</p>
 			<p class="empty-hint">Genre information will be available in a future update</p>
@@ -138,73 +193,176 @@
 		z-index: 1;
 		width: 100%;
 		max-width: 500px;
+		padding: 0 1rem;
 	}
 
 	.title {
 		font-size: 1.75rem;
 		font-weight: 700;
-		color: var(--primary);
+		color: hsl(var(--primary));
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
+		text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 	}
 
 	.genre-list {
 		width: 100%;
 		display: flex;
 		flex-direction: column;
-		gap: 1rem;
+		gap: 1.25rem;
 	}
 
 	.genre-item {
 		width: 100%;
+		padding: 0.5rem;
+		border-radius: 8px;
+		background: hsl(var(--card) / 0.3);
+		transition: background-color 0.2s ease;
+	}
+
+	.genre-item:hover {
+		background: hsl(var(--card) / 0.5);
 	}
 
 	.genre-header {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		margin-bottom: 0.25rem;
+		margin-bottom: 0.5rem;
 	}
 
 	.genre-name {
 		font-size: 1rem;
 		font-weight: 600;
-		color: var(--foreground);
+		color: hsl(var(--foreground));
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		max-width: 70%;
 	}
 
 	.genre-count {
 		font-size: 0.875rem;
-		color: var(--muted-foreground);
+		color: hsl(var(--muted-foreground));
+		font-weight: 500;
 	}
 
 	.bar-container {
 		width: 100%;
-		height: 8px;
-		background: rgba(255, 255, 255, 0.1);
+		height: 12px;
+		background: hsl(var(--muted) / 0.3);
+		border-radius: 6px;
+		overflow: visible;
+	}
+
+	.bar-container :global(button[data-slot='tooltip-trigger']) {
+		display: block;
+		width: 100%;
+		height: 100%;
+		background: transparent;
+		border: none;
+		padding: 0;
+		margin: 0;
+		outline: none;
+		-webkit-appearance: none;
+		appearance: none;
+	}
+
+	.bar-container :global(button[data-slot='tooltip-trigger']:focus-visible) {
+		outline: 2px solid hsl(var(--primary) / 0.5);
+		outline-offset: 2px;
 		border-radius: 4px;
-		overflow: hidden;
 	}
 
 	.bar {
 		height: 100%;
-		background: linear-gradient(90deg, var(--primary), oklch(0.6 0.15 25));
-		border-radius: 4px;
+		background: linear-gradient(
+			90deg,
+			var(--genre-color),
+			color-mix(in oklch, var(--genre-color) 70%, black)
+		);
+		border-radius: 6px;
 		transform-origin: left center;
+		min-width: 4px;
+		transition:
+			transform 0.2s ease,
+			filter 0.2s ease,
+			box-shadow 0.2s ease;
+		cursor: pointer;
+	}
+
+	.bar:hover {
+		transform: scaleY(1.3) scaleX(1.02) !important;
+		filter: brightness(1.2);
+		box-shadow: 0 0 12px var(--genre-color);
 	}
 
 	.empty-message {
-		color: var(--muted-foreground);
+		color: hsl(var(--muted-foreground));
 		font-style: italic;
 		font-size: 1.125rem;
 	}
 
 	.empty-hint {
-		color: var(--muted-foreground);
+		color: hsl(var(--muted-foreground));
 		font-size: 0.875rem;
 		opacity: 0.7;
 	}
 
 	.extra {
 		margin-top: 1rem;
+	}
+
+	/* Tooltip styling */
+	:global(.tooltip-content) {
+		background: hsl(var(--card)) !important;
+		color: hsl(var(--card-foreground)) !important;
+		border: 1px solid hsl(var(--border));
+		padding: 0.75rem !important;
+	}
+
+	.tooltip-inner {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		text-align: center;
+	}
+
+	.tooltip-title {
+		color: hsl(var(--primary));
+		font-size: 0.875rem;
+	}
+
+	.tooltip-stat {
+		font-size: 0.75rem;
+		color: hsl(var(--muted-foreground));
+		margin: 0;
+	}
+
+	@media (max-width: 768px) {
+		.genre-list {
+			gap: 1rem;
+		}
+
+		.genre-item {
+			padding: 0.375rem;
+		}
+
+		.genre-header {
+			flex-wrap: wrap;
+			gap: 0.25rem;
+		}
+
+		.genre-name {
+			font-size: 0.875rem;
+		}
+
+		.genre-count {
+			font-size: 0.75rem;
+		}
+
+		.bar-container {
+			height: 10px;
+		}
 	}
 </style>
