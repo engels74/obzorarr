@@ -168,4 +168,46 @@
 	.extra {
 		margin-top: 2rem;
 	}
+
+	/* Mobile: compact typography */
+	@media (max-width: 767px) {
+		.title {
+			font-size: 1.25rem;
+		}
+
+		.subtitle {
+			font-size: 1.125rem;
+		}
+	}
+
+	/* Tablet: medium typography */
+	@media (min-width: 768px) and (max-width: 1023px) {
+		.title {
+			font-size: 1.75rem;
+		}
+
+		.stat-number {
+			font-size: clamp(3.5rem, 10vw, 6.5rem);
+		}
+
+		.subtitle {
+			font-size: 1.375rem;
+		}
+	}
+
+	/* Desktop: large typography */
+	@media (min-width: 1024px) {
+		.title {
+			font-size: 2rem;
+		}
+
+		.stat-number {
+			font-size: clamp(4rem, 12vw, 7rem);
+			text-shadow: 0 6px 30px rgba(204, 0, 0, 0.35);
+		}
+
+		.subtitle {
+			font-size: 1.5rem;
+		}
+	}
 </style>

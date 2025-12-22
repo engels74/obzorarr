@@ -172,4 +172,73 @@
 	.extra {
 		margin-top: 1.5rem;
 	}
+
+	/* Mobile: compact content */
+	@media (max-width: 767px) {
+		.content {
+			max-width: 100%;
+			padding: 0 0.5rem;
+		}
+
+		.icon {
+			font-size: 3rem;
+		}
+
+		.title {
+			font-size: 0.875rem;
+		}
+
+		.comparison {
+			font-size: 1rem;
+		}
+	}
+
+	/* Tablet: medium content */
+	@media (min-width: 768px) and (max-width: 1023px) {
+		.content {
+			max-width: 700px;
+		}
+
+		.icon {
+			font-size: 5rem;
+		}
+
+		.title {
+			font-size: 1.125rem;
+		}
+
+		.fact {
+			font-size: clamp(1.75rem, 4.5vw, 2.25rem);
+		}
+
+		.comparison {
+			font-size: 1.25rem;
+		}
+	}
+
+	/* Desktop: large content */
+	@media (min-width: 1024px) {
+		.content {
+			max-width: 850px;
+			gap: 1.25rem;
+		}
+
+		.icon {
+			font-size: 6rem;
+			margin-bottom: 0.75rem;
+		}
+
+		.title {
+			font-size: 1.25rem;
+		}
+
+		.fact {
+			font-size: clamp(2rem, 5vw, 2.5rem);
+		}
+
+		.comparison {
+			font-size: 1.375rem;
+			margin-top: 0.75rem;
+		}
+	}
 </style>

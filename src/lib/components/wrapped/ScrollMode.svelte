@@ -342,8 +342,8 @@
 		height: 1.25rem;
 	}
 
-	/* Mobile optimizations */
-	@media (max-width: 768px) {
+	/* Mobile: compact layout */
+	@media (max-width: 767px) {
 		.scroll-section {
 			padding: 3rem 1rem;
 		}
@@ -368,6 +368,36 @@
 		.close-button svg {
 			width: 1rem;
 			height: 1rem;
+		}
+	}
+
+	/* Tablet: medium layout */
+	@media (min-width: 768px) {
+		.scroll-section {
+			padding: 4rem 3rem;
+		}
+
+		.slide-content {
+			max-width: 850px;
+		}
+	}
+
+	/* Desktop: generous layout with wider content */
+	@media (min-width: 1024px) {
+		.scroll-section {
+			padding: 5rem 4rem;
+		}
+
+		.slide-content {
+			max-width: var(--content-max-xl, 1100px);
+		}
+
+		.scroll-progress {
+			padding: 0.5rem 1rem;
+		}
+
+		.progress-text {
+			font-size: 0.875rem;
 		}
 	}
 

@@ -200,11 +200,80 @@
 		margin-top: 1.5rem;
 	}
 
-	@media (max-width: 768px) {
+	/* Mobile: compact circle */
+	@media (max-width: 767px) {
+		.title {
+			font-size: 1.25rem;
+		}
+
 		.stat-container {
 			width: 150px;
 			height: 150px;
 			padding: 1.5rem;
+			border-width: 3px;
+		}
+
+		.prefix {
+			font-size: 1rem;
+		}
+
+		.message {
+			font-size: 1.25rem;
+		}
+	}
+
+	/* Tablet: medium circle */
+	@media (min-width: 768px) and (max-width: 1023px) {
+		.title {
+			font-size: 1.75rem;
+		}
+
+		.stat-container {
+			width: 220px;
+			height: 220px;
+			padding: 2.25rem;
+		}
+
+		.percentage {
+			font-size: clamp(3.5rem, 9vw, 5rem);
+		}
+
+		.message {
+			font-size: 1.625rem;
+		}
+	}
+
+	/* Desktop: large circle */
+	@media (min-width: 1024px) {
+		.title {
+			font-size: 2rem;
+		}
+
+		.stat-container {
+			width: 250px;
+			height: 250px;
+			padding: 2.5rem;
+			border-width: 5px;
+		}
+
+		.prefix {
+			font-size: 1.375rem;
+		}
+
+		.percentage {
+			font-size: clamp(4rem, 10vw, 5.5rem);
+		}
+
+		.top-performer {
+			box-shadow: 0 0 60px color-mix(in oklch, var(--slide-peak-start) 35%, transparent);
+		}
+
+		.message {
+			font-size: 1.75rem;
+		}
+
+		.total-users {
+			font-size: 1rem;
 		}
 	}
 </style>

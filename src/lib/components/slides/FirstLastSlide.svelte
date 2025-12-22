@@ -293,15 +293,123 @@
 		margin-top: 1rem;
 	}
 
-	@media (max-width: 768px) {
+	/* Mobile: stacked cards */
+	@media (max-width: 767px) {
+		.title {
+			font-size: 1.5rem;
+		}
+
 		.cards {
 			flex-direction: column;
 			align-items: center;
+			gap: 1.5rem;
 		}
 
 		.card {
 			width: 100%;
-			max-width: 280px;
+			max-width: 260px;
+			padding: 1.25rem;
+		}
+
+		.thumb {
+			width: 100px;
+			height: 150px;
+		}
+
+		.thumb-placeholder {
+			width: 100px;
+			height: 150px;
+		}
+
+		.card-title {
+			font-size: 0.9375rem;
+		}
+	}
+
+	/* Tablet: side-by-side with medium sizing */
+	@media (min-width: 768px) and (max-width: 1023px) {
+		.content {
+			max-width: 750px;
+		}
+
+		.title {
+			font-size: 2rem;
+		}
+
+		.card {
+			max-width: 320px;
+			padding: 1.75rem;
+		}
+
+		.card-label {
+			font-size: 0.8125rem;
+		}
+
+		.thumb {
+			width: 140px;
+			height: 210px;
+		}
+
+		.thumb-placeholder {
+			width: 140px;
+			height: 210px;
+		}
+
+		.card-title {
+			font-size: 1.0625rem;
+		}
+
+		.card-meta {
+			font-size: 0.8125rem;
+		}
+	}
+
+	/* Desktop: large cards with prominent thumbnails */
+	@media (min-width: 1024px) {
+		.content {
+			max-width: 900px;
+		}
+
+		.title {
+			font-size: 2.25rem;
+		}
+
+		.cards {
+			gap: 3rem;
+		}
+
+		.card {
+			max-width: 380px;
+			padding: 2rem;
+			border-radius: 1.25rem;
+		}
+
+		.card-label {
+			font-size: 0.875rem;
+			margin-bottom: 1.25rem;
+		}
+
+		.thumb {
+			width: 160px;
+			height: 240px;
+			border-radius: 0.625rem;
+			margin-bottom: 1.25rem;
+			box-shadow: 0 6px 30px rgba(0, 0, 0, 0.35);
+		}
+
+		.thumb-placeholder {
+			width: 160px;
+			height: 240px;
+			border-radius: 0.625rem;
+			margin-bottom: 1.25rem;
+		}
+
+		.card-title {
+			font-size: 1.125rem;
+		}
+
+		.card-meta {
+			font-size: 0.875rem;
 		}
 	}
 </style>

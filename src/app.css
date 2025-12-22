@@ -49,6 +49,12 @@
 	--slide-bar-end: oklch(0.4 0.1 25);
 	--slide-peak-start: oklch(0.7 0.2 45);
 	--slide-peak-end: oklch(0.5 0.15 40);
+
+	/* Responsive content max-widths */
+	--content-max-sm: 600px;
+	--content-max-md: 800px;
+	--content-max-lg: 900px;
+	--content-max-xl: 1100px;
 }
 
 /* Dark mode is the default - Soviet aesthetic */

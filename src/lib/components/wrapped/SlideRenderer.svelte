@@ -92,7 +92,6 @@
 		<DistributionSlide
 			watchTimeByMonth={stats.watchTimeByMonth}
 			watchTimeByHour={stats.watchTimeByHour}
-			view="monthly"
 			{active}
 			{onAnimationComplete}
 			{messagingContext}

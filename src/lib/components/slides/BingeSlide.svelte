@@ -223,4 +223,81 @@
 	.extra {
 		margin-top: 1.5rem;
 	}
+
+	/* Mobile: compact container */
+	@media (max-width: 767px) {
+		.title {
+			font-size: 1.25rem;
+		}
+
+		.stat-container {
+			padding: 1.5rem 2rem;
+		}
+
+		.plays {
+			font-size: 1.125rem;
+		}
+
+		.date {
+			font-size: 1rem;
+		}
+	}
+
+	/* Tablet: medium container */
+	@media (min-width: 768px) and (max-width: 1023px) {
+		.title {
+			font-size: 1.75rem;
+		}
+
+		.stat-container {
+			padding: 2.25rem 3.5rem;
+		}
+
+		.duration {
+			font-size: clamp(2.75rem, 9vw, 4.5rem);
+		}
+
+		.plays {
+			font-size: 1.375rem;
+		}
+
+		.date {
+			font-size: 1.25rem;
+		}
+
+		.time-range {
+			font-size: 1rem;
+		}
+	}
+
+	/* Desktop: large container */
+	@media (min-width: 1024px) {
+		.title {
+			font-size: 2rem;
+		}
+
+		.stat-container {
+			padding: 3rem 5rem;
+			border-radius: 1.25rem;
+			border-width: 3px;
+		}
+
+		.duration {
+			font-size: clamp(3rem, 10vw, 5rem);
+		}
+
+		.plays {
+			font-size: 1.5rem;
+			margin-top: 0.75rem;
+		}
+
+		.date {
+			font-size: 1.375rem;
+		}
+
+		.time-range {
+			font-size: 1.125rem;
+			margin-top: 0.375rem;
+		}
+	}
 </style>

@@ -74,9 +74,24 @@
 		background: linear-gradient(135deg, var(--slide-dark-start) 0%, var(--slide-dark-end) 100%);
 	}
 
-	@media (max-width: 768px) {
+	/* Mobile: compact padding */
+	@media (max-width: 767px) {
 		.slide {
 			padding: 1rem;
+		}
+	}
+
+	/* Tablet: medium padding */
+	@media (min-width: 768px) {
+		.slide {
+			padding: 2rem;
+		}
+	}
+
+	/* Desktop: generous padding */
+	@media (min-width: 1024px) {
+		.slide {
+			padding: 3rem;
 		}
 	}
 </style>

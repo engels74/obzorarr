@@ -12,6 +12,8 @@
 	 *
 	 * Displays watch time distribution by month or hour with bar charts.
 	 * Shows data labels on bars and detailed tooltips on hover.
+	 * On desktop/tablet (>=768px), shows both monthly and hourly side-by-side.
+	 * On mobile (<768px), shows single chart with toggle.
 	 *
 	 * Implements Requirement 5.6 (Motion One animations with $effect cleanup)
 	 */
@@ -23,13 +25,44 @@
 	let {
 		watchTimeByMonth,
 		watchTimeByHour,
-		view = 'monthly',
+		view = 'both',
 		active = true,
 		onAnimationComplete,
 		class: klass = '',
 		children,
 		messagingContext = createPersonalContext()
 	}: Props = $props();
+
+	// Viewport detection for responsive dual-view
+	let isDesktopViewport = $state(false);
+
+	$effect(() => {
+		if (typeof window === 'undefined') return;
+
+		const mediaQuery = window.matchMedia('(min-width: 768px)');
+		isDesktopViewport = mediaQuery.matches;
+
+		const handleChange = (e: MediaQueryListEvent) => {
+			isDesktopViewport = e.matches;
+		};
+
+		mediaQuery.addEventListener('change', handleChange);
+		return () => mediaQuery.removeEventListener('change', handleChange);
+	});
+
+	// Mobile toggle state - explicit type annotation for union type
+	type MobileViewType = 'monthly' | 'hourly';
+	let mobileView: MobileViewType = $state<MobileViewType>('monthly');
+
+	// Derive whether we have data for both views
+	const hasMonthlyData = $derived(watchTimeByMonth.minutes.some((m) => m > 0));
+	const hasHourlyData = $derived(watchTimeByHour.minutes.some((m) => m > 0));
+	const hasBothData = $derived(hasMonthlyData && hasHourlyData);
+
+	// Show dual view on tablet/desktop when both datasets have data
+	const showDualView = $derived(
+		isDesktopViewport && hasBothData && view !== 'monthly' && view !== 'hourly'
+	);
 
 	// Get messaging helpers
 	const subject = $derived(getSubject(messagingContext));
@@ -92,68 +125,134 @@
 		}))
 	);
 
-	// Active dataset based on view
-	const activeData = $derived(view === 'hourly' ? hourlyData : monthlyData);
-	const title = $derived(
-		view === 'hourly' ? `When ${subject} Watch` : `${possessive} Year in Months`
+	// Active dataset based on mobile view selection
+	const activeData = $derived(mobileView === 'hourly' ? hourlyData : monthlyData);
+	const mobileTitle = $derived(
+		mobileView === 'hourly' ? `When ${subject} Watch` : `${possessive} Year in Months`
 	);
 
-	// Find peak
-	const peakIndex = $derived(
-		activeData.reduce((maxIdx, curr, idx, arr) => {
+	// Find peaks for each dataset (independent peak highlighting)
+	const monthlyPeakIndex = $derived(
+		monthlyData.reduce((maxIdx, curr, idx, arr) => {
 			const maxItem = arr[maxIdx];
 			return maxItem && curr.minutes > maxItem.minutes ? idx : maxIdx;
 		}, 0)
 	);
 
+	const hourlyPeakIndex = $derived(
+		hourlyData.reduce((maxIdx, curr, idx, arr) => {
+			const maxItem = arr[maxIdx];
+			return maxItem && curr.minutes > maxItem.minutes ? idx : maxIdx;
+		}, 0)
+	);
+
+	// For mobile single view
+	const activePeakIndex = $derived(mobileView === 'hourly' ? hourlyPeakIndex : monthlyPeakIndex);
+
 	// Element references
 	let container: HTMLElement | undefined = $state();
-	let bars: HTMLElement[] = $state([]);
+	let monthlyBars: HTMLElement[] = $state([]);
+	let hourlyBars: HTMLElement[] = $state([]);
+	let singleViewBars: HTMLElement[] = $state([]);
 
 	// Animation effect with cleanup
 	$effect(() => {
 		if (!container || !active) return;
 
 		const shouldAnimate = !prefersReducedMotion.current;
+		const animations: { stop: () => void; finished: Promise<void> }[] = [];
 
-		if (!shouldAnimate) {
-			container.style.opacity = '1';
+		// Helper to set bars visible without animation
+		const setVisible = (bars: HTMLElement[]) => {
 			bars.forEach((el) => {
 				if (el) el.style.transform = 'scaleY(1)';
 			});
+		};
+
+		if (!shouldAnimate) {
+			container.style.opacity = '1';
+			if (showDualView) {
+				setVisible(monthlyBars);
+				setVisible(hourlyBars);
+			} else {
+				setVisible(singleViewBars);
+			}
 			onAnimationComplete?.();
 			return;
 		}
 
 		// Animate container
 		const containerAnim = animate(container, { opacity: [0, 1] }, { duration: 0.4 });
+		animations.push(containerAnim);
 
-		// Animate bars with stagger
-		const validBars = bars.filter(Boolean);
-		if (validBars.length > 0) {
-			const barsAnim = animate(
-				validBars,
-				{ transform: ['scaleY(0)', 'scaleY(1)'] },
-				{
-					type: 'spring',
-					stiffness: 150,
-					damping: 15,
-					delay: stagger(0.03, { startDelay: 0.2 })
+		if (showDualView) {
+			// Dual view: animate monthly bars first, then hourly
+			const validMonthlyBars = monthlyBars.filter(Boolean);
+			const validHourlyBars = hourlyBars.filter(Boolean);
+
+			if (validMonthlyBars.length > 0) {
+				const monthlyAnim = animate(
+					validMonthlyBars,
+					{ transform: ['scaleY(0)', 'scaleY(1)'] },
+					{
+						type: 'spring',
+						stiffness: 150,
+						damping: 15,
+						delay: stagger(0.03, { startDelay: 0.2 })
+					}
+				);
+				animations.push(monthlyAnim);
+			}
+
+			if (validHourlyBars.length > 0) {
+				const hourlyAnim = animate(
+					validHourlyBars,
+					{ transform: ['scaleY(0)', 'scaleY(1)'] },
+					{
+						type: 'spring',
+						stiffness: 150,
+						damping: 15,
+						delay: stagger(0.02, { startDelay: 0.6 }) // Start after monthly
+					}
+				);
+				animations.push(hourlyAnim);
+
+				hourlyAnim.finished.then(() => {
+					onAnimationComplete?.();
+				});
+			} else if (validMonthlyBars.length > 0) {
+				// Only monthly bars exist, wait for monthly animation to complete
+				const monthlyAnimRef = animations[1];
+				if (monthlyAnimRef) {
+					monthlyAnimRef.finished.then(() => {
+						onAnimationComplete?.();
+					});
 				}
-			);
+			}
+		} else {
+			// Single view: animate all bars
+			const validBars = singleViewBars.filter(Boolean);
+			if (validBars.length > 0) {
+				const barsAnim = animate(
+					validBars,
+					{ transform: ['scaleY(0)', 'scaleY(1)'] },
+					{
+						type: 'spring',
+						stiffness: 150,
+						damping: 15,
+						delay: stagger(0.03, { startDelay: 0.2 })
+					}
+				);
+				animations.push(barsAnim);
 
-			barsAnim.finished.then(() => {
-				onAnimationComplete?.();
-			});
-
-			return () => {
-				containerAnim.stop();
-				barsAnim.stop();
-			};
+				barsAnim.finished.then(() => {
+					onAnimationComplete?.();
+				});
+			}
 		}
 
 		return () => {
-			containerAnim.stop();
+			animations.forEach((a) => a.stop());
 		};
 	});
 
@@ -177,47 +276,163 @@
 </script>
 
 <BaseSlide {active} class="distribution-slide {klass}">
-	<div bind:this={container} class="content">
-		<h2 class="title">{title}</h2>
+	<div bind:this={container} class="content" class:dual-view={showDualView}>
+		{#if showDualView}
+			<!-- Desktop/Tablet: Side-by-side charts -->
+			<h2 class="title">{possessive} Viewing Patterns</h2>
 
-		<Tooltip.Provider>
-			<div class="chart-container" class:hourly={view === 'hourly'}>
-				{#each activeData as item, i}
-					<div class="bar-wrapper" class:peak={i === peakIndex}>
-						<span class="data-label" class:visible={item.minutes > 0}>
-							{item.minutes > 0 ? formatMinutes(item.minutes) : ''}
-						</span>
-						<Tooltip.Root>
-							<Tooltip.Trigger>
-								<div
-									bind:this={bars[i]}
-									class="bar"
-									style="height: {item.percentage}%"
-									role="img"
-									aria-label="{item.labelFull}: {formatMinutesDetailed(item.minutes)}, {formatPlays(
-										item.plays
-									)}"
-								></div>
-							</Tooltip.Trigger>
-							<Tooltip.Content side="top" class="tooltip-content">
-								<div class="tooltip-inner">
-									<strong class="tooltip-title">{item.labelFull}</strong>
-									<p class="tooltip-stat">{formatMinutesDetailed(item.minutes)}</p>
-									<p class="tooltip-stat">{formatPlays(item.plays)}</p>
+			<Tooltip.Provider>
+				<div class="charts-grid">
+					<!-- Monthly Chart -->
+					<div class="chart-section">
+						<h3 class="section-title">Year in Months</h3>
+						<div class="chart-container monthly">
+							{#each monthlyData as item, i}
+								<div class="bar-wrapper" class:peak={i === monthlyPeakIndex}>
+									<span class="data-label" class:visible={item.minutes > 0}>
+										{item.minutes > 0 ? formatMinutes(item.minutes) : ''}
+									</span>
+									<Tooltip.Root>
+										<Tooltip.Trigger>
+											<div
+												bind:this={monthlyBars[i]}
+												class="bar"
+												style="height: {item.percentage}%"
+												role="img"
+												aria-label="{item.labelFull}: {formatMinutesDetailed(
+													item.minutes
+												)}, {formatPlays(item.plays)}"
+											></div>
+										</Tooltip.Trigger>
+										<Tooltip.Content side="top" class="tooltip-content">
+											<div class="tooltip-inner">
+												<strong class="tooltip-title">{item.labelFull}</strong>
+												<p class="tooltip-stat">{formatMinutesDetailed(item.minutes)}</p>
+												<p class="tooltip-stat">{formatPlays(item.plays)}</p>
+											</div>
+										</Tooltip.Content>
+									</Tooltip.Root>
+									<span class="label">{item.label}</span>
 								</div>
-							</Tooltip.Content>
-						</Tooltip.Root>
-						<span class="label">{view === 'hourly' ? i : item.label}</span>
+							{/each}
+						</div>
+						{#if monthlyData[monthlyPeakIndex]}
+							<p class="peak-info">
+								Peak: <strong>{monthlyData[monthlyPeakIndex].labelFull}</strong>
+							</p>
+						{/if}
 					</div>
-				{/each}
-			</div>
-		</Tooltip.Provider>
 
-		{#if activeData[peakIndex]}
-			<p class="peak-info">
-				Peak: <strong>{activeData[peakIndex].labelFull}</strong>
-				({formatMinutesDetailed(activeData[peakIndex].minutes)})
-			</p>
+					<!-- Hourly Chart -->
+					<div class="chart-section">
+						<h3 class="section-title">When {subject} Watch</h3>
+						<div class="chart-container hourly">
+							{#each hourlyData as item, i}
+								<div class="bar-wrapper" class:peak={i === hourlyPeakIndex}>
+									<span class="data-label" class:visible={item.minutes > 0}>
+										{item.minutes > 0 ? formatMinutes(item.minutes) : ''}
+									</span>
+									<Tooltip.Root>
+										<Tooltip.Trigger>
+											<div
+												bind:this={hourlyBars[i]}
+												class="bar"
+												style="height: {item.percentage}%"
+												role="img"
+												aria-label="{item.labelFull}: {formatMinutesDetailed(
+													item.minutes
+												)}, {formatPlays(item.plays)}"
+											></div>
+										</Tooltip.Trigger>
+										<Tooltip.Content side="top" class="tooltip-content">
+											<div class="tooltip-inner">
+												<strong class="tooltip-title">{item.labelFull}</strong>
+												<p class="tooltip-stat">{formatMinutesDetailed(item.minutes)}</p>
+												<p class="tooltip-stat">{formatPlays(item.plays)}</p>
+											</div>
+										</Tooltip.Content>
+									</Tooltip.Root>
+									<span class="label">{i}</span>
+								</div>
+							{/each}
+						</div>
+						{#if hourlyData[hourlyPeakIndex]}
+							<p class="peak-info">
+								Peak: <strong>{hourlyData[hourlyPeakIndex].labelFull}</strong>
+							</p>
+						{/if}
+					</div>
+				</div>
+			</Tooltip.Provider>
+		{:else}
+			<!-- Mobile: Single chart with toggle -->
+			<div class="mobile-header">
+				<h2 class="title">{mobileTitle}</h2>
+				{#if hasBothData}
+					<div class="view-toggle" role="tablist" aria-label="Chart view selection">
+						<button
+							role="tab"
+							aria-selected={mobileView === 'monthly'}
+							class:active={mobileView === 'monthly'}
+							onclick={() => {
+								mobileView = 'monthly';
+							}}
+						>
+							Months
+						</button>
+						<button
+							role="tab"
+							aria-selected={mobileView === 'hourly'}
+							class:active={mobileView === 'hourly'}
+							onclick={() => {
+								mobileView = 'hourly';
+							}}
+						>
+							Hours
+						</button>
+					</div>
+				{/if}
+			</div>
+
+			<Tooltip.Provider>
+				<div class="chart-container" class:hourly={mobileView === 'hourly'}>
+					{#each activeData as item, i}
+						<div class="bar-wrapper" class:peak={i === activePeakIndex}>
+							<span class="data-label" class:visible={item.minutes > 0}>
+								{item.minutes > 0 ? formatMinutes(item.minutes) : ''}
+							</span>
+							<Tooltip.Root>
+								<Tooltip.Trigger>
+									<div
+										bind:this={singleViewBars[i]}
+										class="bar"
+										style="height: {item.percentage}%"
+										role="img"
+										aria-label="{item.labelFull}: {formatMinutesDetailed(
+											item.minutes
+										)}, {formatPlays(item.plays)}"
+									></div>
+								</Tooltip.Trigger>
+								<Tooltip.Content side="top" class="tooltip-content">
+									<div class="tooltip-inner">
+										<strong class="tooltip-title">{item.labelFull}</strong>
+										<p class="tooltip-stat">{formatMinutesDetailed(item.minutes)}</p>
+										<p class="tooltip-stat">{formatPlays(item.plays)}</p>
+									</div>
+								</Tooltip.Content>
+							</Tooltip.Root>
+							<span class="label">{mobileView === 'hourly' ? i : item.label}</span>
+						</div>
+					{/each}
+				</div>
+			</Tooltip.Provider>
+
+			{#if activeData[activePeakIndex]}
+				<p class="peak-info">
+					Peak: <strong>{activeData[activePeakIndex].labelFull}</strong>
+					({formatMinutesDetailed(activeData[activePeakIndex].minutes)})
+				</p>
+			{/if}
 		{/if}
 
 		{#if children}
@@ -394,7 +609,112 @@
 		margin: 0;
 	}
 
-	@media (max-width: 768px) {
+	/* ==========================================================================
+	   Dual-view styles (tablet/desktop side-by-side charts)
+	   ========================================================================== */
+
+	.content.dual-view {
+		max-width: var(--content-max-xl, 1100px);
+	}
+
+	.charts-grid {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 2rem;
+		width: 100%;
+	}
+
+	.chart-section {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.75rem;
+	}
+
+	.section-title {
+		font-size: 1rem;
+		font-weight: 600;
+		color: hsl(var(--muted-foreground));
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+	}
+
+	/* Dual-view chart adjustments */
+	.dual-view .chart-container {
+		height: 160px;
+	}
+
+	.dual-view .monthly {
+		gap: 0.2rem;
+	}
+
+	.dual-view .monthly .bar-wrapper {
+		max-width: 35px;
+	}
+
+	.dual-view .hourly {
+		gap: 0.1rem;
+	}
+
+	.dual-view .hourly .bar-wrapper {
+		max-width: 16px;
+	}
+
+	.dual-view .peak-info {
+		font-size: 0.875rem;
+	}
+
+	/* ==========================================================================
+	   Mobile-only styles (single chart with toggle)
+	   ========================================================================== */
+
+	.mobile-header {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.75rem;
+	}
+
+	.view-toggle {
+		display: flex;
+		gap: 0.25rem;
+		background: hsl(var(--muted) / 0.3);
+		padding: 0.25rem;
+		border-radius: 0.5rem;
+	}
+
+	.view-toggle button {
+		padding: 0.375rem 0.75rem;
+		border: none;
+		background: transparent;
+		color: hsl(var(--muted-foreground));
+		font-size: 0.75rem;
+		font-weight: 500;
+		border-radius: 0.375rem;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.view-toggle button:hover {
+		color: hsl(var(--foreground));
+	}
+
+	.view-toggle button.active {
+		background: hsl(var(--primary));
+		color: hsl(var(--primary-foreground));
+	}
+
+	.view-toggle button:focus-visible {
+		outline: 2px solid hsl(var(--primary) / 0.5);
+		outline-offset: 2px;
+	}
+
+	/* ==========================================================================
+	   Responsive breakpoints
+	   ========================================================================== */
+
+	/* Mobile: compact layout */
+	@media (max-width: 767px) {
 		.chart-container {
 			height: 150px;
 		}
@@ -417,6 +737,52 @@
 
 		.hourly .data-label {
 			display: none;
+		}
+	}
+
+	/* Tablet: stacked dual-view with larger charts */
+	@media (min-width: 768px) {
+		.charts-grid {
+			grid-template-columns: 1fr;
+			gap: 2.5rem;
+		}
+
+		.dual-view .chart-container {
+			height: 180px;
+			max-width: 600px;
+		}
+
+		.dual-view .monthly .bar-wrapper {
+			max-width: 40px;
+		}
+
+		.dual-view .hourly .bar-wrapper {
+			max-width: 20px;
+		}
+	}
+
+	/* Desktop: side-by-side dual-view */
+	@media (min-width: 1024px) {
+		.charts-grid {
+			grid-template-columns: repeat(2, 1fr);
+			gap: 3rem;
+		}
+
+		.dual-view .chart-container {
+			height: 180px;
+			max-width: none;
+		}
+
+		.dual-view .monthly .bar-wrapper {
+			max-width: 35px;
+		}
+
+		.dual-view .hourly .bar-wrapper {
+			max-width: 16px;
+		}
+
+		.section-title {
+			font-size: 1.125rem;
 		}
 	}
 </style>

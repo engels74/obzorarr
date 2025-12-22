@@ -512,8 +512,8 @@
 		height: 1.25rem;
 	}
 
-	/* Mobile optimizations */
-	@media (max-width: 768px) {
+	/* Mobile: compact layout */
+	@media (max-width: 767px) {
 		.slide {
 			padding: 2rem 1rem;
 			padding-top: 3rem;
@@ -534,6 +534,32 @@
 		.close-button svg {
 			width: 1rem;
 			height: 1rem;
+		}
+	}
+
+	/* Tablet: medium layout */
+	@media (min-width: 768px) {
+		.slide {
+			padding: 3rem 2rem;
+			padding-top: 4rem;
+		}
+	}
+
+	/* Desktop: generous layout */
+	@media (min-width: 1024px) {
+		.slide {
+			padding: 4rem 3rem;
+			padding-top: 4.5rem;
+		}
+
+		.close-button {
+			width: 2.75rem;
+			height: 2.75rem;
+		}
+
+		.close-button svg {
+			width: 1.5rem;
+			height: 1.5rem;
 		}
 	}
 
