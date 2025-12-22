@@ -88,45 +88,53 @@ export async function createSession(options: CreateSessionOptions): Promise<stri
  * ```
  */
 export async function validateSession(sessionId: string): Promise<SessionData | null> {
-	const now = new Date();
+	try {
+		const now = new Date();
 
-	// Query session with user join
-	const result = await db
-		.select({
-			sessionId: sessions.id,
-			userId: sessions.userId,
-			isAdmin: sessions.isAdmin,
-			expiresAt: sessions.expiresAt,
-			plexId: users.plexId,
-			username: users.username
-		})
-		.from(sessions)
-		.innerJoin(users, eq(sessions.userId, users.id))
-		.where(eq(sessions.id, sessionId))
-		.limit(1);
+		// Query session with user join
+		const result = await db
+			.select({
+				sessionId: sessions.id,
+				userId: sessions.userId,
+				isAdmin: sessions.isAdmin,
+				expiresAt: sessions.expiresAt,
+				plexId: users.plexId,
+				username: users.username
+			})
+			.from(sessions)
+			.innerJoin(users, eq(sessions.userId, users.id))
+			.where(eq(sessions.id, sessionId))
+			.limit(1);
 
-	const session = result[0];
+		const session = result[0];
 
-	// Check if session exists
-	if (!session) {
+		// Check if session exists
+		if (!session) {
+			return null;
+		}
+
+		// Check if session has expired
+		if (session.expiresAt < now) {
+			// Clean up expired session
+			await invalidateSession(sessionId);
+			return null;
+		}
+
+		return {
+			id: session.sessionId,
+			userId: session.userId,
+			plexId: session.plexId,
+			username: session.username,
+			isAdmin: session.isAdmin ?? false,
+			expiresAt: session.expiresAt
+		};
+	} catch (error) {
+		// Log the error for debugging - this helps diagnose database initialization issues
+		console.error('[Session] Database error during validation:', error);
+		// Return null to treat as unauthenticated (graceful degradation)
+		// This prevents silent 500 errors when the database is not ready
 		return null;
 	}
-
-	// Check if session has expired
-	if (session.expiresAt < now) {
-		// Clean up expired session
-		await invalidateSession(sessionId);
-		return null;
-	}
-
-	return {
-		id: session.sessionId,
-		userId: session.userId,
-		plexId: session.plexId,
-		username: session.username,
-		isAdmin: session.isAdmin ?? false,
-		expiresAt: session.expiresAt
-	};
 }
 
 // =============================================================================
