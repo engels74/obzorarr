@@ -318,7 +318,7 @@
 
 	.bar {
 		width: 100%;
-		background: linear-gradient(180deg, hsl(var(--primary)), oklch(0.4 0.1 25));
+		background: linear-gradient(180deg, hsl(var(--primary)), var(--slide-bar-end));
 		border-radius: 2px 2px 0 0;
 		transform-origin: bottom center;
 		min-height: 4px;
@@ -336,11 +336,11 @@
 	}
 
 	.peak .bar {
-		background: linear-gradient(180deg, oklch(0.7 0.2 60), oklch(0.5 0.15 50));
+		background: linear-gradient(180deg, var(--slide-peak-start), var(--slide-peak-end));
 	}
 
 	.peak .bar:hover {
-		box-shadow: 0 0 12px oklch(0.7 0.2 60 / 0.5);
+		box-shadow: 0 0 12px color-mix(in oklch, var(--slide-peak-start) 50%, transparent);
 	}
 
 	.label {

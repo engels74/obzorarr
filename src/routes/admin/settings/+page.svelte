@@ -27,7 +27,8 @@
 	let openaiModel = $state('');
 	let showPlexToken = $state(false);
 	let showOpenaiKey = $state(false);
-	let selectedTheme = $state('');
+	let selectedUITheme = $state('');
+	let selectedWrappedTheme = $state('');
 	let selectedAnonymization = $state('');
 	let selectedWrappedLogoMode = $state('');
 	let isTesting = $state(false);
@@ -56,7 +57,8 @@
 		openaiApiKeySource = data.settings.openaiApiKey.source;
 		openaiBaseUrlSource = data.settings.openaiBaseUrl.source;
 		openaiModelSource = data.settings.openaiModel.source;
-		selectedTheme = data.currentTheme;
+		selectedUITheme = data.uiTheme;
+		selectedWrappedTheme = data.wrappedTheme;
 		selectedAnonymization = data.anonymizationMode;
 		selectedWrappedLogoMode = data.wrappedLogoMode;
 		logRetentionDays = data.logSettings.retentionDays;
@@ -328,16 +330,18 @@
 		</form>
 	</section>
 
-	<!-- Theme Section -->
+	<!-- UI Theme Section -->
 	<section class="section">
-		<h2>Theme</h2>
-		<p class="section-description">Select a color theme for all wrapped pages.</p>
+		<h2>UI Theme</h2>
+		<p class="section-description">
+			Select a color theme for the dashboard, admin pages, and all non-wrapped pages.
+		</p>
 
-		<form method="POST" action="?/updateTheme" use:enhance class="theme-form">
+		<form method="POST" action="?/updateUITheme" use:enhance class="theme-form">
 			<div class="theme-options">
 				{#each data.themeOptions as theme}
-					<label class="theme-option" class:selected={selectedTheme === theme.value}>
-						<input type="radio" name="theme" value={theme.value} bind:group={selectedTheme} />
+					<label class="theme-option" class:selected={selectedUITheme === theme.value}>
+						<input type="radio" name="theme" value={theme.value} bind:group={selectedUITheme} />
 						<span class="theme-preview {theme.value}"></span>
 						<span class="theme-label">{themeLabels[theme.value] ?? theme.label}</span>
 					</label>
@@ -345,7 +349,36 @@
 			</div>
 
 			<div class="form-actions">
-				<button type="submit" class="save-button">Save Theme</button>
+				<button type="submit" class="save-button">Save UI Theme</button>
+			</div>
+		</form>
+	</section>
+
+	<!-- Wrapped Theme Section -->
+	<section class="section">
+		<h2>Wrapped Theme</h2>
+		<p class="section-description">
+			Select a color theme for the Year in Review slideshow pages (/wrapped/*).
+		</p>
+
+		<form method="POST" action="?/updateWrappedTheme" use:enhance class="theme-form">
+			<div class="theme-options">
+				{#each data.themeOptions as theme}
+					<label class="theme-option" class:selected={selectedWrappedTheme === theme.value}>
+						<input
+							type="radio"
+							name="theme"
+							value={theme.value}
+							bind:group={selectedWrappedTheme}
+						/>
+						<span class="theme-preview {theme.value}"></span>
+						<span class="theme-label">{themeLabels[theme.value] ?? theme.label}</span>
+					</label>
+				{/each}
+			</div>
+
+			<div class="form-actions">
+				<button type="submit" class="save-button">Save Wrapped Theme</button>
 			</div>
 		</form>
 	</section>

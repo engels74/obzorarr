@@ -40,6 +40,15 @@
 	--ring: 0 84% 40%;
 
 	--radius: 0.5rem;
+
+	/* Default slide gradient colors (Soviet Red hue ~25) */
+	--slide-bg-start: oklch(0.25 0.08 25);
+	--slide-bg-end: oklch(0.15 0.05 25);
+	--slide-dark-start: oklch(0.12 0.01 25);
+	--slide-dark-end: oklch(0.08 0 25);
+	--slide-bar-end: oklch(0.4 0.1 25);
+	--slide-peak-start: oklch(0.7 0.2 45);
+	--slide-peak-end: oklch(0.5 0.15 40);
 }
 
 /* Dark mode is the default - Soviet aesthetic */
@@ -71,6 +80,112 @@
 	--border: 0 0% 20%;
 	--input: 0 0% 20%;
 	--ring: 0 84% 40%;
+}
+
+/* =============================================================================
+   Theme Presets
+   Each theme overrides the primary, accent, and related CSS variables.
+   Apply via class on <html> element: theme-soviet-red, theme-midnight-blue, etc.
+   ============================================================================= */
+
+/* Theme: Soviet Red (default) */
+.theme-soviet-red {
+	--primary: 0 100% 40%;
+	--primary-foreground: 0 0% 100%;
+	--accent: 51 100% 50%;
+	--accent-foreground: 0 0% 5%;
+	--ring: 0 100% 40%;
+	--destructive: 0 62% 30%;
+
+	/* Slide gradient colors (red hue ~25) */
+	--slide-bg-start: oklch(0.25 0.08 25);
+	--slide-bg-end: oklch(0.15 0.05 25);
+	--slide-dark-start: oklch(0.12 0.01 25);
+	--slide-dark-end: oklch(0.08 0 25);
+	--slide-bar-end: oklch(0.4 0.1 25);
+	--slide-peak-start: oklch(0.7 0.2 45);
+	--slide-peak-end: oklch(0.5 0.15 40);
+}
+
+/* Theme: Midnight Blue */
+.theme-midnight-blue {
+	--primary: 210 52% 25%;
+	--primary-foreground: 0 0% 100%;
+	--accent: 45 100% 55%;
+	--accent-foreground: 0 0% 5%;
+	--ring: 210 52% 25%;
+	--destructive: 0 62% 30%;
+
+	/* Subtle background tint for blue theme */
+	--card: 215 20% 10%;
+	--popover: 215 20% 10%;
+	--secondary: 215 15% 18%;
+	--muted: 215 15% 18%;
+	--border: 215 15% 25%;
+	--input: 215 15% 25%;
+
+	/* Slide gradient colors (blue hue ~220) */
+	--slide-bg-start: oklch(0.25 0.08 220);
+	--slide-bg-end: oklch(0.15 0.05 220);
+	--slide-dark-start: oklch(0.12 0.01 220);
+	--slide-dark-end: oklch(0.08 0 220);
+	--slide-bar-end: oklch(0.4 0.1 220);
+	--slide-peak-start: oklch(0.7 0.2 180);
+	--slide-peak-end: oklch(0.5 0.15 175);
+}
+
+/* Theme: Forest Green */
+.theme-forest-green {
+	--primary: 120 61% 34%;
+	--primary-foreground: 0 0% 100%;
+	--accent: 45 100% 50%;
+	--accent-foreground: 0 0% 5%;
+	--ring: 120 61% 34%;
+	--destructive: 0 62% 30%;
+
+	/* Subtle background tint for green theme */
+	--card: 120 10% 10%;
+	--popover: 120 10% 10%;
+	--secondary: 120 10% 18%;
+	--muted: 120 10% 18%;
+	--border: 120 10% 25%;
+	--input: 120 10% 25%;
+
+	/* Slide gradient colors (green hue ~140) */
+	--slide-bg-start: oklch(0.25 0.08 140);
+	--slide-bg-end: oklch(0.15 0.05 140);
+	--slide-dark-start: oklch(0.12 0.01 140);
+	--slide-dark-end: oklch(0.08 0 140);
+	--slide-bar-end: oklch(0.4 0.1 140);
+	--slide-peak-start: oklch(0.7 0.2 90);
+	--slide-peak-end: oklch(0.5 0.15 85);
+}
+
+/* Theme: Royal Purple */
+.theme-royal-purple {
+	--primary: 268 43% 44%;
+	--primary-foreground: 0 0% 100%;
+	--accent: 45 100% 55%;
+	--accent-foreground: 0 0% 5%;
+	--ring: 268 43% 44%;
+	--destructive: 0 62% 30%;
+
+	/* Subtle background tint for purple theme */
+	--card: 268 15% 10%;
+	--popover: 268 15% 10%;
+	--secondary: 268 12% 18%;
+	--muted: 268 12% 18%;
+	--border: 268 12% 25%;
+	--input: 268 12% 25%;
+
+	/* Slide gradient colors (purple hue ~280) */
+	--slide-bg-start: oklch(0.25 0.08 280);
+	--slide-bg-end: oklch(0.15 0.05 280);
+	--slide-dark-start: oklch(0.12 0.01 280);
+	--slide-dark-end: oklch(0.08 0 280);
+	--slide-bar-end: oklch(0.4 0.1 280);
+	--slide-peak-start: oklch(0.7 0.2 320);
+	--slide-peak-end: oklch(0.5 0.15 315);
 }
 
 /* Base reset and styles */

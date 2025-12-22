@@ -64,14 +64,14 @@
 		position: absolute;
 	}
 
-	/* Highlight variant - Soviet red accent */
+	/* Highlight variant - themed accent */
 	.variant-highlight {
-		background: linear-gradient(135deg, oklch(0.25 0.08 25) 0%, oklch(0.15 0.05 25) 100%);
+		background: linear-gradient(135deg, var(--slide-bg-start) 0%, var(--slide-bg-end) 100%);
 	}
 
 	/* Dark variant */
 	.variant-dark {
-		background: linear-gradient(135deg, oklch(0.12 0.01 25) 0%, oklch(0.08 0 25) 100%);
+		background: linear-gradient(135deg, var(--slide-dark-start) 0%, var(--slide-dark-end) 100%);
 	}
 
 	@media (max-width: 768px) {

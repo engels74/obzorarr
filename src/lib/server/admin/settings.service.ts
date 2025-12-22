@@ -31,6 +31,9 @@ export const AppSettingsKey = {
 	OPENAI_MODEL: 'openai_model',
 
 	// Theme
+	UI_THEME: 'ui_theme',
+	WRAPPED_THEME: 'wrapped_theme',
+	/** @deprecated Use WRAPPED_THEME instead - kept for backward compatibility */
 	CURRENT_THEME: 'current_theme',
 
 	// Year/Archive
@@ -172,12 +175,12 @@ export async function getAllAppSettings(): Promise<Record<string, string>> {
 // =============================================================================
 
 /**
- * Get the current theme preset
+ * Get the UI theme preset (for dashboard, admin, and all non-wrapped pages)
  *
- * @returns The current theme or default (soviet-red)
+ * @returns The UI theme or default (soviet-red)
  */
-export async function getCurrentTheme(): Promise<ThemePresetType> {
-	const theme = await getAppSetting(AppSettingsKey.CURRENT_THEME);
+export async function getUITheme(): Promise<ThemePresetType> {
+	const theme = await getAppSetting(AppSettingsKey.UI_THEME);
 	if (theme && Object.values(ThemePresets).includes(theme as ThemePresetType)) {
 		return theme as ThemePresetType;
 	}
@@ -185,12 +188,64 @@ export async function getCurrentTheme(): Promise<ThemePresetType> {
 }
 
 /**
- * Set the current theme preset
+ * Set the UI theme preset
  *
  * @param theme - The theme preset to set
  */
+export async function setUITheme(theme: ThemePresetType): Promise<void> {
+	await setAppSetting(AppSettingsKey.UI_THEME, theme);
+}
+
+/**
+ * Get the wrapped theme preset (for /wrapped/* slideshow pages)
+ *
+ * Falls back to legacy CURRENT_THEME for backward compatibility.
+ *
+ * @returns The wrapped theme or default (soviet-red)
+ */
+export async function getWrappedTheme(): Promise<ThemePresetType> {
+	// First try the new WRAPPED_THEME key
+	const theme = await getAppSetting(AppSettingsKey.WRAPPED_THEME);
+	if (theme && Object.values(ThemePresets).includes(theme as ThemePresetType)) {
+		return theme as ThemePresetType;
+	}
+
+	// Fall back to legacy CURRENT_THEME for backward compatibility
+	const legacyTheme = await getAppSetting(AppSettingsKey.CURRENT_THEME);
+	if (legacyTheme && Object.values(ThemePresets).includes(legacyTheme as ThemePresetType)) {
+		return legacyTheme as ThemePresetType;
+	}
+
+	return ThemePresets.SOVIET_RED;
+}
+
+/**
+ * Set the wrapped theme preset
+ *
+ * @param theme - The theme preset to set
+ */
+export async function setWrappedTheme(theme: ThemePresetType): Promise<void> {
+	await setAppSetting(AppSettingsKey.WRAPPED_THEME, theme);
+}
+
+/**
+ * Get the current theme preset
+ *
+ * @deprecated Use getWrappedTheme() instead
+ * @returns The current theme or default (soviet-red)
+ */
+export async function getCurrentTheme(): Promise<ThemePresetType> {
+	return getWrappedTheme();
+}
+
+/**
+ * Set the current theme preset
+ *
+ * @deprecated Use setWrappedTheme() instead
+ * @param theme - The theme preset to set
+ */
 export async function setCurrentTheme(theme: ThemePresetType): Promise<void> {
-	await setAppSetting(AppSettingsKey.CURRENT_THEME, theme);
+	await setWrappedTheme(theme);
 }
 
 /**

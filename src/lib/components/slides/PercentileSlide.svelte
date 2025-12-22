@@ -164,8 +164,8 @@
 	}
 
 	.top-performer {
-		border-color: oklch(0.7 0.2 60);
-		box-shadow: 0 0 40px rgba(255, 215, 0, 0.3);
+		border-color: var(--slide-peak-start);
+		box-shadow: 0 0 40px color-mix(in oklch, var(--slide-peak-start) 30%, transparent);
 	}
 
 	.prefix {
@@ -181,7 +181,7 @@
 	}
 
 	.top-performer .percentage {
-		color: oklch(0.7 0.2 60);
+		color: var(--slide-peak-start);
 	}
 
 	.message {

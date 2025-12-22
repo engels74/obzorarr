@@ -3,8 +3,10 @@ import { z } from 'zod';
 import type { PageServerLoad, Actions } from './$types';
 import {
 	setAppSetting,
-	getCurrentTheme,
-	setCurrentTheme,
+	getUITheme,
+	setUITheme,
+	getWrappedTheme,
+	setWrappedTheme,
 	getAnonymizationMode,
 	setAnonymizationMode,
 	getWrappedLogoMode,
@@ -84,7 +86,8 @@ interface SettingValue {
 export const load: PageServerLoad = async () => {
 	const [
 		apiConfig,
-		currentTheme,
+		uiTheme,
+		wrappedTheme,
 		anonymizationMode,
 		wrappedLogoMode,
 		availableYears,
@@ -93,7 +96,8 @@ export const load: PageServerLoad = async () => {
 		logDebugEnabled
 	] = await Promise.all([
 		getApiConfigWithSources(),
-		getCurrentTheme(),
+		getUITheme(),
+		getWrappedTheme(),
 		getAnonymizationMode(),
 		getWrappedLogoMode(),
 		getAvailableYears(),
@@ -112,7 +116,8 @@ export const load: PageServerLoad = async () => {
 			openaiBaseUrl: apiConfig.openai.baseUrl as SettingValue,
 			openaiModel: apiConfig.openai.model as SettingValue
 		},
-		currentTheme,
+		uiTheme,
+		wrappedTheme,
 		anonymizationMode,
 		wrappedLogoMode,
 		themeOptions: Object.entries(ThemePresets).map(([key, value]) => ({
@@ -236,9 +241,9 @@ export const actions: Actions = {
 	},
 
 	/**
-	 * Update theme
+	 * Update UI theme (dashboard, admin, all non-wrapped pages)
 	 */
-	updateTheme: async ({ request }) => {
+	updateUITheme: async ({ request }) => {
 		const formData = await request.formData();
 		const theme = formData.get('theme');
 
@@ -248,10 +253,31 @@ export const actions: Actions = {
 		}
 
 		try {
-			await setCurrentTheme(parsed.data as ThemePresetType);
-			return { success: true, message: 'Theme updated' };
+			await setUITheme(parsed.data as ThemePresetType);
+			return { success: true, message: 'UI theme updated' };
 		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Failed to update theme';
+			const message = error instanceof Error ? error.message : 'Failed to update UI theme';
+			return fail(500, { error: message });
+		}
+	},
+
+	/**
+	 * Update wrapped theme (/wrapped/* slideshow pages)
+	 */
+	updateWrappedTheme: async ({ request }) => {
+		const formData = await request.formData();
+		const theme = formData.get('theme');
+
+		const parsed = ThemeSchema.safeParse(theme);
+		if (!parsed.success) {
+			return fail(400, { error: 'Invalid theme selection' });
+		}
+
+		try {
+			await setWrappedTheme(parsed.data as ThemePresetType);
+			return { success: true, message: 'Wrapped theme updated' };
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to update wrapped theme';
 			return fail(500, { error: message });
 		}
 	},
