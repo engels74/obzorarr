@@ -380,15 +380,31 @@ describe('Distribution Calculators', () => {
 
 			const result = calculateMonthlyDistribution(records);
 
-			expect(result[0]).toBe(60); // January
-			expect(result[6]).toBe(30); // July
-			expect(result.reduce((a, b) => a + b, 0)).toBe(90); // Total
+			expect(result.minutes[0]).toBe(60); // January
+			expect(result.minutes[6]).toBe(30); // July
+			expect(result.minutes.reduce((a, b) => a + b, 0)).toBe(90); // Total
 		});
 
 		it('returns 12 buckets for empty array', () => {
 			const result = calculateMonthlyDistribution([]);
-			expect(result.length).toBe(12);
-			expect(result.every((v) => v === 0)).toBe(true);
+			expect(result.minutes.length).toBe(12);
+			expect(result.plays.length).toBe(12);
+			expect(result.minutes.every((v) => v === 0)).toBe(true);
+			expect(result.plays.every((v) => v === 0)).toBe(true);
+		});
+
+		it('counts plays per month', () => {
+			const records = [
+				createRecord({ viewedAt: 1704067200, duration: 3600 }), // Jan 2024
+				createRecord({ id: 2, historyKey: 'key-2', viewedAt: 1704153600, duration: 1800 }), // Jan 2024 (next day)
+				createRecord({ id: 3, historyKey: 'key-3', viewedAt: 1719792000, duration: 1800 }) // July 2024
+			];
+
+			const result = calculateMonthlyDistribution(records);
+
+			expect(result.plays[0]).toBe(2); // January - 2 plays
+			expect(result.plays[6]).toBe(1); // July - 1 play
+			expect(result.plays.reduce((a, b) => a + b, 0)).toBe(3); // Total plays
 		});
 	});
 
@@ -401,15 +417,31 @@ describe('Distribution Calculators', () => {
 
 			const result = calculateHourlyDistribution(records);
 
-			expect(result[0]).toBe(60); // Midnight
-			expect(result[12]).toBe(30); // Noon
-			expect(result.reduce((a, b) => a + b, 0)).toBe(90); // Total
+			expect(result.minutes[0]).toBe(60); // Midnight
+			expect(result.minutes[12]).toBe(30); // Noon
+			expect(result.minutes.reduce((a, b) => a + b, 0)).toBe(90); // Total
 		});
 
 		it('returns 24 buckets for empty array', () => {
 			const result = calculateHourlyDistribution([]);
-			expect(result.length).toBe(24);
-			expect(result.every((v) => v === 0)).toBe(true);
+			expect(result.minutes.length).toBe(24);
+			expect(result.plays.length).toBe(24);
+			expect(result.minutes.every((v) => v === 0)).toBe(true);
+			expect(result.plays.every((v) => v === 0)).toBe(true);
+		});
+
+		it('counts plays per hour', () => {
+			const records = [
+				createRecord({ viewedAt: 1704067200, duration: 3600 }), // 00:00 UTC
+				createRecord({ id: 2, historyKey: 'key-2', viewedAt: 1704067260, duration: 1800 }), // 00:01 UTC (same hour)
+				createRecord({ id: 3, historyKey: 'key-3', viewedAt: 1704110400, duration: 1800 }) // 12:00 UTC
+			];
+
+			const result = calculateHourlyDistribution(records);
+
+			expect(result.plays[0]).toBe(2); // Midnight - 2 plays
+			expect(result.plays[12]).toBe(1); // Noon - 1 play
+			expect(result.plays.reduce((a, b) => a + b, 0)).toBe(3); // Total plays
 		});
 	});
 });

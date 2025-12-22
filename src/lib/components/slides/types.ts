@@ -1,5 +1,11 @@
 import type { Snippet } from 'svelte';
-import type { RankedItem, BingeSession, WatchRecord } from '$lib/server/stats/types';
+import type {
+	RankedItem,
+	BingeSession,
+	WatchRecord,
+	MonthlyDistribution,
+	HourlyDistribution
+} from '$lib/server/stats/types';
 
 /**
  * Slide type identifiers matching slideConfig.slideType
@@ -87,8 +93,8 @@ export type DistributionView = 'monthly' | 'hourly' | 'both';
  * Props for DistributionSlide component
  */
 export interface DistributionSlideProps extends BaseSlideProps {
-	watchTimeByMonth: number[]; // Length: 12
-	watchTimeByHour: number[]; // Length: 24
+	watchTimeByMonth: MonthlyDistribution;
+	watchTimeByHour: HourlyDistribution;
 	/** Which distribution to show */
 	view?: DistributionView;
 }

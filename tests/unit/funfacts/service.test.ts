@@ -54,10 +54,18 @@ function createMockUserStats(overrides: Partial<UserStats> = {}): UserStats {
 			{ rank: 2, title: 'The Office', count: 30, thumb: null }
 		],
 		topGenres: [],
-		watchTimeByMonth: [500, 400, 600, 500, 400, 300, 800, 600, 500, 400, 500, 500],
-		watchTimeByHour: Array(24)
-			.fill(0)
-			.map((_, i) => (i >= 19 && i <= 23 ? 500 : 100)),
+		watchTimeByMonth: {
+			minutes: [500, 400, 600, 500, 400, 300, 800, 600, 500, 400, 500, 500],
+			plays: [10, 8, 12, 10, 8, 6, 16, 12, 10, 8, 10, 10]
+		},
+		watchTimeByHour: {
+			minutes: Array(24)
+				.fill(0)
+				.map((_, i) => (i >= 19 && i <= 23 ? 500 : 100)),
+			plays: Array(24)
+				.fill(0)
+				.map((_, i) => (i >= 19 && i <= 23 ? 10 : 2))
+		},
 		percentileRank: 85,
 		longestBinge: {
 			startTime: 1704067200,
@@ -80,8 +88,8 @@ function createMockServerStats(overrides: Partial<ServerStats> = {}): ServerStat
 		topMovies: [{ rank: 1, title: 'Popular Movie', count: 50, thumb: null }],
 		topShows: [{ rank: 1, title: 'Popular Show', count: 500, thumb: null }],
 		topGenres: [],
-		watchTimeByMonth: Array(12).fill(5000),
-		watchTimeByHour: Array(24).fill(2500),
+		watchTimeByMonth: { minutes: Array(12).fill(5000), plays: Array(12).fill(100) },
+		watchTimeByHour: { minutes: Array(24).fill(2500), plays: Array(24).fill(50) },
 		topViewers: [{ rank: 1, userId: 1, username: 'TopUser', totalMinutes: 10000 }],
 		longestBinge: {
 			startTime: 1704067200,
@@ -149,18 +157,22 @@ describe('buildGenerationContext', () => {
 	});
 
 	it('calculates peak hour correctly', () => {
-		const watchTimeByHour = Array(24).fill(0);
-		watchTimeByHour[22] = 1000; // 10 PM peak
-		const stats = createMockUserStats({ watchTimeByHour });
+		const minutes = Array(24).fill(0);
+		minutes[22] = 1000; // 10 PM peak
+		const stats = createMockUserStats({
+			watchTimeByHour: { minutes, plays: Array(24).fill(1) }
+		});
 		const context = buildGenerationContext(stats);
 
 		expect(context.peakHour).toBe(22);
 	});
 
 	it('calculates peak month correctly', () => {
-		const watchTimeByMonth = Array(12).fill(0);
-		watchTimeByMonth[6] = 5000; // July peak (0-indexed)
-		const stats = createMockUserStats({ watchTimeByMonth });
+		const minutes = Array(12).fill(0);
+		minutes[6] = 5000; // July peak (0-indexed)
+		const stats = createMockUserStats({
+			watchTimeByMonth: { minutes, plays: Array(12).fill(1) }
+		});
 		const context = buildGenerationContext(stats);
 
 		expect(context.peakMonth).toBe(6);
@@ -504,8 +516,8 @@ describe('generateFromTemplates', () => {
 			firstWatch: null,
 			lastWatch: null,
 			percentileRank: 0,
-			watchTimeByMonth: Array(12).fill(0),
-			watchTimeByHour: Array(24).fill(0)
+			watchTimeByMonth: { minutes: Array(12).fill(0), plays: Array(12).fill(0) },
+			watchTimeByHour: { minutes: Array(24).fill(0), plays: Array(24).fill(0) }
 		});
 		const context = buildGenerationContext(stats);
 

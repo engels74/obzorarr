@@ -81,10 +81,14 @@ export function buildGenerationContext(stats: UserStats | ServerStats): FactGene
 	const days = Math.round((hours / 24) * 10) / 10;
 
 	// Find peak hour (0-23)
-	const peakHour = stats.watchTimeByHour.indexOf(Math.max(...stats.watchTimeByHour));
+	const peakHour = stats.watchTimeByHour.minutes.indexOf(
+		Math.max(...stats.watchTimeByHour.minutes)
+	);
 
 	// Find peak month (0-11)
-	const peakMonth = stats.watchTimeByMonth.indexOf(Math.max(...stats.watchTimeByMonth));
+	const peakMonth = stats.watchTimeByMonth.minutes.indexOf(
+		Math.max(...stats.watchTimeByMonth.minutes)
+	);
 
 	// Count unique movies and shows
 	const uniqueMovies = stats.topMovies.length;

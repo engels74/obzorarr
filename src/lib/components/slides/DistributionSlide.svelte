@@ -5,11 +5,13 @@
 	import type { DistributionSlideProps } from './types';
 	import type { SlideMessagingContext } from './messaging-context';
 	import { getSubject, getPossessive, createPersonalContext } from './messaging-context';
+	import * as Tooltip from '$lib/components/ui/tooltip';
 
 	/**
 	 * DistributionSlide Component
 	 *
 	 * Displays watch time distribution by month or hour with bar charts.
+	 * Shows data labels on bars and detailed tooltips on hover.
 	 *
 	 * Implements Requirement 5.6 (Motion One animations with $effect cleanup)
 	 */
@@ -49,23 +51,43 @@
 		'Dec'
 	];
 
+	// Full month names for tooltips
+	const monthsFull = [
+		'January',
+		'February',
+		'March',
+		'April',
+		'May',
+		'June',
+		'July',
+		'August',
+		'September',
+		'October',
+		'November',
+		'December'
+	];
+
 	// Calculate max values for scaling
-	const maxMonthly = $derived(Math.max(...watchTimeByMonth, 1));
-	const maxHourly = $derived(Math.max(...watchTimeByHour, 1));
+	const maxMonthly = $derived(Math.max(...watchTimeByMonth.minutes, 1));
+	const maxHourly = $derived(Math.max(...watchTimeByHour.minutes, 1));
 
 	// Prepare data with percentages
 	const monthlyData = $derived(
-		watchTimeByMonth.map((minutes, i) => ({
+		watchTimeByMonth.minutes.map((minutes, i) => ({
 			label: months[i] ?? '',
-			value: minutes,
+			labelFull: monthsFull[i] ?? '',
+			minutes,
+			plays: watchTimeByMonth.plays[i] ?? 0,
 			percentage: (minutes / maxMonthly) * 100
 		}))
 	);
 
 	const hourlyData = $derived(
-		watchTimeByHour.map((minutes, i) => ({
+		watchTimeByHour.minutes.map((minutes, i) => ({
 			label: `${i.toString().padStart(2, '0')}:00`,
-			value: minutes,
+			labelFull: `${i.toString().padStart(2, '0')}:00 - ${((i + 1) % 24).toString().padStart(2, '0')}:00`,
+			minutes,
+			plays: watchTimeByHour.plays[i] ?? 0,
 			percentage: (minutes / maxHourly) * 100
 		}))
 	);
@@ -80,7 +102,7 @@
 	const peakIndex = $derived(
 		activeData.reduce((maxIdx, curr, idx, arr) => {
 			const maxItem = arr[maxIdx];
-			return maxItem && curr.value > maxItem.value ? idx : maxIdx;
+			return maxItem && curr.minutes > maxItem.minutes ? idx : maxIdx;
 		}, 0)
 	);
 
@@ -140,30 +162,61 @@
 		const hours = Math.floor(minutes / 60);
 		return `${hours}h`;
 	}
+
+	function formatMinutesDetailed(minutes: number): string {
+		if (minutes < 60) return `${Math.round(minutes)} minutes`;
+		const hours = Math.floor(minutes / 60);
+		const mins = Math.round(minutes % 60);
+		if (mins === 0) return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+		return `${hours}h ${mins}m`;
+	}
+
+	function formatPlays(plays: number): string {
+		return `${plays} ${plays === 1 ? 'play' : 'plays'}`;
+	}
 </script>
 
 <BaseSlide {active} class="distribution-slide {klass}">
 	<div bind:this={container} class="content">
 		<h2 class="title">{title}</h2>
 
-		<div class="chart-container" class:hourly={view === 'hourly'}>
-			{#each activeData as item, i}
-				<div class="bar-wrapper" class:peak={i === peakIndex}>
-					<div
-						bind:this={bars[i]}
-						class="bar"
-						style="height: {item.percentage}%"
-						title="{item.label}: {formatMinutes(item.value)}"
-					></div>
-					<span class="label">{view === 'hourly' ? i : item.label}</span>
-				</div>
-			{/each}
-		</div>
+		<Tooltip.Provider>
+			<div class="chart-container" class:hourly={view === 'hourly'}>
+				{#each activeData as item, i}
+					<div class="bar-wrapper" class:peak={i === peakIndex}>
+						<span class="data-label" class:visible={item.minutes > 0}>
+							{item.minutes > 0 ? formatMinutes(item.minutes) : ''}
+						</span>
+						<Tooltip.Root>
+							<Tooltip.Trigger>
+								<div
+									bind:this={bars[i]}
+									class="bar"
+									style="height: {item.percentage}%"
+									role="img"
+									aria-label="{item.labelFull}: {formatMinutesDetailed(item.minutes)}, {formatPlays(
+										item.plays
+									)}"
+								></div>
+							</Tooltip.Trigger>
+							<Tooltip.Content side="top" class="tooltip-content">
+								<div class="tooltip-inner">
+									<strong class="tooltip-title">{item.labelFull}</strong>
+									<p class="tooltip-stat">{formatMinutesDetailed(item.minutes)}</p>
+									<p class="tooltip-stat">{formatPlays(item.plays)}</p>
+								</div>
+							</Tooltip.Content>
+						</Tooltip.Root>
+						<span class="label">{view === 'hourly' ? i : item.label}</span>
+					</div>
+				{/each}
+			</div>
+		</Tooltip.Provider>
 
 		{#if activeData[peakIndex]}
 			<p class="peak-info">
-				Peak: <strong>{activeData[peakIndex].label}</strong>
-				({formatMinutes(activeData[peakIndex].value)})
+				Peak: <strong>{activeData[peakIndex].labelFull}</strong>
+				({formatMinutesDetailed(activeData[peakIndex].minutes)})
 			</p>
 		{/if}
 
@@ -189,7 +242,7 @@
 	.title {
 		font-size: 1.75rem;
 		font-weight: 700;
-		color: var(--primary);
+		color: hsl(var(--primary));
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 	}
@@ -216,10 +269,31 @@
 		flex: 1;
 		max-width: 40px;
 		height: 100%;
+		position: relative;
 	}
 
 	.hourly .bar-wrapper {
 		max-width: 20px;
+	}
+
+	.data-label {
+		font-size: 0.5rem;
+		color: hsl(var(--muted-foreground));
+		margin-bottom: 0.125rem;
+		opacity: 0;
+		transition: opacity 0.2s ease;
+		white-space: nowrap;
+		min-height: 0.75rem;
+	}
+
+	.data-label.visible {
+		opacity: 0.8;
+	}
+
+	.peak .data-label.visible {
+		opacity: 1;
+		color: hsl(var(--accent));
+		font-weight: 600;
 	}
 
 	.bar {
@@ -228,16 +302,30 @@
 		border-radius: 2px 2px 0 0;
 		transform-origin: bottom center;
 		min-height: 4px;
-		transition: background-color 0.2s;
+		transition:
+			transform 0.2s ease,
+			filter 0.2s ease,
+			box-shadow 0.2s ease;
+		cursor: pointer;
+	}
+
+	.bar:hover {
+		transform: scaleX(1.15) !important;
+		filter: brightness(1.2);
+		box-shadow: 0 0 8px hsl(var(--primary) / 0.4);
 	}
 
 	.peak .bar {
 		background: linear-gradient(180deg, oklch(0.7 0.2 60), oklch(0.5 0.15 50));
 	}
 
+	.peak .bar:hover {
+		box-shadow: 0 0 12px oklch(0.7 0.2 60 / 0.5);
+	}
+
 	.label {
 		font-size: 0.625rem;
-		color: var(--muted-foreground);
+		color: hsl(var(--muted-foreground));
 		margin-top: 0.25rem;
 		white-space: nowrap;
 	}
@@ -248,7 +336,7 @@
 
 	.peak-info {
 		font-size: 1rem;
-		color: var(--muted-foreground);
+		color: hsl(var(--muted-foreground));
 	}
 
 	.peak-info strong {
@@ -259,9 +347,40 @@
 		margin-top: 1rem;
 	}
 
+	/* Tooltip styling */
+	:global(.tooltip-content) {
+		background: hsl(var(--card)) !important;
+		color: hsl(var(--card-foreground)) !important;
+		border: 1px solid hsl(var(--border));
+		padding: 0.75rem !important;
+	}
+
+	.tooltip-inner {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		text-align: center;
+	}
+
+	.tooltip-title {
+		color: hsl(var(--primary));
+		font-size: 0.875rem;
+		margin-bottom: 0.25rem;
+	}
+
+	.tooltip-stat {
+		font-size: 0.75rem;
+		color: hsl(var(--muted-foreground));
+		margin: 0;
+	}
+
 	@media (max-width: 768px) {
 		.chart-container {
 			height: 150px;
+		}
+
+		.data-label {
+			font-size: 0.4375rem;
 		}
 
 		.label {
@@ -274,6 +393,10 @@
 
 		.hourly .bar-wrapper:nth-child(even) .label {
 			display: block;
+		}
+
+		.hourly .data-label {
+			display: none;
 		}
 	}
 </style>

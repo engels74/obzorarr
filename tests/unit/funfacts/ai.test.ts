@@ -39,10 +39,18 @@ function createMockUserStats(overrides: Partial<UserStats> = {}): UserStats {
 			{ rank: 2, title: 'The Office', count: 30, thumb: null }
 		],
 		topGenres: [],
-		watchTimeByMonth: [500, 400, 600, 500, 400, 300, 800, 600, 500, 400, 500, 500],
-		watchTimeByHour: Array(24)
-			.fill(0)
-			.map((_, i) => (i >= 19 && i <= 23 ? 500 : 100)),
+		watchTimeByMonth: {
+			minutes: [500, 400, 600, 500, 400, 300, 800, 600, 500, 400, 500, 500],
+			plays: [10, 8, 12, 10, 8, 6, 16, 12, 10, 8, 10, 10]
+		},
+		watchTimeByHour: {
+			minutes: Array(24)
+				.fill(0)
+				.map((_, i) => (i >= 19 && i <= 23 ? 500 : 100)),
+			plays: Array(24)
+				.fill(0)
+				.map((_, i) => (i >= 19 && i <= 23 ? 10 : 2))
+		},
 		percentileRank: 85,
 		longestBinge: {
 			startTime: 1704067200,
@@ -549,9 +557,12 @@ describe('Fun Facts AI', () => {
 		it('night-owl template requires peakHour >= 21', async () => {
 			// Peak hour at 10 PM (22)
 			const nightOwlStats = createMockUserStats({
-				watchTimeByHour: Array(24)
-					.fill(0)
-					.map((_, i) => (i === 22 ? 1000 : 100))
+				watchTimeByHour: {
+					minutes: Array(24)
+						.fill(0)
+						.map((_, i) => (i === 22 ? 1000 : 100)),
+					plays: Array(24).fill(1)
+				}
 			});
 
 			const context = buildGenerationContext(nightOwlStats);
@@ -565,9 +576,12 @@ describe('Fun Facts AI', () => {
 		it('night-owl template is excluded when peakHour < 21', async () => {
 			// Peak hour at 8 PM (20) - should exclude night-owl
 			const notNightOwlStats = createMockUserStats({
-				watchTimeByHour: Array(24)
-					.fill(0)
-					.map((_, i) => (i === 20 ? 1000 : 100))
+				watchTimeByHour: {
+					minutes: Array(24)
+						.fill(0)
+						.map((_, i) => (i === 20 ? 1000 : 100)),
+					plays: Array(24).fill(1)
+				}
 			});
 
 			const context = buildGenerationContext(notNightOwlStats);
@@ -588,9 +602,12 @@ describe('Fun Facts AI', () => {
 		it('night-owl template is included at boundary peakHour = 21', async () => {
 			// Peak hour at 9 PM (21) - boundary, should include night-owl
 			const boundaryStats = createMockUserStats({
-				watchTimeByHour: Array(24)
-					.fill(0)
-					.map((_, i) => (i === 21 ? 1000 : 100))
+				watchTimeByHour: {
+					minutes: Array(24)
+						.fill(0)
+						.map((_, i) => (i === 21 ? 1000 : 100)),
+					plays: Array(24).fill(1)
+				}
 			});
 
 			const context = buildGenerationContext(boundaryStats);
@@ -604,9 +621,12 @@ describe('Fun Facts AI', () => {
 		it('early-bird template requires peakHour <= 9', async () => {
 			// Peak hour at 6 AM
 			const earlyBirdStats = createMockUserStats({
-				watchTimeByHour: Array(24)
-					.fill(0)
-					.map((_, i) => (i === 6 ? 1000 : 100))
+				watchTimeByHour: {
+					minutes: Array(24)
+						.fill(0)
+						.map((_, i) => (i === 6 ? 1000 : 100)),
+					plays: Array(24).fill(1)
+				}
 			});
 
 			const context = buildGenerationContext(earlyBirdStats);
@@ -620,9 +640,12 @@ describe('Fun Facts AI', () => {
 		it('early-bird template is excluded when peakHour > 9', async () => {
 			// Peak hour at 10 AM - should exclude early-bird
 			const notEarlyBirdStats = createMockUserStats({
-				watchTimeByHour: Array(24)
-					.fill(0)
-					.map((_, i) => (i === 10 ? 1000 : 100))
+				watchTimeByHour: {
+					minutes: Array(24)
+						.fill(0)
+						.map((_, i) => (i === 10 ? 1000 : 100)),
+					plays: Array(24).fill(1)
+				}
 			});
 
 			const context = buildGenerationContext(notEarlyBirdStats);

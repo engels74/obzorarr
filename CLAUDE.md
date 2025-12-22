@@ -50,6 +50,7 @@ bun test --watch         # Watch mode
 Obzorarr is a "Plex Wrapped" application - syncs viewing history from Plex and generates yearly statistics with an animated slideshow.
 
 ### Stack
+
 - **Runtime**: Bun
 - **Framework**: SvelteKit 2 + Svelte 5
 - **Database**: SQLite via Drizzle ORM
@@ -81,6 +82,7 @@ src/routes/               # SvelteKit routes
 ### Service Patterns
 
 Services follow a modular pattern:
+
 - `*service.ts` - Business logic
 - `types.ts` - Zod schemas and TypeScript types
 - Index files for clean exports
@@ -110,6 +112,7 @@ Bun's native test runner with `fast-check` for property-based tests.
 Test setup (`tests/setup.ts`) configures in-memory SQLite and mocks SvelteKit `$env` modules.
 
 Structure:
+
 - `tests/unit/` - Unit tests by domain
 - `tests/property/` - Property-based tests
 - `tests/integration/` - Integration tests
@@ -117,9 +120,11 @@ Structure:
 ### Environment Variables
 
 Required:
+
 - `PLEX_SERVER_URL` - Plex server address
 - `PLEX_TOKEN` - Plex auth token
 - `ORIGIN` - App URL for OAuth callbacks
 
 Optional AI fun facts:
+
 - `OPENAI_API_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL`

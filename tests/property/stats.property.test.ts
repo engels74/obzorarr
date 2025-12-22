@@ -299,7 +299,7 @@ describe('Property 11: Monthly Distribution Completeness', () => {
 				fc.array(playHistoryRecordArbitrary, { minLength: 0, maxLength: 100 }),
 				(records) => {
 					const distribution = calculateMonthlyDistribution(records);
-					const distributionSum = distribution.reduce((a, b) => a + b, 0);
+					const distributionSum = distribution.minutes.reduce((a, b) => a + b, 0);
 
 					const totalSeconds = records.reduce((sum, r) => sum + (r.duration ?? 0), 0);
 					const totalMinutes = totalSeconds / 60;
@@ -317,7 +317,7 @@ describe('Property 11: Monthly Distribution Completeness', () => {
 				fc.array(playHistoryRecordArbitrary, { minLength: 0, maxLength: 50 }),
 				(records) => {
 					const distribution = calculateMonthlyDistribution(records);
-					return distribution.length === 12;
+					return distribution.minutes.length === 12 && distribution.plays.length === 12;
 				}
 			),
 			{ numRuns: 100 }
@@ -330,7 +330,23 @@ describe('Property 11: Monthly Distribution Completeness', () => {
 				fc.array(playHistoryRecordArbitrary, { minLength: 0, maxLength: 50 }),
 				(records) => {
 					const distribution = calculateMonthlyDistribution(records);
-					return distribution.every((v) => v >= 0);
+					return (
+						distribution.minutes.every((v) => v >= 0) && distribution.plays.every((v) => v >= 0)
+					);
+				}
+			),
+			{ numRuns: 100 }
+		);
+	});
+
+	it('monthly plays sum equals total record count', () => {
+		fc.assert(
+			fc.property(
+				fc.array(playHistoryRecordArbitrary, { minLength: 0, maxLength: 100 }),
+				(records) => {
+					const distribution = calculateMonthlyDistribution(records);
+					const playsSum = distribution.plays.reduce((a, b) => a + b, 0);
+					return playsSum === records.length;
 				}
 			),
 			{ numRuns: 100 }
@@ -349,7 +365,7 @@ describe('Property 12: Hourly Distribution Completeness', () => {
 				fc.array(playHistoryRecordArbitrary, { minLength: 0, maxLength: 100 }),
 				(records) => {
 					const distribution = calculateHourlyDistribution(records);
-					const distributionSum = distribution.reduce((a, b) => a + b, 0);
+					const distributionSum = distribution.minutes.reduce((a, b) => a + b, 0);
 
 					const totalSeconds = records.reduce((sum, r) => sum + (r.duration ?? 0), 0);
 					const totalMinutes = totalSeconds / 60;
@@ -367,7 +383,7 @@ describe('Property 12: Hourly Distribution Completeness', () => {
 				fc.array(playHistoryRecordArbitrary, { minLength: 0, maxLength: 50 }),
 				(records) => {
 					const distribution = calculateHourlyDistribution(records);
-					return distribution.length === 24;
+					return distribution.minutes.length === 24 && distribution.plays.length === 24;
 				}
 			),
 			{ numRuns: 100 }
@@ -380,7 +396,23 @@ describe('Property 12: Hourly Distribution Completeness', () => {
 				fc.array(playHistoryRecordArbitrary, { minLength: 0, maxLength: 50 }),
 				(records) => {
 					const distribution = calculateHourlyDistribution(records);
-					return distribution.every((v) => v >= 0);
+					return (
+						distribution.minutes.every((v) => v >= 0) && distribution.plays.every((v) => v >= 0)
+					);
+				}
+			),
+			{ numRuns: 100 }
+		);
+	});
+
+	it('hourly plays sum equals total record count', () => {
+		fc.assert(
+			fc.property(
+				fc.array(playHistoryRecordArbitrary, { minLength: 0, maxLength: 100 }),
+				(records) => {
+					const distribution = calculateHourlyDistribution(records);
+					const playsSum = distribution.plays.reduce((a, b) => a + b, 0);
+					return playsSum === records.length;
 				}
 			),
 			{ numRuns: 100 }
@@ -625,12 +657,16 @@ describe('Edge Cases', () => {
 		expect(topShows).toEqual([]);
 
 		const monthly = calculateMonthlyDistribution(emptyRecords);
-		expect(monthly.length).toBe(12);
-		expect(monthly.every((v) => v === 0)).toBe(true);
+		expect(monthly.minutes.length).toBe(12);
+		expect(monthly.plays.length).toBe(12);
+		expect(monthly.minutes.every((v) => v === 0)).toBe(true);
+		expect(monthly.plays.every((v) => v === 0)).toBe(true);
 
 		const hourly = calculateHourlyDistribution(emptyRecords);
-		expect(hourly.length).toBe(24);
-		expect(hourly.every((v) => v === 0)).toBe(true);
+		expect(hourly.minutes.length).toBe(24);
+		expect(hourly.plays.length).toBe(24);
+		expect(hourly.minutes.every((v) => v === 0)).toBe(true);
+		expect(hourly.plays.every((v) => v === 0)).toBe(true);
 
 		const binge = detectLongestBinge(emptyRecords);
 		expect(binge).toBeNull();

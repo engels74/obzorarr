@@ -65,56 +65,104 @@ const watchRecordArbitrary: fc.Arbitrary<WatchRecord> = fc.record({
 });
 
 /**
- * Generate an array of exactly 12 non-negative numbers (monthly distribution)
+ * Generate a valid MonthlyDistribution object
  */
-const monthlyDistributionArbitrary: fc.Arbitrary<number[]> = fc
-	.tuple(
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true })
-	)
-	.map((tuple) => [...tuple]);
+const monthlyDistributionArbitrary = fc.record({
+	minutes: fc
+		.tuple(
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true })
+		)
+		.map((tuple) => [...tuple]),
+	plays: fc
+		.tuple(
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 })
+		)
+		.map((tuple) => [...tuple])
+});
 
 /**
- * Generate an array of exactly 24 non-negative numbers (hourly distribution)
+ * Generate a valid HourlyDistribution object
  */
-const hourlyDistributionArbitrary: fc.Arbitrary<number[]> = fc
-	.tuple(
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true }),
-		fc.float({ min: 0, max: 100000, noNaN: true })
-	)
-	.map((tuple) => [...tuple]);
+const hourlyDistributionArbitrary = fc.record({
+	minutes: fc
+		.tuple(
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true })
+		)
+		.map((tuple) => [...tuple]),
+	plays: fc
+		.tuple(
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 })
+		)
+		.map((tuple) => [...tuple])
+});
 
 /**
  * Generate a valid UserStats object
@@ -312,8 +360,14 @@ describe('Serialization edge cases', () => {
 			topMovies: [],
 			topShows: [],
 			topGenres: [],
-			watchTimeByMonth: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-			watchTimeByHour: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+			watchTimeByMonth: {
+				minutes: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+				plays: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			},
+			watchTimeByHour: {
+				minutes: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+				plays: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+			},
 			percentileRank: 0,
 			longestBinge: null,
 			firstWatch: null,
@@ -335,10 +389,16 @@ describe('Serialization edge cases', () => {
 			topMovies: [{ rank: 1, title: 'Test Movie', count: 5, thumb: null }],
 			topShows: [],
 			topGenres: [],
-			watchTimeByMonth: [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200],
-			watchTimeByHour: [
-				1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24
-			],
+			watchTimeByMonth: {
+				minutes: [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200],
+				plays: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+			},
+			watchTimeByHour: {
+				minutes: [
+					1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24
+				],
+				plays: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+			},
 			percentileRank: 75.5,
 			longestBinge: null,
 			firstWatch: null,
@@ -362,11 +422,19 @@ describe('Serialization edge cases', () => {
 			],
 			topShows: [{ rank: 1, title: 'Show 1', count: 200, thumb: 'https://example.com/thumb2.jpg' }],
 			topGenres: [{ rank: 1, title: 'Action', count: 300, thumb: null }],
-			watchTimeByMonth: [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000, 12000],
-			watchTimeByHour: [
-				100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700,
-				1800, 1900, 2000, 2100, 2200, 2300, 2400
-			],
+			watchTimeByMonth: {
+				minutes: [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000, 12000],
+				plays: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120]
+			},
+			watchTimeByHour: {
+				minutes: [
+					100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600,
+					1700, 1800, 1900, 2000, 2100, 2200, 2300, 2400
+				],
+				plays: [
+					1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24
+				]
+			},
 			topViewers: [{ rank: 1, userId: 1, username: 'TopViewer', totalMinutes: 10000 }],
 			longestBinge: {
 				startTime: 1704067200,

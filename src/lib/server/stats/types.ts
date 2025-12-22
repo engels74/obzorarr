@@ -44,6 +44,22 @@ export const WatchRecordSchema = z.object({
 });
 
 /**
+ * Monthly distribution data with both watch time and play counts
+ */
+export const MonthlyDistributionSchema = z.object({
+	minutes: z.array(z.number().nonnegative()).length(12),
+	plays: z.array(z.number().int().nonnegative()).length(12)
+});
+
+/**
+ * Hourly distribution data with both watch time and play counts
+ */
+export const HourlyDistributionSchema = z.object({
+	minutes: z.array(z.number().nonnegative()).length(24),
+	plays: z.array(z.number().int().nonnegative()).length(24)
+});
+
+/**
  * Complete statistics for a single user
  */
 export const UserStatsSchema = z.object({
@@ -54,8 +70,8 @@ export const UserStatsSchema = z.object({
 	topMovies: z.array(RankedItemSchema),
 	topShows: z.array(RankedItemSchema),
 	topGenres: z.array(RankedItemSchema),
-	watchTimeByMonth: z.array(z.number().nonnegative()).length(12),
-	watchTimeByHour: z.array(z.number().nonnegative()).length(24),
+	watchTimeByMonth: MonthlyDistributionSchema,
+	watchTimeByHour: HourlyDistributionSchema,
 	percentileRank: z.number().min(0).max(100),
 	longestBinge: BingeSessionSchema.nullable(),
 	firstWatch: WatchRecordSchema.nullable(),
@@ -73,8 +89,8 @@ export const ServerStatsSchema = z.object({
 	topMovies: z.array(RankedItemSchema),
 	topShows: z.array(RankedItemSchema),
 	topGenres: z.array(RankedItemSchema),
-	watchTimeByMonth: z.array(z.number().nonnegative()).length(12),
-	watchTimeByHour: z.array(z.number().nonnegative()).length(24),
+	watchTimeByMonth: MonthlyDistributionSchema,
+	watchTimeByHour: HourlyDistributionSchema,
 	topViewers: z.array(
 		z.object({
 			rank: z.number().int().positive(),
@@ -95,6 +111,8 @@ export const ServerStatsSchema = z.object({
 export type RankedItem = z.infer<typeof RankedItemSchema>;
 export type BingeSession = z.infer<typeof BingeSessionSchema>;
 export type WatchRecord = z.infer<typeof WatchRecordSchema>;
+export type MonthlyDistribution = z.infer<typeof MonthlyDistributionSchema>;
+export type HourlyDistribution = z.infer<typeof HourlyDistributionSchema>;
 export type UserStats = z.infer<typeof UserStatsSchema>;
 export type ServerStats = z.infer<typeof ServerStatsSchema>;
 
