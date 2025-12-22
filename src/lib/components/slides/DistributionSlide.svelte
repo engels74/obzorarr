@@ -660,6 +660,10 @@
 		max-width: 16px;
 	}
 
+	.dual-view .hourly .data-label {
+		display: none;
+	}
+
 	.dual-view .peak-info {
 		font-size: 0.875rem;
 	}
