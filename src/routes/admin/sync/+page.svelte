@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { enhance } from '$app/forms';
 	import type { PageData, ActionData } from './$types';
 
@@ -181,8 +182,9 @@
 	});
 
 	// Connect to SSE if sync is running on page load (but not if we just completed one)
+	// Browser guard prevents SSR hydration issues
 	$effect(() => {
-		if (data.isRunning && !eventSource && !syncCompleted) {
+		if (browser && data.isRunning && !eventSource && !syncCompleted) {
 			isSyncing = true;
 			connectSSE();
 		}

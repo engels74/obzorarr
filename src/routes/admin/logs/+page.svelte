@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
@@ -230,9 +231,9 @@
 		};
 	});
 
-	// Connect to SSE on mount if autoScroll is enabled
+	// Connect to SSE on mount if autoScroll is enabled (browser-only)
 	$effect(() => {
-		if (autoScroll && !eventSource) {
+		if (browser && autoScroll && !eventSource) {
 			connectSSE();
 		}
 	});
