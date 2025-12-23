@@ -5,6 +5,7 @@ import { checkRateLimit } from '$lib/server/ratelimit';
 import { findUserByUsername } from '$lib/server/sync/plex-accounts.service';
 import { checkWrappedAccess } from '$lib/server/sharing/access-control';
 import { ShareAccessDeniedError } from '$lib/server/sharing/types';
+import { triggerLiveSyncIfNeeded } from '$lib/server/sync/live-sync';
 
 /**
  * Landing Page Server
@@ -110,6 +111,9 @@ export const actions: Actions = {
 				year: currentYear,
 				currentUser: undefined // Anonymous access attempt
 			});
+
+			// Trigger live sync in background (fire-and-forget)
+			triggerLiveSyncIfNeeded('landing-page-lookup').catch(() => {});
 
 			// Access allowed - redirect to wrapped page
 			redirect(303, `/wrapped/${currentYear}/u/${userResult.userId}`);

@@ -10,7 +10,8 @@
  * import {
  *   startSync,
  *   setupSyncScheduler,
- *   triggerImmediateSync
+ *   triggerImmediateSync,
+ *   triggerLiveSyncIfNeeded
  * } from '$lib/server/sync';
  *
  * // Start a manual sync
@@ -18,6 +19,9 @@
  *
  * // Set up scheduled syncs
  * setupSyncScheduler({ cronExpression: '0 0 * * *' });
+ *
+ * // Trigger live sync on page access (non-blocking)
+ * triggerLiveSyncIfNeeded('my-page').catch(() => {});
  * ```
  */
 
@@ -83,3 +87,25 @@ export {
 	clearSyncProgress,
 	hasSyncProgress
 } from './progress';
+
+// =============================================================================
+// Live Sync Exports (Automatic sync on page access)
+// =============================================================================
+
+export type { LiveSyncResult, SyncStatus } from './live-sync';
+
+export {
+	triggerLiveSyncIfNeeded,
+	isLiveSyncEnabled,
+	canTriggerLiveSync,
+	getTimeUntilNextSync,
+	getLiveSyncCooldownMs,
+	getSyncStatus,
+	// Lock functions (for advanced use cases)
+	tryAcquireSyncLock,
+	releaseSyncLock,
+	isSyncLockHeld,
+	getSyncLockInfo,
+	// Throttle functions
+	recordLiveSyncCompletion
+} from './live-sync';

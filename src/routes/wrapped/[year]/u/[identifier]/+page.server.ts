@@ -18,6 +18,7 @@ import {
 import { generateFunFacts } from '$lib/server/funfacts';
 import { getLogoVisibility, setUserLogoPreference } from '$lib/server/logo';
 import { getFunFactFrequency } from '$lib/server/admin/settings.service';
+import { triggerLiveSyncIfNeeded } from '$lib/server/sync/live-sync';
 
 /**
  * Per-user Wrapped Page Load Function
@@ -46,6 +47,9 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	if (isNaN(year) || year < 2000 || year > 2100) {
 		error(404, 'Invalid year');
 	}
+
+	// Trigger live sync in background (fire-and-forget)
+	triggerLiveSyncIfNeeded('user-wrapped').catch(() => {});
 
 	const { identifier } = params;
 	let userId: number; // Internal database user ID

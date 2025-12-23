@@ -13,6 +13,7 @@ import { generateFunFacts } from '$lib/server/funfacts';
 import { getLogoVisibility } from '$lib/server/logo';
 import { getServerName } from '$lib/server/plex/server-name.service';
 import { getFunFactFrequency } from '$lib/server/admin/settings.service';
+import { triggerLiveSyncIfNeeded } from '$lib/server/sync/live-sync';
 
 /**
  * Server-wide Wrapped Page Load Function
@@ -33,6 +34,9 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	if (isNaN(year) || year < 2000 || year > 2100) {
 		error(404, 'Invalid year');
 	}
+
+	// Trigger live sync in background (fire-and-forget)
+	triggerLiveSyncIfNeeded('server-wrapped').catch(() => {});
 
 	// Get viewing user ID for anonymization (null if not authenticated)
 	const viewingUserId = locals.user?.id ?? null;

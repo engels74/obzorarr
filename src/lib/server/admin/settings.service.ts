@@ -58,7 +58,10 @@ export const AppSettingsKey = {
 	FUN_FACT_CUSTOM_COUNT: 'fun_fact_custom_count',
 
 	// Fun Facts AI Persona
-	FUN_FACTS_AI_PERSONA: 'fun_facts_ai_persona'
+	FUN_FACTS_AI_PERSONA: 'fun_facts_ai_persona',
+
+	// Live Sync (automatic sync on page access)
+	ENABLE_LIVE_SYNC: 'enable_live_sync'
 } as const;
 
 export type AppSettingsKeyType = (typeof AppSettingsKey)[keyof typeof AppSettingsKey];
