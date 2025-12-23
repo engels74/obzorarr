@@ -12,15 +12,15 @@ import { defineTemplateCategory } from './base';
 export const BINGE_TEMPLATES = defineTemplateCategory('binge-related', [
 	{
 		id: 'marathon-session-epic',
-		factTemplate: 'Your longest binge was an epic {bingeHours} hours straight',
-		comparisonTemplate: "Now that's what we call dedication!",
+		factTemplate: '{Possessive} longest binge was an epic {bingeHours} hours straight',
+		comparisonTemplate: "Now that's what {subject} call dedication!",
 		icon: '🍿',
 		requiredStats: ['bingeHours'],
 		minThresholds: { bingeHours: 6 }
 	},
 	{
 		id: 'marathon-session',
-		factTemplate: 'You binged for {bingeHours} hours in one sitting',
+		factTemplate: '{Subject} binged for {bingeHours} hours in one sitting',
 		comparisonTemplate: 'A respectable marathon session!',
 		icon: '🛋️',
 		requiredStats: ['bingeHours'],
@@ -28,7 +28,7 @@ export const BINGE_TEMPLATES = defineTemplateCategory('binge-related', [
 	},
 	{
 		id: 'binge-champion',
-		factTemplate: 'You watched {bingePlays} things in your longest binge session',
+		factTemplate: '{Subject} watched {bingePlays} things in {possessive} longest binge session',
 		comparisonTemplate: 'A true binge-watching champion!',
 		icon: '🥇',
 		requiredStats: ['bingePlays'],

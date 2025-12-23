@@ -3,7 +3,7 @@
 	import { browser } from '$app/environment';
 	import { invalidateAll } from '$app/navigation';
 	import type { LayoutData } from './$types';
-	import SyncIndicator from '$lib/components/SyncIndicator.svelte';
+	import SyncLoadingOverlay from '$lib/components/SyncLoadingOverlay.svelte';
 	import { createSyncStatusStore, type SyncStatusStore } from '$lib/stores/sync-status.svelte';
 
 	/**
@@ -13,8 +13,8 @@
 	 * The actual theme application is handled by the root layout,
 	 * which reads the merged wrappedTheme data from this layout's server load.
 	 *
-	 * Sync status is updated via SSE connection for real-time indicator updates.
-	 * When sync completes, page data is automatically refreshed.
+	 * Shows a loading overlay during sync to prevent jarring content transitions.
+	 * When sync completes, data is refreshed and overlay fades out smoothly.
 	 */
 
 	interface Props {
@@ -24,8 +24,63 @@
 
 	let { children, data }: Props = $props();
 
-	// Sync status store instance - using $state for reactivity with $derived
+	// ==========================================================================
+	// Constants
+	// ==========================================================================
+
+	/** Minimum time to show loading overlay for consistent UX */
+	const MIN_LOADING_DISPLAY_MS = 300;
+
+	// ==========================================================================
+	// Loading State
+	// ==========================================================================
+
+	/** Whether the loading overlay is visible */
+	let isLoading = $state(true);
+
+	/** Timestamp when loading started (for minimum display time calculation) */
+	let loadingStartTime = $state(Date.now());
+
+	/** Whether sync completion has been handled (prevents double-handling) */
+	let syncCompletionHandled = $state(false);
+
+	// ==========================================================================
+	// Sync Status Store
+	// ==========================================================================
+
+	/** Sync status store instance */
 	let syncStatusStore = $state<SyncStatusStore | null>(null);
+
+	/**
+	 * Hide loading overlay with minimum display time guarantee
+	 */
+	async function hideLoadingWithMinDelay(): Promise<void> {
+		const elapsed = Date.now() - loadingStartTime;
+		if (elapsed < MIN_LOADING_DISPLAY_MS) {
+			await new Promise((r) => setTimeout(r, MIN_LOADING_DISPLAY_MS - elapsed));
+		}
+		isLoading = false;
+	}
+
+	/**
+	 * Handle sync completion:
+	 * 1. Keep overlay visible
+	 * 2. Refresh data
+	 * 3. Hide overlay with minimum delay
+	 */
+	async function handleSyncComplete(): Promise<void> {
+		// Prevent double handling
+		if (syncCompletionHandled) return;
+		syncCompletionHandled = true;
+
+		try {
+			// Refresh data while overlay is still visible
+			await invalidateAll();
+		} finally {
+			// Hide overlay after data refresh (with minimum delay)
+			await hideLoadingWithMinDelay();
+		}
+	}
 
 	// Create sync status store with reactive access to data.syncStatus
 	// Using $effect ensures:
@@ -41,20 +96,33 @@
 			return;
 		}
 
+		// Reset state for fresh effect run
+		loadingStartTime = Date.now();
+		syncCompletionHandled = false;
+
 		// Create store with initial server data
-		// When sync completes, invalidate all data to refresh stats
 		const store = createSyncStatusStore(
 			{
 				inProgress: syncStatus.inProgress,
 				progress: syncStatus.progress
 			},
 			{
-				onSyncComplete: () => {
-					invalidateAll();
-				}
+				onSyncComplete: handleSyncComplete
 			}
 		);
 		syncStatusStore = store;
+
+		// If no sync in progress, show brief loading then hide
+		if (!syncStatus.inProgress) {
+			// Use setTimeout to ensure we show loading for minimum time
+			setTimeout(async () => {
+				// Only hide if sync hasn't started in the meantime
+				if (!store.inProgress && !syncCompletionHandled) {
+					syncCompletionHandled = true;
+					await hideLoadingWithMinDelay();
+				}
+			}, 0);
+		}
 
 		// Cleanup SSE connection when effect re-runs or component unmounts
 		return () => {
@@ -67,8 +135,6 @@
 	const progress = $derived(syncStatusStore?.progress ?? data.syncStatus?.progress ?? null);
 </script>
 
-{@render children()}
+<SyncLoadingOverlay visible={isLoading} {progress} syncInProgress={inProgress} />
 
-{#if inProgress}
-	<SyncIndicator {inProgress} {progress} />
-{/if}
+{@render children()}

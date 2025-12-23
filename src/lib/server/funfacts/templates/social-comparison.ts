@@ -12,8 +12,8 @@ import { defineTemplateCategory } from './base';
 export const SOCIAL_COMPARISON_TEMPLATES = defineTemplateCategory('social-comparison', [
 	{
 		id: 'server-champion',
-		factTemplate: "You're the #1 viewer on this server!",
-		comparisonTemplate: 'The crown is yours, streaming royalty!',
+		factTemplate: "{Subject}'re the #1 viewer on this server!",
+		comparisonTemplate: 'The crown is {possessive}, streaming royalty!',
 		icon: '👑',
 		requiredStats: ['percentile'],
 		minThresholds: { percentile: 99 }, // Essentially top 1%
@@ -21,8 +21,8 @@ export const SOCIAL_COMPARISON_TEMPLATES = defineTemplateCategory('social-compar
 	},
 	{
 		id: 'top-five',
-		factTemplate: "You're in the top 5% of viewers on this server",
-		comparisonTemplate: 'Elite company you keep!',
+		factTemplate: "{Subject}'re in the top 5% of viewers on this server",
+		comparisonTemplate: 'Elite company {subject} keep!',
 		icon: '🏅',
 		requiredStats: ['percentile'],
 		minThresholds: { percentile: 95 },
@@ -30,8 +30,8 @@ export const SOCIAL_COMPARISON_TEMPLATES = defineTemplateCategory('social-compar
 	},
 	{
 		id: 'above-average-double',
-		factTemplate: 'You watched more than twice the server average',
-		comparisonTemplate: 'Clearly, you take entertainment seriously!',
+		factTemplate: '{Subject} watched more than twice the server average',
+		comparisonTemplate: 'Clearly, {subject} take entertainment seriously!',
 		icon: '📈',
 		requiredStats: ['percentile'],
 		minThresholds: { percentile: 85 },
@@ -39,8 +39,8 @@ export const SOCIAL_COMPARISON_TEMPLATES = defineTemplateCategory('social-compar
 	},
 	{
 		id: 'above-average',
-		factTemplate: 'You watched more than the average viewer on this server',
-		comparisonTemplate: "You're ahead of the pack!",
+		factTemplate: '{Subject} watched more than the average viewer on this server',
+		comparisonTemplate: "{Subject}'re ahead of the pack!",
 		icon: '📊',
 		requiredStats: ['percentile'],
 		minThresholds: { percentile: 60 },
@@ -48,7 +48,7 @@ export const SOCIAL_COMPARISON_TEMPLATES = defineTemplateCategory('social-compar
 	},
 	{
 		id: 'climbing-ranks',
-		factTemplate: "You're in the top {topPercentile}% of viewers",
+		factTemplate: "{Subject}'re in the top {topPercentile}% of viewers",
 		comparisonTemplate: 'Keep climbing those rankings!',
 		icon: '🧗',
 		requiredStats: ['percentile'],
@@ -57,7 +57,7 @@ export const SOCIAL_COMPARISON_TEMPLATES = defineTemplateCategory('social-compar
 	},
 	{
 		id: 'steady-contributor',
-		factTemplate: "You're a valued member of the viewing community",
+		factTemplate: "{Subject}'re a valued member of the viewing community",
 		comparisonTemplate: 'Every stream counts!',
 		icon: '🤝',
 		requiredStats: ['plays'],
@@ -66,7 +66,7 @@ export const SOCIAL_COMPARISON_TEMPLATES = defineTemplateCategory('social-compar
 	},
 	{
 		id: 'quality-over-quantity',
-		factTemplate: 'You focus on quality viewing experiences',
+		factTemplate: '{Subject} focus on quality viewing experiences',
 		comparisonTemplate: 'Sometimes less is more!',
 		icon: '💎',
 		requiredStats: ['plays'],

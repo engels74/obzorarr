@@ -171,6 +171,9 @@ export interface FactGenerationContext {
 	/** Number of unique shows watched */
 	uniqueShows: number;
 
+	/** Whether this is for a single user or server-wide stats */
+	scope: 'user' | 'server';
+
 	// Entertainment trivia calculations (populated by context enricher)
 	/** Game of Thrones complete series watch count */
 	gotCount?: number;

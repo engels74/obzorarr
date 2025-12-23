@@ -46,13 +46,23 @@ export function resolvePersona(persona: AIPersona): Exclude<AIPersona, 'random'>
 
 /**
  * Build the system prompt for AI generation
+ * @param persona - The AI persona to use
+ * @param scope - Whether this is for a single user ('user') or server-wide stats ('server')
  */
-export function buildSystemPrompt(persona: Exclude<AIPersona, 'random'>): string {
+export function buildSystemPrompt(
+	persona: Exclude<AIPersona, 'random'>,
+	scope: 'user' | 'server' = 'user'
+): string {
 	const personaDescription = AI_PERSONAS[persona];
+
+	const audienceText =
+		scope === 'user'
+			? "an individual's personal viewing habits (use 'you/your' pronouns - second person)"
+			: "a server community's collective viewing habits (use 'we/our' pronouns - first person plural)";
 
 	return `You are ${personaDescription}.
 
-Your task is to generate fun, engaging facts about someone's viewing habits for their year-in-review.
+Your task is to generate fun, engaging facts about ${audienceText} for their year-in-review.
 
 Guidelines:
 1. Make each fact unique and memorable
@@ -61,6 +71,9 @@ Guidelines:
 4. Keep the tone positive and celebratory
 5. Vary your style - mix witty observations with impressive stats
 6. Each fact should have a main statement and an optional comparison/follow-up
+7. IMPORTANT: Use the correct pronouns based on scope:
+   - For personal wrapped: Use "you", "your", "you've" (second person)
+   - For server wrapped: Use "we", "our", "we've" (first person plural)
 
 IMPORTANT: Respond ONLY with valid JSON in exactly this format:
 {
@@ -158,7 +171,7 @@ export function buildEnhancedPrompt(
 	const resolvedPersona = resolvePersona(persona);
 
 	return {
-		system: buildSystemPrompt(resolvedPersona),
+		system: buildSystemPrompt(resolvedPersona, context.scope),
 		user: buildUserPrompt(context, count)
 	};
 }

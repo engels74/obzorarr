@@ -43,8 +43,8 @@ export interface InitialSyncStatus {
  * Options for sync status store
  */
 export interface SyncStatusStoreOptions {
-	/** Callback fired when sync completes (useful for data invalidation) */
-	onSyncComplete?: () => void;
+	/** Callback fired when sync completes (useful for data invalidation). Can be async. */
+	onSyncComplete?: () => void | Promise<void>;
 }
 
 /**
@@ -87,7 +87,7 @@ export class SyncStatusStore {
 	private connected = false;
 
 	/** Callback for sync completion */
-	private onSyncComplete?: () => void;
+	private onSyncComplete?: () => void | Promise<void>;
 
 	/** Track if we were syncing (to detect completion) */
 	private wasSyncing = false;
@@ -138,9 +138,14 @@ export class SyncStatusStore {
 				} else if (data.type === 'completed' || data.type === 'idle') {
 					// Fire callback if sync just completed (was syncing -> now idle)
 					if (this.wasSyncing && this.onSyncComplete) {
-						// Small delay to let server finish cleanup
-						setTimeout(() => {
-							this.onSyncComplete?.();
+						// Small delay to let server finish cleanup, then call async callback
+						const callback = this.onSyncComplete;
+						setTimeout(async () => {
+							try {
+								await callback();
+							} catch {
+								// Silently ignore callback errors
+							}
 						}, 500);
 					}
 					this.inProgress = false;

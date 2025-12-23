@@ -200,7 +200,8 @@ describe('isTemplateApplicable', () => {
 		firstWatchTitle: 'First',
 		lastWatchTitle: 'Last',
 		uniqueMovies: 10,
-		uniqueShows: 5
+		uniqueShows: 5,
+		scope: 'user'
 	};
 
 	it('returns true for applicable template', () => {
@@ -304,7 +305,8 @@ describe('interpolateTemplate', () => {
 		firstWatchTitle: 'New Year Movie',
 		lastWatchTitle: 'Year End Show',
 		uniqueMovies: 10,
-		uniqueShows: 5
+		uniqueShows: 5,
+		scope: 'user'
 	};
 
 	it('interpolates basic placeholders', () => {
@@ -366,7 +368,8 @@ describe('generateFromTemplate', () => {
 		firstWatchTitle: 'First',
 		lastWatchTitle: 'Last',
 		uniqueMovies: 10,
-		uniqueShows: 5
+		uniqueShows: 5,
+		scope: 'user'
 	};
 
 	it('generates fact with interpolated values', () => {

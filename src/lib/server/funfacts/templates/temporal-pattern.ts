@@ -12,7 +12,7 @@ import { defineTemplateCategory } from './base';
 export const TEMPORAL_TEMPLATES = defineTemplateCategory('temporal-pattern', [
 	{
 		id: 'first-of-year',
-		factTemplate: 'You kicked off the year watching "{firstWatchTitle}"',
+		factTemplate: '{Subject} kicked off the year watching "{firstWatchTitle}"',
 		comparisonTemplate: 'What a way to start the year!',
 		icon: '🎉',
 		requiredStats: ['firstWatchTitle']
@@ -26,14 +26,14 @@ export const TEMPORAL_TEMPLATES = defineTemplateCategory('temporal-pattern', [
 	},
 	{
 		id: 'last-of-year',
-		factTemplate: 'You ended your viewing year with "{lastWatchTitle}"',
+		factTemplate: '{Subject} ended {possessive} viewing year with "{lastWatchTitle}"',
 		comparisonTemplate: 'A fitting finale to the year!',
 		icon: '🎬',
 		requiredStats: ['lastWatchTitle']
 	},
 	{
 		id: 'year-participant',
-		factTemplate: 'You were an active viewer in {year}',
+		factTemplate: '{Subject} were an active viewer in {year}',
 		comparisonTemplate: "Here's to another year of great content!",
 		icon: '🎊',
 		requiredStats: [],

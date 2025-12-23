@@ -12,7 +12,7 @@ import { defineTemplateCategory } from './base';
 export const TIME_EQUIVALENCY_TEMPLATES = defineTemplateCategory('time-equivalency', [
 	{
 		id: 'flight-tokyo',
-		factTemplate: 'You watched {hours} hours of content this year',
+		factTemplate: '{Subject} watched {hours} hours of content this year',
 		comparisonTemplate: "That's equivalent to {flightCount} flights from New York to Tokyo!",
 		icon: '✈️',
 		requiredStats: ['hours'],
@@ -20,7 +20,7 @@ export const TIME_EQUIVALENCY_TEMPLATES = defineTemplateCategory('time-equivalen
 	},
 	{
 		id: 'lotr-marathon',
-		factTemplate: 'Your {hours} hours of viewing',
+		factTemplate: '{Possessive} {hours} hours of viewing',
 		comparisonTemplate:
 			'Could watch the entire extended Lord of the Rings trilogy {lotrCount} times!',
 		icon: '🧙',
@@ -29,16 +29,16 @@ export const TIME_EQUIVALENCY_TEMPLATES = defineTemplateCategory('time-equivalen
 	},
 	{
 		id: 'books-read',
-		factTemplate: 'You spent {hours} hours watching content',
-		comparisonTemplate: 'In that time, you could have read about {bookCount} novels',
+		factTemplate: '{Subject} spent {hours} hours watching content',
+		comparisonTemplate: 'In that time, {subject} could have read about {bookCount} novels',
 		icon: '📚',
 		requiredStats: ['hours'],
 		minThresholds: { hours: 6 } // At least one book
 	},
 	{
 		id: 'walk-distance',
-		factTemplate: 'Your {hours} hours of screen time',
-		comparisonTemplate: 'You could have walked {walkMiles} miles in that time!',
+		factTemplate: '{Possessive} {hours} hours of screen time',
+		comparisonTemplate: '{Subject} could have walked {walkMiles} miles in that time!',
 		icon: '🚶',
 		requiredStats: ['hours'],
 		minThresholds: { hours: 3 } // At least 9 miles
@@ -53,7 +53,7 @@ export const TIME_EQUIVALENCY_TEMPLATES = defineTemplateCategory('time-equivalen
 	},
 	{
 		id: 'mcu-marathon',
-		factTemplate: 'You watched {hours} hours of content',
+		factTemplate: '{Subject} watched {hours} hours of content',
 		comparisonTemplate: "That's like binging the entire MCU Infinity Saga {mcuCount} times over!",
 		icon: '🦸',
 		requiredStats: ['hours'],
@@ -61,7 +61,7 @@ export const TIME_EQUIVALENCY_TEMPLATES = defineTemplateCategory('time-equivalen
 	},
 	{
 		id: 'harry-potter',
-		factTemplate: 'Your {hours} viewing hours',
+		factTemplate: '{Possessive} {hours} viewing hours',
 		comparisonTemplate: 'Could power through all 8 Harry Potter films {hpCount} times!',
 		icon: '⚡',
 		requiredStats: ['hours'],
@@ -69,7 +69,7 @@ export const TIME_EQUIVALENCY_TEMPLATES = defineTemplateCategory('time-equivalen
 	},
 	{
 		id: 'coffee-breaks',
-		factTemplate: 'You watched {hours} hours of content this year',
+		factTemplate: '{Subject} watched {hours} hours of content this year',
 		comparisonTemplate: "That's enough time for {coffeeBreaks} coffee breaks!",
 		icon: '☕',
 		requiredStats: ['hours'],
@@ -77,7 +77,7 @@ export const TIME_EQUIVALENCY_TEMPLATES = defineTemplateCategory('time-equivalen
 	},
 	{
 		id: 'commute-time',
-		factTemplate: 'Your {hours} hours of viewing',
+		factTemplate: '{Possessive} {hours} hours of viewing',
 		comparisonTemplate: 'Would cover {commuteTrips} average work commutes!',
 		icon: '🚗',
 		requiredStats: ['hours'],

@@ -94,6 +94,9 @@ export function buildGenerationContext(stats: UserStats | ServerStats): FactGene
 	const uniqueMovies = stats.topMovies.length;
 	const uniqueShows = stats.topShows.length;
 
+	// Determine scope based on stats type
+	const scope = isUserStats(stats) ? 'user' : 'server';
+
 	const baseContext: FactGenerationContext = {
 		hours,
 		days,
@@ -112,7 +115,8 @@ export function buildGenerationContext(stats: UserStats | ServerStats): FactGene
 		firstWatchTitle: stats.firstWatch?.title ?? null,
 		lastWatchTitle: stats.lastWatch?.title ?? null,
 		uniqueMovies,
-		uniqueShows
+		uniqueShows,
+		scope
 	};
 
 	// Enrich with entertainment trivia calculations
@@ -166,8 +170,44 @@ export function isTemplateApplicable(
 		return false;
 	}
 
+	// Exclude percentile-based templates from server stats
+	// These are user-specific comparisons that don't make sense for collective stats
+	if (context.scope === 'server' && template.requiredStats.includes('percentile')) {
+		return false;
+	}
+
 	return true;
 }
+
+// =============================================================================
+// Pronoun Support
+// =============================================================================
+
+/**
+ * Pronoun mappings for user vs server scope
+ */
+const PRONOUNS = {
+	user: { subject: 'You', possessive: 'Your', object: 'you' },
+	server: { subject: 'We', possessive: 'Our', object: 'us' }
+} as const;
+
+/**
+ * Get pronoun replacements based on scope
+ */
+function getPronounReplacements(scope: 'user' | 'server'): Record<string, string> {
+	const p = PRONOUNS[scope];
+	return {
+		Subject: p.subject, // "You" / "We"
+		subject: p.subject.toLowerCase(), // "you" / "we"
+		Possessive: p.possessive, // "Your" / "Our"
+		possessive: p.possessive.toLowerCase(), // "your" / "our"
+		object: p.object // "you" / "us"
+	};
+}
+
+// =============================================================================
+// Template Logic
+// =============================================================================
 
 /**
  * Interpolate template with context values
@@ -204,7 +244,12 @@ export function interpolateTemplate(template: string, context: FactGenerationCon
 	const topPercentile = 100 - Math.round(context.percentile);
 	const year = new Date().getFullYear(); // Current year for the year-participant template
 
+	// Get pronoun replacements based on scope (user vs server)
+	const pronounReplacements = getPronounReplacements(context.scope);
+
 	const replacements: Record<string, string | number> = {
+		// Pronoun placeholders (context-aware)
+		...pronounReplacements,
 		hours: context.hours,
 		days: context.days,
 		plays: context.plays,

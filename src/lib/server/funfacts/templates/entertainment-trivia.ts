@@ -12,8 +12,8 @@ import { defineTemplateCategory } from './base';
 export const ENTERTAINMENT_TRIVIA_TEMPLATES = defineTemplateCategory('entertainment-trivia', [
 	{
 		id: 'game-of-thrones-marathon',
-		factTemplate: 'Your {hours} hours of watching',
-		comparisonTemplate: 'Could get you through all of Game of Thrones {gotCount} times!',
+		factTemplate: '{Possessive} {hours} hours of watching',
+		comparisonTemplate: 'Could get {object} through all of Game of Thrones {gotCount} times!',
 		icon: '🐉',
 		requiredStats: ['hours'],
 		minThresholds: { hours: 70 } // At least one full GOT
@@ -22,14 +22,14 @@ export const ENTERTAINMENT_TRIVIA_TEMPLATES = defineTemplateCategory('entertainm
 		id: 'friends-forever',
 		factTemplate: 'With {hours} hours watched',
 		comparisonTemplate:
-			'You could have seen every Friends episode {friendsCount} times and still been there for them!',
+			'{Subject} could have seen every Friends episode {friendsCount} times and still been there for them!',
 		icon: '☕',
 		requiredStats: ['hours'],
 		minThresholds: { hours: 90 } // At least one full Friends
 	},
 	{
 		id: 'the-office-hours',
-		factTemplate: 'Your {hours} viewing hours',
+		factTemplate: '{Possessive} {hours} viewing hours',
 		comparisonTemplate:
 			"That's {theOfficeCount} complete rewatches of The Office - that's what she said!",
 		icon: '📎',
@@ -38,8 +38,8 @@ export const ENTERTAINMENT_TRIVIA_TEMPLATES = defineTemplateCategory('entertainm
 	},
 	{
 		id: 'stranger-things',
-		factTemplate: 'Your {hours} hours of content',
-		comparisonTemplate: 'Could take you to the Upside Down and back {strangerThingsCount} times!',
+		factTemplate: '{Possessive} {hours} hours of content',
+		comparisonTemplate: 'Could take {object} to the Upside Down and back {strangerThingsCount} times!',
 		icon: '👾',
 		requiredStats: ['hours'],
 		minThresholds: { hours: 34 } // At least one full Stranger Things
@@ -48,16 +48,16 @@ export const ENTERTAINMENT_TRIVIA_TEMPLATES = defineTemplateCategory('entertainm
 		id: 'star-wars-saga',
 		factTemplate: 'With {hours} hours on screen',
 		comparisonTemplate:
-			'You could watch the original Star Wars trilogy {starWarsCount} times - may the Force be with you!',
+			'{Subject} could watch the original Star Wars trilogy {starWarsCount} times - may the Force be with {object}!',
 		icon: '⭐',
 		requiredStats: ['hours'],
 		minThresholds: { hours: 6.4 } // At least one original trilogy
 	},
 	{
 		id: 'breaking-bad-marathon',
-		factTemplate: 'Your {hours} hours of viewing',
+		factTemplate: '{Possessive} {hours} hours of viewing',
 		comparisonTemplate:
-			"Could power through all of Breaking Bad {breakingBadCount} times - you're the one who watches!",
+			"Could power through all of Breaking Bad {breakingBadCount} times - {subject}'re the ones who watch!",
 		icon: '🧪',
 		requiredStats: ['hours'],
 		minThresholds: { hours: 62 } // At least one full Breaking Bad
@@ -72,9 +72,9 @@ export const ENTERTAINMENT_TRIVIA_TEMPLATES = defineTemplateCategory('entertainm
 	},
 	{
 		id: 'sopranos-family',
-		factTemplate: 'Your {hours} viewing hours',
+		factTemplate: '{Possessive} {hours} viewing hours',
 		comparisonTemplate:
-			'Could take you through The Sopranos {sopranosCount} times - fuggedaboutit!',
+			'Could take {object} through The Sopranos {sopranosCount} times - fuggedaboutit!',
 		icon: '🍝',
 		requiredStats: ['hours'],
 		minThresholds: { hours: 86 } // At least one full Sopranos
@@ -83,7 +83,7 @@ export const ENTERTAINMENT_TRIVIA_TEMPLATES = defineTemplateCategory('entertainm
 		id: 'star-wars-quick',
 		factTemplate: 'Even with just {hours} hours',
 		comparisonTemplate:
-			"You could've had {starWarsCount} Star Wars movie nights - not bad for a scruffy-looking nerf herder!",
+			"{Subject} could've had {starWarsCount} Star Wars movie nights - not bad for a scruffy-looking nerf herder!",
 		icon: '🚀',
 		requiredStats: ['hours'],
 		minThresholds: { hours: 2 }, // Very low - accessible
@@ -91,7 +91,7 @@ export const ENTERTAINMENT_TRIVIA_TEMPLATES = defineTemplateCategory('entertainm
 	},
 	{
 		id: 'quick-binge-comparison',
-		factTemplate: 'Your {hours} hours of content',
+		factTemplate: '{Possessive} {hours} hours of content',
 		comparisonTemplate: "That's {strangerThingsCount} Stranger Things marathons waiting to happen!",
 		icon: '📺',
 		requiredStats: ['hours'],
