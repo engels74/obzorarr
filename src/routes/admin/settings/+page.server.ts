@@ -13,6 +13,8 @@ import {
 	setWrappedLogoMode,
 	countStatsCache,
 	clearStatsCache,
+	countPlayHistory,
+	clearPlayHistory,
 	getApiConfigWithSources,
 	setCachedServerName,
 	AppSettingsKey,
@@ -373,6 +375,61 @@ export const actions: Actions = {
 			return { success: true, message };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to clear cache';
+			return fail(500, { error: message });
+		}
+	},
+
+	/**
+	 * Get play history count for confirmation dialog
+	 */
+	getPlayHistoryCount: async ({ request }) => {
+		const formData = await request.formData();
+		const yearStr = formData.get('year')?.toString();
+
+		let year: number | undefined;
+		if (yearStr) {
+			year = parseInt(yearStr, 10);
+			if (isNaN(year)) {
+				return fail(400, { error: 'Invalid year' });
+			}
+		}
+
+		try {
+			const count = await countPlayHistory(year);
+			return { success: true, count, year };
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to get history count';
+			return fail(500, { error: message });
+		}
+	},
+
+	/**
+	 * Clear play history for a year (or all years)
+	 */
+	clearPlayHistory: async ({ request }) => {
+		const formData = await request.formData();
+		const yearStr = formData.get('year')?.toString();
+
+		let year: number | undefined;
+		if (yearStr) {
+			year = parseInt(yearStr, 10);
+			if (isNaN(year)) {
+				return fail(400, { error: 'Invalid year' });
+			}
+		}
+
+		try {
+			const deleted = await clearPlayHistory(year);
+			const message = year
+				? `Deleted ${deleted} play history records for ${year}`
+				: `Deleted ${deleted} play history records`;
+
+			logger.info(message, 'Settings', { year, deleted });
+
+			return { success: true, message };
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to clear play history';
+			logger.error(`Failed to clear play history: ${message}`, 'Settings', { year });
 			return fail(500, { error: message });
 		}
 	},

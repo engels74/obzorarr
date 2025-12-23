@@ -114,6 +114,13 @@
 	let loadingCount = $state(false);
 	let isClearing = $state(false);
 
+	// Play history clearing dialog state
+	let historyDialogOpen = $state(false);
+	let pendingHistoryYear = $state<number | undefined>(undefined);
+	let pendingHistoryCount = $state(0);
+	let loadingHistoryCount = $state(false);
+	let isClearingHistory = $state(false);
+
 	// Open cache clearing confirmation dialog
 	async function showCacheConfirmation(year?: number) {
 		loadingCount = true;
@@ -157,6 +164,50 @@
 			return `This will permanently delete ${pendingCacheCount} cached statistics record${pendingCacheCount !== 1 ? 's' : ''} for ${pendingCacheYear}.`;
 		}
 		return `This will permanently delete ${pendingCacheCount} cached statistics record${pendingCacheCount !== 1 ? 's' : ''} across all years.`;
+	}
+
+	// Open play history clearing confirmation dialog
+	async function showHistoryConfirmation(year?: number) {
+		loadingHistoryCount = true;
+		pendingHistoryYear = year;
+
+		const formData = new FormData();
+		if (year !== undefined) {
+			formData.append('year', year.toString());
+		}
+
+		try {
+			const response = await fetch('?/getPlayHistoryCount', {
+				method: 'POST',
+				body: formData
+			});
+			const result = deserialize(await response.text());
+
+			if (result.type === 'success' && result.data) {
+				const data = result.data as { success: boolean; count: number; year?: number };
+				pendingHistoryCount = data.count;
+				historyDialogOpen = true;
+			}
+		} catch (error) {
+			console.error('Failed to get history count:', error);
+		} finally {
+			loadingHistoryCount = false;
+		}
+	}
+
+	// Handle confirmed history clear
+	function handleHistoryCleared() {
+		historyDialogOpen = false;
+		pendingHistoryYear = undefined;
+		pendingHistoryCount = 0;
+	}
+
+	// Get confirmation message for history clearing
+	function getHistoryConfirmationMessage(): string {
+		if (pendingHistoryYear !== undefined) {
+			return `This will permanently delete ${pendingHistoryCount} play history record${pendingHistoryCount !== 1 ? 's' : ''} for ${pendingHistoryYear}.`;
+		}
+		return `This will permanently delete ${pendingHistoryCount} play history record${pendingHistoryCount !== 1 ? 's' : ''} across all years.`;
 	}
 </script>
 
@@ -553,6 +604,98 @@
 							<span>Clearing...</span>
 						{:else}
 							Delete {pendingCacheCount} Record{pendingCacheCount !== 1 ? 's' : ''}
+						{/if}
+					</AlertDialog.Action>
+				</form>
+			</AlertDialog.Footer>
+		</AlertDialog.Content>
+	</AlertDialog.Root>
+
+	<!-- Clear Play History Section -->
+	<section class="section danger-section">
+		<h2>Clear Play History</h2>
+		<p class="section-description">
+			Permanently delete viewing history from the database. Related statistics cache will be
+			automatically cleared.
+		</p>
+
+		<div class="warning-box">
+			<strong>Warning:</strong> This action is destructive and cannot be undone. All viewing history for
+			the selected year(s) will be permanently deleted.
+		</div>
+
+		<h3>Delete Play History</h3>
+		<p class="subsection-description">Remove viewing history for a specific year or all years.</p>
+
+		<div class="cache-actions">
+			{#each data.availableYears as year}
+				<button
+					type="button"
+					class="cache-button danger"
+					onclick={() => showHistoryConfirmation(year)}
+					disabled={loadingHistoryCount}
+				>
+					{loadingHistoryCount && pendingHistoryYear === year ? 'Loading...' : `Clear ${year}`}
+				</button>
+			{/each}
+
+			<button
+				type="button"
+				class="cache-button danger all"
+				onclick={() => showHistoryConfirmation()}
+				disabled={loadingHistoryCount}
+			>
+				{loadingHistoryCount && pendingHistoryYear === undefined
+					? 'Loading...'
+					: 'Clear All History'}
+			</button>
+		</div>
+	</section>
+
+	<!-- Play History Clearing Confirmation Dialog -->
+	<AlertDialog.Root bind:open={historyDialogOpen}>
+		<AlertDialog.Content>
+			<AlertDialog.Header>
+				<AlertDialog.Title>
+					{pendingHistoryYear !== undefined
+						? `Delete ${pendingHistoryYear} Play History?`
+						: 'Delete All Play History?'}
+				</AlertDialog.Title>
+				<AlertDialog.Description>
+					{getHistoryConfirmationMessage()}
+					<br /><br />
+					<strong>This action cannot be undone.</strong> Statistics cache for affected years will also
+					be cleared.
+				</AlertDialog.Description>
+			</AlertDialog.Header>
+			<AlertDialog.Footer>
+				<AlertDialog.Cancel disabled={isClearingHistory}>Cancel</AlertDialog.Cancel>
+				<form
+					method="POST"
+					action="?/clearPlayHistory"
+					use:enhance={() => {
+						isClearingHistory = true;
+						return async ({ update }) => {
+							await update();
+							isClearingHistory = false;
+							handleHistoryCleared();
+						};
+					}}
+					style="display: contents;"
+				>
+					{#if pendingHistoryYear !== undefined}
+						<input type="hidden" name="year" value={pendingHistoryYear} />
+					{/if}
+					<AlertDialog.Action
+						type="submit"
+						disabled={isClearingHistory}
+						class="gap-2 destructive-action"
+					>
+						{#if isClearingHistory}
+							<span class="spinner small"></span>
+							<span>Deleting...</span>
+						{:else}
+							Delete {pendingHistoryCount} Record{pendingHistoryCount !== 1 ? 's' : ''}
 						{/if}
 					</AlertDialog.Action>
 				</form>
@@ -994,6 +1137,49 @@
 	.cache-button:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
+	}
+
+	/* Danger Section Styling */
+	.danger-section {
+		border-color: hsl(0 60% 40% / 0.3);
+	}
+
+	.danger-section h2 {
+		color: hsl(0 70% 50%);
+	}
+
+	.warning-box {
+		padding: 0.75rem 1rem;
+		background: hsl(0 60% 50% / 0.1);
+		border: 1px solid hsl(0 60% 50% / 0.3);
+		border-radius: var(--radius);
+		margin-bottom: 1rem;
+		font-size: 0.875rem;
+		color: hsl(0 70% 45%);
+	}
+
+	.cache-button.danger {
+		background: hsl(var(--secondary));
+	}
+
+	.cache-button.danger:hover:not(:disabled) {
+		background: hsl(0 70% 45%);
+		color: white;
+		border-color: hsl(0 70% 45%);
+	}
+
+	.cache-button.danger.all {
+		background: hsl(var(--muted));
+	}
+
+	/* Destructive AlertDialog button styling */
+	:global(.destructive-action) {
+		background-color: hsl(0 70% 45%) !important;
+		color: white !important;
+	}
+
+	:global(.destructive-action:hover) {
+		background-color: hsl(0 70% 40%) !important;
 	}
 
 	/* Section Link */

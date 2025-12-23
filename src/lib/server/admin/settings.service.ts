@@ -1,6 +1,7 @@
 import { db } from '$lib/server/db/client';
-import { appSettings, cachedStats } from '$lib/server/db/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { appSettings, cachedStats, playHistory } from '$lib/server/db/schema';
+import { eq, and, sql, between } from 'drizzle-orm';
+import { createYearFilter } from '$lib/server/stats/utils';
 import { env } from '$env/dynamic/private';
 
 /**
@@ -453,6 +454,62 @@ export async function clearUserStatsCache(userId: number, year?: number): Promis
 		return result.length;
 	} else {
 		const result = await db.delete(cachedStats).where(eq(cachedStats.userId, userId)).returning();
+		return result.length;
+	}
+}
+
+// =============================================================================
+// Play History Management
+// =============================================================================
+
+/**
+ * Count play history records for a specific year (or all years)
+ *
+ * Used for confirmation dialogs before history clearing.
+ *
+ * @param year - Optional year to count history for (undefined = all years)
+ * @returns Number of play history records
+ */
+export async function countPlayHistory(year?: number): Promise<number> {
+	if (year !== undefined) {
+		const { startTimestamp, endTimestamp } = createYearFilter(year);
+		const result = await db
+			.select({ count: sql<number>`count(*)` })
+			.from(playHistory)
+			.where(between(playHistory.viewedAt, startTimestamp, endTimestamp));
+		return Number(result[0]?.count ?? 0);
+	} else {
+		const result = await db.select({ count: sql<number>`count(*)` }).from(playHistory);
+		return Number(result[0]?.count ?? 0);
+	}
+}
+
+/**
+ * Clear play history records for a specific year (or all years)
+ *
+ * Also clears the cached stats for affected years since they become invalid.
+ *
+ * @param year - Optional year to clear history for (undefined = all years)
+ * @returns Number of play history records deleted
+ */
+export async function clearPlayHistory(year?: number): Promise<number> {
+	if (year !== undefined) {
+		const { startTimestamp, endTimestamp } = createYearFilter(year);
+		const result = await db
+			.delete(playHistory)
+			.where(between(playHistory.viewedAt, startTimestamp, endTimestamp))
+			.returning();
+
+		// Invalidate cached stats for this year since they're now stale
+		await clearStatsCache(year);
+
+		return result.length;
+	} else {
+		const result = await db.delete(playHistory).returning();
+
+		// Invalidate all cached stats since they're now stale
+		await clearStatsCache();
+
 		return result.length;
 	}
 }
