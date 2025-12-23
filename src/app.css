@@ -215,3 +215,81 @@ body {
 		'Helvetica Neue',
 		sans-serif;
 }
+
+/* =============================================================================
+   Toast Notifications (svelte-sonner)
+   ============================================================================= */
+
+[data-sonner-toaster] {
+	--normal-bg: hsl(var(--card));
+	--normal-text: hsl(var(--foreground));
+	--normal-border: hsl(var(--border));
+
+	--success-bg: hsl(120 40% 20%);
+	--success-text: hsl(120 60% 95%);
+	--success-border: hsl(120 40% 35%);
+
+	--error-bg: hsl(var(--destructive));
+	--error-text: hsl(var(--destructive-foreground));
+	--error-border: hsl(0 62% 40%);
+
+	--warning-bg: hsl(45 80% 25%);
+	--warning-text: hsl(45 100% 95%);
+	--warning-border: hsl(45 80% 40%);
+
+	--info-bg: hsl(200 60% 25%);
+	--info-text: hsl(200 100% 95%);
+	--info-border: hsl(200 60% 40%);
+}
+
+[data-sonner-toast] {
+	font-family: inherit;
+	border-radius: var(--radius);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+[data-sonner-toast][data-type='success'] {
+	background: var(--success-bg);
+	color: var(--success-text);
+	border: 1px solid var(--success-border);
+}
+
+[data-sonner-toast][data-type='error'] {
+	background: var(--error-bg);
+	color: var(--error-text);
+	border: 1px solid var(--error-border);
+}
+
+[data-sonner-toast][data-type='warning'] {
+	background: var(--warning-bg);
+	color: var(--warning-text);
+	border: 1px solid var(--warning-border);
+}
+
+[data-sonner-toast][data-type='info'] {
+	background: var(--info-bg);
+	color: var(--info-text);
+	border: 1px solid var(--info-border);
+}
+
+[data-sonner-toast] [data-close-button] {
+	background: transparent;
+	border: none;
+	color: currentColor;
+	opacity: 0.6;
+	transition: opacity 0.15s ease;
+}
+
+[data-sonner-toast] [data-close-button]:hover {
+	opacity: 1;
+}
+
+[data-sonner-toast] [data-title] {
+	font-weight: 600;
+	font-size: 0.875rem;
+}
+
+[data-sonner-toast] [data-description] {
+	font-size: 0.8125rem;
+	opacity: 0.9;
+}

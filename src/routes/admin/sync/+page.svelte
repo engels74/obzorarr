@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { enhance } from '$app/forms';
+	import { handleFormToast } from '$lib/utils/form-toast';
 	import type { PageData, ActionData } from './$types';
 
 	/**
@@ -41,29 +42,10 @@
 	let cronExpression = $state('0 0 * * *');
 	let isSyncing = $state(false);
 	let isCancelling = $state(false);
-	let dismissFormSuccess = $state(false);
-	let dismissFormError = $state(false);
 
-	// Auto-dismiss error banners after 4 seconds when form error changes
+	// Show toast notifications for form responses
 	$effect(() => {
-		if (form?.error) {
-			dismissFormError = false;
-			const timeout = setTimeout(() => {
-				dismissFormError = true;
-			}, 4000);
-			return () => clearTimeout(timeout);
-		}
-	});
-
-	// Auto-dismiss success banners after 4 seconds (for non-sync actions like scheduler updates)
-	$effect(() => {
-		if (form?.success && !isSyncing) {
-			dismissFormSuccess = false;
-			const timeout = setTimeout(() => {
-				dismissFormSuccess = true;
-			}, 4000);
-			return () => clearTimeout(timeout);
-		}
+		handleFormToast(form);
 	});
 
 	// SSE state
@@ -134,8 +116,6 @@
 					}
 					// Mark sync as completed to prevent auto-reconnection
 					syncCompleted = true;
-					// Dismiss the form success banner (e.g., "Sync started")
-					dismissFormSuccess = true;
 					// Keep showing the final state briefly, then disconnect
 					setTimeout(() => {
 						disconnectSSE();
@@ -252,18 +232,6 @@
 		<h1>Sync Management</h1>
 		<p class="subtitle">Manage Plex data synchronization</p>
 	</header>
-
-	{#if form?.error && !dismissFormError}
-		<div class="error-banner" role="alert">
-			{form.error}
-		</div>
-	{/if}
-
-	{#if form?.success && !dismissFormSuccess}
-		<div class="success-banner" role="status">
-			{form.message ?? 'Operation completed successfully'}
-		</div>
-	{/if}
 
 	<!-- Sync Trigger Section -->
 	<section class="section">
@@ -400,7 +368,6 @@
 				use:enhance={() => {
 					isSyncing = true;
 					syncCompleted = false; // Reset for new sync
-					dismissFormSuccess = false; // Reset to show new form messages
 					// Connect to SSE immediately to catch progress updates
 					connectSSE();
 					return async ({ update }) => {
@@ -618,22 +585,6 @@
 	.subtitle {
 		color: hsl(var(--muted-foreground));
 		margin: 0;
-	}
-
-	.error-banner {
-		background: hsl(var(--destructive));
-		color: hsl(var(--destructive-foreground));
-		padding: 1rem;
-		border-radius: var(--radius);
-		margin-bottom: 1.5rem;
-	}
-
-	.success-banner {
-		background: hsl(120 40% 30%);
-		color: white;
-		padding: 1rem;
-		border-radius: var(--radius);
-		margin-bottom: 1.5rem;
 	}
 
 	.section {

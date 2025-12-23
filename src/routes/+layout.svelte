@@ -2,6 +2,7 @@
 	import '../app.css';
 	import obzorarrIcon from '$lib/assets/obzorarr-icon.svg';
 	import { page } from '$app/stores';
+	import { Toaster } from 'svelte-sonner';
 
 	let { children } = $props();
 
@@ -50,3 +51,5 @@
 </svelte:head>
 
 {@render children()}
+
+<Toaster position="top-right" richColors closeButton duration={4000} />

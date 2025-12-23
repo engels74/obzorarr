@@ -3,6 +3,7 @@
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
+	import { handleFormToast } from '$lib/utils/form-toast';
 	import type { PageData, ActionData } from './$types';
 	import type { LogEntry, LogLevelType } from '$lib/server/logging';
 
@@ -238,18 +239,9 @@
 		}
 	});
 
-	// Auto-dismiss state for success/error banners
-	let dismissBanner = $state(false);
-
-	// Auto-dismiss banners after 4 seconds when form result changes
+	// Show toast notifications for form responses
 	$effect(() => {
-		if (form?.success || form?.error) {
-			dismissBanner = false;
-			const timeout = setTimeout(() => {
-				dismissBanner = true;
-			}, 4000);
-			return () => clearTimeout(timeout);
-		}
+		handleFormToast(form);
 	});
 </script>
 
@@ -258,18 +250,6 @@
 		<h1>Application Logs</h1>
 		<p class="subtitle">View and filter application log entries</p>
 	</header>
-
-	{#if form?.error && !dismissBanner}
-		<div class="error-banner" role="alert">
-			{form.error}
-		</div>
-	{/if}
-
-	{#if form?.success && !dismissBanner}
-		<div class="success-banner" role="status">
-			{form.message ?? 'Operation completed successfully'}
-		</div>
-	{/if}
 
 	<!-- Stats Section -->
 	<section class="stats-section">
@@ -519,22 +499,6 @@
 	.subtitle {
 		color: hsl(var(--muted-foreground));
 		margin: 0;
-	}
-
-	.error-banner {
-		background: hsl(var(--destructive));
-		color: hsl(var(--destructive-foreground));
-		padding: 1rem;
-		border-radius: var(--radius);
-		margin-bottom: 1.5rem;
-	}
-
-	.success-banner {
-		background: hsl(120 40% 30%);
-		color: white;
-		padding: 1rem;
-		border-radius: var(--radius);
-		margin-bottom: 1.5rem;
 	}
 
 	/* Stats Section */

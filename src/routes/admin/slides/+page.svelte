@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { handleFormToast } from '$lib/utils/form-toast';
 	import type { PageData, ActionData } from './$types';
 	import type { SlideType } from '$lib/components/slides/types';
 	import { DEFAULT_SLIDE_ORDER } from '$lib/components/slides/types';
@@ -19,18 +20,9 @@
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
-	// Auto-dismiss state for success/error banners
-	let dismissBanner = $state(false);
-
-	// Auto-dismiss banners after 4 seconds when form result changes
+	// Show toast notifications for form responses
 	$effect(() => {
-		if (form?.success || form?.error) {
-			dismissBanner = false;
-			const timeout = setTimeout(() => {
-				dismissBanner = true;
-			}, 4000);
-			return () => clearTimeout(timeout);
-		}
+		handleFormToast(form);
 	});
 
 	// Slide display names
@@ -148,16 +140,6 @@
 		<h1>Slide Configuration</h1>
 		<p class="subtitle">Manage slides for Year in Review presentations</p>
 	</header>
-
-	{#if form?.error && !dismissBanner}
-		<div class="error-banner" role="alert">
-			{form.error}
-		</div>
-	{/if}
-
-	{#if form?.success && !dismissBanner}
-		<div class="success-banner" role="status">Operation completed successfully</div>
-	{/if}
 
 	<!-- Slide Order Section -->
 	<section class="section">
@@ -463,22 +445,6 @@
 	.subtitle {
 		color: hsl(var(--muted-foreground));
 		margin: 0;
-	}
-
-	.error-banner {
-		background: hsl(var(--destructive));
-		color: hsl(var(--destructive-foreground));
-		padding: 1rem;
-		border-radius: var(--radius);
-		margin-bottom: 1.5rem;
-	}
-
-	.success-banner {
-		background: hsl(120 40% 30%);
-		color: white;
-		padding: 1rem;
-		border-radius: var(--radius);
-		margin-bottom: 1.5rem;
 	}
 
 	.section {

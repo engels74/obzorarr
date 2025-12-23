@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance, deserialize } from '$app/forms';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
+	import { handleFormToast } from '$lib/utils/form-toast';
 	import type { PageData, ActionData } from './$types';
 
 	/**
@@ -101,18 +102,9 @@
 		user_choice: 'Users can choose to show or hide the logo on their wrapped page'
 	};
 
-	// Auto-dismiss state for success/error banners
-	let dismissBanner = $state(false);
-
-	// Auto-dismiss banners after 4 seconds when form result changes
+	// Show toast notifications for form responses
 	$effect(() => {
-		if (form?.success || form?.error) {
-			dismissBanner = false;
-			const timeout = setTimeout(() => {
-				dismissBanner = true;
-			}, 4000);
-			return () => clearTimeout(timeout);
-		}
+		handleFormToast(form);
 	});
 
 	// Cache clearing dialog state
@@ -172,18 +164,6 @@
 		<h1>Settings</h1>
 		<p class="subtitle">Configure application settings</p>
 	</header>
-
-	{#if form?.error && !dismissBanner}
-		<div class="error-banner" role="alert">
-			{form.error}
-		</div>
-	{/if}
-
-	{#if form?.success && !dismissBanner}
-		<div class="success-banner" role="status">
-			{form.message ?? 'Settings updated successfully'}
-		</div>
-	{/if}
 
 	<!-- API Configuration Section -->
 	<section class="section">
@@ -650,22 +630,6 @@
 	.subtitle {
 		color: hsl(var(--muted-foreground));
 		margin: 0;
-	}
-
-	.error-banner {
-		background: hsl(var(--destructive));
-		color: hsl(var(--destructive-foreground));
-		padding: 1rem;
-		border-radius: var(--radius);
-		margin-bottom: 1.5rem;
-	}
-
-	.success-banner {
-		background: hsl(120 40% 30%);
-		color: white;
-		padding: 1rem;
-		border-radius: var(--radius);
-		margin-bottom: 1.5rem;
 	}
 
 	.section {
