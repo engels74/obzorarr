@@ -1,4 +1,4 @@
-import { PLEX_SERVER_URL } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import {
 	PlexResourcesResponseSchema,
 	PlexAuthApiError,
@@ -341,7 +341,7 @@ function filterServerResources(resources: PlexResource[]): PlexResource[] {
  * @returns The matching server resource, or undefined if not found
  */
 function findConfiguredServer(servers: PlexResource[]): PlexResource | undefined {
-	const configuredUrl = PLEX_SERVER_URL;
+	const configuredUrl = env.PLEX_SERVER_URL ?? '';
 
 	// Strategy 1: For .plex.direct URLs, try matching by machine ID (most reliable when IDs match)
 	const configuredMachineId = extractPlexDirectMachineId(configuredUrl);
@@ -407,7 +407,7 @@ export async function verifyServerMembership(userToken: string): Promise<Members
 	const servers = filterServerResources(resources);
 
 	// Debug logging to help diagnose membership issues
-	logger.debug(`Configured PLEX_SERVER_URL: ${PLEX_SERVER_URL}`, 'Membership');
+	logger.debug(`Configured PLEX_SERVER_URL: ${env.PLEX_SERVER_URL ?? ''}`, 'Membership');
 	logger.debug(`Found ${servers.length} server(s) accessible to user`, 'Membership');
 
 	for (const server of servers) {

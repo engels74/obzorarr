@@ -7,7 +7,7 @@
  * users who have watched content, not just those registered with Obzorarr.
  */
 
-import { PLEX_SERVER_URL, PLEX_TOKEN } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import { db } from '$lib/server/db/client';
 import { plexAccounts, users } from '$lib/server/db/schema';
 import { sql, or, eq } from 'drizzle-orm';
@@ -51,7 +51,7 @@ const PLEX_SERVER_HEADERS = {
  * Get the server's machine identifier from the local Plex server
  */
 async function getServerMachineIdentifier(): Promise<string> {
-	if (!PLEX_SERVER_URL || !PLEX_TOKEN) {
+	if (!env.PLEX_SERVER_URL || !env.PLEX_TOKEN) {
 		throw new PlexAuthApiError(
 			'PLEX_SERVER_URL and PLEX_TOKEN must be configured',
 			undefined,
@@ -59,12 +59,12 @@ async function getServerMachineIdentifier(): Promise<string> {
 		);
 	}
 
-	const endpoint = `${PLEX_SERVER_URL}/identity`;
+	const endpoint = `${env.PLEX_SERVER_URL}/identity`;
 
 	const response = await fetch(endpoint, {
 		headers: {
 			...PLEX_SERVER_HEADERS,
-			'X-Plex-Token': PLEX_TOKEN
+			'X-Plex-Token': env.PLEX_TOKEN ?? ''
 		}
 	});
 
@@ -105,17 +105,17 @@ interface ManagedAccount {
  * These are local accounts created on the server (not Plex.tv shared users).
  */
 async function fetchManagedAccounts(): Promise<ManagedAccount[]> {
-	if (!PLEX_SERVER_URL || !PLEX_TOKEN) {
+	if (!env.PLEX_SERVER_URL || !env.PLEX_TOKEN) {
 		return [];
 	}
 
-	const endpoint = `${PLEX_SERVER_URL}/accounts`;
+	const endpoint = `${env.PLEX_SERVER_URL}/accounts`;
 
 	try {
 		const response = await fetch(endpoint, {
 			headers: {
 				...PLEX_SERVER_HEADERS,
-				'X-Plex-Token': PLEX_TOKEN
+				'X-Plex-Token': env.PLEX_TOKEN ?? ''
 			}
 		});
 
@@ -175,7 +175,7 @@ async function fetchSharedUsers(machineIdentifier: string): Promise<PlexSharedSe
 	const response = await fetch(endpoint, {
 		headers: {
 			...PLEX_TV_HEADERS,
-			'X-Plex-Token': PLEX_TOKEN
+			'X-Plex-Token': env.PLEX_TOKEN ?? ''
 		}
 	});
 
@@ -243,7 +243,7 @@ export async function syncPlexAccounts(): Promise<number> {
 
 	try {
 		// Fetch owner info using the admin token
-		const ownerData = await getPlexUserInfo(PLEX_TOKEN);
+		const ownerData = await getPlexUserInfo(env.PLEX_TOKEN ?? '');
 
 		// Server owner has accountId = 1 in play history
 		accounts.push({

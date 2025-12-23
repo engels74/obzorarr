@@ -1,4 +1,3 @@
-import { PLEX_TOKEN, PLEX_SERVER_URL } from '$env/static/private';
 import { env } from '$env/dynamic/private';
 import {
 	PlexHistoryResponseSchema,
@@ -16,7 +15,7 @@ import {
  * Plex API Client
  *
  * Provides type-safe communication with Plex Media Server.
- * Uses $env/static/private for secure token storage.
+ * Uses $env/dynamic/private for runtime token access.
  *
  * @module plex/client
  */
@@ -26,16 +25,18 @@ import {
 // =============================================================================
 
 /**
- * Standard headers for all Plex API requests
+ * Get standard headers for all Plex API requests
  * Per bun-svelte-pro.md and Plex API documentation
  */
-const PLEX_HEADERS = {
-	Accept: 'application/json',
-	'X-Plex-Token': PLEX_TOKEN,
-	'X-Plex-Client-Identifier': 'obzorarr',
-	'X-Plex-Product': 'Obzorarr',
-	'X-Plex-Version': '1.0.0'
-} as const;
+function getPlexHeaders() {
+	return {
+		Accept: 'application/json',
+		'X-Plex-Token': env.PLEX_TOKEN ?? '',
+		'X-Plex-Client-Identifier': 'obzorarr',
+		'X-Plex-Product': 'Obzorarr',
+		'X-Plex-Version': '1.0.0'
+	};
+}
 
 /**
  * Default page size for paginated requests
@@ -74,7 +75,7 @@ export async function plexRequest<T>(
 	signal?: AbortSignal
 ): Promise<T> {
 	// Build URL with optional query parameters
-	const url = new URL(endpoint, PLEX_SERVER_URL);
+	const url = new URL(endpoint, env.PLEX_SERVER_URL ?? '');
 	if (params) {
 		params.forEach((value, key) => {
 			url.searchParams.set(key, value);
@@ -84,7 +85,7 @@ export async function plexRequest<T>(
 	try {
 		const response = await fetch(url.toString(), {
 			method: 'GET',
-			headers: PLEX_HEADERS,
+			headers: getPlexHeaders(),
 			signal
 		});
 
@@ -313,7 +314,7 @@ export async function checkConnection(): Promise<boolean> {
  * Note: Does NOT expose the token, only the server URL.
  */
 export function getServerUrl(): string {
-	return PLEX_SERVER_URL;
+	return env.PLEX_SERVER_URL ?? '';
 }
 
 // =============================================================================
