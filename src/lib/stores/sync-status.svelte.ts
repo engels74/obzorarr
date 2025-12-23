@@ -40,6 +40,14 @@ export interface InitialSyncStatus {
 }
 
 /**
+ * Options for sync status store
+ */
+export interface SyncStatusStoreOptions {
+	/** Callback fired when sync completes (useful for data invalidation) */
+	onSyncComplete?: () => void;
+}
+
+/**
  * Convert simplified SSE progress to LiveSyncProgress-compatible format
  * Only includes fields needed by SyncIndicator
  */
@@ -78,14 +86,23 @@ export class SyncStatusStore {
 	/** Whether SSE is connected */
 	private connected = false;
 
+	/** Callback for sync completion */
+	private onSyncComplete?: () => void;
+
+	/** Track if we were syncing (to detect completion) */
+	private wasSyncing = false;
+
 	/**
 	 * Initialize store with server-loaded status and start SSE connection
 	 *
 	 * @param initialStatus - Initial status from server load
+	 * @param options - Store options including callbacks
 	 */
-	initialize(initialStatus: InitialSyncStatus): void {
+	initialize(initialStatus: InitialSyncStatus, options?: SyncStatusStoreOptions): void {
 		this.inProgress = initialStatus.inProgress;
 		this.progress = initialStatus.progress;
+		this.onSyncComplete = options?.onSyncComplete;
+		this.wasSyncing = initialStatus.inProgress;
 
 		// Only connect in browser
 		if (browser) {
@@ -114,9 +131,21 @@ export class SyncStatusStore {
 				if (data.type === 'connected' || data.type === 'update') {
 					this.inProgress = data.inProgress;
 					this.progress = toCompatibleProgress(data.progress);
+					// Track syncing state
+					if (data.inProgress) {
+						this.wasSyncing = true;
+					}
 				} else if (data.type === 'completed' || data.type === 'idle') {
+					// Fire callback if sync just completed (was syncing -> now idle)
+					if (this.wasSyncing && this.onSyncComplete) {
+						// Small delay to let server finish cleanup
+						setTimeout(() => {
+							this.onSyncComplete?.();
+						}, 500);
+					}
 					this.inProgress = false;
 					this.progress = null;
+					this.wasSyncing = false;
 				}
 			} catch {
 				// Silently ignore parse errors
@@ -161,10 +190,14 @@ export class SyncStatusStore {
  * Use this to create an isolated store for wrapped pages.
  *
  * @param initialStatus - Initial status from server load
+ * @param options - Store options including callbacks
  * @returns Initialized store instance
  */
-export function createSyncStatusStore(initialStatus: InitialSyncStatus): SyncStatusStore {
+export function createSyncStatusStore(
+	initialStatus: InitialSyncStatus,
+	options?: SyncStatusStoreOptions
+): SyncStatusStore {
 	const store = new SyncStatusStore();
-	store.initialize(initialStatus);
+	store.initialize(initialStatus, options);
 	return store;
 }

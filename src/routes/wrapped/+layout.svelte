@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { browser } from '$app/environment';
+	import { invalidateAll } from '$app/navigation';
 	import type { LayoutData } from './$types';
 	import SyncIndicator from '$lib/components/SyncIndicator.svelte';
 	import { createSyncStatusStore } from '$lib/stores/sync-status.svelte';
@@ -13,6 +14,7 @@
 	 * which reads the merged wrappedTheme data from this layout's server load.
 	 *
 	 * Sync status is updated via SSE connection for real-time indicator updates.
+	 * When sync completes, page data is automatically refreshed.
 	 */
 
 	interface Props {
@@ -24,12 +26,22 @@
 
 	// Create sync status store with initial server data
 	// Only create in browser to avoid SSR issues with EventSource
-	const syncStatusStore = browser && data.syncStatus
-		? createSyncStatusStore({
-				inProgress: data.syncStatus.inProgress,
-				progress: data.syncStatus.progress
-			})
-		: null;
+	// When sync completes, invalidate all data to refresh stats
+	const syncStatusStore =
+		browser && data.syncStatus
+			? createSyncStatusStore(
+					{
+						inProgress: data.syncStatus.inProgress,
+						progress: data.syncStatus.progress
+					},
+					{
+						onSyncComplete: () => {
+							// Refresh page data when sync completes
+							invalidateAll();
+						}
+					}
+				)
+			: null;
 
 	// Cleanup SSE connection on unmount
 	$effect(() => {
