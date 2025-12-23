@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { PLEX_TOKEN, PLEX_SERVER_URL } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 
 /**
  * Plex Thumbnail Proxy Endpoint
@@ -25,14 +25,17 @@ import { PLEX_TOKEN, PLEX_SERVER_URL } from '$env/static/private';
 const CACHE_MAX_AGE = 7 * 24 * 60 * 60;
 
 /**
- * Standard headers for Plex API requests
+ * Get standard headers for Plex API requests
+ * Must be a function since env vars are read at runtime
  */
-const PLEX_HEADERS = {
-	'X-Plex-Token': PLEX_TOKEN,
-	'X-Plex-Client-Identifier': 'obzorarr',
-	'X-Plex-Product': 'Obzorarr',
-	'X-Plex-Version': '1.0.0'
-} as const;
+function getPlexHeaders() {
+	return {
+		'X-Plex-Token': env.PLEX_TOKEN ?? '',
+		'X-Plex-Client-Identifier': 'obzorarr',
+		'X-Plex-Product': 'Obzorarr',
+		'X-Plex-Version': '1.0.0'
+	};
+}
 
 /**
  * Allowed path prefixes to prevent abuse
@@ -67,13 +70,13 @@ export const GET: RequestHandler = async ({ params }) => {
 	}
 
 	// Construct Plex URL
-	const plexUrl = new URL(`/${path}`, PLEX_SERVER_URL);
+	const plexUrl = new URL(`/${path}`, env.PLEX_SERVER_URL ?? '');
 
 	try {
 		// Fetch from Plex server
 		const response = await fetch(plexUrl.toString(), {
 			method: 'GET',
-			headers: PLEX_HEADERS
+			headers: getPlexHeaders()
 		});
 
 		if (!response.ok) {

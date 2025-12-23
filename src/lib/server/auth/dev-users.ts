@@ -1,5 +1,4 @@
 import { env } from '$env/dynamic/private';
-import { PLEX_SERVER_URL, PLEX_TOKEN } from '$env/static/private';
 import { logger } from '$lib/server/logging';
 import {
 	PlexFriendsResponseSchema,
@@ -73,7 +72,7 @@ let usersCache: CachedUsers | null = null;
  * Get the server's machine identifier from the local Plex server
  */
 async function getServerMachineIdentifier(): Promise<string> {
-	if (!PLEX_SERVER_URL || !PLEX_TOKEN) {
+	if (!env.PLEX_SERVER_URL || !env.PLEX_TOKEN) {
 		throw new PlexAuthApiError(
 			'PLEX_SERVER_URL and PLEX_TOKEN must be configured',
 			undefined,
@@ -81,12 +80,12 @@ async function getServerMachineIdentifier(): Promise<string> {
 		);
 	}
 
-	const endpoint = `${PLEX_SERVER_URL}/identity`;
+	const endpoint = `${env.PLEX_SERVER_URL}/identity`;
 
 	const response = await fetch(endpoint, {
 		headers: {
 			...PLEX_SERVER_HEADERS,
-			'X-Plex-Token': PLEX_TOKEN
+			'X-Plex-Token': env.PLEX_TOKEN
 		}
 	});
 
@@ -129,7 +128,7 @@ async function fetchSharedUsers(machineIdentifier: string): Promise<PlexSharedSe
 	const response = await fetch(endpoint, {
 		headers: {
 			...PLEX_TV_HEADERS,
-			'X-Plex-Token': PLEX_TOKEN
+			'X-Plex-Token': env.PLEX_TOKEN ?? ''
 		}
 	});
 
@@ -185,7 +184,7 @@ export async function getServerUsers(): Promise<{
 	}
 
 	// Fetch owner info using the admin token
-	const ownerData = await getPlexUserInfo(PLEX_TOKEN);
+	const ownerData = await getPlexUserInfo(env.PLEX_TOKEN ?? '');
 	const owner: NormalizedServerUser = {
 		plexId: ownerData.id,
 		username: ownerData.username,
