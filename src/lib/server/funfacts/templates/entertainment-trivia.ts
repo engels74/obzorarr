@@ -39,7 +39,8 @@ export const ENTERTAINMENT_TRIVIA_TEMPLATES = defineTemplateCategory('entertainm
 	{
 		id: 'stranger-things',
 		factTemplate: '{Possessive} {hours} hours of content',
-		comparisonTemplate: 'Could take {object} to the Upside Down and back {strangerThingsCount} times!',
+		comparisonTemplate:
+			'Could take {object} to the Upside Down and back {strangerThingsCount} times!',
 		icon: '👾',
 		requiredStats: ['hours'],
 		minThresholds: { hours: 34 } // At least one full Stranger Things
