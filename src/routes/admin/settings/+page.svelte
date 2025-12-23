@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance, deserialize } from '$app/forms';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
+	import * as Tabs from '$lib/components/ui/tabs';
 	import { handleFormToast } from '$lib/utils/form-toast';
 	import type { PageData, ActionData } from './$types';
 
@@ -217,355 +218,480 @@
 		<p class="subtitle">Configure application settings</p>
 	</header>
 
-	<!-- API Configuration Section -->
-	<section class="section">
-		<h2>API Configuration</h2>
-		<p class="section-description">
-			Configure connections to Plex and OpenAI (for fun facts generation).
-		</p>
+	<Tabs.Root value="connections" class="settings-tabs">
+		<Tabs.List class="tabs-list">
+			<Tabs.Trigger value="connections">Connections</Tabs.Trigger>
+			<Tabs.Trigger value="appearance">Appearance</Tabs.Trigger>
+			<Tabs.Trigger value="privacy">Privacy</Tabs.Trigger>
+			<Tabs.Trigger value="data">Data</Tabs.Trigger>
+			<Tabs.Trigger value="system">System</Tabs.Trigger>
+		</Tabs.List>
 
-		<form method="POST" action="?/updateApiConfig" use:enhance class="api-form">
-			<div class="form-group">
-				<label for="plexServerUrl">
-					Plex Server URL
-					{#if plexServerUrlSource === 'env'}
-						<span class="source-badge env">ENV</span>
-					{:else if plexServerUrlSource === 'db'}
-						<span class="source-badge db">Saved</span>
-					{/if}
-				</label>
-				<input
-					type="url"
-					id="plexServerUrl"
-					name="plexServerUrl"
-					bind:value={plexServerUrl}
-					placeholder="http://192.168.1.100:32400"
-					class:from-env={plexServerUrlSource === 'env'}
-				/>
-				<span class="form-hint">
-					The URL of your Plex Media Server
-					{#if plexServerUrlSource === 'env'}
-						<em class="source-hint">({getSourceLabel(plexServerUrlSource)})</em>
-					{/if}
-				</span>
-			</div>
+		<!-- Connections Tab: Plex & OpenAI Settings -->
+		<Tabs.Content value="connections">
+			<section class="section">
+				<h2>API Configuration</h2>
+				<p class="section-description">
+					Configure connections to Plex and OpenAI (for fun facts generation).
+				</p>
 
-			<div class="form-group">
-				<label for="plexToken">
-					Plex Token
-					{#if plexTokenSource === 'env'}
-						<span class="source-badge env">ENV</span>
-					{:else if plexTokenSource === 'db'}
-						<span class="source-badge db">Saved</span>
-					{/if}
-				</label>
-				<div class="password-input">
-					<input
-						type={showPlexToken ? 'text' : 'password'}
-						id="plexToken"
-						name="plexToken"
-						bind:value={plexToken}
-						placeholder="Enter Plex token"
-						class:from-env={plexTokenSource === 'env'}
-					/>
-					<button
-						type="button"
-						class="toggle-visibility"
-						onclick={() => (showPlexToken = !showPlexToken)}
-					>
-						{showPlexToken ? 'Hide' : 'Show'}
-					</button>
-				</div>
-				<span class="form-hint">
-					Your X-Plex-Token for authentication
-					{#if plexTokenSource === 'env'}
-						<em class="source-hint">({getSourceLabel(plexTokenSource)})</em>
-					{/if}
-				</span>
-			</div>
-
-			<div class="form-actions">
-				<button type="submit" class="save-button">Save Plex Settings</button>
-			</div>
-		</form>
-
-		<!-- Test Connection -->
-		<form
-			method="POST"
-			action="?/testPlexConnection"
-			use:enhance={() => {
-				isTesting = true;
-				return async ({ update }) => {
-					isTesting = false;
-					await update();
-				};
-			}}
-			class="test-form"
-		>
-			<input type="hidden" name="plexServerUrl" value={plexServerUrl} />
-			<input type="hidden" name="plexToken" value={plexToken} />
-			<button
-				type="submit"
-				class="test-button"
-				disabled={isTesting || !plexServerUrl || !plexToken}
-			>
-				{#if isTesting}
-					Testing...
-				{:else}
-					Test Connection
-				{/if}
-			</button>
-		</form>
-
-		<hr class="section-divider" />
-
-		<form method="POST" action="?/updateApiConfig" use:enhance class="api-form">
-			<h3>OpenAI Configuration (Optional)</h3>
-			<p class="subsection-description">
-				For AI-generated fun facts. Leave empty to use predefined templates.
-			</p>
-
-			<div class="form-group">
-				<label for="openaiApiKey">
-					OpenAI API Key
-					{#if openaiApiKeySource === 'env'}
-						<span class="source-badge env">ENV</span>
-					{:else if openaiApiKeySource === 'db'}
-						<span class="source-badge db">Saved</span>
-					{/if}
-				</label>
-				<div class="password-input">
-					<input
-						type={showOpenaiKey ? 'text' : 'password'}
-						id="openaiApiKey"
-						name="openaiApiKey"
-						bind:value={openaiApiKey}
-						placeholder="sk-..."
-						class:from-env={openaiApiKeySource === 'env'}
-					/>
-					<button
-						type="button"
-						class="toggle-visibility"
-						onclick={() => (showOpenaiKey = !showOpenaiKey)}
-					>
-						{showOpenaiKey ? 'Hide' : 'Show'}
-					</button>
-				</div>
-				{#if openaiApiKeySource === 'env'}
-					<span class="form-hint">
-						<em class="source-hint">({getSourceLabel(openaiApiKeySource)})</em>
-					</span>
-				{/if}
-			</div>
-
-			<div class="form-group">
-				<label for="openaiBaseUrl">
-					OpenAI Base URL (Optional)
-					{#if openaiBaseUrlSource === 'env'}
-						<span class="source-badge env">ENV</span>
-					{:else if openaiBaseUrlSource === 'db'}
-						<span class="source-badge db">Saved</span>
-					{/if}
-				</label>
-				<input
-					type="url"
-					id="openaiBaseUrl"
-					name="openaiBaseUrl"
-					bind:value={openaiBaseUrl}
-					placeholder="https://api.openai.com/v1"
-					class:from-env={openaiBaseUrlSource === 'env'}
-				/>
-				<span class="form-hint">
-					For custom OpenAI-compatible endpoints
-					{#if openaiBaseUrlSource === 'env'}
-						<em class="source-hint">({getSourceLabel(openaiBaseUrlSource)})</em>
-					{/if}
-				</span>
-			</div>
-
-			<div class="form-group">
-				<label for="openaiModel">
-					OpenAI Model
-					{#if openaiModelSource === 'env'}
-						<span class="source-badge env">ENV</span>
-					{:else if openaiModelSource === 'db'}
-						<span class="source-badge db">Saved</span>
-					{/if}
-				</label>
-				<input
-					type="text"
-					id="openaiModel"
-					name="openaiModel"
-					bind:value={openaiModel}
-					placeholder="gpt-4o-mini"
-					class:from-env={openaiModelSource === 'env'}
-				/>
-				<span class="form-hint">
-					The model to use for fun facts generation (default: gpt-4o-mini)
-					{#if openaiModelSource === 'env'}
-						<em class="source-hint">({getSourceLabel(openaiModelSource)})</em>
-					{/if}
-				</span>
-			</div>
-
-			<div class="form-actions">
-				<button type="submit" class="save-button">Save OpenAI Settings</button>
-			</div>
-		</form>
-	</section>
-
-	<!-- UI Theme Section -->
-	<section class="section">
-		<h2>UI Theme</h2>
-		<p class="section-description">
-			Select a color theme for the dashboard, admin pages, and all non-wrapped pages.
-		</p>
-
-		<form method="POST" action="?/updateUITheme" use:enhance class="theme-form">
-			<div class="theme-options">
-				{#each data.themeOptions as theme}
-					<label class="theme-option" class:selected={selectedUITheme === theme.value}>
-						<input type="radio" name="theme" value={theme.value} bind:group={selectedUITheme} />
-						<span class="theme-preview {theme.value}"></span>
-						<span class="theme-label">{themeLabels[theme.value] ?? theme.label}</span>
-					</label>
-				{/each}
-			</div>
-
-			<div class="form-actions">
-				<button type="submit" class="save-button">Save UI Theme</button>
-			</div>
-		</form>
-	</section>
-
-	<!-- Wrapped Theme Section -->
-	<section class="section">
-		<h2>Wrapped Theme</h2>
-		<p class="section-description">
-			Select a color theme for the Year in Review slideshow pages (/wrapped/*).
-		</p>
-
-		<form method="POST" action="?/updateWrappedTheme" use:enhance class="theme-form">
-			<div class="theme-options">
-				{#each data.themeOptions as theme}
-					<label class="theme-option" class:selected={selectedWrappedTheme === theme.value}>
+				<form method="POST" action="?/updateApiConfig" use:enhance class="api-form">
+					<div class="form-group">
+						<label for="plexServerUrl">
+							Plex Server URL
+							{#if plexServerUrlSource === 'env'}
+								<span class="source-badge env">ENV</span>
+							{:else if plexServerUrlSource === 'db'}
+								<span class="source-badge db">Saved</span>
+							{/if}
+						</label>
 						<input
-							type="radio"
-							name="theme"
-							value={theme.value}
-							bind:group={selectedWrappedTheme}
+							type="url"
+							id="plexServerUrl"
+							name="plexServerUrl"
+							bind:value={plexServerUrl}
+							placeholder="http://192.168.1.100:32400"
+							class:from-env={plexServerUrlSource === 'env'}
 						/>
-						<span class="theme-preview {theme.value}"></span>
-						<span class="theme-label">{themeLabels[theme.value] ?? theme.label}</span>
-					</label>
-				{/each}
-			</div>
+						<span class="form-hint">
+							The URL of your Plex Media Server
+							{#if plexServerUrlSource === 'env'}
+								<em class="source-hint">({getSourceLabel(plexServerUrlSource)})</em>
+							{/if}
+						</span>
+					</div>
 
-			<div class="form-actions">
-				<button type="submit" class="save-button">Save Wrapped Theme</button>
-			</div>
-		</form>
-	</section>
-
-	<!-- Anonymization Section -->
-	<section class="section">
-		<h2>Privacy & Anonymization</h2>
-		<p class="section-description">Control how usernames appear in server-wide statistics.</p>
-
-		<form method="POST" action="?/updateAnonymization" use:enhance class="anonymization-form">
-			<div class="anonymization-options">
-				{#each data.anonymizationOptions as option}
-					<label
-						class="anonymization-option"
-						class:selected={selectedAnonymization === option.value}
-					>
-						<input
-							type="radio"
-							name="anonymizationMode"
-							value={option.value}
-							bind:group={selectedAnonymization}
-						/>
-						<div class="option-content">
-							<span class="option-label">{option.label}</span>
-							<span class="option-desc">{anonymizationDescriptions[option.value]}</span>
+					<div class="form-group">
+						<label for="plexToken">
+							Plex Token
+							{#if plexTokenSource === 'env'}
+								<span class="source-badge env">ENV</span>
+							{:else if plexTokenSource === 'db'}
+								<span class="source-badge db">Saved</span>
+							{/if}
+						</label>
+						<div class="password-input">
+							<input
+								type={showPlexToken ? 'text' : 'password'}
+								id="plexToken"
+								name="plexToken"
+								bind:value={plexToken}
+								placeholder="Enter Plex token"
+								class:from-env={plexTokenSource === 'env'}
+							/>
+							<button
+								type="button"
+								class="toggle-visibility"
+								onclick={() => (showPlexToken = !showPlexToken)}
+							>
+								{showPlexToken ? 'Hide' : 'Show'}
+							</button>
 						</div>
-					</label>
-				{/each}
-			</div>
+						<span class="form-hint">
+							Your X-Plex-Token for authentication
+							{#if plexTokenSource === 'env'}
+								<em class="source-hint">({getSourceLabel(plexTokenSource)})</em>
+							{/if}
+						</span>
+					</div>
 
-			<div class="form-actions">
-				<button type="submit" class="save-button">Save Privacy Settings</button>
-			</div>
-		</form>
-	</section>
+					<div class="form-actions">
+						<button type="submit" class="save-button">Save Plex Settings</button>
+					</div>
+				</form>
 
-	<!-- Wrapped Page Logo Section -->
-	<section class="section">
-		<h2>Wrapped Page Logo</h2>
-		<p class="section-description">Control logo visibility on wrapped pages.</p>
-
-		<form method="POST" action="?/updateWrappedLogoMode" use:enhance class="logo-mode-form">
-			<div class="anonymization-options">
-				{#each data.wrappedLogoOptions as option}
-					<label
-						class="anonymization-option"
-						class:selected={selectedWrappedLogoMode === option.value}
-					>
-						<input
-							type="radio"
-							name="logoMode"
-							value={option.value}
-							bind:group={selectedWrappedLogoMode}
-						/>
-						<div class="option-content">
-							<span class="option-label">{option.label}</span>
-							<span class="option-desc">{wrappedLogoDescriptions[option.value]}</span>
-						</div>
-					</label>
-				{/each}
-			</div>
-
-			<div class="form-actions">
-				<button type="submit" class="save-button">Save Logo Settings</button>
-			</div>
-		</form>
-	</section>
-
-	<!-- Year/Archive Section -->
-	<section class="section">
-		<h2>Year & Archive</h2>
-		<p class="section-description">Manage available years and clear cached statistics.</p>
-
-		<div class="years-info">
-			<p><strong>Available Years:</strong> {data.availableYears.join(', ') || 'None'}</p>
-			<p class="info-hint">Years are automatically detected from play history data.</p>
-		</div>
-
-		<h3>Clear Statistics Cache</h3>
-		<p class="subsection-description">Force recalculation of statistics by clearing the cache.</p>
-
-		<div class="cache-actions">
-			{#each data.availableYears as year}
-				<button
-					type="button"
-					class="cache-button"
-					onclick={() => showCacheConfirmation(year)}
-					disabled={loadingCount}
+				<!-- Test Connection -->
+				<form
+					method="POST"
+					action="?/testPlexConnection"
+					use:enhance={() => {
+						isTesting = true;
+						return async ({ update }) => {
+							isTesting = false;
+							await update();
+						};
+					}}
+					class="test-form"
 				>
-					{loadingCount && pendingCacheYear === year ? 'Loading...' : `Clear ${year} Cache`}
-				</button>
-			{/each}
+					<input type="hidden" name="plexServerUrl" value={plexServerUrl} />
+					<input type="hidden" name="plexToken" value={plexToken} />
+					<button
+						type="submit"
+						class="test-button"
+						disabled={isTesting || !plexServerUrl || !plexToken}
+					>
+						{#if isTesting}
+							Testing...
+						{:else}
+							Test Connection
+						{/if}
+					</button>
+				</form>
 
-			<button
-				type="button"
-				class="cache-button all"
-				onclick={() => showCacheConfirmation()}
-				disabled={loadingCount}
-			>
-				{loadingCount && pendingCacheYear === undefined ? 'Loading...' : 'Clear All Cache'}
-			</button>
-		</div>
-	</section>
+				<hr class="section-divider" />
+
+				<form method="POST" action="?/updateApiConfig" use:enhance class="api-form">
+					<h3>OpenAI Configuration (Optional)</h3>
+					<p class="subsection-description">
+						For AI-generated fun facts. Leave empty to use predefined templates.
+					</p>
+
+					<div class="form-group">
+						<label for="openaiApiKey">
+							OpenAI API Key
+							{#if openaiApiKeySource === 'env'}
+								<span class="source-badge env">ENV</span>
+							{:else if openaiApiKeySource === 'db'}
+								<span class="source-badge db">Saved</span>
+							{/if}
+						</label>
+						<div class="password-input">
+							<input
+								type={showOpenaiKey ? 'text' : 'password'}
+								id="openaiApiKey"
+								name="openaiApiKey"
+								bind:value={openaiApiKey}
+								placeholder="sk-..."
+								class:from-env={openaiApiKeySource === 'env'}
+							/>
+							<button
+								type="button"
+								class="toggle-visibility"
+								onclick={() => (showOpenaiKey = !showOpenaiKey)}
+							>
+								{showOpenaiKey ? 'Hide' : 'Show'}
+							</button>
+						</div>
+						{#if openaiApiKeySource === 'env'}
+							<span class="form-hint">
+								<em class="source-hint">({getSourceLabel(openaiApiKeySource)})</em>
+							</span>
+						{/if}
+					</div>
+
+					<div class="form-group">
+						<label for="openaiBaseUrl">
+							OpenAI Base URL (Optional)
+							{#if openaiBaseUrlSource === 'env'}
+								<span class="source-badge env">ENV</span>
+							{:else if openaiBaseUrlSource === 'db'}
+								<span class="source-badge db">Saved</span>
+							{/if}
+						</label>
+						<input
+							type="url"
+							id="openaiBaseUrl"
+							name="openaiBaseUrl"
+							bind:value={openaiBaseUrl}
+							placeholder="https://api.openai.com/v1"
+							class:from-env={openaiBaseUrlSource === 'env'}
+						/>
+						<span class="form-hint">
+							For custom OpenAI-compatible endpoints
+							{#if openaiBaseUrlSource === 'env'}
+								<em class="source-hint">({getSourceLabel(openaiBaseUrlSource)})</em>
+							{/if}
+						</span>
+					</div>
+
+					<div class="form-group">
+						<label for="openaiModel">
+							OpenAI Model
+							{#if openaiModelSource === 'env'}
+								<span class="source-badge env">ENV</span>
+							{:else if openaiModelSource === 'db'}
+								<span class="source-badge db">Saved</span>
+							{/if}
+						</label>
+						<input
+							type="text"
+							id="openaiModel"
+							name="openaiModel"
+							bind:value={openaiModel}
+							placeholder="gpt-4o-mini"
+							class:from-env={openaiModelSource === 'env'}
+						/>
+						<span class="form-hint">
+							The model to use for fun facts generation (default: gpt-4o-mini)
+							{#if openaiModelSource === 'env'}
+								<em class="source-hint">({getSourceLabel(openaiModelSource)})</em>
+							{/if}
+						</span>
+					</div>
+
+					<div class="form-actions">
+						<button type="submit" class="save-button">Save OpenAI Settings</button>
+					</div>
+				</form>
+			</section>
+		</Tabs.Content>
+
+		<!-- Appearance Tab: UI Theme & Wrapped Theme -->
+		<Tabs.Content value="appearance">
+			<section class="section">
+				<h2>UI Theme</h2>
+				<p class="section-description">
+					Select a color theme for the dashboard, admin pages, and all non-wrapped pages.
+				</p>
+
+				<form method="POST" action="?/updateUITheme" use:enhance class="theme-form">
+					<div class="theme-options">
+						{#each data.themeOptions as theme}
+							<label class="theme-option" class:selected={selectedUITheme === theme.value}>
+								<input type="radio" name="theme" value={theme.value} bind:group={selectedUITheme} />
+								<span class="theme-preview {theme.value}"></span>
+								<span class="theme-label">{themeLabels[theme.value] ?? theme.label}</span>
+							</label>
+						{/each}
+					</div>
+
+					<div class="form-actions">
+						<button type="submit" class="save-button">Save UI Theme</button>
+					</div>
+				</form>
+			</section>
+
+			<!-- Wrapped Theme Section -->
+			<section class="section">
+				<h2>Wrapped Theme</h2>
+				<p class="section-description">
+					Select a color theme for the Year in Review slideshow pages (/wrapped/*).
+				</p>
+
+				<form method="POST" action="?/updateWrappedTheme" use:enhance class="theme-form">
+					<div class="theme-options">
+						{#each data.themeOptions as theme}
+							<label class="theme-option" class:selected={selectedWrappedTheme === theme.value}>
+								<input
+									type="radio"
+									name="theme"
+									value={theme.value}
+									bind:group={selectedWrappedTheme}
+								/>
+								<span class="theme-preview {theme.value}"></span>
+								<span class="theme-label">{themeLabels[theme.value] ?? theme.label}</span>
+							</label>
+						{/each}
+					</div>
+
+					<div class="form-actions">
+						<button type="submit" class="save-button">Save Wrapped Theme</button>
+					</div>
+				</form>
+			</section>
+		</Tabs.Content>
+
+		<!-- Privacy Tab: Anonymization & Logo Settings -->
+		<Tabs.Content value="privacy">
+			<section class="section">
+				<h2>Privacy & Anonymization</h2>
+				<p class="section-description">Control how usernames appear in server-wide statistics.</p>
+
+				<form method="POST" action="?/updateAnonymization" use:enhance class="anonymization-form">
+					<div class="anonymization-options">
+						{#each data.anonymizationOptions as option}
+							<label
+								class="anonymization-option"
+								class:selected={selectedAnonymization === option.value}
+							>
+								<input
+									type="radio"
+									name="anonymizationMode"
+									value={option.value}
+									bind:group={selectedAnonymization}
+								/>
+								<div class="option-content">
+									<span class="option-label">{option.label}</span>
+									<span class="option-desc">{anonymizationDescriptions[option.value]}</span>
+								</div>
+							</label>
+						{/each}
+					</div>
+
+					<div class="form-actions">
+						<button type="submit" class="save-button">Save Privacy Settings</button>
+					</div>
+				</form>
+			</section>
+
+			<!-- Wrapped Page Logo Section -->
+			<section class="section">
+				<h2>Wrapped Page Logo</h2>
+				<p class="section-description">Control logo visibility on wrapped pages.</p>
+
+				<form method="POST" action="?/updateWrappedLogoMode" use:enhance class="logo-mode-form">
+					<div class="anonymization-options">
+						{#each data.wrappedLogoOptions as option}
+							<label
+								class="anonymization-option"
+								class:selected={selectedWrappedLogoMode === option.value}
+							>
+								<input
+									type="radio"
+									name="logoMode"
+									value={option.value}
+									bind:group={selectedWrappedLogoMode}
+								/>
+								<div class="option-content">
+									<span class="option-label">{option.label}</span>
+									<span class="option-desc">{wrappedLogoDescriptions[option.value]}</span>
+								</div>
+							</label>
+						{/each}
+					</div>
+
+					<div class="form-actions">
+						<button type="submit" class="save-button">Save Logo Settings</button>
+					</div>
+				</form>
+			</section>
+		</Tabs.Content>
+
+		<!-- Data Tab: Year/Archive & Clear Play History -->
+		<Tabs.Content value="data">
+			<section class="section">
+				<h2>Year & Archive</h2>
+				<p class="section-description">Manage available years and clear cached statistics.</p>
+
+				<div class="years-info">
+					<p><strong>Available Years:</strong> {data.availableYears.join(', ') || 'None'}</p>
+					<p class="info-hint">Years are automatically detected from play history data.</p>
+				</div>
+
+				<h3>Clear Statistics Cache</h3>
+				<p class="subsection-description">
+					Force recalculation of statistics by clearing the cache.
+				</p>
+
+				<div class="cache-actions">
+					{#each data.availableYears as year}
+						<button
+							type="button"
+							class="cache-button"
+							onclick={() => showCacheConfirmation(year)}
+							disabled={loadingCount}
+						>
+							{loadingCount && pendingCacheYear === year ? 'Loading...' : `Clear ${year} Cache`}
+						</button>
+					{/each}
+
+					<button
+						type="button"
+						class="cache-button all"
+						onclick={() => showCacheConfirmation()}
+						disabled={loadingCount}
+					>
+						{loadingCount && pendingCacheYear === undefined ? 'Loading...' : 'Clear All Cache'}
+					</button>
+				</div>
+			</section>
+
+			<!-- Danger Zone: Clear Play History -->
+			<div class="danger-zone">
+				<h2>Clear Play History</h2>
+				<p class="section-description">
+					Permanently delete viewing history from the database. Related statistics cache will be
+					automatically cleared.
+				</p>
+
+				<div class="warning-box">
+					<strong>Warning:</strong> This action is destructive and cannot be undone. All viewing history
+					for the selected year(s) will be permanently deleted.
+				</div>
+
+				<h3>Delete Play History</h3>
+				<p class="subsection-description">
+					Remove viewing history for a specific year or all years.
+				</p>
+
+				<div class="cache-actions">
+					{#each data.availableYears as year}
+						<button
+							type="button"
+							class="cache-button danger"
+							onclick={() => showHistoryConfirmation(year)}
+							disabled={loadingHistoryCount}
+						>
+							{loadingHistoryCount && pendingHistoryYear === year ? 'Loading...' : `Clear ${year}`}
+						</button>
+					{/each}
+
+					<button
+						type="button"
+						class="cache-button danger all"
+						onclick={() => showHistoryConfirmation()}
+						disabled={loadingHistoryCount}
+					>
+						{loadingHistoryCount && pendingHistoryYear === undefined
+							? 'Loading...'
+							: 'Clear All History'}
+					</button>
+				</div>
+			</div>
+		</Tabs.Content>
+
+		<!-- System Tab: Logging -->
+		<Tabs.Content value="system">
+			<section class="section">
+				<h2>Logging</h2>
+				<p class="section-description">
+					Configure log retention and debug settings. <a href="/admin/logs" class="section-link"
+						>View logs</a
+					>
+				</p>
+
+				<form method="POST" action="?/updateLogSettings" use:enhance class="logging-form">
+					<div class="form-row">
+						<div class="form-group half">
+							<label for="retentionDays">Retention Period (days)</label>
+							<input
+								type="number"
+								id="retentionDays"
+								name="retentionDays"
+								bind:value={logRetentionDays}
+								min="1"
+								max="365"
+							/>
+							<span class="form-hint"
+								>Logs older than this will be automatically deleted (1-365)</span
+							>
+						</div>
+
+						<div class="form-group half">
+							<label for="maxCount">Maximum Log Count</label>
+							<input
+								type="number"
+								id="maxCount"
+								name="maxCount"
+								bind:value={logMaxCount}
+								min="1000"
+								max="1000000"
+								step="1000"
+							/>
+							<span class="form-hint">Maximum logs to retain (1,000-1,000,000)</span>
+						</div>
+					</div>
+
+					<div class="form-group">
+						<label class="checkbox-label">
+							<input type="checkbox" name="debugEnabled" bind:checked={logDebugEnabled} />
+							<span class="checkbox-text">Enable DEBUG level logging</span>
+						</label>
+						<span class="form-hint checkbox-hint">
+							When enabled, detailed debug logs will be recorded. This may generate a large volume
+							of logs.
+						</span>
+					</div>
+
+					<input type="hidden" name="debugEnabled" value={logDebugEnabled.toString()} />
+
+					<div class="form-actions">
+						<button type="submit" class="save-button">Save Logging Settings</button>
+					</div>
+				</form>
+			</section>
+		</Tabs.Content>
+	</Tabs.Root>
 
 	<!-- Cache Clearing Confirmation Dialog -->
 	<AlertDialog.Root bind:open={cacheDialogOpen}>
@@ -610,47 +736,6 @@
 			</AlertDialog.Footer>
 		</AlertDialog.Content>
 	</AlertDialog.Root>
-
-	<!-- Clear Play History Section -->
-	<section class="section danger-section">
-		<h2>Clear Play History</h2>
-		<p class="section-description">
-			Permanently delete viewing history from the database. Related statistics cache will be
-			automatically cleared.
-		</p>
-
-		<div class="warning-box">
-			<strong>Warning:</strong> This action is destructive and cannot be undone. All viewing history for
-			the selected year(s) will be permanently deleted.
-		</div>
-
-		<h3>Delete Play History</h3>
-		<p class="subsection-description">Remove viewing history for a specific year or all years.</p>
-
-		<div class="cache-actions">
-			{#each data.availableYears as year}
-				<button
-					type="button"
-					class="cache-button danger"
-					onclick={() => showHistoryConfirmation(year)}
-					disabled={loadingHistoryCount}
-				>
-					{loadingHistoryCount && pendingHistoryYear === year ? 'Loading...' : `Clear ${year}`}
-				</button>
-			{/each}
-
-			<button
-				type="button"
-				class="cache-button danger all"
-				onclick={() => showHistoryConfirmation()}
-				disabled={loadingHistoryCount}
-			>
-				{loadingHistoryCount && pendingHistoryYear === undefined
-					? 'Loading...'
-					: 'Clear All History'}
-			</button>
-		</div>
-	</section>
 
 	<!-- Play History Clearing Confirmation Dialog -->
 	<AlertDialog.Root bind:open={historyDialogOpen}>
@@ -702,64 +787,6 @@
 			</AlertDialog.Footer>
 		</AlertDialog.Content>
 	</AlertDialog.Root>
-
-	<!-- Logging Section -->
-	<section class="section">
-		<h2>Logging</h2>
-		<p class="section-description">
-			Configure log retention and debug settings. <a href="/admin/logs" class="section-link"
-				>View logs</a
-			>
-		</p>
-
-		<form method="POST" action="?/updateLogSettings" use:enhance class="logging-form">
-			<div class="form-row">
-				<div class="form-group half">
-					<label for="retentionDays">Retention Period (days)</label>
-					<input
-						type="number"
-						id="retentionDays"
-						name="retentionDays"
-						bind:value={logRetentionDays}
-						min="1"
-						max="365"
-					/>
-					<span class="form-hint">Logs older than this will be automatically deleted (1-365)</span>
-				</div>
-
-				<div class="form-group half">
-					<label for="maxCount">Maximum Log Count</label>
-					<input
-						type="number"
-						id="maxCount"
-						name="maxCount"
-						bind:value={logMaxCount}
-						min="1000"
-						max="1000000"
-						step="1000"
-					/>
-					<span class="form-hint">Maximum logs to retain (1,000-1,000,000)</span>
-				</div>
-			</div>
-
-			<div class="form-group">
-				<label class="checkbox-label">
-					<input type="checkbox" name="debugEnabled" bind:checked={logDebugEnabled} />
-					<span class="checkbox-text">Enable DEBUG level logging</span>
-				</label>
-				<span class="form-hint checkbox-hint">
-					When enabled, detailed debug logs will be recorded. This may generate a large volume of
-					logs.
-				</span>
-			</div>
-
-			<input type="hidden" name="debugEnabled" value={logDebugEnabled.toString()} />
-
-			<div class="form-actions">
-				<button type="submit" class="save-button">Save Logging Settings</button>
-			</div>
-		</form>
-	</section>
 </div>
 
 <style>
@@ -783,6 +810,64 @@
 	.subtitle {
 		color: hsl(var(--muted-foreground));
 		margin: 0;
+	}
+
+	/* Tabs Styling */
+	.settings-tabs {
+		margin-top: 1.5rem;
+	}
+
+	:global(.tabs-list) {
+		display: flex;
+		gap: 0.25rem;
+		border-bottom: 1px solid hsl(var(--border));
+		margin-bottom: 1.5rem;
+		overflow-x: auto;
+		scrollbar-width: thin;
+		-webkit-overflow-scrolling: touch;
+		padding-bottom: 0;
+	}
+
+	:global(.tabs-list button) {
+		padding: 0.75rem 1rem;
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: hsl(var(--muted-foreground));
+		background: transparent;
+		border: none;
+		border-bottom: 2px solid transparent;
+		cursor: pointer;
+		white-space: nowrap;
+		transition: all 0.15s ease;
+	}
+
+	:global(.tabs-list button:hover) {
+		color: hsl(var(--foreground));
+	}
+
+	:global(.tabs-list button[data-state='active']) {
+		color: hsl(var(--primary));
+		border-bottom-color: hsl(var(--primary));
+	}
+
+	/* Danger Zone Styling */
+	.danger-zone {
+		border: 2px solid hsl(0 60% 40% / 0.4);
+		border-radius: var(--radius);
+		padding: 1.5rem;
+		margin-top: 1.5rem;
+		background: hsl(0 60% 50% / 0.05);
+	}
+
+	.danger-zone h2 {
+		color: hsl(0 70% 50%);
+		font-size: 1.125rem;
+		font-weight: 600;
+		margin: 0 0 0.5rem;
+	}
+
+	.danger-zone h3 {
+		color: hsl(0 70% 50%);
 	}
 
 	.section {
@@ -1137,15 +1222,6 @@
 	.cache-button:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
-	}
-
-	/* Danger Section Styling */
-	.danger-section {
-		border-color: hsl(0 60% 40% / 0.3);
-	}
-
-	.danger-section h2 {
-		color: hsl(0 70% 50%);
 	}
 
 	.warning-box {
