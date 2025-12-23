@@ -143,7 +143,7 @@
 		<div class="hero-content">
 			<!-- Logo Decorative Element -->
 			<div class="logo-glow" aria-hidden="true">
-				<Logo size={80} />
+				<Logo size={120} />
 			</div>
 
 			<h1 class="hero-title">
@@ -352,8 +352,8 @@
 		}
 
 		.logo-glow :global(.logo) {
-			width: 64px;
-			height: 64px;
+			width: 96px;
+			height: 96px;
 		}
 
 		.hero-description {
