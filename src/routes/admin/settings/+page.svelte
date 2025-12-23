@@ -518,15 +518,17 @@
 	<!-- Cache Clearing Confirmation Dialog -->
 	<AlertDialog.Root bind:open={cacheDialogOpen}>
 		<AlertDialog.Content>
-			<AlertDialog.Title>
-				{pendingCacheYear !== undefined ? `Clear ${pendingCacheYear} Cache?` : 'Clear All Cache?'}
-			</AlertDialog.Title>
-			<AlertDialog.Description>
-				{getCacheConfirmationMessage()}
-				<br /><br />
-				Statistics will be recalculated on next access. This action cannot be undone.
-			</AlertDialog.Description>
-			<div class="dialog-actions">
+			<AlertDialog.Header>
+				<AlertDialog.Title>
+					{pendingCacheYear !== undefined ? `Clear ${pendingCacheYear} Cache?` : 'Clear All Cache?'}
+				</AlertDialog.Title>
+				<AlertDialog.Description>
+					{getCacheConfirmationMessage()}
+					<br /><br />
+					Statistics will be recalculated on next access. This action cannot be undone.
+				</AlertDialog.Description>
+			</AlertDialog.Header>
+			<AlertDialog.Footer>
 				<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
 				<form
 					method="POST"
@@ -537,7 +539,7 @@
 							handleCacheCleared();
 						};
 					}}
-					style="display: inline;"
+					style="display: contents;"
 				>
 					{#if pendingCacheYear !== undefined}
 						<input type="hidden" name="year" value={pendingCacheYear} />
@@ -546,7 +548,7 @@
 						Delete {pendingCacheCount} Record{pendingCacheCount !== 1 ? 's' : ''}
 					</AlertDialog.Action>
 				</form>
-			</div>
+			</AlertDialog.Footer>
 		</AlertDialog.Content>
 	</AlertDialog.Root>
 
@@ -984,14 +986,6 @@
 	.cache-button:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
-	}
-
-	/* Dialog Actions */
-	.dialog-actions {
-		display: flex;
-		justify-content: flex-end;
-		gap: 0.5rem;
-		margin-top: 1.5rem;
 	}
 
 	/* Section Link */
