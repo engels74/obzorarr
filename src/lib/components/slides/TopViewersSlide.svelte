@@ -15,7 +15,7 @@
 
 	let {
 		topViewers,
-		limit = 5,
+		limit = 10,
 		active = true,
 		onAnimationComplete,
 		class: klass = '',
