@@ -201,7 +201,9 @@ async function fetchSharedUsers(machineIdentifier: string): Promise<PlexSharedSe
 	// Filter friends to only those with access to this specific server
 	// and map to PlexSharedServerUser format for compatibility
 	return result.data
-		.filter((friend) => friend.sharedServers?.some((s) => s.machineIdentifier === machineIdentifier))
+		.filter((friend) =>
+			friend.sharedServers?.some((s) => s.machineIdentifier === machineIdentifier)
+		)
 		.map((friend) => ({
 			id: friend.id,
 			username: friend.username,
