@@ -11,6 +11,7 @@ import {
 	setAnonymizationMode,
 	getWrappedLogoMode,
 	setWrappedLogoMode,
+	countStatsCache,
 	clearStatsCache,
 	getApiConfigWithSources,
 	setCachedServerName,
@@ -320,6 +321,30 @@ export const actions: Actions = {
 			return { success: true, message: 'Logo visibility mode updated' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to update mode';
+			return fail(500, { error: message });
+		}
+	},
+
+	/**
+	 * Get cache count for confirmation dialog
+	 */
+	getCacheCount: async ({ request }) => {
+		const formData = await request.formData();
+		const yearStr = formData.get('year')?.toString();
+
+		let year: number | undefined;
+		if (yearStr) {
+			year = parseInt(yearStr, 10);
+			if (isNaN(year)) {
+				return fail(400, { error: 'Invalid year' });
+			}
+		}
+
+		try {
+			const count = await countStatsCache(year);
+			return { success: true, count, year };
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to get cache count';
 			return fail(500, { error: message });
 		}
 	},

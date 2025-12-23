@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
+	import { enhance, deserialize } from '$app/forms';
+	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import type { PageData, ActionData } from './$types';
 
 	/**
@@ -113,6 +114,57 @@
 			return () => clearTimeout(timeout);
 		}
 	});
+
+	// Cache clearing dialog state
+	let cacheDialogOpen = $state(false);
+	let pendingCacheYear = $state<number | undefined>(undefined);
+	let pendingCacheCount = $state(0);
+	let loadingCount = $state(false);
+
+	// Open cache clearing confirmation dialog
+	async function showCacheConfirmation(year?: number) {
+		loadingCount = true;
+		pendingCacheYear = year;
+
+		// Fetch the count via form action
+		const formData = new FormData();
+		if (year !== undefined) {
+			formData.append('year', year.toString());
+		}
+
+		try {
+			const response = await fetch('?/getCacheCount', {
+				method: 'POST',
+				body: formData
+			});
+			const result = deserialize(await response.text());
+
+			if (result.type === 'success' && result.data) {
+				const data = result.data as { success: boolean; count: number; year?: number };
+				pendingCacheCount = data.count;
+				cacheDialogOpen = true;
+			}
+		} catch (error) {
+			console.error('Failed to get cache count:', error);
+		} finally {
+			loadingCount = false;
+		}
+	}
+
+	// Handle confirmed cache clear
+	function handleCacheCleared() {
+		cacheDialogOpen = false;
+		pendingCacheYear = undefined;
+		pendingCacheCount = 0;
+	}
+
+	// Get confirmation message based on year
+	function getCacheConfirmationMessage(): string {
+		if (pendingCacheYear !== undefined) {
+			return `This will permanently delete ${pendingCacheCount} cached statistics record${pendingCacheCount !== 1 ? 's' : ''} for ${pendingCacheYear}.`;
+		}
+		return `This will permanently delete ${pendingCacheCount} cached statistics record${pendingCacheCount !== 1 ? 's' : ''} across all years.`;
+	}
 </script>
 
 <div class="settings-page">
@@ -462,17 +514,61 @@
 
 		<div class="cache-actions">
 			{#each data.availableYears as year}
-				<form method="POST" action="?/clearCache" use:enhance class="cache-form">
-					<input type="hidden" name="year" value={year} />
-					<button type="submit" class="cache-button">Clear {year} Cache</button>
-				</form>
+				<button
+					type="button"
+					class="cache-button"
+					onclick={() => showCacheConfirmation(year)}
+					disabled={loadingCount}
+				>
+					{loadingCount && pendingCacheYear === year ? 'Loading...' : `Clear ${year} Cache`}
+				</button>
 			{/each}
 
-			<form method="POST" action="?/clearCache" use:enhance class="cache-form">
-				<button type="submit" class="cache-button all">Clear All Cache</button>
-			</form>
+			<button
+				type="button"
+				class="cache-button all"
+				onclick={() => showCacheConfirmation()}
+				disabled={loadingCount}
+			>
+				{loadingCount && pendingCacheYear === undefined ? 'Loading...' : 'Clear All Cache'}
+			</button>
 		</div>
 	</section>
+
+	<!-- Cache Clearing Confirmation Dialog -->
+	<AlertDialog.Root bind:open={cacheDialogOpen}>
+		<AlertDialog.Content>
+			<AlertDialog.Title>
+				{pendingCacheYear !== undefined ? `Clear ${pendingCacheYear} Cache?` : 'Clear All Cache?'}
+			</AlertDialog.Title>
+			<AlertDialog.Description>
+				{getCacheConfirmationMessage()}
+				<br /><br />
+				Statistics will be recalculated on next access. This action cannot be undone.
+			</AlertDialog.Description>
+			<div class="dialog-actions">
+				<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+				<form
+					method="POST"
+					action="?/clearCache"
+					use:enhance={() => {
+						return async ({ update }) => {
+							await update();
+							handleCacheCleared();
+						};
+					}}
+					style="display: inline;"
+				>
+					{#if pendingCacheYear !== undefined}
+						<input type="hidden" name="year" value={pendingCacheYear} />
+					{/if}
+					<AlertDialog.Action type="submit">
+						Delete {pendingCacheCount} Record{pendingCacheCount !== 1 ? 's' : ''}
+					</AlertDialog.Action>
+				</form>
+			</div>
+		</AlertDialog.Content>
+	</AlertDialog.Root>
 
 	<!-- Logging Section -->
 	<section class="section">
@@ -919,6 +1015,19 @@
 	.cache-button.all {
 		background: hsl(var(--muted));
 		font-weight: 500;
+	}
+
+	.cache-button:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	/* Dialog Actions */
+	.dialog-actions {
+		display: flex;
+		justify-content: flex-end;
+		gap: 0.5rem;
+		margin-top: 1.5rem;
 	}
 
 	/* Section Link */

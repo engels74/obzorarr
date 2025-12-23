@@ -1,6 +1,6 @@
 import { db } from '$lib/server/db/client';
 import { appSettings, cachedStats } from '$lib/server/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { env } from '$env/dynamic/private';
 
 /**
@@ -399,6 +399,27 @@ export async function setFunFactFrequency(
 // =============================================================================
 // Cache Management
 // =============================================================================
+
+/**
+ * Count cached stats entries for a specific year (or all years)
+ *
+ * Used for confirmation dialogs before cache clearing.
+ *
+ * @param year - Optional year to count cache for (undefined = all years)
+ * @returns Number of cache entries
+ */
+export async function countStatsCache(year?: number): Promise<number> {
+	if (year !== undefined) {
+		const result = await db
+			.select({ count: sql<number>`count(*)` })
+			.from(cachedStats)
+			.where(eq(cachedStats.year, year));
+		return result[0]?.count ?? 0;
+	} else {
+		const result = await db.select({ count: sql<number>`count(*)` }).from(cachedStats);
+		return result[0]?.count ?? 0;
+	}
+}
 
 /**
  * Clear cached stats for a specific year (or all years)
