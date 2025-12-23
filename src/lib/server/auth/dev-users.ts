@@ -2,7 +2,7 @@ import { env } from '$env/dynamic/private';
 import { PLEX_SERVER_URL, PLEX_TOKEN } from '$env/static/private';
 import { logger } from '$lib/server/logging';
 import {
-	PlexSharedServersResponseSchema,
+	PlexFriendsResponseSchema,
 	PlexServerIdentitySchema,
 	PlexAuthApiError,
 	PLEX_CLIENT_ID,
@@ -120,13 +120,11 @@ async function getServerMachineIdentifier(): Promise<string> {
 /**
  * Fetch users who have access to the server (excluding owner)
  *
- * Note: The Plex API /api/servers/{id}/shared_servers endpoint returns XML,
- * not JSON, despite the Accept header. We handle this gracefully by returning
- * an empty array when XML is received. For dev bypass, the owner info is
- * usually sufficient.
+ * Uses the v2 friends endpoint which properly returns JSON instead of the
+ * legacy shared_servers endpoint which returns XML.
  */
 async function fetchSharedUsers(machineIdentifier: string): Promise<PlexSharedServerUser[]> {
-	const endpoint = `${PLEX_TV_URL}/api/servers/${machineIdentifier}/shared_servers`;
+	const endpoint = `${PLEX_TV_URL}/api/v2/friends`;
 
 	const response = await fetch(endpoint, {
 		headers: {
@@ -137,47 +135,33 @@ async function fetchSharedUsers(machineIdentifier: string): Promise<PlexSharedSe
 
 	if (!response.ok) {
 		throw new PlexAuthApiError(
-			`Failed to get shared servers: ${response.status} ${response.statusText}`,
+			`Failed to get friends: ${response.status} ${response.statusText}`,
 			response.status,
 			endpoint
 		);
 	}
 
-	// Check content type - Plex API may return XML instead of JSON for this endpoint
-	const contentType = response.headers.get('content-type') ?? '';
-	if (contentType.includes('xml')) {
-		logger.warn(
-			'Plex API returned XML for shared_servers endpoint (expected JSON). Shared users will not be available for dev bypass.',
-			'DevUsers'
-		);
-		return [];
-	}
-
-	// Try to parse as JSON
-	let data: unknown;
-	try {
-		data = await response.json();
-	} catch (error) {
-		// JSON parse failed - likely XML response
-		logger.warn(
-			`Failed to parse shared_servers response as JSON: ${error instanceof Error ? error.message : 'Unknown error'}. Shared users will not be available for dev bypass.`,
-			'DevUsers'
-		);
-		return [];
-	}
-
-	const result = PlexSharedServersResponseSchema.safeParse(data);
+	const data = await response.json();
+	const result = PlexFriendsResponseSchema.safeParse(data);
 
 	if (!result.success) {
-		throw new PlexAuthApiError(
-			`Invalid shared servers response: ${result.error.message}`,
-			undefined,
-			endpoint,
-			result.error
+		logger.warn(
+			`Invalid friends response: ${result.error.message}. Shared users will not be available for dev bypass.`,
+			'DevUsers'
 		);
+		return [];
 	}
 
-	return result.data.MediaContainer.SharedServer ?? [];
+	// Filter friends to only those with access to this specific server
+	// and map to PlexSharedServerUser format for compatibility
+	return result.data
+		.filter((friend) => friend.sharedServers?.some((s) => s.machineIdentifier === machineIdentifier))
+		.map((friend) => ({
+			id: friend.id,
+			username: friend.username,
+			email: friend.email,
+			thumb: friend.thumb
+		}));
 }
 
 // =============================================================================

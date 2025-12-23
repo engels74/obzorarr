@@ -13,7 +13,7 @@ import { plexAccounts, users } from '$lib/server/db/schema';
 import { sql, or, eq } from 'drizzle-orm';
 import { logger } from '$lib/server/logging';
 import {
-	PlexSharedServersResponseSchema,
+	PlexFriendsResponseSchema,
 	PlexServerIdentitySchema,
 	PlexAuthApiError,
 	PLEX_CLIENT_ID,
@@ -165,9 +165,12 @@ async function fetchManagedAccounts(): Promise<ManagedAccount[]> {
 
 /**
  * Fetch users who have access to the server (excluding owner)
+ *
+ * Uses the v2 friends endpoint which properly returns JSON instead of the
+ * legacy shared_servers endpoint which returns XML.
  */
 async function fetchSharedUsers(machineIdentifier: string): Promise<PlexSharedServerUser[]> {
-	const endpoint = `${PLEX_TV_URL}/api/servers/${machineIdentifier}/shared_servers`;
+	const endpoint = `${PLEX_TV_URL}/api/v2/friends`;
 
 	const response = await fetch(endpoint, {
 		headers: {
@@ -178,46 +181,33 @@ async function fetchSharedUsers(machineIdentifier: string): Promise<PlexSharedSe
 
 	if (!response.ok) {
 		throw new PlexAuthApiError(
-			`Failed to get shared servers: ${response.status} ${response.statusText}`,
+			`Failed to get friends: ${response.status} ${response.statusText}`,
 			response.status,
 			endpoint
 		);
 	}
 
-	// Check content type - Plex API may return XML instead of JSON for this endpoint
-	const contentType = response.headers.get('content-type') ?? '';
-	if (contentType.includes('xml')) {
-		logger.warn(
-			'Plex API returned XML for shared_servers endpoint (expected JSON). Shared users will not have cached usernames.',
-			'PlexAccountsSync'
-		);
-		return [];
-	}
-
-	// Try to parse as JSON
-	let data: unknown;
-	try {
-		data = await response.json();
-	} catch (error) {
-		logger.warn(
-			`Failed to parse shared_servers response as JSON: ${error instanceof Error ? error.message : 'Unknown error'}. Shared users will not have cached usernames.`,
-			'PlexAccountsSync'
-		);
-		return [];
-	}
-
-	const result = PlexSharedServersResponseSchema.safeParse(data);
+	const data = await response.json();
+	const result = PlexFriendsResponseSchema.safeParse(data);
 
 	if (!result.success) {
-		throw new PlexAuthApiError(
-			`Invalid shared servers response: ${result.error.message}`,
-			undefined,
-			endpoint,
-			result.error
+		logger.warn(
+			`Invalid friends response: ${result.error.message}. Shared users will not have cached usernames.`,
+			'PlexAccountsSync'
 		);
+		return [];
 	}
 
-	return result.data.MediaContainer.SharedServer ?? [];
+	// Filter friends to only those with access to this specific server
+	// and map to PlexSharedServerUser format for compatibility
+	return result.data
+		.filter((friend) => friend.sharedServers?.some((s) => s.machineIdentifier === machineIdentifier))
+		.map((friend) => ({
+			id: friend.id,
+			username: friend.username,
+			email: friend.email,
+			thumb: friend.thumb
+		}));
 }
 
 // =============================================================================

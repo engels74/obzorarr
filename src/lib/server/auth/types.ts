@@ -387,6 +387,63 @@ export type PlexSharedServerUser = z.infer<typeof PlexSharedServerUserSchema>;
 export type PlexSharedServersResponse = z.infer<typeof PlexSharedServersResponseSchema>;
 export type PlexServerIdentity = z.infer<typeof PlexServerIdentitySchema>;
 
+// =============================================================================
+// Zod Schemas for Plex V2 Friends API
+// =============================================================================
+
+/**
+ * Shared server reference from GET /api/v2/friends
+ *
+ * Represents a server that is shared with a friend.
+ */
+export const PlexFriendSharedServerSchema = z.object({
+	id: z.number().int(),
+	name: z.string().optional(),
+	ownerId: z.number().int().optional(),
+	serverId: z.number().int().optional(),
+	machineIdentifier: z.string().optional(),
+	lastSeenAt: z.string().optional(),
+	numLibraries: z.number().int().optional(),
+	allLibraries: z.boolean().optional(),
+	owned: z.boolean().optional(),
+	pending: z.boolean().optional()
+});
+
+/**
+ * Friend user from GET /api/v2/friends
+ *
+ * Represents a friend/shared user with their server access info.
+ */
+export const PlexFriendSchema = z.object({
+	id: z.number().int(),
+	uuid: z.string().optional(),
+	username: z.string(),
+	email: z.string().optional(),
+	friendlyName: z.string().optional(),
+	title: z.string().optional(),
+	thumb: z.string().optional(),
+	home: z.boolean().optional(),
+	restricted: z.boolean().optional(),
+	status: z.string().optional(),
+	sharedServers: z.array(PlexFriendSharedServerSchema).optional(),
+	sharedSources: z.array(z.unknown()).optional()
+});
+
+/**
+ * Response from GET /api/v2/friends
+ *
+ * Returns an array of friends with their shared server access.
+ */
+export const PlexFriendsResponseSchema = z.array(PlexFriendSchema);
+
+// =============================================================================
+// TypeScript Types for V2 Friends API
+// =============================================================================
+
+export type PlexFriendSharedServer = z.infer<typeof PlexFriendSharedServerSchema>;
+export type PlexFriend = z.infer<typeof PlexFriendSchema>;
+export type PlexFriendsResponse = z.infer<typeof PlexFriendsResponseSchema>;
+
 /**
  * Normalized server user for dev-bypass
  *
