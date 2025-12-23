@@ -30,8 +30,11 @@ mock.module('$env/static/private', () => ({
 	PLEX_TOKEN: 'test-plex-token'
 }));
 
-// Import database client after setting environment variables
-import { sqlite } from '$lib/server/db/client';
+// Import database client DYNAMICALLY after setting environment variables
+// NOTE: Static imports are hoisted and execute BEFORE the code above,
+// which would cause the db client to read DATABASE_PATH before we set it.
+// Using dynamic import ensures the environment is properly configured first.
+const { sqlite } = await import('$lib/server/db/client');
 
 // Create all necessary tables for testing
 sqlite.exec(`
@@ -92,7 +95,8 @@ sqlite.exec(`
 		year INTEGER NOT NULL,
 		mode TEXT NOT NULL DEFAULT 'public',
 		share_token TEXT UNIQUE,
-		can_user_control INTEGER DEFAULT 0
+		can_user_control INTEGER DEFAULT 0,
+		show_logo INTEGER
 	);
 
 	-- Custom slides table
@@ -145,5 +149,15 @@ sqlite.exec(`
 		genres TEXT,
 		fetched_at INTEGER NOT NULL,
 		fetch_failed INTEGER DEFAULT 0
+	);
+
+	-- Plex accounts table
+	CREATE TABLE IF NOT EXISTS plex_accounts (
+		account_id INTEGER PRIMARY KEY,
+		plex_id INTEGER NOT NULL,
+		username TEXT NOT NULL,
+		thumb TEXT,
+		is_owner INTEGER DEFAULT 0,
+		updated_at INTEGER
 	);
 `);

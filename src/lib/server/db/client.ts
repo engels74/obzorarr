@@ -8,6 +8,19 @@ import * as schema from './schema';
 // Get database path from environment or use default
 const databasePath = process.env.DATABASE_PATH ?? 'data/obzorarr.db';
 
+// Safety guard: Prevent test environment from accessing production database
+// This catches misconfigured test setups that would otherwise corrupt production data
+if (
+	process.env.NODE_ENV === 'test' &&
+	databasePath !== ':memory:' &&
+	!databasePath.includes('test')
+) {
+	throw new Error(
+		`CRITICAL: Test environment attempting to access production database at "${databasePath}". ` +
+			`Set DATABASE_PATH=:memory: in .env.test or ensure bun test uses --env-file=.env.test.`
+	);
+}
+
 // Ensure the directory exists before opening the database
 // Skip for in-memory databases (used in tests)
 if (databasePath !== ':memory:') {
