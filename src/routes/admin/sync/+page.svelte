@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { enhance } from '$app/forms';
+	import { invalidateAll } from '$app/navigation';
 	import { handleFormToast } from '$lib/utils/form-toast';
 	import type { PageData, ActionData } from './$types';
 
@@ -121,6 +122,8 @@
 						disconnectSSE();
 						isSyncing = false;
 						isCancelling = false;
+						// Refresh page data to update sync history table
+						invalidateAll();
 						// Clear progress after showing final state
 						setTimeout(() => {
 							progress = null;
