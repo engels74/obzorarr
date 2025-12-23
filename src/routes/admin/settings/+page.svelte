@@ -112,6 +112,7 @@
 	let pendingCacheYear = $state<number | undefined>(undefined);
 	let pendingCacheCount = $state(0);
 	let loadingCount = $state(false);
+	let isClearing = $state(false);
 
 	// Open cache clearing confirmation dialog
 	async function showCacheConfirmation(year?: number) {
@@ -529,13 +530,15 @@
 				</AlertDialog.Description>
 			</AlertDialog.Header>
 			<AlertDialog.Footer>
-				<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+				<AlertDialog.Cancel disabled={isClearing}>Cancel</AlertDialog.Cancel>
 				<form
 					method="POST"
 					action="?/clearCache"
 					use:enhance={() => {
+						isClearing = true;
 						return async ({ update }) => {
 							await update();
+							isClearing = false;
 							handleCacheCleared();
 						};
 					}}
@@ -544,8 +547,13 @@
 					{#if pendingCacheYear !== undefined}
 						<input type="hidden" name="year" value={pendingCacheYear} />
 					{/if}
-					<AlertDialog.Action type="submit">
-						Delete {pendingCacheCount} Record{pendingCacheCount !== 1 ? 's' : ''}
+					<AlertDialog.Action type="submit" disabled={isClearing} class="gap-2">
+						{#if isClearing}
+							<span class="spinner small"></span>
+							<span>Clearing...</span>
+						{:else}
+							Delete {pendingCacheCount} Record{pendingCacheCount !== 1 ? 's' : ''}
+						{/if}
 					</AlertDialog.Action>
 				</form>
 			</AlertDialog.Footer>
@@ -1050,6 +1058,30 @@
 
 		.form-group.half {
 			margin-bottom: 1rem;
+		}
+	}
+
+	/* Spinner for loading states */
+	.spinner {
+		width: 20px;
+		height: 20px;
+		border: 2px solid hsl(var(--primary) / 0.2);
+		border-top-color: hsl(var(--primary));
+		border-radius: 50%;
+		animation: spin 0.8s linear infinite;
+	}
+
+	.spinner.small {
+		width: 14px;
+		height: 14px;
+		border-width: 2px;
+		border-color: hsl(var(--destructive-foreground) / 0.3);
+		border-top-color: hsl(var(--destructive-foreground));
+	}
+
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
 		}
 	}
 </style>
