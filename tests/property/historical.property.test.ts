@@ -563,8 +563,7 @@ describe('Historical User Data Edge Cases', () => {
 		// Build top viewers with fallback (simulating engine.ts behavior)
 		const topViewers: Array<{ accountId: number; username: string; minutes: number }> = [];
 		for (const [accountId, minutes] of watchTimeMap.entries()) {
-			// Fallback format is distinct from anonymized names (which use "User #1", "User #2", etc.)
-			const username = userMap.get(accountId) ?? `Unknown User (ID: ${accountId})`;
+			const username = userMap.get(accountId) ?? `User ${accountId}`;
 			topViewers.push({ accountId, username, minutes });
 		}
 
@@ -574,8 +573,8 @@ describe('Historical User Data Edge Cases', () => {
 		// Verify fallback username for removed user
 		expect(topViewers.length).toBe(2);
 		expect(topViewers[0]?.accountId).toBe(999);
-		expect(topViewers[0]?.username).toBe('Unknown User (ID: 999)'); // Fallback - distinct from anonymized format
+		expect(topViewers[0]?.username).toBe('User 999'); // Fallback for accounts not in plex_accounts or users
 		expect(topViewers[1]?.accountId).toBe(1);
-		expect(topViewers[1]?.username).toBe('ActiveUser'); // Real name
+		expect(topViewers[1]?.username).toBe('ActiveUser'); // Real name from users table
 	});
 });

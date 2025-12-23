@@ -175,6 +175,31 @@ export const logs = sqliteTable(
 );
 
 /**
+ * Plex accounts table
+ * Caches Plex server member information for displaying usernames in statistics.
+ * This stores ALL server members (owner + shared users), not just those who've authenticated.
+ * Updated during sync to ensure Top Contributors shows real Plex usernames.
+ */
+export const plexAccounts = sqliteTable('plex_accounts', {
+	/**
+	 * The local Plex account ID used in playHistory.accountId.
+	 * For shared users, this equals their plexId.
+	 * For the server owner, this is typically 1.
+	 */
+	accountId: integer('account_id').primaryKey(),
+	/** The Plex.tv account ID (for reference/linking to users table) */
+	plexId: integer('plex_id').notNull(),
+	/** The user's Plex username */
+	username: text('username').notNull(),
+	/** Avatar thumbnail URL */
+	thumb: text('thumb'),
+	/** Whether this is the server owner */
+	isOwner: integer('is_owner', { mode: 'boolean' }).default(false),
+	/** When this record was last updated */
+	updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date())
+});
+
+/**
  * Metadata cache table
  * Caches media metadata fetched from Plex to reduce API calls during enrichment.
  * Metadata (duration, genres) rarely changes, so caching is safe.
@@ -203,3 +228,5 @@ export type LogRecord = typeof logs.$inferSelect;
 export type NewLogRecord = typeof logs.$inferInsert;
 export type MetadataCacheRecord = typeof metadataCache.$inferSelect;
 export type NewMetadataCacheRecord = typeof metadataCache.$inferInsert;
+export type PlexAccountRecord = typeof plexAccounts.$inferSelect;
+export type NewPlexAccountRecord = typeof plexAccounts.$inferInsert;

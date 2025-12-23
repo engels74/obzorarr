@@ -6,6 +6,7 @@ import { eq, desc, isNull, or, inArray } from 'drizzle-orm';
 import type { StartSyncOptions, SyncResult, SyncProgress, SyncStatusRecord } from './types';
 import { logger } from '$lib/server/logging';
 import { invalidateCache } from '$lib/server/stats/engine';
+import { syncPlexAccounts } from './plex-accounts.service';
 
 /**
  * Sync Service
@@ -299,6 +300,18 @@ export async function startSync(options: StartSyncOptions = {}): Promise<SyncRes
 	let currentPage = 0;
 
 	try {
+		// Sync Plex server members first to ensure usernames are available for stats
+		// This populates the plex_accounts table with all server members (owner + shared users)
+		try {
+			await syncPlexAccounts();
+		} catch (error) {
+			// Log but don't fail the sync if Plex accounts sync fails
+			logger.warn(
+				`Failed to sync Plex accounts: ${error instanceof Error ? error.message : 'Unknown error'}. Top Contributors may show generic usernames.`,
+				`Sync-${syncId}`
+			);
+		}
+
 		// Determine minViewedAt for filtering
 		let minViewedAt: number | undefined;
 

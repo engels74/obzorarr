@@ -13,7 +13,7 @@
 
 import { and, asc, eq, gte, isNull, lte, sql } from 'drizzle-orm';
 import { db } from '$lib/server/db/client';
-import { cachedStats, playHistory, users } from '$lib/server/db/schema';
+import { cachedStats, playHistory, users, plexAccounts } from '$lib/server/db/schema';
 import type { UserStats, ServerStats, Stats } from './types';
 import { UserStatsSchema, ServerStatsSchema } from './types';
 import { serializeStats, parseStats, StatsParseError } from './serialization';
@@ -367,21 +367,26 @@ async function calculateTopViewers(
 		return [];
 	}
 
-	// Fetch user info
-	// Note: accountId in playHistory may correspond to plexId in users table
-	const userResults = await db.select().from(users);
+	// Fetch Plex accounts (all server members - owner + shared users)
+	// This is the primary source for usernames as it includes ALL Plex server members,
+	// not just those who have authenticated with Obzorarr
+	const plexAccountResults = await db.select().from(plexAccounts);
 
-	// Create a map for username lookup by both accountId and plexId
-	// This handles the accountId/plexId mismatch for server owners (accountId=1, plexId=large number)
-	// and ensures lookup succeeds regardless of which ID is stored in playHistory
+	// Create a map of accountId to username from plex_accounts
 	const userMap = new Map<number, string>();
+	for (const account of plexAccountResults) {
+		userMap.set(account.accountId, account.username);
+	}
+
+	// Fall back to users table for any accounts not in plex_accounts
+	// (in case plex_accounts sync hasn't run yet or failed)
+	const userResults = await db.select().from(users);
 	for (const user of userResults) {
-		// Register by accountId if set (primary lookup key for playHistory.accountId)
-		if (user.accountId !== null) {
+		// Register by accountId if set and not already in map
+		if (user.accountId !== null && !userMap.has(user.accountId)) {
 			userMap.set(user.accountId, user.username);
 		}
 		// Also register by plexId for backward compatibility
-		// Only set if not already registered (avoids overwriting for shared users where accountId === plexId)
 		if (!userMap.has(user.plexId)) {
 			userMap.set(user.plexId, user.username);
 		}
@@ -395,7 +400,7 @@ async function calculateTopViewers(
 
 		const [accountId, totalMinutes] = entry;
 		// Fallback format is distinct from anonymized names (which use "User #1", "User #2", etc.)
-		const username = userMap.get(accountId) ?? `Unknown User (ID: ${accountId})`;
+		const username = userMap.get(accountId) ?? `User ${accountId}`;
 
 		topViewers.push({
 			rank: i + 1,
