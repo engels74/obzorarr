@@ -4,7 +4,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import type { LayoutData } from './$types';
 	import SyncIndicator from '$lib/components/SyncIndicator.svelte';
-	import { createSyncStatusStore } from '$lib/stores/sync-status.svelte';
+	import { createSyncStatusStore, type SyncStatusStore } from '$lib/stores/sync-status.svelte';
 
 	/**
 	 * Wrapped Layout
@@ -24,29 +24,41 @@
 
 	let { children, data }: Props = $props();
 
-	// Create sync status store with initial server data
-	// Only create in browser to avoid SSR issues with EventSource
-	// When sync completes, invalidate all data to refresh stats
-	const syncStatusStore =
-		browser && data.syncStatus
-			? createSyncStatusStore(
-					{
-						inProgress: data.syncStatus.inProgress,
-						progress: data.syncStatus.progress
-					},
-					{
-						onSyncComplete: () => {
-							// Refresh page data when sync completes
-							invalidateAll();
-						}
-					}
-				)
-			: null;
+	// Sync status store instance - using $state for reactivity with $derived
+	let syncStatusStore = $state<SyncStatusStore | null>(null);
 
-	// Cleanup SSE connection on unmount
+	// Create sync status store with reactive access to data.syncStatus
+	// Using $effect ensures:
+	// 1. Proper reactive access to data.syncStatus (fixes Svelte 5 warnings)
+	// 2. Browser-only execution (SSR safety)
+	// 3. Automatic cleanup on unmount or when data changes
 	$effect(() => {
+		// Access data.syncStatus inside effect for proper reactivity
+		const syncStatus = data.syncStatus;
+
+		if (!browser || !syncStatus) {
+			syncStatusStore = null;
+			return;
+		}
+
+		// Create store with initial server data
+		// When sync completes, invalidate all data to refresh stats
+		const store = createSyncStatusStore(
+			{
+				inProgress: syncStatus.inProgress,
+				progress: syncStatus.progress
+			},
+			{
+				onSyncComplete: () => {
+					invalidateAll();
+				}
+			}
+		);
+		syncStatusStore = store;
+
+		// Cleanup SSE connection when effect re-runs or component unmounts
 		return () => {
-			syncStatusStore?.disconnect();
+			store.disconnect();
 		};
 	});
 
