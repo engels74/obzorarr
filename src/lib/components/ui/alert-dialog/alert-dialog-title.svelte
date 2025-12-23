@@ -13,5 +13,6 @@
 	bind:ref
 	data-slot="alert-dialog-title"
 	class={cn('text-lg font-semibold', className)}
+	style="font-size: 1.125rem; font-weight: 600; color: hsl(var(--foreground));"
 	{...restProps}
 />
