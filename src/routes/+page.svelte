@@ -1,22 +1,37 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
 	import { animate } from 'motion';
 	import { prefersReducedMotion } from 'svelte/motion';
 	import Logo from '$lib/components/Logo.svelte';
+	import type { PageData, ActionData } from './$types';
 
 	/**
 	 * Public Landing Page
 	 *
 	 * Soviet/communist themed landing page for Obzorarr with:
-	 * - Hero section explaining the app
-	 * - Plex OAuth login button
+	 * - Username-based quick access to wrapped pages (primary CTA)
+	 * - Plex OAuth login button for dashboard access (secondary)
 	 *
 	 * Implements Requirement 14.1:
 	 * - THE Router SHALL serve the public landing page at `/`
 	 */
 
-	// Auth state
-	let isLoading = $state(false);
-	let error = $state<string | null>(null);
+	let { data, form }: { data: PageData; form: ActionData } = $props();
+
+	// Username lookup state
+	let username = $state('');
+	let isLookingUp = $state(false);
+
+	// Sync username from form response (preserves user input on error)
+	$effect(() => {
+		if (form?.username) {
+			username = form.username;
+		}
+	});
+
+	// Plex OAuth state
+	let isOAuthLoading = $state(false);
+	let oauthError = $state<string | null>(null);
 	let pollIntervalId: ReturnType<typeof setInterval> | null = null;
 	let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
@@ -44,8 +59,8 @@
 
 	// Plex OAuth handler
 	async function handlePlexLogin() {
-		isLoading = true;
-		error = null;
+		isOAuthLoading = true;
+		oauthError = null;
 
 		try {
 			// 1. Get PIN info
@@ -74,8 +89,8 @@
 							// PIN expired
 							if (pollIntervalId) clearInterval(pollIntervalId);
 							pollIntervalId = null;
-							isLoading = false;
-							error = 'Authentication expired. Please try again.';
+							isOAuthLoading = false;
+							oauthError = 'Authentication expired. Please try again.';
 							return;
 						}
 						// Other error, keep polling
@@ -111,8 +126,8 @@
 				} catch (err) {
 					if (pollIntervalId) clearInterval(pollIntervalId);
 					pollIntervalId = null;
-					isLoading = false;
-					error = err instanceof Error ? err.message : 'Login failed';
+					isOAuthLoading = false;
+					oauthError = err instanceof Error ? err.message : 'Login failed';
 				}
 			}, 2000);
 
@@ -123,16 +138,16 @@
 						clearInterval(pollIntervalId);
 						pollIntervalId = null;
 					}
-					if (isLoading) {
-						isLoading = false;
-						error = 'Authentication timed out. Please try again.';
+					if (isOAuthLoading) {
+						isOAuthLoading = false;
+						oauthError = 'Authentication timed out. Please try again.';
 					}
 				},
 				5 * 60 * 1000
 			);
 		} catch (err) {
-			isLoading = false;
-			error = err instanceof Error ? err.message : 'Login failed';
+			isOAuthLoading = false;
+			oauthError = err instanceof Error ? err.message : 'Login failed';
 		}
 	}
 </script>
@@ -156,24 +171,81 @@
 				summaries of your media consumption.
 			</p>
 
-			<!-- Login Button -->
-			<button type="button" class="login-button" onclick={handlePlexLogin} disabled={isLoading}>
-				{#if isLoading}
-					<span class="button-loading">
-						<span class="spinner" aria-hidden="true"></span>
-						Connecting to Plex...
-					</span>
-				{:else}
-					<span class="button-content">
-						<span class="plex-icon" aria-hidden="true">&#9654;</span>
-						Sign in with Plex
-					</span>
-				{/if}
-			</button>
+			<!-- PRIMARY CTA: Username Lookup -->
+			<div class="username-section">
+				<form
+					method="POST"
+					action="?/lookupUser"
+					use:enhance={() => {
+						isLookingUp = true;
+						return async ({ update }) => {
+							isLookingUp = false;
+							await update();
+						};
+					}}
+					class="username-form"
+				>
+					<div class="username-input-group">
+						<input
+							type="text"
+							name="username"
+							bind:value={username}
+							placeholder="Enter your Plex username"
+							disabled={isLookingUp}
+							class="username-input"
+							autocomplete="off"
+							autocapitalize="off"
+							spellcheck="false"
+						/>
+						<button type="submit" class="view-button" disabled={isLookingUp || !username.trim()}>
+							{#if isLookingUp}
+								<span class="spinner small" aria-hidden="true"></span>
+								Looking up...
+							{:else}
+								View My {data.currentYear} Wrapped
+							{/if}
+						</button>
+					</div>
 
-			{#if error}
-				<p class="error-message" role="alert">{error}</p>
-			{/if}
+					{#if form?.error}
+						<p class="error-message" role="alert">
+							{form.error}
+							{#if form.requiresAuth}
+								<button type="button" class="link-button" onclick={handlePlexLogin}>
+									Sign in now
+								</button>
+							{/if}
+						</p>
+					{/if}
+				</form>
+			</div>
+
+			<!-- SECONDARY: Plex OAuth Login -->
+			<div class="login-section">
+				<p class="login-prompt">Want to access your dashboard or change settings?</p>
+				<button
+					type="button"
+					class="login-button secondary"
+					onclick={handlePlexLogin}
+					disabled={isOAuthLoading}
+				>
+					{#if isOAuthLoading}
+						<span class="button-loading">
+							<span class="spinner" aria-hidden="true"></span>
+							Connecting to Plex...
+						</span>
+					{:else}
+						<span class="button-content">
+							<span class="plex-icon" aria-hidden="true">&#9654;</span>
+							Sign in with Plex
+						</span>
+					{/if}
+				</button>
+
+				{#if oauthError}
+					<p class="error-message" role="alert">{oauthError}</p>
+				{/if}
+			</div>
 		</div>
 	</section>
 
@@ -256,14 +328,61 @@
 		margin: 0 0 2rem;
 	}
 
-	/* Login Button */
-	.login-button {
+	/* Username Section - PRIMARY CTA */
+	.username-section {
+		margin-bottom: 2rem;
+	}
+
+	.username-form {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.username-input-group {
+		display: flex;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+		justify-content: center;
+	}
+
+	.username-input {
+		flex: 1;
+		min-width: 200px;
+		max-width: 300px;
+		padding: 0.875rem 1rem;
+		font-size: 1rem;
+		background: hsl(var(--input));
+		border: 1px solid hsl(var(--border));
+		border-radius: var(--radius);
+		color: hsl(var(--foreground));
+		transition:
+			border-color 0.2s ease,
+			box-shadow 0.2s ease;
+	}
+
+	.username-input::placeholder {
+		color: hsl(var(--muted-foreground));
+	}
+
+	.username-input:focus {
+		outline: none;
+		border-color: hsl(var(--ring));
+		box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+	}
+
+	.username-input:disabled {
+		opacity: 0.7;
+		cursor: not-allowed;
+	}
+
+	.view-button {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		min-width: 240px;
-		padding: 1rem 2rem;
-		font-size: 1.125rem;
+		gap: 0.5rem;
+		padding: 0.875rem 1.5rem;
+		font-size: 1rem;
 		font-weight: 600;
 		color: hsl(var(--primary-foreground));
 		background: hsl(var(--primary));
@@ -271,12 +390,13 @@
 		border-radius: var(--radius);
 		cursor: pointer;
 		transition: all 0.2s ease;
+		white-space: nowrap;
 		box-shadow:
 			0 4px 14px hsl(var(--primary) / 0.4),
 			0 0 0 0 hsl(var(--accent) / 0);
 	}
 
-	.login-button:hover:not(:disabled) {
+	.view-button:hover:not(:disabled) {
 		background: hsl(var(--primary) / 0.9);
 		transform: translateY(-2px);
 		box-shadow:
@@ -284,8 +404,51 @@
 			0 0 0 3px hsl(var(--accent) / 0.3);
 	}
 
-	.login-button:active:not(:disabled) {
+	.view-button:active:not(:disabled) {
 		transform: translateY(0);
+	}
+
+	.view-button:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
+	/* Login Section - SECONDARY */
+	.login-section {
+		padding-top: 1.5rem;
+		border-top: 1px solid hsl(var(--border) / 0.5);
+	}
+
+	.login-prompt {
+		font-size: 0.875rem;
+		color: hsl(var(--muted-foreground));
+		margin: 0 0 0.75rem;
+	}
+
+	.login-button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 200px;
+		padding: 0.75rem 1.5rem;
+		font-size: 1rem;
+		font-weight: 600;
+		border: none;
+		border-radius: var(--radius);
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.login-button.secondary {
+		background: hsl(var(--secondary));
+		color: hsl(var(--secondary-foreground));
+		border: 1px solid hsl(var(--border));
+		box-shadow: none;
+	}
+
+	.login-button.secondary:hover:not(:disabled) {
+		background: hsl(var(--muted));
+		transform: none;
 	}
 
 	.login-button:disabled {
@@ -301,9 +464,10 @@
 	}
 
 	.plex-icon {
-		font-size: 1.25rem;
+		font-size: 1.125rem;
 	}
 
+	/* Shared Elements */
 	.spinner {
 		display: inline-block;
 		width: 1.25rem;
@@ -314,6 +478,11 @@
 		animation: spin 1s linear infinite;
 	}
 
+	.spinner.small {
+		width: 1rem;
+		height: 1rem;
+	}
+
 	@keyframes spin {
 		to {
 			transform: rotate(360deg);
@@ -321,13 +490,28 @@
 	}
 
 	.error-message {
-		margin-top: 1rem;
+		margin-top: 0.75rem;
 		padding: 0.75rem 1rem;
 		background: hsl(var(--destructive) / 0.2);
 		border: 1px solid hsl(var(--destructive));
 		border-radius: var(--radius);
 		color: hsl(var(--destructive-foreground));
 		font-size: 0.875rem;
+	}
+
+	.link-button {
+		background: none;
+		border: none;
+		color: hsl(var(--primary));
+		text-decoration: underline;
+		cursor: pointer;
+		font-size: inherit;
+		padding: 0;
+		margin-left: 0.25rem;
+	}
+
+	.link-button:hover {
+		opacity: 0.8;
 	}
 
 	/* Footer */
@@ -360,6 +544,20 @@
 			font-size: 1rem;
 		}
 
+		.username-input-group {
+			flex-direction: column;
+			align-items: stretch;
+		}
+
+		.username-input {
+			max-width: none;
+		}
+
+		.view-button {
+			justify-content: center;
+			width: 100%;
+		}
+
 		.login-button {
 			width: 100%;
 			min-width: unset;
@@ -372,7 +570,9 @@
 			animation: none;
 		}
 
-		.login-button {
+		.view-button,
+		.login-button,
+		.username-input {
 			transition: none;
 		}
 	}

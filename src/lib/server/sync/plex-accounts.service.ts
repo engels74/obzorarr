@@ -9,7 +9,8 @@
 
 import { PLEX_SERVER_URL, PLEX_TOKEN } from '$env/static/private';
 import { db } from '$lib/server/db/client';
-import { plexAccounts } from '$lib/server/db/schema';
+import { plexAccounts, users } from '$lib/server/db/schema';
+import { sql, or, eq } from 'drizzle-orm';
 import { logger } from '$lib/server/logging';
 import {
 	PlexSharedServersResponseSchema,
@@ -373,4 +374,71 @@ export async function getAllPlexAccounts(): Promise<Map<number, PlexAccountInfo>
 	}
 
 	return map;
+}
+
+/**
+ * Result of a username lookup for quick access
+ */
+export interface UserLookupResult {
+	/** The user's database ID (from users table) */
+	userId: number;
+	/** The user's Plex username */
+	username: string;
+	/** The local Plex account ID */
+	accountId: number;
+}
+
+/**
+ * Find a registered user by their Plex username (case-insensitive).
+ *
+ * This is used for the landing page quick access feature, allowing users
+ * to enter their username to view their wrapped page without logging in.
+ *
+ * The lookup process:
+ * 1. Search plex_accounts table for the username (case-insensitive)
+ * 2. If found, check if they have a registered account in the users table
+ * 3. Only return users who have authenticated with Obzorarr
+ *
+ * @param username - The Plex username to search for
+ * @returns User info if found and registered, null otherwise
+ *
+ * @example
+ * ```typescript
+ * const user = await findUserByUsername('JohnDoe');
+ * if (user) {
+ *   redirect(303, `/wrapped/2024/u/${user.userId}`);
+ * }
+ * ```
+ */
+export async function findUserByUsername(username: string): Promise<UserLookupResult | null> {
+	// Step 1: Find in plexAccounts (case-insensitive using LOWER())
+	const plexAccountResults = await db
+		.select()
+		.from(plexAccounts)
+		.where(sql`LOWER(${plexAccounts.username}) = LOWER(${username})`)
+		.limit(1);
+
+	const plexAccount = plexAccountResults[0];
+	if (!plexAccount) {
+		return null; // Username not found on server
+	}
+
+	// Step 2: Check if this account is registered in users table
+	// Match by accountId or plexId (handles both owner and shared users)
+	const userResults = await db
+		.select()
+		.from(users)
+		.where(or(eq(users.accountId, plexAccount.accountId), eq(users.plexId, plexAccount.plexId)))
+		.limit(1);
+
+	const user = userResults[0];
+	if (!user) {
+		return null; // User exists in Plex but hasn't registered with Obzorarr
+	}
+
+	return {
+		userId: user.id,
+		username: user.username,
+		accountId: plexAccount.accountId
+	};
 }
