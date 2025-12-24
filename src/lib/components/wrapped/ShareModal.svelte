@@ -324,7 +324,7 @@
 		display: block;
 		font-size: 0.875rem;
 		font-weight: 500;
-		color: var(--foreground);
+		color: hsl(var(--foreground));
 		margin-bottom: 0.5rem;
 	}
 
@@ -337,16 +337,16 @@
 		flex: 1;
 		padding: 0.625rem 0.75rem;
 		font-size: 0.875rem;
-		border: 1px solid var(--border);
+		border: 1px solid hsl(var(--border));
 		border-radius: 6px;
-		background: var(--background);
-		color: var(--foreground);
+		background-color: hsl(var(--background));
+		color: hsl(var(--foreground));
 		font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Monaco, Consolas, monospace;
 	}
 
 	.url-input:focus {
 		outline: none;
-		border-color: var(--primary);
+		border-color: hsl(var(--primary));
 		box-shadow: 0 0 0 2px rgba(204, 0, 0, 0.1);
 	}
 
@@ -356,10 +356,10 @@
 		justify-content: center;
 		width: 2.5rem;
 		height: 2.5rem;
-		border: 1px solid var(--border);
+		border: 1px solid hsl(var(--border));
 		border-radius: 6px;
-		background: var(--background);
-		color: var(--foreground);
+		background-color: hsl(var(--background));
+		color: hsl(var(--foreground));
 		cursor: pointer;
 		transition:
 			background-color 0.15s ease,
@@ -367,8 +367,8 @@
 	}
 
 	.copy-btn:hover {
-		background: rgba(255, 255, 255, 0.1);
-		border-color: var(--primary);
+		background-color: rgba(255, 255, 255, 0.1);
+		border-color: hsl(var(--primary));
 	}
 
 	.copy-btn .icon.check {
@@ -385,7 +385,7 @@
 	.share-modes {
 		margin-bottom: 1.25rem;
 		padding-top: 1rem;
-		border-top: 1px solid var(--border);
+		border-top: 1px solid hsl(var(--border));
 	}
 
 	.mode-options {
@@ -399,7 +399,7 @@
 		align-items: center;
 		gap: 0.75rem;
 		padding: 0.75rem 1rem;
-		border: 1px solid var(--border);
+		border: 1px solid hsl(var(--border));
 		border-radius: 8px;
 		cursor: pointer;
 		transition:
@@ -408,12 +408,12 @@
 	}
 
 	.mode-option:hover {
-		background: rgba(255, 255, 255, 0.05);
+		background-color: rgba(255, 255, 255, 0.05);
 	}
 
 	.mode-option.active {
-		border-color: var(--primary);
-		background: rgba(204, 0, 0, 0.08);
+		border-color: hsl(var(--primary));
+		background-color: rgba(204, 0, 0, 0.08);
 	}
 
 	.mode-option input[type='radio'] {
@@ -430,16 +430,16 @@
 	.mode-label {
 		font-size: 0.875rem;
 		font-weight: 500;
-		color: var(--foreground);
+		color: hsl(var(--foreground));
 	}
 
 	.mode-desc {
 		font-size: 0.75rem;
-		color: var(--muted-foreground);
+		color: hsl(var(--muted-foreground));
 	}
 
 	.check-icon {
-		color: var(--primary);
+		color: hsl(var(--primary));
 	}
 
 	.regenerate-form {
@@ -452,7 +452,7 @@
 		gap: 0.375rem;
 		padding: 0.375rem 0;
 		font-size: 0.8125rem;
-		color: var(--muted-foreground);
+		color: hsl(var(--muted-foreground));
 		background: none;
 		border: none;
 		cursor: pointer;
@@ -460,7 +460,7 @@
 	}
 
 	.btn-link:hover {
-		color: var(--foreground);
+		color: hsl(var(--foreground));
 	}
 
 	.btn-link:disabled {
@@ -470,7 +470,7 @@
 
 	.advanced-section {
 		padding-top: 1rem;
-		border-top: 1px solid var(--border);
+		border-top: 1px solid hsl(var(--border));
 		margin-bottom: 0.5rem;
 	}
 
@@ -479,12 +479,12 @@
 		align-items: center;
 		gap: 0.375rem;
 		font-size: 0.8125rem;
-		color: var(--muted-foreground);
+		color: hsl(var(--muted-foreground));
 		text-decoration: none;
 		transition: color 0.15s ease;
 	}
 
 	.advanced-link:hover {
-		color: var(--foreground);
+		color: hsl(var(--foreground));
 	}
 </style>
