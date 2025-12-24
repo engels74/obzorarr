@@ -40,6 +40,9 @@ function createMockHeaders(contentType = 'application/json') {
 	};
 }
 
+// Machine identifier used in mock responses (must match between identity and friends)
+const MOCK_MACHINE_ID = 'mock-machine-id-123456';
+
 // Helper to create mock responses
 function createMockIdentityResponse() {
 	return {
@@ -48,29 +51,35 @@ function createMockIdentityResponse() {
 		json: () =>
 			Promise.resolve({
 				MediaContainer: {
-					machineIdentifier: 'mock-machine-id-123456'
+					machineIdentifier: MOCK_MACHINE_ID
 				}
 			})
 	};
 }
 
-function createMockSharedServersResponse(
+/**
+ * Create mock response for the /api/v2/friends endpoint
+ *
+ * The new API returns an array of friends, each with a sharedServers array
+ * that includes machineIdentifier for filtering.
+ */
+function createMockFriendsResponse(
 	sharedUsers: Array<{ id: number; username: string; email?: string; thumb?: string }> = []
 ) {
 	return {
 		ok: true,
 		headers: createMockHeaders(),
 		json: () =>
-			Promise.resolve({
-				MediaContainer: {
-					SharedServer: sharedUsers.map((u) => ({
-						id: u.id,
-						username: u.username,
-						email: u.email,
-						thumb: u.thumb
-					}))
-				}
-			})
+			Promise.resolve(
+				sharedUsers.map((u, index) => ({
+					id: u.id,
+					username: u.username,
+					email: u.email,
+					thumb: u.thumb,
+					// Include sharedServers with required fields for schema validation
+					sharedServers: [{ id: 1000 + index, machineIdentifier: MOCK_MACHINE_ID }]
+				}))
+			)
 	};
 }
 
@@ -119,8 +128,8 @@ describe('dev-users module', () => {
 			if (urlStr.includes('/identity')) {
 				return Promise.resolve(createMockIdentityResponse() as Response);
 			}
-			if (urlStr.includes('/shared_servers')) {
-				return Promise.resolve(createMockSharedServersResponse(sharedUsers) as Response);
+			if (urlStr.includes('/api/v2/friends')) {
+				return Promise.resolve(createMockFriendsResponse(sharedUsers) as Response);
 			}
 			return Promise.reject(new Error(`Unexpected URL: ${urlStr}`));
 		}) as typeof fetch);
@@ -355,19 +364,19 @@ describe('dev-users module', () => {
 						headers: createMockHeaders()
 					} as Response);
 				}
-				return Promise.resolve(createMockSharedServersResponse([]) as Response);
+				return Promise.resolve(createMockFriendsResponse([]) as Response);
 			}) as typeof fetch);
 
 			await expect(getServerUsers()).rejects.toThrow('Failed to get server identity');
 		});
 
-		it('throws error when shared_servers endpoint returns non-ok response', async () => {
+		it('throws error when friends endpoint returns non-ok response', async () => {
 			fetchMock = spyOn(globalThis, 'fetch').mockImplementation(((url: URL | RequestInfo) => {
 				const urlStr = url.toString();
 				if (urlStr.includes('/identity')) {
 					return Promise.resolve(createMockIdentityResponse() as Response);
 				}
-				if (urlStr.includes('/shared_servers')) {
+				if (urlStr.includes('/api/v2/friends')) {
 					return Promise.resolve({
 						ok: false,
 						status: 403,
@@ -378,7 +387,7 @@ describe('dev-users module', () => {
 				return Promise.reject(new Error(`Unexpected URL: ${urlStr}`));
 			}) as typeof fetch);
 
-			await expect(getServerUsers()).rejects.toThrow('Failed to get shared servers');
+			await expect(getServerUsers()).rejects.toThrow('Failed to get friends');
 		});
 
 		it('throws error when identity response has invalid schema', async () => {
@@ -391,19 +400,19 @@ describe('dev-users module', () => {
 						json: () => Promise.resolve({ invalid: 'data' })
 					} as Response);
 				}
-				return Promise.resolve(createMockSharedServersResponse([]) as Response);
+				return Promise.resolve(createMockFriendsResponse([]) as Response);
 			}) as typeof fetch);
 
 			await expect(getServerUsers()).rejects.toThrow('Invalid server identity response');
 		});
 
-		it('returns empty shared users when shared_servers response has invalid schema', async () => {
+		it('returns empty shared users when friends response has invalid schema', async () => {
 			fetchMock = spyOn(globalThis, 'fetch').mockImplementation(((url: URL | RequestInfo) => {
 				const urlStr = url.toString();
 				if (urlStr.includes('/identity')) {
 					return Promise.resolve(createMockIdentityResponse() as Response);
 				}
-				if (urlStr.includes('/shared_servers')) {
+				if (urlStr.includes('/api/v2/friends')) {
 					return Promise.resolve({
 						ok: true,
 						headers: createMockHeaders(),
@@ -413,18 +422,19 @@ describe('dev-users module', () => {
 				return Promise.reject(new Error(`Unexpected URL: ${urlStr}`));
 			}) as typeof fetch);
 
-			// With graceful error handling, invalid schema now throws an error
-			// (only JSON parse failures and XML responses are handled gracefully)
-			await expect(getServerUsers()).rejects.toThrow('Invalid shared servers response');
+			// With graceful error handling, invalid schema logs a warning and returns empty array
+			const result = await getServerUsers();
+			expect(result.owner).toBeDefined();
+			expect(result.sharedUsers).toHaveLength(0);
 		});
 
-		it('returns empty shared users when shared_servers returns XML', async () => {
+		it('throws error when friends response fails to parse as JSON', async () => {
 			fetchMock = spyOn(globalThis, 'fetch').mockImplementation(((url: URL | RequestInfo) => {
 				const urlStr = url.toString();
 				if (urlStr.includes('/identity')) {
 					return Promise.resolve(createMockIdentityResponse() as Response);
 				}
-				if (urlStr.includes('/shared_servers')) {
+				if (urlStr.includes('/api/v2/friends')) {
 					return Promise.resolve({
 						ok: true,
 						headers: createMockHeaders('application/xml; charset=utf-8'),
@@ -434,32 +444,28 @@ describe('dev-users module', () => {
 				return Promise.reject(new Error(`Unexpected URL: ${urlStr}`));
 			}) as typeof fetch);
 
-			// Should gracefully handle XML response and return empty shared users
-			const result = await getServerUsers();
-			expect(result.owner).toBeDefined();
-			expect(result.sharedUsers).toHaveLength(0);
+			// JSON parse failures propagate as errors
+			await expect(getServerUsers()).rejects.toThrow('Unexpected token <');
 		});
 
-		it('returns empty shared users when JSON parse fails (non-XML content)', async () => {
+		it('throws error when JSON response is malformed', async () => {
 			fetchMock = spyOn(globalThis, 'fetch').mockImplementation(((url: URL | RequestInfo) => {
 				const urlStr = url.toString();
 				if (urlStr.includes('/identity')) {
 					return Promise.resolve(createMockIdentityResponse() as Response);
 				}
-				if (urlStr.includes('/shared_servers')) {
+				if (urlStr.includes('/api/v2/friends')) {
 					return Promise.resolve({
 						ok: true,
-						headers: createMockHeaders('application/json'), // JSON content type
+						headers: createMockHeaders('application/json'),
 						json: () => Promise.reject(new Error('Unexpected end of JSON input'))
 					} as Response);
 				}
 				return Promise.reject(new Error(`Unexpected URL: ${urlStr}`));
 			}) as typeof fetch);
 
-			// Should gracefully handle JSON parse failure and return empty shared users
-			const result = await getServerUsers();
-			expect(result.owner).toBeDefined();
-			expect(result.sharedUsers).toHaveLength(0);
+			// JSON parse failures propagate as errors
+			await expect(getServerUsers()).rejects.toThrow('Unexpected end of JSON input');
 		});
 	});
 });

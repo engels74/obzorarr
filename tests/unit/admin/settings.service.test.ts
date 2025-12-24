@@ -331,14 +331,16 @@ describe('Admin Settings Service', () => {
 
 	describe('API Configuration', () => {
 		describe('getApiConfigWithSources', () => {
-			it('returns default values when nothing configured', async () => {
+			it('returns env values when env vars are configured', async () => {
 				const config = await getApiConfigWithSources();
 
-				// Plex values should be empty (no DB, env from test setup is empty strings)
-				expect(config.plex.serverUrl.value).toBe('');
-				expect(config.plex.serverUrl.source).toBe('default');
+				// Plex values come from env (test setup mocks PLEX_SERVER_URL and PLEX_TOKEN)
+				expect(config.plex.serverUrl.value).toBe('http://test-plex-server:32400');
+				expect(config.plex.serverUrl.source).toBe('env');
+				expect(config.plex.token.value).toBe('test-plex-token');
+				expect(config.plex.token.source).toBe('env');
 
-				// OpenAI should have defaults
+				// OpenAI env vars are empty in test setup, so defaults are used
 				expect(config.openai.baseUrl.value).toBe('https://api.openai.com/v1');
 				expect(config.openai.baseUrl.source).toBe('default');
 				expect(config.openai.model.value).toBe('gpt-4o-mini');
@@ -359,10 +361,10 @@ describe('Admin Settings Service', () => {
 		});
 
 		describe('hasPlexEnvConfig', () => {
-			it('returns false when no Plex env vars set', () => {
-				// Test setup mocks env vars as empty strings
+			it('returns true when Plex env vars are set', () => {
+				// Test setup mocks PLEX_SERVER_URL and PLEX_TOKEN with values
 				const hasConfig = hasPlexEnvConfig();
-				expect(hasConfig).toBe(false);
+				expect(hasConfig).toBe(true);
 			});
 		});
 
