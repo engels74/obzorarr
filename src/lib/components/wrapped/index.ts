@@ -11,6 +11,10 @@
 export { default as StoryMode } from './StoryMode.svelte';
 export { default as ScrollMode } from './ScrollMode.svelte';
 
+// Summary and sharing
+export { default as SummaryPage } from './SummaryPage.svelte';
+export { default as ShareModal } from './ShareModal.svelte';
+
 // Mode toggle
 export { default as ModeToggle } from './ModeToggle.svelte';
 

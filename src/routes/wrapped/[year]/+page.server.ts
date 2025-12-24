@@ -84,6 +84,9 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		isServerWrapped: true,
 		serverName,
 		showLogo: logoVisibility.showLogo,
-		canUserControlLogo: false // Server-wide pages don't have per-user logo control
+		canUserControlLogo: false, // Server-wide pages don't have per-user logo control
+		// Share modal data (server-wide is always public, simpler sharing)
+		currentUrl: `/wrapped/${year}`,
+		isAdmin: locals.user?.isAdmin ?? false
 	};
 };

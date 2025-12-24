@@ -5,8 +5,18 @@ import { db } from '$lib/server/db/client';
 import { users } from '$lib/server/db/schema';
 import { calculateUserStats } from '$lib/server/stats/engine';
 import { checkWrappedAccess, checkTokenAccess } from '$lib/server/sharing/access-control';
-import { isValidTokenFormat } from '$lib/server/sharing/service';
-import { ShareAccessDeniedError, InvalidShareTokenError } from '$lib/server/sharing/types';
+import {
+	isValidTokenFormat,
+	getOrCreateShareSettings,
+	updateShareSettings,
+	regenerateShareToken
+} from '$lib/server/sharing/service';
+import {
+	ShareAccessDeniedError,
+	InvalidShareTokenError,
+	PermissionExceededError,
+	ShareModeSchema
+} from '$lib/server/sharing/types';
 import {
 	initializeDefaultSlideConfig,
 	getEnabledSlides,
@@ -140,6 +150,13 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	// Get logo visibility (per-user pages can have user control if mode is USER_CHOICE)
 	const logoVisibility = await getLogoVisibility(userId, year);
 
+	// Get share settings for the modal
+	const shareSettings = await getOrCreateShareSettings({ userId, year });
+
+	// Determine ownership and permissions
+	const isOwner = locals.user?.id === userId;
+	const isAdmin = locals.user?.isAdmin ?? false;
+
 	return {
 		stats,
 		slides,
@@ -150,7 +167,16 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		isServerWrapped: false,
 		serverName: null, // Personal wrapped doesn't use server name
 		showLogo: logoVisibility.showLogo,
-		canUserControlLogo: logoVisibility.canUserControl
+		canUserControlLogo: logoVisibility.canUserControl,
+		// Share modal data
+		shareSettings: {
+			mode: shareSettings.mode,
+			shareToken: shareSettings.shareToken,
+			canUserControl: shareSettings.canUserControl || isAdmin
+		},
+		isOwner,
+		isAdmin,
+		currentUrl: `/wrapped/${year}/u/${userId}`
 	};
 };
 
@@ -182,6 +208,93 @@ export const actions: Actions = {
 			return { success: true };
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to update preference';
+			return fail(500, { error: message });
+		}
+	},
+
+	/**
+	 * Update share mode for this wrapped page
+	 */
+	updateShareMode: async ({ request, params, locals }) => {
+		// Require authentication
+		if (!locals.user) {
+			return fail(401, { error: 'Authentication required' });
+		}
+
+		const year = parseInt(params.year, 10);
+		if (isNaN(year)) {
+			return fail(400, { error: 'Invalid year' });
+		}
+
+		// Parse and validate the identifier as userId
+		const userId = parseInt(params.identifier, 10);
+		if (isNaN(userId) || userId <= 0) {
+			return fail(400, { error: 'Invalid user identifier' });
+		}
+
+		// Verify ownership or admin status
+		if (locals.user.id !== userId && !locals.user.isAdmin) {
+			return fail(403, { error: 'Not authorized to change share settings' });
+		}
+
+		const formData = await request.formData();
+		const modeValue = formData.get('mode')?.toString();
+
+		// Validate share mode
+		const parseResult = ShareModeSchema.safeParse(modeValue);
+		if (!parseResult.success) {
+			return fail(400, { error: 'Invalid share mode' });
+		}
+
+		try {
+			const updated = await updateShareSettings(
+				userId,
+				year,
+				{ mode: parseResult.data },
+				locals.user.isAdmin
+			);
+			return {
+				success: true,
+				shareSettings: {
+					mode: updated.mode,
+					shareToken: updated.shareToken,
+					canUserControl: updated.canUserControl
+				}
+			};
+		} catch (err) {
+			if (err instanceof PermissionExceededError) {
+				return fail(403, { error: err.message });
+			}
+			const message = err instanceof Error ? err.message : 'Failed to update share settings';
+			return fail(500, { error: message });
+		}
+	},
+
+	/**
+	 * Regenerate share token for private-link mode (admin only)
+	 */
+	regenerateToken: async ({ params, locals }) => {
+		// Require admin authentication
+		if (!locals.user?.isAdmin) {
+			return fail(403, { error: 'Admin access required' });
+		}
+
+		const year = parseInt(params.year, 10);
+		if (isNaN(year)) {
+			return fail(400, { error: 'Invalid year' });
+		}
+
+		// Parse and validate the identifier as userId
+		const userId = parseInt(params.identifier, 10);
+		if (isNaN(userId) || userId <= 0) {
+			return fail(400, { error: 'Invalid user identifier' });
+		}
+
+		try {
+			const newToken = await regenerateShareToken(userId, year);
+			return { success: true, shareToken: newToken };
+		} catch (err) {
+			const message = err instanceof Error ? err.message : 'Failed to regenerate token';
 			return fail(500, { error: message });
 		}
 	}

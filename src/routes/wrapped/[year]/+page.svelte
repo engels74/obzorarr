@@ -1,5 +1,11 @@
 <script lang="ts">
-	import { StoryMode, ScrollMode, ModeToggle } from '$lib/components/wrapped';
+	import {
+		StoryMode,
+		ScrollMode,
+		ModeToggle,
+		SummaryPage,
+		ShareModal
+	} from '$lib/components/wrapped';
 	import Logo from '$lib/components/Logo.svelte';
 	import { createServerContext } from '$lib/components/slides/messaging-context';
 	import type { PageProps } from './$types';
@@ -35,6 +41,15 @@
 	/** Current slide index for mode switching (preserves position) */
 	let currentSlideIndex = $state(0);
 
+	/** Whether to show the summary page */
+	let showSummary = $state(false);
+
+	/** Whether to show the share modal */
+	let showShareModal = $state(false);
+
+	/** Key for forcing StoryMode remount on restart */
+	let storyKey = $state(0);
+
 	// ==========================================================================
 	// Event Handlers
 	// ==========================================================================
@@ -55,11 +70,10 @@
 	}
 
 	/**
-	 * Handle story mode completion
+	 * Handle story mode completion - show summary page
 	 */
 	function handleComplete(): void {
-		// Could show a completion screen or navigate elsewhere
-		console.log('Wrapped presentation complete');
+		showSummary = true;
 	}
 
 	/**
@@ -68,6 +82,30 @@
 	function handleClose(): void {
 		// Navigate back to home or previous page
 		window.history.back();
+	}
+
+	/**
+	 * Handle restart - return to slideshow from summary
+	 */
+	function handleRestart(): void {
+		showSummary = false;
+		viewMode = 'story';
+		currentSlideIndex = 0;
+		storyKey++; // Force StoryMode remount
+	}
+
+	/**
+	 * Handle return home from summary
+	 */
+	function handleHome(): void {
+		window.location.href = '/';
+	}
+
+	/**
+	 * Handle share button click from summary
+	 */
+	function handleShare(): void {
+		showShareModal = true;
 	}
 </script>
 
@@ -90,15 +128,25 @@
 	</div>
 
 	<!-- Wrapped Content -->
-	{#if viewMode === 'story'}
-		<StoryMode
+	{#if showSummary}
+		<SummaryPage
 			stats={data.stats}
-			slides={data.slides}
-			customSlides={data.customSlidesMap}
-			onComplete={handleComplete}
-			onClose={handleClose}
-			{messagingContext}
+			year={data.year}
+			onRestart={handleRestart}
+			onHome={handleHome}
+			onShare={handleShare}
 		/>
+	{:else if viewMode === 'story'}
+		{#key storyKey}
+			<StoryMode
+				stats={data.stats}
+				slides={data.slides}
+				customSlides={data.customSlidesMap}
+				onComplete={handleComplete}
+				onClose={handleClose}
+				{messagingContext}
+			/>
+		{/key}
 	{:else}
 		<ScrollMode
 			stats={data.stats}
@@ -110,6 +158,16 @@
 			{messagingContext}
 		/>
 	{/if}
+
+	<!-- Share Modal (simplified for server-wide - always public) -->
+	<ShareModal
+		bind:open={showShareModal}
+		onOpenChange={(v) => (showShareModal = v)}
+		currentUrl={data.currentUrl}
+		isOwner={false}
+		isAdmin={data.isAdmin}
+		isServerWrapped={true}
+	/>
 </div>
 
 <style>
