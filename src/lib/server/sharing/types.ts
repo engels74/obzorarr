@@ -12,19 +12,13 @@ import { z } from 'zod';
  */
 
 // =============================================================================
-// Constants
+// Re-export Client-Safe Types
 // =============================================================================
 
-/**
- * Valid share modes for wrapped pages
- */
-export const ShareMode = {
-	PUBLIC: 'public',
-	PRIVATE_OAUTH: 'private-oauth',
-	PRIVATE_LINK: 'private-link'
-} as const;
-
-export type ShareModeType = (typeof ShareMode)[keyof typeof ShareMode];
+// Import and re-export types from the shared location for backward compatibility
+// The import makes the type available for local use in this file
+import { ShareMode, type ShareModeType } from '$lib/sharing/types';
+export { ShareMode, type ShareModeType };
 
 /**
  * App settings keys for sharing configuration

@@ -143,7 +143,7 @@ export const PlexUserSchema = z.object({
 	username: z.string(),
 	title: z.string().optional(),
 	email: z.string().email(),
-	friendlyName: z.string().optional(),
+	friendlyName: z.string().nullish(),
 	locale: z.string().nullable().optional(),
 	confirmed: z.boolean().optional(),
 	joinedAt: z.number().int().optional(),
@@ -358,7 +358,7 @@ export const PlexSharedServerUserSchema = z.object({
  */
 export const PlexSharedServersResponseSchema = z.object({
 	MediaContainer: z.object({
-		friendlyName: z.string().optional(),
+		friendlyName: z.string().nullish(),
 		identifier: z.string().optional(),
 		machineIdentifier: z.string().optional(),
 		size: z.number().int().optional(),
@@ -372,7 +372,7 @@ export const PlexSharedServersResponseSchema = z.object({
 export const PlexServerIdentitySchema = z.object({
 	MediaContainer: z.object({
 		machineIdentifier: z.string(),
-		friendlyName: z.string().optional(),
+		friendlyName: z.string().nullish(),
 		version: z.string().optional(),
 		claimed: z.boolean().optional()
 	})
@@ -419,7 +419,7 @@ export const PlexFriendSchema = z.object({
 	uuid: z.string().optional(),
 	username: z.string(),
 	email: z.string().optional(),
-	friendlyName: z.string().optional(),
+	friendlyName: z.string().nullish(),
 	title: z.string().optional(),
 	thumb: z.string().optional(),
 	home: z.boolean().optional(),

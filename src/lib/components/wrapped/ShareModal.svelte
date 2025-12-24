@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
-	import type { ShareModeType } from '$lib/server/sharing/types';
+	import type { ShareModeType } from '$lib/sharing/types';
 
 	/**
 	 * ShareModal Component
