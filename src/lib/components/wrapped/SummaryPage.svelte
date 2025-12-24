@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { animate } from 'motion';
 	import { prefersReducedMotion } from 'svelte/motion';
-	import type { UserStats, ServerStats } from '$lib/server/stats/types';
-	import { isUserStats } from '$lib/server/stats/types';
+	import type { UserStats, ServerStats } from '$lib/stats/types';
+	import { isUserStats } from '$lib/stats/types';
 
 	/**
 	 * SummaryPage Component

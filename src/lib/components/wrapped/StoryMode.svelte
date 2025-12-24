@@ -3,8 +3,8 @@
 	import { prefersReducedMotion } from 'svelte/motion';
 	import { createSlideState } from '$lib/stores/slide-state.svelte';
 	import type { SlideRenderConfig } from '$lib/components/slides/types';
-	import type { UserStats, ServerStats } from '$lib/server/stats/types';
-	import type { CustomSlide } from '$lib/server/slides/types';
+	import type { UserStats, ServerStats } from '$lib/stats/types';
+	import type { CustomSlide } from '$lib/slides/types';
 	import type { SlideMessagingContext } from '$lib/components/slides/messaging-context';
 	import { createPersonalContext } from '$lib/components/slides/messaging-context';
 	import ProgressBar from './ProgressBar.svelte';

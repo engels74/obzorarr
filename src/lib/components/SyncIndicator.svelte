@@ -14,7 +14,7 @@
 	 * @module components/SyncIndicator
 	 */
 
-	import type { LiveSyncProgress } from '$lib/server/sync/progress';
+	import type { LiveSyncProgress } from '$lib/sync/types';
 
 	interface Props {
 		/** Whether a sync is currently in progress */

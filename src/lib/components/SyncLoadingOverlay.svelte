@@ -15,7 +15,7 @@
 	 * @module components/SyncLoadingOverlay
 	 */
 
-	import type { LiveSyncProgress } from '$lib/server/sync/progress';
+	import type { LiveSyncProgress } from '$lib/sync/types';
 	import { prefersReducedMotion } from 'svelte/motion';
 	import { fade } from 'svelte/transition';
 
