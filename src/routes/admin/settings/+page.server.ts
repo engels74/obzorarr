@@ -60,7 +60,7 @@ import type { ShareModeType } from '$lib/server/sharing/types';
 // Validation Schemas
 // =============================================================================
 
-const ThemeSchema = z.enum(['soviet-red', 'midnight-blue', 'forest-green', 'royal-purple']);
+const ThemeSchema = z.enum(['modern-minimal', 'supabase', 'doom-64', 'amber-minimal', 'soviet-red']);
 const AnonymizationSchema = z.enum(['real', 'anonymous', 'hybrid']);
 const WrappedLogoModeSchema = z.enum(['always_show', 'always_hide', 'user_choice']);
 

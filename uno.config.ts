@@ -101,7 +101,7 @@ export default defineConfig({
 		presetTypography(),
 		presetAnimations(),
 		presetShadcn({
-			color: 'red' // Soviet red as base theme
+			color: 'blue' // Modern Minimal as base theme
 		})
 	],
 	transformers: [transformerDirectives(), transformerVariantGroup()],
@@ -115,17 +115,8 @@ export default defineConfig({
 			]
 		}
 	},
-	// Soviet/Communist theme CSS variables
+	// Theme colors are defined in app.css using oklch for maximum flexibility
 	theme: {
-		colors: {
-			// Override shadcn colors with Soviet theme
-			soviet: {
-				red: '#CC0000',
-				gold: '#FFD700',
-				darkRed: '#8B0000',
-				charcoal: '#1a1a1a',
-				black: '#0d0d0d'
-			}
-		}
+		// Extend default theme as needed
 	}
 });

@@ -1,54 +1,54 @@
 /* UnoCSS base styles */
 @unocss all;
 
-/* Soviet/Communist theme for Obzorarr */
+/* =============================================================================
+   Base Theme Variables (Modern Minimal - Default)
+   Using oklch color format for better color manipulation
+   ============================================================================= */
 :root {
-	/* Core Soviet colors */
-	--soviet-red: 0 84% 40%;
-	--soviet-gold: 51 100% 50%;
-	--soviet-dark-red: 0 84% 27%;
-	--soviet-charcoal: 0 0% 10%;
-	--soviet-black: 0 0% 5%;
+	/* Font family (overridden per theme) */
+	--font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
-	/* shadcn-svelte theme variables - Soviet dark theme */
-	--background: 0 0% 5%;
-	--foreground: 0 0% 95%;
+	/* Base colors - Modern Minimal dark mode */
+	--background: oklch(0.2046 0 0);
+	--foreground: oklch(0.9219 0 0);
 
-	--card: 0 0% 8%;
-	--card-foreground: 0 0% 95%;
+	--card: oklch(0.2686 0 0);
+	--card-foreground: oklch(0.9219 0 0);
 
-	--popover: 0 0% 8%;
-	--popover-foreground: 0 0% 95%;
+	--popover: oklch(0.2686 0 0);
+	--popover-foreground: oklch(0.9219 0 0);
 
-	--primary: 0 84% 40%;
-	--primary-foreground: 0 0% 100%;
+	--primary: oklch(0.6231 0.188 259.81);
+	--primary-foreground: oklch(1 0 0);
 
-	--secondary: 0 0% 15%;
-	--secondary-foreground: 0 0% 95%;
+	--secondary: oklch(0.3 0 0);
+	--secondary-foreground: oklch(0.9219 0 0);
 
-	--muted: 0 0% 15%;
-	--muted-foreground: 0 0% 65%;
+	--muted: oklch(0.3 0 0);
+	--muted-foreground: oklch(0.65 0 0);
 
-	--accent: 51 100% 50%;
-	--accent-foreground: 0 0% 5%;
+	--accent: oklch(0.6231 0.188 259.81);
+	--accent-foreground: oklch(1 0 0);
 
-	--destructive: 0 62% 30%;
-	--destructive-foreground: 0 0% 95%;
+	--destructive: oklch(0.6368 0.2078 25.33);
+	--destructive-foreground: oklch(0.95 0 0);
 
-	--border: 0 0% 20%;
-	--input: 0 0% 20%;
-	--ring: 0 84% 40%;
+	--border: oklch(0.35 0 0);
+	--input: oklch(0.35 0 0);
+	--ring: oklch(0.6231 0.188 259.81);
 
-	--radius: 0.5rem;
+	--radius: 0.375rem;
 
-	/* Default slide gradient colors (Soviet Red hue ~25) */
-	--slide-bg-start: oklch(0.25 0.08 25);
-	--slide-bg-end: oklch(0.15 0.05 25);
-	--slide-dark-start: oklch(0.12 0.01 25);
-	--slide-dark-end: oklch(0.08 0 25);
-	--slide-bar-end: oklch(0.4 0.1 25);
-	--slide-peak-start: oklch(0.7 0.2 45);
-	--slide-peak-end: oklch(0.5 0.15 40);
+	/* Slide gradient colors - derived from primary hue */
+	--primary-hue: 260;
+	--slide-bg-start: oklch(0.25 0.08 var(--primary-hue));
+	--slide-bg-end: oklch(0.15 0.05 var(--primary-hue));
+	--slide-dark-start: oklch(0.12 0.01 var(--primary-hue));
+	--slide-dark-end: oklch(0.08 0 var(--primary-hue));
+	--slide-bar-end: oklch(0.4 0.1 var(--primary-hue));
+	--slide-peak-start: oklch(0.7 0.2 calc(var(--primary-hue) + 20));
+	--slide-peak-end: oklch(0.5 0.15 calc(var(--primary-hue) + 15));
 
 	/* Responsive content max-widths */
 	--content-max-sm: 600px;
@@ -57,163 +57,173 @@
 	--content-max-xl: 1100px;
 }
 
-/* Dark mode is the default - Soviet aesthetic */
+/* Dark mode class (same as :root since app is dark-only) */
 .dark {
-	--background: 0 0% 5%;
-	--foreground: 0 0% 95%;
-
-	--card: 0 0% 8%;
-	--card-foreground: 0 0% 95%;
-
-	--popover: 0 0% 8%;
-	--popover-foreground: 0 0% 95%;
-
-	--primary: 0 84% 40%;
-	--primary-foreground: 0 0% 100%;
-
-	--secondary: 0 0% 15%;
-	--secondary-foreground: 0 0% 95%;
-
-	--muted: 0 0% 15%;
-	--muted-foreground: 0 0% 65%;
-
-	--accent: 51 100% 50%;
-	--accent-foreground: 0 0% 5%;
-
-	--destructive: 0 62% 30%;
-	--destructive-foreground: 0 0% 95%;
-
-	--border: 0 0% 20%;
-	--input: 0 0% 20%;
-	--ring: 0 84% 40%;
+	--background: oklch(0.2046 0 0);
+	--foreground: oklch(0.9219 0 0);
+	--card: oklch(0.2686 0 0);
+	--card-foreground: oklch(0.9219 0 0);
+	--popover: oklch(0.2686 0 0);
+	--popover-foreground: oklch(0.9219 0 0);
+	--primary: oklch(0.6231 0.188 259.81);
+	--primary-foreground: oklch(1 0 0);
+	--secondary: oklch(0.3 0 0);
+	--secondary-foreground: oklch(0.9219 0 0);
+	--muted: oklch(0.3 0 0);
+	--muted-foreground: oklch(0.65 0 0);
+	--accent: oklch(0.6231 0.188 259.81);
+	--accent-foreground: oklch(1 0 0);
+	--destructive: oklch(0.6368 0.2078 25.33);
+	--destructive-foreground: oklch(0.95 0 0);
+	--border: oklch(0.35 0 0);
+	--input: oklch(0.35 0 0);
+	--ring: oklch(0.6231 0.188 259.81);
 }
 
 /* =============================================================================
    Theme Presets
-   Each theme overrides the primary, accent, and related CSS variables.
-   Apply via class on <html> element: theme-soviet-red, theme-midnight-blue, etc.
+   Apply via class on body element: theme-modern-minimal, theme-supabase, etc.
    ============================================================================= */
 
-/* Theme: Soviet Red (default) */
+/* Theme: Modern Minimal (Default) - Clean blue aesthetic */
+.theme-modern-minimal {
+	--font-sans: 'Inter', system-ui, sans-serif;
+	--background: oklch(0.2046 0 0);
+	--foreground: oklch(0.9219 0 0);
+	--card: oklch(0.2686 0 0);
+	--card-foreground: oklch(0.9219 0 0);
+	--popover: oklch(0.2686 0 0);
+	--popover-foreground: oklch(0.9219 0 0);
+	--primary: oklch(0.6231 0.188 259.81);
+	--primary-foreground: oklch(1 0 0);
+	--secondary: oklch(0.3 0 0);
+	--secondary-foreground: oklch(0.9219 0 0);
+	--muted: oklch(0.3 0 0);
+	--muted-foreground: oklch(0.65 0 0);
+	--accent: oklch(0.6231 0.188 259.81);
+	--accent-foreground: oklch(1 0 0);
+	--destructive: oklch(0.6368 0.2078 25.33);
+	--destructive-foreground: oklch(0.95 0 0);
+	--border: oklch(0.35 0 0);
+	--input: oklch(0.35 0 0);
+	--ring: oklch(0.6231 0.188 259.81);
+	--radius: 0.375rem;
+	--primary-hue: 260;
+}
+
+/* Theme: Supabase - Teal/green brand colors */
+.theme-supabase {
+	--font-sans: 'Outfit', system-ui, sans-serif;
+	--background: oklch(0.1822 0 0);
+	--foreground: oklch(0.9288 0 0);
+	--card: oklch(0.24 0.01 160);
+	--card-foreground: oklch(0.9288 0 0);
+	--popover: oklch(0.24 0.01 160);
+	--popover-foreground: oklch(0.9288 0 0);
+	--primary: oklch(0.696 0.17 156.7);
+	--primary-foreground: oklch(0.15 0.02 160);
+	--secondary: oklch(0.28 0.02 160);
+	--secondary-foreground: oklch(0.9288 0 0);
+	--muted: oklch(0.28 0.02 160);
+	--muted-foreground: oklch(0.65 0 0);
+	--accent: oklch(0.696 0.17 156.7);
+	--accent-foreground: oklch(0.15 0.02 160);
+	--destructive: oklch(0.6368 0.2078 29.7);
+	--destructive-foreground: oklch(0.95 0 0);
+	--border: oklch(0.35 0.02 160);
+	--input: oklch(0.35 0.02 160);
+	--ring: oklch(0.696 0.17 156.7);
+	--radius: 0.5rem;
+	--primary-hue: 157;
+}
+
+/* Theme: Doom 64 - Retro orange/brown gaming aesthetic */
+.theme-doom-64 {
+	--font-sans: 'Oxanium', system-ui, sans-serif;
+	--background: oklch(0.2178 0 0);
+	--foreground: oklch(0.9067 0 0);
+	--card: oklch(0.28 0.02 27);
+	--card-foreground: oklch(0.9067 0 0);
+	--popover: oklch(0.28 0.02 27);
+	--popover-foreground: oklch(0.9067 0 0);
+	--primary: oklch(0.6083 0.209 27.03);
+	--primary-foreground: oklch(0.15 0.02 27);
+	--secondary: oklch(0.6423 0.147 133.01);
+	--secondary-foreground: oklch(0.15 0.02 133);
+	--muted: oklch(0.32 0.02 27);
+	--muted-foreground: oklch(0.65 0 0);
+	--accent: oklch(0.7482 0.124 244.75);
+	--accent-foreground: oklch(0.15 0 0);
+	--destructive: oklch(0.7839 0.172 68.09);
+	--destructive-foreground: oklch(0.15 0 0);
+	--border: oklch(0.38 0.03 27);
+	--input: oklch(0.38 0.03 27);
+	--ring: oklch(0.6083 0.209 27.03);
+	--radius: 0;
+	--primary-hue: 27;
+}
+
+/* Theme: Amber Minimal - Warm amber/yellow tones */
+.theme-amber-minimal {
+	--font-sans: 'Inter', system-ui, sans-serif;
+	--background: oklch(0.2046 0 0);
+	--foreground: oklch(0.9219 0 0);
+	--card: oklch(0.27 0.01 70);
+	--card-foreground: oklch(0.9219 0 0);
+	--popover: oklch(0.27 0.01 70);
+	--popover-foreground: oklch(0.9219 0 0);
+	--primary: oklch(0.7686 0.16 70);
+	--primary-foreground: oklch(0.15 0.02 70);
+	--secondary: oklch(0.3 0.01 70);
+	--secondary-foreground: oklch(0.9219 0 0);
+	--muted: oklch(0.3 0.01 70);
+	--muted-foreground: oklch(0.65 0 0);
+	--accent: oklch(0.7 0.14 55);
+	--accent-foreground: oklch(0.15 0.02 55);
+	--destructive: oklch(0.6368 0.2078 25.33);
+	--destructive-foreground: oklch(0.95 0 0);
+	--border: oklch(0.38 0.02 70);
+	--input: oklch(0.38 0.02 70);
+	--ring: oklch(0.7686 0.16 70);
+	--radius: 0.375rem;
+	--primary-hue: 70;
+}
+
+/* Theme: Soviet Red - Classic red aesthetic */
 .theme-soviet-red {
-	--primary: 0 100% 40%;
-	--primary-foreground: 0 0% 100%;
-	--accent: 51 100% 50%;
-	--accent-foreground: 0 0% 5%;
-	--ring: 0 100% 40%;
-	--destructive: 0 62% 30%;
-
-	/* Slide gradient colors (red hue ~25) */
-	--slide-bg-start: oklch(0.25 0.08 25);
-	--slide-bg-end: oklch(0.15 0.05 25);
-	--slide-dark-start: oklch(0.12 0.01 25);
-	--slide-dark-end: oklch(0.08 0 25);
-	--slide-bar-end: oklch(0.4 0.1 25);
-	--slide-peak-start: oklch(0.7 0.2 45);
-	--slide-peak-end: oklch(0.5 0.15 40);
-}
-
-/* Theme: Midnight Blue */
-.theme-midnight-blue {
-	--primary: 210 52% 25%;
-	--primary-foreground: 0 0% 100%;
-	--accent: 45 100% 55%;
-	--accent-foreground: 0 0% 5%;
-	--ring: 210 52% 25%;
-	--destructive: 0 62% 30%;
-
-	/* Subtle background tint for blue theme */
-	--card: 215 20% 10%;
-	--popover: 215 20% 10%;
-	--secondary: 215 15% 18%;
-	--muted: 215 15% 18%;
-	--border: 215 15% 25%;
-	--input: 215 15% 25%;
-
-	/* Slide gradient colors (blue hue ~220) */
-	--slide-bg-start: oklch(0.25 0.08 220);
-	--slide-bg-end: oklch(0.15 0.05 220);
-	--slide-dark-start: oklch(0.12 0.01 220);
-	--slide-dark-end: oklch(0.08 0 220);
-	--slide-bar-end: oklch(0.4 0.1 220);
-	--slide-peak-start: oklch(0.7 0.2 180);
-	--slide-peak-end: oklch(0.5 0.15 175);
-}
-
-/* Theme: Forest Green */
-.theme-forest-green {
-	--primary: 120 61% 34%;
-	--primary-foreground: 0 0% 100%;
-	--accent: 45 100% 50%;
-	--accent-foreground: 0 0% 5%;
-	--ring: 120 61% 34%;
-	--destructive: 0 62% 30%;
-
-	/* Subtle background tint for green theme */
-	--card: 120 10% 10%;
-	--popover: 120 10% 10%;
-	--secondary: 120 10% 18%;
-	--muted: 120 10% 18%;
-	--border: 120 10% 25%;
-	--input: 120 10% 25%;
-
-	/* Slide gradient colors (green hue ~140) */
-	--slide-bg-start: oklch(0.25 0.08 140);
-	--slide-bg-end: oklch(0.15 0.05 140);
-	--slide-dark-start: oklch(0.12 0.01 140);
-	--slide-dark-end: oklch(0.08 0 140);
-	--slide-bar-end: oklch(0.4 0.1 140);
-	--slide-peak-start: oklch(0.7 0.2 90);
-	--slide-peak-end: oklch(0.5 0.15 85);
-}
-
-/* Theme: Royal Purple */
-.theme-royal-purple {
-	--primary: 268 43% 44%;
-	--primary-foreground: 0 0% 100%;
-	--accent: 45 100% 55%;
-	--accent-foreground: 0 0% 5%;
-	--ring: 268 43% 44%;
-	--destructive: 0 62% 30%;
-
-	/* Subtle background tint for purple theme */
-	--card: 268 15% 10%;
-	--popover: 268 15% 10%;
-	--secondary: 268 12% 18%;
-	--muted: 268 12% 18%;
-	--border: 268 12% 25%;
-	--input: 268 12% 25%;
-
-	/* Slide gradient colors (purple hue ~280) */
-	--slide-bg-start: oklch(0.25 0.08 280);
-	--slide-bg-end: oklch(0.15 0.05 280);
-	--slide-dark-start: oklch(0.12 0.01 280);
-	--slide-dark-end: oklch(0.08 0 280);
-	--slide-bar-end: oklch(0.4 0.1 280);
-	--slide-peak-start: oklch(0.7 0.2 320);
-	--slide-peak-end: oklch(0.5 0.15 315);
+	--font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+	--background: oklch(0.18 0 0);
+	--foreground: oklch(0.92 0 0);
+	--card: oklch(0.22 0.02 25);
+	--card-foreground: oklch(0.92 0 0);
+	--popover: oklch(0.22 0.02 25);
+	--popover-foreground: oklch(0.92 0 0);
+	--primary: oklch(0.55 0.22 25);
+	--primary-foreground: oklch(1 0 0);
+	--secondary: oklch(0.28 0.02 25);
+	--secondary-foreground: oklch(0.92 0 0);
+	--muted: oklch(0.28 0.02 25);
+	--muted-foreground: oklch(0.65 0 0);
+	--accent: oklch(0.8 0.18 85);
+	--accent-foreground: oklch(0.15 0 0);
+	--destructive: oklch(0.5 0.2 25);
+	--destructive-foreground: oklch(0.95 0 0);
+	--border: oklch(0.35 0.03 25);
+	--input: oklch(0.35 0.03 25);
+	--ring: oklch(0.55 0.22 25);
+	--radius: 0.5rem;
+	--primary-hue: 25;
 }
 
 /* Base reset and styles */
 * {
-	border-color: hsl(var(--border));
+	border-color: var(--border);
 }
 
 body {
-	background-color: hsl(var(--background));
-	color: hsl(var(--foreground));
-	font-family:
-		system-ui,
-		-apple-system,
-		BlinkMacSystemFont,
-		'Segoe UI',
-		Roboto,
-		Oxygen,
-		Ubuntu,
-		Cantarell,
-		'Open Sans',
-		'Helvetica Neue',
-		sans-serif;
+	background-color: var(--background);
+	color: var(--foreground);
+	font-family: var(--font-sans);
 }
 
 /* =============================================================================
@@ -221,25 +231,25 @@ body {
    ============================================================================= */
 
 [data-sonner-toaster] {
-	--normal-bg: hsl(var(--card));
-	--normal-text: hsl(var(--foreground));
-	--normal-border: hsl(var(--border));
+	--normal-bg: var(--card);
+	--normal-text: var(--foreground);
+	--normal-border: var(--border);
 
-	--success-bg: hsl(120 40% 20%);
-	--success-text: hsl(120 60% 95%);
-	--success-border: hsl(120 40% 35%);
+	--success-bg: oklch(0.35 0.1 140);
+	--success-text: oklch(0.95 0.05 140);
+	--success-border: oklch(0.45 0.12 140);
 
-	--error-bg: hsl(var(--destructive));
-	--error-text: hsl(var(--destructive-foreground));
-	--error-border: hsl(0 62% 40%);
+	--error-bg: var(--destructive);
+	--error-text: var(--destructive-foreground);
+	--error-border: oklch(0.5 0.18 25);
 
-	--warning-bg: hsl(45 80% 25%);
-	--warning-text: hsl(45 100% 95%);
-	--warning-border: hsl(45 80% 40%);
+	--warning-bg: oklch(0.4 0.12 85);
+	--warning-text: oklch(0.95 0.05 85);
+	--warning-border: oklch(0.55 0.14 85);
 
-	--info-bg: hsl(200 60% 25%);
-	--info-text: hsl(200 100% 95%);
-	--info-border: hsl(200 60% 40%);
+	--info-bg: oklch(0.4 0.1 240);
+	--info-text: oklch(0.95 0.03 240);
+	--info-border: oklch(0.55 0.12 240);
 }
 
 [data-sonner-toast] {

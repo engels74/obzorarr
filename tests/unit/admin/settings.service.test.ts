@@ -55,28 +55,28 @@ describe('Admin Settings Service', () => {
 			it('returns value when setting exists', async () => {
 				await db.insert(appSettings).values({
 					key: AppSettingsKey.CURRENT_THEME,
-					value: ThemePresets.MIDNIGHT_BLUE
+					value: ThemePresets.SUPABASE
 				});
 
 				const value = await getAppSetting(AppSettingsKey.CURRENT_THEME);
-				expect(value).toBe(ThemePresets.MIDNIGHT_BLUE);
+				expect(value).toBe(ThemePresets.SUPABASE);
 			});
 		});
 
 		describe('setAppSetting', () => {
 			it('inserts new setting', async () => {
-				await setAppSetting(AppSettingsKey.CURRENT_THEME, ThemePresets.FOREST_GREEN);
+				await setAppSetting(AppSettingsKey.CURRENT_THEME, ThemePresets.DOOM_64);
 
 				const value = await getAppSetting(AppSettingsKey.CURRENT_THEME);
-				expect(value).toBe(ThemePresets.FOREST_GREEN);
+				expect(value).toBe(ThemePresets.DOOM_64);
 			});
 
 			it('updates existing setting', async () => {
-				await setAppSetting(AppSettingsKey.CURRENT_THEME, ThemePresets.SOVIET_RED);
-				await setAppSetting(AppSettingsKey.CURRENT_THEME, ThemePresets.ROYAL_PURPLE);
+				await setAppSetting(AppSettingsKey.CURRENT_THEME, ThemePresets.MODERN_MINIMAL);
+				await setAppSetting(AppSettingsKey.CURRENT_THEME, ThemePresets.AMBER_MINIMAL);
 
 				const value = await getAppSetting(AppSettingsKey.CURRENT_THEME);
-				expect(value).toBe(ThemePresets.ROYAL_PURPLE);
+				expect(value).toBe(ThemePresets.AMBER_MINIMAL);
 			});
 		});
 
@@ -120,30 +120,30 @@ describe('Admin Settings Service', () => {
 		describe('getCurrentTheme', () => {
 			it('returns default theme when no setting exists', async () => {
 				const theme = await getCurrentTheme();
-				expect(theme).toBe(ThemePresets.SOVIET_RED);
+				expect(theme).toBe(ThemePresets.MODERN_MINIMAL);
 			});
 
 			it('returns stored theme when valid', async () => {
-				await setAppSetting(AppSettingsKey.CURRENT_THEME, ThemePresets.MIDNIGHT_BLUE);
+				await setAppSetting(AppSettingsKey.CURRENT_THEME, ThemePresets.SUPABASE);
 
 				const theme = await getCurrentTheme();
-				expect(theme).toBe(ThemePresets.MIDNIGHT_BLUE);
+				expect(theme).toBe(ThemePresets.SUPABASE);
 			});
 
 			it('returns default for invalid stored value', async () => {
 				await setAppSetting(AppSettingsKey.CURRENT_THEME, 'invalid-theme');
 
 				const theme = await getCurrentTheme();
-				expect(theme).toBe(ThemePresets.SOVIET_RED);
+				expect(theme).toBe(ThemePresets.MODERN_MINIMAL);
 			});
 		});
 
 		describe('setCurrentTheme', () => {
 			it('sets theme correctly', async () => {
-				await setCurrentTheme(ThemePresets.FOREST_GREEN);
+				await setCurrentTheme(ThemePresets.DOOM_64);
 
 				const theme = await getCurrentTheme();
-				expect(theme).toBe(ThemePresets.FOREST_GREEN);
+				expect(theme).toBe(ThemePresets.DOOM_64);
 			});
 		});
 	});

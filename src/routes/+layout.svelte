@@ -3,6 +3,7 @@
 	import obzorarrIcon from '$lib/assets/obzorarr-icon.svg';
 	import { page } from '$app/stores';
 	import { Toaster } from 'svelte-sonner';
+	import { loadThemeFont } from '$lib/utils/theme-fonts';
 
 	let { children } = $props();
 
@@ -21,20 +22,21 @@
 		if (isWrappedRoute && data.wrappedTheme) {
 			return data.wrappedTheme;
 		}
-		return data.uiTheme ?? 'soviet-red';
+		return data.uiTheme ?? 'modern-minimal';
 	});
 	const themeClass = $derived(`theme-${effectiveTheme}`);
 
 	/**
-	 * Apply theme class to body element.
+	 * Apply theme class and load font for the theme.
 	 * Uses $effect to ensure reactivity and proper cleanup.
 	 */
 	$effect(() => {
 		const themeClasses = [
-			'theme-soviet-red',
-			'theme-midnight-blue',
-			'theme-forest-green',
-			'theme-royal-purple'
+			'theme-modern-minimal',
+			'theme-supabase',
+			'theme-doom-64',
+			'theme-amber-minimal',
+			'theme-soviet-red'
 		];
 
 		// Remove all existing theme classes
@@ -42,6 +44,9 @@
 
 		// Add the effective theme class
 		document.body.classList.add(themeClass);
+
+		// Load the font for this theme (if not already loaded)
+		loadThemeFont(effectiveTheme);
 	});
 </script>
 

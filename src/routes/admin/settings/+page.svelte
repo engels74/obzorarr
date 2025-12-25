@@ -92,10 +92,11 @@
 
 	// Theme display names
 	const themeLabels: Record<string, string> = {
-		'soviet-red': 'Soviet Red (Default)',
-		'midnight-blue': 'Midnight Blue',
-		'forest-green': 'Forest Green',
-		'royal-purple': 'Royal Purple'
+		'modern-minimal': 'Modern Minimal (Default)',
+		supabase: 'Supabase',
+		'doom-64': 'Doom 64',
+		'amber-minimal': 'Amber Minimal',
+		'soviet-red': 'Soviet Red'
 	};
 
 	// Anonymization descriptions
@@ -1253,20 +1254,24 @@
 		border: 2px solid hsl(var(--border));
 	}
 
+	.theme-preview.modern-minimal {
+		background: linear-gradient(135deg, #5b6ef5 50%, #3d4db7 50%);
+	}
+
+	.theme-preview.supabase {
+		background: linear-gradient(135deg, #3ecf8e 50%, #24b47e 50%);
+	}
+
+	.theme-preview.doom-64 {
+		background: linear-gradient(135deg, #d97706 50%, #92400e 50%);
+	}
+
+	.theme-preview.amber-minimal {
+		background: linear-gradient(135deg, #f59e0b 50%, #d97706 50%);
+	}
+
 	.theme-preview.soviet-red {
 		background: linear-gradient(135deg, #cc0000 50%, #8b0000 50%);
-	}
-
-	.theme-preview.midnight-blue {
-		background: linear-gradient(135deg, #1e3a5f 50%, #0d1f3c 50%);
-	}
-
-	.theme-preview.forest-green {
-		background: linear-gradient(135deg, #228b22 50%, #145214 50%);
-	}
-
-	.theme-preview.royal-purple {
-		background: linear-gradient(135deg, #6b3fa0 50%, #4a2c6e 50%);
 	}
 
 	.theme-label {

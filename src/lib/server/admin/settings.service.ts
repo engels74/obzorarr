@@ -70,10 +70,11 @@ export type AppSettingsKeyType = (typeof AppSettingsKey)[keyof typeof AppSetting
  * Available theme presets
  */
 export const ThemePresets = {
-	SOVIET_RED: 'soviet-red',
-	MIDNIGHT_BLUE: 'midnight-blue',
-	FOREST_GREEN: 'forest-green',
-	ROYAL_PURPLE: 'royal-purple'
+	MODERN_MINIMAL: 'modern-minimal',
+	SUPABASE: 'supabase',
+	DOOM_64: 'doom-64',
+	AMBER_MINIMAL: 'amber-minimal',
+	SOVIET_RED: 'soviet-red'
 } as const;
 
 export type ThemePresetType = (typeof ThemePresets)[keyof typeof ThemePresets];
@@ -181,14 +182,14 @@ export async function getAllAppSettings(): Promise<Record<string, string>> {
 /**
  * Get the UI theme preset (for dashboard, admin, and all non-wrapped pages)
  *
- * @returns The UI theme or default (soviet-red)
+ * @returns The UI theme or default (modern-minimal)
  */
 export async function getUITheme(): Promise<ThemePresetType> {
 	const theme = await getAppSetting(AppSettingsKey.UI_THEME);
 	if (theme && Object.values(ThemePresets).includes(theme as ThemePresetType)) {
 		return theme as ThemePresetType;
 	}
-	return ThemePresets.SOVIET_RED;
+	return ThemePresets.MODERN_MINIMAL;
 }
 
 /**
@@ -205,7 +206,7 @@ export async function setUITheme(theme: ThemePresetType): Promise<void> {
  *
  * Falls back to legacy CURRENT_THEME for backward compatibility.
  *
- * @returns The wrapped theme or default (soviet-red)
+ * @returns The wrapped theme or default (modern-minimal)
  */
 export async function getWrappedTheme(): Promise<ThemePresetType> {
 	// First try the new WRAPPED_THEME key
@@ -220,7 +221,7 @@ export async function getWrappedTheme(): Promise<ThemePresetType> {
 		return legacyTheme as ThemePresetType;
 	}
 
-	return ThemePresets.SOVIET_RED;
+	return ThemePresets.MODERN_MINIMAL;
 }
 
 /**
