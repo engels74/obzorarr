@@ -317,6 +317,7 @@
 	}
 
 	.url-section {
+		margin-top: 0.5rem;
 		margin-bottom: 1.25rem;
 	}
 
