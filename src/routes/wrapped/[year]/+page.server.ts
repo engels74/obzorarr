@@ -14,6 +14,8 @@ import { getLogoVisibility } from '$lib/server/logo';
 import { getServerName } from '$lib/server/plex/server-name.service';
 import { getFunFactFrequency } from '$lib/server/admin/settings.service';
 import { triggerLiveSyncIfNeeded } from '$lib/server/sync/live-sync';
+import { checkServerWrappedAccess } from '$lib/server/sharing/access-control';
+import { ShareAccessDeniedError } from '$lib/server/sharing/types';
 
 /**
  * Server-wide Wrapped Page Load Function
@@ -33,6 +35,19 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const year = parseInt(params.year, 10);
 	if (isNaN(year) || year < 2000 || year > 2100) {
 		error(404, 'Invalid year');
+	}
+
+	// Check access using server-wide share settings
+	try {
+		await checkServerWrappedAccess({
+			year,
+			currentUser: locals.user
+		});
+	} catch (err) {
+		if (err instanceof ShareAccessDeniedError) {
+			error(403, err.message);
+		}
+		throw err;
 	}
 
 	// Trigger live sync in background (fire-and-forget)
@@ -85,7 +100,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		serverName,
 		showLogo: logoVisibility.showLogo,
 		canUserControlLogo: false, // Server-wide pages don't have per-user logo control
-		// Share modal data (server-wide is always public, simpler sharing)
+		// Share modal data (server-wide pages use separate admin-controlled share mode)
 		currentUrl: `/wrapped/${year}`,
 		isAdmin: locals.user?.isAdmin ?? false
 	};

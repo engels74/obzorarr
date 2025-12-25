@@ -51,7 +51,11 @@ export {
 	InvalidShareTokenError,
 	ShareAccessDeniedError,
 	PermissionExceededError,
-	ShareSettingsNotFoundError
+	ShareSettingsNotFoundError,
+	// Privacy level helpers for floor enforcement
+	ShareModePrivacyLevel,
+	getMoreRestrictiveMode,
+	meetsPrivacyFloor
 } from './types';
 
 // =============================================================================
@@ -64,6 +68,9 @@ export {
 	getGlobalDefaultShareMode,
 	getGlobalAllowUserControl,
 	setGlobalShareDefaults,
+	// Server-wide wrapped share mode
+	getServerWrappedShareMode,
+	setServerWrappedShareMode,
 	getShareSettings,
 	getOrCreateShareSettings,
 	updateShareSettings,
@@ -80,7 +87,16 @@ export {
 export type {
 	CheckWrappedAccessOptions,
 	CheckWrappedAccessResult,
-	CheckTokenAccessResult
+	CheckTokenAccessResult,
+	// Server-wide wrapped access check types
+	CheckServerWrappedAccessOptions,
+	CheckServerWrappedAccessResult
 } from './access-control';
 
-export { checkAccess, checkWrappedAccess, checkTokenAccess } from './access-control';
+export {
+	checkAccess,
+	checkWrappedAccess,
+	checkTokenAccess,
+	// Server-wide wrapped access check
+	checkServerWrappedAccess
+} from './access-control';

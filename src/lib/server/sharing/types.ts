@@ -25,8 +25,51 @@ export { ShareMode, type ShareModeType };
  */
 export const ShareSettingsKey = {
 	DEFAULT_SHARE_MODE: 'default_share_mode',
-	ALLOW_USER_CONTROL: 'allow_user_control'
+	ALLOW_USER_CONTROL: 'allow_user_control',
+	SERVER_WRAPPED_SHARE_MODE: 'server_wrapped_share_mode'
 } as const;
+
+// =============================================================================
+// Privacy Level Helpers (for floor enforcement)
+// =============================================================================
+
+/**
+ * Privacy levels for floor enforcement (higher = more restrictive)
+ *
+ * Used to ensure user settings cannot be less restrictive than global floor.
+ * Hierarchy: Private OAuth (strictest) > Private Link > Public (least restrictive)
+ */
+export const ShareModePrivacyLevel = {
+	[ShareMode.PUBLIC]: 0,
+	[ShareMode.PRIVATE_LINK]: 1,
+	[ShareMode.PRIVATE_OAUTH]: 2
+} as const;
+
+/**
+ * Compare two share modes and return the more restrictive one
+ *
+ * @param mode1 - First share mode
+ * @param mode2 - Second share mode
+ * @returns The more restrictive of the two modes
+ */
+export function getMoreRestrictiveMode(mode1: ShareModeType, mode2: ShareModeType): ShareModeType {
+	const level1 = ShareModePrivacyLevel[mode1] ?? 0;
+	const level2 = ShareModePrivacyLevel[mode2] ?? 0;
+	return level1 >= level2 ? mode1 : mode2;
+}
+
+/**
+ * Check if a mode meets or exceeds the floor requirement
+ *
+ * @param userMode - The user's requested share mode
+ * @param floorMode - The minimum required privacy level (global floor)
+ * @returns True if userMode is at least as restrictive as floorMode
+ */
+export function meetsPrivacyFloor(userMode: ShareModeType, floorMode: ShareModeType): boolean {
+	const userLevel = ShareModePrivacyLevel[userMode] ?? 0;
+	const floorLevel = ShareModePrivacyLevel[floorMode] ?? 0;
+	return userLevel >= floorLevel;
+}
 
 // =============================================================================
 // Error Types

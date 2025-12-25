@@ -81,6 +81,7 @@ bun test tests/unit/auth/session.test.ts
 ### Slide System
 
 13 built-in slide types in `src/lib/components/slides/`:
+
 - TotalTimeSlide, TopMoviesSlide, TopShowsSlide, TopViewersSlide
 - GenresSlide, DistributionSlide, PercentileSlide, BingeSlide
 - FirstLastSlide, FunFactSlide, CustomSlide
@@ -102,15 +103,18 @@ Coverage threshold: 80% (configured in bunfig.toml).
 ## Development Auth Bypass
 
 Set in `.env` for local development without Plex OAuth:
+
 ```
 DEV_BYPASS_AUTH=true
 DEV_BYPASS_USER=random  # or specific plexId/username
 ```
+
 Only works in dev mode, ignored in production builds.
 
 ## Tech Stack Patterns
 
 ### Svelte 5 Runes
+
 - Use `$state()` for reactive values
 - Use `$derived()` for computed values (not `$effect`)
 - Use `$effect()` only for side effects (localStorage, DOM manipulation)
@@ -118,15 +122,18 @@ Only works in dev mode, ignored in production builds.
 - Use snippets instead of slots for composition
 
 ### Form Handling
+
 - Use SvelteKit form actions for mutations, not +server.ts POST endpoints
 - Add `use:enhance` for progressive enhancement
 
 ### Animations
+
 - GSAP for complex scroll-linked animations and timelines
 - Motion for simple UI transitions
 - Always clean up with `return () => animation.stop()` in `$effect`
 
 ### Database
+
 - Drizzle ORM with SQLite
 - Play history table intentionally has no FK to users to preserve history after user removal
 - Use parameterized queries (never string interpolation)
@@ -134,6 +141,7 @@ Only works in dev mode, ignored in production builds.
 ## Environment Variables
 
 Key variables (see `.env.example`):
+
 - `ORIGIN` - App URL for OAuth callbacks (required)
 - `PLEX_SERVER_URL`, `PLEX_TOKEN` - Plex connection (can also set in admin UI)
 - `DATABASE_PATH` - SQLite file location

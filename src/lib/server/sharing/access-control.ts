@@ -2,11 +2,18 @@ import {
 	ShareMode,
 	ShareAccessDeniedError,
 	InvalidShareTokenError,
+	getMoreRestrictiveMode,
 	type AccessCheckContext,
 	type AccessCheckResult,
-	type ShareSettings
+	type ShareSettings,
+	type ShareModeType
 } from './types';
-import { getShareSettingsByToken, getOrCreateShareSettings } from './service';
+import {
+	getShareSettingsByToken,
+	getOrCreateShareSettings,
+	getGlobalDefaultShareMode,
+	getServerWrappedShareMode
+} from './service';
 
 /**
  * Access Control Module
@@ -116,9 +123,12 @@ export interface CheckWrappedAccessResult {
 }
 
 /**
- * Check access to a wrapped page
+ * Check access to a wrapped page with floor enforcement
  *
  * High-level function for use in route load functions.
+ * The effective share mode is the MORE RESTRICTIVE of:
+ * - The user's configured share mode
+ * - The global default share mode (floor)
  *
  * @param options - Access check options
  * @returns Share settings if access is allowed
@@ -133,9 +143,13 @@ export async function checkWrappedAccess(
 	// Get or create share settings with defaults
 	const settings = await getOrCreateShareSettings({ userId, year });
 
-	// Build access context
+	// Get global floor and calculate effective mode
+	const globalFloor = await getGlobalDefaultShareMode();
+	const effectiveMode = getMoreRestrictiveMode(settings.mode, globalFloor);
+
+	// Build access context with EFFECTIVE mode (floor enforcement)
 	const context: AccessCheckContext = {
-		shareMode: settings.mode,
+		shareMode: effectiveMode,
 		shareToken,
 		validToken: settings.shareToken,
 		isAuthenticated: !!currentUser,
@@ -162,7 +176,11 @@ export async function checkWrappedAccess(
 	}
 
 	return {
-		settings,
+		// Return settings with effective mode so UI reflects actual access
+		settings: {
+			...settings,
+			mode: effectiveMode
+		},
 		accessReason: result.reason ?? 'unknown'
 	};
 }
@@ -198,5 +216,82 @@ export async function checkTokenAccess(token: string): Promise<CheckTokenAccessR
 		settings,
 		userId: settings.userId,
 		year: settings.year
+	};
+}
+
+// =============================================================================
+// Server-Wide Wrapped Access Control
+// =============================================================================
+
+/**
+ * Options for server-wide wrapped access check
+ */
+export interface CheckServerWrappedAccessOptions {
+	/** Year of the wrapped page */
+	year: number;
+	/** Authenticated user (from event.locals.user) */
+	currentUser?: {
+		id: number;
+		plexId: number;
+		isAdmin: boolean;
+	};
+}
+
+/**
+ * Result of server wrapped access check
+ */
+export interface CheckServerWrappedAccessResult {
+	shareMode: ShareModeType;
+	accessReason: string;
+}
+
+/**
+ * Check access to server-wide wrapped page
+ *
+ * Server-wide pages use the SERVER_WRAPPED_SHARE_MODE setting.
+ * Admins always have access.
+ *
+ * Note: Private Link mode is not supported for server-wide pages
+ * (there's no user to own the token).
+ *
+ * @param options - Access check options
+ * @returns Access info if allowed
+ * @throws ShareAccessDeniedError if access is denied
+ */
+export async function checkServerWrappedAccess(
+	options: CheckServerWrappedAccessOptions
+): Promise<CheckServerWrappedAccessResult> {
+	const { currentUser } = options;
+
+	// Get server wrapped share mode
+	const shareMode = await getServerWrappedShareMode();
+
+	// Build access context (no owner for server-wide, but admin counts as owner)
+	const context: AccessCheckContext = {
+		shareMode,
+		isAuthenticated: !!currentUser,
+		isServerMember: !!currentUser,
+		isOwner: currentUser?.isAdmin === true // Only admins are "owners" of server stats
+	};
+
+	// Check access
+	const result = checkAccess(context);
+
+	if (!result.allowed) {
+		switch (result.denialReason) {
+			case 'not_authenticated':
+				throw new ShareAccessDeniedError('You must be logged in to view this page.');
+			case 'mode_requires_auth':
+				throw new ShareAccessDeniedError(
+					'You must be a member of this Plex server to view this page.'
+				);
+			default:
+				throw new ShareAccessDeniedError();
+		}
+	}
+
+	return {
+		shareMode,
+		accessReason: result.reason ?? 'unknown'
 	};
 }

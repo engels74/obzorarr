@@ -55,34 +55,67 @@
 		<p class="subtitle">Manage server users and permissions for {data.year}</p>
 	</header>
 
-	<!-- Global Defaults Section -->
+	<!-- Server-Wide Wrapped Section -->
 	<section class="section">
-		<h2>Global Sharing Defaults</h2>
+		<h2>Server-Wide Wrapped Access</h2>
 		<p class="section-description">
-			These settings apply to all users who haven't configured their own sharing preferences.
+			Control who can access the server-wide Year in Review at <code>/wrapped/{data.year}</code>.
+			This is separate from per-user sharing settings.
+		</p>
+
+		<form method="POST" action="?/updateServerWrappedMode" use:enhance class="defaults-form">
+			<div class="form-group">
+				<label for="serverWrappedShareMode">Server Wrapped Share Mode</label>
+				<select id="serverWrappedShareMode" name="serverWrappedShareMode">
+					<option value="public" selected={data.serverWrappedShareMode === 'public'}>
+						Public (Anyone can view)
+					</option>
+					<option value="private-oauth" selected={data.serverWrappedShareMode === 'private-oauth'}>
+						Private OAuth (Server members only)
+					</option>
+				</select>
+				<p class="form-hint">
+					Note: Private Link mode is not available for server-wide wrapped pages.
+				</p>
+			</div>
+
+			<button type="submit" class="save-button">Save Server Mode</button>
+		</form>
+	</section>
+
+	<!-- Global Defaults Section (Per-User Floor) -->
+	<section class="section">
+		<h2>Per-User Sharing Defaults</h2>
+		<p class="section-description">
+			These settings set the <strong>minimum privacy floor</strong> for per-user wrapped pages. Users
+			cannot make their pages less restrictive than this setting.
 		</p>
 
 		<form method="POST" action="?/updateGlobalDefaults" use:enhance class="defaults-form">
 			<div class="form-row">
 				<div class="form-group">
-					<label for="defaultShareMode">Default Share Mode</label>
+					<label for="defaultShareMode">Minimum Privacy Floor</label>
 					<select id="defaultShareMode" name="defaultShareMode">
 						<option value="public" selected={data.globalDefaults.defaultShareMode === 'public'}>
-							Public (Anyone can view)
+							Public (Users can choose any mode)
 						</option>
 						<option
 							value="private-oauth"
 							selected={data.globalDefaults.defaultShareMode === 'private-oauth'}
 						>
-							Private OAuth (Server members only)
+							Private OAuth (Minimum: server members only)
 						</option>
 						<option
 							value="private-link"
 							selected={data.globalDefaults.defaultShareMode === 'private-link'}
 						>
-							Private Link (Share link required)
+							Private Link (Minimum: share link required)
 						</option>
 					</select>
+					<p class="form-hint">
+						Privacy hierarchy: Private OAuth (strictest) &gt; Private Link &gt; Public (least
+						restrictive)
+					</p>
 				</div>
 
 				<div class="form-group checkbox-group">
@@ -314,6 +347,20 @@
 		border-radius: var(--radius);
 		color: hsl(var(--foreground));
 		font-size: 0.875rem;
+	}
+
+	.form-hint {
+		font-size: 0.75rem;
+		color: hsl(var(--muted-foreground));
+		margin-top: 0.375rem;
+		margin-bottom: 0;
+	}
+
+	.form-hint code {
+		background: hsl(var(--muted));
+		padding: 0.125rem 0.25rem;
+		border-radius: 0.25rem;
+		font-size: 0.7rem;
 	}
 
 	.form-row {

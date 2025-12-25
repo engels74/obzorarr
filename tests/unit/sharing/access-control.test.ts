@@ -5,15 +5,23 @@ import { eq, and } from 'drizzle-orm';
 import {
 	ShareMode,
 	ShareAccessDeniedError,
-	InvalidShareTokenError
+	InvalidShareTokenError,
+	ShareModePrivacyLevel,
+	getMoreRestrictiveMode,
+	meetsPrivacyFloor
 } from '$lib/server/sharing/types';
 import {
 	checkAccess,
 	checkWrappedAccess,
 	checkTokenAccess,
+	checkServerWrappedAccess,
 	type CheckWrappedAccessOptions
 } from '$lib/server/sharing/access-control';
-import { generateShareToken, setGlobalShareDefaults } from '$lib/server/sharing/service';
+import {
+	generateShareToken,
+	setGlobalShareDefaults,
+	setServerWrappedShareMode
+} from '$lib/server/sharing/service';
 
 /**
  * Unit tests for Sharing Access Control
@@ -584,6 +592,263 @@ describe('Sharing Access Control', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(InvalidShareTokenError);
 			}
+		});
+	});
+
+	// =========================================================================
+	// Privacy Level Helpers - Floor Enforcement
+	// =========================================================================
+
+	describe('Privacy Level Helpers', () => {
+		describe('ShareModePrivacyLevel', () => {
+			it('has correct ordering (higher = more restrictive)', () => {
+				expect(ShareModePrivacyLevel[ShareMode.PUBLIC]).toBe(0);
+				expect(ShareModePrivacyLevel[ShareMode.PRIVATE_LINK]).toBe(1);
+				expect(ShareModePrivacyLevel[ShareMode.PRIVATE_OAUTH]).toBe(2);
+
+				// OAuth is most restrictive
+				expect(ShareModePrivacyLevel[ShareMode.PRIVATE_OAUTH]).toBeGreaterThan(
+					ShareModePrivacyLevel[ShareMode.PRIVATE_LINK]
+				);
+				expect(ShareModePrivacyLevel[ShareMode.PRIVATE_LINK]).toBeGreaterThan(
+					ShareModePrivacyLevel[ShareMode.PUBLIC]
+				);
+			});
+		});
+
+		describe('getMoreRestrictiveMode', () => {
+			it('returns private-oauth when comparing with public', () => {
+				expect(getMoreRestrictiveMode(ShareMode.PUBLIC, ShareMode.PRIVATE_OAUTH)).toBe(
+					ShareMode.PRIVATE_OAUTH
+				);
+				expect(getMoreRestrictiveMode(ShareMode.PRIVATE_OAUTH, ShareMode.PUBLIC)).toBe(
+					ShareMode.PRIVATE_OAUTH
+				);
+			});
+
+			it('returns private-oauth when comparing with private-link', () => {
+				expect(getMoreRestrictiveMode(ShareMode.PRIVATE_LINK, ShareMode.PRIVATE_OAUTH)).toBe(
+					ShareMode.PRIVATE_OAUTH
+				);
+				expect(getMoreRestrictiveMode(ShareMode.PRIVATE_OAUTH, ShareMode.PRIVATE_LINK)).toBe(
+					ShareMode.PRIVATE_OAUTH
+				);
+			});
+
+			it('returns private-link when comparing with public', () => {
+				expect(getMoreRestrictiveMode(ShareMode.PUBLIC, ShareMode.PRIVATE_LINK)).toBe(
+					ShareMode.PRIVATE_LINK
+				);
+				expect(getMoreRestrictiveMode(ShareMode.PRIVATE_LINK, ShareMode.PUBLIC)).toBe(
+					ShareMode.PRIVATE_LINK
+				);
+			});
+
+			it('returns same mode when both are equal', () => {
+				expect(getMoreRestrictiveMode(ShareMode.PUBLIC, ShareMode.PUBLIC)).toBe(ShareMode.PUBLIC);
+				expect(getMoreRestrictiveMode(ShareMode.PRIVATE_OAUTH, ShareMode.PRIVATE_OAUTH)).toBe(
+					ShareMode.PRIVATE_OAUTH
+				);
+			});
+		});
+
+		describe('meetsPrivacyFloor', () => {
+			it('returns true when user mode is more restrictive than floor', () => {
+				expect(meetsPrivacyFloor(ShareMode.PRIVATE_OAUTH, ShareMode.PUBLIC)).toBe(true);
+				expect(meetsPrivacyFloor(ShareMode.PRIVATE_OAUTH, ShareMode.PRIVATE_LINK)).toBe(true);
+				expect(meetsPrivacyFloor(ShareMode.PRIVATE_LINK, ShareMode.PUBLIC)).toBe(true);
+			});
+
+			it('returns true when user mode equals floor', () => {
+				expect(meetsPrivacyFloor(ShareMode.PUBLIC, ShareMode.PUBLIC)).toBe(true);
+				expect(meetsPrivacyFloor(ShareMode.PRIVATE_OAUTH, ShareMode.PRIVATE_OAUTH)).toBe(true);
+				expect(meetsPrivacyFloor(ShareMode.PRIVATE_LINK, ShareMode.PRIVATE_LINK)).toBe(true);
+			});
+
+			it('returns false when user mode is less restrictive than floor', () => {
+				expect(meetsPrivacyFloor(ShareMode.PUBLIC, ShareMode.PRIVATE_OAUTH)).toBe(false);
+				expect(meetsPrivacyFloor(ShareMode.PUBLIC, ShareMode.PRIVATE_LINK)).toBe(false);
+				expect(meetsPrivacyFloor(ShareMode.PRIVATE_LINK, ShareMode.PRIVATE_OAUTH)).toBe(false);
+			});
+		});
+	});
+
+	// =========================================================================
+	// Floor Enforcement in checkWrappedAccess
+	// =========================================================================
+
+	describe('Floor Enforcement', () => {
+		const userId = 1;
+		const year = 2024;
+
+		describe('when user setting is public but floor is private-oauth', () => {
+			beforeEach(async () => {
+				// Set global floor to private-oauth
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_OAUTH,
+					allowUserControl: true
+				});
+
+				// Create user setting as public (less restrictive than floor)
+				await db.insert(shareSettings).values({
+					userId,
+					year,
+					mode: ShareMode.PUBLIC, // User wants public
+					shareToken: null,
+					canUserControl: true
+				});
+			});
+
+			it('enforces floor by requiring authentication', async () => {
+				// Unauthenticated should be denied (floor is OAuth)
+				try {
+					await checkWrappedAccess({ userId, year });
+					expect.unreachable('Should have thrown');
+				} catch (error) {
+					expect(error).toBeInstanceOf(ShareAccessDeniedError);
+				}
+			});
+
+			it('allows authenticated server members', async () => {
+				const currentUser = { id: 2, plexId: 200, isAdmin: false };
+				const result = await checkWrappedAccess({ userId, year, currentUser });
+				expect(result.accessReason).toBe('authenticated');
+			});
+
+			it('returns effective mode (floor) in settings', async () => {
+				const currentUser = { id: 2, plexId: 200, isAdmin: false };
+				const result = await checkWrappedAccess({ userId, year, currentUser });
+				// Effective mode should be the floor, not the user's setting
+				expect(result.settings.mode).toBe(ShareMode.PRIVATE_OAUTH);
+			});
+		});
+
+		describe('when user setting is more restrictive than floor', () => {
+			beforeEach(async () => {
+				// Set global floor to public
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PUBLIC,
+					allowUserControl: true
+				});
+
+				// Create user setting as private-oauth (more restrictive)
+				await db.insert(shareSettings).values({
+					userId,
+					year,
+					mode: ShareMode.PRIVATE_OAUTH, // More restrictive than floor
+					shareToken: null,
+					canUserControl: true
+				});
+			});
+
+			it('respects user setting when more restrictive', async () => {
+				// Unauthenticated should be denied (user wants OAuth)
+				try {
+					await checkWrappedAccess({ userId, year });
+					expect.unreachable('Should have thrown');
+				} catch (error) {
+					expect(error).toBeInstanceOf(ShareAccessDeniedError);
+				}
+			});
+
+			it('allows authenticated server members', async () => {
+				const currentUser = { id: 2, plexId: 200, isAdmin: false };
+				const result = await checkWrappedAccess({ userId, year, currentUser });
+				expect(result.accessReason).toBe('authenticated');
+			});
+		});
+
+		describe('owner bypass', () => {
+			it('allows owner access regardless of floor', async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_OAUTH,
+					allowUserControl: false
+				});
+
+				const currentUser = { id: userId, plexId: 100, isAdmin: false };
+				const result = await checkWrappedAccess({ userId, year, currentUser });
+				expect(result.accessReason).toBe('owner');
+			});
+
+			it('allows admin access regardless of floor', async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_OAUTH,
+					allowUserControl: false
+				});
+
+				const currentUser = { id: 999, plexId: 999, isAdmin: true };
+				const result = await checkWrappedAccess({ userId, year, currentUser });
+				expect(result.accessReason).toBe('owner');
+			});
+		});
+	});
+
+	// =========================================================================
+	// Server-Wide Wrapped Access Control
+	// =========================================================================
+
+	describe('checkServerWrappedAccess', () => {
+		const year = 2024;
+
+		describe('with public mode', () => {
+			beforeEach(async () => {
+				await setServerWrappedShareMode(ShareMode.PUBLIC);
+			});
+
+			it('allows unauthenticated access', async () => {
+				const result = await checkServerWrappedAccess({ year });
+				expect(result.accessReason).toBe('public');
+				expect(result.shareMode).toBe(ShareMode.PUBLIC);
+			});
+
+			it('allows authenticated access', async () => {
+				const currentUser = { id: 1, plexId: 100, isAdmin: false };
+				const result = await checkServerWrappedAccess({ year, currentUser });
+				expect(result.accessReason).toBe('public');
+			});
+
+			it('returns owner reason for admin', async () => {
+				const currentUser = { id: 1, plexId: 100, isAdmin: true };
+				const result = await checkServerWrappedAccess({ year, currentUser });
+				expect(result.accessReason).toBe('owner');
+			});
+		});
+
+		describe('with private-oauth mode', () => {
+			beforeEach(async () => {
+				await setServerWrappedShareMode(ShareMode.PRIVATE_OAUTH);
+			});
+
+			it('denies unauthenticated access', async () => {
+				try {
+					await checkServerWrappedAccess({ year });
+					expect.unreachable('Should have thrown');
+				} catch (error) {
+					expect(error).toBeInstanceOf(ShareAccessDeniedError);
+					expect((error as ShareAccessDeniedError).message).toContain('logged in');
+				}
+			});
+
+			it('allows authenticated server members', async () => {
+				const currentUser = { id: 1, plexId: 100, isAdmin: false };
+				const result = await checkServerWrappedAccess({ year, currentUser });
+				expect(result.accessReason).toBe('authenticated');
+			});
+
+			it('allows admin access', async () => {
+				const currentUser = { id: 1, plexId: 100, isAdmin: true };
+				const result = await checkServerWrappedAccess({ year, currentUser });
+				expect(result.accessReason).toBe('owner');
+			});
+		});
+
+		describe('defaults to public when not set', () => {
+			it('allows unauthenticated access by default', async () => {
+				// Don't set any mode - should default to public
+				const result = await checkServerWrappedAccess({ year });
+				expect(result.accessReason).toBe('public');
+				expect(result.shareMode).toBe(ShareMode.PUBLIC);
+			});
 		});
 	});
 });

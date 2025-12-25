@@ -8,6 +8,7 @@ import {
 	ShareSettingsNotFoundError,
 	PermissionExceededError,
 	ShareModeSchema,
+	meetsPrivacyFloor,
 	type ShareModeType,
 	type ShareSettings,
 	type UpdateShareSettings,
@@ -143,6 +144,52 @@ export async function setGlobalShareDefaults(defaults: GlobalShareDefaults): Pro
 }
 
 // =============================================================================
+// Server-Wide Wrapped Share Mode
+// =============================================================================
+
+/**
+ * Get the server-wide wrapped share mode
+ *
+ * This is SEPARATE from the per-user global default.
+ * Controls access to /wrapped/[year] (server-wide) pages.
+ *
+ * @returns The server wrapped share mode, defaults to 'public'
+ */
+export async function getServerWrappedShareMode(): Promise<ShareModeType> {
+	const result = await db
+		.select()
+		.from(appSettings)
+		.where(eq(appSettings.key, ShareSettingsKey.SERVER_WRAPPED_SHARE_MODE))
+		.limit(1);
+
+	const setting = result[0];
+	if (!setting) {
+		return ShareMode.PUBLIC;
+	}
+
+	const parsed = ShareModeSchema.safeParse(setting.value);
+	return parsed.success ? parsed.data : ShareMode.PUBLIC;
+}
+
+/**
+ * Set the server-wide wrapped share mode (admin only)
+ *
+ * @param mode - The share mode for server-wide wrapped pages
+ */
+export async function setServerWrappedShareMode(mode: ShareModeType): Promise<void> {
+	await db
+		.insert(appSettings)
+		.values({
+			key: ShareSettingsKey.SERVER_WRAPPED_SHARE_MODE,
+			value: mode
+		})
+		.onConflictDoUpdate({
+			target: appSettings.key,
+			set: { value: mode }
+		});
+}
+
+// =============================================================================
 // Share Settings CRUD
 // =============================================================================
 
@@ -257,6 +304,16 @@ export async function updateShareSettings(
 		// Check if user is allowed to control their settings
 		if (!existing.canUserControl) {
 			throw new PermissionExceededError('You do not have permission to change share settings.');
+		}
+
+		// Floor enforcement: user cannot set mode less restrictive than global floor
+		if (updates.mode !== undefined) {
+			const globalFloor = await getGlobalDefaultShareMode();
+			if (!meetsPrivacyFloor(updates.mode, globalFloor)) {
+				throw new PermissionExceededError(
+					`Cannot set share mode to "${updates.mode}". Server requires at least "${globalFloor}" privacy level.`
+				);
+			}
 		}
 
 		// Check if requested mode is allowed (Property 17: Permission Enforcement)
