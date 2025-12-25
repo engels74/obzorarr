@@ -348,7 +348,7 @@
 	.url-input:focus {
 		outline: none;
 		border-color: hsl(var(--primary));
-		box-shadow: 0 0 0 2px rgba(204, 0, 0, 0.1);
+		box-shadow: 0 0 0 2px hsl(var(--primary) / 0.1);
 	}
 
 	.copy-btn {
@@ -414,7 +414,7 @@
 
 	.mode-option.active {
 		border-color: hsl(var(--primary));
-		background-color: rgba(204, 0, 0, 0.08);
+		background-color: hsl(var(--primary) / 0.08);
 	}
 
 	.mode-option input[type='radio'] {

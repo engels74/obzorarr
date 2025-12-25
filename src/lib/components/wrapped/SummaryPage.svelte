@@ -256,7 +256,7 @@
 		font-weight: 800;
 		color: var(--primary);
 		margin: 0 0 0.5rem;
-		text-shadow: 0 4px 20px rgba(204, 0, 0, 0.3);
+		text-shadow: 0 4px 20px hsl(var(--primary) / 0.3);
 	}
 
 	.subtitle {
@@ -300,7 +300,7 @@
 
 	.stat-card.highlight {
 		border-color: var(--primary);
-		background: linear-gradient(135deg, rgba(204, 0, 0, 0.15) 0%, rgba(204, 0, 0, 0.05) 100%);
+		background: linear-gradient(135deg, hsl(var(--primary) / 0.15) 0%, hsl(var(--primary) / 0.05) 100%);
 	}
 
 	.stat-card.accent {
@@ -368,12 +368,12 @@
 	.btn-primary {
 		background: var(--primary);
 		color: var(--primary-foreground);
-		box-shadow: 0 4px 14px rgba(204, 0, 0, 0.3);
+		box-shadow: 0 4px 14px hsl(var(--primary) / 0.3);
 	}
 
 	.btn-primary:hover {
-		background: hsl(0, 100%, 35%);
-		box-shadow: 0 6px 20px rgba(204, 0, 0, 0.4);
+		background: hsl(var(--primary-hue) 100% 35%);
+		box-shadow: 0 6px 20px hsl(var(--primary) / 0.4);
 	}
 
 	.btn-secondary {

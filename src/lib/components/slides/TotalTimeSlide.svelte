@@ -157,7 +157,7 @@
 		font-weight: 800;
 		color: var(--primary);
 		margin: 0.5rem 0;
-		text-shadow: 0 4px 20px rgba(204, 0, 0, 0.3);
+		text-shadow: 0 4px 20px hsl(var(--primary) / 0.3);
 	}
 
 	.subtitle {
@@ -203,7 +203,7 @@
 
 		.stat-number {
 			font-size: clamp(4rem, 12vw, 7rem);
-			text-shadow: 0 6px 30px rgba(204, 0, 0, 0.35);
+			text-shadow: 0 6px 30px hsl(var(--primary) / 0.35);
 		}
 
 		.subtitle {
