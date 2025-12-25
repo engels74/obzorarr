@@ -1528,8 +1528,8 @@
 	.privacy-card-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-		gap: 1rem;
-		margin-bottom: 1.5rem;
+		gap: 0.75rem;
+		margin-bottom: 1rem;
 	}
 
 	.privacy-card-grid.two-col {
@@ -1545,14 +1545,14 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		padding: 1.25rem 1rem;
+		padding: 1rem 0.75rem;
 		background: hsl(var(--muted));
 		border: 2px solid hsl(var(--border));
 		border-radius: var(--radius);
 		cursor: pointer;
 		transition: all 0.15s ease;
 		text-align: center;
-		min-height: 140px;
+		min-height: 110px;
 	}
 
 	.privacy-card:hover {
@@ -1572,8 +1572,8 @@
 	}
 
 	.privacy-card .card-icon {
-		font-size: 2rem;
-		margin-bottom: 0.5rem;
+		font-size: 1.5rem;
+		margin-bottom: 0.375rem;
 		line-height: 1;
 	}
 
@@ -1592,7 +1592,7 @@
 
 	/* Privacy Subsections */
 	.privacy-subsection {
-		margin-bottom: 2rem;
+		margin-bottom: 1.5rem;
 	}
 
 	.privacy-subsection:last-child {
@@ -1648,12 +1648,12 @@
 		}
 
 		.privacy-card {
-			min-height: 120px;
-			padding: 1rem 0.75rem;
+			min-height: 100px;
+			padding: 0.75rem 0.5rem;
 		}
 
 		.privacy-card .card-icon {
-			font-size: 1.5rem;
+			font-size: 1.25rem;
 		}
 	}
 
