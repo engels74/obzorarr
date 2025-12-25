@@ -52,88 +52,8 @@
 <div class="users-page">
 	<header class="page-header">
 		<h1>User Management</h1>
-		<p class="subtitle">Manage server users and permissions for {data.year}</p>
+		<p class="subtitle">Manage server users for {data.year}</p>
 	</header>
-
-	<!-- Server-Wide Wrapped Section -->
-	<section class="section">
-		<h2>Server-Wide Wrapped Access</h2>
-		<p class="section-description">
-			Control who can access the server-wide Year in Review at <code>/wrapped/{data.year}</code>.
-			This is separate from per-user sharing settings.
-		</p>
-
-		<form method="POST" action="?/updateServerWrappedMode" use:enhance class="defaults-form">
-			<div class="form-group">
-				<label for="serverWrappedShareMode">Server Wrapped Share Mode</label>
-				<select id="serverWrappedShareMode" name="serverWrappedShareMode">
-					<option value="public" selected={data.serverWrappedShareMode === 'public'}>
-						Public (Anyone can view)
-					</option>
-					<option value="private-oauth" selected={data.serverWrappedShareMode === 'private-oauth'}>
-						Private OAuth (Server members only)
-					</option>
-				</select>
-				<p class="form-hint">
-					Note: Private Link mode is not available for server-wide wrapped pages.
-				</p>
-			</div>
-
-			<button type="submit" class="save-button">Save Server Mode</button>
-		</form>
-	</section>
-
-	<!-- Global Defaults Section (Per-User Floor) -->
-	<section class="section">
-		<h2>Per-User Sharing Defaults</h2>
-		<p class="section-description">
-			These settings set the <strong>minimum privacy floor</strong> for per-user wrapped pages. Users
-			cannot make their pages less restrictive than this setting.
-		</p>
-
-		<form method="POST" action="?/updateGlobalDefaults" use:enhance class="defaults-form">
-			<div class="form-row">
-				<div class="form-group">
-					<label for="defaultShareMode">Minimum Privacy Floor</label>
-					<select id="defaultShareMode" name="defaultShareMode">
-						<option value="public" selected={data.globalDefaults.defaultShareMode === 'public'}>
-							Public (Users can choose any mode)
-						</option>
-						<option
-							value="private-oauth"
-							selected={data.globalDefaults.defaultShareMode === 'private-oauth'}
-						>
-							Private OAuth (Minimum: server members only)
-						</option>
-						<option
-							value="private-link"
-							selected={data.globalDefaults.defaultShareMode === 'private-link'}
-						>
-							Private Link (Minimum: share link required)
-						</option>
-					</select>
-					<p class="form-hint">
-						Privacy hierarchy: Private OAuth (strictest) &gt; Private Link &gt; Public (least
-						restrictive)
-					</p>
-				</div>
-
-				<div class="form-group checkbox-group">
-					<label class="checkbox-label">
-						<input
-							type="checkbox"
-							name="allowUserControl"
-							value="true"
-							checked={data.globalDefaults.allowUserControl}
-						/>
-						Allow users to control their own sharing settings
-					</label>
-				</div>
-			</div>
-
-			<button type="submit" class="save-button">Save Defaults</button>
-		</form>
-	</section>
 
 	<!-- Users List Section -->
 	<section class="section">
@@ -304,12 +224,6 @@
 		margin: 0 0 0.75rem;
 	}
 
-	.section-description {
-		color: hsl(var(--muted-foreground));
-		font-size: 0.875rem;
-		margin: 0 0 1rem;
-	}
-
 	.section-header {
 		display: flex;
 		justify-content: space-between;
@@ -324,81 +238,6 @@
 	.user-count {
 		font-size: 0.75rem;
 		color: hsl(var(--muted-foreground));
-	}
-
-	/* Form Styles */
-	.form-group {
-		margin-bottom: 1rem;
-	}
-
-	.form-group label {
-		display: block;
-		font-size: 0.875rem;
-		font-weight: 500;
-		margin-bottom: 0.375rem;
-		color: hsl(var(--foreground));
-	}
-
-	.form-group select {
-		width: 100%;
-		padding: 0.5rem 0.75rem;
-		background: hsl(var(--input));
-		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius);
-		color: hsl(var(--foreground));
-		font-size: 0.875rem;
-	}
-
-	.form-hint {
-		font-size: 0.75rem;
-		color: hsl(var(--muted-foreground));
-		margin-top: 0.375rem;
-		margin-bottom: 0;
-	}
-
-	.form-row {
-		display: flex;
-		gap: 1.5rem;
-		align-items: flex-start;
-	}
-
-	.form-row .form-group {
-		flex: 1;
-	}
-
-	.checkbox-group {
-		display: flex;
-		align-items: center;
-	}
-
-	.checkbox-label {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		cursor: pointer;
-		font-size: 0.875rem;
-		margin-top: 1.5rem;
-	}
-
-	.checkbox-label input {
-		width: 1rem;
-		height: 1rem;
-		accent-color: hsl(var(--primary));
-	}
-
-	.save-button {
-		padding: 0.5rem 1rem;
-		background: hsl(var(--primary));
-		color: hsl(var(--primary-foreground));
-		border: none;
-		border-radius: var(--radius);
-		font-weight: 500;
-		cursor: pointer;
-		transition: opacity 0.15s ease;
-	}
-
-	.save-button:hover {
-		opacity: 0.9;
 	}
 
 	/* Users Table */
@@ -579,15 +418,6 @@
 	@media (max-width: 768px) {
 		.users-page {
 			padding: 1rem;
-		}
-
-		.form-row {
-			flex-direction: column;
-			gap: 0;
-		}
-
-		.checkbox-label {
-			margin-top: 0;
 		}
 
 		.users-table {

@@ -36,6 +36,14 @@ import {
 	setDebugEnabled,
 	logger
 } from '$lib/server/logging';
+import {
+	getGlobalDefaultShareMode,
+	getGlobalAllowUserControl,
+	setGlobalShareDefaults,
+	getServerWrappedShareMode,
+	setServerWrappedShareMode
+} from '$lib/server/sharing/service';
+import type { ShareModeType } from '$lib/server/sharing/types';
 
 /**
  * Admin Settings Page Server
@@ -55,6 +63,15 @@ import {
 const ThemeSchema = z.enum(['soviet-red', 'midnight-blue', 'forest-green', 'royal-purple']);
 const AnonymizationSchema = z.enum(['real', 'anonymous', 'hybrid']);
 const WrappedLogoModeSchema = z.enum(['always_show', 'always_hide', 'user_choice']);
+
+// Sharing schemas
+const ShareModeSchema = z.enum(['public', 'private-oauth', 'private-link']);
+const GlobalDefaultsSchema = z.object({
+	defaultShareMode: ShareModeSchema,
+	allowUserControl: z.coerce.boolean()
+});
+// Server-wide wrapped only supports public and private-oauth (not private-link)
+const ServerWrappedModeSchema = z.enum(['public', 'private-oauth']);
 
 const ApiConfigSchema = z.object({
 	plexServerUrl: z.string().url('Invalid URL format').optional().or(z.literal('')),
@@ -96,7 +113,10 @@ export const load: PageServerLoad = async () => {
 		availableYears,
 		logRetentionDays,
 		logMaxCount,
-		logDebugEnabled
+		logDebugEnabled,
+		defaultShareMode,
+		allowUserControl,
+		serverWrappedShareMode
 	] = await Promise.all([
 		getApiConfigWithSources(),
 		getUITheme(),
@@ -106,7 +126,10 @@ export const load: PageServerLoad = async () => {
 		getAvailableYears(),
 		getLogRetentionDays(),
 		getLogMaxCount(),
-		isDebugEnabled()
+		isDebugEnabled(),
+		getGlobalDefaultShareMode(),
+		getGlobalAllowUserControl(),
+		getServerWrappedShareMode()
 	]);
 
 	const currentYear = new Date().getFullYear();
@@ -147,7 +170,13 @@ export const load: PageServerLoad = async () => {
 			retentionDays: logRetentionDays,
 			maxCount: logMaxCount,
 			debugEnabled: logDebugEnabled
-		}
+		},
+		// Sharing settings
+		globalDefaults: {
+			defaultShareMode,
+			allowUserControl
+		},
+		serverWrappedShareMode
 	};
 };
 
@@ -471,6 +500,59 @@ export const actions: Actions = {
 			return { success: true, message: 'Logging settings updated' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to update settings';
+			return fail(500, { error: message });
+		}
+	},
+
+	/**
+	 * Update global share defaults (privacy floor and user control)
+	 */
+	updateGlobalDefaults: async ({ request }) => {
+		const formData = await request.formData();
+
+		const data = {
+			defaultShareMode: formData.get('defaultShareMode'),
+			allowUserControl: formData.get('allowUserControl') === 'true'
+		};
+
+		const parsed = GlobalDefaultsSchema.safeParse(data);
+		if (!parsed.success) {
+			return fail(400, { error: 'Invalid input', fieldErrors: parsed.error.flatten().fieldErrors });
+		}
+
+		try {
+			await setGlobalShareDefaults({
+				defaultShareMode: parsed.data.defaultShareMode as ShareModeType,
+				allowUserControl: parsed.data.allowUserControl
+			});
+
+			return { success: true, message: 'Sharing defaults updated' };
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to update defaults';
+			return fail(500, { error: message });
+		}
+	},
+
+	/**
+	 * Update server-wide wrapped share mode
+	 */
+	updateServerWrappedMode: async ({ request }) => {
+		const formData = await request.formData();
+		const mode = formData.get('serverWrappedShareMode');
+
+		const parsed = ServerWrappedModeSchema.safeParse(mode);
+		if (!parsed.success) {
+			return fail(400, {
+				error: 'Invalid share mode. Server wrapped only supports public or private-oauth.'
+			});
+		}
+
+		try {
+			await setServerWrappedShareMode(parsed.data as ShareModeType);
+			return { success: true, message: 'Server wrapped share mode updated' };
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : 'Failed to update server wrapped mode';
 			return fail(500, { error: message });
 		}
 	}

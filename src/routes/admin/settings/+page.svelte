@@ -41,6 +41,11 @@
 	let logMaxCount = $state(50000);
 	let logDebugEnabled = $state(false);
 
+	// Sharing settings state
+	let selectedServerWrappedMode = $state('public');
+	let selectedDefaultShareMode = $state('public');
+	let allowUserControl = $state(true);
+
 	// Track sources for display
 	let plexServerUrlSource = $state<'env' | 'db' | 'default'>('default');
 	let plexTokenSource = $state<'env' | 'db' | 'default'>('default');
@@ -67,6 +72,10 @@
 		logRetentionDays = data.logSettings.retentionDays;
 		logMaxCount = data.logSettings.maxCount;
 		logDebugEnabled = data.logSettings.debugEnabled;
+		// Sharing settings
+		selectedServerWrappedMode = data.serverWrappedShareMode;
+		selectedDefaultShareMode = data.globalDefaults.defaultShareMode;
+		allowUserControl = data.globalDefaults.allowUserControl;
 	});
 
 	// Source label helper
@@ -545,6 +554,86 @@
 					</div>
 				</form>
 			</section>
+
+			<!-- Server-Wide Wrapped Access Section -->
+			<section class="section">
+				<h2>Server-Wide Wrapped Access</h2>
+				<p class="section-description">
+					Control who can access the server-wide Year in Review at <code
+						>/wrapped/{data.currentYear}</code
+					>. This is separate from per-user sharing settings.
+				</p>
+
+				<form method="POST" action="?/updateServerWrappedMode" use:enhance class="sharing-form">
+					<div class="form-group">
+						<label for="serverWrappedShareMode">Server Wrapped Share Mode</label>
+						<select
+							id="serverWrappedShareMode"
+							name="serverWrappedShareMode"
+							bind:value={selectedServerWrappedMode}
+						>
+							<option value="public">Public (Anyone can view)</option>
+							<option value="private-oauth">Private OAuth (Server members only)</option>
+						</select>
+						<span class="form-hint">
+							Note: Private Link mode is not available for server-wide wrapped pages.
+						</span>
+					</div>
+
+					<div class="form-actions">
+						<button type="submit" class="save-button">Save Server Mode</button>
+					</div>
+				</form>
+			</section>
+
+			<!-- Sharing Defaults Section -->
+			<section class="section">
+				<h2>Sharing Defaults</h2>
+				<p class="section-description">
+					Set default privacy settings that apply to all user wrapped pages.
+				</p>
+
+				<form method="POST" action="?/updateGlobalDefaults" use:enhance class="sharing-form">
+					<div class="form-group">
+						<label for="defaultShareMode">Minimum Privacy Floor</label>
+						<select
+							id="defaultShareMode"
+							name="defaultShareMode"
+							bind:value={selectedDefaultShareMode}
+						>
+							<option value="public">Public (Users can choose any mode)</option>
+							<option value="private-oauth">Private OAuth (Minimum: server members only)</option>
+							<option value="private-link">Private Link (Minimum: share link required)</option>
+						</select>
+						<span class="form-hint">
+							Privacy hierarchy: Private OAuth (strictest) &gt; Private Link &gt; Public (least
+							restrictive)
+						</span>
+					</div>
+
+					<div class="form-group">
+						<label class="checkbox-label">
+							<input
+								type="checkbox"
+								name="allowUserControl"
+								value="true"
+								bind:checked={allowUserControl}
+							/>
+							<span class="checkbox-text">Allow users to control their own sharing settings</span>
+						</label>
+						<span class="form-hint checkbox-hint">
+							When enabled, users can adjust their wrapped page visibility (up to the privacy
+							floor).
+						</span>
+					</div>
+
+					<input type="hidden" name="allowUserControl" value={allowUserControl.toString()} />
+
+					<div class="form-actions">
+						<button type="submit" class="save-button">Save Sharing Defaults</button>
+					</div>
+				</form>
+			</section>
 		</Tabs.Content>
 
 		<!-- Data Tab: Year/Archive & Clear Play History -->
@@ -934,6 +1023,23 @@
 	}
 
 	.form-group input:focus {
+		outline: none;
+		border-color: hsl(var(--ring));
+		box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+	}
+
+	.form-group select {
+		width: 100%;
+		padding: 0.5rem 0.75rem;
+		background: hsl(var(--input));
+		border: 1px solid hsl(var(--border));
+		border-radius: var(--radius);
+		color: hsl(var(--foreground));
+		font-size: 0.875rem;
+		cursor: pointer;
+	}
+
+	.form-group select:focus {
 		outline: none;
 		border-color: hsl(var(--ring));
 		box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
