@@ -1097,23 +1097,6 @@
 		box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
 	}
 
-	.form-group select {
-		width: 100%;
-		padding: 0.5rem 0.75rem;
-		background: hsl(var(--input));
-		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius);
-		color: hsl(var(--foreground));
-		font-size: 0.875rem;
-		cursor: pointer;
-	}
-
-	.form-group select:focus {
-		outline: none;
-		border-color: hsl(var(--ring));
-		box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
-	}
-
 	.form-hint {
 		display: block;
 		font-size: 0.75rem;
@@ -1291,56 +1274,6 @@
 		font-weight: 500;
 		text-align: center;
 		color: hsl(var(--foreground));
-	}
-
-	/* Anonymization Options */
-	.anonymization-options {
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-		margin-bottom: 1rem;
-	}
-
-	.anonymization-option {
-		display: flex;
-		align-items: flex-start;
-		gap: 0.75rem;
-		padding: 1rem;
-		background: hsl(var(--muted));
-		border: 2px solid hsl(var(--border));
-		border-radius: var(--radius);
-		cursor: pointer;
-		transition: all 0.15s ease;
-	}
-
-	.anonymization-option:hover {
-		border-color: hsl(var(--primary) / 0.5);
-	}
-
-	.anonymization-option.selected {
-		border-color: hsl(var(--primary));
-		background: hsl(var(--primary) / 0.1);
-	}
-
-	.anonymization-option input {
-		margin-top: 0.25rem;
-		accent-color: hsl(var(--primary));
-	}
-
-	.option-content {
-		display: flex;
-		flex-direction: column;
-	}
-
-	.option-label {
-		font-weight: 600;
-		color: hsl(var(--foreground));
-		margin-bottom: 0.25rem;
-	}
-
-	.option-desc {
-		font-size: 0.75rem;
-		color: hsl(var(--muted-foreground));
 	}
 
 	/* Years/Archive */
