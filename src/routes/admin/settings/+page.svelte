@@ -112,6 +112,46 @@
 		user_choice: 'Users can choose to show or hide the logo on their wrapped page'
 	};
 
+	// Icon helpers for privacy cards
+	function getAnonymizationIcon(mode: string): string {
+		switch (mode) {
+			case 'real':
+				return '👤';
+			case 'anonymous':
+				return '🎭';
+			case 'hybrid':
+				return '👥';
+			default:
+				return '⚙️';
+		}
+	}
+
+	function getLogoIcon(mode: string): string {
+		switch (mode) {
+			case 'always_show':
+				return '✅';
+			case 'always_hide':
+				return '🚫';
+			case 'user_choice':
+				return '🔄';
+			default:
+				return '⚙️';
+		}
+	}
+
+	function getShareIcon(mode: string): string {
+		switch (mode) {
+			case 'public':
+				return '🌐';
+			case 'private-oauth':
+				return '🔐';
+			case 'private-link':
+				return '🔗';
+			default:
+				return '⚙️';
+		}
+	}
+
 	// Show toast notifications for form responses
 	$effect(() => {
 		handleFormToast(form);
@@ -490,150 +530,179 @@
 			</section>
 		</Tabs.Content>
 
-		<!-- Privacy Tab: Anonymization & Logo Settings -->
+		<!-- Privacy Tab: Consolidated Form with Horizontal Cards -->
 		<Tabs.Content value="privacy">
-			<section class="section">
-				<h2>Privacy & Anonymization</h2>
-				<p class="section-description">Control how usernames appear in server-wide statistics.</p>
+			<form method="POST" action="?/updatePrivacySettings" use:enhance class="privacy-form">
+				<!-- GROUP 1: User Privacy -->
+				<section class="section privacy-group">
+					<h2>User Privacy</h2>
+					<p class="section-description">
+						Control how usernames and branding appear across the platform.
+					</p>
 
-				<form method="POST" action="?/updateAnonymization" use:enhance class="anonymization-form">
-					<div class="anonymization-options">
-						{#each data.anonymizationOptions as option}
+					<!-- Anonymization Mode - Horizontal Cards -->
+					<div class="privacy-subsection">
+						<h3>Anonymization Mode</h3>
+						<p class="subsection-description">
+							Control how usernames appear in server-wide statistics.
+						</p>
+						<div class="privacy-card-grid">
+							{#each data.anonymizationOptions as option}
+								<label class="privacy-card" class:selected={selectedAnonymization === option.value}>
+									<input
+										type="radio"
+										name="anonymizationMode"
+										value={option.value}
+										bind:group={selectedAnonymization}
+									/>
+									<span class="card-icon">{getAnonymizationIcon(option.value)}</span>
+									<span class="card-title">{option.label}</span>
+									<span class="card-desc">{anonymizationDescriptions[option.value]}</span>
+								</label>
+							{/each}
+						</div>
+					</div>
+
+					<!-- Logo Mode - Horizontal Cards -->
+					<div class="privacy-subsection">
+						<h3>Wrapped Page Logo</h3>
+						<p class="subsection-description">Control logo visibility on wrapped pages.</p>
+						<div class="privacy-card-grid">
+							{#each data.wrappedLogoOptions as option}
+								<label
+									class="privacy-card"
+									class:selected={selectedWrappedLogoMode === option.value}
+								>
+									<input
+										type="radio"
+										name="logoMode"
+										value={option.value}
+										bind:group={selectedWrappedLogoMode}
+									/>
+									<span class="card-icon">{getLogoIcon(option.value)}</span>
+									<span class="card-title">{option.label}</span>
+									<span class="card-desc">{wrappedLogoDescriptions[option.value]}</span>
+								</label>
+							{/each}
+						</div>
+					</div>
+				</section>
+
+				<!-- GROUP 2: Sharing Access -->
+				<section class="section privacy-group">
+					<h2>Sharing Access</h2>
+					<p class="section-description">Configure access controls for wrapped pages.</p>
+
+					<!-- Server-Wide Wrapped Access - 2-column cards -->
+					<div class="privacy-subsection">
+						<h3>Server-Wide Wrapped Access</h3>
+						<p class="subsection-description">
+							Control who can access the server-wide Year in Review at <code
+								>/wrapped/{data.currentYear}</code
+							>.
+						</p>
+						<div class="privacy-card-grid two-col">
+							<label class="privacy-card" class:selected={selectedServerWrappedMode === 'public'}>
+								<input
+									type="radio"
+									name="serverWrappedShareMode"
+									value="public"
+									bind:group={selectedServerWrappedMode}
+								/>
+								<span class="card-icon">{getShareIcon('public')}</span>
+								<span class="card-title">Public</span>
+								<span class="card-desc">Anyone can view the server wrapped</span>
+							</label>
 							<label
-								class="anonymization-option"
-								class:selected={selectedAnonymization === option.value}
+								class="privacy-card"
+								class:selected={selectedServerWrappedMode === 'private-oauth'}
 							>
 								<input
 									type="radio"
-									name="anonymizationMode"
-									value={option.value}
-									bind:group={selectedAnonymization}
+									name="serverWrappedShareMode"
+									value="private-oauth"
+									bind:group={selectedServerWrappedMode}
 								/>
-								<div class="option-content">
-									<span class="option-label">{option.label}</span>
-									<span class="option-desc">{anonymizationDescriptions[option.value]}</span>
-								</div>
+								<span class="card-icon">{getShareIcon('private-oauth')}</span>
+								<span class="card-title">Private OAuth</span>
+								<span class="card-desc">Server members only</span>
 							</label>
-						{/each}
+						</div>
 					</div>
 
-					<div class="form-actions">
-						<button type="submit" class="save-button">Save Privacy Settings</button>
-					</div>
-				</form>
-			</section>
-
-			<!-- Wrapped Page Logo Section -->
-			<section class="section">
-				<h2>Wrapped Page Logo</h2>
-				<p class="section-description">Control logo visibility on wrapped pages.</p>
-
-				<form method="POST" action="?/updateWrappedLogoMode" use:enhance class="logo-mode-form">
-					<div class="anonymization-options">
-						{#each data.wrappedLogoOptions as option}
+					<!-- Sharing Defaults - 3-column cards + checkbox -->
+					<div class="privacy-subsection">
+						<h3>User Sharing Defaults</h3>
+						<p class="subsection-description">
+							Set the minimum privacy floor for user wrapped pages.
+						</p>
+						<div class="privacy-card-grid three-col">
+							<label class="privacy-card" class:selected={selectedDefaultShareMode === 'public'}>
+								<input
+									type="radio"
+									name="defaultShareMode"
+									value="public"
+									bind:group={selectedDefaultShareMode}
+								/>
+								<span class="card-icon">{getShareIcon('public')}</span>
+								<span class="card-title">Public</span>
+								<span class="card-desc">Users can choose any mode</span>
+							</label>
 							<label
-								class="anonymization-option"
-								class:selected={selectedWrappedLogoMode === option.value}
+								class="privacy-card"
+								class:selected={selectedDefaultShareMode === 'private-oauth'}
 							>
 								<input
 									type="radio"
-									name="logoMode"
-									value={option.value}
-									bind:group={selectedWrappedLogoMode}
+									name="defaultShareMode"
+									value="private-oauth"
+									bind:group={selectedDefaultShareMode}
 								/>
-								<div class="option-content">
-									<span class="option-label">{option.label}</span>
-									<span class="option-desc">{wrappedLogoDescriptions[option.value]}</span>
-								</div>
+								<span class="card-icon">{getShareIcon('private-oauth')}</span>
+								<span class="card-title">Private OAuth</span>
+								<span class="card-desc">Minimum: server members only</span>
 							</label>
-						{/each}
+							<label
+								class="privacy-card"
+								class:selected={selectedDefaultShareMode === 'private-link'}
+							>
+								<input
+									type="radio"
+									name="defaultShareMode"
+									value="private-link"
+									bind:group={selectedDefaultShareMode}
+								/>
+								<span class="card-icon">{getShareIcon('private-link')}</span>
+								<span class="card-title">Private Link</span>
+								<span class="card-desc">Minimum: share link required</span>
+							</label>
+						</div>
+
+						<!-- User Control Checkbox -->
+						<div class="user-control-option">
+							<label class="checkbox-label">
+								<input
+									type="checkbox"
+									name="allowUserControl"
+									value="true"
+									bind:checked={allowUserControl}
+								/>
+								<span class="checkbox-text">Allow users to control their own sharing settings</span>
+							</label>
+							<span class="form-hint checkbox-hint">
+								When enabled, users can adjust their wrapped page visibility (up to the privacy
+								floor).
+							</span>
+						</div>
+						<input type="hidden" name="allowUserControl" value={allowUserControl.toString()} />
 					</div>
+				</section>
 
-					<div class="form-actions">
-						<button type="submit" class="save-button">Save Logo Settings</button>
-					</div>
-				</form>
-			</section>
-
-			<!-- Server-Wide Wrapped Access Section -->
-			<section class="section">
-				<h2>Server-Wide Wrapped Access</h2>
-				<p class="section-description">
-					Control who can access the server-wide Year in Review at <code
-						>/wrapped/{data.currentYear}</code
-					>. This is separate from per-user sharing settings.
-				</p>
-
-				<form method="POST" action="?/updateServerWrappedMode" use:enhance class="sharing-form">
-					<div class="form-group">
-						<label for="serverWrappedShareMode">Server Wrapped Share Mode</label>
-						<select
-							id="serverWrappedShareMode"
-							name="serverWrappedShareMode"
-							bind:value={selectedServerWrappedMode}
-						>
-							<option value="public">Public (Anyone can view)</option>
-							<option value="private-oauth">Private OAuth (Server members only)</option>
-						</select>
-						<span class="form-hint">
-							Note: Private Link mode is not available for server-wide wrapped pages.
-						</span>
-					</div>
-
-					<div class="form-actions">
-						<button type="submit" class="save-button">Save Server Mode</button>
-					</div>
-				</form>
-			</section>
-
-			<!-- Sharing Defaults Section -->
-			<section class="section">
-				<h2>Sharing Defaults</h2>
-				<p class="section-description">
-					Set default privacy settings that apply to all user wrapped pages.
-				</p>
-
-				<form method="POST" action="?/updateGlobalDefaults" use:enhance class="sharing-form">
-					<div class="form-group">
-						<label for="defaultShareMode">Minimum Privacy Floor</label>
-						<select
-							id="defaultShareMode"
-							name="defaultShareMode"
-							bind:value={selectedDefaultShareMode}
-						>
-							<option value="public">Public (Users can choose any mode)</option>
-							<option value="private-oauth">Private OAuth (Minimum: server members only)</option>
-							<option value="private-link">Private Link (Minimum: share link required)</option>
-						</select>
-						<span class="form-hint">
-							Privacy hierarchy: Private OAuth (strictest) &gt; Private Link &gt; Public (least
-							restrictive)
-						</span>
-					</div>
-
-					<div class="form-group">
-						<label class="checkbox-label">
-							<input
-								type="checkbox"
-								name="allowUserControl"
-								value="true"
-								bind:checked={allowUserControl}
-							/>
-							<span class="checkbox-text">Allow users to control their own sharing settings</span>
-						</label>
-						<span class="form-hint checkbox-hint">
-							When enabled, users can adjust their wrapped page visibility (up to the privacy
-							floor).
-						</span>
-					</div>
-
-					<input type="hidden" name="allowUserControl" value={allowUserControl.toString()} />
-
-					<div class="form-actions">
-						<button type="submit" class="save-button">Save Sharing Defaults</button>
-					</div>
-				</form>
-			</section>
+				<!-- Single Save Button -->
+				<div class="form-actions sticky-actions">
+					<button type="submit" class="save-button primary-action">Save Privacy Settings</button>
+				</div>
+			</form>
 		</Tabs.Content>
 
 		<!-- Data Tab: Year/Archive & Clear Play History -->
@@ -1450,6 +1519,161 @@
 	@keyframes spin {
 		to {
 			transform: rotate(360deg);
+		}
+	}
+
+	/* ========================================
+	 * Privacy Card Grid - Horizontal Layout
+	 * ======================================== */
+	.privacy-card-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+		gap: 1rem;
+		margin-bottom: 1.5rem;
+	}
+
+	.privacy-card-grid.two-col {
+		grid-template-columns: repeat(2, 1fr);
+	}
+
+	.privacy-card-grid.three-col {
+		grid-template-columns: repeat(3, 1fr);
+	}
+
+	/* Privacy Card - Based on theme-option pattern */
+	.privacy-card {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		padding: 1.25rem 1rem;
+		background: hsl(var(--muted));
+		border: 2px solid hsl(var(--border));
+		border-radius: var(--radius);
+		cursor: pointer;
+		transition: all 0.15s ease;
+		text-align: center;
+		min-height: 140px;
+	}
+
+	.privacy-card:hover {
+		border-color: hsl(var(--primary) / 0.5);
+		background: hsl(var(--muted) / 0.8);
+	}
+
+	.privacy-card.selected {
+		border-color: hsl(var(--primary));
+		background: hsl(var(--primary) / 0.1);
+	}
+
+	.privacy-card input[type='radio'] {
+		position: absolute;
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	.privacy-card .card-icon {
+		font-size: 2rem;
+		margin-bottom: 0.5rem;
+		line-height: 1;
+	}
+
+	.privacy-card .card-title {
+		font-weight: 600;
+		font-size: 0.875rem;
+		color: hsl(var(--foreground));
+		margin-bottom: 0.25rem;
+	}
+
+	.privacy-card .card-desc {
+		font-size: 0.7rem;
+		color: hsl(var(--muted-foreground));
+		line-height: 1.3;
+	}
+
+	/* Privacy Subsections */
+	.privacy-subsection {
+		margin-bottom: 2rem;
+	}
+
+	.privacy-subsection:last-child {
+		margin-bottom: 0;
+	}
+
+	.privacy-subsection h3 {
+		font-size: 1rem;
+		font-weight: 600;
+		color: hsl(var(--foreground));
+		margin: 0 0 0.375rem;
+	}
+
+	/* Privacy Groups */
+	.privacy-group {
+		margin-bottom: 1.5rem;
+	}
+
+	/* User Control Option Box */
+	.user-control-option {
+		padding: 1rem;
+		background: hsl(var(--secondary));
+		border-radius: var(--radius);
+		border: 1px solid hsl(var(--border));
+		margin-top: 1rem;
+	}
+
+	/* Sticky/prominent save button */
+	.sticky-actions {
+		position: sticky;
+		bottom: 1rem;
+		padding: 1rem;
+		background: hsl(var(--card) / 0.95);
+		backdrop-filter: blur(8px);
+		border-radius: var(--radius);
+		border: 1px solid hsl(var(--border));
+		margin-top: 1rem;
+	}
+
+	.primary-action {
+		width: 100%;
+		padding: 0.75rem 1.5rem;
+		font-size: 1rem;
+		font-weight: 600;
+	}
+
+	/* Privacy Card Responsive Breakpoints */
+	@media (max-width: 768px) {
+		.privacy-card-grid,
+		.privacy-card-grid.two-col,
+		.privacy-card-grid.three-col {
+			grid-template-columns: repeat(2, 1fr);
+		}
+
+		.privacy-card {
+			min-height: 120px;
+			padding: 1rem 0.75rem;
+		}
+
+		.privacy-card .card-icon {
+			font-size: 1.5rem;
+		}
+	}
+
+	@media (max-width: 480px) {
+		.privacy-card-grid,
+		.privacy-card-grid.two-col,
+		.privacy-card-grid.three-col {
+			grid-template-columns: 1fr;
+		}
+
+		.privacy-card {
+			flex-direction: row;
+			align-items: flex-start;
+			text-align: left;
+			min-height: auto;
+			gap: 1rem;
+		}
+
+		.privacy-card .card-icon {
+			flex-shrink: 0;
 		}
 	}
 </style>

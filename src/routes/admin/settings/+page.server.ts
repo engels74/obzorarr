@@ -73,6 +73,15 @@ const GlobalDefaultsSchema = z.object({
 // Server-wide wrapped only supports public and private-oauth (not private-link)
 const ServerWrappedModeSchema = z.enum(['public', 'private-oauth']);
 
+// Consolidated privacy settings schema for single-form submission
+const PrivacySettingsSchema = z.object({
+	anonymizationMode: AnonymizationSchema,
+	logoMode: WrappedLogoModeSchema,
+	serverWrappedShareMode: ServerWrappedModeSchema,
+	defaultShareMode: ShareModeSchema,
+	allowUserControl: z.coerce.boolean()
+});
+
 const ApiConfigSchema = z.object({
 	plexServerUrl: z.string().url('Invalid URL format').optional().or(z.literal('')),
 	plexToken: z.string().optional(),
@@ -553,6 +562,47 @@ export const actions: Actions = {
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : 'Failed to update server wrapped mode';
+			return fail(500, { error: message });
+		}
+	},
+
+	/**
+	 * Update all privacy settings in one action (consolidated form)
+	 */
+	updatePrivacySettings: async ({ request }) => {
+		const formData = await request.formData();
+
+		const data = {
+			anonymizationMode: formData.get('anonymizationMode'),
+			logoMode: formData.get('logoMode'),
+			serverWrappedShareMode: formData.get('serverWrappedShareMode'),
+			defaultShareMode: formData.get('defaultShareMode'),
+			allowUserControl: formData.get('allowUserControl') === 'true'
+		};
+
+		const parsed = PrivacySettingsSchema.safeParse(data);
+		if (!parsed.success) {
+			return fail(400, {
+				error: 'Invalid input',
+				fieldErrors: parsed.error.flatten().fieldErrors
+			});
+		}
+
+		try {
+			// Update all privacy settings in parallel
+			await Promise.all([
+				setAnonymizationMode(parsed.data.anonymizationMode as AnonymizationModeType),
+				setWrappedLogoMode(parsed.data.logoMode as WrappedLogoModeType),
+				setServerWrappedShareMode(parsed.data.serverWrappedShareMode as ShareModeType),
+				setGlobalShareDefaults({
+					defaultShareMode: parsed.data.defaultShareMode as ShareModeType,
+					allowUserControl: parsed.data.allowUserControl
+				})
+			]);
+
+			return { success: true, message: 'Privacy settings updated' };
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to update privacy settings';
 			return fail(500, { error: message });
 		}
 	}
