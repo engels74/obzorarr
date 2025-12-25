@@ -356,13 +356,6 @@
 		margin-bottom: 0;
 	}
 
-	.form-hint code {
-		background: hsl(var(--muted));
-		padding: 0.125rem 0.25rem;
-		border-radius: 0.25rem;
-		font-size: 0.7rem;
-	}
-
 	.form-row {
 		display: flex;
 		gap: 1.5rem;
