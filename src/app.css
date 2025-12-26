@@ -478,6 +478,18 @@ body {
 	font-family: var(--font-sans);
 }
 
+/* Wrapped routes: fill viewport with theme gradient */
+body.wrapped-route {
+	background: var(
+		--slide-bg-gradient,
+		linear-gradient(
+			135deg,
+			hsl(var(--primary-hue, 217) 30% 12%) 0%,
+			hsl(var(--primary-hue, 217) 20% 8%) 100%
+		)
+	);
+}
+
 /* =============================================================================
    Toast Notifications (svelte-sonner)
    ============================================================================= */

@@ -36,7 +36,10 @@
 			'theme-supabase',
 			'theme-doom-64',
 			'theme-amber-minimal',
-			'theme-soviet-red'
+			'theme-soviet-red',
+			'theme-obsidian-premium',
+			'theme-aurora-premium',
+			'theme-champagne-premium'
 		];
 
 		// Remove all existing theme classes
@@ -44,6 +47,13 @@
 
 		// Add the effective theme class
 		document.body.classList.add(themeClass);
+
+		// Add/remove wrapped route class for full-viewport theming
+		if (isWrappedRoute) {
+			document.body.classList.add('wrapped-route');
+		} else {
+			document.body.classList.remove('wrapped-route');
+		}
 
 		// Load the font for this theme (if not already loaded)
 		loadThemeFont(effectiveTheme);
