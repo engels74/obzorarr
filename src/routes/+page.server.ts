@@ -3,8 +3,6 @@ import { z } from 'zod';
 import type { PageServerLoad, Actions } from './$types';
 import { checkRateLimit } from '$lib/server/ratelimit';
 import { findUserByUsername } from '$lib/server/sync/plex-accounts.service';
-import { checkWrappedAccess } from '$lib/server/sharing/access-control';
-import { ShareAccessDeniedError, InvalidShareTokenError } from '$lib/server/sharing/types';
 import { triggerLiveSyncIfNeeded } from '$lib/server/sync/live-sync';
 
 /**
@@ -57,8 +55,7 @@ export const actions: Actions = {
 	 * 1. Rate limit check (10 requests/minute/IP)
 	 * 2. Validate username input
 	 * 3. Look up user in database
-	 * 4. Check wrapped access permissions
-	 * 5. Redirect to wrapped page or return appropriate error
+	 * 4. Redirect to wrapped page (access control is handled by the wrapped page route)
 	 */
 	lookupUser: async ({ request, getClientAddress }) => {
 		const ip = getClientAddress();
@@ -69,7 +66,6 @@ export const actions: Actions = {
 			return fail(429, {
 				error: 'Too many requests. Please try again later.',
 				retryAfter: rateLimitResult.retryAfter,
-				requiresAuth: false,
 				username: ''
 			});
 		}
@@ -82,8 +78,7 @@ export const actions: Actions = {
 		if (!parsed.success) {
 			return fail(400, {
 				error: parsed.error.issues[0]?.message ?? 'Invalid username',
-				username: rawUsername,
-				requiresAuth: false
+				username: rawUsername
 			});
 		}
 
@@ -93,49 +88,19 @@ export const actions: Actions = {
 		const userResult = await findUserByUsername(username);
 
 		if (!userResult) {
-			// Generic message to protect against username enumeration
 			return fail(404, {
 				error: 'User not found. Make sure you have signed into Obzorarr at least once.',
-				username,
-				requiresAuth: false
+				username
 			});
 		}
 
-		// Step 4: Get current year for redirect
+		// Step 4: Redirect to wrapped page
+		// Access control (share mode) is handled by the wrapped page route itself
 		const currentYear = new Date().getFullYear();
 
-		// Step 5: Check access permissions
-		try {
-			await checkWrappedAccess({
-				userId: userResult.userId,
-				year: currentYear,
-				currentUser: undefined // Anonymous access attempt
-			});
+		// Trigger live sync in background (fire-and-forget)
+		triggerLiveSyncIfNeeded('landing-page-lookup').catch(() => {});
 
-			// Trigger live sync in background (fire-and-forget)
-			triggerLiveSyncIfNeeded('landing-page-lookup').catch(() => {});
-
-			// Access allowed - redirect to wrapped page
-			redirect(303, `/wrapped/${currentYear}/u/${userResult.userId}`);
-		} catch (err) {
-			if (err instanceof ShareAccessDeniedError) {
-				// Return friendly message with requiresAuth flag for UI
-				return fail(403, {
-					error: "This user's wrapped page requires authentication. Please sign in with Plex.",
-					requiresAuth: true,
-					username
-				});
-			}
-			if (err instanceof InvalidShareTokenError) {
-				// User's share mode is private-link but no token was provided
-				// This happens when trying to access via username lookup instead of share link
-				return fail(403, {
-					error: "This user's wrapped page is private and requires a share link.",
-					requiresAuth: false,
-					username
-				});
-			}
-			throw err;
-		}
+		redirect(303, `/wrapped/${currentYear}/u/${userResult.userId}`);
 	}
 };
