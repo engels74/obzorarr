@@ -23,7 +23,7 @@
 
 	let {
 		topShows,
-		limit = 5,
+		limit = 6,
 		active = true,
 		onAnimationComplete,
 		class: klass = '',

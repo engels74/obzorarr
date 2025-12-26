@@ -62,7 +62,7 @@ export interface TotalTimeSlideProps extends BaseSlideProps {
  */
 export interface TopMoviesSlideProps extends BaseSlideProps {
 	topMovies: RankedItem[];
-	/** Maximum items to display (default: 5) */
+	/** Maximum items to display (default: 6) */
 	limit?: number;
 }
 
@@ -71,7 +71,7 @@ export interface TopMoviesSlideProps extends BaseSlideProps {
  */
 export interface TopShowsSlideProps extends BaseSlideProps {
 	topShows: RankedItem[];
-	/** Maximum items to display (default: 5) */
+	/** Maximum items to display (default: 6) */
 	limit?: number;
 }
 
