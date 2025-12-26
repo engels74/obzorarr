@@ -653,7 +653,8 @@
 					<div class="privacy-subsection">
 						<h3>User Sharing Defaults</h3>
 						<p class="subsection-description">
-							Set the default privacy level for user wrapped pages.
+							Set the minimum privacy level for user wrapped pages. Users cannot choose less
+							restrictive settings than this.
 						</p>
 						<div class="privacy-card-grid three-col">
 							<label class="privacy-card" class:selected={selectedDefaultShareMode === 'public'}>
@@ -665,7 +666,7 @@
 								/>
 								<span class="card-icon">{getShareIcon('public')}</span>
 								<span class="card-title">Public</span>
-								<span class="card-desc">Users can choose any mode</span>
+								<span class="card-desc">Anyone can view (least restrictive)</span>
 							</label>
 							<label
 								class="privacy-card"
@@ -679,7 +680,7 @@
 								/>
 								<span class="card-icon">{getShareIcon('private-link')}</span>
 								<span class="card-title">Private Link</span>
-								<span class="card-desc">Share link required</span>
+								<span class="card-desc">Only with secret share link</span>
 							</label>
 							<label
 								class="privacy-card"
@@ -693,7 +694,7 @@
 								/>
 								<span class="card-icon">{getShareIcon('private-oauth')}</span>
 								<span class="card-title">Private OAuth</span>
-								<span class="card-desc">Server members only</span>
+								<span class="card-desc">Server members only (most restrictive)</span>
 							</label>
 						</div>
 
@@ -709,8 +710,8 @@
 								<span class="checkbox-text">Allow users to control their own sharing settings</span>
 							</label>
 							<span class="form-hint checkbox-hint">
-								When enabled, users can adjust their wrapped page visibility (up to the privacy
-								floor).
+								When enabled, users can choose their own privacy setting, but cannot go below the
+								minimum set above.
 							</span>
 						</div>
 						<input type="hidden" name="allowUserControl" value={allowUserControl.toString()} />
