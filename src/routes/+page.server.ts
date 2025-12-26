@@ -4,7 +4,7 @@ import type { PageServerLoad, Actions } from './$types';
 import { checkRateLimit } from '$lib/server/ratelimit';
 import { findUserByUsername } from '$lib/server/sync/plex-accounts.service';
 import { checkWrappedAccess } from '$lib/server/sharing/access-control';
-import { ShareAccessDeniedError } from '$lib/server/sharing/types';
+import { ShareAccessDeniedError, InvalidShareTokenError } from '$lib/server/sharing/types';
 import { triggerLiveSyncIfNeeded } from '$lib/server/sync/live-sync';
 
 /**
@@ -123,6 +123,15 @@ export const actions: Actions = {
 				return fail(403, {
 					error: "This user's wrapped page requires authentication. Please sign in with Plex.",
 					requiresAuth: true,
+					username
+				});
+			}
+			if (err instanceof InvalidShareTokenError) {
+				// User's share mode is private-link but no token was provided
+				// This happens when trying to access via username lookup instead of share link
+				return fail(403, {
+					error: "This user's wrapped page is private and requires a share link.",
+					requiresAuth: false,
 					username
 				});
 			}
