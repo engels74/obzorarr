@@ -323,15 +323,6 @@ export async function updateShareSettings(
 			}
 		}
 
-		// Check if requested mode is allowed (Property 17: Permission Enforcement)
-		// Users with canUserControl can only set public or private-oauth, not private-link
-		// unless already in that mode
-		if (updates.mode === ShareMode.PRIVATE_LINK && existing.mode !== ShareMode.PRIVATE_LINK) {
-			throw new PermissionExceededError(
-				'You do not have permission to enable private link sharing.'
-			);
-		}
-
 		// Users cannot change canUserControl
 		if (updates.canUserControl !== undefined) {
 			throw new PermissionExceededError('Only admins can change user control permissions.');

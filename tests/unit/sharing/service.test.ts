@@ -361,10 +361,16 @@ describe('Sharing Service', () => {
 				).rejects.toBeInstanceOf(PermissionExceededError);
 			});
 
-			it('denies user trying to enable private-link', async () => {
-				await expect(
-					updateShareSettings(userId, year, { mode: ShareMode.PRIVATE_LINK }, false)
-				).rejects.toBeInstanceOf(PermissionExceededError);
+			it('allows user with canUserControl to enable private-link', async () => {
+				const updated = await updateShareSettings(
+					userId,
+					year,
+					{ mode: ShareMode.PRIVATE_LINK },
+					false // not admin
+				);
+
+				expect(updated.mode).toBe(ShareMode.PRIVATE_LINK);
+				expect(updated.shareToken).not.toBeNull();
 			});
 
 			it('allows user to keep private-link if already set', async () => {

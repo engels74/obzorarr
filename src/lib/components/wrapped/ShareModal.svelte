@@ -65,7 +65,7 @@
 	// Available modes based on permissions
 	const availableModes = $derived.by(() => {
 		if (isAdmin) return ['public', 'private-oauth', 'private-link'] as const;
-		if (shareSettings?.canUserControl) return ['public', 'private-oauth'] as const;
+		if (shareSettings?.canUserControl) return ['public', 'private-oauth', 'private-link'] as const;
 		return [] as const;
 	});
 
