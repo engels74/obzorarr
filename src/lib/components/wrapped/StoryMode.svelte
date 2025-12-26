@@ -94,6 +94,24 @@
 	let showPreviousSlide = $state(false);
 	let previousSlideIndex = $state(-1);
 
+	// Track component mount state and active animation for cleanup
+	let mounted = $state(true);
+	let activeEnterAnim: { stop: () => void; finished: Promise<void> } | null = $state(null);
+	let transitionTimeout: ReturnType<typeof setTimeout> | null = $state(null);
+
+	// Cleanup on component destroy
+	$effect(() => {
+		return () => {
+			mounted = false;
+			if (activeEnterAnim) {
+				activeEnterAnim.stop();
+			}
+			if (transitionTimeout) {
+				clearTimeout(transitionTimeout);
+			}
+		};
+	});
+
 	// ==========================================================================
 	// Derived Values
 	// ==========================================================================
@@ -166,6 +184,16 @@
 			return;
 		}
 
+		// Stop any previous animation before starting new one
+		if (activeEnterAnim) {
+			activeEnterAnim.stop();
+			activeEnterAnim = null;
+		}
+		if (transitionTimeout) {
+			clearTimeout(transitionTimeout);
+			transitionTimeout = null;
+		}
+
 		// Animate current slide entering (using any to bypass Motion overload inference issue)
 		const enterKeyframes = { opacity: [0, 1], transform: [enterFrom, 'translateX(0)'] } as Record<
 			string,
@@ -179,6 +207,9 @@
 			) => { finished: Promise<void>; stop: () => void }
 		)(slideEl, enterKeyframes, { duration: ANIMATION_DURATION / 1000, easing: [0.4, 0, 0.2, 1] });
 
+		// Store reference for cleanup
+		activeEnterAnim = enterAnim;
+
 		// Animate previous slide exiting
 		const prevEl = previousSlideEl;
 		if (prevEl && showPreviousSlide) {
@@ -191,18 +222,48 @@
 			)(prevEl, exitKeyframes, { duration: ANIMATION_DURATION / 1000, easing: [0.4, 0, 0.2, 1] });
 		}
 
-		enterAnim.finished.then(() => {
-			finishTransition();
-		});
+		// Fallback timeout to ensure transition always completes
+		// This prevents stuck states if the animation promise never resolves
+		transitionTimeout = setTimeout(() => {
+			if (mounted && isTransitioning) {
+				finishTransition();
+			}
+		}, ANIMATION_DURATION + 100);
+
+		// Handle animation completion with proper error handling
+		enterAnim.finished
+			.then(() => {
+				if (transitionTimeout) {
+					clearTimeout(transitionTimeout);
+					transitionTimeout = null;
+				}
+				if (mounted && isTransitioning) {
+					finishTransition();
+				}
+			})
+			.catch(() => {
+				// Animation was stopped or failed - ensure we still clean up
+				if (transitionTimeout) {
+					clearTimeout(transitionTimeout);
+					transitionTimeout = null;
+				}
+				if (mounted && isTransitioning) {
+					finishTransition();
+				}
+			});
 	}
 
 	/**
 	 * Finish the transition and clean up
+	 * Idempotent - safe to call multiple times
 	 */
 	function finishTransition(): void {
+		if (!isTransitioning) return; // Already finished
+
 		showPreviousSlide = false;
 		previousSlideIndex = -1;
 		isTransitioning = false;
+		activeEnterAnim = null;
 		navigation.endAnimation();
 	}
 

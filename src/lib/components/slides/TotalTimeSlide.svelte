@@ -46,7 +46,8 @@
 	// State for animated number display
 	let displayedHours = $state(0);
 
-	// Format for display - uses animated value when hours >= 24
+	// Format for initial display and SSR - animation updates DOM directly
+	// This avoids triggering Svelte reactivity ~60 times/second during count-up
 	const formattedTime = $derived.by(() => {
 		if (totalWatchTimeMinutes < 60) {
 			return `${Math.round(totalWatchTimeMinutes)} minutes`;
@@ -54,7 +55,8 @@
 		if (hours < 24) {
 			return `${hours} hours`;
 		}
-		return `${formatNumber(displayedHours)} hours`;
+		// For hours >= 24, show final value; animation updates DOM directly
+		return `${formatNumber(hours)} hours`;
 	});
 
 	const comparisonText = $derived.by(() => {
@@ -92,11 +94,22 @@
 		}
 
 		// Start number animation (odometer effect)
+		// Update DOM directly to avoid triggering Svelte reactivity ~60 times/second
 		const stopNumberAnim =
 			hours >= 24
-				? animateNumber(0, hours, 1500, (value) => {
-						displayedHours = value;
-					})
+				? (() => {
+						// Direct DOM update function - bypasses reactive state updates
+						const updateDOM = (value: number) => {
+							if (numberEl) {
+								numberEl.textContent = `${formatNumber(value)} hours`;
+							}
+						};
+						// Start from 0, animate to hours, over 1500ms
+						return animateNumber(0, hours, 1500, updateDOM, () => {
+							// Set final state for consistency after animation completes
+							displayedHours = hours;
+						});
+					})()
 				: (() => {
 						displayedHours = hours;
 						return () => {};
