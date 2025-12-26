@@ -47,86 +47,41 @@
 		min-height: 100vh;
 		padding: 2rem;
 		text-align: center;
-		background: var(
-			--slide-bg-gradient,
-			linear-gradient(
-				135deg,
-				hsl(var(--primary-hue) 30% 12%) 0%,
-				hsl(var(--primary-hue) 20% 8%) 100%
-			)
-		);
+		/* Transparent background - inherits from StoryMode/ScrollMode parent */
+		background: transparent;
 		color: hsl(var(--foreground));
 		position: relative;
 		overflow: hidden;
 	}
 
-	/* Noise texture layer */
-	.slide::before {
-		content: '';
-		position: absolute;
-		inset: 0;
-		background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
-		opacity: var(--slide-noise-opacity, 0.03);
-		pointer-events: none;
-		mix-blend-mode: overlay;
-		z-index: 1;
-	}
-
-	/* Vignette overlay */
-	.slide::after {
-		content: '';
-		position: absolute;
-		inset: 0;
-		background: radial-gradient(
-			ellipse 80% 80% at 50% 50%,
-			transparent 0%,
-			hsl(0 0% 0% / var(--slide-vignette-opacity, 0.4)) 100%
-		);
-		pointer-events: none;
-		z-index: 2;
-	}
+	/* Note: Noise and vignette effects are now applied at the StoryMode/ScrollMode level
+	   to ensure seamless full-viewport coverage without visible "card" boundaries */
 
 	.slide:not(.active) {
 		visibility: hidden;
 		position: absolute;
 	}
 
-	/* Default variant - uses slide-bg-gradient */
-	/* Already set in base .slide styles */
+	/* Variant styles - all use transparent background, effects from parent */
+	/* Variants can add additional content-level styling if needed */
 
-	/* Highlight variant - adds subtle glow from top */
+	/* Highlight variant - adds subtle glow overlay (content-level effect) */
 	.variant-highlight::before {
-		background:
-			radial-gradient(
-				ellipse 60% 40% at 50% 0%,
-				var(--slide-glow-color, hsl(var(--primary) / 0.2)) 0%,
-				transparent 70%
-			),
-			url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
-		opacity: 1;
-	}
-
-	/* Dark variant - deeper, more dramatic */
-	.variant-dark {
-		background: linear-gradient(
-			180deg,
-			hsl(var(--primary-hue) 15% 3%) 0%,
-			hsl(var(--primary-hue) 10% 2%) 100%
-		);
-	}
-
-	.variant-dark::after {
+		content: '';
+		position: absolute;
+		inset: 0;
 		background: radial-gradient(
-			ellipse 70% 70% at 50% 50%,
-			transparent 0%,
-			hsl(0 0% 0% / 0.6) 100%
+			ellipse 60% 40% at 50% 0%,
+			var(--slide-glow-color, hsl(var(--primary) / 0.15)) 0%,
+			transparent 70%
 		);
+		pointer-events: none;
+		z-index: 0;
 	}
 
-	/* Glass variant - glassmorphism effect */
-	.variant-glass {
-		background: var(--slide-bg-gradient);
-	}
+	/* Dark variant - no additional styling needed, uses parent background */
+
+	/* Glass variant - no background change, relies on glass containers */
 
 	/* Glass variant applies glass effect to direct content children */
 	.variant-glass > :global(.content),
