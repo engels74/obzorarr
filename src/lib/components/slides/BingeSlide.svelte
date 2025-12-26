@@ -5,11 +5,13 @@
 	import type { BingeSlideProps } from './types';
 	import type { SlideMessagingContext } from './messaging-context';
 	import { createPersonalContext } from './messaging-context';
+	import { SPRING_PRESETS, DELAY_PRESETS } from '$lib/utils/animation-presets';
 
 	/**
 	 * BingeSlide Component
 	 *
-	 * Displays information about the user's longest binge watching session.
+	 * Displays information about the user's longest binge watching session
+	 * with premium hero-style glassmorphism container and gradient text effects.
 	 *
 	 * Implements Requirement 5.6 (Motion One animations with $effect cleanup)
 	 */
@@ -63,8 +65,15 @@
 
 		if (!shouldAnimate) {
 			container.style.opacity = '1';
-			if (statEl) statEl.style.opacity = '1';
-			if (detailsEl) detailsEl.style.opacity = '1';
+			container.style.transform = 'none';
+			if (statEl) {
+				statEl.style.opacity = '1';
+				statEl.style.transform = 'none';
+			}
+			if (detailsEl) {
+				detailsEl.style.opacity = '1';
+				detailsEl.style.transform = 'none';
+			}
 			onAnimationComplete?.();
 			return;
 		}
@@ -73,7 +82,7 @@
 		const containerAnim = animate(
 			container,
 			{ opacity: [0, 1], transform: ['translateY(20px)', 'translateY(0)'] },
-			{ duration: 0.5 }
+			{ type: 'spring', ...SPRING_PRESETS.snappy }
 		);
 
 		const animations = [containerAnim];
@@ -81,14 +90,21 @@
 		if (statEl) {
 			const statAnim = animate(
 				statEl,
-				{ transform: ['scale(0.8)', 'scale(1)'], opacity: [0, 1] },
-				{ type: 'spring', stiffness: 200, damping: 20, delay: 0.2 }
+				{
+					transform: ['scale(0.7)', 'scale(1.02)', 'scale(1)'],
+					opacity: [0, 1, 1]
+				},
+				{ type: 'spring', ...SPRING_PRESETS.bouncy, delay: DELAY_PRESETS.short }
 			);
 			animations.push(statAnim);
 		}
 
 		if (detailsEl) {
-			const detailsAnim = animate(detailsEl, { opacity: [0, 1] }, { duration: 0.4, delay: 0.5 });
+			const detailsAnim = animate(
+				detailsEl,
+				{ opacity: [0, 1], transform: ['translateY(10px)', 'translateY(0)'] },
+				{ type: 'spring', ...SPRING_PRESETS.gentle, delay: DELAY_PRESETS.medium }
+			);
 			animations.push(detailsAnim);
 
 			detailsAnim.finished.then(() => {
@@ -152,14 +168,14 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 1.5rem;
+		gap: 2rem;
 		z-index: 1;
 	}
 
 	.title {
 		font-size: 1.5rem;
 		font-weight: 600;
-		color: var(--muted-foreground);
+		color: hsl(var(--muted-foreground));
 		text-transform: uppercase;
 		letter-spacing: 0.1em;
 	}
@@ -168,54 +184,92 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		padding: 2rem 3rem;
-		background: rgba(255, 255, 255, 0.05);
-		border-radius: 1rem;
-		border: 2px solid var(--primary);
+		padding: 2.5rem 4rem;
+		background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
+		backdrop-filter: blur(20px);
+		-webkit-backdrop-filter: blur(20px);
+		border-radius: calc(var(--radius) * 2);
+		border: 2px solid hsl(var(--primary) / 0.4);
+		box-shadow:
+			var(--shadow-elevation-high, 0 8px 24px hsl(0 0% 0% / 0.4)),
+			0 0 40px hsl(var(--primary) / 0.15),
+			inset 0 1px 0 hsl(0 0% 100% / 0.1);
+		position: relative;
+	}
+
+	/* Top highlight line */
+	.stat-container::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 1px;
+		background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.6), transparent);
+		border-radius: inherit;
 	}
 
 	.duration {
 		font-size: clamp(2.5rem, 8vw, 4rem);
 		font-weight: 800;
-		color: var(--primary);
+		letter-spacing: -0.02em;
+		/* Gradient text effect */
+		background: linear-gradient(
+			180deg,
+			hsl(var(--primary)) 0%,
+			hsl(calc(var(--primary-hue) + 20) 70% 65%) 100%
+		);
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
+		background-clip: text;
+		filter: drop-shadow(0 0 20px hsl(var(--primary) / 0.4));
 	}
 
 	.plays {
 		font-size: 1.25rem;
-		color: var(--foreground);
-		margin-top: 0.5rem;
+		color: hsl(var(--foreground));
+		margin-top: 0.75rem;
+		padding: 0.25rem 0.75rem;
+		background: hsl(var(--primary) / 0.1);
+		border-radius: var(--radius);
 	}
 
 	.details {
 		text-align: center;
+		padding: 0.75rem 1.5rem;
+		background: hsl(var(--primary) / 0.05);
+		border-radius: var(--radius);
 	}
 
 	.date {
 		font-size: 1.125rem;
-		color: var(--foreground);
+		color: hsl(var(--foreground));
 		font-weight: 500;
 	}
 
 	.time-range {
 		font-size: 0.875rem;
-		color: var(--muted-foreground);
-		margin-top: 0.25rem;
+		color: hsl(var(--muted-foreground));
+		margin-top: 0.375rem;
 	}
 
 	.no-binge {
 		text-align: center;
 		padding: 2rem;
+		background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.3));
+		border-radius: calc(var(--radius) * 1.5);
+		border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
 	}
 
 	.no-binge-message {
 		font-size: 1.25rem;
-		color: var(--muted-foreground);
+		color: hsl(var(--muted-foreground));
 		font-style: italic;
 	}
 
 	.no-binge-hint {
 		font-size: 0.875rem;
-		color: var(--muted-foreground);
+		color: hsl(var(--muted-foreground));
 		opacity: 0.7;
 		margin-top: 0.5rem;
 	}
@@ -226,16 +280,24 @@
 
 	/* Mobile: compact container */
 	@media (max-width: 767px) {
+		.content {
+			gap: 1.5rem;
+		}
+
 		.title {
 			font-size: 1.25rem;
 		}
 
 		.stat-container {
-			padding: 1.5rem 2rem;
+			padding: 1.75rem 2.5rem;
 		}
 
 		.plays {
-			font-size: 1.125rem;
+			font-size: 1.0625rem;
+		}
+
+		.details {
+			padding: 0.5rem 1rem;
 		}
 
 		.date {
@@ -250,7 +312,7 @@
 		}
 
 		.stat-container {
-			padding: 2.25rem 3.5rem;
+			padding: 2.5rem 4rem;
 		}
 
 		.duration {
@@ -277,18 +339,19 @@
 		}
 
 		.stat-container {
-			padding: 3rem 5rem;
-			border-radius: 1.25rem;
-			border-width: 3px;
+			padding: 3.5rem 6rem;
+			border-radius: calc(var(--radius) * 2.5);
+			border-width: 2px;
 		}
 
 		.duration {
 			font-size: clamp(3rem, 10vw, 5rem);
+			filter: drop-shadow(0 0 30px hsl(var(--primary) / 0.5));
 		}
 
 		.plays {
 			font-size: 1.5rem;
-			margin-top: 0.75rem;
+			margin-top: 1rem;
 		}
 
 		.date {
@@ -297,7 +360,7 @@
 
 		.time-range {
 			font-size: 1.125rem;
-			margin-top: 0.375rem;
+			margin-top: 0.5rem;
 		}
 	}
 </style>

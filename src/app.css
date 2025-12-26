@@ -216,6 +216,250 @@
 	--primary-hue: 0;
 }
 
+/* =============================================================================
+   Premium Wrapped Themes
+   Dedicated themes for /wrapped/* slideshow pages with luxurious aesthetics
+   ============================================================================= */
+
+/* Theme: Obsidian Premium - Deep blacks with purple/platinum accents */
+.theme-obsidian-premium {
+	--font-sans: 'Inter', system-ui, sans-serif;
+	--background: 260 15% 4%;
+	--foreground: 0 0% 95%;
+	--card: 260 20% 8%;
+	--card-foreground: 0 0% 95%;
+	--popover: 260 20% 8%;
+	--popover-foreground: 0 0% 95%;
+	--primary: 270 60% 65%;
+	--primary-foreground: 0 0% 100%;
+	--secondary: 260 15% 12%;
+	--secondary-foreground: 0 0% 95%;
+	--muted: 260 10% 15%;
+	--muted-foreground: 0 0% 55%;
+	--accent: 45 70% 70%;
+	--accent-foreground: 0 0% 8%;
+	--destructive: 0 84% 60%;
+	--destructive-foreground: 0 0% 95%;
+	--border: 260 15% 18%;
+	--input: 260 15% 18%;
+	--ring: 270 60% 65%;
+	--radius: 0.75rem;
+	--primary-hue: 270;
+
+	/* Premium slide-specific variables */
+	--slide-bg-gradient: linear-gradient(
+		135deg,
+		hsl(260 20% 6%) 0%,
+		hsl(270 25% 4%) 50%,
+		hsl(260 15% 3%) 100%
+	);
+	--slide-glass-bg: hsl(270 20% 12% / 0.4);
+	--slide-glass-border: hsl(270 30% 40% / 0.3);
+	--slide-glass-blur: 20px;
+	--slide-glow-color: hsl(270 60% 50% / 0.4);
+	--slide-accent-glow: hsl(45 70% 60% / 0.3);
+	--slide-vignette-opacity: 0.5;
+	--slide-noise-opacity: 0.03;
+
+	/* Shadow depth system */
+	--shadow-elevation-low: 0 1px 2px hsl(260 30% 0% / 0.3),
+		0 2px 4px hsl(260 30% 0% / 0.2);
+	--shadow-elevation-medium: 0 4px 8px hsl(260 30% 0% / 0.4),
+		0 8px 16px hsl(260 30% 0% / 0.2), 0 0 40px hsl(270 50% 30% / 0.1);
+	--shadow-elevation-high: 0 8px 16px hsl(260 30% 0% / 0.5),
+		0 16px 32px hsl(260 30% 0% / 0.3), 0 0 60px hsl(270 50% 40% / 0.15);
+
+	/* Bar/chart gradients */
+	--slide-bar-gradient: linear-gradient(180deg, hsl(270 50% 55%) 0%, hsl(280 40% 35%) 100%);
+	--slide-peak-gradient: linear-gradient(180deg, hsl(45 80% 65%) 0%, hsl(35 70% 45%) 100%);
+}
+
+/* Theme: Aurora Premium - Teal to cyan/magenta iridescent */
+.theme-aurora-premium {
+	--font-sans: 'Outfit', system-ui, sans-serif;
+	--background: 200 30% 4%;
+	--foreground: 0 0% 95%;
+	--card: 195 25% 8%;
+	--card-foreground: 0 0% 95%;
+	--popover: 195 25% 8%;
+	--popover-foreground: 0 0% 95%;
+	--primary: 175 70% 50%;
+	--primary-foreground: 195 30% 8%;
+	--secondary: 200 20% 12%;
+	--secondary-foreground: 0 0% 95%;
+	--muted: 200 15% 15%;
+	--muted-foreground: 0 0% 55%;
+	--accent: 320 60% 60%;
+	--accent-foreground: 0 0% 100%;
+	--destructive: 0 84% 60%;
+	--destructive-foreground: 0 0% 95%;
+	--border: 195 20% 18%;
+	--input: 195 20% 18%;
+	--ring: 175 70% 50%;
+	--radius: 1rem;
+	--primary-hue: 175;
+
+	/* Premium slide-specific variables */
+	--slide-bg-gradient: linear-gradient(
+		135deg,
+		hsl(200 35% 5%) 0%,
+		hsl(220 30% 6%) 40%,
+		hsl(280 25% 5%) 100%
+	);
+	--slide-glass-bg: hsl(195 30% 15% / 0.35);
+	--slide-glass-border: hsl(175 50% 50% / 0.25);
+	--slide-glass-blur: 24px;
+	--slide-glow-color: hsl(175 70% 45% / 0.35);
+	--slide-accent-glow: hsl(320 60% 55% / 0.25);
+	--slide-vignette-opacity: 0.45;
+	--slide-noise-opacity: 0.025;
+
+	/* Shadow depth system */
+	--shadow-elevation-low: 0 1px 2px hsl(200 30% 0% / 0.3),
+		0 2px 4px hsl(200 30% 0% / 0.2);
+	--shadow-elevation-medium: 0 4px 8px hsl(200 30% 0% / 0.4),
+		0 8px 16px hsl(200 30% 0% / 0.2), 0 0 40px hsl(175 60% 35% / 0.1);
+	--shadow-elevation-high: 0 8px 16px hsl(200 30% 0% / 0.5),
+		0 16px 32px hsl(200 30% 0% / 0.3), 0 0 60px hsl(175 60% 45% / 0.15);
+
+	/* Bar/chart gradients */
+	--slide-bar-gradient: linear-gradient(180deg, hsl(175 65% 50%) 0%, hsl(195 50% 30%) 100%);
+	--slide-peak-gradient: linear-gradient(180deg, hsl(320 60% 60%) 0%, hsl(340 50% 40%) 100%);
+}
+
+/* Theme: Champagne Premium - Warm golds with rose gold accents */
+.theme-champagne-premium {
+	--font-sans: 'Inter', system-ui, sans-serif;
+	--background: 35 15% 5%;
+	--foreground: 40 10% 92%;
+	--card: 35 20% 9%;
+	--card-foreground: 40 10% 92%;
+	--popover: 35 20% 9%;
+	--popover-foreground: 40 10% 92%;
+	--primary: 42 75% 55%;
+	--primary-foreground: 35 25% 8%;
+	--secondary: 35 15% 13%;
+	--secondary-foreground: 40 10% 92%;
+	--muted: 35 10% 15%;
+	--muted-foreground: 35 5% 50%;
+	--accent: 350 50% 65%;
+	--accent-foreground: 0 0% 100%;
+	--destructive: 0 70% 55%;
+	--destructive-foreground: 0 0% 95%;
+	--border: 35 15% 20%;
+	--input: 35 15% 20%;
+	--ring: 42 75% 55%;
+	--radius: 0.625rem;
+	--primary-hue: 42;
+
+	/* Premium slide-specific variables */
+	--slide-bg-gradient: linear-gradient(
+		135deg,
+		hsl(30 20% 5%) 0%,
+		hsl(35 25% 4%) 50%,
+		hsl(25 15% 3%) 100%
+	);
+	--slide-glass-bg: hsl(35 25% 15% / 0.35);
+	--slide-glass-border: hsl(42 50% 50% / 0.25);
+	--slide-glass-blur: 18px;
+	--slide-glow-color: hsl(42 70% 50% / 0.3);
+	--slide-accent-glow: hsl(350 50% 55% / 0.25);
+	--slide-vignette-opacity: 0.4;
+	--slide-noise-opacity: 0.02;
+
+	/* Shadow depth system */
+	--shadow-elevation-low: 0 1px 2px hsl(30 30% 0% / 0.35),
+		0 2px 4px hsl(30 30% 0% / 0.25);
+	--shadow-elevation-medium: 0 4px 8px hsl(30 30% 0% / 0.45),
+		0 8px 16px hsl(30 30% 0% / 0.25), 0 0 40px hsl(42 60% 40% / 0.1);
+	--shadow-elevation-high: 0 8px 16px hsl(30 30% 0% / 0.5),
+		0 16px 32px hsl(30 30% 0% / 0.3), 0 0 60px hsl(42 60% 50% / 0.15);
+
+	/* Bar/chart gradients */
+	--slide-bar-gradient: linear-gradient(180deg, hsl(42 65% 55%) 0%, hsl(35 50% 35%) 100%);
+	--slide-peak-gradient: linear-gradient(180deg, hsl(350 55% 60%) 0%, hsl(340 45% 40%) 100%);
+}
+
+/* =============================================================================
+   Slide Typography Utilities
+   Reusable typography classes for wrapped slides
+   ============================================================================= */
+
+/* Title hierarchy */
+.slide-title-xl {
+	font-size: clamp(2rem, 5vw, 3rem);
+	font-weight: 800;
+	letter-spacing: -0.02em;
+	line-height: 1.1;
+}
+
+.slide-title-lg {
+	font-size: clamp(1.5rem, 4vw, 2.25rem);
+	font-weight: 700;
+	letter-spacing: -0.01em;
+	line-height: 1.2;
+}
+
+.slide-title-md {
+	font-size: clamp(1.25rem, 3vw, 1.75rem);
+	font-weight: 700;
+	letter-spacing: 0;
+	line-height: 1.3;
+}
+
+/* Label hierarchy */
+.slide-label-lg {
+	font-size: 1rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	color: hsl(var(--muted-foreground));
+}
+
+.slide-label-sm {
+	font-size: 0.75rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.12em;
+	color: hsl(var(--muted-foreground));
+}
+
+/* Stat numbers */
+.slide-stat-hero {
+	font-size: clamp(3rem, 12vw, 7rem);
+	font-weight: 800;
+	letter-spacing: -0.03em;
+	line-height: 1;
+}
+
+.slide-stat-lg {
+	font-size: clamp(2rem, 8vw, 4rem);
+	font-weight: 800;
+	letter-spacing: -0.02em;
+	line-height: 1.1;
+}
+
+/* Text glow effects */
+.text-glow-primary {
+	text-shadow: 0 0 20px hsl(var(--primary) / 0.5), 0 0 40px hsl(var(--primary) / 0.3);
+}
+
+.text-glow-accent {
+	text-shadow: 0 0 20px hsl(var(--accent) / 0.5), 0 0 40px hsl(var(--accent) / 0.3);
+}
+
+/* Gradient text utility */
+.text-gradient-primary {
+	background: linear-gradient(
+		180deg,
+		hsl(var(--primary)) 0%,
+		hsl(calc(var(--primary-hue) + 15) 60% 55%) 100%
+	);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+}
+
 /* Base reset and styles */
 * {
 	border-color: hsl(var(--border));

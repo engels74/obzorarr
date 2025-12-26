@@ -6,12 +6,14 @@
 	import type { SlideMessagingContext } from './messaging-context';
 	import { getSubject, getPossessive, createPersonalContext } from './messaging-context';
 	import * as Tooltip from '$lib/components/ui/tooltip';
+	import { SPRING_PRESETS, STAGGER_PRESETS, DELAY_PRESETS } from '$lib/utils/animation-presets';
 
 	/**
 	 * DistributionSlide Component
 	 *
-	 * Displays watch time distribution by month or hour with bar charts.
-	 * Shows data labels on bars and detailed tooltips on hover.
+	 * Displays watch time distribution by month or hour with premium gradient bar charts.
+	 * Features glassmorphism containers, peak highlighting with glow effects,
+	 * and detailed tooltips on hover.
 	 * On desktop/tablet (>=768px), shows both monthly and hourly side-by-side.
 	 * On mobile (<768px), shows single chart with toggle.
 	 *
@@ -182,7 +184,11 @@
 		}
 
 		// Animate container
-		const containerAnim = animate(container, { opacity: [0, 1] }, { duration: 0.4 });
+		const containerAnim = animate(
+			container,
+			{ opacity: [0, 1], transform: ['translateY(20px)', 'translateY(0)'] },
+			{ type: 'spring', ...SPRING_PRESETS.snappy }
+		);
 		animations.push(containerAnim);
 
 		if (showDualView) {
@@ -196,9 +202,8 @@
 					{ transform: ['scaleY(0)', 'scaleY(1)'] },
 					{
 						type: 'spring',
-						stiffness: 150,
-						damping: 15,
-						delay: stagger(0.03, { startDelay: 0.2 })
+						...SPRING_PRESETS.dramatic,
+						delay: stagger(STAGGER_PRESETS.fast, { startDelay: DELAY_PRESETS.short })
 					}
 				);
 				animations.push(monthlyAnim);
@@ -210,9 +215,8 @@
 					{ transform: ['scaleY(0)', 'scaleY(1)'] },
 					{
 						type: 'spring',
-						stiffness: 150,
-						damping: 15,
-						delay: stagger(0.02, { startDelay: 0.6 }) // Start after monthly
+						...SPRING_PRESETS.dramatic,
+						delay: stagger(STAGGER_PRESETS.fast / 2, { startDelay: DELAY_PRESETS.long }) // Start after monthly
 					}
 				);
 				animations.push(hourlyAnim);
@@ -238,9 +242,8 @@
 					{ transform: ['scaleY(0)', 'scaleY(1)'] },
 					{
 						type: 'spring',
-						stiffness: 150,
-						damping: 15,
-						delay: stagger(0.03, { startDelay: 0.2 })
+						...SPRING_PRESETS.dramatic,
+						delay: stagger(STAGGER_PRESETS.fast, { startDelay: DELAY_PRESETS.short })
 					}
 				);
 				animations.push(barsAnim);
@@ -302,7 +305,9 @@
 												aria-label="{item.labelFull}: {formatMinutesDetailed(
 													item.minutes
 												)}, {formatPlays(item.plays)}"
-											></div>
+											>
+												<div class="bar-highlight"></div>
+											</div>
 										</Tooltip.Trigger>
 										<Tooltip.Content side="top" class="tooltip-content">
 											<div class="tooltip-inner">
@@ -342,7 +347,9 @@
 												aria-label="{item.labelFull}: {formatMinutesDetailed(
 													item.minutes
 												)}, {formatPlays(item.plays)}"
-											></div>
+											>
+												<div class="bar-highlight"></div>
+											</div>
 										</Tooltip.Trigger>
 										<Tooltip.Content side="top" class="tooltip-content">
 											<div class="tooltip-inner">
@@ -411,7 +418,9 @@
 										aria-label="{item.labelFull}: {formatMinutesDetailed(
 											item.minutes
 										)}, {formatPlays(item.plays)}"
-									></div>
+									>
+										<div class="bar-highlight"></div>
+									</div>
 								</Tooltip.Trigger>
 								<Tooltip.Content side="top" class="tooltip-content">
 									<div class="tooltip-inner">
@@ -460,6 +469,7 @@
 		color: hsl(var(--primary));
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
+		text-shadow: 0 0 30px hsl(var(--primary) / 0.3);
 	}
 
 	.chart-container {
@@ -469,7 +479,26 @@
 		gap: 0.25rem;
 		height: 200px;
 		width: 100%;
-		padding: 0 1rem;
+		padding: 1.25rem 1rem 1rem;
+		background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
+		backdrop-filter: blur(16px);
+		-webkit-backdrop-filter: blur(16px);
+		border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
+		border-radius: calc(var(--radius) * 2);
+		box-shadow: var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.3));
+		position: relative;
+	}
+
+	/* Glass top highlight line */
+	.chart-container::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 1px;
+		background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.4), transparent);
+		border-radius: inherit;
 	}
 
 	.chart-container.hourly {
@@ -492,7 +521,6 @@
 		align-items: flex-end;
 		flex: 1;
 		width: 100%;
-		/* Reset browser button defaults */
 		background: transparent;
 		border: none;
 		padding: 0;
@@ -529,39 +557,69 @@
 		opacity: 1;
 		color: hsl(var(--accent));
 		font-weight: 600;
+		text-shadow: 0 0 8px hsl(var(--accent) / 0.4);
 	}
 
 	.bar {
 		width: 100%;
-		background: linear-gradient(180deg, hsl(var(--primary)), var(--slide-bar-end));
-		border-radius: 2px 2px 0 0;
+		background: var(--slide-bar-gradient, linear-gradient(180deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.6) 100%));
+		border-radius: 3px 3px 0 0;
 		transform-origin: bottom center;
 		min-height: 4px;
-		transition:
-			transform 0.2s ease,
-			filter 0.2s ease,
-			box-shadow 0.2s ease;
+		position: relative;
+		overflow: hidden;
 		cursor: pointer;
+		box-shadow:
+			0 0 8px hsl(var(--primary) / 0.3),
+			inset 0 1px 0 hsl(0 0% 100% / 0.15);
+		transition:
+			transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+			filter 0.3s ease,
+			box-shadow 0.3s ease;
+	}
+
+	.bar-highlight {
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 40%;
+		background: linear-gradient(
+			180deg,
+			hsl(0 0% 100% / 0.2) 0%,
+			hsl(0 0% 100% / 0) 100%
+		);
+		border-radius: 3px 3px 0 0;
+		pointer-events: none;
 	}
 
 	.bar:hover {
-		transform: scaleX(1.15) !important;
-		filter: brightness(1.2);
-		box-shadow: 0 0 8px hsl(var(--primary) / 0.4);
+		transform: scaleX(1.2) !important;
+		filter: brightness(1.15);
+		box-shadow:
+			0 0 20px hsl(var(--primary) / 0.5),
+			0 0 40px hsl(var(--primary) / 0.3),
+			inset 0 1px 0 hsl(0 0% 100% / 0.25);
 	}
 
 	.peak .bar {
-		background: linear-gradient(180deg, var(--slide-peak-start), var(--slide-peak-end));
+		background: var(--slide-peak-gradient, linear-gradient(180deg, hsl(var(--accent)) 0%, hsl(var(--accent) / 0.6) 100%));
+		box-shadow:
+			0 0 12px hsl(var(--accent) / 0.4),
+			inset 0 1px 0 hsl(0 0% 100% / 0.2);
 	}
 
 	.peak .bar:hover {
-		box-shadow: 0 0 12px color-mix(in oklch, var(--slide-peak-start) 50%, transparent);
+		box-shadow:
+			0 0 25px hsl(var(--accent) / 0.6),
+			0 0 50px hsl(var(--accent) / 0.3),
+			inset 0 1px 0 hsl(0 0% 100% / 0.3);
 	}
 
 	.label {
 		font-size: 0.625rem;
 		color: hsl(var(--muted-foreground));
-		margin-top: 0.25rem;
+		margin-top: 0.375rem;
 		white-space: nowrap;
 	}
 
@@ -572,22 +630,30 @@
 	.peak-info {
 		font-size: 1rem;
 		color: hsl(var(--muted-foreground));
+		padding: 0.5rem 1rem;
+		background: hsl(var(--primary) / 0.08);
+		border-radius: var(--radius);
 	}
 
 	.peak-info strong {
 		color: hsl(var(--primary));
+		text-shadow: 0 0 10px hsl(var(--primary) / 0.3);
 	}
 
 	.extra {
 		margin-top: 1rem;
 	}
 
-	/* Tooltip styling */
+	/* Tooltip styling - premium glass effect */
 	:global(.tooltip-content) {
-		background: hsl(var(--card)) !important;
-		color: hsl(var(--card-foreground)) !important;
-		border: 1px solid hsl(var(--border));
-		padding: 0.75rem !important;
+		background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.85)) !important;
+		backdrop-filter: blur(12px);
+		-webkit-backdrop-filter: blur(12px);
+		color: hsl(var(--foreground)) !important;
+		border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.3)) !important;
+		padding: 0.75rem 1rem !important;
+		border-radius: var(--radius) !important;
+		box-shadow: var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.3)) !important;
 	}
 
 	.tooltip-inner {
@@ -599,12 +665,13 @@
 
 	.tooltip-title {
 		color: hsl(var(--primary));
-		font-size: 0.875rem;
+		font-size: 0.9375rem;
+		font-weight: 600;
 		margin-bottom: 0.25rem;
 	}
 
 	.tooltip-stat {
-		font-size: 0.75rem;
+		font-size: 0.8125rem;
 		color: hsl(var(--muted-foreground));
 		margin: 0;
 	}
@@ -628,7 +695,7 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 0.75rem;
+		gap: 1rem;
 	}
 
 	.section-title {
@@ -636,12 +703,12 @@
 		font-weight: 600;
 		color: hsl(var(--muted-foreground));
 		text-transform: uppercase;
-		letter-spacing: 0.03em;
+		letter-spacing: 0.05em;
 	}
 
 	/* Dual-view chart adjustments */
 	.dual-view .chart-container {
-		height: 160px;
+		height: 180px;
 	}
 
 	.dual-view .monthly {
@@ -676,36 +743,43 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 0.75rem;
+		gap: 1rem;
 	}
 
 	.view-toggle {
 		display: flex;
 		gap: 0.25rem;
-		background: hsl(var(--muted) / 0.3);
 		padding: 0.25rem;
-		border-radius: 0.5rem;
+		background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.5));
+		backdrop-filter: blur(8px);
+		-webkit-backdrop-filter: blur(8px);
+		border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
+		border-radius: calc(var(--radius) * 1.5);
 	}
 
 	.view-toggle button {
-		padding: 0.375rem 0.75rem;
+		padding: 0.5rem 1rem;
 		border: none;
 		background: transparent;
 		color: hsl(var(--muted-foreground));
-		font-size: 0.75rem;
+		font-size: 0.8125rem;
 		font-weight: 500;
-		border-radius: 0.375rem;
+		border-radius: var(--radius);
 		cursor: pointer;
-		transition: all 0.2s ease;
+		transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 	}
 
 	.view-toggle button:hover {
 		color: hsl(var(--foreground));
+		background: hsl(var(--primary) / 0.1);
 	}
 
 	.view-toggle button.active {
 		background: hsl(var(--primary));
 		color: hsl(var(--primary-foreground));
+		box-shadow:
+			0 0 12px hsl(var(--primary) / 0.4),
+			inset 0 1px 0 hsl(0 0% 100% / 0.15);
 	}
 
 	.view-toggle button:focus-visible {
@@ -719,8 +793,17 @@
 
 	/* Mobile: compact layout */
 	@media (max-width: 767px) {
+		.content {
+			gap: 1.25rem;
+		}
+
+		.title {
+			font-size: 1.5rem;
+		}
+
 		.chart-container {
-			height: 150px;
+			height: 160px;
+			padding: 1rem 0.75rem 0.75rem;
 		}
 
 		.data-label {
@@ -742,18 +825,30 @@
 		.hourly .data-label {
 			display: none;
 		}
+
+		.peak-info {
+			font-size: 0.875rem;
+		}
 	}
 
 	/* Tablet: stacked dual-view with larger charts */
 	@media (min-width: 768px) {
+		.content {
+			max-width: var(--content-max-md, 800px);
+		}
+
+		.title {
+			font-size: 2rem;
+		}
+
 		.charts-grid {
 			grid-template-columns: 1fr;
 			gap: 2.5rem;
 		}
 
 		.dual-view .chart-container {
-			height: 180px;
-			max-width: 600px;
+			height: 200px;
+			max-width: 650px;
 		}
 
 		.dual-view .monthly .bar-wrapper {
@@ -763,17 +858,25 @@
 		.dual-view .hourly .bar-wrapper {
 			max-width: 20px;
 		}
+
+		.section-title {
+			font-size: 1.0625rem;
+		}
 	}
 
 	/* Desktop: side-by-side dual-view */
 	@media (min-width: 1024px) {
+		.content {
+			max-width: var(--content-max-lg, 900px);
+		}
+
 		.charts-grid {
 			grid-template-columns: repeat(2, 1fr);
-			gap: 3rem;
+			gap: 2.5rem;
 		}
 
 		.dual-view .chart-container {
-			height: 180px;
+			height: 200px;
 			max-width: none;
 		}
 
@@ -787,6 +890,14 @@
 
 		.section-title {
 			font-size: 1.125rem;
+		}
+
+		.bar {
+			border-radius: 4px 4px 0 0;
+		}
+
+		.bar-highlight {
+			border-radius: 4px 4px 0 0;
 		}
 	}
 </style>

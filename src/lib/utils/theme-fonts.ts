@@ -11,7 +11,11 @@ const THEME_FONTS: Record<string, string> = {
 	supabase: 'Outfit:wght@400;500;600;700',
 	'doom-64': 'Oxanium:wght@400;500;600;700',
 	'amber-minimal': 'Inter:wght@400;500;600;700',
-	'soviet-red': '' // Uses system fonts
+	'soviet-red': '', // Uses system fonts
+	// Premium wrapped themes
+	'obsidian-premium': 'Inter:wght@400;500;600;700;800',
+	'aurora-premium': 'Outfit:wght@400;500;600;700;800',
+	'champagne-premium': 'Inter:wght@400;500;600;700;800'
 };
 
 /** Cache of loaded font link elements */
@@ -57,8 +61,11 @@ export function getThemeFontFamily(theme: string): string {
 	switch (theme) {
 		case 'modern-minimal':
 		case 'amber-minimal':
+		case 'obsidian-premium':
+		case 'champagne-premium':
 			return "'Inter', system-ui, sans-serif";
 		case 'supabase':
+		case 'aurora-premium':
 			return "'Outfit', system-ui, sans-serif";
 		case 'doom-64':
 			return "'Oxanium', system-ui, sans-serif";

@@ -5,11 +5,18 @@
 	import type { TotalTimeSlideProps } from './types';
 	import type { SlideMessagingContext } from './messaging-context';
 	import { getSubject, createPersonalContext } from './messaging-context';
+	import {
+		animateNumber,
+		formatNumber,
+		SPRING_PRESETS,
+		DELAY_PRESETS
+	} from '$lib/utils/animation-presets';
 
 	/**
 	 * TotalTimeSlide Component
 	 *
-	 * Displays the user's total watch time with animated number reveal.
+	 * Displays the user's total watch time with animated number counting reveal.
+	 * Features premium gradient text and glow effects.
 	 *
 	 * Implements Requirement 5.6 (Motion One animations with $effect cleanup)
 	 */
@@ -36,7 +43,10 @@
 	const days = $derived(Number((totalWatchTimeMinutes / 60 / 24).toFixed(1)));
 	const weeks = $derived(Number((totalWatchTimeMinutes / 60 / 24 / 7).toFixed(1)));
 
-	// Format for display
+	// State for animated number display
+	let displayedHours = $state(0);
+
+	// Format for display - uses animated value when hours >= 24
 	const formattedTime = $derived.by(() => {
 		if (totalWatchTimeMinutes < 60) {
 			return `${Math.round(totalWatchTimeMinutes)} minutes`;
@@ -44,7 +54,7 @@
 		if (hours < 24) {
 			return `${hours} hours`;
 		}
-		return `${hours.toLocaleString()} hours`;
+		return `${formatNumber(displayedHours)} hours`;
 	});
 
 	const comparisonText = $derived.by(() => {
@@ -76,29 +86,52 @@
 			numberEl.style.opacity = '1';
 			numberEl.style.transform = 'none';
 			subtitleEl.style.opacity = '1';
+			displayedHours = hours;
 			onAnimationComplete?.();
 			return;
 		}
 
+		// Start number animation (odometer effect)
+		const stopNumberAnim =
+			hours >= 24
+				? animateNumber(0, hours, 1500, (value) => {
+						displayedHours = value;
+					})
+				: (() => {
+						displayedHours = hours;
+						return () => {};
+					})();
+
 		// Animate container
 		const containerAnim = animate(
 			container,
-			{ opacity: [0, 1], transform: ['translateY(20px)', 'translateY(0)'] },
-			{ type: 'spring', stiffness: 200, damping: 20 }
+			{ opacity: [0, 1], transform: ['translateY(30px)', 'translateY(0)'] },
+			{ type: 'spring', ...SPRING_PRESETS.snappy }
 		);
 
-		// Animate number with scale
+		// Animate number with scale and slight rotation for drama
 		const numberAnim = animate(
 			numberEl,
-			{ transform: ['scale(0.5)', 'scale(1)'], opacity: [0, 1] },
-			{ type: 'spring', stiffness: 150, damping: 15, delay: 0.3 }
+			{
+				transform: ['scale(0.6)', 'scale(1.02)', 'scale(1)'],
+				opacity: [0, 1, 1]
+			},
+			{
+				type: 'spring',
+				...SPRING_PRESETS.bouncy,
+				delay: DELAY_PRESETS.short
+			}
 		);
 
-		// Animate subtitle
+		// Animate subtitle with fade-up
 		const subtitleAnim = animate(
 			subtitleEl,
-			{ opacity: [0, 1], transform: ['translateY(10px)', 'translateY(0)'] },
-			{ duration: 0.5, delay: 0.6 }
+			{ opacity: [0, 1], transform: ['translateY(15px)', 'translateY(0)'] },
+			{
+				type: 'spring',
+				...SPRING_PRESETS.gentle,
+				delay: DELAY_PRESETS.medium
+			}
 		);
 
 		// Call completion callback
@@ -111,6 +144,7 @@
 			containerAnim.stop();
 			numberAnim.stop();
 			subtitleAnim.stop();
+			stopNumberAnim();
 		};
 	});
 </script>
@@ -140,29 +174,43 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 1rem;
+		gap: 1.25rem;
 		z-index: 1;
 	}
 
 	.title {
 		font-size: 1.5rem;
 		font-weight: 600;
-		color: var(--muted-foreground);
+		color: hsl(var(--muted-foreground));
 		text-transform: uppercase;
 		letter-spacing: 0.1em;
+		opacity: 0.9;
 	}
 
 	.stat-number {
 		font-size: clamp(3rem, 10vw, 6rem);
 		font-weight: 800;
-		color: var(--primary);
 		margin: 0.5rem 0;
-		text-shadow: 0 4px 20px hsl(var(--primary) / 0.3);
+		letter-spacing: -0.02em;
+		/* Gradient text effect */
+		background: linear-gradient(
+			180deg,
+			hsl(var(--primary)) 0%,
+			hsl(calc(var(--primary-hue) + 15) 70% 65%) 100%
+		);
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
+		background-clip: text;
+		/* Glow effect via filter */
+		filter: drop-shadow(0 0 30px hsl(var(--primary) / 0.5))
+			drop-shadow(0 0 60px hsl(var(--primary) / 0.3));
 	}
 
 	.subtitle {
 		font-size: 1.25rem;
-		color: var(--muted-foreground);
+		color: hsl(var(--muted-foreground));
+		font-style: italic;
+		opacity: 0.85;
 	}
 
 	.extra {
@@ -171,12 +219,22 @@
 
 	/* Mobile: compact typography */
 	@media (max-width: 767px) {
+		.content {
+			gap: 1rem;
+		}
+
 		.title {
 			font-size: 1.25rem;
 		}
 
+		.stat-number {
+			font-size: clamp(2.5rem, 12vw, 4rem);
+			filter: drop-shadow(0 0 20px hsl(var(--primary) / 0.4))
+				drop-shadow(0 0 40px hsl(var(--primary) / 0.2));
+		}
+
 		.subtitle {
-			font-size: 1.125rem;
+			font-size: 1rem;
 		}
 	}
 
@@ -187,7 +245,7 @@
 		}
 
 		.stat-number {
-			font-size: clamp(3.5rem, 10vw, 6.5rem);
+			font-size: clamp(3.5rem, 10vw, 5.5rem);
 		}
 
 		.subtitle {
@@ -195,15 +253,21 @@
 		}
 	}
 
-	/* Desktop: large typography */
+	/* Desktop: large typography with enhanced glow */
 	@media (min-width: 1024px) {
+		.content {
+			gap: 1.5rem;
+		}
+
 		.title {
 			font-size: 2rem;
 		}
 
 		.stat-number {
 			font-size: clamp(4rem, 12vw, 7rem);
-			text-shadow: 0 6px 30px hsl(var(--primary) / 0.35);
+			filter: drop-shadow(0 0 40px hsl(var(--primary) / 0.5))
+				drop-shadow(0 0 80px hsl(var(--primary) / 0.35))
+				drop-shadow(0 0 120px hsl(var(--primary) / 0.2));
 		}
 
 		.subtitle {

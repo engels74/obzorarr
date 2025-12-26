@@ -6,11 +6,13 @@
 	import { getThumbUrl } from '$lib/utils/plex-thumb';
 	import type { SlideMessagingContext } from './messaging-context';
 	import { getPossessive, createPersonalContext } from './messaging-context';
+	import { SPRING_PRESETS, STAGGER_PRESETS, DELAY_PRESETS } from '$lib/utils/animation-presets';
 
 	/**
 	 * TopShowsSlide Component
 	 *
-	 * Displays the user's top TV shows with staggered list animation.
+	 * Displays the user's top TV shows with premium glassmorphism cards.
+	 * Features staggered list animation and hover effects.
 	 *
 	 * Implements Requirement 5.6 (Motion One animations with $effect cleanup)
 	 */
@@ -59,19 +61,25 @@
 		}
 
 		// Animate container
-		const containerAnim = animate(container, { opacity: [0, 1] }, { duration: 0.4 });
+		const containerAnim = animate(
+			container,
+			{ opacity: [0, 1], transform: ['translateY(20px)', 'translateY(0)'] },
+			{ type: 'spring', ...SPRING_PRESETS.snappy }
+		);
 
 		// Animate list items with stagger
 		const validItems = listItems.filter(Boolean);
 		if (validItems.length > 0) {
 			const itemsAnim = animate(
 				validItems,
-				{ opacity: [0, 1], transform: ['translateX(-20px)', 'translateX(0)'] },
+				{
+					opacity: [0, 1],
+					transform: ['translateX(-30px) scale(0.95)', 'translateX(0) scale(1)']
+				},
 				{
 					type: 'spring',
-					stiffness: 200,
-					damping: 20,
-					delay: stagger(0.1, { startDelay: 0.2 })
+					...SPRING_PRESETS.snappy,
+					delay: stagger(STAGGER_PRESETS.normal, { startDelay: DELAY_PRESETS.short })
 				}
 			);
 
@@ -98,7 +106,7 @@
 		{#if hasShows}
 			<ol class="show-list">
 				{#each displayedShows as show, i}
-					<li bind:this={listItems[i]} class="show-item">
+					<li bind:this={listItems[i]} class="show-item" class:first={i === 0}>
 						<span class="rank">#{show.rank}</span>
 						{#if getThumbUrl(show.thumb)}
 							<img src={getThumbUrl(show.thumb)} alt="" class="thumb" loading="lazy" />
@@ -140,9 +148,10 @@
 	.title {
 		font-size: 1.75rem;
 		font-weight: 700;
-		color: var(--primary);
+		color: hsl(var(--primary));
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
+		text-shadow: 0 0 30px hsl(var(--primary) / 0.3);
 	}
 
 	.show-list {
@@ -152,43 +161,92 @@
 		width: 100%;
 		display: grid;
 		grid-template-columns: 1fr;
-		gap: 0.5rem;
+		gap: 0.625rem;
 	}
 
 	.show-item {
 		display: flex;
 		align-items: center;
 		gap: 1rem;
-		padding: 0.75rem 1rem;
-		background: rgba(255, 255, 255, 0.05);
-		border-radius: 0.5rem;
-		transition: background-color 0.2s;
+		padding: 0.875rem 1.125rem;
+		background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
+		backdrop-filter: blur(12px);
+		-webkit-backdrop-filter: blur(12px);
+		border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
+		border-radius: calc(var(--radius) * 1.5);
+		box-shadow: var(--shadow-elevation-low, 0 2px 4px hsl(0 0% 0% / 0.2));
+		transition:
+			transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+			box-shadow 0.3s ease,
+			border-color 0.3s ease;
 	}
 
 	.show-item:hover {
-		background: rgba(255, 255, 255, 0.1);
+		transform: translateY(-2px) scale(1.01);
+		box-shadow: var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.3));
+		border-color: hsl(var(--primary) / 0.3);
+	}
+
+	/* First item gets special treatment */
+	.show-item.first {
+		border-color: hsl(var(--primary) / 0.3);
+		background: linear-gradient(
+			135deg,
+			hsl(var(--primary) / 0.15) 0%,
+			var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4)) 100%
+		);
+	}
+
+	.show-item.first::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 1px;
+		background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.5), transparent);
+		border-radius: inherit;
 	}
 
 	.rank {
-		font-size: 1.25rem;
+		font-size: 1rem;
 		font-weight: 800;
-		color: var(--primary);
+		color: hsl(var(--primary));
 		min-width: 2.5rem;
+		padding: 0.25rem 0.5rem;
+		background: hsl(var(--primary) / 0.15);
+		border-radius: var(--radius);
+		text-align: center;
+		text-shadow: 0 0 10px hsl(var(--primary) / 0.3);
+	}
+
+	.first .rank {
+		background: linear-gradient(135deg, hsl(var(--primary) / 0.25), hsl(var(--accent) / 0.15));
+		box-shadow: 0 0 15px hsl(var(--primary) / 0.2);
 	}
 
 	.thumb {
 		width: 50px;
 		height: 75px;
 		object-fit: cover;
-		border-radius: 0.25rem;
-		background: var(--muted);
+		border-radius: calc(var(--radius) * 0.75);
+		background: hsl(var(--muted));
+		box-shadow: var(--shadow-elevation-low, 0 2px 4px hsl(0 0% 0% / 0.3));
+		transition:
+			transform 0.3s ease,
+			box-shadow 0.3s ease;
+	}
+
+	.show-item:hover .thumb {
+		transform: scale(1.05);
+		box-shadow: var(--shadow-elevation-medium, 0 4px 8px hsl(0 0% 0% / 0.4));
 	}
 
 	.thumb-placeholder {
 		width: 50px;
 		height: 75px;
-		background: var(--muted);
-		border-radius: 0.25rem;
+		background: linear-gradient(135deg, hsl(var(--muted)) 0%, hsl(var(--secondary)) 100%);
+		border-radius: calc(var(--radius) * 0.75);
 	}
 
 	.show-info {
@@ -196,21 +254,23 @@
 		flex-direction: column;
 		align-items: flex-start;
 		flex: 1;
+		gap: 0.25rem;
 	}
 
 	.show-title {
 		font-size: 1rem;
 		font-weight: 600;
-		color: var(--foreground);
+		color: hsl(var(--foreground));
+		line-height: 1.3;
 	}
 
 	.episode-count {
-		font-size: 0.875rem;
-		color: var(--muted-foreground);
+		font-size: 0.8125rem;
+		color: hsl(var(--muted-foreground));
 	}
 
 	.empty-message {
-		color: var(--muted-foreground);
+		color: hsl(var(--muted-foreground));
 		font-style: italic;
 	}
 
@@ -220,19 +280,36 @@
 
 	/* Mobile: compact single column */
 	@media (max-width: 767px) {
+		.content {
+			gap: 1.5rem;
+		}
+
+		.title {
+			font-size: 1.5rem;
+		}
+
+		.show-list {
+			gap: 0.5rem;
+		}
+
 		.show-item {
-			padding: 0.5rem;
+			padding: 0.625rem 0.75rem;
 			gap: 0.75rem;
 		}
 
-		.thumb {
+		.thumb,
+		.thumb-placeholder {
 			width: 40px;
 			height: 60px;
 		}
 
-		.thumb-placeholder {
-			width: 40px;
-			height: 60px;
+		.rank {
+			font-size: 0.875rem;
+			min-width: 2rem;
+		}
+
+		.show-title {
+			font-size: 0.9375rem;
 		}
 	}
 
@@ -246,11 +323,7 @@
 			padding: 1rem 1.25rem;
 		}
 
-		.thumb {
-			width: 55px;
-			height: 82px;
-		}
-
+		.thumb,
 		.thumb-placeholder {
 			width: 55px;
 			height: 82px;
@@ -263,6 +336,10 @@
 			max-width: var(--content-max-lg, 900px);
 		}
 
+		.title {
+			font-size: 2rem;
+		}
+
 		.show-list {
 			grid-template-columns: repeat(2, 1fr);
 			gap: 0.75rem;
@@ -270,13 +347,10 @@
 
 		.show-item {
 			padding: 1rem 1.25rem;
+			position: relative;
 		}
 
-		.thumb {
-			width: 55px;
-			height: 82px;
-		}
-
+		.thumb,
 		.thumb-placeholder {
 			width: 55px;
 			height: 82px;

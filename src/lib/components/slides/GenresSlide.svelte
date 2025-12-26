@@ -6,12 +6,13 @@
 	import type { SlideMessagingContext } from './messaging-context';
 	import { getPossessive, createPersonalContext } from './messaging-context';
 	import * as Tooltip from '$lib/components/ui/tooltip';
+	import { SPRING_PRESETS, STAGGER_PRESETS, DELAY_PRESETS } from '$lib/utils/animation-presets';
 
 	/**
 	 * GenresSlide Component
 	 *
-	 * Displays the user's top genres with visual representation.
-	 * Each genre has a unique color and interactive tooltips.
+	 * Displays the user's top genres with premium glassmorphism cards
+	 * and gradient-filled bars with glow effects.
 	 *
 	 * Implements Requirement 5.6 (Motion One animations with $effect cleanup)
 	 */
@@ -30,27 +31,27 @@
 		messagingContext = createPersonalContext()
 	}: Props = $props();
 
-	// Genre color palette - unique colors for visual distinction
+	// Genre color palette - HSL format for consistency with theme system
 	const GENRE_COLORS: Record<string, string> = {
-		Action: 'oklch(0.55 0.18 25)',
-		Adventure: 'oklch(0.60 0.15 50)',
-		Animation: 'oklch(0.65 0.16 145)',
-		Comedy: 'oklch(0.70 0.18 85)',
-		Crime: 'oklch(0.45 0.10 260)',
-		Documentary: 'oklch(0.55 0.12 180)',
-		Drama: 'oklch(0.50 0.20 15)',
-		Family: 'oklch(0.65 0.14 120)',
-		Fantasy: 'oklch(0.55 0.18 290)',
-		History: 'oklch(0.55 0.10 60)',
-		Horror: 'oklch(0.40 0.15 350)',
-		Music: 'oklch(0.60 0.20 320)',
-		Mystery: 'oklch(0.50 0.12 240)',
-		Romance: 'oklch(0.60 0.18 10)',
-		'Science Fiction': 'oklch(0.55 0.15 210)',
-		'Sci-Fi': 'oklch(0.55 0.15 210)',
-		Thriller: 'oklch(0.45 0.12 280)',
-		War: 'oklch(0.50 0.08 90)',
-		Western: 'oklch(0.55 0.12 55)'
+		Action: 'hsl(15 70% 50%)',
+		Adventure: 'hsl(35 65% 55%)',
+		Animation: 'hsl(145 55% 50%)',
+		Comedy: 'hsl(50 70% 55%)',
+		Crime: 'hsl(240 30% 45%)',
+		Documentary: 'hsl(180 45% 45%)',
+		Drama: 'hsl(5 65% 45%)',
+		Family: 'hsl(120 45% 50%)',
+		Fantasy: 'hsl(280 55% 50%)',
+		History: 'hsl(40 35% 50%)',
+		Horror: 'hsl(350 50% 35%)',
+		Music: 'hsl(310 60% 55%)',
+		Mystery: 'hsl(220 40% 45%)',
+		Romance: 'hsl(350 60% 55%)',
+		'Science Fiction': 'hsl(200 50% 50%)',
+		'Sci-Fi': 'hsl(200 50% 50%)',
+		Thriller: 'hsl(270 35% 40%)',
+		War: 'hsl(80 25% 45%)',
+		Western: 'hsl(30 45% 50%)'
 	};
 
 	const DEFAULT_GENRE_COLOR = 'hsl(var(--primary))';
@@ -83,16 +84,24 @@
 
 	// Element references
 	let container: HTMLElement | undefined = $state();
+	let genreItems: HTMLElement[] = $state([]);
 	let bars: HTMLElement[] = $state([]);
 
 	// Animation effect with cleanup
 	$effect(() => {
-		if (!container || !active) return;
+		if (!container || !active || !hasGenres) return;
 
 		const shouldAnimate = !prefersReducedMotion.current;
 
 		if (!shouldAnimate) {
 			container.style.opacity = '1';
+			container.style.transform = 'none';
+			genreItems.forEach((el) => {
+				if (el) {
+					el.style.opacity = '1';
+					el.style.transform = 'none';
+				}
+			});
 			bars.forEach((el) => {
 				if (el) el.style.transform = 'scaleX(1)';
 			});
@@ -101,29 +110,60 @@
 		}
 
 		// Animate container
-		const containerAnim = animate(container, { opacity: [0, 1] }, { duration: 0.4 });
+		const containerAnim = animate(
+			container,
+			{ opacity: [0, 1], transform: ['translateY(20px)', 'translateY(0)'] },
+			{ type: 'spring', ...SPRING_PRESETS.snappy }
+		);
 
-		// Animate bars with stagger
+		// Animate genre items with stagger
+		const validItems = genreItems.filter(Boolean);
 		const validBars = bars.filter(Boolean);
-		if (validBars.length > 0) {
-			const barsAnim = animate(
-				validBars,
-				{ transform: ['scaleX(0)', 'scaleX(1)'] },
+
+		if (validItems.length > 0) {
+			const itemsAnim = animate(
+				validItems,
+				{
+					opacity: [0, 1],
+					transform: ['translateY(15px)', 'translateY(0)']
+				},
 				{
 					type: 'spring',
-					stiffness: 100,
-					damping: 15,
-					delay: stagger(0.1, { startDelay: 0.3 })
+					...SPRING_PRESETS.snappy,
+					delay: stagger(STAGGER_PRESETS.normal, { startDelay: DELAY_PRESETS.short })
 				}
 			);
 
-			barsAnim.finished.then(() => {
+			// Animate bars with stagger (after items start appearing)
+			if (validBars.length > 0) {
+				const barsAnim = animate(
+					validBars,
+					{ transform: ['scaleX(0)', 'scaleX(1)'] },
+					{
+						type: 'spring',
+						...SPRING_PRESETS.dramatic,
+						delay: stagger(STAGGER_PRESETS.normal, { startDelay: DELAY_PRESETS.medium })
+					}
+				);
+
+				barsAnim.finished.then(() => {
+					onAnimationComplete?.();
+				});
+
+				return () => {
+					containerAnim.stop();
+					itemsAnim.stop();
+					barsAnim.stop();
+				};
+			}
+
+			itemsAnim.finished.then(() => {
 				onAnimationComplete?.();
 			});
 
 			return () => {
 				containerAnim.stop();
-				barsAnim.stop();
+				itemsAnim.stop();
 			};
 		}
 
@@ -141,7 +181,7 @@
 			<Tooltip.Provider>
 				<div class="genre-list">
 					{#each genresWithPercentage as genre, i}
-						<div class="genre-item">
+						<div bind:this={genreItems[i]} class="genre-item" class:first={i === 0}>
 							<div class="genre-header">
 								<span class="genre-name">{genre.title}</span>
 								<span class="genre-count">{formatPlays(genre.count)}</span>
@@ -157,7 +197,9 @@
 											)};"
 											role="img"
 											aria-label="{genre.title}: {formatPlays(genre.count)}"
-										></div>
+										>
+											<div class="bar-highlight"></div>
+										</div>
 									</Tooltip.Trigger>
 									<Tooltip.Content side="top" class="tooltip-content">
 										<div class="tooltip-inner">
@@ -192,8 +234,7 @@
 		gap: 2rem;
 		z-index: 1;
 		width: 100%;
-		max-width: 500px;
-		padding: 0 1rem;
+		max-width: 600px;
 	}
 
 	.title {
@@ -202,33 +243,82 @@
 		color: hsl(var(--primary));
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+		text-shadow: 0 0 30px hsl(var(--primary) / 0.3);
 	}
 
 	.genre-list {
 		width: 100%;
 		display: flex;
 		flex-direction: column;
-		gap: 1.25rem;
+		gap: 0.75rem;
+		padding: 1.25rem;
+		background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
+		backdrop-filter: blur(16px);
+		-webkit-backdrop-filter: blur(16px);
+		border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
+		border-radius: calc(var(--radius) * 2);
+		box-shadow: var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.3));
+		position: relative;
+	}
+
+	/* Glass top highlight line */
+	.genre-list::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 1px;
+		background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.4), transparent);
+		border-radius: inherit;
 	}
 
 	.genre-item {
 		width: 100%;
-		padding: 0.5rem;
-		border-radius: 8px;
-		background: hsl(var(--card) / 0.3);
-		transition: background-color 0.2s ease;
+		padding: 0.75rem 1rem;
+		border-radius: calc(var(--radius) * 1.25);
+		background: hsl(var(--primary-hue) 20% 15% / 0.3);
+		border: 1px solid transparent;
+		transition:
+			transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+			background-color 0.3s ease,
+			border-color 0.3s ease,
+			box-shadow 0.3s ease;
 	}
 
 	.genre-item:hover {
-		background: hsl(var(--card) / 0.5);
+		transform: translateX(4px);
+		background: hsl(var(--primary-hue) 20% 18% / 0.4);
+		border-color: hsl(var(--primary) / 0.15);
+		box-shadow: 0 2px 8px hsl(0 0% 0% / 0.2);
+	}
+
+	/* First genre gets special treatment */
+	.genre-item.first {
+		border-color: hsl(var(--primary) / 0.25);
+		background: linear-gradient(
+			135deg,
+			hsl(var(--primary) / 0.12) 0%,
+			hsl(var(--primary-hue) 20% 15% / 0.3) 100%
+		);
+	}
+
+	.genre-item.first::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 1px;
+		background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.4), transparent);
+		border-radius: inherit;
 	}
 
 	.genre-header {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		margin-bottom: 0.5rem;
+		margin-bottom: 0.625rem;
 	}
 
 	.genre-name {
@@ -241,18 +331,27 @@
 		max-width: 70%;
 	}
 
+	.first .genre-name {
+		color: hsl(var(--primary));
+		text-shadow: 0 0 10px hsl(var(--primary) / 0.3);
+	}
+
 	.genre-count {
-		font-size: 0.875rem;
+		font-size: 0.8125rem;
 		color: hsl(var(--muted-foreground));
 		font-weight: 500;
+		padding: 0.125rem 0.5rem;
+		background: hsl(var(--primary) / 0.08);
+		border-radius: var(--radius);
 	}
 
 	.bar-container {
 		width: 100%;
-		height: 12px;
-		background: hsl(var(--muted) / 0.3);
-		border-radius: 6px;
+		height: 10px;
+		background: hsl(var(--muted) / 0.2);
+		border-radius: 5px;
 		overflow: visible;
+		position: relative;
 	}
 
 	.bar-container :global(button[data-slot='tooltip-trigger']) {
@@ -278,23 +377,47 @@
 		height: 100%;
 		background: linear-gradient(
 			90deg,
-			var(--genre-color),
-			color-mix(in oklch, var(--genre-color) 70%, black)
+			var(--genre-color) 0%,
+			color-mix(in srgb, var(--genre-color) 80%, white) 50%,
+			var(--genre-color) 100%
 		);
-		border-radius: 6px;
+		border-radius: 5px;
 		transform-origin: left center;
 		min-width: 4px;
-		transition:
-			transform 0.2s ease,
-			filter 0.2s ease,
-			box-shadow 0.2s ease;
+		position: relative;
+		overflow: hidden;
 		cursor: pointer;
+		box-shadow:
+			0 0 8px color-mix(in srgb, var(--genre-color) 50%, transparent),
+			inset 0 1px 0 hsl(0 0% 100% / 0.2);
+		transition:
+			transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+			filter 0.3s ease,
+			box-shadow 0.3s ease;
+	}
+
+	.bar-highlight {
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 40%;
+		background: linear-gradient(
+			180deg,
+			hsl(0 0% 100% / 0.25) 0%,
+			hsl(0 0% 100% / 0) 100%
+		);
+		border-radius: 5px 5px 0 0;
+		pointer-events: none;
 	}
 
 	.bar:hover {
-		transform: scaleY(1.3) scaleX(1.02) !important;
-		filter: brightness(1.2);
-		box-shadow: 0 0 12px var(--genre-color);
+		transform: scaleY(1.4) scaleX(1.02) !important;
+		filter: brightness(1.15);
+		box-shadow:
+			0 0 20px var(--genre-color),
+			0 0 40px color-mix(in srgb, var(--genre-color) 50%, transparent),
+			inset 0 1px 0 hsl(0 0% 100% / 0.3);
 	}
 
 	.empty-message {
@@ -313,12 +436,16 @@
 		margin-top: 1rem;
 	}
 
-	/* Tooltip styling */
+	/* Tooltip styling - premium glass effect */
 	:global(.tooltip-content) {
-		background: hsl(var(--card)) !important;
-		color: hsl(var(--card-foreground)) !important;
-		border: 1px solid hsl(var(--border));
-		padding: 0.75rem !important;
+		background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.8)) !important;
+		backdrop-filter: blur(12px);
+		-webkit-backdrop-filter: blur(12px);
+		color: hsl(var(--foreground)) !important;
+		border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.3)) !important;
+		padding: 0.75rem 1rem !important;
+		border-radius: var(--radius) !important;
+		box-shadow: var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.3)) !important;
 	}
 
 	.tooltip-inner {
@@ -330,11 +457,12 @@
 
 	.tooltip-title {
 		color: hsl(var(--primary));
-		font-size: 0.875rem;
+		font-size: 0.9375rem;
+		font-weight: 600;
 	}
 
 	.tooltip-stat {
-		font-size: 0.75rem;
+		font-size: 0.8125rem;
 		color: hsl(var(--muted-foreground));
 		margin: 0;
 	}
@@ -342,8 +470,7 @@
 	/* Mobile: compact layout */
 	@media (max-width: 767px) {
 		.content {
-			max-width: 100%;
-			padding: 0 0.5rem;
+			gap: 1.5rem;
 		}
 
 		.title {
@@ -351,20 +478,20 @@
 		}
 
 		.genre-list {
-			gap: 1rem;
+			gap: 0.625rem;
+			padding: 1rem;
 		}
 
 		.genre-item {
-			padding: 0.375rem;
+			padding: 0.625rem 0.75rem;
 		}
 
 		.genre-header {
-			flex-wrap: wrap;
-			gap: 0.25rem;
+			margin-bottom: 0.5rem;
 		}
 
 		.genre-name {
-			font-size: 0.875rem;
+			font-size: 0.9375rem;
 		}
 
 		.genre-count {
@@ -372,14 +499,22 @@
 		}
 
 		.bar-container {
-			height: 10px;
+			height: 8px;
+		}
+
+		.bar {
+			border-radius: 4px;
+		}
+
+		.bar-highlight {
+			border-radius: 4px 4px 0 0;
 		}
 	}
 
 	/* Tablet: medium layout */
 	@media (min-width: 768px) and (max-width: 1023px) {
 		.content {
-			max-width: 650px;
+			max-width: var(--content-max-md, 700px);
 		}
 
 		.title {
@@ -387,15 +522,58 @@
 		}
 
 		.genre-list {
-			gap: 1.5rem;
+			gap: 0.875rem;
+			padding: 1.5rem;
 		}
 
 		.genre-item {
-			padding: 0.625rem;
+			padding: 0.875rem 1.125rem;
 		}
 
 		.genre-name {
 			font-size: 1.0625rem;
+		}
+
+		.genre-count {
+			font-size: 0.875rem;
+		}
+
+		.bar-container {
+			height: 12px;
+			border-radius: 6px;
+		}
+
+		.bar {
+			border-radius: 6px;
+		}
+
+		.bar-highlight {
+			border-radius: 6px 6px 0 0;
+		}
+	}
+
+	/* Desktop: wide layout */
+	@media (min-width: 1024px) {
+		.content {
+			max-width: var(--content-max-lg, 800px);
+		}
+
+		.title {
+			font-size: 2rem;
+		}
+
+		.genre-list {
+			gap: 1rem;
+			padding: 1.75rem;
+		}
+
+		.genre-item {
+			padding: 1rem 1.25rem;
+			position: relative;
+		}
+
+		.genre-name {
+			font-size: 1.125rem;
 		}
 
 		.genre-count {
@@ -410,42 +588,9 @@
 		.bar {
 			border-radius: 7px;
 		}
-	}
 
-	/* Desktop: wide layout */
-	@media (min-width: 1024px) {
-		.content {
-			max-width: 800px;
-		}
-
-		.title {
-			font-size: 2.25rem;
-		}
-
-		.genre-list {
-			gap: 1.5rem;
-		}
-
-		.genre-item {
-			padding: 0.75rem;
-			border-radius: 10px;
-		}
-
-		.genre-name {
-			font-size: 1.125rem;
-		}
-
-		.genre-count {
-			font-size: 1rem;
-		}
-
-		.bar-container {
-			height: 16px;
-			border-radius: 8px;
-		}
-
-		.bar {
-			border-radius: 8px;
+		.bar-highlight {
+			border-radius: 7px 7px 0 0;
 		}
 	}
 </style>

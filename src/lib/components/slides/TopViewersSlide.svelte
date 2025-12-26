@@ -3,12 +3,14 @@
 	import { prefersReducedMotion } from 'svelte/motion';
 	import BaseSlide from './BaseSlide.svelte';
 	import type { TopViewersSlideProps } from './types';
+	import { SPRING_PRESETS, STAGGER_PRESETS, DELAY_PRESETS } from '$lib/utils/animation-presets';
 
 	/**
 	 * TopViewersSlide Component
 	 *
 	 * Displays the top contributors/viewers on the server for server-wide wrapped.
 	 * Shows ranked list of usernames with their total watch time.
+	 * Features gold/silver/bronze medal badges for top 3 and glassmorphism cards.
 	 *
 	 * Implements Requirement 5.6 (Motion One animations with $effect cleanup)
 	 */
@@ -21,6 +23,13 @@
 		class: klass = '',
 		children
 	}: TopViewersSlideProps = $props();
+
+	// Medal colors for top 3 positions
+	const medalColors = {
+		1: { bg: 'hsl(45 90% 50%)', glow: 'hsl(45 90% 50% / 0.4)' }, // Gold
+		2: { bg: 'hsl(210 10% 70%)', glow: 'hsl(210 10% 70% / 0.4)' }, // Silver
+		3: { bg: 'hsl(30 60% 45%)', glow: 'hsl(30 60% 45% / 0.4)' } // Bronze
+	} as const;
 
 	// Limit the displayed viewers
 	const displayedViewers = $derived(topViewers.slice(0, limit));
@@ -84,35 +93,44 @@
 			return;
 		}
 
+		const animations: ReturnType<typeof animate>[] = [];
+
 		// Animate container
-		const containerAnim = animate(container, { opacity: [0, 1] }, { duration: 0.4 });
+		const containerAnim = animate(
+			container,
+			{ opacity: [0, 1], transform: ['translateY(20px)', 'translateY(0)'] },
+			{ type: 'spring', ...SPRING_PRESETS.snappy }
+		);
+		animations.push(containerAnim);
 
 		// Animate list items with stagger
 		const validItems = listItems.filter(Boolean);
 		if (validItems.length > 0) {
 			const itemsAnim = animate(
 				validItems,
-				{ opacity: [0, 1], transform: ['translateX(-20px)', 'translateX(0)'] },
+				{
+					opacity: [0, 1],
+					transform: ['translateX(-30px) scale(0.95)', 'translateX(0) scale(1)']
+				},
 				{
 					type: 'spring',
-					stiffness: 200,
-					damping: 20,
-					delay: stagger(0.1, { startDelay: 0.2 })
+					...SPRING_PRESETS.snappy,
+					delay: stagger(STAGGER_PRESETS.normal, { startDelay: DELAY_PRESETS.short })
 				}
 			);
+			animations.push(itemsAnim);
 
 			itemsAnim.finished.then(() => {
 				onAnimationComplete?.();
 			});
-
-			return () => {
-				containerAnim.stop();
-				itemsAnim.stop();
-			};
+		} else {
+			containerAnim.finished.then(() => {
+				onAnimationComplete?.();
+			});
 		}
 
 		return () => {
-			containerAnim.stop();
+			animations.forEach((a) => a.stop());
 		};
 	});
 </script>
@@ -124,8 +142,26 @@
 		{#if hasViewers}
 			<ol class="viewer-list">
 				{#each displayedViewers as viewer, i}
-					<li bind:this={listItems[i]} class="viewer-item">
-						<span class="rank">#{viewer.rank}</span>
+					{@const isTopThree = viewer.rank <= 3}
+					{@const medal = medalColors[viewer.rank as 1 | 2 | 3]}
+					<li
+						bind:this={listItems[i]}
+						class="viewer-item"
+						class:top-three={isTopThree}
+						class:first={viewer.rank === 1}
+						class:second={viewer.rank === 2}
+						class:third={viewer.rank === 3}
+					>
+						{#if isTopThree && medal}
+							<div
+								class="medal-badge"
+								style="--medal-bg: {medal.bg}; --medal-glow: {medal.glow};"
+							>
+								<span class="medal-rank">{viewer.rank}</span>
+							</div>
+						{:else}
+							<span class="rank">#{viewer.rank}</span>
+						{/if}
 						<div class="avatar-placeholder">
 							<span class="avatar-icon">
 								<svg
@@ -178,9 +214,10 @@
 	.title {
 		font-size: 1.75rem;
 		font-weight: 700;
-		color: var(--primary);
+		color: hsl(var(--primary));
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
+		text-shadow: 0 0 30px hsl(var(--primary) / 0.3);
 	}
 
 	.viewer-list {
@@ -190,48 +227,160 @@
 		width: 100%;
 		display: grid;
 		grid-template-columns: 1fr;
-		gap: 0.5rem;
+		gap: 0.625rem;
 	}
 
 	.viewer-item {
 		display: flex;
 		align-items: center;
 		gap: 1rem;
-		padding: 0.75rem 1rem;
-		background: rgba(255, 255, 255, 0.05);
-		border-radius: 0.5rem;
-		transition: background-color 0.2s;
+		padding: 0.875rem 1.25rem;
+		background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.35));
+		backdrop-filter: blur(12px);
+		-webkit-backdrop-filter: blur(12px);
+		border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
+		border-radius: calc(var(--radius) * 1.5);
+		box-shadow: var(--shadow-elevation-low, 0 2px 8px hsl(0 0% 0% / 0.25));
+		position: relative;
+		transition:
+			transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+			box-shadow 0.3s ease,
+			border-color 0.3s ease;
+	}
+
+	/* Top highlight line */
+	.viewer-item::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 1px;
+		background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.3), transparent);
+		border-radius: inherit;
+		opacity: 0;
+		transition: opacity 0.3s ease;
 	}
 
 	.viewer-item:hover {
-		background: rgba(255, 255, 255, 0.1);
+		transform: translateY(-3px) scale(1.01);
+		box-shadow:
+			var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.35)),
+			0 0 20px hsl(var(--primary) / 0.1);
+		border-color: hsl(var(--primary) / 0.25);
+	}
+
+	.viewer-item:hover::before {
+		opacity: 1;
+	}
+
+	/* Top 3 special styling */
+	.viewer-item.top-three {
+		background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.45));
+		border-color: hsl(var(--primary) / 0.25);
+	}
+
+	.viewer-item.first {
+		border-color: hsl(45 90% 50% / 0.4);
+		box-shadow:
+			var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.3)),
+			0 0 25px hsl(45 90% 50% / 0.15);
+	}
+
+	.viewer-item.first::before {
+		background: linear-gradient(90deg, transparent, hsl(45 90% 50% / 0.5), transparent);
+		opacity: 1;
+	}
+
+	.viewer-item.second {
+		border-color: hsl(210 10% 70% / 0.4);
+		box-shadow:
+			var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.3)),
+			0 0 20px hsl(210 10% 70% / 0.1);
+	}
+
+	.viewer-item.third {
+		border-color: hsl(30 60% 45% / 0.4);
+		box-shadow:
+			var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.3)),
+			0 0 15px hsl(30 60% 45% / 0.1);
 	}
 
 	.rank {
-		font-size: 1.25rem;
-		font-weight: 800;
-		color: var(--primary);
+		font-size: 1.125rem;
+		font-weight: 700;
+		color: hsl(var(--muted-foreground));
 		min-width: 2.5rem;
+		text-align: center;
+	}
+
+	/* Medal badge for top 3 */
+	.medal-badge {
+		width: 36px;
+		height: 36px;
+		min-width: 36px;
+		border-radius: 50%;
+		background: var(--medal-bg);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		box-shadow:
+			0 2px 8px var(--medal-glow),
+			inset 0 1px 0 hsl(0 0% 100% / 0.3),
+			inset 0 -1px 0 hsl(0 0% 0% / 0.2);
+		position: relative;
+	}
+
+	.medal-badge::after {
+		content: '';
+		position: absolute;
+		inset: 2px;
+		border-radius: 50%;
+		background: linear-gradient(
+			135deg,
+			hsl(0 0% 100% / 0.25) 0%,
+			transparent 50%,
+			hsl(0 0% 0% / 0.1) 100%
+		);
+	}
+
+	.medal-rank {
+		font-size: 0.875rem;
+		font-weight: 800;
+		color: hsl(0 0% 10%);
+		text-shadow: 0 1px 0 hsl(0 0% 100% / 0.3);
+		position: relative;
+		z-index: 1;
 	}
 
 	.avatar-placeholder {
-		width: 50px;
-		height: 50px;
-		background: var(--muted);
+		width: 48px;
+		height: 48px;
+		background: linear-gradient(
+			135deg,
+			hsl(var(--primary) / 0.2) 0%,
+			hsl(var(--primary) / 0.1) 100%
+		);
+		border: 1px solid hsl(var(--primary) / 0.2);
 		border-radius: 50%;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		flex-shrink: 0;
+		transition: transform 0.3s ease;
+	}
+
+	.viewer-item:hover .avatar-placeholder {
+		transform: scale(1.05);
 	}
 
 	.avatar-icon {
-		color: var(--muted-foreground);
+		color: hsl(var(--primary) / 0.6);
 	}
 
 	.icon {
-		width: 24px;
-		height: 24px;
+		width: 22px;
+		height: 22px;
 	}
 
 	.viewer-info {
@@ -239,33 +388,63 @@
 		flex-direction: column;
 		align-items: flex-start;
 		flex: 1;
+		gap: 0.125rem;
 	}
 
 	.username {
 		font-size: 1rem;
 		font-weight: 600;
-		color: var(--foreground);
+		color: hsl(var(--foreground));
 	}
 
 	.watch-time {
-		font-size: 0.875rem;
-		color: var(--muted-foreground);
+		font-size: 0.8125rem;
+		color: hsl(var(--muted-foreground));
+		padding: 0.125rem 0.5rem;
+		background: hsl(var(--primary) / 0.08);
+		border-radius: calc(var(--radius) * 0.75);
 	}
 
 	.empty-message {
-		color: var(--muted-foreground);
+		color: hsl(var(--muted-foreground));
 		font-style: italic;
+		padding: 2rem;
+		background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.3));
+		border-radius: calc(var(--radius) * 1.5);
+		border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
 	}
 
 	.extra {
-		margin-top: 1rem;
+		margin-top: 1.5rem;
 	}
 
 	/* Mobile: compact single column */
 	@media (max-width: 767px) {
+		.content {
+			gap: 1.5rem;
+		}
+
+		.title {
+			font-size: 1.5rem;
+		}
+
+		.viewer-list {
+			gap: 0.5rem;
+		}
+
 		.viewer-item {
-			padding: 0.5rem;
+			padding: 0.75rem 1rem;
 			gap: 0.75rem;
+		}
+
+		.medal-badge {
+			width: 32px;
+			height: 32px;
+			min-width: 32px;
+		}
+
+		.medal-rank {
+			font-size: 0.75rem;
 		}
 
 		.avatar-placeholder {
@@ -274,29 +453,51 @@
 		}
 
 		.icon {
-			width: 20px;
-			height: 20px;
+			width: 18px;
+			height: 18px;
+		}
+
+		.username {
+			font-size: 0.9375rem;
+		}
+
+		.watch-time {
+			font-size: 0.75rem;
 		}
 	}
 
 	/* Tablet: wider single column */
 	@media (min-width: 768px) and (max-width: 1023px) {
 		.content {
-			max-width: var(--content-max-md, 800px);
+			max-width: var(--content-max-md, 750px);
+		}
+
+		.title {
+			font-size: 2rem;
 		}
 
 		.viewer-item {
-			padding: 1rem 1.25rem;
+			padding: 1rem 1.5rem;
+		}
+
+		.medal-badge {
+			width: 40px;
+			height: 40px;
+			min-width: 40px;
 		}
 
 		.avatar-placeholder {
-			width: 55px;
-			height: 55px;
+			width: 52px;
+			height: 52px;
 		}
 
 		.icon {
-			width: 26px;
-			height: 26px;
+			width: 24px;
+			height: 24px;
+		}
+
+		.username {
+			font-size: 1.0625rem;
 		}
 	}
 
@@ -306,18 +507,32 @@
 			max-width: var(--content-max-lg, 900px);
 		}
 
+		.title {
+			font-size: 2rem;
+		}
+
 		.viewer-list {
 			grid-template-columns: repeat(2, 1fr);
-			gap: 0.75rem;
+			gap: 0.875rem;
 		}
 
 		.viewer-item {
-			padding: 1rem 1.25rem;
+			padding: 1.125rem 1.5rem;
+		}
+
+		.medal-badge {
+			width: 42px;
+			height: 42px;
+			min-width: 42px;
+		}
+
+		.medal-rank {
+			font-size: 1rem;
 		}
 
 		.avatar-placeholder {
-			width: 55px;
-			height: 55px;
+			width: 56px;
+			height: 56px;
 		}
 
 		.icon {
@@ -327,6 +542,10 @@
 
 		.username {
 			font-size: 1.0625rem;
+		}
+
+		.watch-time {
+			font-size: 0.875rem;
 		}
 	}
 </style>

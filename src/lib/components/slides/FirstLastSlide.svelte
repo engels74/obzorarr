@@ -6,11 +6,13 @@
 	import { getThumbUrl } from '$lib/utils/plex-thumb';
 	import type { SlideMessagingContext } from './messaging-context';
 	import { getPossessive, createPersonalContext } from './messaging-context';
+	import { SPRING_PRESETS, DELAY_PRESETS } from '$lib/utils/animation-presets';
 
 	/**
 	 * FirstLastSlide Component
 	 *
-	 * Displays the first and last content watched in the year.
+	 * Displays the first and last content watched in the year
+	 * with premium glassmorphism cards and hover lift effects.
 	 *
 	 * Implements Requirement 5.6 (Motion One animations with $effect cleanup)
 	 */
@@ -111,15 +113,22 @@
 		const animations: ReturnType<typeof animate>[] = [];
 
 		// Animate container
-		const containerAnim = animate(container, { opacity: [0, 1] }, { duration: 0.4 });
+		const containerAnim = animate(
+			container,
+			{ opacity: [0, 1], transform: ['translateY(20px)', 'translateY(0)'] },
+			{ type: 'spring', ...SPRING_PRESETS.snappy }
+		);
 		animations.push(containerAnim);
 
 		// Animate first card
 		if (firstCard) {
 			const firstAnim = animate(
 				firstCard,
-				{ opacity: [0, 1], transform: ['translateX(-30px)', 'translateX(0)'] },
-				{ type: 'spring', stiffness: 200, damping: 20, delay: 0.2 }
+				{
+					opacity: [0, 1],
+					transform: ['translateX(-40px) scale(0.95)', 'translateX(0) scale(1)']
+				},
+				{ type: 'spring', ...SPRING_PRESETS.snappy, delay: DELAY_PRESETS.short }
 			);
 			animations.push(firstAnim);
 		}
@@ -128,8 +137,11 @@
 		if (lastCard) {
 			const lastAnim = animate(
 				lastCard,
-				{ opacity: [0, 1], transform: ['translateX(30px)', 'translateX(0)'] },
-				{ type: 'spring', stiffness: 200, damping: 20, delay: 0.4 }
+				{
+					opacity: [0, 1],
+					transform: ['translateX(40px) scale(0.95)', 'translateX(0) scale(1)']
+				},
+				{ type: 'spring', ...SPRING_PRESETS.snappy, delay: DELAY_PRESETS.medium }
 			);
 			animations.push(lastAnim);
 
@@ -210,9 +222,10 @@
 	.title {
 		font-size: 1.75rem;
 		font-weight: 700;
-		color: var(--primary);
+		color: hsl(var(--primary));
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
+		text-shadow: 0 0 30px hsl(var(--primary) / 0.3);
 	}
 
 	.cards {
@@ -227,37 +240,82 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		padding: 1.5rem;
-		background: rgba(255, 255, 255, 0.05);
-		border-radius: 1rem;
+		padding: 1.75rem;
+		background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
+		backdrop-filter: blur(16px);
+		-webkit-backdrop-filter: blur(16px);
+		border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
+		border-radius: calc(var(--radius) * 2);
 		min-width: 200px;
 		max-width: 280px;
 		flex: 1;
+		box-shadow: var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.3));
+		position: relative;
+		transition:
+			transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+			box-shadow 0.3s ease,
+			border-color 0.3s ease;
+	}
+
+	/* Top highlight line */
+	.card::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 1px;
+		background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.4), transparent);
+		border-radius: inherit;
+	}
+
+	.card:hover {
+		transform: translateY(-6px) scale(1.02);
+		box-shadow:
+			var(--shadow-elevation-high, 0 8px 24px hsl(0 0% 0% / 0.4)),
+			0 0 30px hsl(var(--primary) / 0.15);
+		border-color: hsl(var(--primary) / 0.3);
 	}
 
 	.card-label {
 		font-size: 0.75rem;
 		text-transform: uppercase;
 		letter-spacing: 0.1em;
-		color: var(--primary);
+		color: hsl(var(--primary));
 		margin-bottom: 1rem;
 		font-weight: 600;
+		padding: 0.25rem 0.75rem;
+		background: hsl(var(--primary) / 0.12);
+		border-radius: var(--radius);
+		text-shadow: 0 0 10px hsl(var(--primary) / 0.3);
 	}
 
 	.thumb {
 		width: 120px;
 		height: 180px;
 		object-fit: cover;
-		border-radius: 0.5rem;
+		border-radius: calc(var(--radius) * 1.25);
 		margin-bottom: 1rem;
-		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+		box-shadow:
+			var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.4)),
+			0 0 20px hsl(var(--primary) / 0.1);
+		transition:
+			transform 0.3s ease,
+			box-shadow 0.3s ease;
+	}
+
+	.card:hover .thumb {
+		transform: scale(1.05);
+		box-shadow:
+			var(--shadow-elevation-high, 0 8px 24px hsl(0 0% 0% / 0.5)),
+			0 0 30px hsl(var(--primary) / 0.2);
 	}
 
 	.thumb-placeholder {
 		width: 120px;
 		height: 180px;
-		background: var(--muted);
-		border-radius: 0.5rem;
+		background: linear-gradient(135deg, hsl(var(--muted)) 0%, hsl(var(--secondary)) 100%);
+		border-radius: calc(var(--radius) * 1.25);
 		margin-bottom: 1rem;
 	}
 
@@ -269,24 +327,29 @@
 		display: block;
 		font-size: 1rem;
 		font-weight: 600;
-		color: var(--foreground);
-		margin-bottom: 0.25rem;
+		color: hsl(var(--foreground));
+		margin-bottom: 0.375rem;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
 		line-clamp: 2;
 		-webkit-box-orient: vertical;
+		line-height: 1.3;
 	}
 
 	.card-meta {
-		font-size: 0.75rem;
-		color: var(--muted-foreground);
+		font-size: 0.8125rem;
+		color: hsl(var(--muted-foreground));
 	}
 
 	.no-data {
-		color: var(--muted-foreground);
+		color: hsl(var(--muted-foreground));
 		font-style: italic;
+		padding: 2rem;
+		background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.3));
+		border-radius: calc(var(--radius) * 1.5);
+		border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
 	}
 
 	.extra {
@@ -295,6 +358,10 @@
 
 	/* Mobile: stacked cards */
 	@media (max-width: 767px) {
+		.content {
+			gap: 1.5rem;
+		}
+
 		.title {
 			font-size: 1.5rem;
 		}
@@ -302,7 +369,7 @@
 		.cards {
 			flex-direction: column;
 			align-items: center;
-			gap: 1.5rem;
+			gap: 1.25rem;
 		}
 
 		.card {
@@ -311,11 +378,7 @@
 			padding: 1.25rem;
 		}
 
-		.thumb {
-			width: 100px;
-			height: 150px;
-		}
-
+		.thumb,
 		.thumb-placeholder {
 			width: 100px;
 			height: 150px;
@@ -329,7 +392,7 @@
 	/* Tablet: side-by-side with medium sizing */
 	@media (min-width: 768px) and (max-width: 1023px) {
 		.content {
-			max-width: 750px;
+			max-width: var(--content-max-md, 750px);
 		}
 
 		.title {
@@ -345,11 +408,7 @@
 			font-size: 0.8125rem;
 		}
 
-		.thumb {
-			width: 140px;
-			height: 210px;
-		}
-
+		.thumb,
 		.thumb-placeholder {
 			width: 140px;
 			height: 210px;
@@ -367,21 +426,20 @@
 	/* Desktop: large cards with prominent thumbnails */
 	@media (min-width: 1024px) {
 		.content {
-			max-width: 900px;
+			max-width: var(--content-max-lg, 900px);
 		}
 
 		.title {
-			font-size: 2.25rem;
+			font-size: 2rem;
 		}
 
 		.cards {
-			gap: 3rem;
+			gap: 2.5rem;
 		}
 
 		.card {
 			max-width: 380px;
 			padding: 2rem;
-			border-radius: 1.25rem;
 		}
 
 		.card-label {
@@ -389,18 +447,10 @@
 			margin-bottom: 1.25rem;
 		}
 
-		.thumb {
-			width: 160px;
-			height: 240px;
-			border-radius: 0.625rem;
-			margin-bottom: 1.25rem;
-			box-shadow: 0 6px 30px rgba(0, 0, 0, 0.35);
-		}
-
+		.thumb,
 		.thumb-placeholder {
 			width: 160px;
 			height: 240px;
-			border-radius: 0.625rem;
 			margin-bottom: 1.25rem;
 		}
 

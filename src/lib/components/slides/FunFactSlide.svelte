@@ -5,11 +5,13 @@
 	import type { FunFactSlideProps } from './types';
 	import type { SlideMessagingContext } from './messaging-context';
 	import { createPersonalContext } from './messaging-context';
+	import { SPRING_PRESETS, DELAY_PRESETS } from '$lib/utils/animation-presets';
 
 	/**
 	 * FunFactSlide Component
 	 *
-	 * Displays a fun fact or comparison about the user's viewing habits.
+	 * Displays a fun fact or comparison about the user's viewing habits
+	 * with floating animated icon, glass container, and glow effects.
 	 *
 	 * Implements Requirement 5.6 (Motion One animations with $effect cleanup)
 	 */
@@ -43,9 +45,17 @@
 
 		if (!shouldAnimate) {
 			container.style.opacity = '1';
-			if (iconEl) iconEl.style.opacity = '1';
+			container.style.transform = 'none';
+			if (iconEl) {
+				iconEl.style.opacity = '1';
+				iconEl.style.transform = 'none';
+			}
 			factEl.style.opacity = '1';
-			if (comparisonEl) comparisonEl.style.opacity = '1';
+			factEl.style.transform = 'none';
+			if (comparisonEl) {
+				comparisonEl.style.opacity = '1';
+				comparisonEl.style.transform = 'none';
+			}
 			onAnimationComplete?.();
 			return;
 		}
@@ -53,22 +63,25 @@
 		const animations: ReturnType<typeof animate>[] = [];
 
 		// Animate container
-		const containerAnim = animate(container, { opacity: [0, 1] }, { duration: 0.4 });
+		const containerAnim = animate(
+			container,
+			{ opacity: [0, 1], transform: ['translateY(20px)', 'translateY(0)'] },
+			{ type: 'spring', ...SPRING_PRESETS.snappy }
+		);
 		animations.push(containerAnim);
 
-		// Animate icon with bounce (spring physics creates natural overshoot)
+		// Animate icon with dramatic bounce (spring physics creates natural overshoot)
 		if (iconEl) {
 			const iconAnim = animate(
 				iconEl,
 				{
-					transform: ['scale(0) rotate(-180deg)', 'scale(1) rotate(0deg)'],
-					opacity: [0, 1]
+					transform: ['scale(0) rotate(-180deg)', 'scale(1.15) rotate(15deg)', 'scale(1) rotate(0deg)'],
+					opacity: [0, 1, 1]
 				},
 				{
 					type: 'spring',
-					stiffness: 150,
-					damping: 10,
-					delay: 0.2
+					...SPRING_PRESETS.bouncy,
+					delay: DELAY_PRESETS.short
 				}
 			);
 			animations.push(iconAnim);
@@ -78,7 +91,7 @@
 		const factAnim = animate(
 			factEl,
 			{ opacity: [0, 1], transform: ['translateY(20px)', 'translateY(0)'] },
-			{ duration: 0.5, delay: 0.4 }
+			{ type: 'spring', ...SPRING_PRESETS.gentle, delay: DELAY_PRESETS.medium }
 		);
 		animations.push(factAnim);
 
@@ -87,7 +100,7 @@
 			const comparisonAnim = animate(
 				comparisonEl,
 				{ opacity: [0, 1], transform: ['translateY(10px)', 'translateY(0)'] },
-				{ duration: 0.4, delay: 0.6 }
+				{ type: 'spring', ...SPRING_PRESETS.gentle, delay: DELAY_PRESETS.long }
 			);
 			animations.push(comparisonAnim);
 
@@ -135,22 +148,61 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 1rem;
+		gap: 1.25rem;
 		z-index: 1;
-		max-width: 600px;
+		max-width: 650px;
 		text-align: center;
+		padding: 2rem;
+		background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.35));
+		backdrop-filter: blur(20px);
+		-webkit-backdrop-filter: blur(20px);
+		border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
+		border-radius: calc(var(--radius) * 2.5);
+		box-shadow: var(--shadow-elevation-high, 0 8px 24px hsl(0 0% 0% / 0.4));
+		position: relative;
+	}
+
+	/* Top highlight line */
+	.content::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 1px;
+		background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.5), transparent);
+		border-radius: inherit;
 	}
 
 	.icon {
 		font-size: 4rem;
 		line-height: 1;
 		margin-bottom: 0.5rem;
+		filter: drop-shadow(0 0 20px hsl(var(--primary) / 0.4));
+		/* Floating animation */
+		animation: float 3s ease-in-out infinite;
+	}
+
+	@keyframes float {
+		0%, 100% {
+			transform: translateY(0);
+		}
+		50% {
+			transform: translateY(-8px);
+		}
+	}
+
+	/* Disable animation for reduced motion preference */
+	@media (prefers-reduced-motion: reduce) {
+		.icon {
+			animation: none;
+		}
 	}
 
 	.title {
 		font-size: 1rem;
 		font-weight: 600;
-		color: var(--muted-foreground);
+		color: hsl(var(--muted-foreground));
 		text-transform: uppercase;
 		letter-spacing: 0.15em;
 	}
@@ -158,15 +210,19 @@
 	.fact {
 		font-size: clamp(1.5rem, 4vw, 2rem);
 		font-weight: 700;
-		color: var(--foreground);
+		color: hsl(var(--foreground));
 		line-height: 1.4;
 	}
 
 	.comparison {
 		font-size: 1.125rem;
-		color: var(--primary);
+		color: hsl(var(--primary));
 		font-style: italic;
 		margin-top: 0.5rem;
+		padding: 0.5rem 1rem;
+		background: hsl(var(--primary) / 0.1);
+		border-radius: var(--radius);
+		text-shadow: 0 0 15px hsl(var(--primary) / 0.3);
 	}
 
 	.extra {
@@ -177,11 +233,12 @@
 	@media (max-width: 767px) {
 		.content {
 			max-width: 100%;
-			padding: 0 0.5rem;
+			padding: 1.5rem 1rem;
+			gap: 1rem;
 		}
 
 		.icon {
-			font-size: 3rem;
+			font-size: 3.5rem;
 		}
 
 		.title {
@@ -196,7 +253,8 @@
 	/* Tablet: medium content */
 	@media (min-width: 768px) and (max-width: 1023px) {
 		.content {
-			max-width: 700px;
+			max-width: var(--content-max-md, 750px);
+			padding: 2.5rem 2rem;
 		}
 
 		.icon {
@@ -219,13 +277,15 @@
 	/* Desktop: large content */
 	@media (min-width: 1024px) {
 		.content {
-			max-width: 850px;
-			gap: 1.25rem;
+			max-width: var(--content-max-lg, 850px);
+			gap: 1.5rem;
+			padding: 3rem 3rem;
 		}
 
 		.icon {
 			font-size: 6rem;
 			margin-bottom: 0.75rem;
+			filter: drop-shadow(0 0 30px hsl(var(--primary) / 0.5));
 		}
 
 		.title {
@@ -238,7 +298,7 @@
 
 		.comparison {
 			font-size: 1.375rem;
-			margin-top: 0.75rem;
+			margin-top: 1rem;
 		}
 	}
 </style>
