@@ -508,10 +508,7 @@ export async function updateUserLogoPreference(
  * @param year - The wrapped year
  * @returns Logo preference (true = show, false = hide, null = inherit from global)
  */
-export async function getUserLogoPreference(
-	userId: number,
-	year: number
-): Promise<boolean | null> {
+export async function getUserLogoPreference(userId: number, year: number): Promise<boolean | null> {
 	const result = await db
 		.select({ showLogo: shareSettings.showLogo })
 		.from(shareSettings)

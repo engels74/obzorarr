@@ -351,7 +351,9 @@
 		<Tabs.Content value="display">
 			<section class="section">
 				<h2>Logo Visibility</h2>
-				<p class="section-description">Control whether the Obzorarr logo appears on your wrapped page.</p>
+				<p class="section-description">
+					Control whether the Obzorarr logo appears on your wrapped page.
+				</p>
 
 				{#if data.canControlLogo}
 					<!-- User can control logo -->

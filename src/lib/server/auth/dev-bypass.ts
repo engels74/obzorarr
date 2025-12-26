@@ -236,9 +236,7 @@ async function resolveTargetUser(): Promise<NormalizedServerUser> {
 		// Check if user exists in local database by plexId or username
 		const plexIdNum = parseInt(bypassUserSetting, 10);
 		const dbUser = await db.query.users.findFirst({
-			where: isNaN(plexIdNum)
-				? eq(users.username, bypassUserSetting)
-				: eq(users.plexId, plexIdNum)
+			where: isNaN(plexIdNum) ? eq(users.username, bypassUserSetting) : eq(users.plexId, plexIdNum)
 		});
 
 		if (dbUser) {
