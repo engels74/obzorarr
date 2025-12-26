@@ -4,7 +4,7 @@ import type { PageServerLoad, Actions } from './$types';
 import { db } from '$lib/server/db/client';
 import { users } from '$lib/server/db/schema';
 import { calculateUserStats } from '$lib/server/stats/engine';
-import { checkWrappedAccess, checkTokenAccess } from '$lib/server/sharing/access-control';
+import { checkTokenAccess } from '$lib/server/sharing/access-control';
 import {
 	isValidTokenFormat,
 	getOrCreateShareSettings,
@@ -12,7 +12,6 @@ import {
 	regenerateShareToken
 } from '$lib/server/sharing/service';
 import {
-	ShareAccessDeniedError,
 	InvalidShareTokenError,
 	PermissionExceededError,
 	ShareModeSchema
@@ -83,28 +82,13 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		}
 	} else {
 		// It's a user ID - parse and validate
+		// User ID access (e.g., from username lookup) is always allowed
+		// Share mode restrictions only apply to share token access
 		const parsedId = parseInt(identifier, 10);
 		if (isNaN(parsedId) || parsedId <= 0) {
 			error(404, 'Invalid identifier');
 		}
 		userId = parsedId;
-
-		// Check access using share settings
-		try {
-			await checkWrappedAccess({
-				userId,
-				year,
-				currentUser: locals.user
-			});
-		} catch (err) {
-			if (err instanceof ShareAccessDeniedError) {
-				error(403, err.message);
-			}
-			if (err instanceof InvalidShareTokenError) {
-				error(404, 'Wrapped not found');
-			}
-			throw err;
-		}
 	}
 
 	// Get user from database to retrieve accountId (needed for stats)
