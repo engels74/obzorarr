@@ -274,11 +274,11 @@
 	}
 
 	.genre-item {
-		width: 100%;
 		padding: 0.75rem 1rem;
 		border-radius: calc(var(--radius) * 1.25);
 		background: hsl(var(--primary-hue) 20% 15% / 0.3);
 		border: 1px solid transparent;
+		position: relative;
 		transition:
 			transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
 			background-color 0.3s ease,
@@ -565,7 +565,6 @@
 
 		.genre-item {
 			padding: 1rem 1.25rem;
-			position: relative;
 		}
 
 		.genre-name {
