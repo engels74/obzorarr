@@ -227,7 +227,7 @@ describe('Sharing Service', () => {
 				expect(isValidTokenFormat(settings.shareToken!)).toBe(true);
 			});
 
-			it('returns existing settings without modification', async () => {
+			it('returns existing settings preserving mode and token', async () => {
 				const existingToken = generateShareToken();
 				await db.insert(shareSettings).values({
 					userId,
@@ -239,7 +239,40 @@ describe('Sharing Service', () => {
 
 				const settings = await getOrCreateShareSettings({ userId, year });
 
+				// Mode and token should be preserved from database
+				expect(settings.mode).toBe(ShareMode.PRIVATE_LINK);
 				expect(settings.shareToken).toBe(existingToken);
+			});
+
+			it('uses current global allowUserControl for existing settings', async () => {
+				// Create settings with canUserControl: false in database
+				await db.insert(shareSettings).values({
+					userId,
+					year,
+					mode: ShareMode.PUBLIC,
+					shareToken: null,
+					canUserControl: false
+				});
+
+				// Set global allowUserControl to true
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PUBLIC,
+					allowUserControl: true
+				});
+
+				// canUserControl should reflect global setting, not stored value
+				const settings = await getOrCreateShareSettings({ userId, year });
+				expect(settings.canUserControl).toBe(true);
+
+				// Now disable global allowUserControl
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PUBLIC,
+					allowUserControl: false
+				});
+
+				// canUserControl should now be false
+				const settings2 = await getOrCreateShareSettings({ userId, year });
+				expect(settings2.canUserControl).toBe(false);
 			});
 
 			it('throws when createIfMissing is false and settings do not exist', async () => {
@@ -251,6 +284,12 @@ describe('Sharing Service', () => {
 
 		describe('updateShareSettings', () => {
 			beforeEach(async () => {
+				// Set global defaults (canUserControl is now derived from global setting)
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PUBLIC,
+					allowUserControl: true
+				});
+
 				// Create initial settings
 				await db.insert(shareSettings).values({
 					userId,
@@ -311,8 +350,11 @@ describe('Sharing Service', () => {
 			});
 
 			it('denies user without canUserControl', async () => {
-				// Remove user control permission
-				await updateShareSettings(userId, year, { canUserControl: false }, true);
+				// Disable user control globally (canUserControl is derived from global setting)
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PUBLIC,
+					allowUserControl: false
+				});
 
 				await expect(
 					updateShareSettings(userId, year, { mode: ShareMode.PRIVATE_OAUTH }, false)

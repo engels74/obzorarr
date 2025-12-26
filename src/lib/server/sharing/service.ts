@@ -237,10 +237,18 @@ export async function getOrCreateShareSettings(
 ): Promise<ShareSettings> {
 	const { userId, year, createIfMissing = true } = options;
 
+	// Always get current global setting for canUserControl
+	// This ensures admin toggle has immediate effect for all users
+	const allowUserControl = await getGlobalAllowUserControl();
+
 	// Try to get existing settings
 	const existing = await getShareSettings(userId, year);
 	if (existing) {
-		return existing;
+		// Merge with current global setting (fixes stale canUserControl issue)
+		return {
+			...existing,
+			canUserControl: allowUserControl
+		};
 	}
 
 	if (!createIfMissing) {
@@ -249,7 +257,6 @@ export async function getOrCreateShareSettings(
 
 	// Create with global defaults
 	const defaultMode = await getGlobalDefaultShareMode();
-	const allowUserControl = await getGlobalAllowUserControl();
 
 	// Generate token if mode is private-link
 	const shareToken = defaultMode === ShareMode.PRIVATE_LINK ? generateShareToken() : null;
