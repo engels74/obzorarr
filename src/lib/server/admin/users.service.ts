@@ -37,6 +37,16 @@ export interface UserBasicInfo {
 	isAdmin: boolean;
 }
 
+export interface UserFullProfile {
+	id: number;
+	plexId: number;
+	username: string;
+	email: string | null;
+	thumb: string | null;
+	isAdmin: boolean;
+	createdAt: Date | null;
+}
+
 // =============================================================================
 // User Queries
 // =============================================================================
@@ -137,6 +147,31 @@ export async function getUserById(userId: number): Promise<UserBasicInfo | null>
 		plexId: user.plexId,
 		username: user.username,
 		isAdmin: user.isAdmin ?? false
+	};
+}
+
+/**
+ * Get full user profile by ID
+ *
+ * Returns all user information for settings/profile pages.
+ *
+ * @param userId - The user's database ID
+ * @returns Full user profile or null if not found
+ */
+export async function getUserFullProfile(userId: number): Promise<UserFullProfile | null> {
+	const result = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+
+	const user = result[0];
+	if (!user) return null;
+
+	return {
+		id: user.id,
+		plexId: user.plexId,
+		username: user.username,
+		email: user.email,
+		thumb: user.thumb,
+		isAdmin: user.isAdmin ?? false,
+		createdAt: user.createdAt
 	};
 }
 

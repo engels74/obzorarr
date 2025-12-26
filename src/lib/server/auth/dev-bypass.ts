@@ -227,9 +227,37 @@ async function resolveTargetUser(): Promise<NormalizedServerUser> {
 			return specificUser;
 		}
 
-		// User not found - warn and fall back to owner
+		// User not found on Plex - try local database
+		logger.info(
+			`Dev bypass: User "${bypassUserSetting}" not found on Plex server, checking local database`,
+			'DevBypass'
+		);
+
+		// Check if user exists in local database by plexId or username
+		const plexIdNum = parseInt(bypassUserSetting, 10);
+		const dbUser = await db.query.users.findFirst({
+			where: isNaN(plexIdNum)
+				? eq(users.username, bypassUserSetting)
+				: eq(users.plexId, plexIdNum)
+		});
+
+		if (dbUser) {
+			logger.info(
+				`Dev bypass: Found user in local database: ${dbUser.plexId} (${dbUser.username})`,
+				'DevBypass'
+			);
+			return {
+				plexId: dbUser.plexId,
+				username: dbUser.username,
+				email: dbUser.email,
+				thumb: dbUser.thumb,
+				isOwner: dbUser.isAdmin ?? false
+			};
+		}
+
+		// User not found anywhere - fall back to owner
 		logger.warn(
-			`Dev bypass: User "${bypassUserSetting}" not found on server, falling back to owner`,
+			`Dev bypass: User "${bypassUserSetting}" not found in Plex or database, falling back to owner`,
 			'DevBypass'
 		);
 
@@ -238,7 +266,7 @@ async function resolveTargetUser(): Promise<NormalizedServerUser> {
 		const availableUsers = [owner, ...sharedUsers]
 			.map((u) => `${u.plexId} (${u.username})`)
 			.join(', ');
-		logger.info(`Dev bypass: Available users: ${availableUsers}`, 'DevBypass');
+		logger.info(`Dev bypass: Available Plex users: ${availableUsers}`, 'DevBypass');
 
 		return owner;
 	} catch (error) {

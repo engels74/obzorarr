@@ -459,3 +459,64 @@ export async function getAllUserShareSettings(userId: number): Promise<ShareSett
 		canUserControl: record.canUserControl ?? false
 	}));
 }
+
+/**
+ * Update user's logo preference for their wrapped page
+ *
+ * Only allowed when global wrappedLogoMode is 'user_choice'.
+ * The caller should verify this permission before calling.
+ *
+ * @param userId - The user's database ID
+ * @param year - The wrapped year
+ * @param showLogo - Whether to show the logo (true/false, or null to inherit global setting)
+ */
+export async function updateUserLogoPreference(
+	userId: number,
+	year: number,
+	showLogo: boolean | null
+): Promise<void> {
+	// Check if settings exist
+	const existing = await getShareSettings(userId, year);
+
+	if (existing) {
+		// Update existing
+		await db
+			.update(shareSettings)
+			.set({ showLogo })
+			.where(and(eq(shareSettings.userId, userId), eq(shareSettings.year, year)));
+	} else {
+		// Create new settings with logo preference
+		const defaultMode = await getGlobalDefaultShareMode();
+		const allowUserControl = await getGlobalAllowUserControl();
+		const shareToken = defaultMode === ShareMode.PRIVATE_LINK ? generateShareToken() : null;
+
+		await db.insert(shareSettings).values({
+			userId,
+			year,
+			mode: defaultMode,
+			shareToken,
+			canUserControl: allowUserControl,
+			showLogo
+		});
+	}
+}
+
+/**
+ * Get user's logo preference for their wrapped page
+ *
+ * @param userId - The user's database ID
+ * @param year - The wrapped year
+ * @returns Logo preference (true = show, false = hide, null = inherit from global)
+ */
+export async function getUserLogoPreference(
+	userId: number,
+	year: number
+): Promise<boolean | null> {
+	const result = await db
+		.select({ showLogo: shareSettings.showLogo })
+		.from(shareSettings)
+		.where(and(eq(shareSettings.userId, userId), eq(shareSettings.year, year)))
+		.limit(1);
+
+	return result[0]?.showLogo ?? null;
+}

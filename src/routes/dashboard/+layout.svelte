@@ -21,8 +21,11 @@
 
 	let { data, children }: Props = $props();
 
-	// Navigation items - simplified since dashboard shows wrapped cards prominently
-	const navItems = $derived([{ href: '/dashboard', label: 'Dashboard', icon: 'dashboard' }]);
+	// Navigation items
+	const navItems = $derived([
+		{ href: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
+		{ href: '/dashboard/settings', label: 'Settings', icon: 'settings' }
+	]);
 
 	// Determine if a nav item is active
 	const isActive = $derived((href: string) => {
@@ -99,6 +102,8 @@
 							<span class="nav-icon" aria-hidden="true">
 								{#if item.icon === 'dashboard'}
 									&#9632;
+								{:else if item.icon === 'settings'}
+									&#9881;
 								{/if}
 							</span>
 							<span class="nav-label">{item.label}</span>
