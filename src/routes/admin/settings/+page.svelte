@@ -653,7 +653,7 @@
 					<div class="privacy-subsection">
 						<h3>User Sharing Defaults</h3>
 						<p class="subsection-description">
-							Set the minimum privacy floor for user wrapped pages.
+							Set the default privacy level for user wrapped pages.
 						</p>
 						<div class="privacy-card-grid three-col">
 							<label class="privacy-card" class:selected={selectedDefaultShareMode === 'public'}>
@@ -669,20 +669,6 @@
 							</label>
 							<label
 								class="privacy-card"
-								class:selected={selectedDefaultShareMode === 'private-oauth'}
-							>
-								<input
-									type="radio"
-									name="defaultShareMode"
-									value="private-oauth"
-									bind:group={selectedDefaultShareMode}
-								/>
-								<span class="card-icon">{getShareIcon('private-oauth')}</span>
-								<span class="card-title">Private OAuth</span>
-								<span class="card-desc">Minimum: server members only</span>
-							</label>
-							<label
-								class="privacy-card"
 								class:selected={selectedDefaultShareMode === 'private-link'}
 							>
 								<input
@@ -693,7 +679,21 @@
 								/>
 								<span class="card-icon">{getShareIcon('private-link')}</span>
 								<span class="card-title">Private Link</span>
-								<span class="card-desc">Minimum: share link required</span>
+								<span class="card-desc">Share link required</span>
+							</label>
+							<label
+								class="privacy-card"
+								class:selected={selectedDefaultShareMode === 'private-oauth'}
+							>
+								<input
+									type="radio"
+									name="defaultShareMode"
+									value="private-oauth"
+									bind:group={selectedDefaultShareMode}
+								/>
+								<span class="card-icon">{getShareIcon('private-oauth')}</span>
+								<span class="card-title">Private OAuth</span>
+								<span class="card-desc">Server members only</span>
 							</label>
 						</div>
 
