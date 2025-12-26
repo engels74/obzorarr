@@ -83,7 +83,7 @@
 	function getShareUrl(): string {
 		const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
 		if (data.shareSettings.mode === 'private-link' && data.shareSettings.shareToken) {
-			return `${baseUrl}/wrapped/${data.currentYear}/u/${data.user.id}?token=${data.shareSettings.shareToken}`;
+			return `${baseUrl}/wrapped/${data.currentYear}/u/${data.shareSettings.shareToken}`;
 		}
 		return `${baseUrl}/wrapped/${data.currentYear}/u/${data.user.id}`;
 	}
