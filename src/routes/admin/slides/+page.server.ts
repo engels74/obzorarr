@@ -28,6 +28,7 @@ import {
 	FunFactFrequency,
 	type FunFactFrequencyType
 } from '$lib/server/admin/settings.service';
+import { getAvailableYears } from '$lib/server/admin/users.service';
 
 /**
  * Admin Slides Page Server
@@ -47,10 +48,11 @@ export const load: PageServerLoad = async () => {
 	await initializeDefaultSlideConfig();
 
 	// Load all configurations
-	const [configs, customSlides, funFactFrequency] = await Promise.all([
+	const [configs, customSlides, funFactFrequency, availableYears] = await Promise.all([
 		getAllSlideConfigs(),
 		getAllCustomSlides(),
-		getFunFactFrequency()
+		getFunFactFrequency(),
+		getAvailableYears()
 	]);
 
 	// Pre-render custom slides for preview
@@ -62,7 +64,8 @@ export const load: PageServerLoad = async () => {
 	return {
 		configs,
 		customSlides: customSlidesWithPreview,
-		funFactFrequency
+		funFactFrequency,
+		availableYears
 	};
 };
 

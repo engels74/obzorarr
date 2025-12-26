@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
+	import { enhance, deserialize } from '$app/forms';
 	import { handleFormToast } from '$lib/utils/form-toast';
 	import type { PageData, ActionData } from './$types';
 	import type { SlideType } from '$lib/components/slides/types';
 	import { DEFAULT_SLIDE_ORDER } from '$lib/components/slides/types';
+	import type { ActionResult } from '@sveltejs/kit';
 
 	/**
 	 * Admin Slides Page
@@ -74,7 +75,7 @@
 		editingSlide = null;
 		editorTitle = '';
 		editorContent = '';
-		editorYear = new Date().getFullYear();
+		editorYear = null; // Default to "All years"
 		editorEnabled = true;
 		previewHtml = '';
 		showEditor = true;
@@ -358,24 +359,29 @@
 						></textarea>
 					</div>
 
-					<div class="form-row">
-						<div class="form-group">
-							<label for="year">Year (optional)</label>
-							<input
-								type="number"
-								id="year"
-								name="year"
-								bind:value={editorYear}
-								min="2000"
-								max="2100"
-								placeholder="e.g. 2024"
-							/>
+					<div class="form-row form-row-aligned">
+						<div class="form-group form-group-year">
+							<label for="year">Year</label>
+							<select id="year" name="year" bind:value={editorYear} class="year-select">
+								<option value={null}>All years</option>
+								{#each data.availableYears as year}
+									<option value={year}>{year}</option>
+								{/each}
+							</select>
+							<span class="field-hint">Leave as "All years" to show on every wrapped</span>
 						</div>
 
-						<div class="form-group">
-							<label class="checkbox-label">
-								<input type="checkbox" name="enabled" bind:checked={editorEnabled} value="true" />
-								Enabled
+						<div class="form-group form-group-enabled">
+							<label for="enabled-checkbox">Status</label>
+							<label class="checkbox-toggle">
+								<input
+									type="checkbox"
+									id="enabled-checkbox"
+									name="enabled"
+									bind:checked={editorEnabled}
+									value="true"
+								/>
+								<span class="toggle-label">{editorEnabled ? 'Enabled' : 'Disabled'}</span>
 							</label>
 						</div>
 					</div>
@@ -393,9 +399,9 @@
 									method: 'POST',
 									body: formData
 								});
-								const result = await response.json();
+								const result: ActionResult = deserialize(await response.text());
 								if (result.type === 'success' && result.data?.html) {
-									previewHtml = result.data.html;
+									previewHtml = result.data.html as string;
 								}
 							}}
 						>
@@ -712,7 +718,6 @@
 	}
 
 	.form-group input[type='text'],
-	.form-group input[type='number'],
 	.form-group textarea {
 		width: 100%;
 		padding: 0.5rem 0.75rem;
@@ -746,18 +751,76 @@
 		flex: 1;
 	}
 
-	.checkbox-label {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		cursor: pointer;
-		padding-top: 1.5rem;
+	.form-row-aligned {
+		align-items: flex-start;
 	}
 
-	.checkbox-label input {
+	.form-group-year {
+		flex: 2;
+	}
+
+	.form-group-enabled {
+		flex: 1;
+		min-width: 120px;
+	}
+
+	.year-select {
+		width: 100%;
+		padding: 0.5rem 0.75rem;
+		background: hsl(var(--input));
+		border: 1px solid hsl(var(--border));
+		border-radius: var(--radius);
+		color: hsl(var(--foreground));
+		font-size: 0.875rem;
+		font-family: inherit;
+		cursor: pointer;
+	}
+
+	.year-select:focus {
+		outline: none;
+		border-color: hsl(var(--ring));
+		box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+	}
+
+	.field-hint {
+		display: block;
+		font-size: 0.75rem;
+		color: hsl(var(--muted-foreground));
+		margin-top: 0.375rem;
+	}
+
+	.checkbox-toggle {
+		display: flex;
+		align-items: center;
+		gap: 0.625rem;
+		cursor: pointer;
+		padding: 0.5rem 0.75rem;
+		background: hsl(var(--input));
+		border: 1px solid hsl(var(--border));
+		border-radius: var(--radius);
+		transition: all 0.15s ease;
+	}
+
+	.checkbox-toggle:hover {
+		background: hsl(var(--muted));
+	}
+
+	.checkbox-toggle:has(input:checked) {
+		background: hsl(var(--primary) / 0.15);
+		border-color: hsl(var(--primary) / 0.5);
+	}
+
+	.checkbox-toggle input {
 		width: 1rem;
 		height: 1rem;
 		accent-color: hsl(var(--primary));
+		margin: 0;
+	}
+
+	.toggle-label {
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: hsl(var(--foreground));
 	}
 
 	.preview-section {
