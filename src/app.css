@@ -262,12 +262,13 @@
 	--slide-noise-opacity: 0.03;
 
 	/* Shadow depth system */
-	--shadow-elevation-low: 0 1px 2px hsl(260 30% 0% / 0.3),
-		0 2px 4px hsl(260 30% 0% / 0.2);
-	--shadow-elevation-medium: 0 4px 8px hsl(260 30% 0% / 0.4),
-		0 8px 16px hsl(260 30% 0% / 0.2), 0 0 40px hsl(270 50% 30% / 0.1);
-	--shadow-elevation-high: 0 8px 16px hsl(260 30% 0% / 0.5),
-		0 16px 32px hsl(260 30% 0% / 0.3), 0 0 60px hsl(270 50% 40% / 0.15);
+	--shadow-elevation-low: 0 1px 2px hsl(260 30% 0% / 0.3), 0 2px 4px hsl(260 30% 0% / 0.2);
+	--shadow-elevation-medium:
+		0 4px 8px hsl(260 30% 0% / 0.4), 0 8px 16px hsl(260 30% 0% / 0.2),
+		0 0 40px hsl(270 50% 30% / 0.1);
+	--shadow-elevation-high:
+		0 8px 16px hsl(260 30% 0% / 0.5), 0 16px 32px hsl(260 30% 0% / 0.3),
+		0 0 60px hsl(270 50% 40% / 0.15);
 
 	/* Bar/chart gradients */
 	--slide-bar-gradient: linear-gradient(180deg, hsl(270 50% 55%) 0%, hsl(280 40% 35%) 100%);
@@ -315,12 +316,13 @@
 	--slide-noise-opacity: 0.025;
 
 	/* Shadow depth system */
-	--shadow-elevation-low: 0 1px 2px hsl(200 30% 0% / 0.3),
-		0 2px 4px hsl(200 30% 0% / 0.2);
-	--shadow-elevation-medium: 0 4px 8px hsl(200 30% 0% / 0.4),
-		0 8px 16px hsl(200 30% 0% / 0.2), 0 0 40px hsl(175 60% 35% / 0.1);
-	--shadow-elevation-high: 0 8px 16px hsl(200 30% 0% / 0.5),
-		0 16px 32px hsl(200 30% 0% / 0.3), 0 0 60px hsl(175 60% 45% / 0.15);
+	--shadow-elevation-low: 0 1px 2px hsl(200 30% 0% / 0.3), 0 2px 4px hsl(200 30% 0% / 0.2);
+	--shadow-elevation-medium:
+		0 4px 8px hsl(200 30% 0% / 0.4), 0 8px 16px hsl(200 30% 0% / 0.2),
+		0 0 40px hsl(175 60% 35% / 0.1);
+	--shadow-elevation-high:
+		0 8px 16px hsl(200 30% 0% / 0.5), 0 16px 32px hsl(200 30% 0% / 0.3),
+		0 0 60px hsl(175 60% 45% / 0.15);
 
 	/* Bar/chart gradients */
 	--slide-bar-gradient: linear-gradient(180deg, hsl(175 65% 50%) 0%, hsl(195 50% 30%) 100%);
@@ -368,12 +370,13 @@
 	--slide-noise-opacity: 0.02;
 
 	/* Shadow depth system */
-	--shadow-elevation-low: 0 1px 2px hsl(30 30% 0% / 0.35),
-		0 2px 4px hsl(30 30% 0% / 0.25);
-	--shadow-elevation-medium: 0 4px 8px hsl(30 30% 0% / 0.45),
-		0 8px 16px hsl(30 30% 0% / 0.25), 0 0 40px hsl(42 60% 40% / 0.1);
-	--shadow-elevation-high: 0 8px 16px hsl(30 30% 0% / 0.5),
-		0 16px 32px hsl(30 30% 0% / 0.3), 0 0 60px hsl(42 60% 50% / 0.15);
+	--shadow-elevation-low: 0 1px 2px hsl(30 30% 0% / 0.35), 0 2px 4px hsl(30 30% 0% / 0.25);
+	--shadow-elevation-medium:
+		0 4px 8px hsl(30 30% 0% / 0.45), 0 8px 16px hsl(30 30% 0% / 0.25),
+		0 0 40px hsl(42 60% 40% / 0.1);
+	--shadow-elevation-high:
+		0 8px 16px hsl(30 30% 0% / 0.5), 0 16px 32px hsl(30 30% 0% / 0.3),
+		0 0 60px hsl(42 60% 50% / 0.15);
 
 	/* Bar/chart gradients */
 	--slide-bar-gradient: linear-gradient(180deg, hsl(42 65% 55%) 0%, hsl(35 50% 35%) 100%);
@@ -441,11 +444,15 @@
 
 /* Text glow effects */
 .text-glow-primary {
-	text-shadow: 0 0 20px hsl(var(--primary) / 0.5), 0 0 40px hsl(var(--primary) / 0.3);
+	text-shadow:
+		0 0 20px hsl(var(--primary) / 0.5),
+		0 0 40px hsl(var(--primary) / 0.3);
 }
 
 .text-glow-accent {
-	text-shadow: 0 0 20px hsl(var(--accent) / 0.5), 0 0 40px hsl(var(--accent) / 0.3);
+	text-shadow:
+		0 0 20px hsl(var(--accent) / 0.5),
+		0 0 40px hsl(var(--accent) / 0.3);
 }
 
 /* Gradient text utility */

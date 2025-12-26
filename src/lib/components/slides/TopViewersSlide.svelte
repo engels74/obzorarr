@@ -153,10 +153,7 @@
 						class:third={viewer.rank === 3}
 					>
 						{#if isTopThree && medal}
-							<div
-								class="medal-badge"
-								style="--medal-bg: {medal.bg}; --medal-glow: {medal.glow};"
-							>
+							<div class="medal-badge" style="--medal-bg: {medal.bg}; --medal-glow: {medal.glow};">
 								<span class="medal-rank">{viewer.rank}</span>
 							</div>
 						{:else}

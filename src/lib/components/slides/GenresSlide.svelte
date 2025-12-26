@@ -402,11 +402,7 @@
 		left: 0;
 		right: 0;
 		height: 40%;
-		background: linear-gradient(
-			180deg,
-			hsl(0 0% 100% / 0.25) 0%,
-			hsl(0 0% 100% / 0) 100%
-		);
+		background: linear-gradient(180deg, hsl(0 0% 100% / 0.25) 0%, hsl(0 0% 100% / 0) 100%);
 		border-radius: 5px 5px 0 0;
 		pointer-events: none;
 	}

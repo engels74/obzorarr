@@ -67,11 +67,7 @@
 		const animations: ReturnType<typeof animate>[] = [];
 
 		// Animate container
-		const containerAnim = animate(
-			container,
-			{ opacity: [0, 1] },
-			{ duration: 0.4, delay: 0.1 }
-		);
+		const containerAnim = animate(container, { opacity: [0, 1] }, { duration: 0.4, delay: 0.1 });
 		animations.push(containerAnim);
 
 		// Animate header
@@ -259,11 +255,14 @@
 		align-items: center;
 		justify-content: center;
 		padding: 2rem;
-		background: var(--slide-bg-gradient, linear-gradient(
-			180deg,
-			hsl(var(--primary-hue) 30% 8%) 0%,
-			hsl(var(--primary-hue) 25% 5%) 100%
-		));
+		background: var(
+			--slide-bg-gradient,
+			linear-gradient(
+				180deg,
+				hsl(var(--primary-hue) 30% 8%) 0%,
+				hsl(var(--primary-hue) 25% 5%) 100%
+			)
+		);
 		color: hsl(var(--foreground));
 		position: relative;
 		overflow: hidden;
@@ -407,11 +406,7 @@
 	/* Accent card (Percentile/Ranking) */
 	.stat-card.accent {
 		border-color: hsl(45 90% 50% / 0.4);
-		background: linear-gradient(
-			135deg,
-			hsl(45 90% 50% / 0.15) 0%,
-			hsl(45 90% 50% / 0.05) 100%
-		);
+		background: linear-gradient(135deg, hsl(45 90% 50% / 0.15) 0%, hsl(45 90% 50% / 0.05) 100%);
 		box-shadow:
 			var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.3)),
 			0 0 25px hsl(45 90% 50% / 0.12);
@@ -423,11 +418,7 @@
 	}
 
 	.stat-card.accent .stat-value {
-		background: linear-gradient(
-			180deg,
-			hsl(45 90% 55%) 0%,
-			hsl(35 85% 50%) 100%
-		);
+		background: linear-gradient(180deg, hsl(45 90% 55%) 0%, hsl(35 85% 50%) 100%);
 		-webkit-background-clip: text;
 		-webkit-text-fill-color: transparent;
 		background-clip: text;
@@ -501,7 +492,9 @@
 	}
 
 	.btn-primary:hover {
-		background: hsl(var(--primary-hue) var(--primary-saturation) calc(var(--primary-lightness) + 5%));
+		background: hsl(
+			var(--primary-hue) var(--primary-saturation) calc(var(--primary-lightness) + 5%)
+		);
 		box-shadow:
 			0 6px 20px hsl(var(--primary) / 0.45),
 			inset 0 1px 0 hsl(0 0% 100% / 0.2);

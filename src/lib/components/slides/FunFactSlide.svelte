@@ -75,7 +75,11 @@
 			const iconAnim = animate(
 				iconEl,
 				{
-					transform: ['scale(0) rotate(-180deg)', 'scale(1.15) rotate(15deg)', 'scale(1) rotate(0deg)'],
+					transform: [
+						'scale(0) rotate(-180deg)',
+						'scale(1.15) rotate(15deg)',
+						'scale(1) rotate(0deg)'
+					],
 					opacity: [0, 1, 1]
 				},
 				{
@@ -184,7 +188,8 @@
 	}
 
 	@keyframes float {
-		0%, 100% {
+		0%,
+		100% {
 			transform: translateY(0);
 		}
 		50% {

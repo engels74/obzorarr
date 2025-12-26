@@ -49,7 +49,11 @@
 		text-align: center;
 		background: var(
 			--slide-bg-gradient,
-			linear-gradient(135deg, hsl(var(--primary-hue) 30% 12%) 0%, hsl(var(--primary-hue) 20% 8%) 100%)
+			linear-gradient(
+				135deg,
+				hsl(var(--primary-hue) 30% 12%) 0%,
+				hsl(var(--primary-hue) 20% 8%) 100%
+			)
 		);
 		color: hsl(var(--foreground));
 		position: relative;
@@ -92,7 +96,12 @@
 
 	/* Highlight variant - adds subtle glow from top */
 	.variant-highlight::before {
-		background: radial-gradient(ellipse 60% 40% at 50% 0%, var(--slide-glow-color, hsl(var(--primary) / 0.2)) 0%, transparent 70%),
+		background:
+			radial-gradient(
+				ellipse 60% 40% at 50% 0%,
+				var(--slide-glow-color, hsl(var(--primary) / 0.2)) 0%,
+				transparent 70%
+			),
 			url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
 		opacity: 1;
 	}

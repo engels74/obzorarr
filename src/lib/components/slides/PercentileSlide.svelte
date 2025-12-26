@@ -189,7 +189,11 @@
 			hsl(var(--primary))
 		);
 		mask: radial-gradient(farthest-side, transparent calc(100% - 5px), black calc(100% - 4px));
-		-webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), black calc(100% - 4px));
+		-webkit-mask: radial-gradient(
+			farthest-side,
+			transparent calc(100% - 5px),
+			black calc(100% - 4px)
+		);
 		filter: blur(1px);
 		opacity: 0.7;
 	}
@@ -285,11 +289,7 @@
 
 	/* Gold gradient for top performer */
 	.top-performer .percentage {
-		background: linear-gradient(
-			180deg,
-			hsl(45 90% 55%) 0%,
-			hsl(35 85% 50%) 100%
-		);
+		background: linear-gradient(180deg, hsl(45 90% 55%) 0%, hsl(35 85% 50%) 100%);
 		-webkit-background-clip: text;
 		-webkit-text-fill-color: transparent;
 		background-clip: text;
@@ -341,7 +341,11 @@
 
 		.gradient-ring {
 			mask: radial-gradient(farthest-side, transparent calc(100% - 4px), black calc(100% - 3px));
-			-webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), black calc(100% - 3px));
+			-webkit-mask: radial-gradient(
+				farthest-side,
+				transparent calc(100% - 4px),
+				black calc(100% - 3px)
+			);
 		}
 
 		.stat-container {
@@ -405,7 +409,11 @@
 
 		.gradient-ring {
 			mask: radial-gradient(farthest-side, transparent calc(100% - 6px), black calc(100% - 5px));
-			-webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 6px), black calc(100% - 5px));
+			-webkit-mask: radial-gradient(
+				farthest-side,
+				transparent calc(100% - 6px),
+				black calc(100% - 5px)
+			);
 		}
 
 		.stat-container {

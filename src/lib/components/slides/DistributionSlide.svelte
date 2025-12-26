@@ -562,7 +562,10 @@
 
 	.bar {
 		width: 100%;
-		background: var(--slide-bar-gradient, linear-gradient(180deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.6) 100%));
+		background: var(
+			--slide-bar-gradient,
+			linear-gradient(180deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.6) 100%)
+		);
 		border-radius: 3px 3px 0 0;
 		transform-origin: bottom center;
 		min-height: 4px;
@@ -584,11 +587,7 @@
 		left: 0;
 		right: 0;
 		height: 40%;
-		background: linear-gradient(
-			180deg,
-			hsl(0 0% 100% / 0.2) 0%,
-			hsl(0 0% 100% / 0) 100%
-		);
+		background: linear-gradient(180deg, hsl(0 0% 100% / 0.2) 0%, hsl(0 0% 100% / 0) 100%);
 		border-radius: 3px 3px 0 0;
 		pointer-events: none;
 	}
@@ -603,7 +602,10 @@
 	}
 
 	.peak .bar {
-		background: var(--slide-peak-gradient, linear-gradient(180deg, hsl(var(--accent)) 0%, hsl(var(--accent) / 0.6) 100%));
+		background: var(
+			--slide-peak-gradient,
+			linear-gradient(180deg, hsl(var(--accent)) 0%, hsl(var(--accent) / 0.6) 100%)
+		);
 		box-shadow:
 			0 0 12px hsl(var(--accent) / 0.4),
 			inset 0 1px 0 hsl(0 0% 100% / 0.2);
