@@ -479,7 +479,14 @@
 		inset: 0;
 		width: 100%;
 		height: 100dvh;
-		background: var(--background, #0f0f0f);
+		background: var(
+			--slide-bg-gradient,
+			linear-gradient(
+				135deg,
+				hsl(var(--primary-hue) 30% 12%) 0%,
+				hsl(var(--primary-hue) 20% 8%) 100%
+			)
+		);
 		overflow: hidden;
 		outline: none;
 		touch-action: pan-y pinch-zoom;

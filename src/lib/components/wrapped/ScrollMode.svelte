@@ -258,7 +258,14 @@
 	.scroll-mode {
 		width: 100%;
 		min-height: 100vh;
-		background: var(--background, #0f0f0f);
+		background: var(
+			--slide-bg-gradient,
+			linear-gradient(
+				135deg,
+				hsl(var(--primary-hue) 30% 12%) 0%,
+				hsl(var(--primary-hue) 20% 8%) 100%
+			)
+		);
 		color: var(--foreground, white);
 		position: relative;
 	}
