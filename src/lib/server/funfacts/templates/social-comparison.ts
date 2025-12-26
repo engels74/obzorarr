@@ -29,8 +29,8 @@ export const SOCIAL_COMPARISON_TEMPLATES = defineTemplateCategory('social-compar
 		priority: 65
 	},
 	{
-		id: 'above-average-double',
-		factTemplate: '{Subject} watched more than twice the server average',
+		id: 'top-fifteen',
+		factTemplate: "{Subject}'re in the top 15% of viewers on this server",
 		comparisonTemplate: 'Clearly, {subject} take entertainment seriously!',
 		icon: '📈',
 		requiredStats: ['percentile'],

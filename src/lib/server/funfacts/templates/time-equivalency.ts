@@ -16,7 +16,7 @@ export const TIME_EQUIVALENCY_TEMPLATES = defineTemplateCategory('time-equivalen
 		comparisonTemplate: "That's equivalent to {flightCount} flights from New York to Tokyo!",
 		icon: '✈️',
 		requiredStats: ['hours'],
-		minThresholds: { hours: 14 } // At least one flight worth
+		minThresholds: { hours: 15 } // Ensures count > 1 (14 * 1.05 = 14.7)
 	},
 	{
 		id: 'lotr-marathon',
@@ -25,7 +25,7 @@ export const TIME_EQUIVALENCY_TEMPLATES = defineTemplateCategory('time-equivalen
 			'Could watch the entire extended Lord of the Rings trilogy {lotrCount} times!',
 		icon: '🧙',
 		requiredStats: ['hours'],
-		minThresholds: { hours: 12 } // At least one full marathon
+		minThresholds: { hours: 12 } // 12/11.4 = 1.05 rounds to 1.1 ✓
 	},
 	{
 		id: 'books-read',
@@ -33,7 +33,7 @@ export const TIME_EQUIVALENCY_TEMPLATES = defineTemplateCategory('time-equivalen
 		comparisonTemplate: 'In that time, {subject} could have read about {bookCount} novels',
 		icon: '📚',
 		requiredStats: ['hours'],
-		minThresholds: { hours: 6 } // At least one book
+		minThresholds: { hours: 9 } // Ensures count > 1 (9/6 = 1.5 rounds to 2)
 	},
 	{
 		id: 'walk-distance',
@@ -41,7 +41,7 @@ export const TIME_EQUIVALENCY_TEMPLATES = defineTemplateCategory('time-equivalen
 		comparisonTemplate: '{Subject} could have walked {walkMiles} miles in that time!',
 		icon: '🚶',
 		requiredStats: ['hours'],
-		minThresholds: { hours: 3 } // At least 9 miles
+		minThresholds: { hours: 3 } // 3 * 3mph = 9 miles ✓
 	},
 	{
 		id: 'sleep-cycles',
@@ -49,7 +49,7 @@ export const TIME_EQUIVALENCY_TEMPLATES = defineTemplateCategory('time-equivalen
 		comparisonTemplate: "That's {sleepCycles} complete sleep cycles of entertainment!",
 		icon: '😴',
 		requiredStats: ['hours'],
-		minThresholds: { hours: 3 } // At least 2 sleep cycles
+		minThresholds: { hours: 3 } // 3/1.5 = 2 cycles ✓
 	},
 	{
 		id: 'mcu-marathon',
@@ -57,7 +57,7 @@ export const TIME_EQUIVALENCY_TEMPLATES = defineTemplateCategory('time-equivalen
 		comparisonTemplate: "That's like binging the entire MCU Infinity Saga {mcuCount} times over!",
 		icon: '🦸',
 		requiredStats: ['hours'],
-		minThresholds: { hours: 50 } // At least one MCU marathon
+		minThresholds: { hours: 53 } // Ensures count > 1 (50 * 1.05 = 52.5)
 	},
 	{
 		id: 'harry-potter',
@@ -65,7 +65,7 @@ export const TIME_EQUIVALENCY_TEMPLATES = defineTemplateCategory('time-equivalen
 		comparisonTemplate: 'Could power through all 8 Harry Potter films {hpCount} times!',
 		icon: '⚡',
 		requiredStats: ['hours'],
-		minThresholds: { hours: 20 } // At least one HP marathon
+		minThresholds: { hours: 21 } // Ensures count > 1 (19.7 * 1.05 = 20.7)
 	},
 	{
 		id: 'coffee-breaks',
@@ -73,7 +73,7 @@ export const TIME_EQUIVALENCY_TEMPLATES = defineTemplateCategory('time-equivalen
 		comparisonTemplate: "That's enough time for {coffeeBreaks} coffee breaks!",
 		icon: '☕',
 		requiredStats: ['hours'],
-		minThresholds: { hours: 1 } // Very low threshold
+		minThresholds: { hours: 1 } // 1/0.25 = 4 breaks ✓
 	},
 	{
 		id: 'commute-time',
@@ -81,7 +81,7 @@ export const TIME_EQUIVALENCY_TEMPLATES = defineTemplateCategory('time-equivalen
 		comparisonTemplate: 'Would cover {commuteTrips} average work commutes!',
 		icon: '🚗',
 		requiredStats: ['hours'],
-		minThresholds: { hours: 1 } // Low threshold
+		minThresholds: { hours: 1 } // 1/0.5 = 2 commutes ✓
 	},
 	{
 		id: 'podcast-episodes',
@@ -89,6 +89,6 @@ export const TIME_EQUIVALENCY_TEMPLATES = defineTemplateCategory('time-equivalen
 		comparisonTemplate: "That's like listening to {podcastEpisodes} podcast episodes!",
 		icon: '🎙️',
 		requiredStats: ['hours'],
-		minThresholds: { hours: 1 } // Low threshold
+		minThresholds: { hours: 2 } // Ensures count > 1 (2/0.75 = 2.67 rounds to 3)
 	}
 ]);

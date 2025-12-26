@@ -210,6 +210,14 @@ function getPronounReplacements(scope: 'user' | 'server'): Record<string, string
 // =============================================================================
 
 /**
+ * Pluralize a word based on count
+ * Returns singular form if count is 1, plural form otherwise
+ */
+function pluralize(count: number, singular: string, plural: string): string {
+	return count === 1 ? singular : plural;
+}
+
+/**
  * Interpolate template with context values
  */
 export function interpolateTemplate(template: string, context: FactGenerationContext): string {

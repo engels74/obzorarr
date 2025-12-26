@@ -123,7 +123,12 @@ export function buildUserPrompt(context: FactGenerationContext, count: number): 
 
 	// Rankings
 	parts.push('## Rankings');
-	parts.push(`- Percentile rank: Top ${Math.round(100 - context.percentile)}% of viewers`);
+	const topPercent = Math.round(100 - context.percentile);
+	if (topPercent <= 50) {
+		parts.push(`- Percentile rank: Top ${topPercent}% of viewers`);
+	} else {
+		parts.push(`- Percentile rank: Watched more than ${Math.round(context.percentile)}% of users`);
+	}
 	parts.push('');
 
 	// Temporal bookends
