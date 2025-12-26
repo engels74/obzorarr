@@ -2,7 +2,7 @@
 	import { animate, stagger } from 'motion';
 	import { prefersReducedMotion } from 'svelte/motion';
 	import type { UserStats, ServerStats } from '$lib/stats/types';
-	import { isUserStats } from '$lib/stats/types';
+	import { isUserStats, isServerStats } from '$lib/stats/types';
 	import { SPRING_PRESETS, STAGGER_PRESETS, DELAY_PRESETS } from '$lib/utils/animation-presets';
 
 	/**
@@ -31,6 +31,7 @@
 	const topShow = $derived(stats.topShows[0]?.title ?? null);
 	const topGenre = $derived(stats.topGenres[0]?.title ?? null);
 	const percentile = $derived(isUserStats(stats) ? stats.percentileRank : null);
+	const totalUsers = $derived(isServerStats(stats) ? stats.totalUsers : null);
 	const bingeHours = $derived(
 		stats.longestBinge ? Math.round(stats.longestBinge.totalMinutes / 60) : null
 	);
@@ -171,6 +172,15 @@
 				<span class="stat-icon">&#127942;</span>
 				<span class="stat-value">Top {Math.max(1, Math.round(100 - percentile))}%</span>
 				<span class="stat-label">Server Ranking</span>
+			</div>
+		{/if}
+
+		<!-- Active Viewers (Server only) -->
+		{#if totalUsers !== null}
+			<div bind:this={statCards[4]} class="stat-card accent">
+				<span class="stat-icon">&#128101;</span>
+				<span class="stat-value">{totalUsers.toLocaleString()}</span>
+				<span class="stat-label">Active Viewers</span>
 			</div>
 		{/if}
 
