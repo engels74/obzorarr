@@ -70,17 +70,13 @@
 		);
 		animations.push(containerAnim);
 
-		// Animate icon with dramatic bounce (spring physics creates natural overshoot)
+		// Animate icon with spring bounce (bouncy preset creates natural overshoot)
 		if (iconEl) {
 			const iconAnim = animate(
 				iconEl,
 				{
-					transform: [
-						'scale(0) rotate(-180deg)',
-						'scale(1.15) rotate(15deg)',
-						'scale(1) rotate(0deg)'
-					],
-					opacity: [0, 1, 1]
+					transform: ['scale(0) rotate(-180deg)', 'scale(1) rotate(0deg)'],
+					opacity: [0, 1]
 				},
 				{
 					type: 'spring',

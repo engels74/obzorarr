@@ -91,8 +91,8 @@
 			const statAnim = animate(
 				statEl,
 				{
-					transform: ['scale(0.7)', 'scale(1.02)', 'scale(1)'],
-					opacity: [0, 1, 1]
+					transform: ['scale(0.7)', 'scale(1)'],
+					opacity: [0, 1]
 				},
 				{ type: 'spring', ...SPRING_PRESETS.bouncy, delay: DELAY_PRESETS.short }
 			);
