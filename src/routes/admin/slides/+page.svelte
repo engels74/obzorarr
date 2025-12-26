@@ -62,13 +62,53 @@
 	let draggedIndex = $state<number | null>(null);
 	let dragOverIndex = $state<number | null>(null);
 
-	// Derived sorted configs
-	const sortedConfigs = $derived([...data.configs].sort((a, b) => a.sortOrder - b.sortOrder));
+	// Unified slide item type for the combined list
+	type UnifiedSlideItem =
+		| { kind: 'builtin'; slideType: string; enabled: boolean; sortOrder: number }
+		| {
+				kind: 'custom';
+				id: number;
+				title: string;
+				enabled: boolean;
+				sortOrder: number;
+				year: number | null;
+				content: string;
+				renderedHtml?: string;
+		  };
 
-	// Get configs for built-in slides only (not custom)
-	const builtInConfigs = $derived(
-		sortedConfigs.filter((c) => DEFAULT_SLIDE_ORDER.includes(c.slideType as SlideType))
-	);
+	// Combine built-in slides and custom slides into a unified sorted list
+	const unifiedSlides = $derived.by(() => {
+		const items: UnifiedSlideItem[] = [];
+
+		// Add built-in slides (only those in DEFAULT_SLIDE_ORDER)
+		for (const config of data.configs) {
+			if (DEFAULT_SLIDE_ORDER.includes(config.slideType as SlideType)) {
+				items.push({
+					kind: 'builtin',
+					slideType: config.slideType,
+					enabled: config.enabled,
+					sortOrder: config.sortOrder
+				});
+			}
+		}
+
+		// Add custom slides
+		for (const custom of data.customSlides) {
+			items.push({
+				kind: 'custom',
+				id: custom.id,
+				title: custom.title,
+				enabled: custom.enabled,
+				sortOrder: custom.sortOrder,
+				year: custom.year,
+				content: custom.content,
+				renderedHtml: custom.renderedHtml
+			});
+		}
+
+		// Sort by sortOrder
+		return items.sort((a, b) => a.sortOrder - b.sortOrder);
+	});
 
 	// Open editor for new slide
 	function openNewEditor() {
@@ -115,12 +155,21 @@
 		dragOverIndex = null;
 	}
 
-	// Handle drop - reorder slides
+	// Handle drop - reorder unified slides
 	function handleDrop(event: DragEvent, dropIndex: number) {
 		event.preventDefault();
 		if (draggedIndex === null || draggedIndex === dropIndex) return;
 
-		const newOrder = [...builtInConfigs.map((c) => c.slideType)];
+		// Create new order from unified slides
+		const newOrder = unifiedSlides.map((item) => {
+			if (item.kind === 'builtin') {
+				return { type: 'builtin' as const, id: item.slideType };
+			} else {
+				return { type: 'custom' as const, id: item.id };
+			}
+		});
+
+		// Move the dragged item to the new position
 		const [moved] = newOrder.splice(draggedIndex, 1);
 		if (moved) {
 			newOrder.splice(dropIndex, 0, moved);
@@ -134,6 +183,12 @@
 
 		handleDragEnd();
 	}
+
+	// Get custom slide data for editing
+	function getCustomSlideForEdit(item: UnifiedSlideItem) {
+		if (item.kind !== 'custom') return null;
+		return data.customSlides.find((s) => s.id === item.id) ?? null;
+	}
 </script>
 
 <div class="admin-container">
@@ -144,8 +199,30 @@
 
 	<!-- Slide Order Section -->
 	<section class="section">
-		<h2>Slide Order</h2>
-		<p class="section-description">Drag and drop to reorder. Toggle to enable or disable slides.</p>
+		<div class="section-header">
+			<div>
+				<h2>Slide Order</h2>
+				<p class="section-description">
+					Drag and drop to reorder. Toggle to enable or disable slides.
+				</p>
+			</div>
+			<button type="button" class="add-button" onclick={openNewEditor}>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					width="16"
+					height="16"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
+				>
+					<path d="M12 5v14M5 12h14" />
+				</svg>
+				Add Custom Slide
+			</button>
+		</div>
 
 		<!-- Hidden form for reordering -->
 		<form id="reorder-form" method="POST" action="?/reorder" use:enhance>
@@ -153,11 +230,12 @@
 		</form>
 
 		<ul class="slide-list" role="list">
-			{#each builtInConfigs as config, index (config.slideType)}
+			{#each unifiedSlides as item, index (item.kind === 'builtin' ? item.slideType : `custom-${item.id}`)}
 				<li
 					class="slide-item"
 					class:dragging={draggedIndex === index}
 					class:drag-over={dragOverIndex === index}
+					class:is-custom={item.kind === 'custom'}
 					draggable="true"
 					ondragstart={() => handleDragStart(index)}
 					ondragover={(e) => handleDragOver(e, index)}
@@ -167,73 +245,106 @@
 				>
 					<span class="drag-handle" aria-hidden="true">⋮⋮</span>
 
-					<span class="slide-name">
-						{SLIDE_NAMES[config.slideType as SlideType] ?? config.slideType}
-					</span>
+					{#if item.kind === 'builtin'}
+						<span class="slide-name">
+							{SLIDE_NAMES[item.slideType as SlideType] ?? item.slideType}
+						</span>
 
-					<form method="POST" action="?/toggleSlide" use:enhance class="toggle-form">
-						<input type="hidden" name="slideType" value={config.slideType} />
-						<button
-							type="submit"
-							class="toggle-button"
-							class:enabled={config.enabled}
-							aria-label={config.enabled ? 'Disable slide' : 'Enable slide'}
-						>
-							{config.enabled ? 'Enabled' : 'Disabled'}
-						</button>
-					</form>
-				</li>
-			{/each}
-		</ul>
-	</section>
-
-	<!-- Custom Slides Section -->
-	<section class="section">
-		<div class="section-header">
-			<h2>Custom Slides</h2>
-			<button type="button" class="add-button" onclick={openNewEditor}> + Add Custom Slide </button>
-		</div>
-		<p class="section-description">Create custom slides with Markdown content.</p>
-
-		{#if data.customSlides.length === 0}
-			<p class="empty-message">No custom slides yet. Create one to get started.</p>
-		{:else}
-			<ul class="custom-slide-list" role="list">
-				{#each data.customSlides as slide (slide.id)}
-					<li class="custom-slide-item" role="listitem">
-						<div class="custom-slide-info">
-							<h3 class="custom-slide-title">{slide.title}</h3>
-							<span class="custom-slide-meta">
-								{#if slide.year}Year: {slide.year}{/if}
-								<span class="status-badge" class:enabled={slide.enabled}>
-									{slide.enabled ? 'Enabled' : 'Disabled'}
-								</span>
-							</span>
+						<form method="POST" action="?/toggleSlide" use:enhance class="toggle-form">
+							<input type="hidden" name="slideType" value={item.slideType} />
+							<button
+								type="submit"
+								class="toggle-button"
+								class:enabled={item.enabled}
+								aria-label={item.enabled ? 'Disable slide' : 'Enable slide'}
+							>
+								{item.enabled ? 'Enabled' : 'Disabled'}
+							</button>
+						</form>
+					{:else}
+						<div class="slide-name-group">
+							<span class="slide-name">{item.title}</span>
+							<span class="custom-badge">Custom</span>
+							{#if item.year}
+								<span class="year-badge">{item.year}</span>
+							{/if}
 						</div>
 
-						<div class="custom-slide-actions">
-							<button type="button" class="edit-button" onclick={() => openEditEditor(slide)}>
-								Edit
+						<div class="slide-actions">
+							<button
+								type="button"
+								class="action-button edit-action"
+								onclick={() => {
+									const slide = getCustomSlideForEdit(item);
+									if (slide) openEditEditor(slide);
+								}}
+								aria-label="Edit custom slide"
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									width="14"
+									height="14"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+									<path d="m15 5 4 4" />
+								</svg>
 							</button>
 
-							<form method="POST" action="?/deleteCustom" use:enhance>
-								<input type="hidden" name="id" value={slide.id} />
+							<form method="POST" action="?/toggleCustomSlide" use:enhance class="toggle-form">
+								<input type="hidden" name="id" value={item.id} />
 								<button
 									type="submit"
-									class="delete-button"
+									class="toggle-button"
+									class:enabled={item.enabled}
+									aria-label={item.enabled ? 'Disable slide' : 'Enable slide'}
+								>
+									{item.enabled ? 'Enabled' : 'Disabled'}
+								</button>
+							</form>
+
+							<form method="POST" action="?/deleteCustom" use:enhance class="delete-form">
+								<input type="hidden" name="id" value={item.id} />
+								<button
+									type="submit"
+									class="action-button delete-action"
 									onclick={(e) => {
 										if (!confirm('Delete this custom slide?')) {
 											e.preventDefault();
 										}
 									}}
+									aria-label="Delete custom slide"
 								>
-									Delete
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										width="14"
+										height="14"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									>
+										<path d="M3 6h18" />
+										<path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+										<path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+									</svg>
 								</button>
 							</form>
 						</div>
-					</li>
-				{/each}
-			</ul>
+					{/if}
+				</li>
+			{/each}
+		</ul>
+
+		{#if unifiedSlides.length === 0}
+			<p class="empty-message">No slides configured yet.</p>
 		{/if}
 	</section>
 
@@ -471,11 +582,16 @@
 	.section-header {
 		display: flex;
 		justify-content: space-between;
-		align-items: center;
-		margin-bottom: 0.5rem;
+		align-items: flex-start;
+		gap: 1rem;
+		margin-bottom: 1rem;
 	}
 
 	.section-header h2 {
+		margin: 0 0 0.25rem;
+	}
+
+	.section-header .section-description {
 		margin: 0;
 	}
 
@@ -500,7 +616,11 @@
 		border-radius: var(--radius);
 		margin-bottom: 0.5rem;
 		cursor: grab;
-		transition: background 0.15s ease;
+		transition:
+			background 0.15s ease,
+			border-color 0.15s ease,
+			box-shadow 0.15s ease;
+		border-left: 3px solid transparent;
 	}
 
 	.slide-item:hover {
@@ -513,6 +633,21 @@
 
 	.slide-item.drag-over {
 		border: 2px dashed hsl(var(--primary));
+		border-left: 3px solid hsl(var(--primary));
+	}
+
+	/* Custom slide styling with distinct visual indicator */
+	.slide-item.is-custom {
+		border-left: 3px solid hsl(280 65% 60%);
+		background: linear-gradient(
+			90deg,
+			hsl(280 65% 60% / 0.08) 0%,
+			hsl(var(--secondary)) 100%
+		);
+	}
+
+	.slide-item.is-custom:hover {
+		background: linear-gradient(90deg, hsl(280 65% 60% / 0.12) 0%, hsl(var(--muted)) 100%);
 	}
 
 	.drag-handle {
@@ -520,11 +655,86 @@
 		font-size: 1.25rem;
 		cursor: grab;
 		user-select: none;
+		flex-shrink: 0;
 	}
 
 	.slide-name {
 		flex: 1;
 		font-weight: 500;
+	}
+
+	.slide-name-group {
+		flex: 1;
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+	}
+
+	.custom-badge {
+		display: inline-flex;
+		align-items: center;
+		padding: 0.125rem 0.5rem;
+		background: hsl(280 65% 60% / 0.2);
+		color: hsl(280 65% 75%);
+		border-radius: 9999px;
+		font-size: 0.625rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+
+	.year-badge {
+		display: inline-flex;
+		align-items: center;
+		padding: 0.125rem 0.375rem;
+		background: hsl(var(--muted));
+		color: hsl(var(--muted-foreground));
+		border-radius: var(--radius);
+		font-size: 0.625rem;
+		font-weight: 500;
+	}
+
+	.slide-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.375rem;
+	}
+
+	.action-button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 28px;
+		height: 28px;
+		padding: 0;
+		background: hsl(var(--muted));
+		border: 1px solid hsl(var(--border));
+		border-radius: var(--radius);
+		color: hsl(var(--muted-foreground));
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.action-button:hover {
+		background: hsl(var(--secondary));
+		color: hsl(var(--foreground));
+	}
+
+	.action-button.edit-action:hover {
+		background: hsl(var(--primary));
+		color: hsl(var(--primary-foreground));
+		border-color: hsl(var(--primary));
+	}
+
+	.action-button.delete-action:hover {
+		background: hsl(var(--destructive));
+		color: hsl(var(--destructive-foreground));
+		border-color: hsl(var(--destructive));
+	}
+
+	.delete-form {
+		display: contents;
 	}
 
 	.toggle-form {
@@ -554,101 +764,35 @@
 	}
 
 	.add-button {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
 		padding: 0.5rem 1rem;
 		background: hsl(var(--primary));
 		color: hsl(var(--primary-foreground));
 		border: none;
 		border-radius: var(--radius);
 		font-weight: 500;
+		font-size: 0.875rem;
 		cursor: pointer;
-		transition: opacity 0.15s ease;
+		transition: all 0.15s ease;
+		white-space: nowrap;
+		flex-shrink: 0;
 	}
 
 	.add-button:hover {
 		opacity: 0.9;
+		transform: translateY(-1px);
+	}
+
+	.add-button svg {
+		flex-shrink: 0;
 	}
 
 	.empty-message {
 		color: hsl(var(--muted-foreground));
 		text-align: center;
 		padding: 2rem;
-	}
-
-	.custom-slide-list {
-		list-style: none;
-		padding: 0;
-		margin: 0;
-	}
-
-	.custom-slide-item {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: 1rem;
-		background: hsl(var(--secondary));
-		border-radius: var(--radius);
-		margin-bottom: 0.5rem;
-	}
-
-	.custom-slide-info {
-		flex: 1;
-	}
-
-	.custom-slide-title {
-		font-size: 1rem;
-		font-weight: 600;
-		margin: 0 0 0.25rem;
-	}
-
-	.custom-slide-meta {
-		font-size: 0.75rem;
-		color: hsl(var(--muted-foreground));
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.status-badge {
-		padding: 0.125rem 0.375rem;
-		border-radius: 0.25rem;
-		background: hsl(var(--muted));
-		font-size: 0.625rem;
-		text-transform: uppercase;
-		font-weight: 600;
-	}
-
-	.status-badge.enabled {
-		background: hsl(var(--primary) / 0.2);
-		color: hsl(var(--primary));
-	}
-
-	.custom-slide-actions {
-		display: flex;
-		gap: 0.5rem;
-	}
-
-	.edit-button,
-	.delete-button {
-		padding: 0.375rem 0.75rem;
-		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius);
-		background: hsl(var(--muted));
-		color: hsl(var(--foreground));
-		font-size: 0.75rem;
-		cursor: pointer;
-		transition: all 0.15s ease;
-	}
-
-	.edit-button:hover {
-		background: hsl(var(--primary));
-		color: hsl(var(--primary-foreground));
-		border-color: hsl(var(--primary));
-	}
-
-	.delete-button:hover {
-		background: hsl(var(--destructive));
-		color: hsl(var(--destructive-foreground));
-		border-color: hsl(var(--destructive));
 	}
 
 	/* Modal Styles */

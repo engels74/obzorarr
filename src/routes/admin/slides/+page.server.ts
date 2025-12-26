@@ -13,7 +13,8 @@ import {
 	createCustomSlide,
 	updateCustomSlide,
 	deleteCustomSlide,
-	getNextSortOrder
+	getNextSortOrder,
+	toggleCustomSlide
 } from '$lib/server/slides/custom.service';
 import { renderMarkdownSync } from '$lib/server/slides/renderer';
 import type { SlideType } from '$lib/components/slides/types';
@@ -92,7 +93,10 @@ export const actions: Actions = {
 	},
 
 	/**
-	 * Reorder slides
+	 * Reorder slides - supports unified ordering of built-in and custom slides
+	 *
+	 * Handles the new unified format: [{ type: 'builtin' | 'custom', id: string | number }]
+	 * Both built-in and custom slides share the same global sortOrder space.
 	 */
 	reorder: async ({ request }) => {
 		const formData = await request.formData();
@@ -103,20 +107,74 @@ export const actions: Actions = {
 		}
 
 		try {
-			const order = JSON.parse(orderJson) as string[];
+			const order = JSON.parse(orderJson) as Array<{
+				type: 'builtin' | 'custom';
+				id: string | number;
+			}>;
 
-			// Validate each slide type
-			for (const type of order) {
-				const parsed = SlideTypeSchema.safeParse(type);
-				if (!parsed.success) {
-					return fail(400, { error: `Invalid slide type: ${type}` });
+			// Process each item and update its sortOrder to match its position in the array
+			const builtInUpdates: Array<{ type: SlideType; sortOrder: number }> = [];
+			const customSlideUpdates: Array<{ id: number; sortOrder: number }> = [];
+
+			for (let i = 0; i < order.length; i++) {
+				const item = order[i];
+				if (!item) continue;
+
+				if (item.type === 'builtin') {
+					// Validate the slide type
+					const parsed = SlideTypeSchema.safeParse(item.id);
+					if (!parsed.success) {
+						return fail(400, { error: `Invalid slide type: ${item.id}` });
+					}
+					builtInUpdates.push({ type: item.id as SlideType, sortOrder: i });
+				} else if (item.type === 'custom') {
+					// Custom slide - store its new sort order
+					const customId = typeof item.id === 'string' ? parseInt(item.id, 10) : item.id;
+					if (isNaN(customId)) {
+						return fail(400, { error: `Invalid custom slide ID: ${item.id}` });
+					}
+					customSlideUpdates.push({ id: customId, sortOrder: i });
 				}
 			}
 
-			await reorderSlides(order as SlideType[]);
+			// Update built-in slides with their global sort orders
+			for (const update of builtInUpdates) {
+				await updateSlideConfig(update.type, { sortOrder: update.sortOrder });
+			}
+
+			// Update custom slides with their global sort orders
+			for (const update of customSlideUpdates) {
+				await updateCustomSlide(update.id, { sortOrder: update.sortOrder });
+			}
+
 			return { success: true };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to reorder slides';
+			return fail(500, { error: message });
+		}
+	},
+
+	/**
+	 * Toggle a custom slide's enabled state
+	 */
+	toggleCustomSlide: async ({ request }) => {
+		const formData = await request.formData();
+		const idStr = formData.get('id');
+
+		if (!idStr) {
+			return fail(400, { error: 'Missing slide ID' });
+		}
+
+		const id = parseInt(idStr as string, 10);
+		if (isNaN(id)) {
+			return fail(400, { error: 'Invalid slide ID' });
+		}
+
+		try {
+			await toggleCustomSlide(id);
+			return { success: true };
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to toggle custom slide';
 			return fail(500, { error: message });
 		}
 	},
