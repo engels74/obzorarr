@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import {
 		StoryMode,
 		ScrollMode,
@@ -98,7 +99,7 @@
 	 * Handle return home from summary
 	 */
 	function handleHome(): void {
-		window.location.href = '/';
+		goto('/');
 	}
 
 	/**
