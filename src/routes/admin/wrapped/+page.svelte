@@ -68,10 +68,10 @@
 				<span class="config-desc">Reorder, enable/disable, and create custom slides</span>
 			</a>
 
-			<a href="/admin/users" class="config-card">
+			<a href="/admin/settings?tab=privacy" class="config-card">
 				<span class="config-icon">&#9787;</span>
 				<span class="config-label">Share Settings</span>
-				<span class="config-desc">Manage user sharing permissions</span>
+				<span class="config-desc">Configure sharing defaults and privacy</span>
 			</a>
 
 			<a href="/admin/settings" class="config-card">

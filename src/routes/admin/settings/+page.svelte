@@ -1,7 +1,25 @@
 <script lang="ts">
 	import { enhance, deserialize } from '$app/forms';
+	import { page } from '$app/stores';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import * as Tabs from '$lib/components/ui/tabs';
+
+	// Valid tab values
+	const validTabs = ['connections', 'appearance', 'privacy', 'data', 'system'] as const;
+	type TabValue = (typeof validTabs)[number];
+
+	// Get initial tab from URL query parameter
+	function getInitialTab(): TabValue {
+		if (typeof window === 'undefined') return 'connections';
+		const urlTab = $page.url.searchParams.get('tab');
+		if (urlTab && validTabs.includes(urlTab as TabValue)) {
+			return urlTab as TabValue;
+		}
+		return 'connections';
+	}
+
+	// Active tab state
+	let activeTab = $state<TabValue>(getInitialTab());
 	import { handleFormToast } from '$lib/utils/form-toast';
 	import type { PageData, ActionData } from './$types';
 
@@ -268,7 +286,7 @@
 		<p class="subtitle">Configure application settings</p>
 	</header>
 
-	<Tabs.Root value="connections" class="settings-tabs">
+	<Tabs.Root bind:value={activeTab} class="settings-tabs">
 		<Tabs.List class="tabs-list">
 			<Tabs.Trigger value="connections">Connections</Tabs.Trigger>
 			<Tabs.Trigger value="appearance">Appearance</Tabs.Trigger>

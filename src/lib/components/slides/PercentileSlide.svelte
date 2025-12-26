@@ -79,12 +79,12 @@
 		);
 		animations.push(containerAnim);
 
-		// Animate number with dramatic bounce
+		// Animate number with dramatic bounce (spring physics creates natural overshoot)
 		const numberAnim = animate(
 			numberEl,
 			{
-				transform: ['scale(0) rotate(-10deg)', 'scale(1.08) rotate(2deg)', 'scale(1) rotate(0deg)'],
-				opacity: [0, 1, 1]
+				transform: ['scale(0) rotate(-10deg)', 'scale(1) rotate(0deg)'],
+				opacity: [0, 1]
 			},
 			{
 				type: 'spring',

@@ -122,12 +122,12 @@
 			{ type: 'spring', ...SPRING_PRESETS.snappy }
 		);
 
-		// Animate number with scale and slight rotation for drama
+		// Animate number with scale (spring physics creates natural overshoot)
 		const numberAnim = animate(
 			numberEl,
 			{
-				transform: ['scale(0.6)', 'scale(1.02)', 'scale(1)'],
-				opacity: [0, 1, 1]
+				transform: ['scale(0.6)', 'scale(1)'],
+				opacity: [0, 1]
 			},
 			{
 				type: 'spring',

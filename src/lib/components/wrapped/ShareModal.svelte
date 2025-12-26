@@ -283,7 +283,7 @@
 		<!-- Advanced Options Link (admin only) -->
 		{#if isAdmin}
 			<div class="advanced-section">
-				<a href="/admin/users" class="advanced-link">
+				<a href="/admin/settings?tab=privacy" class="advanced-link">
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						width="14"
