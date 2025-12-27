@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { getUserCount } from '$lib/server/admin/users.service';
-import { getPlayHistoryCount, getLastSuccessfulSync } from '$lib/server/sync/service';
+import { getPlayHistoryCount, getLastSuccessfulSync, isSyncRunning } from '$lib/server/sync/service';
 import { getSchedulerStatus } from '$lib/server/sync/scheduler';
 import { calculateServerStats } from '$lib/server/stats/engine';
 
@@ -17,13 +17,15 @@ export const load: PageServerLoad = async () => {
 	const year = new Date().getFullYear();
 
 	// Load all dashboard data in parallel
-	const [userCount, historyCount, lastSync, schedulerStatus, serverStats] = await Promise.all([
-		getUserCount(),
-		getPlayHistoryCount(),
-		getLastSuccessfulSync(),
-		getSchedulerStatus(),
-		calculateServerStats(year, { cacheTtlSeconds: 3600 }).catch(() => null)
-	]);
+	const [userCount, historyCount, lastSync, schedulerStatus, serverStats, isRunning] =
+		await Promise.all([
+			getUserCount(),
+			getPlayHistoryCount(),
+			getLastSuccessfulSync(),
+			getSchedulerStatus(),
+			calculateServerStats(year, { cacheTtlSeconds: 3600 }).catch(() => null),
+			isSyncRunning()
+		]);
 
 	return {
 		year,
@@ -52,6 +54,7 @@ export const load: PageServerLoad = async () => {
 					totalWatchTimeMinutes: serverStats.totalWatchTimeMinutes,
 					totalPlays: serverStats.totalPlays
 				}
-			: null
+			: null,
+		isRunning
 	};
 };

@@ -15,6 +15,7 @@
 	import AlertCircle from '@lucide/svelte/icons/alert-circle';
 	import PauseCircle from '@lucide/svelte/icons/pause-circle';
 	import Circle from '@lucide/svelte/icons/circle';
+	import Loader from '@lucide/svelte/icons/loader';
 
 	/**
 	 * Admin Dashboard
@@ -166,20 +167,27 @@
 				<div class="sync-row">
 					<span class="sync-label">Last Sync</span>
 					<div class="sync-value">
-						<span>{formatRelativeTime(data.lastSync?.completedAt ?? null)}</span>
-						{#if data.lastSync}
-							<span
-								class="status-badge"
-								class:success={lastSyncStatus === 'completed'}
-								class:error={lastSyncStatus === 'failed'}
-							>
-								{#if lastSyncStatus === 'completed'}
-									<CheckCircle class="h-3 w-3" />
-								{:else if lastSyncStatus === 'failed'}
-									<AlertCircle class="h-3 w-3" />
-								{/if}
-								{data.lastSync.status}
+						{#if data.isRunning}
+							<span class="status-badge syncing">
+								<Loader class="h-3 w-3 animate-spin" />
+								Syncing
 							</span>
+						{:else}
+							<span>{formatRelativeTime(data.lastSync?.completedAt ?? null)}</span>
+							{#if data.lastSync}
+								<span
+									class="status-badge"
+									class:success={lastSyncStatus === 'completed'}
+									class:error={lastSyncStatus === 'failed'}
+								>
+									{#if lastSyncStatus === 'completed'}
+										<CheckCircle class="h-3 w-3" />
+									{:else if lastSyncStatus === 'failed'}
+										<AlertCircle class="h-3 w-3" />
+									{/if}
+									{data.lastSync.status}
+								</span>
+							{/if}
 						{/if}
 					</div>
 				</div>
@@ -643,6 +651,12 @@
 		background: hsl(0 60% 25% / 0.5);
 		color: hsl(0 70% 70%);
 		border: 1px solid hsl(0 50% 35% / 0.5);
+	}
+
+	.status-badge.syncing {
+		background: hsl(200 70% 25% / 0.5);
+		color: hsl(200 80% 70%);
+		border: 1px solid hsl(200 60% 40% / 0.5);
 	}
 
 	.status-indicator {
