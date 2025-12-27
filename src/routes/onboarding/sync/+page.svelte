@@ -83,15 +83,9 @@
 		);
 	});
 
-	// Connect to SSE when sync starts
-	$effect(() => {
-		if (!browser) return;
-		if (!isRunning && !data.syncRunning) return;
-
-		// Connect to public SSE endpoint (doesn't require admin auth)
-		eventSource = new EventSource('/api/sync/status/stream');
-
-		eventSource.onmessage = (event) => {
+	// SSE connection helper with reconnection support
+	function setupEventSource(es: EventSource) {
+		es.onmessage = (event) => {
 			try {
 				const eventData = JSON.parse(event.data);
 
@@ -139,10 +133,30 @@
 			}
 		};
 
-		eventSource.onerror = () => {
-			// Connection lost - don't change status, just log
-			console.warn('SSE connection lost, reconnecting...');
+		es.onerror = () => {
+			// Connection lost - attempt reconnection after delay
+			console.warn('SSE connection lost, attempting reconnect...');
+			es.close();
+			eventSource = null;
+
+			// Attempt to reconnect after 2 seconds if sync should still be running
+			setTimeout(() => {
+				if (browser && (syncStatus === 'running' || data.syncRunning)) {
+					eventSource = new EventSource('/api/sync/status/stream');
+					setupEventSource(eventSource);
+				}
+			}, 2000);
 		};
+	}
+
+	// Connect to SSE when sync starts
+	$effect(() => {
+		if (!browser) return;
+		if (!isRunning && !data.syncRunning) return;
+
+		// Connect to public SSE endpoint (doesn't require admin auth)
+		eventSource = new EventSource('/api/sync/status/stream');
+		setupEventSource(eventSource);
 
 		return () => {
 			eventSource?.close();

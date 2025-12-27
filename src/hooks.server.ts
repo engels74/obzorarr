@@ -141,7 +141,7 @@ const onboardingHandle: Handle = async ({ event, resolve }) => {
 	}
 
 	// Paths that should skip onboarding check
-	const skipPaths = ['/_app', '/favicon', '/auth', '/api/onboarding', '/onboarding'];
+	const skipPaths = ['/_app', '/favicon', '/auth', '/api/onboarding', '/api/sync', '/onboarding'];
 
 	// Skip check for excluded paths
 	if (skipPaths.some((p) => event.url.pathname.startsWith(p))) {
