@@ -55,7 +55,7 @@ export const GET: RequestHandler = async ({ request }) => {
 							lastProgress = { ...currentProgress };
 						}
 
-						// Send completion event (only once)
+						// Send terminal event (only once) with proper status
 						if (
 							!terminalEventSent &&
 							(currentProgress.status === 'completed' ||
@@ -64,7 +64,7 @@ export const GET: RequestHandler = async ({ request }) => {
 						) {
 							controller.enqueue(
 								formatSSE({
-									type: 'completed',
+									type: currentProgress.status,
 									inProgress: false,
 									progress: null
 								})
@@ -114,6 +114,7 @@ function simplifyProgress(progress: LiveSyncProgress | null): SimpleProgress | n
 	return {
 		phase: progress.phase ?? 'fetching',
 		recordsProcessed: progress.recordsProcessed,
+		recordsInserted: progress.recordsInserted,
 		enrichmentTotal: progress.enrichmentTotal,
 		enrichmentProcessed: progress.enrichmentProcessed
 	};
@@ -128,11 +129,12 @@ function formatSSE(data: SSEEvent): string {
 
 /**
  * Simplified progress for public display
- * Compatible with SyncIndicator component requirements
+ * Compatible with SyncIndicator and onboarding sync page requirements
  */
 interface SimpleProgress {
 	phase: 'fetching' | 'enriching';
 	recordsProcessed: number;
+	recordsInserted: number;
 	enrichmentTotal?: number;
 	enrichmentProcessed?: number;
 }
@@ -144,4 +146,6 @@ type SSEEvent =
 	| { type: 'connected'; inProgress: boolean; progress: SimpleProgress | null }
 	| { type: 'update'; inProgress: boolean; progress: SimpleProgress | null }
 	| { type: 'completed'; inProgress: false; progress: null }
+	| { type: 'failed'; inProgress: false; progress: null }
+	| { type: 'cancelled'; inProgress: false; progress: null }
 	| { type: 'idle'; inProgress: false; progress: null };

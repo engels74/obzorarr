@@ -88,48 +88,41 @@
 		if (!browser) return;
 		if (!isRunning && !data.syncRunning) return;
 
-		// Connect to SSE
-		eventSource = new EventSource('/admin/sync/stream');
+		// Connect to public SSE endpoint (doesn't require admin auth)
+		eventSource = new EventSource('/api/sync/status/stream');
 
 		eventSource.onmessage = (event) => {
 			try {
-				const data = JSON.parse(event.data);
+				const eventData = JSON.parse(event.data);
 
-				switch (data.type) {
+				switch (eventData.type) {
 					case 'connected':
 						// Handle initial connection with current progress state
-						if (data.progress) {
-							syncStatus =
-								data.progress.status === 'running'
-									? 'running'
-									: data.progress.status === 'completed'
-										? 'completed'
-										: data.progress.status === 'failed'
-											? 'failed'
-											: data.progress.status === 'cancelled'
-												? 'cancelled'
-												: 'idle';
-							recordsProcessed = data.progress.recordsProcessed ?? 0;
-							recordsInserted = data.progress.recordsInserted ?? 0;
-							phase = data.progress.phase ?? null;
-							enrichmentTotal = data.progress.enrichmentTotal ?? 0;
-							enrichmentProcessed = data.progress.enrichmentProcessed ?? 0;
+						if (eventData.inProgress && eventData.progress) {
+							syncStatus = 'running';
+							recordsProcessed = eventData.progress.recordsProcessed ?? 0;
+							recordsInserted = eventData.progress.recordsInserted ?? 0;
+							phase = eventData.progress.phase ?? null;
+							enrichmentTotal = eventData.progress.enrichmentTotal ?? 0;
+							enrichmentProcessed = eventData.progress.enrichmentProcessed ?? 0;
 						}
 						break;
-					case 'progress':
+					case 'update':
 						syncStatus = 'running';
-						recordsProcessed = data.progress?.recordsProcessed ?? recordsProcessed;
-						recordsInserted = data.progress?.recordsInserted ?? recordsInserted;
-						phase = data.progress?.phase ?? phase;
-						enrichmentTotal = data.progress?.enrichmentTotal ?? enrichmentTotal;
-						enrichmentProcessed = data.progress?.enrichmentProcessed ?? enrichmentProcessed;
+						if (eventData.progress) {
+							recordsProcessed = eventData.progress.recordsProcessed ?? recordsProcessed;
+							recordsInserted = eventData.progress.recordsInserted ?? recordsInserted;
+							phase = eventData.progress.phase ?? phase;
+							enrichmentTotal = eventData.progress.enrichmentTotal ?? enrichmentTotal;
+							enrichmentProcessed = eventData.progress.enrichmentProcessed ?? enrichmentProcessed;
+						}
 						break;
 					case 'completed':
 						syncStatus = 'completed';
 						break;
 					case 'failed':
 						syncStatus = 'failed';
-						error = data.error ?? 'Sync failed';
+						error = eventData.error ?? 'Sync failed';
 						break;
 					case 'cancelled':
 						syncStatus = 'cancelled';
