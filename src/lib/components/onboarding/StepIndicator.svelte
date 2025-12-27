@@ -29,15 +29,16 @@
 		const stepElements = containerRef.querySelectorAll('.step-item');
 		if (stepElements.length === 0) return;
 
-		animate(
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		(animate as any)(
 			stepElements,
-			{ opacity: [0, 1], y: [20, 0] },
+			{ opacity: [0, 1], transform: ['translateY(20px)', 'translateY(0)'] },
 			{ duration: 0.5, delay: stagger(0.1), easing: [0.22, 1, 0.36, 1] }
 		);
 	});
 </script>
 
-<nav bind:this={containerRef} class="step-indicator" role="navigation" aria-label="Setup progress">
+<nav bind:this={containerRef} class="step-indicator" aria-label="Setup progress">
 	<div class="step-track">
 		{#each steps as step, index}
 			{@const status = getStepStatus(index)}
@@ -159,10 +160,6 @@
 
 	.step-number {
 		font-variant-numeric: tabular-nums;
-	}
-
-	.check-icon {
-		color: white;
 	}
 
 	.step-connector {

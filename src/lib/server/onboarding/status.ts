@@ -180,7 +180,7 @@ export function getNextStep(currentStep: OnboardingStep): OnboardingStep | null 
 	if (currentIndex === -1 || currentIndex >= stepOrder.length - 1) {
 		return null;
 	}
-	return stepOrder[currentIndex + 1];
+	return stepOrder[currentIndex + 1] ?? null;
 }
 
 /**
@@ -200,5 +200,5 @@ export function getPreviousStep(currentStep: OnboardingStep): OnboardingStep | n
 	if (currentIndex <= 0) {
 		return null;
 	}
-	return stepOrder[currentIndex - 1];
+	return stepOrder[currentIndex - 1] ?? null;
 }

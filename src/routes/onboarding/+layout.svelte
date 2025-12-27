@@ -12,9 +12,10 @@
 	$effect(() => {
 		if (!logoRef) return;
 
-		animate(
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		(animate as any)(
 			logoRef,
-			{ opacity: [0, 1], y: [-20, 0] },
+			{ opacity: [0, 1], transform: ['translateY(-20px)', 'translateY(0)'] },
 			{ duration: 0.8, easing: [0.22, 1, 0.36, 1] }
 		);
 	});

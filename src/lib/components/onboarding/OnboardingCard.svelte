@@ -18,12 +18,12 @@
 	$effect(() => {
 		if (!cardRef) return;
 
-		animate(
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		(animate as any)(
 			cardRef,
 			{
 				opacity: [0, 1],
-				y: [30, 0],
-				scale: [0.98, 1]
+				transform: ['translateY(30px) scale(0.98)', 'translateY(0) scale(1)']
 			},
 			{
 				duration: 0.6,
