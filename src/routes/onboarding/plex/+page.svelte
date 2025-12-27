@@ -679,10 +679,7 @@
 																	<Tooltip.Root>
 																		<Tooltip.Trigger>
 																			{#snippet child({ props })}
-																				<span
-																					{...props}
-																					class="connection-badge {info.type}"
-																				>
+																				<span {...props} class="connection-badge {info.type}">
 																					{#if info.isSSL}
 																						<svg
 																							class="ssl-lock-icon"
@@ -692,7 +689,14 @@
 																							stroke-width="2.5"
 																							aria-hidden="true"
 																						>
-																							<rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+																							<rect
+																								x="3"
+																								y="11"
+																								width="18"
+																								height="11"
+																								rx="2"
+																								ry="2"
+																							/>
 																							<path d="M7 11V7a5 5 0 0 1 10 0v4" />
 																						</svg>
 																					{/if}
@@ -720,12 +724,15 @@
 																								fill="currentColor"
 																								fill-opacity="0.2"
 																							/>
-																							<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+																							<path
+																								d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
+																							/>
 																						</svg>
 																						<strong>Secure Connection</strong>
 																					</div>
 																				{:else}
-																					<strong class="tooltip-title">{info.label} Connection</strong
+																					<strong class="tooltip-title"
+																						>{info.label} Connection</strong
 																					>
 																				{/if}
 																				<p class="tooltip-text">{info.tooltip}</p>
@@ -734,7 +741,8 @@
 																	</Tooltip.Root>
 																	<span class="connection-desc">{info.description}</span>
 																</div>
-																<span class="connection-uri">{formatServerUrl(connection.uri)}</span>
+																<span class="connection-uri">{formatServerUrl(connection.uri)}</span
+																>
 															</div>
 															{#if isConnSelected}
 																<div class="connection-check">
@@ -1398,11 +1406,7 @@
 	}
 
 	.connection-badge.secure {
-		background: linear-gradient(
-			135deg,
-			rgba(34, 197, 94, 0.2) 0%,
-			rgba(16, 185, 129, 0.15) 100%
-		);
+		background: linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(16, 185, 129, 0.15) 100%);
 		color: hsl(142, 71%, 55%);
 		border: 1px solid rgba(34, 197, 94, 0.3);
 		box-shadow:
@@ -1532,20 +1536,12 @@
 
 	/* SSL Connection Card Enhancement */
 	.connection-card.ssl {
-		background: linear-gradient(
-			135deg,
-			rgba(34, 197, 94, 0.06) 0%,
-			rgba(255, 255, 255, 0.03) 100%
-		);
+		background: linear-gradient(135deg, rgba(34, 197, 94, 0.06) 0%, rgba(255, 255, 255, 0.03) 100%);
 		border-color: rgba(34, 197, 94, 0.15);
 	}
 
 	.connection-card.ssl:hover:not(:disabled) {
-		background: linear-gradient(
-			135deg,
-			rgba(34, 197, 94, 0.1) 0%,
-			rgba(255, 255, 255, 0.06) 100%
-		);
+		background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(255, 255, 255, 0.06) 100%);
 		border-color: rgba(34, 197, 94, 0.25);
 	}
 
