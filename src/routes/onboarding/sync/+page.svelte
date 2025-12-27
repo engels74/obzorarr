@@ -47,13 +47,13 @@
 	const isComplete = $derived(syncStatus === 'completed');
 	const hasFailed = $derived(syncStatus === 'failed' || syncStatus === 'cancelled');
 
-	// Phase display text
+	// Phase display text - check terminal states FIRST to avoid stale phase text
 	const phaseText = $derived(() => {
-		if (phase === 'fetching') return 'Fetching viewing history...';
-		if (phase === 'enriching') return 'Enriching metadata...';
 		if (isComplete) return 'Sync complete!';
 		if (hasFailed) return 'Sync failed';
-		return 'Preparing...';
+		if (phase === 'fetching') return 'Fetching viewing history...';
+		if (phase === 'enriching') return 'Enriching metadata...';
+		return 'Ready to sync';
 	});
 
 	// Content animation
@@ -323,6 +323,9 @@
 					{/if}
 				</button>
 			</form>
+			<p class="pre-sync-hint animate-item">
+				Sync will continue in the background if you proceed to the next step.
+			</p>
 		{/if}
 
 		<!-- Error display -->
@@ -587,6 +590,12 @@
 	.phase-section {
 		text-align: center;
 		width: 100%;
+		min-height: 120px;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: flex-start;
+		gap: 0.5rem;
 	}
 
 	.phase-text {
@@ -615,11 +624,23 @@
 		justify-content: center;
 		align-items: center;
 		gap: 1.5rem;
-		margin-top: 1rem;
+		margin-top: 0.5rem;
 		padding: 0.75rem 1.25rem;
 		background: rgba(255, 255, 255, 0.03);
 		border-radius: 12px;
 		border: 1px solid rgba(255, 255, 255, 0.06);
+		animation: fade-slide-in 0.3s ease-out;
+	}
+
+	@keyframes fade-slide-in {
+		from {
+			opacity: 0;
+			transform: translateY(-8px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
 	}
 
 	.stat {
@@ -814,6 +835,14 @@
 		flex-shrink: 0;
 		width: 18px;
 		height: 18px;
+	}
+
+	/* Pre-sync hint */
+	.pre-sync-hint {
+		margin: 0.75rem 0 0;
+		font-size: 0.8rem;
+		color: rgba(255, 255, 255, 0.4);
+		text-align: center;
 	}
 
 	/* Continue hint */
