@@ -1604,16 +1604,13 @@
 	.form-row {
 		display: grid;
 		grid-template-columns: repeat(2, 1fr);
-		gap: 1rem;
+		gap: 1.5rem;
 	}
 
 	.form-row .form-field {
 		min-width: 0;
 		margin-bottom: 0;
-	}
-
-	.form-row .form-field input {
-		min-width: 0;
+		overflow: hidden;
 	}
 
 	/* ===== Buttons ===== */
