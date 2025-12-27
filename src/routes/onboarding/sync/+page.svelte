@@ -414,7 +414,7 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 1.5rem;
+		gap: 1.25rem;
 	}
 
 	.animate-item {
@@ -424,8 +424,8 @@
 	/* Progress Ring */
 	.progress-wrapper {
 		position: relative;
-		width: 140px;
-		height: 140px;
+		width: 120px;
+		height: 120px;
 	}
 
 	.progress-ring {
@@ -492,8 +492,8 @@
 	}
 
 	.ring-icon {
-		width: 48px;
-		height: 48px;
+		width: 42px;
+		height: 42px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -590,7 +590,7 @@
 	.phase-section {
 		text-align: center;
 		width: 100%;
-		min-height: 120px;
+		min-height: 90px;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -839,7 +839,7 @@
 
 	/* Pre-sync hint */
 	.pre-sync-hint {
-		margin: 0.75rem 0 0;
+		margin: 0.5rem 0 0;
 		font-size: 0.8rem;
 		color: rgba(255, 255, 255, 0.4);
 		text-align: center;
@@ -901,13 +901,13 @@
 	/* Responsive */
 	@media (max-width: 480px) {
 		.progress-wrapper {
-			width: 120px;
-			height: 120px;
+			width: 100px;
+			height: 100px;
 		}
 
 		.ring-icon {
-			width: 40px;
-			height: 40px;
+			width: 36px;
+			height: 36px;
 		}
 
 		.stats-row {
