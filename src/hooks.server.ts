@@ -1,5 +1,5 @@
 import type { Handle, HandleServerError } from '@sveltejs/kit';
-import { redirect } from '@sveltejs/kit';
+import { redirect, isRedirect } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { validateSession } from '$lib/server/auth/session';
 import { isDevBypassEnabled, getOrCreateDevSession } from '$lib/server/auth/dev-bypass';
@@ -157,9 +157,15 @@ const onboardingHandle: Handle = async ({ event, resolve }) => {
 			redirect(303, `/onboarding/${currentStep}`);
 		}
 	} catch (error) {
-		// Log error but don't block the request
+		// Re-throw redirects - they are expected behavior, not errors
+		if (isRedirect(error)) {
+			throw error;
+		}
+
+		// Log actual errors but don't block the request
 		// This prevents onboarding check failures from breaking the app
-		logger.error(`Onboarding check failed: ${error}`, 'OnboardingHandle');
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		logger.error(`Onboarding check failed: ${errorMessage}`, 'OnboardingHandle');
 	}
 
 	return resolve(event);
