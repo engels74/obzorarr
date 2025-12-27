@@ -20,8 +20,7 @@ export const load: PageServerLoad = async ({ parent, locals }) => {
 	const parentData = await parent();
 
 	// If user is authenticated and admin, check if they can proceed
-	const canProceed =
-		parentData.hasEnvConfig && parentData.isAuthenticated && parentData.isAdmin;
+	const canProceed = parentData.hasEnvConfig && parentData.isAuthenticated && parentData.isAdmin;
 
 	return {
 		...parentData,
@@ -66,24 +65,29 @@ export const actions: Actions = {
 
 			if (!membership.isOwner) {
 				return fail(403, {
-					error: 'Only the server owner can configure Obzorarr. Please sign in with the server owner account.'
+					error:
+						'Only the server owner can configure Obzorarr. Please sign in with the server owner account.'
 				});
 			}
 
 			// Update user admin status if needed (in case it wasn't set correctly)
 			// The session already has isAdmin from the OAuth flow
 
-			logger.info(
-				`Onboarding: Admin verified - ${locals.user.username}`,
-				'Onboarding'
-			);
+			logger.info(`Onboarding: Admin verified - ${locals.user.username}`, 'Onboarding');
 
 			// Advance to sync step
 			await setOnboardingStep(OnboardingSteps.SYNC);
 			redirect(303, '/onboarding/sync');
 		} catch (err) {
 			// Handle redirect (expected)
-			if (err instanceof Response || (err && typeof err === 'object' && 'status' in err && (err as { status: number }).status >= 300 && (err as { status: number }).status < 400)) {
+			if (
+				err instanceof Response ||
+				(err &&
+					typeof err === 'object' &&
+					'status' in err &&
+					(err as { status: number }).status >= 300 &&
+					(err as { status: number }).status < 400)
+			) {
 				throw err;
 			}
 
@@ -116,10 +120,7 @@ export const actions: Actions = {
 			});
 		}
 
-		logger.info(
-			`Onboarding: Server selection complete - ${locals.user.username}`,
-			'Onboarding'
-		);
+		logger.info(`Onboarding: Server selection complete - ${locals.user.username}`, 'Onboarding');
 
 		// Advance to sync step
 		await setOnboardingStep(OnboardingSteps.SYNC);

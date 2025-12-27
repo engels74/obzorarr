@@ -51,13 +51,19 @@ export const GET: RequestHandler = async ({ cookies, locals }) => {
 			}))
 		}));
 
-		logger.debug(`Found ${formattedServers.length} servers for user ${locals.user.username}`, 'Onboarding');
+		logger.debug(
+			`Found ${formattedServers.length} servers for user ${locals.user.username}`,
+			'Onboarding'
+		);
 
 		return json({
 			servers: formattedServers
 		});
 	} catch (err) {
-		logger.error(`Failed to fetch servers: ${err instanceof Error ? err.message : String(err)}`, 'Onboarding');
+		logger.error(
+			`Failed to fetch servers: ${err instanceof Error ? err.message : String(err)}`,
+			'Onboarding'
+		);
 
 		// Handle specific error types
 		if (err instanceof Error && 'code' in err) {

@@ -282,10 +282,7 @@ export const actions: Actions = {
 				}
 			}
 
-			logger.info(
-				`Onboarding: Settings configured by ${locals.user.username}`,
-				'Onboarding'
-			);
+			logger.info(`Onboarding: Settings configured by ${locals.user.username}`, 'Onboarding');
 
 			// Advance to completion step
 			await setOnboardingStep(OnboardingSteps.COMPLETE);
@@ -294,7 +291,11 @@ export const actions: Actions = {
 			// Handle redirect (expected)
 			if (
 				err instanceof Response ||
-				(err && typeof err === 'object' && 'status' in err && (err as { status: number }).status >= 300 && (err as { status: number }).status < 400)
+				(err &&
+					typeof err === 'object' &&
+					'status' in err &&
+					(err as { status: number }).status >= 300 &&
+					(err as { status: number }).status < 400)
 			) {
 				throw err;
 			}

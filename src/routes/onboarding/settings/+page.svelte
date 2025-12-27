@@ -75,7 +75,13 @@
 			<!-- Error display -->
 			{#if form?.error}
 				<div class="error-banner">
-					<svg class="error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<svg
+						class="error-icon"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
 						<circle cx="12" cy="12" r="10" />
 						<line x1="15" y1="9" x2="9" y2="15" />
 						<line x1="9" y1="9" x2="15" y2="15" />
@@ -84,13 +90,17 @@
 				</div>
 			{/if}
 
-			<form method="POST" action="?/saveSettings" use:enhance={() => {
-				isSubmitting = true;
-				return async ({ update }) => {
-					await update();
-					isSubmitting = false;
-				};
-			}}>
+			<form
+				method="POST"
+				action="?/saveSettings"
+				use:enhance={() => {
+					isSubmitting = true;
+					return async ({ update }) => {
+						await update();
+						isSubmitting = false;
+					};
+				}}
+			>
 				<!-- Hidden fields for form data -->
 				<input type="hidden" name="uiTheme" value={uiTheme} />
 				<input type="hidden" name="wrappedTheme" value={wrappedTheme} />
@@ -108,7 +118,9 @@
 							<div class="section-icon appearance-icon">
 								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
 									<circle cx="12" cy="12" r="3" />
-									<path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+									<path
+										d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
+									/>
 								</svg>
 							</div>
 							<div class="section-title">
@@ -136,7 +148,7 @@
 											type="button"
 											class="theme-swatch"
 											class:selected={uiTheme === option.value}
-											onclick={() => uiTheme = option.value}
+											onclick={() => (uiTheme = option.value)}
 											style="--swatch-primary: {colors.primary}; --swatch-accent: {colors.accent}; --swatch-bg: {colors.bg}"
 										>
 											<div class="swatch-preview">
@@ -162,7 +174,7 @@
 											type="button"
 											class="theme-swatch"
 											class:selected={wrappedTheme === option.value}
-											onclick={() => wrappedTheme = option.value}
+											onclick={() => (wrappedTheme = option.value)}
 											style="--swatch-primary: {colors.primary}; --swatch-accent: {colors.accent}; --swatch-bg: {colors.bg}"
 										>
 											<div class="swatch-preview">
@@ -216,7 +228,7 @@
 												name="anonymizationModeRadio"
 												value={option.value}
 												checked={anonymizationMode === option.value}
-												onchange={() => anonymizationMode = option.value}
+												onchange={() => (anonymizationMode = option.value)}
 											/>
 											<div class="radio-card-content">
 												<div class="radio-indicator">
@@ -244,7 +256,7 @@
 												name="shareModeRadio"
 												value={option.value}
 												checked={defaultShareMode === option.value}
-												onchange={() => defaultShareMode = option.value}
+												onchange={() => (defaultShareMode = option.value)}
 											/>
 											<div class="radio-card-content">
 												<div class="radio-indicator">
@@ -265,13 +277,15 @@
 								<label class="toggle-row">
 									<div class="toggle-text">
 										<span class="toggle-label">Allow User Control</span>
-										<span class="toggle-description">Let users change their own sharing settings</span>
+										<span class="toggle-description"
+											>Let users change their own sharing settings</span
+										>
 									</div>
 									<button
 										type="button"
 										class="toggle-switch"
 										class:active={allowUserControl}
-										onclick={() => allowUserControl = !allowUserControl}
+										onclick={() => (allowUserControl = !allowUserControl)}
 										aria-pressed={allowUserControl}
 									>
 										<span class="toggle-knob"></span>
@@ -320,7 +334,7 @@
 											type="button"
 											class="toggle-switch small"
 											class:active={slideStates[slide.type]}
-											onclick={() => slideStates[slide.type] = !slideStates[slide.type]}
+											onclick={() => (slideStates[slide.type] = !slideStates[slide.type])}
 											aria-pressed={slideStates[slide.type]}
 										>
 											<span class="toggle-knob"></span>
@@ -339,7 +353,9 @@
 							<div class="section-header-content">
 								<div class="section-icon ai-icon">
 									<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-										<path d="M12 2a2 2 0 012 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 017 7h1a1 1 0 011 1v3a1 1 0 01-1 1h-1v1a2 2 0 01-2 2H5a2 2 0 01-2-2v-1H2a1 1 0 01-1-1v-3a1 1 0 011-1h1a7 7 0 017-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 012-2z" />
+										<path
+											d="M12 2a2 2 0 012 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 017 7h1a1 1 0 011 1v3a1 1 0 01-1 1h-1v1a2 2 0 01-2 2H5a2 2 0 01-2-2v-1H2a1 1 0 01-1-1v-3a1 1 0 011-1h1a7 7 0 017-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 012-2z"
+										/>
 										<circle cx="8" cy="14" r="1" />
 										<circle cx="16" cy="14" r="1" />
 									</svg>
@@ -363,13 +379,15 @@
 									<label class="toggle-row">
 										<div class="toggle-text">
 											<span class="toggle-label">Enable AI Fun Facts</span>
-											<span class="toggle-description">Generate personalized fun facts about viewing habits</span>
+											<span class="toggle-description"
+												>Generate personalized fun facts about viewing habits</span
+											>
 										</div>
 										<button
 											type="button"
 											class="toggle-switch"
 											class:active={enableFunFacts}
-											onclick={() => enableFunFacts = !enableFunFacts}
+											onclick={() => (enableFunFacts = !enableFunFacts)}
 											aria-pressed={enableFunFacts}
 										>
 											<span class="toggle-knob"></span>
@@ -383,13 +401,16 @@
 										<label class="setting-label">Fun Fact Frequency</label>
 										<div class="frequency-options">
 											{#each data.funFactOptions as option}
-												<label class="frequency-option" class:selected={funFactFrequency === option.value}>
+												<label
+													class="frequency-option"
+													class:selected={funFactFrequency === option.value}
+												>
 													<input
 														type="radio"
 														name="frequencyRadio"
 														value={option.value}
 														checked={funFactFrequency === option.value}
-														onchange={() => funFactFrequency = option.value}
+														onchange={() => (funFactFrequency = option.value)}
 													/>
 													<span class="frequency-label">{option.label}</span>
 													<span class="frequency-desc">{option.description}</span>
@@ -412,9 +433,7 @@
 	{#snippet footer()}
 		<div class="footer-actions">
 			<form method="POST" action="?/skipSettings" use:enhance>
-				<button type="submit" class="btn-skip" disabled={isSubmitting}>
-					Skip for now
-				</button>
+				<button type="submit" class="btn-skip" disabled={isSubmitting}> Skip for now </button>
 			</form>
 			<button
 				type="button"
@@ -430,7 +449,13 @@
 					Saving...
 				{:else}
 					Save & Continue
-					<svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<svg
+						class="arrow-icon"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
 						<path d="M5 12h14M12 5l7 7-7 7" />
 					</svg>
 				{/if}
@@ -480,7 +505,9 @@
 		border: 1px solid rgba(251, 191, 36, 0.1);
 		border-radius: 1rem;
 		overflow: hidden;
-		transition: border-color 0.3s ease, box-shadow 0.3s ease;
+		transition:
+			border-color 0.3s ease,
+			box-shadow 0.3s ease;
 	}
 
 	.settings-section:hover {

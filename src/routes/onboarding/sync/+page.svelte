@@ -163,7 +163,12 @@
 	<div class="sync-content" bind:this={contentRef}>
 		<!-- Progress Ring -->
 		<div class="progress-wrapper animate-item" bind:this={progressRef}>
-			<div class="progress-ring" class:running={isRunning} class:complete={isComplete} class:failed={hasFailed}>
+			<div
+				class="progress-ring"
+				class:running={isRunning}
+				class:complete={isComplete}
+				class:failed={hasFailed}
+			>
 				<!-- Background ring -->
 				<svg class="ring-bg" viewBox="0 0 120 120">
 					<circle cx="60" cy="60" r="52" />
@@ -175,7 +180,7 @@
 						cx="60"
 						cy="60"
 						r="52"
-						style="--progress: {phase === 'enriching' ? enrichmentProgress : (isComplete ? 100 : 0)}"
+						style="--progress: {phase === 'enriching' ? enrichmentProgress : isComplete ? 100 : 0}"
 					/>
 				</svg>
 
@@ -218,7 +223,12 @@
 
 		<!-- Phase indicator -->
 		<div class="phase-section animate-item">
-			<p class="phase-text" class:running={isRunning} class:complete={isComplete} class:failed={hasFailed}>
+			<p
+				class="phase-text"
+				class:running={isRunning}
+				class:complete={isComplete}
+				class:failed={hasFailed}
+			>
 				{phaseText()}
 			</p>
 
@@ -241,26 +251,42 @@
 					<div class="enrichment-bar">
 						<div class="enrichment-fill" style="width: {enrichmentProgress}%"></div>
 					</div>
-					<span class="enrichment-text">{enrichmentProcessed} / {enrichmentTotal} items enriched</span>
+					<span class="enrichment-text"
+						>{enrichmentProcessed} / {enrichmentTotal} items enriched</span
+					>
 				</div>
 			{/if}
 		</div>
 
 		<!-- Start button (when idle) -->
 		{#if !hasStarted}
-			<form method="POST" action="?/startSync" use:enhance={() => {
-				handleStartSync();
-				return async ({ update }) => {
-					await update();
-				};
-			}}>
+			<form
+				method="POST"
+				action="?/startSync"
+				use:enhance={() => {
+					handleStartSync();
+					return async ({ update }) => {
+						await update();
+					};
+				}}
+			>
 				<button type="submit" class="start-button animate-item" disabled={isStarting}>
 					{#if isStarting}
 						<span class="btn-spinner"></span>
 						<span>Starting sync...</span>
 					{:else}
-						<svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-							<path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-linecap="round" stroke-linejoin="round" />
+						<svg
+							class="btn-icon"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+						>
+							<path
+								d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							/>
 						</svg>
 						<span>Start Sync</span>
 					{/if}
@@ -285,12 +311,18 @@
 			<div class="warning-banner animate-item">
 				<div class="warning-icon">
 					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" stroke-linecap="round" stroke-linejoin="round" />
+						<path
+							d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						/>
 					</svg>
 				</div>
 				<div class="warning-content">
 					<p class="warning-title">Keep this page open</p>
-					<p class="warning-text">Sync will continue in the background if you proceed, but progress won't be visible.</p>
+					<p class="warning-text">
+						Sync will continue in the background if you proceed, but progress won't be visible.
+					</p>
 				</div>
 			</div>
 		{/if}
@@ -299,7 +331,11 @@
 		{#if isComplete}
 			<div class="success-banner animate-item">
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-					<path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" />
+					<path
+						d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					/>
 				</svg>
 				<span>Your viewing history has been synced successfully!</span>
 			</div>
@@ -328,6 +364,16 @@
 		</form>
 	{/snippet}
 </OnboardingCard>
+
+<!-- SVG gradient definitions (placed in component for scoping) -->
+<svg style="position: absolute; width: 0; height: 0;" aria-hidden="true">
+	<defs>
+		<linearGradient id="ring-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+			<stop offset="0%" stop-color="hsl(35, 100%, 55%)" />
+			<stop offset="100%" stop-color="hsl(25, 100%, 50%)" />
+		</linearGradient>
+	</defs>
+</svg>
 
 <style>
 	.sync-content {
@@ -385,8 +431,13 @@
 	}
 
 	@keyframes ring-pulse {
-		0%, 100% { stroke: rgba(255, 255, 255, 0.08); }
-		50% { stroke: rgba(255, 160, 50, 0.15); }
+		0%,
+		100% {
+			stroke: rgba(255, 255, 255, 0.08);
+		}
+		50% {
+			stroke: rgba(255, 160, 50, 0.15);
+		}
 	}
 
 	.progress-ring.complete .ring-progress circle {
@@ -445,12 +496,20 @@
 		animation: dot-bounce 1.4s ease-in-out infinite;
 	}
 
-	.spinner-dots span:nth-child(1) { animation-delay: 0s; }
-	.spinner-dots span:nth-child(2) { animation-delay: 0.16s; }
-	.spinner-dots span:nth-child(3) { animation-delay: 0.32s; }
+	.spinner-dots span:nth-child(1) {
+		animation-delay: 0s;
+	}
+	.spinner-dots span:nth-child(2) {
+		animation-delay: 0.16s;
+	}
+	.spinner-dots span:nth-child(3) {
+		animation-delay: 0.32s;
+	}
 
 	@keyframes dot-bounce {
-		0%, 80%, 100% {
+		0%,
+		80%,
+		100% {
 			transform: scale(0.6);
 			opacity: 0.4;
 		}
@@ -482,8 +541,15 @@
 	}
 
 	@keyframes glow-pulse {
-		0%, 100% { opacity: 0.6; transform: scale(1); }
-		50% { opacity: 1; transform: scale(1.05); }
+		0%,
+		100% {
+			opacity: 0.6;
+			transform: scale(1);
+		}
+		50% {
+			opacity: 1;
+			transform: scale(1.05);
+		}
 	}
 
 	/* Phase section */
@@ -632,7 +698,9 @@
 	}
 
 	@keyframes spin {
-		to { transform: rotate(360deg); }
+		to {
+			transform: rotate(360deg);
+		}
 	}
 
 	/* Warning banner */
@@ -797,13 +865,3 @@
 		}
 	}
 </style>
-
-<!-- SVG gradient definitions (placed in component for scoping) -->
-<svg style="position: absolute; width: 0; height: 0;" aria-hidden="true">
-	<defs>
-		<linearGradient id="ring-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-			<stop offset="0%" stop-color="hsl(35, 100%, 55%)" />
-			<stop offset="100%" stop-color="hsl(25, 100%, 50%)" />
-		</linearGradient>
-	</defs>
-</svg>

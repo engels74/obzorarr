@@ -22,13 +22,15 @@
 	let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
 	// Server selection state (for no-ENV flow)
-	let servers = $state<Array<{
-		name: string;
-		clientIdentifier: string;
-		owned: boolean;
-		accessToken: string | null;
-		connections?: Array<{ uri: string; local: boolean; relay: boolean }>;
-	}>>([]);
+	let servers = $state<
+		Array<{
+			name: string;
+			clientIdentifier: string;
+			owned: boolean;
+			accessToken: string | null;
+			connections?: Array<{ uri: string; local: boolean; relay: boolean }>;
+		}>
+	>([]);
 	let isLoadingServers = $state(false);
 	let selectedServer = $state<string | null>(null);
 	let isSavingServer = $state(false);
@@ -168,23 +170,26 @@
 			}, 2000);
 
 			// Timeout after 5 minutes
-			timeoutId = setTimeout(() => {
-				if (pollIntervalId) {
-					clearInterval(pollIntervalId);
-					pollIntervalId = null;
-				}
-				if (isOAuthLoading) {
-					isOAuthLoading = false;
-					oauthError = 'Authentication timed out. Please try again.';
-				}
-			}, 5 * 60 * 1000);
+			timeoutId = setTimeout(
+				() => {
+					if (pollIntervalId) {
+						clearInterval(pollIntervalId);
+						pollIntervalId = null;
+					}
+					if (isOAuthLoading) {
+						isOAuthLoading = false;
+						oauthError = 'Authentication timed out. Please try again.';
+					}
+				},
+				5 * 60 * 1000
+			);
 		} catch (err) {
 			isOAuthLoading = false;
 			oauthError = err instanceof Error ? err.message : 'Login failed';
 		}
 	}
 
-	async function handleServerSelect(server: typeof servers[0]) {
+	async function handleServerSelect(server: (typeof servers)[0]) {
 		if (!server.owned) return;
 
 		selectedServer = server.clientIdentifier;
@@ -193,9 +198,10 @@
 
 		try {
 			// Find best connection (prefer local, non-relay)
-			const connection = server.connections?.find(c => c.local && !c.relay)
-				|| server.connections?.find(c => !c.relay)
-				|| server.connections?.[0];
+			const connection =
+				server.connections?.find((c) => c.local && !c.relay) ||
+				server.connections?.find((c) => !c.relay) ||
+				server.connections?.[0];
 
 			if (!connection) {
 				throw new Error('No valid connection found for server');
@@ -229,10 +235,9 @@
 	const showLoginButton = $derived(!data.isAuthenticated);
 	const showVerifyButton = $derived(data.hasEnvConfig && data.isAuthenticated);
 	const showServerSelector = $derived(!data.hasEnvConfig && data.isAuthenticated && data.isAdmin);
-	const ownedServers = $derived(servers.filter(s => s.owned));
+	const ownedServers = $derived(servers.filter((s) => s.owned));
 	const canContinue = $derived(
-		(data.hasEnvConfig && data.canProceed) ||
-		(!data.hasEnvConfig && serverSaved)
+		(data.hasEnvConfig && data.canProceed) || (!data.hasEnvConfig && serverSaved)
 	);
 
 	// Format server URL for display
@@ -263,10 +268,24 @@
 							<stop offset="100%" stop-color="#CC8400" />
 						</linearGradient>
 						<filter id="plex-shadow" x="-50%" y="-50%" width="200%" height="200%">
-							<feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#E5A00D" flood-opacity="0.4" />
+							<feDropShadow
+								dx="0"
+								dy="2"
+								stdDeviation="3"
+								flood-color="#E5A00D"
+								flood-opacity="0.4"
+							/>
 						</filter>
 					</defs>
-					<rect x="4" y="4" width="40" height="40" rx="8" fill="url(#plex-gradient)" filter="url(#plex-shadow)" />
+					<rect
+						x="4"
+						y="4"
+						width="40"
+						height="40"
+						rx="8"
+						fill="url(#plex-gradient)"
+						filter="url(#plex-shadow)"
+					/>
 					<path d="M18 14L34 24L18 34V14Z" fill="white" fill-opacity="0.95" />
 				</svg>
 			</div>
@@ -315,7 +334,10 @@
 					</div>
 					<div class="error-content">
 						<p class="error-title">Admin Access Required</p>
-						<p class="error-message">Only the Plex server owner can configure Obzorarr. Please sign in with the server owner account.</p>
+						<p class="error-message">
+							Only the Plex server owner can configure Obzorarr. Please sign in with the server
+							owner account.
+						</p>
 					</div>
 				</div>
 			{:else}
@@ -364,7 +386,10 @@
 					</div>
 					<div class="error-content">
 						<p class="error-title">Server Owner Required</p>
-						<p class="error-message">You must be a server owner to configure Obzorarr. Please sign in with an account that owns a Plex server.</p>
+						<p class="error-message">
+							You must be a server owner to configure Obzorarr. Please sign in with an account that
+							owns a Plex server.
+						</p>
 					</div>
 				</div>
 			{:else if showServerSelector}
@@ -409,7 +434,11 @@
 												<span class="check-spinner"></span>
 											{:else}
 												<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-													<path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round" />
+													<path
+														d="M20 6L9 17l-5-5"
+														stroke-linecap="round"
+														stroke-linejoin="round"
+													/>
 												</svg>
 											{/if}
 										</div>
@@ -493,8 +522,15 @@
 	}
 
 	@keyframes icon-pulse {
-		0%, 100% { opacity: 0.6; transform: scale(1); }
-		50% { opacity: 0.8; transform: scale(1.05); }
+		0%,
+		100% {
+			opacity: 0.6;
+			transform: scale(1);
+		}
+		50% {
+			opacity: 0.8;
+			transform: scale(1.05);
+		}
 	}
 
 	.plex-icon {
@@ -540,8 +576,13 @@
 	}
 
 	@keyframes dot-pulse {
-		0%, 100% { opacity: 1; }
-		50% { opacity: 0.5; }
+		0%,
+		100% {
+			opacity: 1;
+		}
+		50% {
+			opacity: 0.5;
+		}
 	}
 
 	.server-url {
@@ -578,7 +619,7 @@
 		font-size: 1rem;
 		font-weight: 600;
 		color: hsl(30, 20%, 10%);
-		background: linear-gradient(135deg, #E5A00D 0%, #CC8400 100%);
+		background: linear-gradient(135deg, #e5a00d 0%, #cc8400 100%);
 		border: none;
 		border-radius: 12px;
 		cursor: pointer;
@@ -911,7 +952,9 @@
 	}
 
 	@keyframes spin {
-		to { transform: rotate(360deg); }
+		to {
+			transform: rotate(360deg);
+		}
 	}
 
 	/* Responsive */

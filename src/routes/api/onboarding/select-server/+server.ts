@@ -55,10 +55,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Cache server name for display
 		await setCachedServerName(serverName);
 
-		logger.info(
-			`Onboarding: Server configured - ${serverName} (${serverUrl})`,
-			'Onboarding'
-		);
+		logger.info(`Onboarding: Server configured - ${serverName} (${serverUrl})`, 'Onboarding');
 
 		return json({
 			success: true,

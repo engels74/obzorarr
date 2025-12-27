@@ -9,7 +9,11 @@ import type { PageServerLoad, Actions } from './$types';
 import { redirect } from '@sveltejs/kit';
 import { completeOnboarding } from '$lib/server/onboarding';
 import { isSyncRunning, getSyncProgress, getPlayHistoryCount } from '$lib/server/sync';
-import { getUITheme, getWrappedTheme, getAnonymizationMode } from '$lib/server/admin/settings.service';
+import {
+	getUITheme,
+	getWrappedTheme,
+	getAnonymizationMode
+} from '$lib/server/admin/settings.service';
 import { getGlobalDefaultShareMode } from '$lib/server/sharing/service';
 import { getCachedServerName } from '$lib/server/admin/settings.service';
 import { logger } from '$lib/server/logging';
@@ -23,10 +27,7 @@ export const load: PageServerLoad = async ({ parent, locals }) => {
 	// Complete onboarding
 	await completeOnboarding();
 
-	logger.info(
-		`Onboarding completed by ${locals.user?.username || 'unknown'}`,
-		'Onboarding'
-	);
+	logger.info(`Onboarding completed by ${locals.user?.username || 'unknown'}`, 'Onboarding');
 
 	// Get sync status (may still be running)
 	const syncRunning = await isSyncRunning();

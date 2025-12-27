@@ -64,10 +64,7 @@
 	]);
 </script>
 
-<OnboardingCard
-	title=""
-	subtitle=""
->
+<OnboardingCard title="" subtitle="">
 	{#snippet children()}
 		<div class="completion-container">
 			<!-- Floating particles background -->
@@ -167,7 +164,13 @@
 				</div>
 			{:else if data.syncStatus.historyCount > 0}
 				<div class="sync-complete" class:visible={showContent}>
-					<svg class="sync-complete-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<svg
+						class="sync-complete-icon"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
 						<path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
 						<polyline points="22 4 12 14.01 9 11.01" />
 					</svg>
@@ -182,7 +185,13 @@
 			<form method="POST" action="?/goToDashboard" use:enhance>
 				<button type="submit" class="btn-dashboard">
 					<span>Go to Dashboard</span>
-					<svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<svg
+						class="arrow-icon"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
 						<path d="M5 12h14M12 5l7 7-7 7" />
 					</svg>
 				</button>
@@ -273,7 +282,8 @@
 	}
 
 	@keyframes glow-pulse {
-		0%, 100% {
+		0%,
+		100% {
 			opacity: 0.6;
 			transform: scale(1);
 		}
