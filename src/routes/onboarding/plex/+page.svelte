@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { animate, stagger } from 'motion';
@@ -34,7 +35,9 @@
 		}>
 	>([]);
 	let isLoadingServers = $state(false);
+	let expandedServer = $state<string | null>(null);
 	let selectedServer = $state<string | null>(null);
+	let selectedConnection = $state<string | null>(null);
 	let isSavingServer = $state(false);
 	let serverSaved = $state(false);
 
@@ -80,19 +83,50 @@
 		};
 	});
 
+	// Track if we need to fetch servers after OAuth completes
+	let shouldFetchServers = $state(false);
+
 	// Fetch servers after authentication (for no-ENV flow)
+	// Only runs on client and when conditions are met
 	$effect(() => {
-		if (!data.hasEnvConfig && data.isAuthenticated && data.isAdmin && servers.length === 0) {
+		if (!browser) return;
+
+		// Check if we should fetch servers:
+		// - No ENV config (manual server selection flow)
+		// - User is authenticated as admin
+		// - No servers loaded yet
+		const canFetch = !data.hasEnvConfig && data.isAuthenticated && data.isAdmin;
+		const needsFetch = canFetch && servers.length === 0;
+
+		// Fetch if conditions are met, or if explicitly triggered after OAuth
+		// (shouldFetchServers acts as a re-trigger mechanism)
+		if (needsFetch || (shouldFetchServers && canFetch)) {
+			shouldFetchServers = false;
 			fetchServers();
+		} else if (shouldFetchServers) {
+			// Reset flag if conditions aren't met (e.g., ENV flow)
+			shouldFetchServers = false;
 		}
 	});
 
 	async function fetchServers() {
 		isLoadingServers = true;
+		oauthError = null; // Clear previous errors
 		try {
 			const response = await fetch('/api/onboarding/servers');
 			if (!response.ok) {
-				throw new Error('Failed to fetch servers');
+				// Handle specific error cases
+				if (response.status === 401) {
+					// Session expired or Plex token invalid - clear the stale session
+					// and refresh auth state so the login button appears
+					await fetch('/auth/logout', { method: 'POST' });
+					await invalidateAll();
+					throw new Error('Session expired. Please sign in again.');
+				}
+				const errorData = await response.json().catch(() => ({}));
+				throw new Error(
+					(errorData as { message?: string }).message || 'Failed to fetch servers'
+				);
 			}
 			const result = await response.json();
 			servers = result.servers;
@@ -161,6 +195,12 @@
 
 						// 5. Refresh page data to get new auth status
 						await invalidateAll();
+
+						// 6. Explicitly trigger server fetch for no-ENV flow
+						// This ensures the UI updates after OAuth without requiring a page reload
+						// The $effect will check conditions before actually fetching
+						shouldFetchServers = true;
+
 						isOAuthLoading = false;
 					}
 				} catch (err) {
@@ -191,37 +231,35 @@
 		}
 	}
 
-	async function handleServerSelect(server: (typeof servers)[0]) {
+	function handleServerExpand(server: (typeof servers)[0]) {
+		if (!server.owned) return;
+
+		// Toggle expansion - collapse if clicking the same server
+		if (expandedServer === server.clientIdentifier) {
+			expandedServer = null;
+		} else {
+			expandedServer = server.clientIdentifier;
+			selectedConnection = null;
+		}
+	}
+
+	async function handleConnectionSelect(
+		server: (typeof servers)[0],
+		connection: { uri: string; local: boolean; relay: boolean }
+	) {
 		if (!server.owned) return;
 
 		selectedServer = server.clientIdentifier;
+		selectedConnection = connection.uri;
 		isSavingServer = true;
 		oauthError = null;
 
 		try {
-			// Use the best connection URL calculated by the server
-			// Priority order: .plex.direct > public IP > local IP
-			let serverUrl = server.bestConnectionUrl;
-
-			// Fallback to local connection selection if no best URL provided
-			if (!serverUrl) {
-				const connection =
-					server.connections?.find((c) => c.uri.includes('.plex.direct') && !c.relay) ||
-					server.connections?.find((c) => !c.local && !c.relay) ||
-					server.connections?.find((c) => c.local && !c.relay) ||
-					server.connections?.[0];
-
-				if (!connection) {
-					throw new Error('No valid connection found for server');
-				}
-				serverUrl = connection.uri;
-			}
-
 			const response = await fetch('/api/onboarding/select-server', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					serverUrl,
+					serverUrl: connection.uri,
 					accessToken: server.accessToken,
 					serverName: server.name
 				})
@@ -236,9 +274,63 @@
 		} catch (err) {
 			oauthError = err instanceof Error ? err.message : 'Failed to save server';
 			selectedServer = null;
+			selectedConnection = null;
 		} finally {
 			isSavingServer = false;
 		}
+	}
+
+	/**
+	 * Get connection type label and styling info
+	 */
+	function getConnectionInfo(connection: { uri: string; local: boolean; relay: boolean }): {
+		label: string;
+		type: 'secure' | 'local' | 'remote' | 'relay';
+		description: string;
+	} {
+		if (connection.uri.includes('.plex.direct')) {
+			return {
+				label: 'Secure',
+				type: 'secure',
+				description: 'Encrypted via plex.direct'
+			};
+		}
+		if (connection.relay) {
+			return {
+				label: 'Relay',
+				type: 'relay',
+				description: 'Routed through Plex servers'
+			};
+		}
+		if (connection.local) {
+			return {
+				label: 'Local',
+				type: 'local',
+				description: 'Internal network connection'
+			};
+		}
+		return {
+			label: 'Remote',
+			type: 'remote',
+			description: 'Direct external connection'
+		};
+	}
+
+	/**
+	 * Sort connections by preference: secure > remote > local > relay
+	 */
+	function sortConnections(
+		connections: Array<{ uri: string; local: boolean; relay: boolean }>
+	): Array<{ uri: string; local: boolean; relay: boolean }> {
+		return [...connections].sort((a, b) => {
+			const priority = (c: { uri: string; local: boolean; relay: boolean }) => {
+				if (c.uri.includes('.plex.direct')) return 0;
+				if (!c.local && !c.relay) return 1;
+				if (c.local && !c.relay) return 2;
+				return 3; // relay
+			};
+			return priority(a) - priority(b);
+		});
 	}
 
 	// Derived states
@@ -448,30 +540,31 @@
 					{:else}
 						<div class="server-list">
 							{#each ownedServers as server (server.clientIdentifier)}
-								<button
-									type="button"
-									class="server-card"
-									class:selected={selectedServer === server.clientIdentifier}
-									class:saving={isSavingServer && selectedServer === server.clientIdentifier}
-									onclick={() => handleServerSelect(server)}
-									disabled={isSavingServer}
-								>
-									<div class="server-icon">
-										<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-											<rect x="2" y="3" width="20" height="14" rx="2" />
-											<line x1="8" y1="21" x2="16" y2="21" />
-											<line x1="12" y1="17" x2="12" y2="21" />
-										</svg>
-									</div>
-									<div class="server-info">
-										<span class="server-name">{server.name}</span>
-										<span class="server-badge owner">Owner</span>
-									</div>
-									{#if selectedServer === server.clientIdentifier}
-										<div class="server-check">
-											{#if isSavingServer}
-												<span class="check-spinner"></span>
-											{:else}
+								{@const isExpanded = expandedServer === server.clientIdentifier}
+								{@const isSelected = selectedServer === server.clientIdentifier}
+								{@const connections = server.connections ? sortConnections(server.connections) : []}
+								<div class="server-item" class:expanded={isExpanded}>
+									<button
+										type="button"
+										class="server-card"
+										class:expanded={isExpanded}
+										class:selected={isSelected && serverSaved}
+										onclick={() => handleServerExpand(server)}
+										disabled={isSavingServer}
+									>
+										<div class="server-icon">
+											<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+												<rect x="2" y="3" width="20" height="14" rx="2" />
+												<line x1="8" y1="21" x2="16" y2="21" />
+												<line x1="12" y1="17" x2="12" y2="21" />
+											</svg>
+										</div>
+										<div class="server-info">
+											<span class="server-name">{server.name}</span>
+											<span class="server-badge owner">Owner</span>
+										</div>
+										{#if isSelected && serverSaved}
+											<div class="server-check">
 												<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
 													<path
 														d="M20 6L9 17l-5-5"
@@ -479,10 +572,68 @@
 														stroke-linejoin="round"
 													/>
 												</svg>
-											{/if}
+											</div>
+										{:else}
+											<div class="server-expand" class:rotated={isExpanded}>
+												<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+													<path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+												</svg>
+											</div>
+										{/if}
+									</button>
+
+									{#if isExpanded && connections.length > 0}
+										<div class="connections-panel">
+											<p class="connections-label">Select a connection</p>
+											<div class="connections-list">
+												{#each connections as connection (connection.uri)}
+													{@const info = getConnectionInfo(connection)}
+													{@const isConnSelected = selectedConnection === connection.uri}
+													<button
+														type="button"
+														class="connection-card"
+														class:selected={isConnSelected}
+														class:saving={isSavingServer && isConnSelected}
+														onclick={() => handleConnectionSelect(server, connection)}
+														disabled={isSavingServer}
+													>
+														<div class="connection-info">
+															<div class="connection-header">
+																<span class="connection-badge {info.type}">{info.label}</span>
+																<span class="connection-desc">{info.description}</span>
+															</div>
+															<span class="connection-uri">{formatServerUrl(connection.uri)}</span>
+														</div>
+														{#if isConnSelected}
+															<div class="connection-check">
+																{#if isSavingServer}
+																	<span class="check-spinner"></span>
+																{:else}
+																	<svg
+																		viewBox="0 0 24 24"
+																		fill="none"
+																		stroke="currentColor"
+																		stroke-width="3"
+																	>
+																		<path
+																			d="M20 6L9 17l-5-5"
+																			stroke-linecap="round"
+																			stroke-linejoin="round"
+																		/>
+																	</svg>
+																{/if}
+															</div>
+														{/if}
+													</button>
+												{/each}
+											</div>
+										</div>
+									{:else if isExpanded}
+										<div class="connections-panel">
+											<p class="no-connections">No connections available for this server.</p>
 										</div>
 									{/if}
-								</button>
+								</div>
 							{/each}
 						</div>
 					{/if}
@@ -898,6 +1049,11 @@
 		gap: 0.75rem;
 	}
 
+	.server-item {
+		display: flex;
+		flex-direction: column;
+	}
+
 	.server-card {
 		display: flex;
 		align-items: center;
@@ -912,9 +1068,18 @@
 		width: 100%;
 	}
 
+	.server-card.expanded {
+		border-radius: 12px 12px 0 0;
+		border-bottom-color: transparent;
+	}
+
 	.server-card:hover:not(:disabled) {
 		background: rgba(255, 255, 255, 0.06);
 		border-color: rgba(255, 255, 255, 0.12);
+	}
+
+	.server-card.expanded:hover:not(:disabled) {
+		border-bottom-color: transparent;
 	}
 
 	.server-card.selected {
@@ -987,6 +1152,23 @@
 		height: 100%;
 	}
 
+	.server-expand {
+		flex-shrink: 0;
+		width: 24px;
+		height: 24px;
+		color: rgba(255, 255, 255, 0.4);
+		transition: transform 0.2s ease;
+	}
+
+	.server-expand.rotated {
+		transform: rotate(180deg);
+	}
+
+	.server-expand svg {
+		width: 100%;
+		height: 100%;
+	}
+
 	.check-spinner {
 		display: block;
 		width: 20px;
@@ -995,6 +1177,137 @@
 		border-top-color: hsl(35, 100%, 50%);
 		border-radius: 50%;
 		animation: spin 0.8s linear infinite;
+	}
+
+	/* Connections Panel */
+	.connections-panel {
+		background: rgba(255, 255, 255, 0.02);
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		border-top: none;
+		border-radius: 0 0 12px 12px;
+		padding: 1rem;
+	}
+
+	.connections-label {
+		margin: 0 0 0.75rem;
+		font-size: 0.8rem;
+		font-weight: 500;
+		color: rgba(255, 255, 255, 0.5);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+
+	.connections-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.connection-card {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		padding: 0.75rem 1rem;
+		background: rgba(255, 255, 255, 0.03);
+		border: 1px solid rgba(255, 255, 255, 0.06);
+		border-radius: 8px;
+		cursor: pointer;
+		transition: all 0.15s ease;
+		text-align: left;
+		width: 100%;
+	}
+
+	.connection-card:hover:not(:disabled) {
+		background: rgba(255, 255, 255, 0.06);
+		border-color: rgba(255, 255, 255, 0.1);
+	}
+
+	.connection-card.selected {
+		background: rgba(34, 197, 94, 0.1);
+		border-color: rgba(34, 197, 94, 0.4);
+	}
+
+	.connection-card:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
+	.connection-info {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 0.375rem;
+		min-width: 0;
+	}
+
+	.connection-header {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.connection-badge {
+		display: inline-flex;
+		padding: 0.15rem 0.4rem;
+		font-size: 0.65rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		border-radius: 4px;
+	}
+
+	.connection-badge.secure {
+		background: rgba(34, 197, 94, 0.15);
+		color: hsl(142, 71%, 55%);
+	}
+
+	.connection-badge.local {
+		background: rgba(59, 130, 246, 0.15);
+		color: hsl(217, 91%, 60%);
+	}
+
+	.connection-badge.remote {
+		background: rgba(168, 85, 247, 0.15);
+		color: hsl(271, 91%, 65%);
+	}
+
+	.connection-badge.relay {
+		background: rgba(251, 191, 36, 0.15);
+		color: hsl(43, 96%, 56%);
+	}
+
+	.connection-desc {
+		font-size: 0.75rem;
+		color: rgba(255, 255, 255, 0.45);
+	}
+
+	.connection-uri {
+		font-size: 0.8rem;
+		font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+		color: rgba(255, 255, 255, 0.6);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.connection-check {
+		flex-shrink: 0;
+		width: 20px;
+		height: 20px;
+		color: hsl(142, 71%, 55%);
+	}
+
+	.connection-check svg {
+		width: 100%;
+		height: 100%;
+	}
+
+	.no-connections {
+		margin: 0;
+		padding: 0.5rem;
+		font-size: 0.85rem;
+		color: rgba(255, 255, 255, 0.5);
+		text-align: center;
 	}
 
 	/* Error Banner */
@@ -1108,6 +1421,26 @@
 		.server-icon svg {
 			width: 18px;
 			height: 18px;
+		}
+
+		.connections-panel {
+			padding: 0.75rem;
+		}
+
+		.connection-card {
+			padding: 0.625rem 0.75rem;
+		}
+
+		.connection-badge {
+			font-size: 0.6rem;
+		}
+
+		.connection-desc {
+			font-size: 0.7rem;
+		}
+
+		.connection-uri {
+			font-size: 0.75rem;
 		}
 	}
 </style>
