@@ -706,8 +706,10 @@
 																		</Tooltip.Trigger>
 																		<Tooltip.Content
 																			side="top"
-																			class="connection-tooltip z-[9999]"
+																			class="connection-tooltip"
 																			sideOffset={8}
+																			collisionPadding={16}
+																			portalProps={{ to: 'body' }}
 																		>
 																			<div class="tooltip-inner">
 																				{#if info.isSSL}
@@ -1553,6 +1555,7 @@
 
 	/* Tooltip Styling */
 	:global(.connection-tooltip) {
+		z-index: 9999;
 		background: rgba(15, 23, 42, 0.95);
 		backdrop-filter: blur(12px);
 		-webkit-backdrop-filter: blur(12px);

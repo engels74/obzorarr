@@ -102,7 +102,7 @@
 		min-height: 100dvh;
 		width: 100%;
 		position: relative;
-		overflow-x: hidden;
+		overflow: clip;
 		display: flex;
 		flex-direction: column;
 		background: hsl(var(--background));
