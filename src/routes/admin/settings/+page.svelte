@@ -2141,26 +2141,79 @@
 		color: hsl(0 70% 55%);
 	}
 
+	/* Destructive Action Warning Callout - Subordinate to main header */
 	.danger-warning {
+		position: relative;
 		display: flex;
-		gap: 1rem;
-		padding: 1rem 1.25rem;
-		background: hsl(0 70% 50% / 0.1);
-		border-bottom: 1px solid hsl(0 60% 40% / 0.2);
+		align-items: flex-start;
+		gap: 0.875rem;
+		margin: 1rem 1.25rem;
+		padding: 0.875rem 1rem 0.875rem 1.125rem;
+		background: hsl(0 50% 50% / 0.04);
+		border: 1px dashed hsl(0 50% 45% / 0.25);
+		border-left: none;
+		border-radius: 0 8px 8px 0;
+		overflow: hidden;
+	}
+
+	/* Left accent stripe with hazard pattern */
+	.danger-warning::before {
+		content: '';
+		position: absolute;
+		left: 0;
+		top: 0;
+		bottom: 0;
+		width: 4px;
+		background: repeating-linear-gradient(
+			-45deg,
+			hsl(0 70% 50%),
+			hsl(0 70% 50%) 4px,
+			hsl(45 100% 50%) 4px,
+			hsl(45 100% 50%) 8px
+		);
+	}
+
+	/* Subtle inner glow effect */
+	.danger-warning::after {
+		content: '';
+		position: absolute;
+		left: 4px;
+		top: 0;
+		bottom: 0;
+		width: 40px;
+		background: linear-gradient(90deg, hsl(0 70% 50% / 0.08), transparent);
+		pointer-events: none;
 	}
 
 	.warning-icon {
-		width: 24px;
-		height: 24px;
-		color: hsl(0 70% 55%);
+		position: relative;
+		z-index: 1;
+		width: 18px;
+		height: 18px;
+		color: hsl(40 90% 55%);
 		flex-shrink: 0;
+		margin-top: 0.125rem;
+	}
+
+	.warning-content {
+		position: relative;
+		z-index: 1;
+		flex: 1;
 	}
 
 	.warning-content strong {
-		display: block;
-		color: hsl(0 70% 55%);
-		font-size: 0.875rem;
-		margin-bottom: 0.25rem;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.375rem;
+		font-size: 0.6875rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: hsl(40 85% 60%);
+		background: hsl(40 70% 50% / 0.12);
+		padding: 0.1875rem 0.5rem;
+		border-radius: 3px;
+		margin-bottom: 0.375rem;
 	}
 
 	.warning-content p {
