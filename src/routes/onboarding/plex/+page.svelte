@@ -849,7 +849,7 @@
 	.plex-icon-glow {
 		position: absolute;
 		inset: -8px;
-		background: radial-gradient(circle, rgba(229, 160, 13, 0.4) 0%, transparent 70%);
+		background: radial-gradient(circle, hsl(var(--primary) / 0.4) 0%, transparent 70%);
 		border-radius: 50%;
 		animation: icon-pulse 3s ease-in-out infinite;
 	}
@@ -1165,7 +1165,7 @@
 		width: 20px;
 		height: 20px;
 		border: 2px solid rgba(255, 255, 255, 0.2);
-		border-top-color: hsl(35, 100%, 50%);
+		border-top-color: hsl(var(--primary));
 		border-radius: 50%;
 		animation: spin 0.8s linear infinite;
 	}
@@ -1226,9 +1226,9 @@
 	}
 
 	.server-card.selected {
-		background: rgba(229, 160, 13, 0.1);
-		border-color: rgba(229, 160, 13, 0.4);
-		box-shadow: 0 0 0 1px rgba(229, 160, 13, 0.2);
+		background: hsl(var(--primary) / 0.1);
+		border-color: hsl(var(--primary) / 0.4);
+		box-shadow: 0 0 0 1px hsl(var(--primary) / 0.2);
 	}
 
 	.server-card:disabled {
@@ -1279,15 +1279,15 @@
 	}
 
 	.server-badge.owner {
-		background: rgba(229, 160, 13, 0.15);
-		color: hsl(40, 90%, 55%);
+		background: hsl(var(--primary) / 0.15);
+		color: hsl(var(--primary));
 	}
 
 	.server-check {
 		flex-shrink: 0;
 		width: 24px;
 		height: 24px;
-		color: hsl(35, 100%, 50%);
+		color: hsl(var(--primary));
 	}
 
 	.server-check svg {
@@ -1316,8 +1316,8 @@
 		display: block;
 		width: 20px;
 		height: 20px;
-		border: 2px solid rgba(229, 160, 13, 0.3);
-		border-top-color: hsl(35, 100%, 50%);
+		border: 2px solid hsl(var(--primary) / 0.3);
+		border-top-color: hsl(var(--primary));
 		border-radius: 50%;
 		animation: spin 0.8s linear infinite;
 	}
@@ -1506,21 +1506,21 @@
 		padding: 0.75rem 1.5rem;
 		font-size: 0.95rem;
 		font-weight: 600;
-		color: hsl(25, 20%, 10%);
-		background: linear-gradient(135deg, hsl(35, 100%, 55%) 0%, hsl(25, 100%, 50%) 100%);
+		color: hsl(var(--primary-foreground));
+		background: hsl(var(--primary));
 		border: none;
 		border-radius: 10px;
 		cursor: pointer;
 		transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 		box-shadow:
-			0 2px 12px rgba(255, 160, 50, 0.3),
+			0 2px 12px hsl(var(--primary) / 0.3),
 			inset 0 1px 0 rgba(255, 255, 255, 0.2);
 	}
 
 	.continue-button:hover:not(:disabled) {
 		transform: translateY(-1px);
 		box-shadow:
-			0 4px 16px rgba(255, 160, 50, 0.4),
+			0 4px 16px hsl(var(--primary) / 0.4),
 			inset 0 1px 0 rgba(255, 255, 255, 0.25);
 	}
 

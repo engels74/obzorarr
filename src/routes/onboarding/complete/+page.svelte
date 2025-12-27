@@ -233,7 +233,7 @@
 		left: var(--x-start);
 		width: var(--size);
 		height: var(--size);
-		background: radial-gradient(circle, #fbbf24 0%, #f59e0b 100%);
+		background: radial-gradient(circle, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
 		border-radius: 50%;
 		opacity: 0;
 		animation: float-up var(--duration) ease-out var(--delay) infinite;
@@ -268,7 +268,7 @@
 	.success-glow {
 		position: absolute;
 		inset: -20px;
-		background: radial-gradient(circle, rgba(251, 191, 36, 0.4) 0%, transparent 70%);
+		background: radial-gradient(circle, hsl(var(--primary) / 0.4) 0%, transparent 70%);
 		border-radius: 50%;
 		opacity: 0;
 		transform: scale(0.5);
@@ -296,7 +296,7 @@
 	.success-ring {
 		position: absolute;
 		inset: 0;
-		border: 3px solid rgba(251, 191, 36, 0.3);
+		border: 3px solid hsl(var(--primary) / 0.3);
 		border-radius: 50%;
 		opacity: 0;
 		transform: scale(0.8);
@@ -316,7 +316,7 @@
 	}
 
 	.checkmark-circle {
-		stroke: #fbbf24;
+		stroke: hsl(var(--primary));
 		stroke-width: 2;
 		stroke-dasharray: 166;
 		stroke-dashoffset: 166;
@@ -328,7 +328,7 @@
 	}
 
 	.checkmark-check {
-		stroke: #fbbf24;
+		stroke: hsl(var(--primary));
 		stroke-width: 3;
 		stroke-linecap: round;
 		stroke-linejoin: round;
@@ -358,7 +358,7 @@
 		margin: 0;
 		font-size: 1.75rem;
 		font-weight: 700;
-		background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #fbbf24 100%);
+		background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 50%, hsl(var(--primary)) 100%);
 		background-size: 200% auto;
 		-webkit-background-clip: text;
 		-webkit-text-fill-color: transparent;
@@ -419,7 +419,7 @@
 		gap: 0.875rem;
 		padding: 0.875rem 1rem;
 		background: rgba(255, 255, 255, 0.04);
-		border: 1px solid rgba(251, 191, 36, 0.1);
+		border: 1px solid hsl(var(--primary) / 0.1);
 		border-radius: 0.875rem;
 		text-align: left;
 		opacity: 0;
@@ -466,8 +466,8 @@
 	}
 
 	.summary-icon.share {
-		background: linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(245, 158, 11, 0.1));
-		color: #fbbf24;
+		background: linear-gradient(135deg, hsl(var(--primary) / 0.2), hsl(var(--accent) / 0.1));
+		color: hsl(var(--primary));
 	}
 
 	.summary-content {
@@ -500,8 +500,8 @@
 		gap: 0.875rem;
 		margin-top: 1.5rem;
 		padding: 0.875rem 1.25rem;
-		background: rgba(251, 191, 36, 0.08);
-		border: 1px solid rgba(251, 191, 36, 0.2);
+		background: hsl(var(--primary) / 0.08);
+		border: 1px solid hsl(var(--primary) / 0.2);
 		border-radius: 0.875rem;
 		opacity: 0;
 		transform: translateY(10px);
@@ -523,7 +523,7 @@
 	.sync-pulse {
 		position: absolute;
 		inset: 0;
-		background: #fbbf24;
+		background: hsl(var(--primary));
 		border-radius: 50%;
 		animation: pulse-ring 1.5s ease-out infinite;
 	}
@@ -542,7 +542,7 @@
 	.sync-dot {
 		position: absolute;
 		inset: 3px;
-		background: #fbbf24;
+		background: hsl(var(--primary));
 		border-radius: 50%;
 	}
 
@@ -617,24 +617,24 @@
 		width: 100%;
 		max-width: 280px;
 		padding: 1rem 2rem;
-		background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+		background: hsl(var(--primary));
 		border: none;
 		border-radius: 0.875rem;
-		color: #1a1410;
+		color: hsl(var(--primary-foreground));
 		font-size: 1rem;
 		font-weight: 600;
 		cursor: pointer;
 		transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 		box-shadow:
-			0 4px 20px rgba(251, 191, 36, 0.3),
-			0 0 40px rgba(251, 191, 36, 0.1);
+			0 4px 20px hsl(var(--primary) / 0.3),
+			0 0 40px hsl(var(--primary) / 0.1);
 	}
 
 	.btn-dashboard:hover {
 		transform: translateY(-3px);
 		box-shadow:
-			0 8px 30px rgba(251, 191, 36, 0.4),
-			0 0 60px rgba(251, 191, 36, 0.15);
+			0 8px 30px hsl(var(--primary) / 0.4),
+			0 0 60px hsl(var(--primary) / 0.15);
 	}
 
 	.btn-dashboard:active {

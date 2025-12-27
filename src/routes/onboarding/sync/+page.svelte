@@ -399,16 +399,6 @@
 	{/snippet}
 </OnboardingCard>
 
-<!-- SVG gradient definitions (placed in component for scoping) -->
-<svg style="position: absolute; width: 0; height: 0;" aria-hidden="true">
-	<defs>
-		<linearGradient id="ring-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-			<stop offset="0%" stop-color="hsl(35, 100%, 55%)" />
-			<stop offset="100%" stop-color="hsl(25, 100%, 50%)" />
-		</linearGradient>
-	</defs>
-</svg>
-
 <style>
 	.sync-content {
 		display: flex;
@@ -450,7 +440,7 @@
 
 	.ring-progress circle {
 		fill: none;
-		stroke: url(#ring-gradient);
+		stroke: hsl(var(--primary));
 		stroke-width: 8;
 		stroke-linecap: round;
 		stroke-dasharray: 326.7;
@@ -470,7 +460,7 @@
 			stroke: rgba(255, 255, 255, 0.08);
 		}
 		50% {
-			stroke: rgba(255, 160, 50, 0.15);
+			stroke: hsl(var(--primary) / 0.15);
 		}
 	}
 
@@ -525,7 +515,7 @@
 	.spinner-dots span {
 		width: 10px;
 		height: 10px;
-		background: hsl(35, 100%, 55%);
+		background: hsl(var(--primary));
 		border-radius: 50%;
 		animation: dot-bounce 1.4s ease-in-out infinite;
 	}
@@ -558,7 +548,7 @@
 		position: absolute;
 		inset: -10px;
 		border-radius: 50%;
-		background: radial-gradient(circle, rgba(255, 160, 50, 0.2) 0%, transparent 70%);
+		background: radial-gradient(circle, hsl(var(--primary) / 0.2) 0%, transparent 70%);
 		opacity: 0;
 		transition: opacity 0.4s ease;
 		pointer-events: none;
@@ -607,7 +597,7 @@
 	}
 
 	.phase-text.running {
-		color: hsl(35, 100%, 60%);
+		color: hsl(var(--primary));
 	}
 
 	.phase-text.complete {
@@ -687,7 +677,7 @@
 
 	.enrichment-fill {
 		height: 100%;
-		background: linear-gradient(90deg, hsl(35, 100%, 50%) 0%, hsl(25, 100%, 55%) 100%);
+		background: linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
 		border-radius: 2px;
 		transition: width 0.3s ease;
 	}
@@ -710,14 +700,14 @@
 		min-width: 180px;
 		font-size: 1rem;
 		font-weight: 600;
-		color: hsl(25, 20%, 10%);
-		background: linear-gradient(135deg, hsl(35, 100%, 55%) 0%, hsl(25, 100%, 50%) 100%);
+		color: hsl(var(--primary-foreground));
+		background: hsl(var(--primary));
 		border: none;
 		border-radius: 12px;
 		cursor: pointer;
 		transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 		box-shadow:
-			0 4px 16px rgba(255, 160, 50, 0.35),
+			0 4px 16px hsl(var(--primary) / 0.35),
 			0 2px 4px rgba(0, 0, 0, 0.2),
 			inset 0 1px 0 rgba(255, 255, 255, 0.2);
 	}
@@ -725,7 +715,7 @@
 	.start-button:hover:not(:disabled) {
 		transform: translateY(-2px);
 		box-shadow:
-			0 6px 24px rgba(255, 160, 50, 0.45),
+			0 6px 24px hsl(var(--primary) / 0.45),
 			0 4px 8px rgba(0, 0, 0, 0.25),
 			inset 0 1px 0 rgba(255, 255, 255, 0.25);
 	}
@@ -743,8 +733,8 @@
 	.btn-spinner {
 		width: 18px;
 		height: 18px;
-		border: 2px solid rgba(0, 0, 0, 0.2);
-		border-top-color: rgba(0, 0, 0, 0.7);
+		border: 2px solid hsl(var(--primary-foreground) / 0.2);
+		border-top-color: hsl(var(--primary-foreground) / 0.7);
 		border-radius: 50%;
 		animation: spin 0.8s linear infinite;
 	}
@@ -862,21 +852,21 @@
 		padding: 0.75rem 1.5rem;
 		font-size: 0.95rem;
 		font-weight: 600;
-		color: hsl(25, 20%, 10%);
-		background: linear-gradient(135deg, hsl(35, 100%, 55%) 0%, hsl(25, 100%, 50%) 100%);
+		color: hsl(var(--primary-foreground));
+		background: hsl(var(--primary));
 		border: none;
 		border-radius: 10px;
 		cursor: pointer;
 		transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 		box-shadow:
-			0 2px 12px rgba(255, 160, 50, 0.3),
+			0 2px 12px hsl(var(--primary) / 0.3),
 			inset 0 1px 0 rgba(255, 255, 255, 0.2);
 	}
 
 	.continue-button:hover:not(:disabled) {
 		transform: translateY(-1px);
 		box-shadow:
-			0 4px 16px rgba(255, 160, 50, 0.4),
+			0 4px 16px hsl(var(--primary) / 0.4),
 			inset 0 1px 0 rgba(255, 255, 255, 0.25);
 	}
 
@@ -890,12 +880,6 @@
 	.continue-button svg {
 		width: 18px;
 		height: 18px;
-	}
-
-	/* SVG gradient definition */
-	:global(body) {
-		--ring-gradient-start: hsl(35, 100%, 55%);
-		--ring-gradient-end: hsl(25, 100%, 50%);
 	}
 
 	/* Responsive */
