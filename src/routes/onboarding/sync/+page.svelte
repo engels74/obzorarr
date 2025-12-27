@@ -96,6 +96,26 @@
 				const data = JSON.parse(event.data);
 
 				switch (data.type) {
+					case 'connected':
+						// Handle initial connection with current progress state
+						if (data.progress) {
+							syncStatus =
+								data.progress.status === 'running'
+									? 'running'
+									: data.progress.status === 'completed'
+										? 'completed'
+										: data.progress.status === 'failed'
+											? 'failed'
+											: data.progress.status === 'cancelled'
+												? 'cancelled'
+												: 'idle';
+							recordsProcessed = data.progress.recordsProcessed ?? 0;
+							recordsInserted = data.progress.recordsInserted ?? 0;
+							phase = data.progress.phase ?? null;
+							enrichmentTotal = data.progress.enrichmentTotal ?? 0;
+							enrichmentProcessed = data.progress.enrichmentProcessed ?? 0;
+						}
+						break;
 					case 'progress':
 						syncStatus = 'running';
 						recordsProcessed = data.progress?.recordsProcessed ?? recordsProcessed;

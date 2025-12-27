@@ -96,6 +96,7 @@
 	.step-node {
 		display: flex;
 		align-items: center;
+		justify-content: center;
 		width: 100%;
 		position: relative;
 	}
@@ -163,12 +164,16 @@
 	}
 
 	.step-connector {
-		flex: 1;
+		position: absolute;
+		left: calc(50% + 18px + 4px); /* Circle center + radius + gap */
+		right: calc(-50% + 18px + 4px); /* Extend to next circle edge */
+		top: 50%;
+		transform: translateY(-50%);
 		height: 2px;
 		background: rgba(255, 255, 255, 0.1);
-		margin: 0 8px;
 		border-radius: 1px;
 		overflow: hidden;
+		z-index: 1;
 	}
 
 	.connector-fill {
@@ -223,7 +228,8 @@
 		}
 
 		.step-connector {
-			margin: 0 4px;
+			left: calc(50% + 16px + 3px); /* Smaller circle radius + smaller gap */
+			right: calc(-50% + 16px + 3px);
 		}
 	}
 </style>
