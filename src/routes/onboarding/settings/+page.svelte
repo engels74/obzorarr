@@ -1,26 +1,24 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { untrack } from 'svelte';
+	import { animate } from 'motion';
 	import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
 	import type { PageData, ActionData } from './$types';
 
 	/**
 	 * Onboarding Step 3: Settings Configuration
 	 *
-	 * Allows admin to configure appearance, privacy, slides, and AI features.
-	 * Features collapsible sections with smooth animations.
+	 * Step-by-step carousel for configuring appearance, privacy, slides, and AI features.
 	 */
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	// Form state - initialized from server data, editable locally
-	// Using untrack() to explicitly capture initial values (form state doesn't need to react to data changes)
 	let uiTheme = $state(untrack(() => data.settings.uiTheme));
 	let wrappedTheme = $state(untrack(() => data.settings.wrappedTheme));
 	let anonymizationMode = $state(untrack(() => data.settings.anonymizationMode));
 	let defaultShareMode = $state(untrack(() => data.settings.defaultShareMode));
 	let allowUserControl = $state(untrack(() => data.settings.allowUserControl));
-	// Fun facts are enabled if mode is set to a valid frequency value
 	let enableFunFacts = $state(untrack(() => data.funFactConfig.count > 0));
 	let funFactFrequency = $state(untrack(() => data.funFactConfig.mode || 'normal'));
 
@@ -37,21 +35,77 @@
 			.join(',')
 	);
 
-	// Section expand states
-	let expandedSections = $state({
-		appearance: true,
-		privacy: true,
-		slides: false,
-		ai: false
-	});
-
 	// Loading state
 	let isSubmitting = $state(false);
 
-	// Toggle section
-	function toggleSection(section: keyof typeof expandedSections) {
-		expandedSections[section] = !expandedSections[section];
+	// ==========================================================================
+	// Carousel State
+	// ==========================================================================
+
+	interface SubStep {
+		id: string;
+		label: string;
+		icon: 'appearance' | 'privacy' | 'slides' | 'ai';
 	}
+
+	// Build sub-steps array (AI only if configured)
+	const SUB_STEPS: SubStep[] = [
+		{ id: 'appearance', label: 'Appearance', icon: 'appearance' },
+		{ id: 'privacy', label: 'Privacy', icon: 'privacy' },
+		{ id: 'slides', label: 'Slides', icon: 'slides' },
+		...(data.hasOpenAI ? [{ id: 'ai', label: 'AI Features', icon: 'ai' as const }] : [])
+	];
+
+	let currentSubStep = $state(0);
+	let contentRef: HTMLElement | undefined = $state();
+	let animationDirection = $state<'forward' | 'backward'>('forward');
+
+	// Derived values
+	const totalSubSteps = SUB_STEPS.length;
+	const isFirstSubStep = $derived(currentSubStep === 0);
+	const isLastSubStep = $derived(currentSubStep === totalSubSteps - 1);
+	// SUB_STEPS always has at least 3 items, and currentSubStep is bounded by navigation
+	const currentStepData = $derived(SUB_STEPS[currentSubStep]!);
+
+	// Navigation
+	function nextSubStep() {
+		if (currentSubStep < totalSubSteps - 1) {
+			animationDirection = 'forward';
+			currentSubStep += 1;
+		}
+	}
+
+	function prevSubStep() {
+		if (currentSubStep > 0) {
+			animationDirection = 'backward';
+			currentSubStep -= 1;
+		}
+	}
+
+	function goToSubStep(index: number) {
+		if (index >= 0 && index < totalSubSteps && index !== currentSubStep) {
+			animationDirection = index > currentSubStep ? 'forward' : 'backward';
+			currentSubStep = index;
+		}
+	}
+
+	// Animate on sub-step change
+	$effect(() => {
+		if (!contentRef) return;
+		const step = currentSubStep; // Track dependency
+
+		const xOffset = animationDirection === 'forward' ? 30 : -30;
+
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		(animate as any)(
+			contentRef,
+			{
+				opacity: [0, 1],
+				transform: [`translateX(${xOffset}px)`, 'translateX(0)']
+			},
+			{ duration: 0.3, easing: [0.22, 1, 0.36, 1] }
+		);
+	});
 
 	// Theme color mapping for swatches
 	const defaultColors = { primary: '#3b82f6', accent: '#60a5fa', bg: '#0f172a' };
@@ -77,13 +131,7 @@
 			<!-- Error display -->
 			{#if form?.error}
 				<div class="error-banner">
-					<svg
-						class="error-icon"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-					>
+					<svg class="error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 						<circle cx="12" cy="12" r="10" />
 						<line x1="15" y1="9" x2="9" y2="15" />
 						<line x1="9" y1="9" x2="15" y2="15" />
@@ -91,6 +139,32 @@
 					<span>{form.error}</span>
 				</div>
 			{/if}
+
+			<!-- Sub-step Progress Indicator -->
+			<div class="substep-indicator">
+				<div class="substep-info">
+					<span class="substep-current">{currentStepData.label}</span>
+					<span class="substep-count">{currentSubStep + 1} of {totalSubSteps}</span>
+				</div>
+				<div class="substep-dots">
+					{#each SUB_STEPS as step, index}
+						<button
+							type="button"
+							class="substep-dot"
+							class:active={index === currentSubStep}
+							class:completed={index < currentSubStep}
+							onclick={() => goToSubStep(index)}
+							aria-label="Go to {step.label}"
+						>
+							{#if index < currentSubStep}
+								<svg class="dot-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+									<path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round" />
+								</svg>
+							{/if}
+						</button>
+					{/each}
+				</div>
+			</div>
 
 			<form
 				method="POST"
@@ -103,7 +177,7 @@
 					};
 				}}
 			>
-				<!-- Hidden fields for form data -->
+				<!-- Hidden fields for form data (always rendered) -->
 				<input type="hidden" name="uiTheme" value={uiTheme} />
 				<input type="hidden" name="wrappedTheme" value={wrappedTheme} />
 				<input type="hidden" name="anonymizationMode" value={anonymizationMode} />
@@ -113,33 +187,24 @@
 				<input type="hidden" name="enableFunFacts" value={enableFunFacts} />
 				<input type="hidden" name="funFactFrequency" value={funFactFrequency} />
 
-				<!-- Appearance Section -->
-				<section class="settings-section" class:expanded={expandedSections.appearance}>
-					<button type="button" class="section-header" onclick={() => toggleSection('appearance')}>
-						<div class="section-header-content">
-							<div class="section-icon appearance-icon">
+				<!-- Carousel Content -->
+				<div class="carousel-content" bind:this={contentRef}>
+					{#if currentStepData.id === 'appearance'}
+						<!-- Appearance Step -->
+						<div class="step-header">
+							<div class="step-icon appearance-icon">
 								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
 									<circle cx="12" cy="12" r="3" />
-									<path
-										d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
-									/>
+									<path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
 								</svg>
 							</div>
-							<div class="section-title">
+							<div class="step-title">
 								<h3>Appearance</h3>
 								<p>Choose your visual theme</p>
 							</div>
 						</div>
-						<div class="section-chevron" class:rotated={expandedSections.appearance}>
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<polyline points="6,9 12,15 18,9" />
-							</svg>
-						</div>
-					</button>
 
-					<div class="section-content">
-						<div class="section-body">
-							<!-- UI Theme -->
+						<div class="step-fields">
 							<div class="setting-group">
 								<span class="setting-label">Dashboard Theme</span>
 								<p class="setting-description">Applied to the dashboard and admin pages</p>
@@ -165,7 +230,6 @@
 								</div>
 							</div>
 
-							<!-- Wrapped Theme -->
 							<div class="setting-group">
 								<span class="setting-label">Wrapped Presentation Theme</span>
 								<p class="setting-description">Applied to the animated year-end slideshow</p>
@@ -191,34 +255,23 @@
 								</div>
 							</div>
 						</div>
-					</div>
-				</section>
 
-				<!-- Privacy Section -->
-				<section class="settings-section" class:expanded={expandedSections.privacy}>
-					<button type="button" class="section-header" onclick={() => toggleSection('privacy')}>
-						<div class="section-header-content">
-							<div class="section-icon privacy-icon">
+					{:else if currentStepData.id === 'privacy'}
+						<!-- Privacy Step -->
+						<div class="step-header">
+							<div class="step-icon privacy-icon">
 								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
 									<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
 									<path d="M9 12l2 2 4-4" />
 								</svg>
 							</div>
-							<div class="section-title">
+							<div class="step-title">
 								<h3>Privacy & Sharing</h3>
 								<p>Control visibility and access</p>
 							</div>
 						</div>
-						<div class="section-chevron" class:rotated={expandedSections.privacy}>
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<polyline points="6,9 12,15 18,9" />
-							</svg>
-						</div>
-					</button>
 
-					<div class="section-content">
-						<div class="section-body">
-							<!-- Anonymization Mode -->
+						<div class="step-fields">
 							<div class="setting-group">
 								<span class="setting-label">User Identity in Stats</span>
 								<p class="setting-description">How usernames appear in server-wide statistics</p>
@@ -246,7 +299,6 @@
 								</div>
 							</div>
 
-							<!-- Default Share Mode -->
 							<div class="setting-group">
 								<span class="setting-label">Default Sharing Mode</span>
 								<p class="setting-description">How wrapped pages are shared by default</p>
@@ -274,14 +326,11 @@
 								</div>
 							</div>
 
-							<!-- User Control Toggle -->
 							<div class="setting-group">
 								<label class="toggle-row">
 									<div class="toggle-text">
 										<span class="toggle-label">Allow User Control</span>
-										<span class="toggle-description"
-											>Let users change their own sharing settings</span
-										>
+										<span class="toggle-description">Let users change their own sharing settings</span>
 									</div>
 									<button
 										type="button"
@@ -296,33 +345,23 @@
 								</label>
 							</div>
 						</div>
-					</div>
-				</section>
 
-				<!-- Slides Section -->
-				<section class="settings-section" class:expanded={expandedSections.slides}>
-					<button type="button" class="section-header" onclick={() => toggleSection('slides')}>
-						<div class="section-header-content">
-							<div class="section-icon slides-icon">
+					{:else if currentStepData.id === 'slides'}
+						<!-- Slides Step -->
+						<div class="step-header">
+							<div class="step-icon slides-icon">
 								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
 									<rect x="2" y="3" width="20" height="14" rx="2" />
 									<path d="M8 21h8M12 17v4" />
 								</svg>
 							</div>
-							<div class="section-title">
+							<div class="step-title">
 								<h3>Slides</h3>
 								<p>Choose which slides to display</p>
 							</div>
 						</div>
-						<div class="section-chevron" class:rotated={expandedSections.slides}>
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<polyline points="6,9 12,15 18,9" />
-							</svg>
-						</div>
-					</button>
 
-					<div class="section-content">
-						<div class="section-body">
+						<div class="step-fields">
 							<div class="slides-grid">
 								{#each data.slideOptions as slide, i}
 									<label
@@ -347,89 +386,68 @@
 								{/each}
 							</div>
 						</div>
-					</div>
-				</section>
 
-				<!-- AI Features Section (only if OpenAI is configured) -->
-				{#if data.hasOpenAI}
-					<section class="settings-section" class:expanded={expandedSections.ai}>
-						<button type="button" class="section-header" onclick={() => toggleSection('ai')}>
-							<div class="section-header-content">
-								<div class="section-icon ai-icon">
-									<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-										<path
-											d="M12 2a2 2 0 012 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 017 7h1a1 1 0 011 1v3a1 1 0 01-1 1h-1v1a2 2 0 01-2 2H5a2 2 0 01-2-2v-1H2a1 1 0 01-1-1v-3a1 1 0 011-1h1a7 7 0 017-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 012-2z"
-										/>
-										<circle cx="8" cy="14" r="1" />
-										<circle cx="16" cy="14" r="1" />
-									</svg>
-								</div>
-								<div class="section-title">
-									<h3>AI Features</h3>
-									<p>AI-powered fun facts and insights</p>
-								</div>
-							</div>
-							<div class="section-chevron" class:rotated={expandedSections.ai}>
-								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-									<polyline points="6,9 12,15 18,9" />
+					{:else if currentStepData.id === 'ai'}
+						<!-- AI Features Step -->
+						<div class="step-header">
+							<div class="step-icon ai-icon">
+								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+									<path d="M12 2a2 2 0 012 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 017 7h1a1 1 0 011 1v3a1 1 0 01-1 1h-1v1a2 2 0 01-2 2H5a2 2 0 01-2-2v-1H2a1 1 0 01-1-1v-3a1 1 0 011-1h1a7 7 0 017-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 012-2z" />
+									<circle cx="8" cy="14" r="1" />
+									<circle cx="16" cy="14" r="1" />
 								</svg>
 							</div>
-						</button>
-
-						<div class="section-content">
-							<div class="section-body">
-								<!-- Enable Fun Facts -->
-								<div class="setting-group">
-									<label class="toggle-row">
-										<div class="toggle-text">
-											<span class="toggle-label">Enable AI Fun Facts</span>
-											<span class="toggle-description"
-												>Generate personalized fun facts about viewing habits</span
-											>
-										</div>
-										<button
-											type="button"
-											class="toggle-switch"
-											class:active={enableFunFacts}
-											onclick={() => (enableFunFacts = !enableFunFacts)}
-											aria-pressed={enableFunFacts}
-											aria-label="Enable AI Fun Facts"
-										>
-											<span class="toggle-knob"></span>
-										</button>
-									</label>
-								</div>
-
-								<!-- Fun Fact Frequency (shown when enabled) -->
-								{#if enableFunFacts}
-									<div class="setting-group frequency-group">
-										<span class="setting-label">Fun Fact Frequency</span>
-										<div class="frequency-options">
-											{#each data.funFactOptions as option}
-												<label
-													class="frequency-option"
-													class:selected={funFactFrequency === option.value}
-												>
-													<input
-														type="radio"
-														name="frequencyRadio"
-														value={option.value}
-														checked={funFactFrequency === option.value}
-														onchange={() => (funFactFrequency = option.value)}
-													/>
-													<span class="frequency-label">{option.label}</span>
-													<span class="frequency-desc">{option.description}</span>
-												</label>
-											{/each}
-										</div>
-									</div>
-								{/if}
+							<div class="step-title">
+								<h3>AI Features</h3>
+								<p>AI-powered fun facts and insights</p>
 							</div>
 						</div>
-					</section>
-				{/if}
 
-				<!-- Submit button (hidden, form submits via footer) -->
+						<div class="step-fields">
+							<div class="setting-group">
+								<label class="toggle-row">
+									<div class="toggle-text">
+										<span class="toggle-label">Enable AI Fun Facts</span>
+										<span class="toggle-description">Generate personalized fun facts about viewing habits</span>
+									</div>
+									<button
+										type="button"
+										class="toggle-switch"
+										class:active={enableFunFacts}
+										onclick={() => (enableFunFacts = !enableFunFacts)}
+										aria-pressed={enableFunFacts}
+										aria-label="Enable AI Fun Facts"
+									>
+										<span class="toggle-knob"></span>
+									</button>
+								</label>
+							</div>
+
+							{#if enableFunFacts}
+								<div class="setting-group frequency-group">
+									<span class="setting-label">Fun Fact Frequency</span>
+									<div class="frequency-options">
+										{#each data.funFactOptions as option}
+											<label class="frequency-option" class:selected={funFactFrequency === option.value}>
+												<input
+													type="radio"
+													name="frequencyRadio"
+													value={option.value}
+													checked={funFactFrequency === option.value}
+													onchange={() => (funFactFrequency = option.value)}
+												/>
+												<span class="frequency-label">{option.label}</span>
+												<span class="frequency-desc">{option.description}</span>
+											</label>
+										{/each}
+									</div>
+								</div>
+							{/if}
+						</div>
+					{/if}
+				</div>
+
+				<!-- Submit button (hidden) -->
 				<button type="submit" class="hidden-submit" disabled={isSubmitting}>Save</button>
 			</form>
 		</div>
@@ -437,34 +455,60 @@
 
 	{#snippet footer()}
 		<div class="footer-actions">
-			<form method="POST" action="?/skipSettings" use:enhance>
-				<button type="submit" class="btn-skip" disabled={isSubmitting}> Skip for now </button>
-			</form>
+			<!-- Previous Button -->
 			<button
 				type="button"
-				class="btn-continue"
-				disabled={isSubmitting}
-				onclick={() => {
-					const form = document.querySelector('form[action="?/saveSettings"]') as HTMLFormElement;
-					form?.requestSubmit();
-				}}
+				class="btn-nav btn-prev"
+				disabled={isFirstSubStep || isSubmitting}
+				onclick={prevSubStep}
 			>
-				{#if isSubmitting}
-					<span class="spinner"></span>
-					Saving...
-				{:else}
-					Save & Continue
-					<svg
-						class="arrow-icon"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-					>
+				<svg class="nav-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<path d="M19 12H5M12 19l-7-7 7-7" />
+				</svg>
+				Previous
+			</button>
+
+			<!-- Skip Link (center) -->
+			<form method="POST" action="?/skipSettings" use:enhance class="skip-form">
+				<button type="submit" class="btn-skip-link" disabled={isSubmitting}>
+					Skip setup
+				</button>
+			</form>
+
+			<!-- Next / Save Button -->
+			{#if isLastSubStep}
+				<button
+					type="button"
+					class="btn-nav btn-save"
+					disabled={isSubmitting}
+					onclick={() => {
+						const form = document.querySelector('form[action="?/saveSettings"]') as HTMLFormElement;
+						form?.requestSubmit();
+					}}
+				>
+					{#if isSubmitting}
+						<span class="spinner"></span>
+						Saving...
+					{:else}
+						Save & Continue
+						<svg class="nav-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<path d="M5 12h14M12 5l7 7-7 7" />
+						</svg>
+					{/if}
+				</button>
+			{:else}
+				<button
+					type="button"
+					class="btn-nav btn-next"
+					disabled={isSubmitting}
+					onclick={nextSubStep}
+				>
+					Next
+					<svg class="nav-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 						<path d="M5 12h14M12 5l7 7-7 7" />
 					</svg>
-				{/if}
-			</button>
+				</button>
+			{/if}
 		</div>
 	{/snippet}
 </OnboardingCard>
@@ -504,135 +548,266 @@
 		left: -9999px;
 	}
 
-	/* Settings Section */
-	.settings-section {
-		background: rgba(255, 255, 255, 0.03);
-		border: 1px solid rgba(251, 191, 36, 0.1);
-		border-radius: 1rem;
-		overflow: hidden;
-		transition:
-			border-color 0.3s ease,
-			box-shadow 0.3s ease;
-	}
-
-	.settings-section:hover {
-		border-color: rgba(251, 191, 36, 0.2);
-	}
-
-	.settings-section.expanded {
-		border-color: rgba(251, 191, 36, 0.25);
-		box-shadow: 0 0 20px rgba(251, 191, 36, 0.05);
-	}
-
-	/* Section Header */
-	.section-header {
-		width: 100%;
+	/* ==========================================================================
+	   Sub-step Progress Indicator
+	   ========================================================================== */
+	.substep-indicator {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: 1rem 1.25rem;
-		background: transparent;
-		border: none;
-		cursor: pointer;
-		text-align: left;
-		transition: background 0.2s ease;
-	}
-
-	.section-header:hover {
-		background: rgba(251, 191, 36, 0.05);
-	}
-
-	.section-header-content {
-		display: flex;
-		align-items: center;
 		gap: 1rem;
+		padding: 0.875rem 1rem;
+		background: rgba(0, 0, 0, 0.2);
+		border: 1px solid rgba(251, 191, 36, 0.1);
+		border-radius: 0.875rem;
+		margin-bottom: 1rem;
 	}
 
-	.section-icon {
-		width: 2.5rem;
-		height: 2.5rem;
+	.substep-info {
 		display: flex;
-		align-items: center;
-		justify-content: center;
-		border-radius: 0.75rem;
-		flex-shrink: 0;
+		flex-direction: column;
+		gap: 0.125rem;
 	}
 
-	.section-icon svg {
-		width: 1.25rem;
-		height: 1.25rem;
-	}
-
-	.section-icon.appearance-icon {
-		background: linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(245, 158, 11, 0.1));
-		color: #fbbf24;
-	}
-
-	.section-icon.privacy-icon {
-		background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(37, 99, 235, 0.1));
-		color: #60a5fa;
-	}
-
-	.section-icon.slides-icon {
-		background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(139, 92, 246, 0.1));
-		color: #a78bfa;
-	}
-
-	.section-icon.ai-icon {
-		background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(22, 163, 74, 0.1));
-		color: #4ade80;
-	}
-
-	.section-title h3 {
-		margin: 0;
-		font-size: 1rem;
+	.substep-current {
+		font-size: 0.9rem;
 		font-weight: 600;
 		color: rgba(255, 255, 255, 0.95);
 		font-family: 'DM Sans', system-ui, sans-serif;
 	}
 
-	.section-title p {
-		margin: 0.125rem 0 0;
-		font-size: 0.8rem;
+	.substep-count {
+		font-size: 0.75rem;
+		color: rgba(255, 255, 255, 0.45);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.substep-dots {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.substep-dot {
+		width: 1.75rem;
+		height: 1.75rem;
+		border-radius: 50%;
+		border: 2px solid rgba(255, 255, 255, 0.15);
+		background: rgba(0, 0, 0, 0.2);
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+	}
+
+	.substep-dot:hover {
+		border-color: rgba(255, 255, 255, 0.3);
+		background: rgba(255, 255, 255, 0.05);
+	}
+
+	.substep-dot.completed {
+		border-color: hsl(142, 71%, 45%);
+		background: linear-gradient(135deg, hsl(142, 71%, 45%) 0%, hsl(142, 71%, 35%) 100%);
+	}
+
+	.substep-dot.active {
+		border-color: hsl(35, 100%, 55%);
+		background: linear-gradient(135deg, hsl(35, 100%, 50%) 0%, hsl(25, 100%, 45%) 100%);
+		box-shadow: 0 0 12px rgba(255, 160, 50, 0.4);
+	}
+
+	.dot-check {
+		width: 0.875rem;
+		height: 0.875rem;
+		color: white;
+	}
+
+	/* ==========================================================================
+	   Carousel Content
+	   ========================================================================== */
+	.carousel-content {
+		min-height: 320px;
+	}
+
+	.step-header {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		margin-bottom: 1.5rem;
+		padding-bottom: 1rem;
+		border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+	}
+
+	.step-icon {
+		width: 3rem;
+		height: 3rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 0.875rem;
+		flex-shrink: 0;
+	}
+
+	.step-icon svg {
+		width: 1.5rem;
+		height: 1.5rem;
+	}
+
+	.step-icon.appearance-icon {
+		background: linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(245, 158, 11, 0.1));
+		color: #fbbf24;
+	}
+
+	.step-icon.privacy-icon {
+		background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(37, 99, 235, 0.1));
+		color: #60a5fa;
+	}
+
+	.step-icon.slides-icon {
+		background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(139, 92, 246, 0.1));
+		color: #a78bfa;
+	}
+
+	.step-icon.ai-icon {
+		background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(22, 163, 74, 0.1));
+		color: #4ade80;
+	}
+
+	.step-title h3 {
+		margin: 0;
+		font-size: 1.125rem;
+		font-weight: 600;
+		color: rgba(255, 255, 255, 0.95);
+		font-family: 'DM Sans', system-ui, sans-serif;
+	}
+
+	.step-title p {
+		margin: 0.25rem 0 0;
+		font-size: 0.85rem;
 		color: rgba(255, 255, 255, 0.5);
 	}
 
-	.section-chevron {
-		width: 1.5rem;
-		height: 1.5rem;
-		color: rgba(255, 255, 255, 0.4);
-		transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	.step-fields {
+		display: flex;
+		flex-direction: column;
+		gap: 1.25rem;
 	}
 
-	.section-chevron.rotated {
-		transform: rotate(180deg);
-	}
-
-	.section-chevron svg {
+	/* ==========================================================================
+	   Navigation Buttons
+	   ========================================================================== */
+	.footer-actions {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
 		width: 100%;
-		height: 100%;
 	}
 
-	/* Section Content */
-	.section-content {
-		display: grid;
-		grid-template-rows: 0fr;
-		transition: grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+	.skip-form {
+		position: absolute;
+		left: 50%;
+		transform: translateX(-50%);
 	}
 
-	.settings-section.expanded .section-content {
-		grid-template-rows: 1fr;
+	.btn-skip-link {
+		background: transparent;
+		border: none;
+		color: rgba(255, 255, 255, 0.4);
+		font-size: 0.8rem;
+		cursor: pointer;
+		padding: 0.5rem 1rem;
+		transition: color 0.2s ease;
+		text-decoration: underline;
+		text-decoration-color: transparent;
+		text-underline-offset: 2px;
 	}
 
-	.section-body {
-		overflow: hidden;
-		padding: 0 1.25rem;
+	.btn-skip-link:hover:not(:disabled) {
+		color: rgba(255, 255, 255, 0.6);
+		text-decoration-color: currentColor;
 	}
 
-	.settings-section.expanded .section-body {
-		padding: 0 1.25rem 1.25rem;
+	.btn-skip-link:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
 	}
 
+	.btn-nav {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		padding: 0.75rem 1.25rem;
+		border-radius: 0.75rem;
+		font-size: 0.875rem;
+		font-weight: 500;
+		cursor: pointer;
+		transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+	}
+
+	.btn-prev {
+		background: transparent;
+		border: 1px solid rgba(255, 255, 255, 0.15);
+		color: rgba(255, 255, 255, 0.7);
+	}
+
+	.btn-prev:hover:not(:disabled) {
+		background: rgba(255, 255, 255, 0.05);
+		border-color: rgba(255, 255, 255, 0.25);
+		color: rgba(255, 255, 255, 0.9);
+	}
+
+	.btn-prev:disabled {
+		opacity: 0.35;
+		cursor: not-allowed;
+	}
+
+	.btn-next {
+		background: rgba(251, 191, 36, 0.15);
+		border: 1px solid rgba(251, 191, 36, 0.3);
+		color: #fbbf24;
+	}
+
+	.btn-next:hover:not(:disabled) {
+		background: rgba(251, 191, 36, 0.25);
+		border-color: rgba(251, 191, 36, 0.5);
+		transform: translateX(2px);
+	}
+
+	.btn-save {
+		background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+		border: none;
+		color: #1a1410;
+		font-weight: 600;
+		box-shadow: 0 4px 16px rgba(251, 191, 36, 0.25);
+	}
+
+	.btn-save:hover:not(:disabled) {
+		transform: translateY(-2px);
+		box-shadow: 0 6px 24px rgba(251, 191, 36, 0.35);
+	}
+
+	.btn-save:disabled {
+		opacity: 0.7;
+		cursor: not-allowed;
+		transform: none;
+	}
+
+	.nav-arrow {
+		width: 1rem;
+		height: 1rem;
+		transition: transform 0.2s ease;
+	}
+
+	.btn-next:hover:not(:disabled) .nav-arrow {
+		transform: translateX(2px);
+	}
+
+	.btn-prev:hover:not(:disabled) .nav-arrow {
+		transform: translateX(-2px);
+	}
 	/* Setting Groups */
 	.setting-group {
 		margin-top: 1.25rem;
@@ -1015,80 +1190,7 @@
 		color: rgba(255, 255, 255, 0.45);
 	}
 
-	/* Footer Actions */
-	.footer-actions {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 1rem;
-		width: 100%;
-	}
-
-	.btn-skip {
-		padding: 0.75rem 1.25rem;
-		background: transparent;
-		border: 1px solid rgba(255, 255, 255, 0.15);
-		border-radius: 0.75rem;
-		color: rgba(255, 255, 255, 0.6);
-		font-size: 0.875rem;
-		font-weight: 500;
-		cursor: pointer;
-		transition: all 0.25s ease;
-	}
-
-	.btn-skip:hover:not(:disabled) {
-		background: rgba(255, 255, 255, 0.05);
-		border-color: rgba(255, 255, 255, 0.25);
-		color: rgba(255, 255, 255, 0.8);
-	}
-
-	.btn-skip:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	.btn-continue {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 0.5rem;
-		padding: 0.75rem 1.5rem;
-		background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-		border: none;
-		border-radius: 0.75rem;
-		color: #1a1410;
-		font-size: 0.9rem;
-		font-weight: 600;
-		cursor: pointer;
-		transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-		box-shadow: 0 4px 16px rgba(251, 191, 36, 0.25);
-	}
-
-	.btn-continue:hover:not(:disabled) {
-		transform: translateY(-2px);
-		box-shadow: 0 6px 24px rgba(251, 191, 36, 0.35);
-	}
-
-	.btn-continue:active:not(:disabled) {
-		transform: translateY(0);
-	}
-
-	.btn-continue:disabled {
-		opacity: 0.7;
-		cursor: not-allowed;
-		transform: none;
-	}
-
-	.arrow-icon {
-		width: 1.125rem;
-		height: 1.125rem;
-		transition: transform 0.25s ease;
-	}
-
-	.btn-continue:hover:not(:disabled) .arrow-icon {
-		transform: translateX(3px);
-	}
-
+	/* Spinner */
 	.spinner {
 		width: 1rem;
 		height: 1rem;
@@ -1104,40 +1206,98 @@
 		}
 	}
 
-	/* Mobile Responsive */
+	/* ==========================================================================
+	   Mobile Responsive
+	   ========================================================================== */
 	@media (max-width: 480px) {
-		.section-header {
-			padding: 0.875rem 1rem;
+		/* Sub-step indicator */
+		.substep-indicator {
+			flex-direction: column;
+			gap: 0.75rem;
+			text-align: center;
 		}
 
-		.section-icon {
-			width: 2.25rem;
-			height: 2.25rem;
+		.substep-info {
+			align-items: center;
 		}
 
-		.section-title h3 {
-			font-size: 0.9rem;
+		.substep-dots {
+			gap: 0.375rem;
 		}
 
-		.section-body {
-			padding: 0 1rem;
+		.substep-dot {
+			width: 1.5rem;
+			height: 1.5rem;
 		}
 
-		.settings-section.expanded .section-body {
-			padding: 0 1rem 1rem;
+		.dot-check {
+			width: 0.75rem;
+			height: 0.75rem;
 		}
 
+		/* Carousel content */
+		.carousel-content {
+			min-height: 280px;
+		}
+
+		.step-header {
+			flex-direction: column;
+			text-align: center;
+			gap: 0.75rem;
+		}
+
+		.step-icon {
+			width: 2.5rem;
+			height: 2.5rem;
+		}
+
+		.step-icon svg {
+			width: 1.25rem;
+			height: 1.25rem;
+		}
+
+		.step-title h3 {
+			font-size: 1rem;
+		}
+
+		/* Theme swatches */
 		.theme-swatches {
 			grid-template-columns: repeat(3, 1fr);
 		}
 
+		/* Footer navigation */
 		.footer-actions {
-			flex-direction: column-reverse;
+			position: relative;
+			justify-content: space-between;
 		}
 
-		.btn-skip,
-		.btn-continue {
+		.skip-form {
+			position: static;
+			transform: none;
+			order: -1;
 			width: 100%;
+			text-align: center;
+			margin-bottom: 0.5rem;
+		}
+
+		.btn-nav {
+			padding: 0.625rem 1rem;
+			font-size: 0.8rem;
+		}
+
+		.btn-skip-link {
+			font-size: 0.75rem;
+		}
+	}
+
+	@media (max-width: 360px) {
+		.substep-dot {
+			width: 1.25rem;
+			height: 1.25rem;
+		}
+
+		.theme-swatches {
+			grid-template-columns: repeat(2, 1fr);
 		}
 	}
 </style>
