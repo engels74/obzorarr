@@ -3,39 +3,63 @@
 	import { page } from '$app/stores';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import * as Tabs from '$lib/components/ui/tabs';
+	import { handleFormToast } from '$lib/utils/form-toast';
+	import type { PageData, ActionData } from './$types';
+
+	// Lucide Icons
+	import Settings from '@lucide/svelte/icons/settings';
+	import Plug from '@lucide/svelte/icons/plug';
+	import Palette from '@lucide/svelte/icons/palette';
+	import Shield from '@lucide/svelte/icons/shield';
+	import Database from '@lucide/svelte/icons/database';
+	import Server from '@lucide/svelte/icons/server';
+	import Eye from '@lucide/svelte/icons/eye';
+	import EyeOff from '@lucide/svelte/icons/eye-off';
+	import Zap from '@lucide/svelte/icons/zap';
+	import Bot from '@lucide/svelte/icons/bot';
+	import Monitor from '@lucide/svelte/icons/monitor';
+	import Sparkles from '@lucide/svelte/icons/sparkles';
+	import Users from '@lucide/svelte/icons/users';
+	import UserCheck from '@lucide/svelte/icons/user-check';
+	import VenetianMask from '@lucide/svelte/icons/venetian-mask';
+	import Image from '@lucide/svelte/icons/image';
+	import ImageOff from '@lucide/svelte/icons/image-off';
+	import ToggleRight from '@lucide/svelte/icons/toggle-right';
+	import Globe from '@lucide/svelte/icons/globe';
+	import Lock from '@lucide/svelte/icons/lock';
+	import Link from '@lucide/svelte/icons/link';
+	import Calendar from '@lucide/svelte/icons/calendar';
+	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
+	import Trash2 from '@lucide/svelte/icons/trash-2';
+	import AlertTriangle from '@lucide/svelte/icons/alert-triangle';
+	import ScrollText from '@lucide/svelte/icons/scroll-text';
+	import Clock from '@lucide/svelte/icons/clock';
+	import Hash from '@lucide/svelte/icons/hash';
+	import Bug from '@lucide/svelte/icons/bug';
+	import ExternalLink from '@lucide/svelte/icons/external-link';
+	import Check from '@lucide/svelte/icons/check';
+	import Loader2 from '@lucide/svelte/icons/loader-2';
 
 	// Valid tab values
 	const validTabs = ['connections', 'appearance', 'privacy', 'data', 'system'] as const;
 	type TabValue = (typeof validTabs)[number];
 
-	// Get initial tab from URL query parameter
-	function getInitialTab(): TabValue {
-		if (typeof window === 'undefined') return 'connections';
-		const urlTab = $page.url.searchParams.get('tab');
-		if (urlTab && validTabs.includes(urlTab as TabValue)) {
-			return urlTab as TabValue;
-		}
-		return 'connections';
-	}
+	// Active tab state - initialized from URL params if available
+	let activeTab = $state<TabValue>('connections');
 
-	// Active tab state
-	let activeTab = $state<TabValue>(getInitialTab());
-	import { handleFormToast } from '$lib/utils/form-toast';
-	import type { PageData, ActionData } from './$types';
+	// Sync tab from URL on mount
+	$effect(() => {
+		const urlTab = $page.url?.searchParams?.get('tab');
+		if (urlTab && validTabs.includes(urlTab as TabValue)) {
+			activeTab = urlTab as TabValue;
+		}
+	});
 
 	/**
-	 * Admin Settings Page
+	 * Admin Settings Page - Command Center Design
 	 *
-	 * Manages application configuration:
-	 * - API settings (Plex, OpenAI)
-	 * - Theme selection
-	 * - Anonymization settings
-	 * - Year/archive settings
-	 *
-	 * Implements Requirements:
-	 * - 11.4: Theme configuration
-	 * - 11.5: API configuration
-	 * - 11.6: Year and archive settings
+	 * Manages application configuration with a modern,
+	 * visually striking interface.
 	 */
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -90,7 +114,6 @@
 		logRetentionDays = data.logSettings.retentionDays;
 		logMaxCount = data.logSettings.maxCount;
 		logDebugEnabled = data.logSettings.debugEnabled;
-		// Sharing settings
 		selectedServerWrappedMode = data.serverWrappedShareMode;
 		selectedDefaultShareMode = data.globalDefaults.defaultShareMode;
 		allowUserControl = data.globalDefaults.allowUserControl;
@@ -100,17 +123,17 @@
 	function getSourceLabel(source: 'env' | 'db' | 'default'): string {
 		switch (source) {
 			case 'env':
-				return 'from environment variable';
+				return 'Environment';
 			case 'db':
-				return 'saved in database';
+				return 'Database';
 			default:
-				return '';
+				return 'Default';
 		}
 	}
 
 	// Theme display names
 	const themeLabels: Record<string, string> = {
-		'modern-minimal': 'Modern Minimal (Default)',
+		'modern-minimal': 'Modern Minimal',
 		supabase: 'Supabase',
 		'doom-64': 'Doom 64',
 		'amber-minimal': 'Amber Minimal',
@@ -120,56 +143,16 @@
 	// Anonymization descriptions
 	const anonymizationDescriptions: Record<string, string> = {
 		real: 'Show actual usernames in all statistics',
-		anonymous: 'Replace all usernames with "User #1", "User #2", etc.',
-		hybrid: 'Users see their own name, but others are anonymized'
+		anonymous: 'Replace usernames with "User #1", "User #2", etc.',
+		hybrid: 'Users see their own name, others are anonymized'
 	};
 
 	// Wrapped logo mode descriptions
 	const wrappedLogoDescriptions: Record<string, string> = {
-		always_show: 'Logo is always visible on all wrapped pages',
-		always_hide: 'Logo is hidden on all wrapped pages',
-		user_choice: 'Users can choose to show or hide the logo on their wrapped page'
+		always_show: 'Logo always visible on wrapped pages',
+		always_hide: 'Logo hidden on all wrapped pages',
+		user_choice: 'Users can toggle logo visibility'
 	};
-
-	// Icon helpers for privacy cards
-	function getAnonymizationIcon(mode: string): string {
-		switch (mode) {
-			case 'real':
-				return '👤';
-			case 'anonymous':
-				return '🎭';
-			case 'hybrid':
-				return '👥';
-			default:
-				return '⚙️';
-		}
-	}
-
-	function getLogoIcon(mode: string): string {
-		switch (mode) {
-			case 'always_show':
-				return '✅';
-			case 'always_hide':
-				return '🚫';
-			case 'user_choice':
-				return '🔄';
-			default:
-				return '⚙️';
-		}
-	}
-
-	function getShareIcon(mode: string): string {
-		switch (mode) {
-			case 'public':
-				return '🌐';
-			case 'private-oauth':
-				return '🔐';
-			case 'private-link':
-				return '🔗';
-			default:
-				return '⚙️';
-		}
-	}
 
 	// Show toast notifications for form responses
 	$effect(() => {
@@ -195,7 +178,6 @@
 		loadingCount = true;
 		pendingCacheYear = year;
 
-		// Fetch the count via form action
 		const formData = new FormData();
 		if (year !== undefined) {
 			formData.append('year', year.toString());
@@ -220,14 +202,12 @@
 		}
 	}
 
-	// Handle confirmed cache clear
 	function handleCacheCleared() {
 		cacheDialogOpen = false;
 		pendingCacheYear = undefined;
 		pendingCacheCount = 0;
 	}
 
-	// Get confirmation message based on year
 	function getCacheConfirmationMessage(): string {
 		if (pendingCacheYear !== undefined) {
 			return `This will permanently delete ${pendingCacheCount} cached statistics record${pendingCacheCount !== 1 ? 's' : ''} for ${pendingCacheYear}.`;
@@ -235,7 +215,6 @@
 		return `This will permanently delete ${pendingCacheCount} cached statistics record${pendingCacheCount !== 1 ? 's' : ''} across all years.`;
 	}
 
-	// Open play history clearing confirmation dialog
 	async function showHistoryConfirmation(year?: number) {
 		loadingHistoryCount = true;
 		pendingHistoryYear = year;
@@ -264,1123 +243,1927 @@
 		}
 	}
 
-	// Handle confirmed history clear
 	function handleHistoryCleared() {
 		historyDialogOpen = false;
 		pendingHistoryYear = undefined;
 		pendingHistoryCount = 0;
 	}
 
-	// Get confirmation message for history clearing
 	function getHistoryConfirmationMessage(): string {
 		if (pendingHistoryYear !== undefined) {
 			return `This will permanently delete ${pendingHistoryCount} play history record${pendingHistoryCount !== 1 ? 's' : ''} for ${pendingHistoryYear}.`;
 		}
 		return `This will permanently delete ${pendingHistoryCount} play history record${pendingHistoryCount !== 1 ? 's' : ''} across all years.`;
 	}
+
+	// Tab configuration with icons
+	const tabConfig = [
+		{ value: 'connections' as const, label: 'Connections', icon: Plug },
+		{ value: 'appearance' as const, label: 'Appearance', icon: Palette },
+		{ value: 'privacy' as const, label: 'Privacy', icon: Shield },
+		{ value: 'data' as const, label: 'Data', icon: Database },
+		{ value: 'system' as const, label: 'System', icon: Server }
+	];
 </script>
 
-<div class="settings-page">
+<div class="settings-command-center">
+	<!-- Page Header -->
 	<header class="page-header">
-		<h1>Settings</h1>
-		<p class="subtitle">Configure application settings</p>
+		<div class="header-content">
+			<div class="header-icon">
+				<Settings />
+			</div>
+			<div class="header-text">
+				<h1>Settings</h1>
+				<p class="header-subtitle">Application Configuration Center</p>
+			</div>
+		</div>
+		<div class="header-stats">
+			<div class="header-stat">
+				<span class="header-stat-value">{data.availableYears.length}</span>
+				<span class="header-stat-label">Years</span>
+			</div>
+			<div class="header-stat">
+				<span class="header-stat-value">{data.themeOptions.length}</span>
+				<span class="header-stat-label">Themes</span>
+			</div>
+		</div>
 	</header>
 
-	<Tabs.Root bind:value={activeTab} class="settings-tabs">
-		<Tabs.List class="tabs-list">
-			<Tabs.Trigger value="connections">Connections</Tabs.Trigger>
-			<Tabs.Trigger value="appearance">Appearance</Tabs.Trigger>
-			<Tabs.Trigger value="privacy">Privacy</Tabs.Trigger>
-			<Tabs.Trigger value="data">Data</Tabs.Trigger>
-			<Tabs.Trigger value="system">System</Tabs.Trigger>
-		</Tabs.List>
+	<!-- Tab Navigation -->
+	<nav class="tab-nav">
+		{#each tabConfig as tab}
+			<button
+				type="button"
+				class="tab-button"
+				class:active={activeTab === tab.value}
+				onclick={() => (activeTab = tab.value)}
+			>
+				<tab.icon class="tab-icon" />
+				<span class="tab-label">{tab.label}</span>
+			</button>
+		{/each}
+	</nav>
 
-		<!-- Connections Tab: Plex & OpenAI Settings -->
-		<Tabs.Content value="connections">
-			<section class="section">
-				<h2>API Configuration</h2>
-				<p class="section-description">
-					Configure connections to Plex and OpenAI (for fun facts generation).
-				</p>
-
-				<form method="POST" action="?/updateApiConfig" use:enhance class="api-form">
-					<div class="form-group">
-						<label for="plexServerUrl">
-							Plex Server URL
-							{#if plexServerUrlSource === 'env'}
-								<span class="source-badge env">ENV</span>
-							{:else if plexServerUrlSource === 'db'}
-								<span class="source-badge db">Saved</span>
-							{/if}
-						</label>
-						<input
-							type="url"
-							id="plexServerUrl"
-							name="plexServerUrl"
-							bind:value={plexServerUrl}
-							placeholder="http://192.168.1.100:32400"
-							class:from-env={plexServerUrlSource === 'env'}
-						/>
-						<span class="form-hint">
-							The URL of your Plex Media Server
-							{#if plexServerUrlSource === 'env'}
-								<em class="source-hint">({getSourceLabel(plexServerUrlSource)})</em>
-							{/if}
-						</span>
-					</div>
-
-					<div class="form-group">
-						<label for="plexToken">
-							Plex Token
-							{#if plexTokenSource === 'env'}
-								<span class="source-badge env">ENV</span>
-							{:else if plexTokenSource === 'db'}
-								<span class="source-badge db">Saved</span>
-							{/if}
-						</label>
-						<div class="password-input">
-							<input
-								type={showPlexToken ? 'text' : 'password'}
-								id="plexToken"
-								name="plexToken"
-								bind:value={plexToken}
-								placeholder="Enter Plex token"
-								class:from-env={plexTokenSource === 'env'}
-							/>
-							<button
-								type="button"
-								class="toggle-visibility"
-								onclick={() => (showPlexToken = !showPlexToken)}
-							>
-								{showPlexToken ? 'Hide' : 'Show'}
-							</button>
+	<!-- Tab Content -->
+	<div class="tab-content">
+		<!-- Connections Tab -->
+		{#if activeTab === 'connections'}
+			<div class="content-grid">
+				<!-- Plex Configuration Panel -->
+				<section class="panel plex-panel">
+					<div class="panel-header">
+						<div class="panel-title">
+							<Zap class="panel-icon plex" />
+							<h2>Plex Server</h2>
 						</div>
-						<span class="form-hint">
-							Your X-Plex-Token for authentication
-							{#if plexTokenSource === 'env'}
-								<em class="source-hint">({getSourceLabel(plexTokenSource)})</em>
-							{/if}
-						</span>
-					</div>
-
-					<div class="form-actions">
-						<button type="submit" class="save-button">Save Plex Settings</button>
-					</div>
-				</form>
-
-				<!-- Test Connection -->
-				<form
-					method="POST"
-					action="?/testPlexConnection"
-					use:enhance={() => {
-						isTesting = true;
-						return async ({ update }) => {
-							isTesting = false;
-							await update();
-						};
-					}}
-					class="test-form"
-				>
-					<input type="hidden" name="plexServerUrl" value={plexServerUrl} />
-					<input type="hidden" name="plexToken" value={plexToken} />
-					<button
-						type="submit"
-						class="test-button"
-						disabled={isTesting || !plexServerUrl || !plexToken}
-					>
-						{#if isTesting}
-							Testing...
-						{:else}
-							Test Connection
-						{/if}
-					</button>
-				</form>
-
-				<hr class="section-divider" />
-
-				<form method="POST" action="?/updateApiConfig" use:enhance class="api-form">
-					<h3>OpenAI Configuration (Optional)</h3>
-					<p class="subsection-description">
-						For AI-generated fun facts. Leave empty to use predefined templates.
-					</p>
-
-					<div class="form-group">
-						<label for="openaiApiKey">
-							OpenAI API Key
-							{#if openaiApiKeySource === 'env'}
-								<span class="source-badge env">ENV</span>
-							{:else if openaiApiKeySource === 'db'}
-								<span class="source-badge db">Saved</span>
-							{/if}
-						</label>
-						<div class="password-input">
-							<input
-								type={showOpenaiKey ? 'text' : 'password'}
-								id="openaiApiKey"
-								name="openaiApiKey"
-								bind:value={openaiApiKey}
-								placeholder="sk-..."
-								class:from-env={openaiApiKeySource === 'env'}
-							/>
-							<button
-								type="button"
-								class="toggle-visibility"
-								onclick={() => (showOpenaiKey = !showOpenaiKey)}
+						<div class="connection-status" class:connected={plexServerUrl && plexToken}>
+							<span class="status-dot"></span>
+							<span class="status-text"
+								>{plexServerUrl && plexToken ? 'Configured' : 'Not configured'}</span
 							>
-								{showOpenaiKey ? 'Hide' : 'Show'}
-							</button>
 						</div>
-						{#if openaiApiKeySource === 'env'}
-							<span class="form-hint">
-								<em class="source-hint">({getSourceLabel(openaiApiKeySource)})</em>
-							</span>
-						{/if}
 					</div>
 
-					<div class="form-group">
-						<label for="openaiBaseUrl">
-							OpenAI Base URL (Optional)
-							{#if openaiBaseUrlSource === 'env'}
-								<span class="source-badge env">ENV</span>
-							{:else if openaiBaseUrlSource === 'db'}
-								<span class="source-badge db">Saved</span>
-							{/if}
-						</label>
-						<input
-							type="url"
-							id="openaiBaseUrl"
-							name="openaiBaseUrl"
-							bind:value={openaiBaseUrl}
-							placeholder="https://api.openai.com/v1"
-							class:from-env={openaiBaseUrlSource === 'env'}
-						/>
-						<span class="form-hint">
-							For custom OpenAI-compatible endpoints
-							{#if openaiBaseUrlSource === 'env'}
-								<em class="source-hint">({getSourceLabel(openaiBaseUrlSource)})</em>
-							{/if}
-						</span>
-					</div>
+					<form method="POST" action="?/updateApiConfig" use:enhance class="panel-form">
+						<div class="form-field">
+							<div class="field-header">
+								<label for="plexServerUrl">Server URL</label>
+								{#if plexServerUrlSource !== 'default'}
+									<span class="source-badge" class:env={plexServerUrlSource === 'env'}>
+										{getSourceLabel(plexServerUrlSource)}
+									</span>
+								{/if}
+							</div>
+							<input
+								type="url"
+								id="plexServerUrl"
+								name="plexServerUrl"
+								bind:value={plexServerUrl}
+								placeholder="http://192.168.1.100:32400"
+								class:from-env={plexServerUrlSource === 'env'}
+							/>
+							<span class="field-hint">Your Plex Media Server address</span>
+						</div>
 
-					<div class="form-group">
-						<label for="openaiModel">
-							OpenAI Model
-							{#if openaiModelSource === 'env'}
-								<span class="source-badge env">ENV</span>
-							{:else if openaiModelSource === 'db'}
-								<span class="source-badge db">Saved</span>
-							{/if}
-						</label>
-						<input
-							type="text"
-							id="openaiModel"
-							name="openaiModel"
-							bind:value={openaiModel}
-							placeholder="gpt-4o-mini"
-							class:from-env={openaiModelSource === 'env'}
-						/>
-						<span class="form-hint">
-							The model to use for fun facts generation (default: gpt-4o-mini)
-							{#if openaiModelSource === 'env'}
-								<em class="source-hint">({getSourceLabel(openaiModelSource)})</em>
-							{/if}
-						</span>
-					</div>
-
-					<div class="form-actions">
-						<button type="submit" class="save-button">Save OpenAI Settings</button>
-					</div>
-				</form>
-			</section>
-		</Tabs.Content>
-
-		<!-- Appearance Tab: UI Theme & Wrapped Theme -->
-		<Tabs.Content value="appearance">
-			<section class="section">
-				<h2>UI Theme</h2>
-				<p class="section-description">
-					Select a color theme for the dashboard, admin pages, and all non-wrapped pages.
-				</p>
-
-				<form method="POST" action="?/updateUITheme" use:enhance class="theme-form">
-					<div class="theme-options">
-						{#each data.themeOptions as theme}
-							<label class="theme-option" class:selected={selectedUITheme === theme.value}>
-								<input type="radio" name="theme" value={theme.value} bind:group={selectedUITheme} />
-								<span class="theme-preview {theme.value}"></span>
-								<span class="theme-label">{themeLabels[theme.value] ?? theme.label}</span>
-							</label>
-						{/each}
-					</div>
-
-					<div class="form-actions">
-						<button type="submit" class="save-button">Save UI Theme</button>
-					</div>
-				</form>
-			</section>
-
-			<!-- Wrapped Theme Section -->
-			<section class="section">
-				<h2>Wrapped Theme</h2>
-				<p class="section-description">
-					Select a color theme for the Year in Review slideshow pages (/wrapped/*).
-				</p>
-
-				<form method="POST" action="?/updateWrappedTheme" use:enhance class="theme-form">
-					<div class="theme-options">
-						{#each data.themeOptions as theme}
-							<label class="theme-option" class:selected={selectedWrappedTheme === theme.value}>
+						<div class="form-field">
+							<div class="field-header">
+								<label for="plexToken">Authentication Token</label>
+								{#if plexTokenSource !== 'default'}
+									<span class="source-badge" class:env={plexTokenSource === 'env'}>
+										{getSourceLabel(plexTokenSource)}
+									</span>
+								{/if}
+							</div>
+							<div class="input-with-action">
 								<input
-									type="radio"
-									name="theme"
-									value={theme.value}
-									bind:group={selectedWrappedTheme}
+									type={showPlexToken ? 'text' : 'password'}
+									id="plexToken"
+									name="plexToken"
+									bind:value={plexToken}
+									placeholder="X-Plex-Token"
+									class:from-env={plexTokenSource === 'env'}
 								/>
-								<span class="theme-preview {theme.value}"></span>
-								<span class="theme-label">{themeLabels[theme.value] ?? theme.label}</span>
-							</label>
-						{/each}
-					</div>
-
-					<div class="form-actions">
-						<button type="submit" class="save-button">Save Wrapped Theme</button>
-					</div>
-				</form>
-			</section>
-		</Tabs.Content>
-
-		<!-- Privacy Tab: Consolidated Form with Horizontal Cards -->
-		<Tabs.Content value="privacy">
-			<form method="POST" action="?/updatePrivacySettings" use:enhance class="privacy-form">
-				<!-- GROUP 1: User Privacy -->
-				<section class="section privacy-group">
-					<h2>User Privacy</h2>
-					<p class="section-description">
-						Control how usernames and branding appear across the platform.
-					</p>
-
-					<!-- Anonymization Mode - Horizontal Cards -->
-					<div class="privacy-subsection">
-						<h3>Anonymization Mode</h3>
-						<p class="subsection-description">
-							Control how usernames appear in server-wide statistics.
-						</p>
-						<div class="privacy-card-grid">
-							{#each data.anonymizationOptions as option}
-								<label class="privacy-card" class:selected={selectedAnonymization === option.value}>
-									<input
-										type="radio"
-										name="anonymizationMode"
-										value={option.value}
-										bind:group={selectedAnonymization}
-									/>
-									<span class="card-icon">{getAnonymizationIcon(option.value)}</span>
-									<span class="card-title">{option.label}</span>
-									<span class="card-desc">{anonymizationDescriptions[option.value]}</span>
-								</label>
-							{/each}
-						</div>
-					</div>
-
-					<!-- Logo Mode - Horizontal Cards -->
-					<div class="privacy-subsection">
-						<h3>Wrapped Page Logo</h3>
-						<p class="subsection-description">Control logo visibility on wrapped pages.</p>
-						<div class="privacy-card-grid">
-							{#each data.wrappedLogoOptions as option}
-								<label
-									class="privacy-card"
-									class:selected={selectedWrappedLogoMode === option.value}
+								<button
+									type="button"
+									class="input-action"
+									onclick={() => (showPlexToken = !showPlexToken)}
+									aria-label={showPlexToken ? 'Hide token' : 'Show token'}
 								>
+									{#if showPlexToken}
+										<EyeOff />
+									{:else}
+										<Eye />
+									{/if}
+								</button>
+							</div>
+						</div>
+
+						<div class="panel-actions">
+							<button type="submit" class="btn-primary">
+								<Check class="btn-icon" />
+								Save Plex Settings
+							</button>
+						</div>
+					</form>
+
+					<form
+						method="POST"
+						action="?/testPlexConnection"
+						use:enhance={() => {
+							isTesting = true;
+							return async ({ update }) => {
+								isTesting = false;
+								await update();
+							};
+						}}
+						class="test-connection-form"
+					>
+						<input type="hidden" name="plexServerUrl" value={plexServerUrl} />
+						<input type="hidden" name="plexToken" value={plexToken} />
+						<button
+							type="submit"
+							class="btn-secondary"
+							disabled={isTesting || !plexServerUrl || !plexToken}
+						>
+							{#if isTesting}
+								<Loader2 class="btn-icon spinning" />
+								Testing...
+							{:else}
+								<Zap class="btn-icon" />
+								Test Connection
+							{/if}
+						</button>
+					</form>
+				</section>
+
+				<!-- OpenAI Configuration Panel -->
+				<section class="panel openai-panel">
+					<div class="panel-header">
+						<div class="panel-title">
+							<Bot class="panel-icon openai" />
+							<h2>OpenAI</h2>
+						</div>
+						<span class="panel-badge optional">Optional</span>
+					</div>
+
+					<p class="panel-description">
+						Configure AI-powered fun facts generation. Leave empty to use predefined templates.
+					</p>
+
+					<form method="POST" action="?/updateApiConfig" use:enhance class="panel-form">
+						<div class="form-field">
+							<div class="field-header">
+								<label for="openaiApiKey">API Key</label>
+								{#if openaiApiKeySource !== 'default'}
+									<span class="source-badge" class:env={openaiApiKeySource === 'env'}>
+										{getSourceLabel(openaiApiKeySource)}
+									</span>
+								{/if}
+							</div>
+							<div class="input-with-action">
+								<input
+									type={showOpenaiKey ? 'text' : 'password'}
+									id="openaiApiKey"
+									name="openaiApiKey"
+									bind:value={openaiApiKey}
+									placeholder="sk-..."
+									class:from-env={openaiApiKeySource === 'env'}
+								/>
+								<button
+									type="button"
+									class="input-action"
+									onclick={() => (showOpenaiKey = !showOpenaiKey)}
+									aria-label={showOpenaiKey ? 'Hide key' : 'Show key'}
+								>
+									{#if showOpenaiKey}
+										<EyeOff />
+									{:else}
+										<Eye />
+									{/if}
+								</button>
+							</div>
+						</div>
+
+						<div class="form-row">
+							<div class="form-field">
+								<div class="field-header">
+									<label for="openaiBaseUrl">Base URL</label>
+									{#if openaiBaseUrlSource !== 'default'}
+										<span class="source-badge" class:env={openaiBaseUrlSource === 'env'}>
+											{getSourceLabel(openaiBaseUrlSource)}
+										</span>
+									{/if}
+								</div>
+								<input
+									type="url"
+									id="openaiBaseUrl"
+									name="openaiBaseUrl"
+									bind:value={openaiBaseUrl}
+									placeholder="https://api.openai.com/v1"
+									class:from-env={openaiBaseUrlSource === 'env'}
+								/>
+								<span class="field-hint">Custom endpoint (optional)</span>
+							</div>
+
+							<div class="form-field">
+								<div class="field-header">
+									<label for="openaiModel">Model</label>
+									{#if openaiModelSource !== 'default'}
+										<span class="source-badge" class:env={openaiModelSource === 'env'}>
+											{getSourceLabel(openaiModelSource)}
+										</span>
+									{/if}
+								</div>
+								<input
+									type="text"
+									id="openaiModel"
+									name="openaiModel"
+									bind:value={openaiModel}
+									placeholder="gpt-4o-mini"
+									class:from-env={openaiModelSource === 'env'}
+								/>
+								<span class="field-hint">Default: gpt-4o-mini</span>
+							</div>
+						</div>
+
+						<div class="panel-actions">
+							<button type="submit" class="btn-primary">
+								<Check class="btn-icon" />
+								Save OpenAI Settings
+							</button>
+						</div>
+					</form>
+				</section>
+			</div>
+		{/if}
+
+		<!-- Appearance Tab -->
+		{#if activeTab === 'appearance'}
+			<div class="appearance-content">
+				<!-- UI Theme Section -->
+				<section class="panel theme-panel">
+					<div class="panel-header">
+						<div class="panel-title">
+							<Monitor class="panel-icon" />
+							<h2>UI Theme</h2>
+						</div>
+					</div>
+					<p class="panel-description">
+						Color theme for dashboard, admin pages, and all non-wrapped pages.
+					</p>
+
+					<form method="POST" action="?/updateUITheme" use:enhance>
+						<div class="theme-grid">
+							{#each data.themeOptions as theme}
+								<label class="theme-card" class:selected={selectedUITheme === theme.value}>
 									<input
 										type="radio"
-										name="logoMode"
-										value={option.value}
-										bind:group={selectedWrappedLogoMode}
+										name="theme"
+										value={theme.value}
+										bind:group={selectedUITheme}
 									/>
-									<span class="card-icon">{getLogoIcon(option.value)}</span>
-									<span class="card-title">{option.label}</span>
-									<span class="card-desc">{wrappedLogoDescriptions[option.value]}</span>
+									<div class="theme-preview {theme.value}">
+										<div class="theme-gradient"></div>
+									</div>
+									<span class="theme-name">{themeLabels[theme.value] ?? theme.label}</span>
+									{#if selectedUITheme === theme.value}
+										<div class="theme-check">
+											<Check />
+										</div>
+									{/if}
 								</label>
 							{/each}
 						</div>
+						<div class="panel-actions">
+							<button type="submit" class="btn-primary">
+								<Palette class="btn-icon" />
+								Apply UI Theme
+							</button>
+						</div>
+					</form>
+				</section>
+
+				<!-- Wrapped Theme Section -->
+				<section class="panel theme-panel">
+					<div class="panel-header">
+						<div class="panel-title">
+							<Sparkles class="panel-icon" />
+							<h2>Wrapped Theme</h2>
+						</div>
+					</div>
+					<p class="panel-description">
+						Color theme for Year in Review slideshow pages at /wrapped/*.
+					</p>
+
+					<form method="POST" action="?/updateWrappedTheme" use:enhance>
+						<div class="theme-grid">
+							{#each data.themeOptions as theme}
+								<label class="theme-card" class:selected={selectedWrappedTheme === theme.value}>
+									<input
+										type="radio"
+										name="theme"
+										value={theme.value}
+										bind:group={selectedWrappedTheme}
+									/>
+									<div class="theme-preview {theme.value}">
+										<div class="theme-gradient"></div>
+									</div>
+									<span class="theme-name">{themeLabels[theme.value] ?? theme.label}</span>
+									{#if selectedWrappedTheme === theme.value}
+										<div class="theme-check">
+											<Check />
+										</div>
+									{/if}
+								</label>
+							{/each}
+						</div>
+						<div class="panel-actions">
+							<button type="submit" class="btn-primary">
+								<Sparkles class="btn-icon" />
+								Apply Wrapped Theme
+							</button>
+						</div>
+					</form>
+				</section>
+			</div>
+		{/if}
+
+		<!-- Privacy Tab -->
+		{#if activeTab === 'privacy'}
+			<form method="POST" action="?/updatePrivacySettings" use:enhance class="privacy-content">
+				<!-- User Identity Section -->
+				<section class="panel privacy-panel">
+					<div class="panel-header">
+						<div class="panel-title">
+							<Users class="panel-icon" />
+							<h2>User Identity</h2>
+						</div>
+					</div>
+					<p class="panel-description">
+						Control how usernames appear in server-wide statistics.
+					</p>
+
+					<h3 class="subsection-title">
+						<VenetianMask class="subsection-icon" />
+						Anonymization Mode
+					</h3>
+
+					<div class="option-cards">
+						<label class="option-card" class:selected={selectedAnonymization === 'real'}>
+							<input
+								type="radio"
+								name="anonymizationMode"
+								value="real"
+								bind:group={selectedAnonymization}
+							/>
+							<div class="option-icon">
+								<UserCheck />
+							</div>
+							<div class="option-content">
+								<span class="option-title">Real Names</span>
+								<span class="option-desc">{anonymizationDescriptions.real}</span>
+							</div>
+							{#if selectedAnonymization === 'real'}
+								<div class="option-check"><Check /></div>
+							{/if}
+						</label>
+
+						<label class="option-card" class:selected={selectedAnonymization === 'anonymous'}>
+							<input
+								type="radio"
+								name="anonymizationMode"
+								value="anonymous"
+								bind:group={selectedAnonymization}
+							/>
+							<div class="option-icon">
+								<VenetianMask />
+							</div>
+							<div class="option-content">
+								<span class="option-title">Anonymous</span>
+								<span class="option-desc">{anonymizationDescriptions.anonymous}</span>
+							</div>
+							{#if selectedAnonymization === 'anonymous'}
+								<div class="option-check"><Check /></div>
+							{/if}
+						</label>
+
+						<label class="option-card" class:selected={selectedAnonymization === 'hybrid'}>
+							<input
+								type="radio"
+								name="anonymizationMode"
+								value="hybrid"
+								bind:group={selectedAnonymization}
+							/>
+							<div class="option-icon">
+								<Users />
+							</div>
+							<div class="option-content">
+								<span class="option-title">Hybrid</span>
+								<span class="option-desc">{anonymizationDescriptions.hybrid}</span>
+							</div>
+							{#if selectedAnonymization === 'hybrid'}
+								<div class="option-check"><Check /></div>
+							{/if}
+						</label>
+					</div>
+
+					<h3 class="subsection-title">
+						<Image class="subsection-icon" />
+						Wrapped Page Logo
+					</h3>
+
+					<div class="option-cards">
+						<label class="option-card" class:selected={selectedWrappedLogoMode === 'always_show'}>
+							<input
+								type="radio"
+								name="logoMode"
+								value="always_show"
+								bind:group={selectedWrappedLogoMode}
+							/>
+							<div class="option-icon">
+								<Image />
+							</div>
+							<div class="option-content">
+								<span class="option-title">Always Show</span>
+								<span class="option-desc">{wrappedLogoDescriptions.always_show}</span>
+							</div>
+							{#if selectedWrappedLogoMode === 'always_show'}
+								<div class="option-check"><Check /></div>
+							{/if}
+						</label>
+
+						<label class="option-card" class:selected={selectedWrappedLogoMode === 'always_hide'}>
+							<input
+								type="radio"
+								name="logoMode"
+								value="always_hide"
+								bind:group={selectedWrappedLogoMode}
+							/>
+							<div class="option-icon">
+								<ImageOff />
+							</div>
+							<div class="option-content">
+								<span class="option-title">Always Hide</span>
+								<span class="option-desc">{wrappedLogoDescriptions.always_hide}</span>
+							</div>
+							{#if selectedWrappedLogoMode === 'always_hide'}
+								<div class="option-check"><Check /></div>
+							{/if}
+						</label>
+
+						<label class="option-card" class:selected={selectedWrappedLogoMode === 'user_choice'}>
+							<input
+								type="radio"
+								name="logoMode"
+								value="user_choice"
+								bind:group={selectedWrappedLogoMode}
+							/>
+							<div class="option-icon">
+								<ToggleRight />
+							</div>
+							<div class="option-content">
+								<span class="option-title">User Choice</span>
+								<span class="option-desc">{wrappedLogoDescriptions.user_choice}</span>
+							</div>
+							{#if selectedWrappedLogoMode === 'user_choice'}
+								<div class="option-check"><Check /></div>
+							{/if}
+						</label>
 					</div>
 				</section>
 
-				<!-- GROUP 2: Sharing Access -->
-				<section class="section privacy-group">
-					<h2>Sharing Access</h2>
-					<p class="section-description">Configure access controls for wrapped pages.</p>
-
-					<!-- Server-Wide Wrapped Access - 2-column cards -->
-					<div class="privacy-subsection">
-						<h3>Server-Wide Wrapped Access</h3>
-						<p class="subsection-description">
-							Control who can access the server-wide Year in Review at <code
-								>/wrapped/{data.currentYear}</code
-							>.
-						</p>
-						<div class="privacy-card-grid two-col">
-							<label class="privacy-card" class:selected={selectedServerWrappedMode === 'public'}>
-								<input
-									type="radio"
-									name="serverWrappedShareMode"
-									value="public"
-									bind:group={selectedServerWrappedMode}
-								/>
-								<span class="card-icon">{getShareIcon('public')}</span>
-								<span class="card-title">Public</span>
-								<span class="card-desc">Anyone can view the server wrapped</span>
-							</label>
-							<label
-								class="privacy-card"
-								class:selected={selectedServerWrappedMode === 'private-oauth'}
-							>
-								<input
-									type="radio"
-									name="serverWrappedShareMode"
-									value="private-oauth"
-									bind:group={selectedServerWrappedMode}
-								/>
-								<span class="card-icon">{getShareIcon('private-oauth')}</span>
-								<span class="card-title">Private OAuth</span>
-								<span class="card-desc">Server members only</span>
-							</label>
+				<!-- Sharing Access Section -->
+				<section class="panel privacy-panel">
+					<div class="panel-header">
+						<div class="panel-title">
+							<Globe class="panel-icon" />
+							<h2>Sharing Access</h2>
 						</div>
 					</div>
+					<p class="panel-description">Configure access controls for wrapped pages.</p>
 
-					<!-- Sharing Defaults - 3-column cards + checkbox -->
-					<div class="privacy-subsection">
-						<h3>User Sharing Defaults</h3>
-						<p class="subsection-description">
-							Set the minimum privacy level for user wrapped pages. Users cannot choose less
-							restrictive settings than this.
-						</p>
-						<div class="privacy-card-grid three-col">
-							<label class="privacy-card" class:selected={selectedDefaultShareMode === 'public'}>
-								<input
-									type="radio"
-									name="defaultShareMode"
-									value="public"
-									bind:group={selectedDefaultShareMode}
-								/>
-								<span class="card-icon">{getShareIcon('public')}</span>
-								<span class="card-title">Public</span>
-								<span class="card-desc">Anyone can view (least restrictive)</span>
-							</label>
-							<label
-								class="privacy-card"
-								class:selected={selectedDefaultShareMode === 'private-link'}
-							>
-								<input
-									type="radio"
-									name="defaultShareMode"
-									value="private-link"
-									bind:group={selectedDefaultShareMode}
-								/>
-								<span class="card-icon">{getShareIcon('private-link')}</span>
-								<span class="card-title">Private Link</span>
-								<span class="card-desc">Only with secret share link</span>
-							</label>
-							<label
-								class="privacy-card"
-								class:selected={selectedDefaultShareMode === 'private-oauth'}
-							>
-								<input
-									type="radio"
-									name="defaultShareMode"
-									value="private-oauth"
-									bind:group={selectedDefaultShareMode}
-								/>
-								<span class="card-icon">{getShareIcon('private-oauth')}</span>
-								<span class="card-title">Private OAuth</span>
-								<span class="card-desc">Server members only (most restrictive)</span>
-							</label>
-						</div>
+					<h3 class="subsection-title">
+						<Server class="subsection-icon" />
+						Server-Wide Wrapped Access
+					</h3>
+					<p class="subsection-hint">
+						Control who can access the server-wide Year in Review at <code
+							>/wrapped/{data.currentYear}</code
+						>.
+					</p>
 
-						<!-- User Control Checkbox -->
-						<div class="user-control-option">
-							<label class="checkbox-label">
-								<input
-									type="checkbox"
-									name="allowUserControl"
-									value="true"
-									bind:checked={allowUserControl}
-								/>
-								<span class="checkbox-text">Allow users to control their own sharing settings</span>
-							</label>
-							<span class="form-hint checkbox-hint">
-								When enabled, users can choose their own privacy setting, but cannot go below the
-								minimum set above.
-							</span>
-						</div>
-						<input type="hidden" name="allowUserControl" value={allowUserControl.toString()} />
+					<div class="option-cards two-col">
+						<label class="option-card" class:selected={selectedServerWrappedMode === 'public'}>
+							<input
+								type="radio"
+								name="serverWrappedShareMode"
+								value="public"
+								bind:group={selectedServerWrappedMode}
+							/>
+							<div class="option-icon">
+								<Globe />
+							</div>
+							<div class="option-content">
+								<span class="option-title">Public</span>
+								<span class="option-desc">Anyone can view</span>
+							</div>
+							{#if selectedServerWrappedMode === 'public'}
+								<div class="option-check"><Check /></div>
+							{/if}
+						</label>
+
+						<label
+							class="option-card"
+							class:selected={selectedServerWrappedMode === 'private-oauth'}
+						>
+							<input
+								type="radio"
+								name="serverWrappedShareMode"
+								value="private-oauth"
+								bind:group={selectedServerWrappedMode}
+							/>
+							<div class="option-icon">
+								<Lock />
+							</div>
+							<div class="option-content">
+								<span class="option-title">Private OAuth</span>
+								<span class="option-desc">Server members only</span>
+							</div>
+							{#if selectedServerWrappedMode === 'private-oauth'}
+								<div class="option-check"><Check /></div>
+							{/if}
+						</label>
 					</div>
+
+					<h3 class="subsection-title">
+						<Users class="subsection-icon" />
+						User Sharing Defaults
+					</h3>
+					<p class="subsection-hint">
+						Minimum privacy level for user wrapped pages. Users cannot choose less restrictive
+						settings.
+					</p>
+
+					<div class="option-cards three-col">
+						<label class="option-card" class:selected={selectedDefaultShareMode === 'public'}>
+							<input
+								type="radio"
+								name="defaultShareMode"
+								value="public"
+								bind:group={selectedDefaultShareMode}
+							/>
+							<div class="option-icon">
+								<Globe />
+							</div>
+							<div class="option-content">
+								<span class="option-title">Public</span>
+								<span class="option-desc">Least restrictive</span>
+							</div>
+							{#if selectedDefaultShareMode === 'public'}
+								<div class="option-check"><Check /></div>
+							{/if}
+						</label>
+
+						<label class="option-card" class:selected={selectedDefaultShareMode === 'private-link'}>
+							<input
+								type="radio"
+								name="defaultShareMode"
+								value="private-link"
+								bind:group={selectedDefaultShareMode}
+							/>
+							<div class="option-icon">
+								<Link />
+							</div>
+							<div class="option-content">
+								<span class="option-title">Private Link</span>
+								<span class="option-desc">Secret share link</span>
+							</div>
+							{#if selectedDefaultShareMode === 'private-link'}
+								<div class="option-check"><Check /></div>
+							{/if}
+						</label>
+
+						<label class="option-card" class:selected={selectedDefaultShareMode === 'private-oauth'}>
+							<input
+								type="radio"
+								name="defaultShareMode"
+								value="private-oauth"
+								bind:group={selectedDefaultShareMode}
+							/>
+							<div class="option-icon">
+								<Lock />
+							</div>
+							<div class="option-content">
+								<span class="option-title">Private OAuth</span>
+								<span class="option-desc">Most restrictive</span>
+							</div>
+							{#if selectedDefaultShareMode === 'private-oauth'}
+								<div class="option-check"><Check /></div>
+							{/if}
+						</label>
+					</div>
+
+					<!-- User Control Toggle -->
+					<div class="toggle-option">
+						<label class="toggle-label">
+							<input
+								type="checkbox"
+								name="allowUserControlCheckbox"
+								bind:checked={allowUserControl}
+							/>
+							<span class="toggle-switch"></span>
+							<span class="toggle-text">Allow users to control their own sharing settings</span>
+						</label>
+						<p class="toggle-hint">
+							When enabled, users can adjust privacy but cannot go below the minimum set above.
+						</p>
+					</div>
+					<input type="hidden" name="allowUserControl" value={allowUserControl.toString()} />
 				</section>
 
-				<!-- Single Save Button -->
-				<div class="form-actions sticky-actions">
-					<button type="submit" class="save-button primary-action">Save Privacy Settings</button>
+				<!-- Sticky Save Button -->
+				<div class="sticky-save">
+					<button type="submit" class="btn-primary btn-large">
+						<Shield class="btn-icon" />
+						Save Privacy Settings
+					</button>
 				</div>
 			</form>
-		</Tabs.Content>
+		{/if}
 
-		<!-- Data Tab: Year/Archive & Clear Play History -->
-		<Tabs.Content value="data">
-			<section class="section">
-				<h2>Year & Archive</h2>
-				<p class="section-description">Manage available years and clear cached statistics.</p>
+		<!-- Data Tab -->
+		{#if activeTab === 'data'}
+			<div class="data-content">
+				<!-- Year & Archive Panel -->
+				<section class="panel data-panel">
+					<div class="panel-header">
+						<div class="panel-title">
+							<Calendar class="panel-icon" />
+							<h2>Year & Archive</h2>
+						</div>
+					</div>
 
-				<div class="years-info">
-					<p><strong>Available Years:</strong> {data.availableYears.join(', ') || 'None'}</p>
-					<p class="info-hint">Years are automatically detected from play history data.</p>
-				</div>
+					<div class="years-display">
+						<div class="years-label">Available Years</div>
+						<div class="years-list">
+							{#each data.availableYears as year}
+								<span class="year-badge">{year}</span>
+							{:else}
+								<span class="no-years">No data available</span>
+							{/each}
+						</div>
+						<p class="years-hint">Years are automatically detected from play history data.</p>
+					</div>
 
-				<h3>Clear Statistics Cache</h3>
-				<p class="subsection-description">
-					Force recalculation of statistics by clearing the cache.
-				</p>
+					<h3 class="subsection-title">
+						<RefreshCw class="subsection-icon" />
+						Clear Statistics Cache
+					</h3>
+					<p class="subsection-hint">Force recalculation of statistics by clearing the cache.</p>
 
-				<div class="cache-actions">
-					{#each data.availableYears as year}
+					<div class="action-buttons">
+						{#each data.availableYears as year}
+							<button
+								type="button"
+								class="btn-secondary"
+								onclick={() => showCacheConfirmation(year)}
+								disabled={loadingCount}
+							>
+								{#if loadingCount && pendingCacheYear === year}
+									<Loader2 class="btn-icon spinning" />
+								{:else}
+									<RefreshCw class="btn-icon" />
+								{/if}
+								Clear {year}
+							</button>
+						{/each}
 						<button
 							type="button"
-							class="cache-button"
-							onclick={() => showCacheConfirmation(year)}
+							class="btn-secondary btn-all"
+							onclick={() => showCacheConfirmation()}
 							disabled={loadingCount}
 						>
-							{loadingCount && pendingCacheYear === year ? 'Loading...' : `Clear ${year} Cache`}
+							{#if loadingCount && pendingCacheYear === undefined}
+								<Loader2 class="btn-icon spinning" />
+							{:else}
+								<RefreshCw class="btn-icon" />
+							{/if}
+							Clear All Cache
 						</button>
-					{/each}
+					</div>
+				</section>
 
-					<button
-						type="button"
-						class="cache-button all"
-						onclick={() => showCacheConfirmation()}
-						disabled={loadingCount}
-					>
-						{loadingCount && pendingCacheYear === undefined ? 'Loading...' : 'Clear All Cache'}
-					</button>
-				</div>
-			</section>
+				<!-- Danger Zone -->
+				<section class="panel danger-panel">
+					<div class="panel-header danger">
+						<div class="panel-title">
+							<AlertTriangle class="panel-icon danger" />
+							<h2>Danger Zone</h2>
+						</div>
+					</div>
 
-			<!-- Danger Zone: Clear Play History -->
-			<div class="danger-zone">
-				<h2>Clear Play History</h2>
-				<p class="section-description">
-					Permanently delete viewing history from the database. Related statistics cache will be
-					automatically cleared.
-				</p>
+					<div class="danger-warning">
+						<AlertTriangle class="warning-icon" />
+						<div class="warning-content">
+							<strong>Destructive Action</strong>
+							<p>
+								Deleting play history is permanent and cannot be undone. Related statistics cache
+								will also be cleared.
+							</p>
+						</div>
+					</div>
 
-				<div class="warning-box">
-					<strong>Warning:</strong> This action is destructive and cannot be undone. All viewing history
-					for the selected year(s) will be permanently deleted.
-				</div>
+					<h3 class="subsection-title danger">
+						<Trash2 class="subsection-icon" />
+						Delete Play History
+					</h3>
+					<p class="subsection-hint">
+						Permanently remove viewing history for a specific year or all years.
+					</p>
 
-				<h3>Delete Play History</h3>
-				<p class="subsection-description">
-					Remove viewing history for a specific year or all years.
-				</p>
-
-				<div class="cache-actions">
-					{#each data.availableYears as year}
+					<div class="action-buttons danger">
+						{#each data.availableYears as year}
+							<button
+								type="button"
+								class="btn-danger"
+								onclick={() => showHistoryConfirmation(year)}
+								disabled={loadingHistoryCount}
+							>
+								{#if loadingHistoryCount && pendingHistoryYear === year}
+									<Loader2 class="btn-icon spinning" />
+								{:else}
+									<Trash2 class="btn-icon" />
+								{/if}
+								Delete {year}
+							</button>
+						{/each}
 						<button
 							type="button"
-							class="cache-button danger"
-							onclick={() => showHistoryConfirmation(year)}
+							class="btn-danger btn-all"
+							onclick={() => showHistoryConfirmation()}
 							disabled={loadingHistoryCount}
 						>
-							{loadingHistoryCount && pendingHistoryYear === year ? 'Loading...' : `Clear ${year}`}
+							{#if loadingHistoryCount && pendingHistoryYear === undefined}
+								<Loader2 class="btn-icon spinning" />
+							{:else}
+								<Trash2 class="btn-icon" />
+							{/if}
+							Delete All History
 						</button>
-					{/each}
-
-					<button
-						type="button"
-						class="cache-button danger all"
-						onclick={() => showHistoryConfirmation()}
-						disabled={loadingHistoryCount}
-					>
-						{loadingHistoryCount && pendingHistoryYear === undefined
-							? 'Loading...'
-							: 'Clear All History'}
-					</button>
-				</div>
+					</div>
+				</section>
 			</div>
-		</Tabs.Content>
+		{/if}
 
-		<!-- System Tab: Logging -->
-		<Tabs.Content value="system">
-			<section class="section">
-				<h2>Logging</h2>
-				<p class="section-description">
-					Configure log retention and debug settings. <a href="/admin/logs" class="section-link"
-						>View logs</a
-					>
-				</p>
+		<!-- System Tab -->
+		{#if activeTab === 'system'}
+			<div class="system-content">
+				<section class="panel system-panel">
+					<div class="panel-header">
+						<div class="panel-title">
+							<ScrollText class="panel-icon" />
+							<h2>Logging</h2>
+						</div>
+						<a href="/admin/logs" class="panel-link">
+							<ExternalLink class="link-icon" />
+							View Logs
+						</a>
+					</div>
+					<p class="panel-description">Configure log retention and debug settings.</p>
 
-				<form method="POST" action="?/updateLogSettings" use:enhance class="logging-form">
-					<div class="form-row">
-						<div class="form-group half">
-							<label for="retentionDays">Retention Period (days)</label>
-							<input
-								type="number"
-								id="retentionDays"
-								name="retentionDays"
-								bind:value={logRetentionDays}
-								min="1"
-								max="365"
-							/>
-							<span class="form-hint"
-								>Logs older than this will be automatically deleted (1-365)</span
-							>
+					<form method="POST" action="?/updateLogSettings" use:enhance class="panel-form">
+						<div class="form-row">
+							<div class="form-field">
+								<div class="field-header">
+									<label for="retentionDays">
+										<Clock class="field-icon" />
+										Retention Period
+									</label>
+								</div>
+								<div class="input-with-suffix">
+									<input
+										type="number"
+										id="retentionDays"
+										name="retentionDays"
+										bind:value={logRetentionDays}
+										min="1"
+										max="365"
+									/>
+									<span class="input-suffix">days</span>
+								</div>
+								<span class="field-hint">Auto-delete logs older than this (1-365)</span>
+							</div>
+
+							<div class="form-field">
+								<div class="field-header">
+									<label for="maxCount">
+										<Hash class="field-icon" />
+										Maximum Count
+									</label>
+								</div>
+								<div class="input-with-suffix">
+									<input
+										type="number"
+										id="maxCount"
+										name="maxCount"
+										bind:value={logMaxCount}
+										min="1000"
+										max="1000000"
+										step="1000"
+									/>
+									<span class="input-suffix">logs</span>
+								</div>
+								<span class="field-hint">Maximum logs to retain</span>
+							</div>
 						</div>
 
-						<div class="form-group half">
-							<label for="maxCount">Maximum Log Count</label>
-							<input
-								type="number"
-								id="maxCount"
-								name="maxCount"
-								bind:value={logMaxCount}
-								min="1000"
-								max="1000000"
-								step="1000"
-							/>
-							<span class="form-hint">Maximum logs to retain (1,000-1,000,000)</span>
+						<div class="toggle-option">
+							<label class="toggle-label">
+								<input type="checkbox" name="debugEnabledCheckbox" bind:checked={logDebugEnabled} />
+								<span class="toggle-switch"></span>
+								<span class="toggle-text">
+									<Bug class="toggle-icon" />
+									Enable DEBUG level logging
+								</span>
+							</label>
+							<p class="toggle-hint">
+								Detailed debug logs will be recorded. May generate a large volume of logs.
+							</p>
 						</div>
-					</div>
+						<input type="hidden" name="debugEnabled" value={logDebugEnabled.toString()} />
 
-					<div class="form-group">
-						<label class="checkbox-label">
-							<input type="checkbox" name="debugEnabled" bind:checked={logDebugEnabled} />
-							<span class="checkbox-text">Enable DEBUG level logging</span>
-						</label>
-						<span class="form-hint checkbox-hint">
-							When enabled, detailed debug logs will be recorded. This may generate a large volume
-							of logs.
-						</span>
-					</div>
-
-					<input type="hidden" name="debugEnabled" value={logDebugEnabled.toString()} />
-
-					<div class="form-actions">
-						<button type="submit" class="save-button">Save Logging Settings</button>
-					</div>
-				</form>
-			</section>
-		</Tabs.Content>
-	</Tabs.Root>
-
-	<!-- Cache Clearing Confirmation Dialog -->
-	<AlertDialog.Root bind:open={cacheDialogOpen}>
-		<AlertDialog.Content>
-			<AlertDialog.Header>
-				<AlertDialog.Title>
-					{pendingCacheYear !== undefined ? `Clear ${pendingCacheYear} Cache?` : 'Clear All Cache?'}
-				</AlertDialog.Title>
-				<AlertDialog.Description>
-					{getCacheConfirmationMessage()}
-					<br /><br />
-					Statistics will be recalculated on next access. This action cannot be undone.
-				</AlertDialog.Description>
-			</AlertDialog.Header>
-			<AlertDialog.Footer>
-				<AlertDialog.Cancel disabled={isClearing}>Cancel</AlertDialog.Cancel>
-				<form
-					method="POST"
-					action="?/clearCache"
-					use:enhance={() => {
-						isClearing = true;
-						return async ({ update }) => {
-							await update();
-							isClearing = false;
-							handleCacheCleared();
-						};
-					}}
-					style="display: contents;"
-				>
-					{#if pendingCacheYear !== undefined}
-						<input type="hidden" name="year" value={pendingCacheYear} />
-					{/if}
-					<AlertDialog.Action type="submit" disabled={isClearing} class="gap-2">
-						{#if isClearing}
-							<span class="spinner small"></span>
-							<span>Clearing...</span>
-						{:else}
-							Delete {pendingCacheCount} Record{pendingCacheCount !== 1 ? 's' : ''}
-						{/if}
-					</AlertDialog.Action>
-				</form>
-			</AlertDialog.Footer>
-		</AlertDialog.Content>
-	</AlertDialog.Root>
-
-	<!-- Play History Clearing Confirmation Dialog -->
-	<AlertDialog.Root bind:open={historyDialogOpen}>
-		<AlertDialog.Content>
-			<AlertDialog.Header>
-				<AlertDialog.Title>
-					{pendingHistoryYear !== undefined
-						? `Delete ${pendingHistoryYear} Play History?`
-						: 'Delete All Play History?'}
-				</AlertDialog.Title>
-				<AlertDialog.Description>
-					{getHistoryConfirmationMessage()}
-					<br /><br />
-					<strong>This action cannot be undone.</strong> Statistics cache for affected years will also
-					be cleared.
-				</AlertDialog.Description>
-			</AlertDialog.Header>
-			<AlertDialog.Footer>
-				<AlertDialog.Cancel disabled={isClearingHistory}>Cancel</AlertDialog.Cancel>
-				<form
-					method="POST"
-					action="?/clearPlayHistory"
-					use:enhance={() => {
-						isClearingHistory = true;
-						return async ({ update }) => {
-							await update();
-							isClearingHistory = false;
-							handleHistoryCleared();
-						};
-					}}
-					style="display: contents;"
-				>
-					{#if pendingHistoryYear !== undefined}
-						<input type="hidden" name="year" value={pendingHistoryYear} />
-					{/if}
-					<AlertDialog.Action
-						type="submit"
-						disabled={isClearingHistory}
-						class="gap-2 destructive-action"
-					>
-						{#if isClearingHistory}
-							<span class="spinner small"></span>
-							<span>Deleting...</span>
-						{:else}
-							Delete {pendingHistoryCount} Record{pendingHistoryCount !== 1 ? 's' : ''}
-						{/if}
-					</AlertDialog.Action>
-				</form>
-			</AlertDialog.Footer>
-		</AlertDialog.Content>
-	</AlertDialog.Root>
+						<div class="panel-actions">
+							<button type="submit" class="btn-primary">
+								<Check class="btn-icon" />
+								Save Logging Settings
+							</button>
+						</div>
+					</form>
+				</section>
+			</div>
+		{/if}
+	</div>
 </div>
 
+<!-- Cache Clearing Dialog -->
+<AlertDialog.Root bind:open={cacheDialogOpen}>
+	<AlertDialog.Content>
+		<AlertDialog.Header>
+			<AlertDialog.Title>
+				{pendingCacheYear !== undefined ? `Clear ${pendingCacheYear} Cache?` : 'Clear All Cache?'}
+			</AlertDialog.Title>
+			<AlertDialog.Description>
+				{getCacheConfirmationMessage()}
+				<br /><br />
+				Statistics will be recalculated on next access.
+			</AlertDialog.Description>
+		</AlertDialog.Header>
+		<AlertDialog.Footer>
+			<AlertDialog.Cancel disabled={isClearing}>Cancel</AlertDialog.Cancel>
+			<form
+				method="POST"
+				action="?/clearCache"
+				use:enhance={() => {
+					isClearing = true;
+					return async ({ update }) => {
+						await update();
+						isClearing = false;
+						handleCacheCleared();
+					};
+				}}
+				style="display: contents;"
+			>
+				{#if pendingCacheYear !== undefined}
+					<input type="hidden" name="year" value={pendingCacheYear} />
+				{/if}
+				<AlertDialog.Action type="submit" disabled={isClearing}>
+					{#if isClearing}
+						Clearing...
+					{:else}
+						Clear {pendingCacheCount} Record{pendingCacheCount !== 1 ? 's' : ''}
+					{/if}
+				</AlertDialog.Action>
+			</form>
+		</AlertDialog.Footer>
+	</AlertDialog.Content>
+</AlertDialog.Root>
+
+<!-- Play History Dialog -->
+<AlertDialog.Root bind:open={historyDialogOpen}>
+	<AlertDialog.Content>
+		<AlertDialog.Header>
+			<AlertDialog.Title>
+				{pendingHistoryYear !== undefined
+					? `Delete ${pendingHistoryYear} Play History?`
+					: 'Delete All Play History?'}
+			</AlertDialog.Title>
+			<AlertDialog.Description>
+				{getHistoryConfirmationMessage()}
+				<br /><br />
+				<strong>This action cannot be undone.</strong> Statistics cache for affected years will also
+				be cleared.
+			</AlertDialog.Description>
+		</AlertDialog.Header>
+		<AlertDialog.Footer>
+			<AlertDialog.Cancel disabled={isClearingHistory}>Cancel</AlertDialog.Cancel>
+			<form
+				method="POST"
+				action="?/clearPlayHistory"
+				use:enhance={() => {
+					isClearingHistory = true;
+					return async ({ update }) => {
+						await update();
+						isClearingHistory = false;
+						handleHistoryCleared();
+					};
+				}}
+				style="display: contents;"
+			>
+				{#if pendingHistoryYear !== undefined}
+					<input type="hidden" name="year" value={pendingHistoryYear} />
+				{/if}
+				<AlertDialog.Action type="submit" disabled={isClearingHistory} class="destructive-action">
+					{#if isClearingHistory}
+						Deleting...
+					{:else}
+						Delete {pendingHistoryCount} Record{pendingHistoryCount !== 1 ? 's' : ''}
+					{/if}
+				</AlertDialog.Action>
+			</form>
+		</AlertDialog.Footer>
+	</AlertDialog.Content>
+</AlertDialog.Root>
+
 <style>
-	.settings-page {
-		max-width: 800px;
+	/* ===== Base Layout ===== */
+	.settings-command-center {
+		max-width: 1000px;
 		margin: 0 auto;
-		padding: 2rem;
+		padding: 1.5rem 2rem 3rem;
 	}
 
+	/* ===== Page Header ===== */
 	.page-header {
-		margin-bottom: 2rem;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 1.5rem;
+		padding-bottom: 1.5rem;
+		border-bottom: 1px solid hsl(var(--border));
 	}
 
-	.page-header h1 {
-		font-size: 2rem;
+	.header-content {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+	}
+
+	.header-icon {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 56px;
+		height: 56px;
+		background: linear-gradient(135deg, hsl(var(--primary) / 0.15), hsl(var(--primary) / 0.05));
+		border: 1px solid hsl(var(--primary) / 0.3);
+		border-radius: 16px;
+		color: hsl(var(--primary));
+	}
+
+	.header-icon :global(svg) {
+		width: 28px;
+		height: 28px;
+	}
+
+	.header-text h1 {
+		font-size: 1.75rem;
+		font-weight: 700;
+		color: hsl(var(--foreground));
+		margin: 0;
+		letter-spacing: -0.02em;
+	}
+
+	.header-subtitle {
+		font-size: 0.875rem;
+		color: hsl(var(--muted-foreground));
+		margin: 0.25rem 0 0;
+	}
+
+	.header-stats {
+		display: flex;
+		gap: 1.5rem;
+	}
+
+	.header-stat {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		padding: 0.75rem 1.25rem;
+		background: hsl(var(--muted) / 0.5);
+		border-radius: 12px;
+	}
+
+	.header-stat-value {
+		font-size: 1.5rem;
 		font-weight: 700;
 		color: hsl(var(--primary));
-		margin: 0 0 0.5rem;
+		font-variant-numeric: tabular-nums;
 	}
 
-	.subtitle {
+	.header-stat-label {
+		font-size: 0.75rem;
 		color: hsl(var(--muted-foreground));
-		margin: 0;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
 	}
 
-	/* Tabs Styling */
-	.settings-tabs {
-		margin-top: 1.5rem;
-	}
-
-	:global(.tabs-list) {
+	/* ===== Tab Navigation ===== */
+	.tab-nav {
 		display: flex;
-		gap: 0.25rem;
-		border-bottom: 1px solid hsl(var(--border));
+		gap: 0.5rem;
+		padding: 0.5rem;
+		background: hsl(var(--muted) / 0.3);
+		border-radius: 12px;
 		margin-bottom: 1.5rem;
 		overflow-x: auto;
-		scrollbar-width: thin;
-		-webkit-overflow-scrolling: touch;
-		padding-bottom: 0;
 	}
 
-	:global(.tabs-list button) {
-		padding: 0.75rem 1rem;
-		font-size: 0.875rem;
-		font-weight: 500;
-		color: hsl(var(--muted-foreground));
+	.tab-button {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.75rem 1.25rem;
 		background: transparent;
 		border: none;
-		border-bottom: 2px solid transparent;
+		border-radius: 8px;
+		color: hsl(var(--muted-foreground));
+		font-size: 0.875rem;
+		font-weight: 500;
 		cursor: pointer;
+		transition: all 0.2s ease;
 		white-space: nowrap;
-		transition: all 0.15s ease;
 	}
 
-	:global(.tabs-list button:hover) {
+	.tab-button:hover {
 		color: hsl(var(--foreground));
+		background: hsl(var(--muted) / 0.5);
 	}
 
-	:global(.tabs-list button[data-state='active']) {
-		color: hsl(var(--primary));
-		border-bottom-color: hsl(var(--primary));
+	.tab-button.active {
+		color: hsl(var(--primary-foreground));
+		background: hsl(var(--primary));
+		box-shadow: 0 2px 8px hsl(var(--primary) / 0.3);
 	}
 
-	/* Danger Zone Styling */
-	.danger-zone {
-		border: 2px solid hsl(0 60% 40% / 0.4);
-		border-radius: var(--radius);
-		padding: 1.5rem;
-		margin-top: 1.5rem;
-		background: hsl(0 60% 50% / 0.05);
+	.tab-icon {
+		width: 18px;
+		height: 18px;
 	}
 
-	.danger-zone h2 {
-		color: hsl(0 70% 50%);
-		font-size: 1.125rem;
-		font-weight: 600;
-		margin: 0 0 0.5rem;
-	}
-
-	.danger-zone h3 {
-		color: hsl(0 70% 50%);
-	}
-
-	.section {
+	/* ===== Panel Base ===== */
+	.panel {
 		background: hsl(var(--card));
 		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius);
-		padding: 1.5rem;
+		border-radius: 16px;
+		overflow: hidden;
 		margin-bottom: 1.5rem;
 	}
 
-	.section h2 {
-		font-size: 1.125rem;
-		font-weight: 600;
-		color: hsl(var(--foreground));
-		margin: 0 0 0.5rem;
+	.panel-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 1rem 1.25rem;
+		border-bottom: 1px solid hsl(var(--border));
+		background: hsl(var(--muted) / 0.3);
 	}
 
-	.section h3 {
+	.panel-title {
+		display: flex;
+		align-items: center;
+		gap: 0.625rem;
+	}
+
+	.panel-title h2 {
 		font-size: 1rem;
 		font-weight: 600;
 		color: hsl(var(--foreground));
-		margin: 1.5rem 0 0.5rem;
+		margin: 0;
 	}
 
-	.section-description {
+	.panel-icon {
+		width: 20px;
+		height: 20px;
+		color: hsl(var(--primary));
+	}
+
+	.panel-icon.plex {
+		color: hsl(45 100% 50%);
+	}
+
+	.panel-icon.openai {
+		color: hsl(160 60% 50%);
+	}
+
+	.panel-icon.danger {
+		color: hsl(0 70% 50%);
+	}
+
+	.panel-description {
 		color: hsl(var(--muted-foreground));
 		font-size: 0.875rem;
-		margin: 0 0 1rem;
+		margin: 0;
+		padding: 1rem 1.25rem 0;
 	}
 
-	.subsection-description {
+	.panel-form {
+		padding: 1.25rem;
+	}
+
+	.panel-actions {
+		margin-top: 1.25rem;
+		padding-top: 1rem;
+		border-top: 1px solid hsl(var(--border) / 0.5);
+	}
+
+	.panel-badge {
+		font-size: 0.6875rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		padding: 0.25rem 0.625rem;
+		border-radius: 6px;
+		background: hsl(var(--muted));
 		color: hsl(var(--muted-foreground));
-		font-size: 0.8rem;
-		margin: 0 0 1rem;
 	}
 
-	.section-divider {
-		border: none;
-		border-top: 1px solid hsl(var(--border));
-		margin: 1.5rem 0;
+	.panel-badge.optional {
+		background: hsl(200 60% 20%);
+		color: hsl(200 60% 70%);
 	}
 
-	/* Form Styles */
-	.form-group {
+	.panel-link {
+		display: flex;
+		align-items: center;
+		gap: 0.375rem;
+		font-size: 0.8125rem;
+		color: hsl(var(--primary));
+		text-decoration: none;
+		transition: opacity 0.15s ease;
+	}
+
+	.panel-link:hover {
+		opacity: 0.8;
+	}
+
+	.link-icon {
+		width: 14px;
+		height: 14px;
+	}
+
+	/* ===== Connection Status ===== */
+	.connection-status {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.375rem 0.75rem;
+		background: hsl(var(--muted));
+		border-radius: 20px;
+		font-size: 0.75rem;
+	}
+
+	.status-dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: hsl(var(--muted-foreground));
+	}
+
+	.connection-status.connected .status-dot {
+		background: hsl(145 70% 50%);
+		box-shadow: 0 0 8px hsl(145 70% 50% / 0.5);
+	}
+
+	.status-text {
+		color: hsl(var(--muted-foreground));
+	}
+
+	.connection-status.connected .status-text {
+		color: hsl(145 70% 50%);
+	}
+
+	/* ===== Form Fields ===== */
+	.form-field {
 		margin-bottom: 1rem;
 	}
 
-	.form-group label {
-		display: block;
-		font-size: 0.875rem;
+	.field-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-bottom: 0.5rem;
+	}
+
+	.field-header label {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.8125rem;
 		font-weight: 500;
-		margin-bottom: 0.375rem;
 		color: hsl(var(--foreground));
 	}
 
-	.form-group input {
+	.field-icon {
+		width: 16px;
+		height: 16px;
+		color: hsl(var(--muted-foreground));
+	}
+
+	.form-field input {
 		width: 100%;
-		padding: 0.5rem 0.75rem;
+		padding: 0.625rem 0.875rem;
 		background: hsl(var(--input));
 		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius);
+		border-radius: 8px;
 		color: hsl(var(--foreground));
 		font-size: 0.875rem;
+		transition: all 0.15s ease;
 	}
 
-	.form-group input:focus {
+	.form-field input:focus {
 		outline: none;
 		border-color: hsl(var(--ring));
-		box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+		box-shadow: 0 0 0 3px hsl(var(--ring) / 0.15);
 	}
 
-	.form-hint {
-		display: block;
-		font-size: 0.75rem;
-		color: hsl(var(--muted-foreground));
-		margin-top: 0.25rem;
-	}
-
-	/* Source badges and indicators */
-	.source-badge {
-		display: inline-flex;
-		align-items: center;
-		padding: 0.125rem 0.375rem;
-		font-size: 0.625rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.025em;
-		border-radius: calc(var(--radius) / 2);
-		margin-left: 0.5rem;
-		vertical-align: middle;
-	}
-
-	.source-badge.env {
-		background: hsl(210 80% 40% / 0.2);
-		color: hsl(210 80% 50%);
-		border: 1px solid hsl(210 80% 40% / 0.3);
-	}
-
-	.source-badge.db {
-		background: hsl(140 50% 35% / 0.2);
-		color: hsl(140 50% 45%);
-		border: 1px solid hsl(140 50% 35% / 0.3);
-	}
-
-	.source-hint {
-		color: hsl(210 80% 50%);
-		font-style: italic;
-	}
-
-	.form-group input.from-env {
+	.form-field input.from-env {
 		border-color: hsl(210 80% 40% / 0.4);
 		background: hsl(210 80% 50% / 0.05);
 	}
 
-	.form-group input.from-env:focus {
-		border-color: hsl(210 80% 50%);
-		box-shadow: 0 0 0 2px hsl(210 80% 50% / 0.2);
+	.field-hint {
+		display: block;
+		font-size: 0.75rem;
+		color: hsl(var(--muted-foreground));
+		margin-top: 0.375rem;
 	}
 
-	.password-input {
+	.source-badge {
+		font-size: 0.625rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+		padding: 0.125rem 0.5rem;
+		border-radius: 4px;
+		background: hsl(140 50% 25%);
+		color: hsl(140 50% 60%);
+	}
+
+	.source-badge.env {
+		background: hsl(210 80% 25%);
+		color: hsl(210 80% 65%);
+	}
+
+	.input-with-action {
 		display: flex;
 		gap: 0.5rem;
 	}
 
-	.password-input input {
+	.input-with-action input {
 		flex: 1;
 	}
 
-	.toggle-visibility {
-		padding: 0.5rem 0.75rem;
-		background: hsl(var(--muted));
-		color: hsl(var(--foreground));
-		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius);
-		font-size: 0.75rem;
-		cursor: pointer;
-	}
-
-	.toggle-visibility:hover {
-		background: hsl(var(--secondary));
-	}
-
-	.form-actions {
-		margin-top: 1rem;
-	}
-
-	.save-button {
-		padding: 0.5rem 1rem;
-		background: hsl(var(--primary));
-		color: hsl(var(--primary-foreground));
-		border: none;
-		border-radius: var(--radius);
-		font-weight: 500;
-		cursor: pointer;
-		transition: opacity 0.15s ease;
-	}
-
-	.save-button:hover {
-		opacity: 0.9;
-	}
-
-	.test-form {
-		margin-top: 0.75rem;
-	}
-
-	.test-button {
-		padding: 0.5rem 1rem;
-		background: hsl(var(--secondary));
-		color: hsl(var(--foreground));
-		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius);
-		font-size: 0.875rem;
-		cursor: pointer;
-	}
-
-	.test-button:hover:not(:disabled) {
-		background: hsl(var(--muted));
-	}
-
-	.test-button:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	/* Theme Options */
-	.theme-options {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-		gap: 1rem;
-		margin-bottom: 1rem;
-	}
-
-	.theme-option {
+	.input-action {
 		display: flex;
-		flex-direction: column;
 		align-items: center;
-		padding: 1rem;
+		justify-content: center;
+		width: 42px;
 		background: hsl(var(--muted));
-		border: 2px solid hsl(var(--border));
-		border-radius: var(--radius);
+		border: 1px solid hsl(var(--border));
+		border-radius: 8px;
+		color: hsl(var(--muted-foreground));
 		cursor: pointer;
 		transition: all 0.15s ease;
 	}
 
-	.theme-option:hover {
+	.input-action:hover {
+		background: hsl(var(--secondary));
+		color: hsl(var(--foreground));
+	}
+
+	.input-action :global(svg) {
+		width: 18px;
+		height: 18px;
+	}
+
+	.input-with-suffix {
+		display: flex;
+		align-items: stretch;
+	}
+
+	.input-with-suffix input {
+		border-top-right-radius: 0;
+		border-bottom-right-radius: 0;
+		border-right: none;
+	}
+
+	.input-suffix {
+		display: flex;
+		align-items: center;
+		padding: 0 0.875rem;
+		background: hsl(var(--muted));
+		border: 1px solid hsl(var(--border));
+		border-left: none;
+		border-radius: 0 8px 8px 0;
+		font-size: 0.8125rem;
+		color: hsl(var(--muted-foreground));
+	}
+
+	.form-row {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		gap: 1rem;
+	}
+
+	/* ===== Buttons ===== */
+	.btn-primary {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		padding: 0.625rem 1.25rem;
+		background: hsl(var(--primary));
+		color: hsl(var(--primary-foreground));
+		border: none;
+		border-radius: 8px;
+		font-size: 0.875rem;
+		font-weight: 500;
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.btn-primary:hover {
+		opacity: 0.9;
+		transform: translateY(-1px);
+	}
+
+	.btn-secondary {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		padding: 0.5rem 1rem;
+		background: hsl(var(--secondary));
+		color: hsl(var(--foreground));
+		border: 1px solid hsl(var(--border));
+		border-radius: 8px;
+		font-size: 0.8125rem;
+		font-weight: 500;
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.btn-secondary:hover:not(:disabled) {
+		background: hsl(var(--muted));
 		border-color: hsl(var(--primary) / 0.5);
 	}
 
-	.theme-option.selected {
+	.btn-secondary:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.btn-danger {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		padding: 0.5rem 1rem;
+		background: hsl(var(--secondary));
+		color: hsl(var(--foreground));
+		border: 1px solid hsl(var(--border));
+		border-radius: 8px;
+		font-size: 0.8125rem;
+		font-weight: 500;
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.btn-danger:hover:not(:disabled) {
+		background: hsl(0 70% 45%);
+		color: white;
+		border-color: hsl(0 70% 45%);
+	}
+
+	.btn-danger:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.btn-large {
+		padding: 0.875rem 2rem;
+		font-size: 1rem;
+	}
+
+	.btn-icon {
+		width: 16px;
+		height: 16px;
+	}
+
+	.btn-all {
+		font-weight: 600;
+	}
+
+	.spinning {
+		animation: spin 1s linear infinite;
+	}
+
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+
+	.test-connection-form {
+		padding: 0 1.25rem 1.25rem;
+	}
+
+	/* ===== Content Grid ===== */
+	.content-grid {
+		display: grid;
+		gap: 1.5rem;
+	}
+
+	/* ===== Theme Grid ===== */
+	.theme-panel {
+		padding-bottom: 0;
+	}
+
+	.theme-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+		gap: 0.875rem;
+		padding: 1.25rem;
+	}
+
+	.theme-card {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		padding: 1rem 0.75rem;
+		background: hsl(var(--muted) / 0.5);
+		border: 2px solid hsl(var(--border));
+		border-radius: 12px;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.theme-card:hover {
+		border-color: hsl(var(--primary) / 0.5);
+		transform: translateY(-2px);
+	}
+
+	.theme-card.selected {
 		border-color: hsl(var(--primary));
 		background: hsl(var(--primary) / 0.1);
 	}
 
-	.theme-option input {
+	.theme-card input {
 		position: absolute;
 		opacity: 0;
 		pointer-events: none;
 	}
 
 	.theme-preview {
-		width: 48px;
-		height: 48px;
+		width: 56px;
+		height: 56px;
 		border-radius: 50%;
-		margin-bottom: 0.5rem;
+		margin-bottom: 0.625rem;
 		border: 2px solid hsl(var(--border));
+		overflow: hidden;
+		position: relative;
 	}
 
-	.theme-preview.modern-minimal {
+	.theme-gradient {
+		position: absolute;
+		inset: 0;
+	}
+
+	.theme-preview.modern-minimal .theme-gradient {
 		background: linear-gradient(135deg, #5b6ef5 50%, #3d4db7 50%);
 	}
 
-	.theme-preview.supabase {
+	.theme-preview.supabase .theme-gradient {
 		background: linear-gradient(135deg, #3ecf8e 50%, #24b47e 50%);
 	}
 
-	.theme-preview.doom-64 {
+	.theme-preview.doom-64 .theme-gradient {
 		background: linear-gradient(135deg, #d97706 50%, #92400e 50%);
 	}
 
-	.theme-preview.amber-minimal {
+	.theme-preview.amber-minimal .theme-gradient {
 		background: linear-gradient(135deg, #f59e0b 50%, #d97706 50%);
 	}
 
-	.theme-preview.soviet-red {
+	.theme-preview.soviet-red .theme-gradient {
 		background: linear-gradient(135deg, #cc0000 50%, #8b0000 50%);
 	}
 
-	.theme-label {
+	.theme-name {
 		font-size: 0.75rem;
 		font-weight: 500;
+		color: hsl(var(--foreground));
 		text-align: center;
+	}
+
+	.theme-check {
+		position: absolute;
+		top: 0.5rem;
+		right: 0.5rem;
+		width: 20px;
+		height: 20px;
+		background: hsl(var(--primary));
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: hsl(var(--primary-foreground));
+	}
+
+	.theme-check :global(svg) {
+		width: 12px;
+		height: 12px;
+	}
+
+	/* ===== Option Cards ===== */
+	.option-cards {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 0.75rem;
+		margin-bottom: 1.5rem;
+	}
+
+	.option-cards.two-col {
+		grid-template-columns: repeat(2, 1fr);
+	}
+
+	.option-cards.three-col {
+		grid-template-columns: repeat(3, 1fr);
+	}
+
+	.option-card {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		text-align: center;
+		padding: 1rem 0.75rem;
+		background: hsl(var(--muted) / 0.5);
+		border: 2px solid hsl(var(--border));
+		border-radius: 12px;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.option-card:hover {
+		border-color: hsl(var(--primary) / 0.5);
+		background: hsl(var(--muted) / 0.8);
+	}
+
+	.option-card.selected {
+		border-color: hsl(var(--primary));
+		background: hsl(var(--primary) / 0.1);
+	}
+
+	.option-card input {
+		position: absolute;
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	.option-icon {
+		width: 40px;
+		height: 40px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: hsl(var(--secondary));
+		border-radius: 10px;
+		margin-bottom: 0.625rem;
+		color: hsl(var(--muted-foreground));
+		transition: all 0.2s ease;
+	}
+
+	.option-card.selected .option-icon {
+		background: hsl(var(--primary) / 0.2);
+		color: hsl(var(--primary));
+	}
+
+	.option-icon :global(svg) {
+		width: 20px;
+		height: 20px;
+	}
+
+	.option-content {
+		flex: 1;
+	}
+
+	.option-title {
+		display: block;
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: hsl(var(--foreground));
+		margin-bottom: 0.25rem;
+	}
+
+	.option-desc {
+		display: block;
+		font-size: 0.7rem;
+		color: hsl(var(--muted-foreground));
+		line-height: 1.4;
+	}
+
+	.option-check {
+		position: absolute;
+		top: 0.5rem;
+		right: 0.5rem;
+		width: 20px;
+		height: 20px;
+		background: hsl(var(--primary));
+		border-radius: 50%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: hsl(var(--primary-foreground));
+	}
+
+	.option-check :global(svg) {
+		width: 12px;
+		height: 12px;
+	}
+
+	/* ===== Subsections ===== */
+	.subsection-title {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.9375rem;
+		font-weight: 600;
+		color: hsl(var(--foreground));
+		margin: 1.5rem 0 0.5rem;
+		padding: 0 1.25rem;
+	}
+
+	.subsection-title:first-of-type {
+		margin-top: 1rem;
+	}
+
+	.subsection-title.danger {
+		color: hsl(0 70% 50%);
+	}
+
+	.subsection-icon {
+		width: 18px;
+		height: 18px;
+		color: hsl(var(--muted-foreground));
+	}
+
+	.subsection-hint {
+		font-size: 0.8125rem;
+		color: hsl(var(--muted-foreground));
+		margin: 0 0 1rem;
+		padding: 0 1.25rem;
+	}
+
+	.subsection-hint code {
+		padding: 0.125rem 0.375rem;
+		background: hsl(var(--muted));
+		border-radius: 4px;
+		font-size: 0.75rem;
+	}
+
+	/* Privacy panel option cards need padding */
+	.privacy-panel .option-cards {
+		padding: 0 1.25rem;
+	}
+
+	/* ===== Toggle Option ===== */
+	.toggle-option {
+		margin: 1rem 1.25rem;
+		padding: 1rem;
+		background: hsl(var(--secondary));
+		border-radius: 10px;
+		border: 1px solid hsl(var(--border));
+	}
+
+	.toggle-label {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		cursor: pointer;
+	}
+
+	.toggle-label input {
+		position: absolute;
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	.toggle-switch {
+		position: relative;
+		width: 44px;
+		height: 24px;
+		background: hsl(var(--muted));
+		border-radius: 12px;
+		transition: background 0.2s ease;
+		flex-shrink: 0;
+	}
+
+	.toggle-switch::after {
+		content: '';
+		position: absolute;
+		top: 2px;
+		left: 2px;
+		width: 20px;
+		height: 20px;
+		background: hsl(var(--foreground));
+		border-radius: 50%;
+		transition: transform 0.2s ease;
+	}
+
+	.toggle-label input:checked + .toggle-switch {
+		background: hsl(var(--primary));
+	}
+
+	.toggle-label input:checked + .toggle-switch::after {
+		transform: translateX(20px);
+	}
+
+	.toggle-text {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.875rem;
+		font-weight: 500;
 		color: hsl(var(--foreground));
 	}
 
-	/* Years/Archive */
-	.years-info {
-		margin-bottom: 1.5rem;
-		padding: 1rem;
-		background: hsl(var(--muted));
-		border-radius: var(--radius);
-	}
-
-	.years-info p {
-		margin: 0;
-		font-size: 0.875rem;
-	}
-
-	.years-info .info-hint {
-		margin-top: 0.5rem;
+	.toggle-icon {
+		width: 16px;
+		height: 16px;
 		color: hsl(var(--muted-foreground));
-		font-size: 0.75rem;
 	}
 
-	.cache-actions {
+	.toggle-hint {
+		font-size: 0.75rem;
+		color: hsl(var(--muted-foreground));
+		margin: 0.5rem 0 0 3.25rem;
+	}
+
+	/* ===== Sticky Save ===== */
+	.sticky-save {
+		position: sticky;
+		bottom: 1rem;
+		display: flex;
+		justify-content: center;
+		padding: 1rem;
+		background: hsl(var(--card) / 0.95);
+		backdrop-filter: blur(8px);
+		border-radius: 12px;
+		border: 1px solid hsl(var(--border));
+		margin-top: 1rem;
+	}
+
+	.sticky-save .btn-primary {
+		width: 100%;
+		max-width: 400px;
+	}
+
+	/* ===== Years Display ===== */
+	.years-display {
+		padding: 1.25rem;
+		background: hsl(var(--muted) / 0.3);
+		margin: 1rem 1.25rem;
+		border-radius: 10px;
+	}
+
+	.years-label {
+		font-size: 0.75rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: hsl(var(--muted-foreground));
+		margin-bottom: 0.75rem;
+	}
+
+	.years-list {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.5rem;
+		margin-bottom: 0.75rem;
 	}
 
-	.cache-form {
+	.year-badge {
+		padding: 0.375rem 0.875rem;
+		background: hsl(var(--primary) / 0.15);
+		color: hsl(var(--primary));
+		border-radius: 6px;
+		font-size: 0.875rem;
+		font-weight: 600;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.no-years {
+		color: hsl(var(--muted-foreground));
+		font-style: italic;
+		font-size: 0.875rem;
+	}
+
+	.years-hint {
+		font-size: 0.75rem;
+		color: hsl(var(--muted-foreground));
 		margin: 0;
 	}
 
-	.cache-button {
-		padding: 0.5rem 1rem;
-		background: hsl(var(--secondary));
-		color: hsl(var(--foreground));
-		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius);
-		font-size: 0.75rem;
-		cursor: pointer;
-		transition: all 0.15s ease;
+	/* ===== Action Buttons ===== */
+	.action-buttons {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		padding: 0 1.25rem 1.25rem;
 	}
 
-	.cache-button:hover {
-		background: hsl(var(--destructive));
-		color: hsl(var(--destructive-foreground));
-		border-color: hsl(var(--destructive));
+	.action-buttons.danger {
+		padding-top: 0;
 	}
 
-	.cache-button.all {
-		background: hsl(var(--muted));
-		font-weight: 500;
+	/* ===== Danger Panel ===== */
+	.danger-panel {
+		border-color: hsl(0 60% 40% / 0.4);
+		background: hsl(0 60% 50% / 0.03);
 	}
 
-	.cache-button:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	.warning-box {
-		padding: 0.75rem 1rem;
+	.panel-header.danger {
 		background: hsl(0 60% 50% / 0.1);
-		border: 1px solid hsl(0 60% 50% / 0.3);
-		border-radius: var(--radius);
-		margin-bottom: 1rem;
+		border-bottom-color: hsl(0 60% 40% / 0.3);
+	}
+
+	.panel-header.danger h2 {
+		color: hsl(0 70% 55%);
+	}
+
+	.danger-warning {
+		display: flex;
+		gap: 1rem;
+		padding: 1rem 1.25rem;
+		background: hsl(0 70% 50% / 0.1);
+		border-bottom: 1px solid hsl(0 60% 40% / 0.2);
+	}
+
+	.warning-icon {
+		width: 24px;
+		height: 24px;
+		color: hsl(0 70% 55%);
+		flex-shrink: 0;
+	}
+
+	.warning-content strong {
+		display: block;
+		color: hsl(0 70% 55%);
 		font-size: 0.875rem;
-		color: hsl(0 70% 45%);
+		margin-bottom: 0.25rem;
 	}
 
-	.cache-button.danger {
-		background: hsl(var(--secondary));
+	.warning-content p {
+		font-size: 0.8125rem;
+		color: hsl(var(--muted-foreground));
+		margin: 0;
+		line-height: 1.5;
 	}
 
-	.cache-button.danger:hover:not(:disabled) {
-		background: hsl(0 70% 45%);
-		color: white;
-		border-color: hsl(0 70% 45%);
-	}
-
-	.cache-button.danger.all {
-		background: hsl(var(--muted));
-	}
-
-	/* Destructive AlertDialog button styling */
+	/* ===== AlertDialog Styling ===== */
 	:global(.destructive-action) {
 		background-color: hsl(0 70% 45%) !important;
 		color: white !important;
@@ -1390,248 +2173,87 @@
 		background-color: hsl(0 70% 40%) !important;
 	}
 
-	/* Section Link */
-	.section-link {
-		color: hsl(var(--primary));
-		text-decoration: underline;
-	}
-
-	.section-link:hover {
-		opacity: 0.8;
-	}
-
-	/* Form Row (for side-by-side inputs) */
-	.form-row {
-		display: grid;
-		grid-template-columns: repeat(2, 1fr);
-		gap: 1rem;
-		margin-bottom: 1rem;
-	}
-
-	.form-group.half {
-		margin-bottom: 0;
-	}
-
-	/* Checkbox Styles */
-	.checkbox-label {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		cursor: pointer;
-		font-size: 0.875rem;
-	}
-
-	.checkbox-label input[type='checkbox'] {
-		width: auto;
-		accent-color: hsl(var(--primary));
-		cursor: pointer;
-	}
-
-	.checkbox-text {
-		font-weight: 500;
-		color: hsl(var(--foreground));
-	}
-
-	.checkbox-hint {
-		margin-left: 1.5rem;
-	}
-
-	/* Responsive */
-	@media (max-width: 640px) {
-		.settings-page {
-			padding: 1rem;
+	/* ===== Responsive ===== */
+	@media (max-width: 768px) {
+		.settings-command-center {
+			padding: 1rem 1rem 2rem;
 		}
 
-		.theme-options {
-			grid-template-columns: repeat(2, 1fr);
+		.page-header {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 1rem;
+		}
+
+		.header-stats {
+			width: 100%;
+			justify-content: flex-start;
+		}
+
+		.tab-nav {
+			gap: 0.25rem;
+			padding: 0.375rem;
+		}
+
+		.tab-button {
+			padding: 0.625rem 1rem;
+			font-size: 0.8125rem;
+		}
+
+		.tab-label {
+			display: none;
 		}
 
 		.form-row {
 			grid-template-columns: 1fr;
 		}
 
-		.form-group.half {
-			margin-bottom: 1rem;
-		}
-	}
-
-	/* Spinner for loading states */
-	.spinner {
-		width: 20px;
-		height: 20px;
-		border: 2px solid hsl(var(--primary) / 0.2);
-		border-top-color: hsl(var(--primary));
-		border-radius: 50%;
-		animation: spin 0.8s linear infinite;
-	}
-
-	.spinner.small {
-		width: 14px;
-		height: 14px;
-		border-width: 2px;
-		border-color: hsl(var(--destructive-foreground) / 0.3);
-		border-top-color: hsl(var(--destructive-foreground));
-	}
-
-	@keyframes spin {
-		to {
-			transform: rotate(360deg);
-		}
-	}
-
-	/* ========================================
-	 * Privacy Card Grid - Horizontal Layout
-	 * ======================================== */
-	.privacy-card-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-		gap: 0.75rem;
-		margin-bottom: 1rem;
-	}
-
-	.privacy-card-grid.two-col {
-		grid-template-columns: repeat(2, 1fr);
-	}
-
-	.privacy-card-grid.three-col {
-		grid-template-columns: repeat(3, 1fr);
-	}
-
-	/* Privacy Card - Based on theme-option pattern */
-	.privacy-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		padding: 1rem 0.75rem;
-		background: hsl(var(--muted));
-		border: 2px solid hsl(var(--border));
-		border-radius: var(--radius);
-		cursor: pointer;
-		transition: all 0.15s ease;
-		text-align: center;
-		min-height: 110px;
-	}
-
-	.privacy-card:hover {
-		border-color: hsl(var(--primary) / 0.5);
-		background: hsl(var(--muted) / 0.8);
-	}
-
-	.privacy-card.selected {
-		border-color: hsl(var(--primary));
-		background: hsl(var(--primary) / 0.1);
-	}
-
-	.privacy-card input[type='radio'] {
-		position: absolute;
-		opacity: 0;
-		pointer-events: none;
-	}
-
-	.privacy-card .card-icon {
-		font-size: 1.5rem;
-		margin-bottom: 0.375rem;
-		line-height: 1;
-	}
-
-	.privacy-card .card-title {
-		font-weight: 600;
-		font-size: 0.875rem;
-		color: hsl(var(--foreground));
-		margin-bottom: 0.25rem;
-	}
-
-	.privacy-card .card-desc {
-		font-size: 0.7rem;
-		color: hsl(var(--muted-foreground));
-		line-height: 1.3;
-	}
-
-	/* Privacy Subsections */
-	.privacy-subsection {
-		margin-bottom: 1.5rem;
-	}
-
-	.privacy-subsection:last-child {
-		margin-bottom: 0;
-	}
-
-	.privacy-subsection h3 {
-		font-size: 1rem;
-		font-weight: 600;
-		color: hsl(var(--foreground));
-		margin: 0 0 0.375rem;
-	}
-
-	/* Privacy Groups */
-	.privacy-group {
-		margin-bottom: 1.5rem;
-	}
-
-	/* User Control Option Box */
-	.user-control-option {
-		padding: 1rem;
-		background: hsl(var(--secondary));
-		border-radius: var(--radius);
-		border: 1px solid hsl(var(--border));
-		margin-top: 1rem;
-	}
-
-	/* Sticky/prominent save button */
-	.sticky-actions {
-		position: sticky;
-		bottom: 1rem;
-		padding: 1rem;
-		background: hsl(var(--card) / 0.95);
-		backdrop-filter: blur(8px);
-		border-radius: var(--radius);
-		border: 1px solid hsl(var(--border));
-		margin-top: 1rem;
-	}
-
-	.primary-action {
-		width: 100%;
-		padding: 0.75rem 1.5rem;
-		font-size: 1rem;
-		font-weight: 600;
-	}
-
-	/* Privacy Card Responsive Breakpoints */
-	@media (max-width: 768px) {
-		.privacy-card-grid,
-		.privacy-card-grid.two-col,
-		.privacy-card-grid.three-col {
+		.theme-grid {
 			grid-template-columns: repeat(2, 1fr);
 		}
 
-		.privacy-card {
-			min-height: 100px;
-			padding: 0.75rem 0.5rem;
-		}
-
-		.privacy-card .card-icon {
-			font-size: 1.25rem;
+		.option-cards,
+		.option-cards.two-col,
+		.option-cards.three-col {
+			grid-template-columns: repeat(2, 1fr);
 		}
 	}
 
 	@media (max-width: 480px) {
-		.privacy-card-grid,
-		.privacy-card-grid.two-col,
-		.privacy-card-grid.three-col {
+		.tab-button {
+			padding: 0.5rem 0.75rem;
+		}
+
+		.theme-grid {
+			grid-template-columns: repeat(2, 1fr);
+			gap: 0.625rem;
+		}
+
+		.theme-preview {
+			width: 44px;
+			height: 44px;
+		}
+
+		.option-cards,
+		.option-cards.two-col,
+		.option-cards.three-col {
 			grid-template-columns: 1fr;
 		}
 
-		.privacy-card {
+		.option-card {
 			flex-direction: row;
-			align-items: flex-start;
 			text-align: left;
-			min-height: auto;
 			gap: 1rem;
+			padding: 1rem;
 		}
 
-		.privacy-card .card-icon {
-			flex-shrink: 0;
+		.option-icon {
+			margin-bottom: 0;
+		}
+
+		.option-check {
+			position: static;
+			margin-left: auto;
 		}
 	}
 </style>

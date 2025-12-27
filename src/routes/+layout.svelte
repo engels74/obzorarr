@@ -10,7 +10,7 @@
 	/**
 	 * Check if current route is a wrapped page.
 	 */
-	const isWrappedRoute = $derived($page.url.pathname.startsWith('/wrapped'));
+	const isWrappedRoute = $derived($page.url?.pathname?.startsWith('/wrapped') ?? false);
 
 	/**
 	 * Compute the effective theme class.
