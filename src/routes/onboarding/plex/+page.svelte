@@ -22,6 +22,14 @@
 	let pollIntervalId: ReturnType<typeof setInterval> | null = null;
 	let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
+	// Local auth state for immediate UI updates after OAuth
+	// Bypasses SvelteKit data prop reactivity timing issues
+	let localAuthState = $state<{
+		isAuthenticated: boolean;
+		isAdmin: boolean;
+		username: string | null;
+	} | null>(null);
+
 	// Server selection state (for no-ENV flow)
 	let servers = $state<
 		Array<{
@@ -83,17 +91,33 @@
 		};
 	});
 
+	// Initialize local auth state from data if already authenticated (page refresh case)
+	$effect(() => {
+		if (browser && localAuthState === null && data.isAuthenticated) {
+			localAuthState = {
+				isAuthenticated: data.isAuthenticated,
+				isAdmin: data.isAdmin,
+				username: data.username ?? null
+			};
+		}
+	});
+
 	// Fetch servers on page load for authenticated admins (no-ENV flow)
 	// This handles the case when user reloads the page while already authenticated
 	$effect(() => {
 		if (!browser) return;
 
+		// Use effective states which include local auth state for immediate OAuth response
+		const isAuth = localAuthState?.isAuthenticated ?? data.isAuthenticated;
+		const isAdm = localAuthState?.isAdmin ?? data.isAdmin;
+
 		// Check if we should fetch servers:
 		// - No ENV config (manual server selection flow)
 		// - User is authenticated as admin
 		// - No servers loaded yet
+		// - Not currently loading (prevent double fetches)
 		const shouldFetch =
-			!data.hasEnvConfig && data.isAuthenticated && data.isAdmin && servers.length === 0;
+			!data.hasEnvConfig && isAuth && isAdm && servers.length === 0 && !isLoadingServers;
 
 		if (shouldFetch) {
 			fetchServers();
@@ -184,12 +208,23 @@
 							throw new Error((errData as { message?: string }).message || 'Login failed');
 						}
 
-						// 5. Refresh page data to get new auth status
-						await invalidateAll();
+						// 5. Extract user info from callback response and update local state immediately
+						const callbackData = (await callbackResponse.json()) as {
+							user: { id: number; plexId: number; username: string; isAdmin: boolean };
+						};
 
-						// 6. For no-ENV flow, directly fetch servers after OAuth
-						// We know hasEnvConfig is stable (determined by ENV vars, not session)
-						// and the session cookie is already set from the callback
+						// Update local auth state immediately - triggers UI re-render
+						// This bypasses SvelteKit data prop reactivity timing issues
+						localAuthState = {
+							isAuthenticated: true,
+							isAdmin: callbackData.user.isAdmin,
+							username: callbackData.user.username
+						};
+
+						// 6. Refresh page data in background (fire and forget)
+						invalidateAll();
+
+						// 7. For no-ENV flow, fetch servers immediately using the new auth state
 						if (!data.hasEnvConfig && servers.length === 0) {
 							await fetchServers();
 						}
@@ -326,10 +361,20 @@
 		});
 	}
 
-	// Derived states
-	const showLoginButton = $derived(!data.isAuthenticated);
-	const showVerifyButton = $derived(data.hasEnvConfig && data.isAuthenticated);
-	const showServerSelector = $derived(!data.hasEnvConfig && data.isAuthenticated && data.isAdmin);
+	// Derived states - use local auth state if available, fall back to data props
+	// This ensures immediate UI updates after OAuth without waiting for SvelteKit data invalidation
+	const effectiveIsAuthenticated = $derived(
+		localAuthState?.isAuthenticated ?? data.isAuthenticated
+	);
+	const effectiveIsAdmin = $derived(localAuthState?.isAdmin ?? data.isAdmin);
+	const effectiveUsername = $derived(localAuthState?.username ?? data.username);
+
+	const showLoginButton = $derived(!effectiveIsAuthenticated);
+	const showVerifyButton = $derived(data.hasEnvConfig && effectiveIsAuthenticated);
+	const showServerSelector = $derived(
+		!data.hasEnvConfig && effectiveIsAuthenticated && effectiveIsAdmin
+	);
+	const isNonAdminUser = $derived(effectiveIsAuthenticated && !effectiveIsAdmin);
 	const ownedServers = $derived(servers.filter((s) => s.owned));
 	const canContinue = $derived(
 		(data.hasEnvConfig && data.canProceed) || (!data.hasEnvConfig && serverSaved)
@@ -427,7 +472,7 @@
 				</div>
 			</div>
 
-			{#if !data.isAuthenticated}
+			{#if showLoginButton}
 				<div class="action-section animate-item">
 					<p class="instruction">Sign in with your Plex account to verify admin access</p>
 					<button
@@ -447,7 +492,7 @@
 						{/if}
 					</button>
 				</div>
-			{:else if data.isNonAdminUser}
+			{:else if isNonAdminUser}
 				<div class="error-card animate-item">
 					<div class="error-icon">
 						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -472,14 +517,14 @@
 						</svg>
 					</div>
 					<div class="success-content">
-						<p class="success-title">Signed in as {data.username}</p>
+						<p class="success-title">Signed in as {effectiveUsername}</p>
 						<p class="success-message">Admin access verified. Ready to continue.</p>
 					</div>
 				</div>
 			{/if}
 		{:else}
 			<!-- Manual configuration flow -->
-			{#if !data.isAuthenticated}
+			{#if showLoginButton}
 				<div class="action-section animate-item">
 					<p class="instruction">Sign in with Plex to connect your server</p>
 					<button
@@ -499,7 +544,7 @@
 						{/if}
 					</button>
 				</div>
-			{:else if data.isNonAdminUser}
+			{:else if isNonAdminUser}
 				<div class="error-card animate-item">
 					<div class="error-icon">
 						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
