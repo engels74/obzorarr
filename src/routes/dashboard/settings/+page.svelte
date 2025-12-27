@@ -33,10 +33,8 @@
 	let activeTab = $state<TabValue>(getInitialTab());
 
 	// Form state
-	let selectedShareMode = $state(data.shareSettings.mode);
-	let selectedLogoPreference = $state<'show' | 'hide'>(
-		data.userLogoPreference === false ? 'hide' : 'show'
-	);
+	let selectedShareMode = $state('');
+	let selectedLogoPreference = $state<'show' | 'hide'>('show');
 	let isUpdating = $state(false);
 	let isRegenerating = $state(false);
 
@@ -47,7 +45,7 @@
 	// Regenerate token dialog
 	let regenerateDialogOpen = $state(false);
 
-	// Sync state with data on refresh
+	// Initialize and sync state with data (runs on mount and when data changes)
 	$effect(() => {
 		selectedShareMode = data.shareSettings.mode;
 		selectedLogoPreference = data.userLogoPreference === false ? 'hide' : 'show';
@@ -531,8 +529,8 @@
 		margin: 0;
 	}
 
-	/* Tabs Styling */
-	.settings-tabs {
+	/* Tabs Styling - :global() because class is passed to Tabs.Root component */
+	:global(.settings-tabs) {
 		margin-top: 1.5rem;
 	}
 

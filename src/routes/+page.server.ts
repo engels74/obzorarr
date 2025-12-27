@@ -66,7 +66,8 @@ export const actions: Actions = {
 			return fail(429, {
 				error: 'Too many requests. Please try again later.',
 				retryAfter: rateLimitResult.retryAfter,
-				username: ''
+				username: '',
+				requiresAuth: false
 			});
 		}
 
@@ -78,7 +79,8 @@ export const actions: Actions = {
 		if (!parsed.success) {
 			return fail(400, {
 				error: parsed.error.issues[0]?.message ?? 'Invalid username',
-				username: rawUsername
+				username: rawUsername,
+				requiresAuth: false
 			});
 		}
 
@@ -90,7 +92,8 @@ export const actions: Actions = {
 		if (!userResult) {
 			return fail(404, {
 				error: 'User not found. Make sure you have signed into Obzorarr at least once.',
-				username
+				username,
+				requiresAuth: true
 			});
 		}
 
