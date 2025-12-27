@@ -58,6 +58,24 @@ bun run db:migrate     # Run migrations
 bun run db:studio      # Open Drizzle Studio
 ```
 
+## Commit Messages
+
+Generate a commit message that strictly follows the Conventional Commits specification:
+
+1. The commit message must have a header, optional body, and optional footer separated by blank lines.
+2. The header must be in the format: `<type>(<optional scope>): <description>`
+   - `<type>` must be one of: feat, fix, refactor, perf, style, test, docs, build, ops, chore
+   - `<scope>` is optional and should provide contextual information (do not use issue IDs)
+   - `<description>` must be concise, lowercase, imperative mood, and must not end with a period.
+3. If the commit introduces breaking changes, indicate it by adding a `!` after the type or scope, e.g., `feat(api)!: ...`
+4. The body (optional) should explain the motivation and contrast with previous behavior, written in imperative mood.
+5. Use lowercase for everything except proper nouns and code snippets.
+6. Do not include bullet points; use paragraphs separated by blank lines.
+7. Examples:
+   - feat: add email notifications on new direct messages
+   - fix(shopping-cart): prevent ordering an empty cart
+   - perf!: improve memory usage in visitor count
+
 ## Architecture
 
 ### Server-Side Structure (`src/lib/server/`)
