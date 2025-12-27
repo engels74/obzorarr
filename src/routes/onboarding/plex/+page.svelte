@@ -250,12 +250,9 @@
 						};
 
 						// 6. Refresh page data in background (fire and forget)
+						// The $effect at lines 133-153 will automatically trigger fetchServers()
+						// when localAuthState changes, so no explicit call needed here
 						invalidateAll();
-
-						// 7. For no-ENV flow, fetch servers immediately using the new auth state
-						if (!data.hasEnvConfig && servers.length === 0) {
-							await fetchServers();
-						}
 
 						isOAuthLoading = false;
 					}
