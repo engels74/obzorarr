@@ -278,16 +278,6 @@
 				<p class="header-subtitle">Application Configuration Center</p>
 			</div>
 		</div>
-		<div class="header-stats">
-			<div class="header-stat">
-				<span class="header-stat-value">{data.availableYears.length}</span>
-				<span class="header-stat-label">Years</span>
-			</div>
-			<div class="header-stat">
-				<span class="header-stat-value">{data.themeOptions.length}</span>
-				<span class="header-stat-label">Themes</span>
-			</div>
-		</div>
 	</header>
 
 	<!-- Tab Navigation -->
@@ -1271,34 +1261,6 @@
 		margin: 0.25rem 0 0;
 	}
 
-	.header-stats {
-		display: flex;
-		gap: 1.5rem;
-	}
-
-	.header-stat {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		padding: 0.75rem 1.25rem;
-		background: hsl(var(--muted) / 0.5);
-		border-radius: 12px;
-	}
-
-	.header-stat-value {
-		font-size: 1.5rem;
-		font-weight: 700;
-		color: hsl(var(--primary));
-		font-variant-numeric: tabular-nums;
-	}
-
-	.header-stat-label {
-		font-size: 0.75rem;
-		color: hsl(var(--muted-foreground));
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-	}
-
 	/* ===== Tab Navigation ===== */
 	.tab-nav {
 		display: flex;
@@ -1610,7 +1572,12 @@
 	.form-row .form-field {
 		min-width: 0;
 		margin-bottom: 0;
-		overflow: hidden;
+	}
+
+	.form-row .form-field input {
+		width: 100%;
+		max-width: 100%;
+		box-sizing: border-box;
 	}
 
 	/* ===== Buttons ===== */
@@ -2243,11 +2210,6 @@
 			flex-direction: column;
 			align-items: flex-start;
 			gap: 1rem;
-		}
-
-		.header-stats {
-			width: 100%;
-			justify-content: flex-start;
 		}
 
 		.tab-nav {
