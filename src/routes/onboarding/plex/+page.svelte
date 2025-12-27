@@ -4,6 +4,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { animate, stagger } from 'motion';
 	import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
+	import * as Tooltip from '$lib/components/ui/tooltip';
 	import type { PageData, ActionData } from './$types';
 
 	/**
@@ -338,32 +339,45 @@
 		label: string;
 		type: 'secure' | 'local' | 'remote' | 'relay';
 		description: string;
+		tooltip?: string;
+		isSSL: boolean;
 	} {
 		if (connection.uri.includes('.plex.direct')) {
 			return {
-				label: 'Secure',
+				label: 'SSL',
 				type: 'secure',
-				description: 'Encrypted via plex.direct'
+				description: 'Encrypted connection',
+				tooltip:
+					'This connection uses plex.direct with TLS/SSL encryption. Your data is securely encrypted in transit, providing protection against eavesdropping and tampering.',
+				isSSL: true
 			};
 		}
 		if (connection.relay) {
 			return {
 				label: 'Relay',
 				type: 'relay',
-				description: 'Routed through Plex servers'
+				description: 'Routed through Plex servers',
+				tooltip:
+					'Traffic is routed through Plex relay servers. May have higher latency but works when direct connections are unavailable.',
+				isSSL: false
 			};
 		}
 		if (connection.local) {
 			return {
 				label: 'Local',
 				type: 'local',
-				description: 'Internal network connection'
+				description: 'Internal network connection',
+				tooltip:
+					'Connects directly over your local network. Fast and reliable but only works when on the same network as your server.',
+				isSSL: false
 			};
 		}
 		return {
 			label: 'Remote',
 			type: 'remote',
-			description: 'Direct external connection'
+			description: 'Direct external connection',
+			tooltip: 'Connects directly to your server over the internet using your public IP address.',
+			isSSL: false
 		};
 	}
 
@@ -646,48 +660,105 @@
 									{#if isExpanded && connections.length > 0}
 										<div class="connections-panel">
 											<p class="connections-label">Select a connection</p>
-											<div class="connections-list">
-												{#each connections as connection (connection.uri)}
-													{@const info = getConnectionInfo(connection)}
-													{@const isConnSelected = selectedConnection === connection.uri}
-													<button
-														type="button"
-														class="connection-card"
-														class:selected={isConnSelected}
-														class:saving={isSavingServer && isConnSelected}
-														onclick={() => handleConnectionSelect(server, connection)}
-														disabled={isSavingServer}
-													>
-														<div class="connection-info">
-															<div class="connection-header">
-																<span class="connection-badge {info.type}">{info.label}</span>
-																<span class="connection-desc">{info.description}</span>
+											<Tooltip.Provider>
+												<div class="connections-list">
+													{#each connections as connection (connection.uri)}
+														{@const info = getConnectionInfo(connection)}
+														{@const isConnSelected = selectedConnection === connection.uri}
+														<button
+															type="button"
+															class="connection-card"
+															class:selected={isConnSelected}
+															class:saving={isSavingServer && isConnSelected}
+															class:ssl={info.isSSL}
+															onclick={() => handleConnectionSelect(server, connection)}
+															disabled={isSavingServer}
+														>
+															<div class="connection-info">
+																<div class="connection-header">
+																	<Tooltip.Root>
+																		<Tooltip.Trigger>
+																			<span
+																				class="connection-badge {info.type}"
+																				role="button"
+																				tabindex="0"
+																			>
+																				{#if info.isSSL}
+																					<svg
+																						class="ssl-lock-icon"
+																						viewBox="0 0 24 24"
+																						fill="none"
+																						stroke="currentColor"
+																						stroke-width="2.5"
+																						aria-hidden="true"
+																					>
+																						<rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+																						<path d="M7 11V7a5 5 0 0 1 10 0v4" />
+																					</svg>
+																				{/if}
+																				{info.label}
+																			</span>
+																		</Tooltip.Trigger>
+																		<Tooltip.Content
+																			side="top"
+																			class="connection-tooltip"
+																			sideOffset={8}
+																		>
+																			<div class="tooltip-inner">
+																				{#if info.isSSL}
+																					<div class="tooltip-header ssl">
+																						<svg
+																							class="tooltip-icon"
+																							viewBox="0 0 24 24"
+																							fill="none"
+																							stroke="currentColor"
+																							stroke-width="2"
+																						>
+																							<path
+																								d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
+																								fill="currentColor"
+																								fill-opacity="0.2"
+																							/>
+																							<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+																						</svg>
+																						<strong>Secure Connection</strong>
+																					</div>
+																				{:else}
+																					<strong class="tooltip-title">{info.label} Connection</strong
+																					>
+																				{/if}
+																				<p class="tooltip-text">{info.tooltip}</p>
+																			</div>
+																		</Tooltip.Content>
+																	</Tooltip.Root>
+																	<span class="connection-desc">{info.description}</span>
+																</div>
+																<span class="connection-uri">{formatServerUrl(connection.uri)}</span>
 															</div>
-															<span class="connection-uri">{formatServerUrl(connection.uri)}</span>
-														</div>
-														{#if isConnSelected}
-															<div class="connection-check">
-																{#if isSavingServer}
-																	<span class="check-spinner"></span>
-																{:else}
-																	<svg
-																		viewBox="0 0 24 24"
-																		fill="none"
-																		stroke="currentColor"
-																		stroke-width="3"
-																	>
-																		<path
-																			d="M20 6L9 17l-5-5"
-																			stroke-linecap="round"
-																			stroke-linejoin="round"
-																		/>
-																	</svg>
-																{/if}
-															</div>
-														{/if}
-													</button>
-												{/each}
-											</div>
+															{#if isConnSelected}
+																<div class="connection-check">
+																	{#if isSavingServer}
+																		<span class="check-spinner"></span>
+																	{:else}
+																		<svg
+																			viewBox="0 0 24 24"
+																			fill="none"
+																			stroke="currentColor"
+																			stroke-width="3"
+																		>
+																			<path
+																				d="M20 6L9 17l-5-5"
+																				stroke-linecap="round"
+																				stroke-linejoin="round"
+																			/>
+																		</svg>
+																	{/if}
+																</div>
+															{/if}
+														</button>
+													{/each}
+												</div>
+											</Tooltip.Provider>
 										</div>
 									{:else if isExpanded}
 										<div class="connections-panel">
@@ -1309,17 +1380,45 @@
 
 	.connection-badge {
 		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
 		padding: 0.15rem 0.4rem;
 		font-size: 0.65rem;
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
 		border-radius: 4px;
+		cursor: help;
+		transition: all 0.15s ease;
+	}
+
+	.connection-badge:hover {
+		filter: brightness(1.15);
 	}
 
 	.connection-badge.secure {
-		background: rgba(34, 197, 94, 0.15);
+		background: linear-gradient(
+			135deg,
+			rgba(34, 197, 94, 0.2) 0%,
+			rgba(16, 185, 129, 0.15) 100%
+		);
 		color: hsl(142, 71%, 55%);
+		border: 1px solid rgba(34, 197, 94, 0.3);
+		box-shadow:
+			0 0 8px rgba(34, 197, 94, 0.15),
+			inset 0 1px 0 rgba(255, 255, 255, 0.1);
+	}
+
+	.connection-badge.secure:hover {
+		box-shadow:
+			0 0 12px rgba(34, 197, 94, 0.25),
+			inset 0 1px 0 rgba(255, 255, 255, 0.15);
+	}
+
+	.ssl-lock-icon {
+		width: 10px;
+		height: 10px;
+		flex-shrink: 0;
 	}
 
 	.connection-badge.local {
@@ -1428,6 +1527,86 @@
 	.continue-button svg {
 		width: 18px;
 		height: 18px;
+	}
+
+	/* SSL Connection Card Enhancement */
+	.connection-card.ssl {
+		background: linear-gradient(
+			135deg,
+			rgba(34, 197, 94, 0.06) 0%,
+			rgba(255, 255, 255, 0.03) 100%
+		);
+		border-color: rgba(34, 197, 94, 0.15);
+	}
+
+	.connection-card.ssl:hover:not(:disabled) {
+		background: linear-gradient(
+			135deg,
+			rgba(34, 197, 94, 0.1) 0%,
+			rgba(255, 255, 255, 0.06) 100%
+		);
+		border-color: rgba(34, 197, 94, 0.25);
+	}
+
+	.connection-card.ssl.selected {
+		background: rgba(34, 197, 94, 0.12);
+		border-color: rgba(34, 197, 94, 0.5);
+		box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.2);
+	}
+
+	/* Tooltip Styling */
+	:global(.connection-tooltip) {
+		background: rgba(15, 23, 42, 0.95) !important;
+		backdrop-filter: blur(12px);
+		-webkit-backdrop-filter: blur(12px);
+		border: 1px solid rgba(255, 255, 255, 0.1) !important;
+		border-radius: 10px !important;
+		padding: 0 !important;
+		max-width: 280px;
+		box-shadow:
+			0 8px 32px rgba(0, 0, 0, 0.4),
+			0 2px 8px rgba(0, 0, 0, 0.2) !important;
+	}
+
+	.tooltip-inner {
+		padding: 0.75rem 1rem;
+	}
+
+	.tooltip-header {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin-bottom: 0.5rem;
+	}
+
+	.tooltip-header.ssl {
+		color: hsl(142, 71%, 55%);
+	}
+
+	.tooltip-header strong {
+		font-size: 0.85rem;
+		font-weight: 600;
+	}
+
+	.tooltip-icon {
+		width: 16px;
+		height: 16px;
+		flex-shrink: 0;
+	}
+
+	.tooltip-title {
+		display: block;
+		font-size: 0.85rem;
+		font-weight: 600;
+		color: rgba(255, 255, 255, 0.95);
+		margin-bottom: 0.375rem;
+	}
+
+	.tooltip-text {
+		margin: 0;
+		font-size: 0.8rem;
+		line-height: 1.5;
+		color: rgba(255, 255, 255, 0.7);
 	}
 
 	@keyframes spin {
