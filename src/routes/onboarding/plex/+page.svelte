@@ -706,7 +706,7 @@
 																		</Tooltip.Trigger>
 																		<Tooltip.Content
 																			side="top"
-																			class="connection-tooltip"
+																			class="connection-tooltip z-[9999]"
 																			sideOffset={8}
 																		>
 																			<div class="tooltip-inner">
@@ -1553,16 +1553,16 @@
 
 	/* Tooltip Styling */
 	:global(.connection-tooltip) {
-		background: rgba(15, 23, 42, 0.95) !important;
+		background: rgba(15, 23, 42, 0.95);
 		backdrop-filter: blur(12px);
 		-webkit-backdrop-filter: blur(12px);
-		border: 1px solid rgba(255, 255, 255, 0.1) !important;
-		border-radius: 10px !important;
-		padding: 0 !important;
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		border-radius: 10px;
+		padding: 0;
 		max-width: 280px;
 		box-shadow:
 			0 8px 32px rgba(0, 0, 0, 0.4),
-			0 2px 8px rgba(0, 0, 0, 0.2) !important;
+			0 2px 8px rgba(0, 0, 0, 0.2);
 	}
 
 	.tooltip-inner {
