@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { LayoutData } from './$types';
 	import StepIndicator from '$lib/components/onboarding/StepIndicator.svelte';
+	import Logo from '$lib/components/Logo.svelte';
 	import { animate } from 'motion';
 
 	let { data, children }: { data: LayoutData; children: any } = $props();
@@ -37,33 +38,7 @@
 		<!-- Logo -->
 		<header bind:this={logoRef} class="onboarding-header">
 			<div class="logo-wrapper">
-				<svg class="logo" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-					<rect
-						x="4"
-						y="8"
-						width="40"
-						height="32"
-						rx="4"
-						fill="url(#logo-gradient)"
-						stroke="rgba(255,255,255,0.2)"
-						stroke-width="1.5"
-					/>
-					<path d="M20 18L32 24L20 30V18Z" fill="white" fill-opacity="0.9" />
-					<circle cx="24" cy="24" r="10" stroke="white" stroke-opacity="0.3" stroke-width="1" />
-					<defs>
-						<linearGradient
-							id="logo-gradient"
-							x1="4"
-							y1="8"
-							x2="44"
-							y2="40"
-							gradientUnits="userSpaceOnUse"
-						>
-							<stop stop-color="hsl(35, 100%, 50%)" />
-							<stop offset="1" stop-color="hsl(15, 100%, 45%)" />
-						</linearGradient>
-					</defs>
-				</svg>
+				<Logo size="md" class="logo" />
 				<span class="logo-text">Obzorarr</span>
 			</div>
 			<p class="setup-label">Initial Setup</p>
