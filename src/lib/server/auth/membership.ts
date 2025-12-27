@@ -266,7 +266,7 @@ function urlsMatch(url1: string, url2: string): boolean {
  * @returns Array of Plex resources
  * @throws PlexAuthApiError on network or API errors
  */
-async function getPlexResources(authToken: string): Promise<PlexResource[]> {
+export async function getPlexResources(authToken: string): Promise<PlexResource[]> {
 	const endpoint = `${PLEX_TV_URL}/api/v2/resources`;
 
 	try {
@@ -319,7 +319,7 @@ async function getPlexResources(authToken: string): Promise<PlexResource[]> {
  * @param resources - All Plex resources
  * @returns Only server resources
  */
-function filterServerResources(resources: PlexResource[]): PlexResource[] {
+export function filterServerResources(resources: PlexResource[]): PlexResource[] {
 	return resources.filter(
 		(resource) => resource.provides?.includes('server') || resource.product === 'Plex Media Server'
 	);

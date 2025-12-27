@@ -5,6 +5,8 @@ import { validateSession } from '$lib/server/auth/session';
 import { isDevBypassEnabled, getOrCreateDevSession } from '$lib/server/auth/dev-bypass';
 import { SESSION_DURATION_MS } from '$lib/server/auth/types';
 import { logger } from '$lib/server/logging';
+import { requiresOnboarding, getOnboardingStep } from '$lib/server/onboarding';
+import { env } from '$env/dynamic/private';
 
 /**
  * Server Hooks
@@ -117,6 +119,53 @@ const authHandle: Handle = async ({ event, resolve }) => {
 };
 
 // =============================================================================
+// Onboarding Handle
+// =============================================================================
+
+/**
+ * Onboarding middleware
+ *
+ * Redirects users to the onboarding flow if setup is not complete.
+ * Skips check for:
+ * - Static assets (_app, favicon)
+ * - Auth routes (/auth)
+ * - API routes for onboarding (/api/onboarding)
+ * - Onboarding routes themselves (/onboarding)
+ *
+ * Can be bypassed in development with DEV_BYPASS_ONBOARDING=true
+ */
+const onboardingHandle: Handle = async ({ event, resolve }) => {
+	// Skip if dev bypass is enabled for onboarding
+	if (isDevBypassEnabled() && env.DEV_BYPASS_ONBOARDING === 'true') {
+		return resolve(event);
+	}
+
+	// Paths that should skip onboarding check
+	const skipPaths = ['/_app', '/favicon', '/auth', '/api/onboarding', '/onboarding'];
+
+	// Skip check for excluded paths
+	if (skipPaths.some((p) => event.url.pathname.startsWith(p))) {
+		return resolve(event);
+	}
+
+	// Check if onboarding is required
+	try {
+		const needsOnboarding = await requiresOnboarding();
+
+		if (needsOnboarding) {
+			const currentStep = await getOnboardingStep();
+			redirect(303, `/onboarding/${currentStep}`);
+		}
+	} catch (error) {
+		// Log error but don't block the request
+		// This prevents onboarding check failures from breaking the app
+		logger.error(`Onboarding check failed: ${error}`, 'OnboardingHandle');
+	}
+
+	return resolve(event);
+};
+
+// =============================================================================
 // Authorization Handle
 // =============================================================================
 
@@ -174,6 +223,6 @@ export const handleError: HandleServerError = async ({ error, event }) => {
 /**
  * Combined server handle
  *
- * Runs authentication first, then authorization.
+ * Runs authentication first, then onboarding check, then authorization.
  */
-export const handle = sequence(authHandle, authorizationHandle);
+export const handle = sequence(authHandle, onboardingHandle, authorizationHandle);

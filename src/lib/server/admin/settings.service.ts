@@ -61,7 +61,11 @@ export const AppSettingsKey = {
 	FUN_FACTS_AI_PERSONA: 'fun_facts_ai_persona',
 
 	// Live Sync (automatic sync on page access)
-	ENABLE_LIVE_SYNC: 'enable_live_sync'
+	ENABLE_LIVE_SYNC: 'enable_live_sync',
+
+	// Onboarding
+	ONBOARDING_COMPLETED: 'onboarding_completed',
+	ONBOARDING_CURRENT_STEP: 'onboarding_current_step'
 } as const;
 
 export type AppSettingsKeyType = (typeof AppSettingsKey)[keyof typeof AppSettingsKey];
