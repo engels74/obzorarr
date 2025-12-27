@@ -305,7 +305,13 @@
 					<div class="preconfigured-header">
 						<span class="preconfigured-title">Plex Media Server</span>
 						<span class="preconfigured-badge">
-							<svg class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<svg
+								class="lock-icon"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+							>
 								<rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
 								<path d="M7 11V7a5 5 0 0 1 10 0v4" />
 							</svg>
@@ -570,11 +576,7 @@
 		align-items: center;
 		gap: 1rem;
 		padding: 1.125rem 1.25rem;
-		background: linear-gradient(
-			135deg,
-			rgba(34, 197, 94, 0.08) 0%,
-			rgba(34, 197, 94, 0.02) 100%
-		);
+		background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(34, 197, 94, 0.02) 100%);
 		border: 1px solid rgba(34, 197, 94, 0.25);
 		border-radius: 14px;
 		width: 100%;
@@ -586,11 +588,7 @@
 		content: '';
 		position: absolute;
 		inset: 0;
-		background: radial-gradient(
-			ellipse at top left,
-			rgba(34, 197, 94, 0.1) 0%,
-			transparent 50%
-		);
+		background: radial-gradient(ellipse at top left, rgba(34, 197, 94, 0.1) 0%, transparent 50%);
 		pointer-events: none;
 	}
 

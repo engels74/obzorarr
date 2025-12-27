@@ -131,7 +131,13 @@
 			<!-- Error display -->
 			{#if form?.error}
 				<div class="error-banner">
-					<svg class="error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<svg
+						class="error-icon"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
 						<circle cx="12" cy="12" r="10" />
 						<line x1="15" y1="9" x2="9" y2="15" />
 						<line x1="9" y1="9" x2="15" y2="15" />
@@ -157,7 +163,13 @@
 							aria-label="Go to {step.label}"
 						>
 							{#if index < currentSubStep}
-								<svg class="dot-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+								<svg
+									class="dot-check"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="3"
+								>
 									<path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round" />
 								</svg>
 							{/if}
@@ -195,7 +207,9 @@
 							<div class="step-icon appearance-icon">
 								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
 									<circle cx="12" cy="12" r="3" />
-									<path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+									<path
+										d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
+									/>
 								</svg>
 							</div>
 							<div class="step-title">
@@ -255,7 +269,6 @@
 								</div>
 							</div>
 						</div>
-
 					{:else if currentStepData.id === 'privacy'}
 						<!-- Privacy Step -->
 						<div class="step-header">
@@ -330,7 +343,9 @@
 								<label class="toggle-row">
 									<div class="toggle-text">
 										<span class="toggle-label">Allow User Control</span>
-										<span class="toggle-description">Let users change their own sharing settings</span>
+										<span class="toggle-description"
+											>Let users change their own sharing settings</span
+										>
 									</div>
 									<button
 										type="button"
@@ -345,7 +360,6 @@
 								</label>
 							</div>
 						</div>
-
 					{:else if currentStepData.id === 'slides'}
 						<!-- Slides Step -->
 						<div class="step-header">
@@ -386,13 +400,14 @@
 								{/each}
 							</div>
 						</div>
-
 					{:else if currentStepData.id === 'ai'}
 						<!-- AI Features Step -->
 						<div class="step-header">
 							<div class="step-icon ai-icon">
 								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-									<path d="M12 2a2 2 0 012 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 017 7h1a1 1 0 011 1v3a1 1 0 01-1 1h-1v1a2 2 0 01-2 2H5a2 2 0 01-2-2v-1H2a1 1 0 01-1-1v-3a1 1 0 011-1h1a7 7 0 017-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 012-2z" />
+									<path
+										d="M12 2a2 2 0 012 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 017 7h1a1 1 0 011 1v3a1 1 0 01-1 1h-1v1a2 2 0 01-2 2H5a2 2 0 01-2-2v-1H2a1 1 0 01-1-1v-3a1 1 0 011-1h1a7 7 0 017-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 012-2z"
+									/>
 									<circle cx="8" cy="14" r="1" />
 									<circle cx="16" cy="14" r="1" />
 								</svg>
@@ -408,7 +423,9 @@
 								<label class="toggle-row">
 									<div class="toggle-text">
 										<span class="toggle-label">Enable AI Fun Facts</span>
-										<span class="toggle-description">Generate personalized fun facts about viewing habits</span>
+										<span class="toggle-description"
+											>Generate personalized fun facts about viewing habits</span
+										>
 									</div>
 									<button
 										type="button"
@@ -428,7 +445,10 @@
 									<span class="setting-label">Fun Fact Frequency</span>
 									<div class="frequency-options">
 										{#each data.funFactOptions as option}
-											<label class="frequency-option" class:selected={funFactFrequency === option.value}>
+											<label
+												class="frequency-option"
+												class:selected={funFactFrequency === option.value}
+											>
 												<input
 													type="radio"
 													name="frequencyRadio"
@@ -462,7 +482,13 @@
 				disabled={isFirstSubStep || isSubmitting}
 				onclick={prevSubStep}
 			>
-				<svg class="nav-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<svg
+					class="nav-arrow"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+				>
 					<path d="M19 12H5M12 19l-7-7 7-7" />
 				</svg>
 				Previous
@@ -470,9 +496,7 @@
 
 			<!-- Skip Link (center) -->
 			<form method="POST" action="?/skipSettings" use:enhance class="skip-form">
-				<button type="submit" class="btn-skip-link" disabled={isSubmitting}>
-					Skip setup
-				</button>
+				<button type="submit" class="btn-skip-link" disabled={isSubmitting}> Skip setup </button>
 			</form>
 
 			<!-- Next / Save Button -->
@@ -491,7 +515,13 @@
 						Saving...
 					{:else}
 						Save & Continue
-						<svg class="nav-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<svg
+							class="nav-arrow"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+						>
 							<path d="M5 12h14M12 5l7 7-7 7" />
 						</svg>
 					{/if}
@@ -504,7 +534,13 @@
 					onclick={nextSubStep}
 				>
 					Next
-					<svg class="nav-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<svg
+						class="nav-arrow"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
 						<path d="M5 12h14M12 5l7 7-7 7" />
 					</svg>
 				</button>
