@@ -10,7 +10,12 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getSessionPlexToken } from '$lib/server/auth/session';
-import { getPlexResources, filterServerResources } from '$lib/server/auth/membership';
+import {
+	getPlexResources,
+	filterServerResources,
+	selectBestConnection,
+	generatePlexDirectUrl
+} from '$lib/server/auth/membership';
 import { logger } from '$lib/server/logging';
 
 export const GET: RequestHandler = async ({ cookies, locals }) => {
@@ -38,18 +43,33 @@ export const GET: RequestHandler = async ({ cookies, locals }) => {
 		// Filter to only include Plex Media Servers
 		const servers = filterServerResources(resources);
 
-		// Format response with only needed fields
-		const formattedServers = servers.map((server) => ({
-			name: server.name,
-			clientIdentifier: server.clientIdentifier,
-			owned: server.owned,
-			accessToken: server.accessToken,
-			connections: server.connections?.map((conn) => ({
-				uri: conn.uri,
-				local: conn.local ?? false,
-				relay: conn.relay ?? false
-			}))
-		}));
+		// Format response with needed fields including best connection URL
+		const formattedServers = servers.map((server) => {
+			// Calculate best connection URL with priority: .plex.direct > public IP > local IP
+			let bestConnectionUrl = selectBestConnection(server);
+
+			// If no .plex.direct URL found in connections, try to generate one
+			if (bestConnectionUrl && !bestConnectionUrl.includes('.plex.direct')) {
+				const generatedUrl = generatePlexDirectUrl(server);
+				if (generatedUrl) {
+					bestConnectionUrl = generatedUrl;
+				}
+			}
+
+			return {
+				name: server.name,
+				clientIdentifier: server.clientIdentifier,
+				owned: server.owned,
+				accessToken: server.accessToken,
+				bestConnectionUrl,
+				publicAddress: server.publicAddress,
+				connections: server.connections?.map((conn) => ({
+					uri: conn.uri,
+					local: conn.local ?? false,
+					relay: conn.relay ?? false
+				}))
+			};
+		});
 
 		logger.debug(
 			`Found ${formattedServers.length} servers for user ${locals.user.username}`,

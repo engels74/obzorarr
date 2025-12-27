@@ -4,13 +4,19 @@ import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db/client';
 import { users } from '$lib/server/db/schema';
 import { getPlexUserInfo } from '$lib/server/auth/plex-oauth';
-import { requireServerMembership } from '$lib/server/auth/membership';
+import {
+	requireServerMembership,
+	verifyServerOwnership,
+	verifyServerMembership
+} from '$lib/server/auth/membership';
 import { createSession } from '$lib/server/auth/session';
 import {
 	PlexAuthApiError,
 	NotServerMemberError,
 	SESSION_DURATION_MS
 } from '$lib/server/auth/types';
+import { getApiConfigWithSources } from '$lib/server/admin/settings.service';
+import { requiresOnboarding } from '$lib/server/onboarding';
 import { z } from 'zod';
 
 /**
@@ -107,8 +113,35 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		// Step 1: Get user info from Plex
 		const plexUser = await getPlexUserInfo(authToken);
 
-		// Step 2: Verify server membership
-		const membership = await requireServerMembership(authToken);
+		// Step 2: Verify server membership or ownership
+		// Check if we're in onboarding mode with no server configured
+		const isOnboarding = await requiresOnboarding();
+		const apiConfig = await getApiConfigWithSources();
+		const hasServerConfigured = !!apiConfig.plex.serverUrl.value;
+
+		let isAdmin = false;
+		let accountId: number;
+
+		if (isOnboarding && !hasServerConfigured) {
+			// During onboarding with no server configured, check if user owns any server
+			const ownership = await verifyServerOwnership(authToken);
+
+			if (!ownership.isOwner) {
+				throw new NotServerMemberError('You must own a Plex server to configure Obzorarr.');
+			}
+
+			// User owns a server, grant admin access for onboarding
+			isAdmin = true;
+			accountId = 1; // Server owners have local accountId = 1
+		} else {
+			// Normal flow: verify membership of the configured server
+			const membership = await requireServerMembership(authToken);
+
+			isAdmin = membership.isOwner;
+			// Determine accountId for matching with playHistory
+			// Server owners have local accountId = 1, shared users have accountId = plexId
+			accountId = membership.isOwner ? 1 : plexUser.id;
+		}
 
 		// Step 3: Create or update user in database
 		const existingUser = await db.query.users.findFirst({
@@ -116,11 +149,6 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		});
 
 		let userId: number;
-		const isAdmin = membership.isOwner;
-
-		// Determine accountId for matching with playHistory
-		// Server owners have local accountId = 1, shared users have accountId = plexId
-		const accountId = membership.isOwner ? 1 : plexUser.id;
 
 		if (existingUser) {
 			// Update existing user

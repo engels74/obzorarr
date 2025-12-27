@@ -28,6 +28,8 @@
 			clientIdentifier: string;
 			owned: boolean;
 			accessToken: string | null;
+			bestConnectionUrl?: string;
+			publicAddress?: string;
 			connections?: Array<{ uri: string; local: boolean; relay: boolean }>;
 		}>
 	>([]);
@@ -197,21 +199,29 @@
 		oauthError = null;
 
 		try {
-			// Find best connection (prefer local, non-relay)
-			const connection =
-				server.connections?.find((c) => c.local && !c.relay) ||
-				server.connections?.find((c) => !c.relay) ||
-				server.connections?.[0];
+			// Use the best connection URL calculated by the server
+			// Priority order: .plex.direct > public IP > local IP
+			let serverUrl = server.bestConnectionUrl;
 
-			if (!connection) {
-				throw new Error('No valid connection found for server');
+			// Fallback to local connection selection if no best URL provided
+			if (!serverUrl) {
+				const connection =
+					server.connections?.find((c) => c.uri.includes('.plex.direct') && !c.relay) ||
+					server.connections?.find((c) => !c.local && !c.relay) ||
+					server.connections?.find((c) => c.local && !c.relay) ||
+					server.connections?.[0];
+
+				if (!connection) {
+					throw new Error('No valid connection found for server');
+				}
+				serverUrl = connection.uri;
 			}
 
 			const response = await fetch('/api/onboarding/select-server', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					serverUrl: connection.uri,
+					serverUrl,
 					accessToken: server.accessToken,
 					serverName: server.name
 				})

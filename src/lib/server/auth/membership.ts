@@ -487,3 +487,164 @@ export async function requireServerMembership(userToken: string): Promise<Member
 export function determineRole(isOwner: boolean): { isAdmin: boolean } {
 	return { isAdmin: isOwner };
 }
+
+// =============================================================================
+// Server Ownership Verification (for onboarding without configured server)
+// =============================================================================
+
+/**
+ * Result of server ownership verification
+ */
+export interface OwnershipResult {
+	isOwner: boolean;
+	server?: PlexResource;
+	serverName?: string;
+	bestConnectionUrl?: string;
+}
+
+/**
+ * Select the best connection URL for a server
+ *
+ * Priority order:
+ * 1. .plex.direct URLs (HTTPS, uses machine identifier for secure connection)
+ * 2. Public IP addresses (non-local, non-relay connections)
+ * 3. Local IP addresses (fallback)
+ *
+ * @param server - The Plex server resource
+ * @returns The best connection URL, or undefined if no connections available
+ */
+export function selectBestConnection(server: PlexResource): string | undefined {
+	const connections = server.connections;
+	if (!connections || connections.length === 0) {
+		return undefined;
+	}
+
+	// Priority 1: Find .plex.direct URL (most reliable for external access)
+	const plexDirectConnection = connections.find((c) => c.uri.includes('.plex.direct') && !c.relay);
+	if (plexDirectConnection) {
+		logger.debug(`Selected .plex.direct connection: ${plexDirectConnection.uri}`, 'Membership');
+		return plexDirectConnection.uri;
+	}
+
+	// Priority 2: Find public (non-local, non-relay) connection
+	const publicConnection = connections.find((c) => !c.local && !c.relay);
+	if (publicConnection) {
+		logger.debug(`Selected public connection: ${publicConnection.uri}`, 'Membership');
+		return publicConnection.uri;
+	}
+
+	// Priority 3: Find local (non-relay) connection as fallback
+	const localConnection = connections.find((c) => c.local && !c.relay);
+	if (localConnection) {
+		logger.debug(`Selected local connection: ${localConnection.uri}`, 'Membership');
+		return localConnection.uri;
+	}
+
+	// Last resort: use any available connection
+	const anyConnection = connections[0];
+	if (anyConnection) {
+		logger.debug(`Selected fallback connection: ${anyConnection.uri}`, 'Membership');
+		return anyConnection.uri;
+	}
+
+	return undefined;
+}
+
+/**
+ * Generate a .plex.direct URL from server information
+ *
+ * .plex.direct URLs follow the pattern:
+ * https://{IP-with-dashes}.{machineIdentifier}.plex.direct:{port}
+ *
+ * @param server - The Plex server resource
+ * @returns A .plex.direct URL, or undefined if not enough info available
+ */
+export function generatePlexDirectUrl(server: PlexResource): string | undefined {
+	// Need public address and client identifier
+	if (!server.publicAddress || !server.clientIdentifier) {
+		return undefined;
+	}
+
+	// Convert IP dots to dashes
+	const ipWithDashes = server.publicAddress.replace(/\./g, '-');
+
+	// Default to port 32400 if not specified, find it from connections
+	let port = 32400;
+	if (server.connections) {
+		const nonLocalConnection = server.connections.find((c) => !c.local && !c.relay);
+		if (nonLocalConnection) {
+			port = nonLocalConnection.port;
+		}
+	}
+
+	// Check if HTTPS is required
+	const protocol = server.httpsRequired ? 'https' : 'https'; // Always use HTTPS for .plex.direct
+
+	const url = `${protocol}://${ipWithDashes}.${server.clientIdentifier}.plex.direct:${port}`;
+	logger.debug(`Generated .plex.direct URL: ${url}`, 'Membership');
+
+	return url;
+}
+
+/**
+ * Verify if a user owns any Plex server (for onboarding without configured server)
+ *
+ * This is used during the onboarding flow when no PLEX_SERVER_URL is configured.
+ * It checks if the user owns at least one server and returns the first owned server
+ * with the best connection URL.
+ *
+ * @param userToken - The user's Plex auth token
+ * @returns Ownership result with server info and best connection URL
+ * @throws PlexAuthApiError on network or API errors
+ */
+export async function verifyServerOwnership(userToken: string): Promise<OwnershipResult> {
+	// Get all resources the user has access to
+	const resources = await getPlexResources(userToken);
+
+	// Filter to only server resources
+	const servers = filterServerResources(resources);
+
+	// Debug logging
+	logger.debug(`Found ${servers.length} server(s) accessible to user`, 'Membership');
+
+	for (const server of servers) {
+		logger.debug(
+			`Server: ${server.name} | clientIdentifier: ${server.clientIdentifier} | owned: ${server.owned}`,
+			'Membership'
+		);
+	}
+
+	// Find the first server that the user owns
+	const ownedServer = servers.find((server) => server.owned);
+
+	if (!ownedServer) {
+		logger.debug('No owned servers found for user', 'Membership');
+		return {
+			isOwner: false
+		};
+	}
+
+	// Select the best connection URL
+	// Priority: .plex.direct > public IP > local IP
+	let bestConnectionUrl = selectBestConnection(ownedServer);
+
+	// If no .plex.direct URL found in connections, try to generate one
+	if (!bestConnectionUrl?.includes('.plex.direct')) {
+		const generatedUrl = generatePlexDirectUrl(ownedServer);
+		if (generatedUrl) {
+			bestConnectionUrl = generatedUrl;
+		}
+	}
+
+	logger.debug(
+		`Found owned server: ${ownedServer.name} | bestConnection: ${bestConnectionUrl}`,
+		'Membership'
+	);
+
+	return {
+		isOwner: true,
+		server: ownedServer,
+		serverName: ownedServer.name,
+		bestConnectionUrl
+	};
+}
