@@ -132,11 +132,6 @@
 		margin-bottom: 0.5rem;
 	}
 
-	.logo {
-		width: 48px;
-		height: 48px;
-	}
-
 	.logo-text {
 		font-size: 1.75rem;
 		font-weight: 700;
@@ -195,11 +190,6 @@
 
 		.onboarding-header {
 			margin-bottom: 2rem;
-		}
-
-		.logo {
-			width: 40px;
-			height: 40px;
 		}
 
 		.logo-text {
