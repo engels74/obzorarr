@@ -1,4 +1,3 @@
-import { env } from '$env/dynamic/private';
 import {
 	PlexResourcesResponseSchema,
 	PlexAuthApiError,
@@ -10,6 +9,7 @@ import {
 	type MembershipResult
 } from './types';
 import { logger } from '$lib/server/logging';
+import { getApiConfigWithSources } from '$lib/server/admin/settings.service';
 
 /**
  * Server Membership Verification Module
@@ -335,13 +335,16 @@ export function filterServerResources(resources: PlexResource[]): PlexResource[]
  * Matches servers using multiple strategies:
  * 1. For .plex.direct URLs: Extract machine ID and match against clientIdentifier
  * 2. For .plex.direct URLs: Extract embedded IP and match against connection addresses
- * 3. Fall back to comparing connection URIs against PLEX_SERVER_URL
+ * 3. Fall back to comparing connection URIs against the configured server URL
  *
  * @param servers - Array of server resources
+ * @param configuredUrl - The configured server URL (from database or env)
  * @returns The matching server resource, or undefined if not found
  */
-function findConfiguredServer(servers: PlexResource[]): PlexResource | undefined {
-	const configuredUrl = env.PLEX_SERVER_URL ?? '';
+function findConfiguredServer(
+	servers: PlexResource[],
+	configuredUrl: string
+): PlexResource | undefined {
 
 	// Strategy 1: For .plex.direct URLs, try matching by machine ID (most reliable when IDs match)
 	const configuredMachineId = extractPlexDirectMachineId(configuredUrl);
@@ -406,8 +409,15 @@ export async function verifyServerMembership(userToken: string): Promise<Members
 	// Filter to only server resources
 	const servers = filterServerResources(resources);
 
+	// Get configured server URL from merged config (database takes priority over env)
+	const apiConfig = await getApiConfigWithSources();
+	const configuredUrl = apiConfig.plex.serverUrl.value;
+
 	// Debug logging to help diagnose membership issues
-	logger.debug(`Configured PLEX_SERVER_URL: ${env.PLEX_SERVER_URL ?? ''}`, 'Membership');
+	logger.debug(
+		`Configured PLEX_SERVER_URL: ${configuredUrl} (source: ${apiConfig.plex.serverUrl.source})`,
+		'Membership'
+	);
 	logger.debug(`Found ${servers.length} server(s) accessible to user`, 'Membership');
 
 	for (const server of servers) {
@@ -426,7 +436,7 @@ export async function verifyServerMembership(userToken: string): Promise<Members
 	}
 
 	// Find the configured server
-	const configuredServer = findConfiguredServer(servers);
+	const configuredServer = findConfiguredServer(servers, configuredUrl);
 
 	if (!configuredServer) {
 		logger.debug('No matching server found for configured URL', 'Membership');
