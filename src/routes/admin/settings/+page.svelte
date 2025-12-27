@@ -1607,6 +1607,15 @@
 		gap: 1rem;
 	}
 
+	.form-row .form-field {
+		min-width: 0;
+		margin-bottom: 0;
+	}
+
+	.form-row .form-field input {
+		min-width: 0;
+	}
+
 	/* ===== Buttons ===== */
 	.btn-primary {
 		display: inline-flex;
