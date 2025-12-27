@@ -2,8 +2,19 @@
 	import { page } from '$app/stores';
 	import { enhance } from '$app/forms';
 	import type { LayoutData } from './$types';
-	import type { Snippet } from 'svelte';
+	import type { Snippet, Component } from 'svelte';
 	import Logo from '$lib/components/Logo.svelte';
+	import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
+	import Gift from '@lucide/svelte/icons/gift';
+	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
+	import Users from '@lucide/svelte/icons/users';
+	import FileText from '@lucide/svelte/icons/file-text';
+	import Settings from '@lucide/svelte/icons/settings';
+	import Menu from '@lucide/svelte/icons/menu';
+	import X from '@lucide/svelte/icons/x';
+	import LogOut from '@lucide/svelte/icons/log-out';
+	import User from '@lucide/svelte/icons/user';
+	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 
 	/**
 	 * Admin Layout
@@ -11,7 +22,7 @@
 	 * Provides a consistent wrapper for all admin pages with:
 	 * - Sidebar navigation
 	 * - Admin user info
-	 * - Soviet-themed styling
+	 * - Modern command center styling
 	 *
 	 * Implements Requirements:
 	 * - 11.1: Admin panel dashboard
@@ -25,15 +36,15 @@
 
 	let { data, children }: Props = $props();
 
-	// Navigation items - consolidated wrapped navigation
-	const navItems = $derived([
-		{ href: '/admin', label: 'Dashboard', icon: 'dashboard' },
-		{ href: '/admin/wrapped', label: 'Wrapped', icon: 'wrapped' },
-		{ href: '/admin/sync', label: 'Sync', icon: 'sync' },
-		{ href: '/admin/users', label: 'Users', icon: 'users' },
-		{ href: '/admin/logs', label: 'Logs', icon: 'logs' },
-		{ href: '/admin/settings', label: 'Settings', icon: 'settings' }
-	]);
+	// Navigation items with Lucide icon components
+	const navItems: Array<{ href: string; label: string; icon: Component }> = [
+		{ href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+		{ href: '/admin/wrapped', label: 'Wrapped', icon: Gift },
+		{ href: '/admin/sync', label: 'Sync', icon: RefreshCw },
+		{ href: '/admin/users', label: 'Users', icon: Users },
+		{ href: '/admin/logs', label: 'Logs', icon: FileText },
+		{ href: '/admin/settings', label: 'Settings', icon: Settings }
+	];
 
 	// Determine if a nav item is active
 	const isActive = $derived((href: string) => {
@@ -66,7 +77,11 @@
 			onclick={toggleSidebar}
 			aria-label="Toggle navigation"
 		>
-			<span class="menu-icon">&#9776;</span>
+			{#if sidebarOpen}
+				<X class="menu-icon" />
+			{:else}
+				<Menu class="menu-icon" />
+			{/if}
 		</button>
 		<div class="mobile-branding">
 			<Logo size="sm" />
@@ -101,29 +116,21 @@
 		<nav class="sidebar-nav" aria-label="Admin navigation">
 			<ul class="nav-list">
 				{#each navItems as item (item.href)}
+					{@const active = isActive(item.href)}
 					<li>
 						<a
 							href={item.href}
 							class="nav-link"
-							class:active={isActive(item.href)}
+							class:active
 							onclick={closeSidebar}
 						>
-							<span class="nav-icon" aria-hidden="true">
-								{#if item.icon === 'dashboard'}
-									&#9632;
-								{:else if item.icon === 'wrapped'}
-									&#127873;
-								{:else if item.icon === 'sync'}
-									&#8635;
-								{:else if item.icon === 'users'}
-									&#9787;
-								{:else if item.icon === 'logs'}
-									&#128196;
-								{:else if item.icon === 'settings'}
-									&#9881;
-								{/if}
+							<span class="nav-icon-wrap" class:active>
+								<item.icon class="nav-icon" />
 							</span>
 							<span class="nav-label">{item.label}</span>
+							{#if active}
+								<ChevronRight class="nav-indicator" />
+							{/if}
 						</a>
 					</li>
 				{/each}
@@ -131,12 +138,20 @@
 		</nav>
 
 		<div class="sidebar-footer">
-			<div class="user-info">
-				<span class="user-avatar">&#9787;</span>
-				<span class="user-name">{data.adminUser.username}</span>
+			<div class="user-card">
+				<div class="user-avatar">
+					<User class="user-avatar-icon" />
+				</div>
+				<div class="user-info">
+					<span class="user-name">{data.adminUser.username}</span>
+					<span class="user-role">Administrator</span>
+				</div>
 			</div>
 			<form method="POST" action="/auth/logout" use:enhance>
-				<button type="submit" class="logout-button">Logout</button>
+				<button type="submit" class="logout-button">
+					<LogOut class="logout-icon" />
+					<span>Logout</span>
+				</button>
 			</form>
 		</div>
 	</aside>
@@ -162,7 +177,8 @@
 		left: 0;
 		right: 0;
 		height: 56px;
-		background: hsl(var(--card));
+		background: hsl(var(--card) / 0.95);
+		backdrop-filter: blur(12px);
 		border-bottom: 1px solid hsl(var(--border));
 		padding: 0 1rem;
 		align-items: center;
@@ -179,13 +195,18 @@
 		background: transparent;
 		border: none;
 		color: hsl(var(--foreground));
-		font-size: 1.5rem;
 		cursor: pointer;
-		border-radius: var(--radius);
+		border-radius: 0.5rem;
+		transition: all 0.2s ease;
 	}
 
 	.menu-button:hover {
 		background: hsl(var(--muted));
+	}
+
+	.menu-button :global(.menu-icon) {
+		width: 1.25rem;
+		height: 1.25rem;
 	}
 
 	.mobile-branding {
@@ -206,7 +227,8 @@
 		display: none;
 		position: fixed;
 		inset: 0;
-		background: rgba(0, 0, 0, 0.5);
+		background: hsl(0 0% 0% / 0.6);
+		backdrop-filter: blur(4px);
 		z-index: 45;
 	}
 
@@ -216,7 +238,7 @@
 		top: 0;
 		left: 0;
 		bottom: 0;
-		width: 250px;
+		width: 260px;
 		background: hsl(var(--card));
 		border-right: 1px solid hsl(var(--border));
 		display: flex;
@@ -225,8 +247,8 @@
 	}
 
 	.sidebar-header {
-		padding: 1.5rem;
-		border-bottom: 1px solid hsl(var(--border));
+		padding: 1.25rem 1.5rem;
+		border-bottom: 1px solid hsl(var(--border) / 0.5);
 	}
 
 	.sidebar-branding {
@@ -246,18 +268,20 @@
 		color: hsl(var(--primary));
 		margin: 0;
 		line-height: 1.2;
+		letter-spacing: -0.01em;
 	}
 
 	.sidebar-subtitle {
-		font-size: 0.75rem;
+		font-size: 0.6875rem;
 		color: hsl(var(--muted-foreground));
 		text-transform: uppercase;
-		letter-spacing: 0.05em;
+		letter-spacing: 0.08em;
+		margin-top: 0.125rem;
 	}
 
 	.sidebar-nav {
 		flex: 1;
-		padding: 1rem 0;
+		padding: 1rem 0.75rem;
 		overflow-y: auto;
 	}
 
@@ -265,92 +289,171 @@
 		list-style: none;
 		margin: 0;
 		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
 	}
 
 	.nav-link {
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
-		padding: 0.75rem 1.5rem;
-		color: hsl(var(--foreground));
+		padding: 0.625rem 0.875rem;
+		color: hsl(var(--muted-foreground));
 		text-decoration: none;
 		font-weight: 500;
-		transition: all 0.15s ease;
+		border-radius: 0.5rem;
+		transition: all 0.2s ease;
+		position: relative;
 	}
 
 	.nav-link:hover {
-		background: hsl(var(--muted));
+		background: hsl(var(--muted) / 0.5);
+		color: hsl(var(--foreground));
 	}
 
 	.nav-link.active {
-		background: hsl(var(--primary) / 0.15);
+		background: hsl(var(--primary) / 0.12);
 		color: hsl(var(--primary));
-		border-right: 3px solid hsl(var(--primary));
 	}
 
-	.nav-icon {
-		font-size: 1.25rem;
-		width: 1.5rem;
-		text-align: center;
+	.nav-icon-wrap {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 2rem;
+		height: 2rem;
+		border-radius: 0.375rem;
+		background: hsl(var(--muted) / 0.5);
+		transition: all 0.2s ease;
+	}
+
+	.nav-link:hover .nav-icon-wrap {
+		background: hsl(var(--muted));
+	}
+
+	.nav-icon-wrap.active {
+		background: hsl(var(--primary) / 0.15);
+	}
+
+	.nav-link :global(.nav-icon) {
+		width: 1rem;
+		height: 1rem;
+		transition: all 0.2s ease;
+	}
+
+	.nav-link.active :global(.nav-icon) {
+		color: hsl(var(--primary));
 	}
 
 	.nav-label {
 		font-size: 0.875rem;
+		flex: 1;
+	}
+
+	.nav-link :global(.nav-indicator) {
+		width: 1rem;
+		height: 1rem;
+		color: hsl(var(--primary));
+		opacity: 0;
+		transform: translateX(-4px);
+		transition: all 0.2s ease;
+	}
+
+	.nav-link.active :global(.nav-indicator) {
+		opacity: 1;
+		transform: translateX(0);
 	}
 
 	.sidebar-footer {
-		padding: 1rem 1.5rem;
-		border-top: 1px solid hsl(var(--border));
+		padding: 1rem;
+		border-top: 1px solid hsl(var(--border) / 0.5);
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
 	}
 
-	.user-info {
+	.user-card {
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
-		margin-bottom: 0.75rem;
+		padding: 0.75rem;
+		background: hsl(var(--muted) / 0.3);
+		border-radius: 0.5rem;
+		border: 1px solid hsl(var(--border) / 0.5);
 	}
 
 	.user-avatar {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 32px;
-		height: 32px;
-		background: hsl(var(--primary));
+		width: 2.25rem;
+		height: 2.25rem;
+		background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.8) 100%);
+		border-radius: 0.5rem;
+		flex-shrink: 0;
+	}
+
+	.user-avatar :global(.user-avatar-icon) {
+		width: 1.125rem;
+		height: 1.125rem;
 		color: hsl(var(--primary-foreground));
-		border-radius: 50%;
-		font-size: 1rem;
+	}
+
+	.user-info {
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
 	}
 
 	.user-name {
 		font-size: 0.875rem;
-		font-weight: 500;
+		font-weight: 600;
 		color: hsl(var(--foreground));
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.user-role {
+		font-size: 0.6875rem;
+		color: hsl(var(--muted-foreground));
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
 	}
 
 	.logout-button {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
 		width: 100%;
-		padding: 0.5rem;
-		background: hsl(var(--muted));
+		padding: 0.5rem 0.75rem;
+		background: hsl(var(--muted) / 0.3);
 		color: hsl(var(--muted-foreground));
-		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius);
-		font-size: 0.75rem;
+		border: 1px solid hsl(var(--border) / 0.5);
+		border-radius: 0.5rem;
+		font-size: 0.8125rem;
 		font-weight: 500;
 		cursor: pointer;
-		transition: all 0.15s ease;
+		transition: all 0.2s ease;
 	}
 
 	.logout-button:hover {
-		background: hsl(var(--destructive));
-		color: hsl(var(--destructive-foreground));
-		border-color: hsl(var(--destructive));
+		background: hsl(var(--destructive) / 0.15);
+		color: hsl(var(--destructive));
+		border-color: hsl(var(--destructive) / 0.3);
+	}
+
+	.logout-button :global(.logout-icon) {
+		width: 0.875rem;
+		height: 0.875rem;
 	}
 
 	/* Main content */
 	.main-content {
 		flex: 1;
-		margin-left: 250px;
+		margin-left: 260px;
 		min-height: 100vh;
 	}
 
@@ -366,7 +469,7 @@
 
 		.sidebar {
 			transform: translateX(-100%);
-			transition: transform 0.3s ease;
+			transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 		}
 
 		.sidebar.open {

@@ -38,6 +38,7 @@
 		"vite": "^7.3.0"
 	},
 	"dependencies": {
+		"@lucide/svelte": "^0.562.0",
 		"bits-ui": "^2.14.4",
 		"clsx": "^2.1.1",
 		"croner": "^9.1.0",
