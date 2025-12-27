@@ -19,6 +19,8 @@ export default defineConfig({
 		'left-[50%]',
 		'top-[50%]',
 		'z-[100]',
+		// Tooltip z-index (portalled content needs explicit safelist)
+		'z-[9999]',
 		'translate-x-[-50%]',
 		'translate-y-[-50%]',
 		'bg-black/80',
