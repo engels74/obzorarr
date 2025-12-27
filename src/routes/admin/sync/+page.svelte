@@ -220,6 +220,10 @@
 		return pages;
 	});
 
+	// Safely access first/last visible pages for pagination display
+	const firstVisiblePage = $derived(visiblePages.at(0));
+	const lastVisiblePage = $derived(visiblePages.at(-1));
+
 	async function goToPage(page: number) {
 		if (page < 1 || page > data.pagination.totalPages || isNavigating) return;
 
@@ -700,7 +704,7 @@
 
 						<!-- Page Numbers -->
 						<div class="pagination-pages">
-							{#if visiblePages[0] > 1}
+							{#if firstVisiblePage !== undefined && firstVisiblePage > 1}
 								<button
 									type="button"
 									class="pagination-page"
@@ -709,7 +713,7 @@
 								>
 									1
 								</button>
-								{#if visiblePages[0] > 2}
+								{#if firstVisiblePage > 2}
 									<span class="pagination-ellipsis">…</span>
 								{/if}
 							{/if}
@@ -727,8 +731,8 @@
 								</button>
 							{/each}
 
-							{#if visiblePages[visiblePages.length - 1] < data.pagination.totalPages}
-								{#if visiblePages[visiblePages.length - 1] < data.pagination.totalPages - 1}
+							{#if lastVisiblePage !== undefined && lastVisiblePage < data.pagination.totalPages}
+								{#if lastVisiblePage < data.pagination.totalPages - 1}
 									<span class="pagination-ellipsis">…</span>
 								{/if}
 								<button
