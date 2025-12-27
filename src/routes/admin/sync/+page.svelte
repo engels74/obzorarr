@@ -422,9 +422,9 @@
 						<label for="backfillYear">Sync Mode</label>
 						<div class="select-wrapper">
 							<select id="backfillYear" name="backfillYear" bind:value={selectedBackfillYear}>
-								<option value="">Incremental (Latest)</option>
+								<option value="">New Activity Only</option>
 								{#each data.availableYears as year}
-									<option value={year.toString()}>Backfill from {year}</option>
+									<option value={year.toString()}>Full History from {year}</option>
 								{/each}
 							</select>
 							<svg class="select-arrow" viewBox="0 0 24 24" fill="currentColor">
