@@ -1,9 +1,6 @@
 /**
  * Distribution Calculators
  *
- * Task 7.3: Implement distribution calculators
- * Requirements: 4.6, 4.7
- *
  * Property 11: Monthly Distribution Completeness
  * For any set of play history records within a year, the sum of watch time
  * across all 12 monthly buckets SHALL equal the total watch time.

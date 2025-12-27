@@ -1,9 +1,6 @@
 /**
  * Binge Session Detector
  *
- * Task 7.5: Implement binge detector
- * Requirements: 4.9
- *
  * Property 14: Binge Session Detection
  * For any sequence of plays, the longest binge session SHALL be the maximum
  * contiguous sequence where each consecutive pair has viewedAt difference <= 30 minutes.

@@ -31,8 +31,6 @@ export interface StartSyncOptions {
 	/**
 	 * Year to backfill from (Jan 1 00:00:00 UTC of this year)
 	 * If not provided, uses incremental sync from lastViewedAt
-	 *
-	 * Implements Requirement 2.6: Support backfilling from January 1st
 	 */
 	backfillYear?: number;
 
@@ -88,7 +86,7 @@ export interface SyncResult {
 	recordsInserted: number;
 	/** Number of duplicate records skipped */
 	recordsSkipped: number;
-	/** Maximum viewedAt timestamp from synced records (Requirement 2.4) */
+	/** Maximum viewedAt timestamp from synced records */
 	lastViewedAt: number | null;
 	/** When the sync started */
 	startedAt: Date;
@@ -119,8 +117,6 @@ export interface SyncStatusRecord {
 
 /**
  * Options for configuring the sync scheduler
- *
- * Implements Requirement 3.3: Use Croner with overrun protection
  */
 export interface SchedulerOptions {
 	/**

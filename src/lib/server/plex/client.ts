@@ -206,10 +206,6 @@ async function fetchHistoryPage(
  * This is an async generator that yields pages of history items with stats.
  * Use this for memory-efficient processing of large history datasets.
  *
- * Implements Requirements 2.1 and 2.2:
- * - Fetches from /status/sessions/history/all
- * - Uses X-Plex-Container-Start and X-Plex-Container-Size for pagination
- *
  * @param options - Fetch options including page size and filters
  * @yields Objects with items array and skippedCount for each page
  *

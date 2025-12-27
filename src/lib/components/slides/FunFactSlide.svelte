@@ -12,8 +12,6 @@
 	 *
 	 * Displays a fun fact or comparison about the user's viewing habits
 	 * with floating animated icon, glass container, and glow effects.
-	 *
-	 * Implements Requirement 5.6 (Motion One animations with $effect cleanup)
 	 */
 
 	interface Props extends FunFactSlideProps {

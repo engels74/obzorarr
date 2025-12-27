@@ -23,13 +23,6 @@ import { cancelSync } from '$lib/server/sync/progress';
  * Admin Sync Page Server
  *
  * Handles sync management operations.
- *
- * Implements Requirements:
- * - 3.1: Manual sync button triggers immediate sync
- * - 3.2: Progress indicator (via status polling)
- * - 3.3: Cron schedule configuration
- * - 3.4: Display sync status after completion
- * - 3.5: History log of previous sync operations
  */
 
 // =============================================================================

@@ -11,10 +11,6 @@ import {
  * Admin Users Page Server
  *
  * Handles user management operations.
- *
- * Implements Requirements:
- * - 11.2: User management with per-user permission settings
- * - 11.7: Preview user wrapped without affecting settings
  */
 
 // =============================================================================

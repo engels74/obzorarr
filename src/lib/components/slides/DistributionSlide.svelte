@@ -16,8 +16,6 @@
 	 * and detailed tooltips on hover.
 	 * On desktop/tablet (>=768px), shows both monthly and hourly side-by-side.
 	 * On mobile (<768px), shows single chart with toggle.
-	 *
-	 * Implements Requirement 5.6 (Motion One animations with $effect cleanup)
 	 */
 
 	interface Props extends DistributionSlideProps {

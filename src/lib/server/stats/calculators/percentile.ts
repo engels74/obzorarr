@@ -1,9 +1,6 @@
 /**
  * Percentile Calculator
  *
- * Task 7.4: Implement percentile calculator
- * Requirements: 4.8
- *
  * Property 13: Percentile Calculation
  * For any user U among N users, the percentile rank SHALL equal
  * (number of users with less watch time than U) / N * 100.

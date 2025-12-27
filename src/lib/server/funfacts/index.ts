@@ -5,12 +5,6 @@
  * - AI generation via OpenAI-compatible API (when configured)
  * - Predefined templates with interpolation (fallback)
  *
- * Implements Requirements:
- * - 10.1: AI generation when enabled
- * - 10.2: Template fallback when AI unavailable
- * - 10.3: Time equivalency comparisons
- * - 10.4: Randomized selection
- *
  * @example
  * ```typescript
  * import { generateFunFacts, isAIAvailable } from '$lib/server/funfacts';

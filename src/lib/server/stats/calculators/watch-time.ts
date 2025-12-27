@@ -1,9 +1,6 @@
 /**
  * Watch Time Calculator
  *
- * Task 7.1: Implement watch time calculator
- * Requirements: 4.2
- *
  * Property 9: Watch Time Aggregation
  * For any set of play history records with durations, the calculated total
  * watch time SHALL equal the sum of all individual durations.

@@ -13,8 +13,6 @@
 	 *
 	 * Displays the first and last content watched in the year
 	 * with premium glassmorphism cards and hover lift effects.
-	 *
-	 * Implements Requirement 5.6 (Motion One animations with $effect cleanup)
 	 */
 
 	interface Props extends FirstLastSlideProps {

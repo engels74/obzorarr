@@ -11,12 +11,6 @@
 	 *
 	 * Manages slide configuration (enable/disable, reordering)
 	 * and custom slides (create, edit, delete with Markdown).
-	 *
-	 * Implements Requirements:
-	 * - 9.1: Admin can create custom slides with Markdown editor
-	 * - 9.4: Admin can reorder slides
-	 * - 9.5: Admin can toggle slides off
-	 * - 11.3: Slide configuration with toggle, reorder, preview
 	 */
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();

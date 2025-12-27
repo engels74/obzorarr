@@ -36,12 +36,6 @@ import { getAvailableYears } from '$lib/server/admin/users.service';
  *
  * Handles loading slide configurations and form actions for
  * managing slides and custom slides.
- *
- * Implements Requirements:
- * - 9.1: Admin can create custom slides with Markdown editor
- * - 9.4: Admin can reorder slides
- * - 9.5: Admin can toggle slides off
- * - 11.3: Slide configuration with toggle, reorder, preview
  */
 
 export const load: PageServerLoad = async () => {

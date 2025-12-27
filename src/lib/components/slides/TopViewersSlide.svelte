@@ -11,8 +11,6 @@
 	 * Displays the top contributors/viewers on the server for server-wide wrapped.
 	 * Shows ranked list of usernames with their total watch time.
 	 * Features gold/silver/bronze medal badges for top 3 and glassmorphism cards.
-	 *
-	 * Implements Requirement 5.6 (Motion One animations with $effect cleanup)
 	 */
 
 	let {

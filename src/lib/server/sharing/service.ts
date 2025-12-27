@@ -21,14 +21,6 @@ import {
  *
  * Core service for managing share settings and tokens.
  *
- * Implements Requirements:
- * - 7.1: Public mode - accessible to anyone
- * - 7.2: Private OAuth mode - only authenticated server members
- * - 7.3: Private Link mode - unique share token required
- * - 7.4: Global default share mode
- * - 7.5: Admin grants user control permission
- * - 7.6: User settings cannot exceed admin permissions
- *
  * @module sharing/service
  */
 
@@ -42,7 +34,7 @@ import {
  * Uses crypto.randomUUID() for cryptographically secure,
  * globally unique tokens.
  *
- * Implements Property 16: Share Token Uniqueness
+ * Property 16: Share Token Uniqueness
  *
  * @returns A unique share token string
  */
@@ -68,8 +60,6 @@ export function isValidTokenFormat(token: string): boolean {
 /**
  * Get the global default share mode
  *
- * Implements Requirement 7.4
- *
  * @returns The global default share mode, defaults to 'public'
  */
 export async function getGlobalDefaultShareMode(): Promise<ShareModeType> {
@@ -91,8 +81,6 @@ export async function getGlobalDefaultShareMode(): Promise<ShareModeType> {
 /**
  * Get whether users are allowed to control their own share settings
  *
- * Implements Requirement 7.5
- *
  * @returns Whether user control is globally enabled
  */
 export async function getGlobalAllowUserControl(): Promise<boolean> {
@@ -112,8 +100,6 @@ export async function getGlobalAllowUserControl(): Promise<boolean> {
 
 /**
  * Set global share defaults (admin only)
- *
- * Implements Requirements 7.4, 7.5
  *
  * @param defaults - The global defaults to set
  */
@@ -288,8 +274,6 @@ export async function getOrCreateShareSettings(
 
 /**
  * Update share settings for a user
- *
- * Implements Requirement 7.6: User settings cannot exceed admin permissions.
  *
  * @param userId - The user's database ID
  * @param year - The wrapped year

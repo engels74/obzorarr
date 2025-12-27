@@ -16,11 +16,6 @@ import { validateMarkdownSyntax } from './renderer';
  *
  * Core service for managing admin-created custom Markdown slides.
  *
- * Implements Requirements:
- * - 9.1: Admin can create custom slides with Markdown editor
- * - 9.2: System validates Markdown syntax
- * - 9.3: Custom slides styled same as generated slides
- *
  * @module slides/custom.service
  */
 
@@ -30,8 +25,6 @@ import { validateMarkdownSyntax } from './renderer';
 
 /**
  * Create a new custom slide
- *
- * Implements Requirements 9.1, 9.2
  *
  * @param data - The custom slide data
  * @returns Created custom slide
@@ -47,7 +40,7 @@ export async function createCustomSlide(data: CreateCustomSlide): Promise<Custom
 
 	const validData = parsed.data;
 
-	// Validate Markdown syntax (Requirement 9.2)
+	// Validate Markdown syntax
 	const markdownValidation = validateMarkdownSyntax(validData.content);
 	if (!markdownValidation.valid) {
 		throw new SlideError(
@@ -292,8 +285,6 @@ export async function deleteCustomSlide(id: number): Promise<void> {
 
 /**
  * Validate Markdown content
- *
- * Implements Requirement 9.2
  *
  * @param content - The Markdown content to validate
  * @returns Validation result with errors if invalid

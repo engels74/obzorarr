@@ -8,12 +8,6 @@ import { z } from 'zod';
  * - Template structures for predefined fun facts
  * - Configuration for AI-based generation
  *
- * Implements Requirements:
- * - 10.1: AI generation support
- * - 10.2: Template-based generation
- * - 10.3: Time equivalency comparisons
- * - 10.4: Randomized selection
- *
  * @module server/funfacts/types
  */
 

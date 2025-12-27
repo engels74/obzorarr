@@ -12,8 +12,6 @@
 	 *
 	 * Displays information about the user's longest binge watching session
 	 * with premium hero-style glassmorphism container and gradient text effects.
-	 *
-	 * Implements Requirement 5.6 (Motion One animations with $effect cleanup)
 	 */
 
 	interface Props extends BingeSlideProps {

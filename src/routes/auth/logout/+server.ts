@@ -6,9 +6,6 @@ import { invalidateSession } from '$lib/server/auth/session';
  * Logout Endpoint
  *
  * Invalidates the user's session and clears the session cookie.
- *
- * Implements Requirement 1.7:
- * - Invalidate session and clear stored tokens on logout
  */
 
 // =============================================================================

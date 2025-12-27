@@ -11,10 +11,6 @@ import { SESSION_DURATION_MS, type SessionData, type CreateSessionOptions } from
  * - Validating sessions for route protection
  * - Invalidating sessions on logout
  * - Cleaning up expired sessions
- *
- * Implements Requirements 1.6 and 1.7:
- * - Store sessions securely with appropriate expiration
- * - Invalidate session and clear tokens on logout
  */
 
 // =============================================================================

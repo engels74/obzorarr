@@ -9,11 +9,6 @@
 	 *
 	 * Displays admin-created Markdown content as a slide.
 	 * The Markdown is rendered server-side and passed as HTML.
-	 *
-	 * Implements Requirements:
-	 * - 9.1: Custom slides with Markdown
-	 * - 9.3: Same styling as generated slides
-	 * - 5.6: Motion One animations with $effect cleanup
 	 */
 
 	interface Props extends CustomSlideProps {

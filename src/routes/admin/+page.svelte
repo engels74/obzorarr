@@ -24,9 +24,6 @@
 	 * - Total users and watch time stats
 	 * - Sync status and schedule
 	 * - Quick action links
-	 *
-	 * Implements Requirements:
-	 * - 11.1: Dashboard with server overview, total users, total watch time, sync status
 	 */
 
 	let { data }: { data: PageData } = $props();

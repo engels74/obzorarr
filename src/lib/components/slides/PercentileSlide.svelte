@@ -12,8 +12,6 @@
 	 *
 	 * Displays the user's percentile ranking among all server users
 	 * with a circular container, animated conic gradient border, and premium styling.
-	 *
-	 * Implements Requirement 5.6 (Motion One animations with $effect cleanup)
 	 */
 
 	interface Props extends PercentileSlideProps {

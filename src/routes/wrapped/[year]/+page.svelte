@@ -17,12 +17,6 @@
 	 * Displays the server-wide Year in Review statistics.
 	 * Supports both Story Mode (full-screen slides) and Scroll Mode.
 	 *
-	 * Implements Requirements:
-	 * - 5.1-5.7: Story Mode functionality
-	 * - 6.1-6.4: Scroll Mode functionality
-	 * - 12.1: URL format /wrapped/{year}
-	 * - 14.3: Router serves server-wide wrapped
-	 *
 	 * @module routes/wrapped/[year]
 	 */
 

@@ -13,8 +13,6 @@
 	 *
 	 * Displays the user's top genres with premium glassmorphism cards
 	 * and gradient-filled bars with glow effects.
-	 *
-	 * Implements Requirement 5.6 (Motion One animations with $effect cleanup)
 	 */
 
 	interface Props extends GenresSlideProps {

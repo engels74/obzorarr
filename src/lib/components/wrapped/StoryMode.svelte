@@ -16,14 +16,6 @@
 	 * Full-screen slide presentation with tap/click/swipe navigation.
 	 * Displays statistics slides in a Spotify Wrapped-style experience.
 	 *
-	 * Implements Requirements:
-	 * - 5.1: Full-screen slides
-	 * - 5.2: Tap/click to advance
-	 * - 5.3: Swipe left / tap right edge → next
-	 * - 5.4: Swipe right / tap left edge → previous
-	 * - 5.5: Progress indicator
-	 * - 5.6: Smooth animations with Motion One
-	 *
 	 * @module components/wrapped/StoryMode
 	 */
 

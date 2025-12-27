@@ -21,13 +21,8 @@ const FUN_FACT_REMOVAL_MIGRATION_KEY = 'fun_fact_slide_removal_v1';
  * Core service for managing slide configurations including
  * enable/disable and reordering functionality.
  *
- * Implements Requirements:
- * - 9.4: Admin can reorder slides and order persists
- * - 9.5: Admin can toggle slides off and they're excluded
- *
- * Implements Properties:
- * - Property 19: Slide Order Persistence
- * - Property 20: Disabled Slide Exclusion
+ * Property 19: Slide Order Persistence
+ * Property 20: Disabled Slide Exclusion
  *
  * @module slides/config.service
  */
@@ -46,7 +41,6 @@ const FUN_FACT_REMOVAL_MIGRATION_KEY = 'fun_fact_slide_removal_v1';
  *   where slides were created with enabled: false).
  * - One-time migration to remove fun-fact slide type (now interspersed dynamically)
  *
- * Implements Requirement 9.4 (default ordering)
  */
 export async function initializeDefaultSlideConfig(): Promise<void> {
 	// Check if the enabled migration has been applied
@@ -166,7 +160,7 @@ export async function getSlideConfigByType(type: SlideType): Promise<SlideConfig
 /**
  * Get only enabled slides in order
  *
- * Implements Requirement 9.5 and Property 20: Disabled Slide Exclusion
+ * Property 20: Disabled Slide Exclusion
  *
  * @returns Enabled slide configurations in display order
  */
@@ -240,7 +234,7 @@ export async function updateSlideConfig(
 /**
  * Reorder slides - update all sortOrder values
  *
- * Implements Requirement 9.4 and Property 19: Slide Order Persistence
+ * Property 19: Slide Order Persistence
  *
  * @param newOrder - Array of slide types in new order
  * @returns Updated slide configurations in new order

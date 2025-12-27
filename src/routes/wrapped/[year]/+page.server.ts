@@ -23,10 +23,6 @@ import { ShareAccessDeniedError } from '$lib/server/sharing/types';
  * Loads server-wide statistics for the Year in Review page.
  * Applies anonymization based on the viewing user.
  *
- * Implements Requirements:
- * - 12.1: URL format /wrapped/{year} for server-wide
- * - 14.3: Router serves server-wide wrapped at /wrapped/{year}
- *
  * @module routes/wrapped/[year]
  */
 

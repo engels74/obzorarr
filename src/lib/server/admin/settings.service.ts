@@ -9,11 +9,6 @@ import { env } from '$env/dynamic/private';
  *
  * Provides app settings management for the admin panel.
  * Uses the appSettings key-value table for configuration storage.
- *
- * Implements Requirements:
- * - 11.4: Theme configuration
- * - 11.5: API configuration (Plex, OpenAI)
- * - 11.6: Year and archive settings
  */
 
 // =============================================================================

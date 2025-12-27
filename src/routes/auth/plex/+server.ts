@@ -10,9 +10,6 @@ import { z } from 'zod';
  * Handles the first steps of the Plex OAuth flow:
  * - GET: Request a new PIN and return info for client
  * - POST: Check PIN status for polling
- *
- * Implements Requirement 1.1:
- * - Redirect to Plex OAuth authorization endpoint
  */
 
 // =============================================================================

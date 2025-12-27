@@ -39,13 +39,8 @@ import { triggerLiveSyncIfNeeded } from '$lib/server/sync/live-sync';
  * - A numeric user ID (internal database ID)
  * - A UUID share token for private-link access
  *
- * Implements Requirements:
- * - 12.1: URL format /wrapped/{year}/u/{identifier} for per-user
- * - 14.4: Router serves per-user wrapped at /wrapped/{year}/u/{identifier}
- *
- * Implements Properties:
- * - Property 15: Share Mode Access Control
- * - Property 22: URL Route Parsing
+ * Property 15: Share Mode Access Control
+ * Property 22: URL Route Parsing
  *
  * @module routes/wrapped/[year]/u/[identifier]
  */

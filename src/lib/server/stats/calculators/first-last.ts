@@ -1,9 +1,6 @@
 /**
  * First/Last Watch Finder
  *
- * Task 7.6: Implement first/last watch finder
- * Requirements: 4.10
- *
  * Find the first and last content watched in a given year.
  */
 

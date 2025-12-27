@@ -23,12 +23,6 @@ import { AIGenerationError, InsufficientStatsError } from './types';
  * - AI generation via OpenAI-compatible API (when configured)
  * - Predefined templates with interpolation (fallback)
  *
- * Implements Requirements:
- * - 10.1: AI generation when enabled
- * - 10.2: Template fallback when AI unavailable
- * - 10.3: Time equivalency comparisons
- * - 10.4: Randomized selection
- *
  * @module server/funfacts/service
  */
 
@@ -330,7 +324,6 @@ export function generateFromTemplate(
 
 /**
  * Select random templates without duplicates
- * Implements Requirement 10.4: Randomized selection
  */
 export function selectRandomTemplates(
 	templates: FactTemplate[],
@@ -397,7 +390,6 @@ function parseAIResponse(data: unknown): FunFact[] {
 
 /**
  * Generate fun facts using AI (OpenAI-compatible API)
- * Implements Requirement 10.1: AI generation when enabled
  *
  * Includes retry logic for transient failures (network errors, timeouts, 5xx errors).
  * Non-retryable errors (4xx) are thrown immediately.
@@ -499,7 +491,7 @@ export async function generateWithAI(
 
 /**
  * Generate fun facts from templates only
- * Implements Requirement 10.2: Template-based generation
+ *
  * Uses weighted selection from registry for variety
  */
 export function generateFromTemplates(
@@ -536,12 +528,6 @@ export function generateFromTemplates(
 
 /**
  * Main function: Generate fun facts for stats
- *
- * Implements all Requirements:
- * - 10.1: AI generation when enabled
- * - 10.2: Template fallback when AI unavailable
- * - 10.3: Time equivalency comparisons (via templates)
- * - 10.4: Randomized selection
  */
 export async function generateFunFacts(
 	stats: UserStats | ServerStats,

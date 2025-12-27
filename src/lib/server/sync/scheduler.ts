@@ -16,8 +16,6 @@ import {
  * Croner-based scheduling for automatic sync operations.
  * Provides overrun protection and configurable cron expressions.
  *
- * Implements Requirement 3.3: Use Croner with overrun protection
- *
  * @module sync/scheduler
  */
 
@@ -63,8 +61,6 @@ let schedulerInstance: Cron | null = null;
  *
  * Creates a Croner job that runs sync at the specified schedule.
  * Uses overrun protection to prevent overlapping sync runs.
- *
- * Implements Requirement 3.3: Use Croner with overrun protection
  *
  * @param options - Scheduler configuration
  * @returns The Cron job instance

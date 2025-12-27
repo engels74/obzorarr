@@ -13,8 +13,6 @@
 	 *
 	 * Displays the user's top TV shows with premium glassmorphism cards.
 	 * Features staggered list animation and hover effects.
-	 *
-	 * Implements Requirement 5.6 (Motion One animations with $effect cleanup)
 	 */
 
 	interface Props extends TopShowsSlideProps {

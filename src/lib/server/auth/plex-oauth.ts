@@ -20,9 +20,6 @@ import {
  * 2. User authorizes at Plex auth URL
  * 3. Poll PIN until authToken is present
  * 4. Use authToken to get user information
- *
- * Implements Requirement 1.1:
- * - Redirect to Plex OAuth authorization endpoint
  */
 
 // =============================================================================

@@ -10,10 +10,6 @@
 	 * - View all users with watch time stats
 	 * - Configure per-user permissions
 	 * - Preview user wrapped pages
-	 *
-	 * Implements Requirements:
-	 * - 11.2: User management with per-user permission settings
-	 * - 11.7: Preview user wrapped without affecting settings
 	 */
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();

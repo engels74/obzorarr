@@ -9,8 +9,7 @@ import { ShareMode, type AccessCheckContext, type ShareModeType } from '$lib/ser
 /**
  * Property-based tests for Sharing System
  *
- * Feature: obzorarr, Properties 15-17
- * Validates: Requirements 7.1-7.6
+ * Properties 15-17: Share Mode Access Control, Token Uniqueness, Permission Enforcement
  *
  * These tests verify the formal correctness properties defined in design.md
  * for the sharing system.
@@ -479,7 +478,7 @@ describe('Property 17: Permission Enforcement', () => {
 		);
 	});
 
-	it('user settings cannot exceed admin-granted permissions (Requirement 7.6)', () => {
+	it('user settings cannot exceed admin-granted permissions', () => {
 		fc.assert(
 			fc.property(shareModeArbitrary, (currentMode) => {
 				// User without control cannot change from current mode

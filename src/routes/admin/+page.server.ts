@@ -12,9 +12,6 @@ import { calculateServerStats } from '$lib/server/stats/engine';
  * Admin Dashboard Server
  *
  * Loads overview data for the admin dashboard.
- *
- * Implements Requirements:
- * - 11.1: Dashboard with server overview, total users, total watch time, sync status
  */
 
 export const load: PageServerLoad = async () => {

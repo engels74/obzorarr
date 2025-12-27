@@ -49,11 +49,6 @@ import type { ShareModeType } from '$lib/server/sharing/types';
  * Admin Settings Page Server
  *
  * Handles application settings management.
- *
- * Implements Requirements:
- * - 11.4: Theme configuration
- * - 11.5: API configuration (Plex, OpenAI)
- * - 11.6: Year and archive settings
  */
 
 // =============================================================================

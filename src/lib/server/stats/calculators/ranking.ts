@@ -1,9 +1,6 @@
 /**
  * Ranking Calculator
  *
- * Task 7.2: Implement ranking calculator
- * Requirements: 4.3, 4.4, 4.5
- *
  * Property 10: Ranking Correctness
  * For any set of items with play counts, the top N ranking SHALL be ordered
  * by count descending, with ties broken consistently (alphabetically by title).

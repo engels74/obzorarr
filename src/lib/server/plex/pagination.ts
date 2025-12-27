@@ -4,10 +4,6 @@
  * This module provides a testable pagination implementation that can be used
  * with dependency injection for unit testing without making real API calls.
  *
- * Implements Requirements 2.2:
- * - Uses pagination to retrieve all records
- * - Properly handles X-Plex-Container-Start and X-Plex-Container-Size
- *
  * @module plex/pagination
  */
 

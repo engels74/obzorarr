@@ -8,9 +8,6 @@ import { AnonymizationMode, type AnonymizationModeType } from '$lib/server/anony
 /**
  * Property-based tests for Anonymization System
  *
- * Feature: obzorarr, Property 18
- * Validates: Requirements 8.1, 8.2, 8.3
- *
  * Property 18: Anonymization Mode Display
  * For any anonymization mode M and viewing user V:
  * - If M = 'real': all usernames SHALL be displayed as-is
@@ -71,10 +68,10 @@ const uniqueUsersArbitrary: fc.Arbitrary<TestUserDisplay[]> = fc
 // Feature: obzorarr, Property 18: Anonymization Mode Display
 describe('Property 18: Anonymization Mode Display', () => {
 	// -------------------------------------------------------------------------
-	// Requirement 8.1: Real mode displays all usernames as-is
+	// Real mode displays all usernames as-is
 	// -------------------------------------------------------------------------
 
-	it('real mode displays all usernames as-is (Requirement 8.1)', () => {
+	it('real mode displays all usernames as-is', () => {
 		fc.assert(
 			fc.property(
 				uniqueUsersArbitrary,
@@ -114,10 +111,10 @@ describe('Property 18: Anonymization Mode Display', () => {
 	});
 
 	// -------------------------------------------------------------------------
-	// Requirement 8.2: Anonymous mode replaces all usernames
+	// Anonymous mode replaces all usernames
 	// -------------------------------------------------------------------------
 
-	it('anonymous mode replaces all usernames with identifiers (Requirement 8.2)', () => {
+	it('anonymous mode replaces all usernames with identifiers', () => {
 		fc.assert(
 			fc.property(
 				uniqueUsersArbitrary,
@@ -149,10 +146,10 @@ describe('Property 18: Anonymization Mode Display', () => {
 	});
 
 	// -------------------------------------------------------------------------
-	// Requirement 8.3: Hybrid mode shows viewing user's name only
+	// Hybrid mode shows viewing user's name only
 	// -------------------------------------------------------------------------
 
-	it('hybrid mode shows viewing user their name, anonymizes others (Requirement 8.3)', () => {
+	it('hybrid mode shows viewing user their name, anonymizes others', () => {
 		fc.assert(
 			fc.property(
 				uniqueUsersArbitrary.filter((users) => users.length >= 2),

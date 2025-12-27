@@ -18,12 +18,6 @@
 	 * Displays all statistics on a single scrollable page with scroll-triggered
 	 * animations using GSAP ScrollTrigger.
 	 *
-	 * Implements Requirements:
-	 * - 6.1: Display all statistics on a single scrollable page
-	 * - 6.2: Trigger scroll-based animations when sections enter viewport
-	 * - 6.3: Maintain same visual styling as Story Mode
-	 * - 6.4: Preserve position when toggling between modes
-	 *
 	 * @module components/wrapped/ScrollMode
 	 */
 

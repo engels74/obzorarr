@@ -167,9 +167,7 @@
 					throw new Error('Session expired. Please sign in again.');
 				}
 				const errorData = await response.json().catch(() => ({}));
-				throw new Error(
-					(errorData as { message?: string }).message || 'Failed to fetch servers'
-				);
+				throw new Error((errorData as { message?: string }).message || 'Failed to fetch servers');
 			}
 			const result = await response.json();
 			servers = result.servers;

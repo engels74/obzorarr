@@ -23,10 +23,6 @@
 	 * - Sidebar navigation
 	 * - Admin user info
 	 * - Modern command center styling
-	 *
-	 * Implements Requirements:
-	 * - 11.1: Admin panel dashboard
-	 * - 14.2: Admin panel routing at /admin/*
 	 */
 
 	interface Props {

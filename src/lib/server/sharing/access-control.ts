@@ -20,7 +20,7 @@ import {
  *
  * Implements access control logic for wrapped pages.
  *
- * Implements Property 15: Share Mode Access Control
+ * Property 15: Share Mode Access Control
  * - Public: all requests allowed
  * - Private OAuth: only authenticated server members
  * - Private Link: only valid share token
@@ -35,7 +35,7 @@ import {
 /**
  * Check if access is allowed based on context
  *
- * Pure function implementing Property 15: Share Mode Access Control.
+ * Property 15: Share Mode Access Control
  *
  * @param context - Access check context
  * @returns Access check result
@@ -48,11 +48,9 @@ export function checkAccess(context: AccessCheckContext): AccessCheckResult {
 
 	switch (context.shareMode) {
 		case ShareMode.PUBLIC:
-			// Requirement 7.1: Public mode - anyone can access
 			return { allowed: true, reason: 'public' };
 
 		case ShareMode.PRIVATE_OAUTH:
-			// Requirement 7.2: Private OAuth - authenticated server members only
 			if (!context.isAuthenticated) {
 				return {
 					allowed: false,
@@ -68,7 +66,6 @@ export function checkAccess(context: AccessCheckContext): AccessCheckResult {
 			return { allowed: true, reason: 'authenticated' };
 
 		case ShareMode.PRIVATE_LINK:
-			// Requirement 7.3: Private Link - valid share token required
 			if (!context.shareToken) {
 				return {
 					allowed: false,

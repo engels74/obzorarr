@@ -16,12 +16,6 @@ import { getApiConfigWithSources } from '$lib/server/admin/settings.service';
  *
  * Verifies that a user is a member of the configured Plex server
  * and determines if they are the server owner (admin).
- *
- * Implements Requirements 1.2, 1.3, 1.4, 1.5:
- * - Verify user is a member of configured Plex server
- * - Grant admin privileges if server owner
- * - Grant member privileges if server member but not owner
- * - Deny access if not a member of configured Plex server
  */
 
 // =============================================================================
@@ -345,7 +339,6 @@ function findConfiguredServer(
 	servers: PlexResource[],
 	configuredUrl: string
 ): PlexResource | undefined {
-
 	// Strategy 1: For .plex.direct URLs, try matching by machine ID (most reliable when IDs match)
 	const configuredMachineId = extractPlexDirectMachineId(configuredUrl);
 

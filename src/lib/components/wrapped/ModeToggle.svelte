@@ -5,10 +5,6 @@
 	 * Toggle button for switching between Story Mode and Scroll Mode.
 	 * Displays the target mode name and icon.
 	 *
-	 * Implements Requirements:
-	 * - 6.3: Mode toggle between viewing modes
-	 * - 6.4: Preserve position when switching modes (via callback)
-	 *
 	 * @module components/wrapped/ModeToggle
 	 */
 

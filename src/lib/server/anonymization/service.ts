@@ -17,12 +17,6 @@ import {
  * Core service for managing anonymization settings and applying
  * anonymization transformations to user data in statistics.
  *
- * Implements Requirements:
- * - 8.1: Real names mode - display actual Plex usernames
- * - 8.2: Anonymous mode - display generic identifiers like "User #1"
- * - 8.3: Hybrid mode - show viewing user their name, anonymize others
- * - 8.4: Per-stat anonymization configuration
- *
  * Property 18: Anonymization Mode Display
  * For any anonymization mode M and viewing user V:
  * - If M = 'real': all usernames SHALL be displayed as-is
@@ -42,7 +36,7 @@ import {
  * This is a pure function that transforms user data based on the
  * anonymization mode. It is designed for property-based testing.
  *
- * Implements Property 18: Anonymization Mode Display
+ * Property 18: Anonymization Mode Display
  *
  * @param users - Array of users to anonymize
  * @param mode - The anonymization mode to apply
@@ -62,18 +56,15 @@ export function applyAnonymization<T extends AnonymizableUser>(
 
 	switch (effectiveMode) {
 		case AnonymizationMode.REAL:
-			// Requirement 8.1: Display actual usernames
 			return users;
 
 		case AnonymizationMode.ANONYMOUS:
-			// Requirement 8.2: Replace with generic identifiers
 			return users.map((user, index) => ({
 				...user,
 				username: generateAnonymousIdentifier(index)
 			}));
 
 		case AnonymizationMode.HYBRID:
-			// Requirement 8.3: Show viewing user's name, anonymize others
 			return users.map((user, index) => ({
 				...user,
 				username: user.userId === viewingUserId ? user.username : generateAnonymousIdentifier(index)
@@ -137,13 +128,11 @@ export async function setGlobalAnonymizationMode(mode: AnonymizationModeType): P
 }
 
 // =============================================================================
-// Per-Stat Settings (Requirement 8.4)
+// Per-Stat Settings
 // =============================================================================
 
 /**
  * Get per-stat anonymization overrides
- *
- * Implements Requirement 8.4: Per-stat anonymization configuration.
  *
  * @returns Per-stat anonymization settings
  */
@@ -169,8 +158,6 @@ export async function getPerStatAnonymization(): Promise<PerStatAnonymizationSet
 
 /**
  * Set per-stat anonymization overrides (admin only)
- *
- * Implements Requirement 8.4: Per-stat anonymization configuration.
  *
  * @param settings - The per-stat settings to save
  */

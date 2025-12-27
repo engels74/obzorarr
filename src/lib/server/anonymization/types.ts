@@ -6,12 +6,6 @@ import { z } from 'zod';
  * Type definitions for the anonymization system that controls
  * how usernames appear in server-wide statistics.
  *
- * Implements Requirements 8.1-8.4:
- * - 8.1: Real names mode - display actual Plex usernames
- * - 8.2: Anonymous mode - display generic identifiers like "User #1"
- * - 8.3: Hybrid mode - show viewing user their name, anonymize others
- * - 8.4: Per-stat anonymization configuration
- *
  * @module anonymization/types
  */
 
@@ -48,7 +42,7 @@ export const AnonymizationSettingsKey = {
 export const AnonymizationModeSchema = z.enum(['real', 'anonymous', 'hybrid']);
 
 /**
- * Schema for per-stat anonymization settings (Requirement 8.4)
+ * Schema for per-stat anonymization settings
  *
  * Allows different anonymization modes for different statistics.
  * Currently only topViewers contains usernames, but this is extensible.

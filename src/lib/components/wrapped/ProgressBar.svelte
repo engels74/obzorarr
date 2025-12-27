@@ -5,8 +5,6 @@
 	 * Displays progress through the story mode slides.
 	 * Uses segmented bars with animation.
 	 *
-	 * Implements Requirement 5.5: Progress indicator showing current position
-	 *
 	 * @module components/wrapped/ProgressBar
 	 */
 

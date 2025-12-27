@@ -17,8 +17,6 @@
 	 *
 	 * Displays the user's total watch time with animated number counting reveal.
 	 * Features premium gradient text and glow effects.
-	 *
-	 * Implements Requirement 5.6 (Motion One animations with $effect cleanup)
 	 */
 
 	interface Props extends TotalTimeSlideProps {

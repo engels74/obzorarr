@@ -1,9 +1,6 @@
 /**
  * Statistics Engine Facade
  *
- * Task 7.7: Create stats engine facade
- * Requirements: 4.1, 4.11
- *
  * Orchestrates all calculator modules and handles caching.
  *
  * Property 8: Year Date Range Filtering
@@ -422,12 +419,6 @@ async function calculateTopViewers(
  *
  * This function retrieves server statistics and applies anonymization
  * to user-identifying fields (topViewers) based on the configured settings.
- *
- * Implements Requirements 8.1-8.4:
- * - 8.1: Real mode - display actual usernames
- * - 8.2: Anonymous mode - display generic identifiers
- * - 8.3: Hybrid mode - show viewing user's name, anonymize others
- * - 8.4: Per-stat anonymization (uses override for topViewers if set)
  *
  * Property 18: Anonymization Mode Display
  *

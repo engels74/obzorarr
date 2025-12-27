@@ -29,13 +29,6 @@ import { z } from 'zod';
  * 4. Creating/updating user in database
  * 5. Creating a session
  * 6. Setting the session cookie
- *
- * Implements Requirements 1.2, 1.3, 1.4, 1.5, 1.6:
- * - Verify user is a member of configured Plex server
- * - Grant admin privileges if server owner
- * - Grant member privileges if server member but not owner
- * - Deny access if not a member of configured Plex server
- * - Store session securely with appropriate expiration
  */
 
 // =============================================================================

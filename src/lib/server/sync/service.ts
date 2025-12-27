@@ -14,13 +14,6 @@ import { syncPlexAccounts } from './plex-accounts.service';
  * Core sync logic for fetching play history from Plex and storing it
  * in the database. Supports both full backfill and incremental sync.
  *
- * Implements Requirements:
- * - 2.1: Fetch from Plex API /status/sessions/history/all
- * - 2.3: Store required fields in play_history table
- * - 2.4: Store timestamp of most recent viewedAt
- * - 2.5: Only fetch records with viewedAt > lastSyncTimestamp
- * - 2.6: Support backfilling from January 1st of a given year
- *
  * @module sync/service
  */
 
@@ -76,7 +69,6 @@ export function getYearStartTimestamp(year: number): number {
  * Convert ValidPlexHistoryMetadata to database insert format
  *
  * Maps Plex API fields to database columns.
- * Implements Requirement 2.3: Store required fields.
  *
  * Note: Uses ValidPlexHistoryMetadata which guarantees ratingKey is present.
  */
@@ -190,8 +182,6 @@ async function createSyncRecord(): Promise<number> {
 
 /**
  * Update sync status to completed
- *
- * Implements Requirement 2.4: Store timestamp of most recent viewedAt.
  */
 async function completeSyncRecord(
 	syncId: number,
@@ -270,13 +260,6 @@ async function insertHistoryBatch(
  *
  * This is the main entry point for syncing play history from Plex.
  *
- * Implements Requirements:
- * - 2.1: Fetches from Plex API /status/sessions/history/all
- * - 2.3: Stores required fields in play_history table
- * - 2.4: Stores timestamp of most recent viewedAt
- * - 2.5: Uses minViewedAt for incremental sync
- * - 2.6: Supports backfilling from January 1st of a given year
- *
  * @param options - Sync options including backfillYear, signal, onProgress
  * @returns Result of the sync operation
  * @throws SyncError if a sync is already running
@@ -317,7 +300,6 @@ export async function startSync(options: StartSyncOptions = {}): Promise<SyncRes
 
 		if (backfillYear !== undefined) {
 			// Backfill mode: start from Jan 1 of the specified year
-			// Implements Requirement 2.6
 			minViewedAt = getYearStartTimestamp(backfillYear);
 			logger.info(
 				`Starting backfill from ${new Date(minViewedAt * 1000).toISOString()}`,
@@ -325,7 +307,6 @@ export async function startSync(options: StartSyncOptions = {}): Promise<SyncRes
 			);
 		} else {
 			// Incremental mode: start from last successful sync's lastViewedAt
-			// Implements Requirement 2.5
 			const lastSync = await getLastSuccessfulSync();
 			if (lastSync?.lastViewedAt) {
 				minViewedAt = lastSync.lastViewedAt;
@@ -339,7 +320,6 @@ export async function startSync(options: StartSyncOptions = {}): Promise<SyncRes
 		}
 
 		// Fetch and process history pages
-		// Implements Requirement 2.1
 		for await (const { items: page, skippedCount } of fetchAllHistory({
 			pageSize: DEFAULT_PAGE_SIZE,
 			minViewedAt,
@@ -351,7 +331,6 @@ export async function startSync(options: StartSyncOptions = {}): Promise<SyncRes
 			recordsSkipped += skippedCount;
 
 			// Insert batch and track results
-			// Implements Requirement 2.3
 			const { inserted, skipped: dbSkipped } = await insertHistoryBatch(page);
 
 			recordsProcessed += page.length;
@@ -359,7 +338,6 @@ export async function startSync(options: StartSyncOptions = {}): Promise<SyncRes
 			recordsSkipped += dbSkipped;
 
 			// Track maximum viewedAt for this sync
-			// Implements Requirement 2.4
 			for (const record of page) {
 				if (maxViewedAt === null || record.viewedAt > maxViewedAt) {
 					maxViewedAt = record.viewedAt;

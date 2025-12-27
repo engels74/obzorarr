@@ -18,12 +18,6 @@
 	 * Displays the user-specific Year in Review statistics.
 	 * Supports both Story Mode (full-screen slides) and Scroll Mode.
 	 *
-	 * Implements Requirements:
-	 * - 5.1-5.7: Story Mode functionality
-	 * - 6.1-6.4: Scroll Mode functionality
-	 * - 12.1: URL format /wrapped/{year}/u/{identifier}
-	 * - 14.4: Router serves per-user wrapped
-	 *
 	 * @module routes/wrapped/[year]/u/[identifier]
 	 */
 

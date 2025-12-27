@@ -11,9 +11,6 @@ import { triggerLiveSyncIfNeeded } from '$lib/server/sync/live-sync';
  * Handles the public landing page with:
  * - Username-based quick access to wrapped pages (primary CTA)
  * - Redirect authenticated users to appropriate dashboard
- *
- * Implements Requirements:
- * - 14.1: Router serves public landing page at `/`
  */
 
 // =============================================================================

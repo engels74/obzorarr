@@ -12,11 +12,6 @@ import { env } from '$env/dynamic/private';
  * Server Hooks
  *
  * Handles authentication and authorization for all server requests.
- *
- * Implements Requirements 1.3, 1.4, 1.5:
- * - Grant admin privileges if server owner
- * - Grant member privileges if server member but not owner
- * - Protect admin routes from non-admin users
  */
 
 // =============================================================================

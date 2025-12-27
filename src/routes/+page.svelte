@@ -11,9 +11,6 @@
 	 * Soviet/communist themed landing page for Obzorarr with:
 	 * - Username-based quick access to wrapped pages (primary CTA)
 	 * - Plex OAuth login button for dashboard access (secondary)
-	 *
-	 * Implements Requirement 14.1:
-	 * - THE Router SHALL serve the public landing page at `/`
 	 */
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();

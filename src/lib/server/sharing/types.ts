@@ -6,8 +6,6 @@ import { z } from 'zod';
  * Type definitions for the sharing system that controls
  * wrapped page visibility.
  *
- * Implements Requirements 7.1-7.6
- *
  * @module sharing/types
  */
 
