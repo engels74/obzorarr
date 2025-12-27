@@ -7,6 +7,7 @@ import {
 	type OnboardingStep
 } from '$lib/server/onboarding';
 import { getApiConfigWithSources, hasPlexEnvConfig } from '$lib/server/admin/settings.service';
+import { getServerName } from '$lib/server/plex/server-name.service';
 import { redirect } from '@sveltejs/kit';
 
 /**
@@ -28,6 +29,10 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 
 	const currentStep = await getOnboardingStep();
 	const apiConfig = await getApiConfigWithSources();
+	const hasEnvConfigValue = hasPlexEnvConfig();
+
+	// Fetch server name if ENV config is present (for display purposes)
+	const serverName = hasEnvConfigValue ? await getServerName() : null;
 
 	const steps: { id: OnboardingStep; label: string }[] = [
 		{ id: OnboardingSteps.PLEX, label: 'Connect' },
@@ -49,9 +54,10 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		username: locals.user?.username,
 
 		// Plex configuration
-		hasEnvConfig: hasPlexEnvConfig(),
+		hasEnvConfig: hasEnvConfigValue,
 		plexConfigured: !!(apiConfig.plex.serverUrl.value && apiConfig.plex.token.value),
 		plexServerUrl: apiConfig.plex.serverUrl.value,
-		plexConfigSource: apiConfig.plex.serverUrl.source
+		plexConfigSource: apiConfig.plex.serverUrl.source,
+		plexServerName: serverName
 	};
 };

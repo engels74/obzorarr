@@ -303,7 +303,7 @@
 				</div>
 				<div class="preconfigured-info">
 					<div class="preconfigured-header">
-						<span class="preconfigured-title">Plex Media Server</span>
+						<span class="preconfigured-title">{data.plexServerName ?? 'Plex Media Server'}</span>
 						<span class="preconfigured-badge">
 							<svg
 								class="lock-icon"
