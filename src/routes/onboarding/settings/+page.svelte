@@ -48,24 +48,24 @@
 		icon: 'appearance' | 'privacy' | 'slides' | 'ai';
 	}
 
-	// Build sub-steps array (AI only if configured)
-	const SUB_STEPS: SubStep[] = [
+	// Build sub-steps array (AI only if configured) - reactive to data.hasOpenAI
+	let subSteps = $derived([
 		{ id: 'appearance', label: 'Appearance', icon: 'appearance' },
 		{ id: 'privacy', label: 'Privacy', icon: 'privacy' },
 		{ id: 'slides', label: 'Slides', icon: 'slides' },
 		...(data.hasOpenAI ? [{ id: 'ai', label: 'AI Features', icon: 'ai' as const }] : [])
-	];
+	] satisfies SubStep[]);
 
 	let currentSubStep = $state(0);
 	let contentRef: HTMLElement | undefined = $state();
 	let animationDirection = $state<'forward' | 'backward'>('forward');
 
 	// Derived values
-	const totalSubSteps = SUB_STEPS.length;
-	const isFirstSubStep = $derived(currentSubStep === 0);
-	const isLastSubStep = $derived(currentSubStep === totalSubSteps - 1);
-	// SUB_STEPS always has at least 3 items, and currentSubStep is bounded by navigation
-	const currentStepData = $derived(SUB_STEPS[currentSubStep]!);
+	let totalSubSteps = $derived(subSteps.length);
+	let isFirstSubStep = $derived(currentSubStep === 0);
+	let isLastSubStep = $derived(currentSubStep === totalSubSteps - 1);
+	// subSteps always has at least 3 items, and currentSubStep is bounded by navigation
+	let currentStepData = $derived(subSteps[currentSubStep]!);
 
 	// Navigation
 	function nextSubStep() {
@@ -153,7 +153,7 @@
 					<span class="substep-count">{currentSubStep + 1} of {totalSubSteps}</span>
 				</div>
 				<div class="substep-dots">
-					{#each SUB_STEPS as step, index}
+					{#each subSteps as step, index}
 						<button
 							type="button"
 							class="substep-dot"
