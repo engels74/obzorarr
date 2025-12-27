@@ -26,6 +26,7 @@ Before making any changes, review this file to ensure consistency with project s
 Obzorarr is a "Plex Wrapped" application that syncs viewing history from a Plex Media Server and generates yearly statistics with an animated slideshow presentation (similar to Spotify Wrapped).
 
 **Tech Stack:**
+
 - Runtime: Bun
 - Framework: SvelteKit + Svelte 5
 - Database: SQLite with Drizzle ORM
@@ -123,6 +124,7 @@ The server code follows a service-oriented architecture:
 ## Testing
 
 Tests are in `tests/` with three categories:
+
 - `unit/` - Unit tests for individual services and calculators
 - `property/` - Property-based tests using fast-check
 - `integration/` - Integration tests
@@ -132,6 +134,7 @@ Tests use `setup.ts` for database mocking and test utilities.
 ## Environment Variables
 
 Key configuration (see `.env.example` for full list):
+
 - `PLEX_SERVER_URL` - Plex server URL
 - `PLEX_TOKEN` - Plex authentication token
 - `DATABASE_PATH` - SQLite database path

@@ -639,11 +639,7 @@
 	/* Custom slide styling with distinct visual indicator */
 	.slide-item.is-custom {
 		border-left: 3px solid hsl(280 65% 60%);
-		background: linear-gradient(
-			90deg,
-			hsl(280 65% 60% / 0.08) 0%,
-			hsl(var(--secondary)) 100%
-		);
+		background: linear-gradient(90deg, hsl(280 65% 60% / 0.08) 0%, hsl(var(--secondary)) 100%);
 	}
 
 	.slide-item.is-custom:hover {

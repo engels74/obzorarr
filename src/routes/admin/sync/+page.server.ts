@@ -48,11 +48,18 @@ const BackfillYearSchema = z
 // Load Function
 // =============================================================================
 
-export const load: PageServerLoad = async () => {
-	const [isRunning, lastSync, history, schedulerStatus, historyCount] = await Promise.all([
+/** Default page size for sync history pagination */
+const HISTORY_PAGE_SIZE = 8;
+
+export const load: PageServerLoad = async ({ url }) => {
+	// Parse page from URL searchParams (default to 1)
+	const pageParam = url.searchParams.get('page');
+	const page = Math.max(1, parseInt(pageParam ?? '1', 10) || 1);
+
+	const [isRunning, lastSync, paginatedHistory, schedulerStatus, historyCount] = await Promise.all([
 		isSyncRunning(),
 		getLastSuccessfulSync(),
-		getSyncHistory(20), // Last 20 syncs
+		getSyncHistory({ page, pageSize: HISTORY_PAGE_SIZE }),
 		getSchedulerStatus(),
 		getPlayHistoryCount()
 	]);
@@ -73,7 +80,7 @@ export const load: PageServerLoad = async () => {
 					status: lastSync.status
 				}
 			: null,
-		history: history.map((h) => ({
+		history: paginatedHistory.items.map((h) => ({
 			id: h.id,
 			startedAt: h.startedAt.toISOString(),
 			completedAt: h.completedAt?.toISOString() ?? null,
@@ -81,6 +88,12 @@ export const load: PageServerLoad = async () => {
 			status: h.status,
 			error: h.error
 		})),
+		pagination: {
+			page: paginatedHistory.page,
+			pageSize: paginatedHistory.pageSize,
+			total: paginatedHistory.total,
+			totalPages: paginatedHistory.totalPages
+		},
 		schedulerStatus: {
 			isRunning: schedulerStatus.isRunning,
 			isPaused: schedulerStatus.isPaused,

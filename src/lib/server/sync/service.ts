@@ -2,7 +2,7 @@ import { db } from '$lib/server/db/client';
 import { playHistory, syncStatus, metadataCache } from '$lib/server/db/schema';
 import { fetchAllHistory, fetchMetadataBatch } from '$lib/server/plex/client';
 import type { ValidPlexHistoryMetadata } from '$lib/server/plex/types';
-import { eq, desc, isNull, or, inArray } from 'drizzle-orm';
+import { eq, desc, isNull, or, inArray, count } from 'drizzle-orm';
 import type { StartSyncOptions, SyncResult, SyncProgress, SyncStatusRecord } from './types';
 import { logger } from '$lib/server/logging';
 import { invalidateCache } from '$lib/server/stats/engine';
@@ -522,19 +522,65 @@ export async function startSync(options: StartSyncOptions = {}): Promise<SyncRes
 }
 
 /**
- * Get sync history (most recent first)
- *
- * @param limit - Maximum number of records to return
- * @returns Array of sync status records
+ * Pagination options for sync history
  */
-export async function getSyncHistory(limit: number = 10): Promise<SyncStatusRecord[]> {
-	const results = await db
-		.select()
-		.from(syncStatus)
-		.orderBy(desc(syncStatus.startedAt))
-		.limit(limit);
+export interface SyncHistoryPaginationOptions {
+	/** Page number (1-indexed) */
+	page?: number;
+	/** Number of records per page */
+	pageSize?: number;
+}
 
-	return results.map((record) => ({
+/**
+ * Paginated sync history result
+ */
+export interface PaginatedSyncHistory {
+	/** Array of sync status records for the current page */
+	items: SyncStatusRecord[];
+	/** Total number of sync records */
+	total: number;
+	/** Current page number (1-indexed) */
+	page: number;
+	/** Number of records per page */
+	pageSize: number;
+	/** Total number of pages */
+	totalPages: number;
+}
+
+/**
+ * Get total count of sync history records
+ *
+ * @returns Total number of sync status records
+ */
+export async function getSyncHistoryCount(): Promise<number> {
+	const result = await db.select({ count: count() }).from(syncStatus);
+	return result[0]?.count ?? 0;
+}
+
+/**
+ * Get sync history with pagination (most recent first)
+ *
+ * @param options - Pagination options (page, pageSize)
+ * @returns Paginated sync history with items and metadata
+ */
+export async function getSyncHistory(
+	options: SyncHistoryPaginationOptions = {}
+): Promise<PaginatedSyncHistory> {
+	const { page = 1, pageSize = 15 } = options;
+
+	// Calculate offset
+	const offset = (page - 1) * pageSize;
+
+	// Get total count and items in parallel
+	const [totalResult, results] = await Promise.all([
+		db.select({ count: count() }).from(syncStatus),
+		db.select().from(syncStatus).orderBy(desc(syncStatus.startedAt)).limit(pageSize).offset(offset)
+	]);
+
+	const total = totalResult[0]?.count ?? 0;
+	const totalPages = Math.ceil(total / pageSize);
+
+	const items = results.map((record) => ({
 		id: record.id,
 		startedAt: record.startedAt,
 		completedAt: record.completedAt,
@@ -543,6 +589,14 @@ export async function getSyncHistory(limit: number = 10): Promise<SyncStatusReco
 		status: record.status as SyncStatusRecord['status'],
 		error: record.error
 	}));
+
+	return {
+		items,
+		total,
+		page,
+		pageSize,
+		totalPages
+	};
 }
 
 /**

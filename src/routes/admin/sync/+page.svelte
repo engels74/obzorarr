@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { enhance } from '$app/forms';
-	import { invalidateAll } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { handleFormToast } from '$lib/utils/form-toast';
 	import type { PageData, ActionData } from './$types';
 
@@ -186,6 +186,58 @@
 		{ label: '3 AM', value: '0 3 * * *' },
 		{ label: 'Weekly', value: '0 0 * * 0' }
 	];
+
+	// Pagination state
+	let isNavigating = $state(false);
+
+	// Pagination helpers
+	const canGoPrevious = $derived(data.pagination.page > 1);
+	const canGoNext = $derived(data.pagination.page < data.pagination.totalPages);
+
+	// Calculate visible page numbers (show max 5 pages centered around current)
+	const visiblePages = $derived.by(() => {
+		const { page, totalPages } = data.pagination;
+		const pages: number[] = [];
+
+		if (totalPages <= 5) {
+			// Show all pages if 5 or fewer
+			for (let i = 1; i <= totalPages; i++) pages.push(i);
+		} else {
+			// Calculate range around current page
+			let start = Math.max(1, page - 2);
+			let end = Math.min(totalPages, page + 2);
+
+			// Adjust if at boundaries
+			if (page <= 3) {
+				end = 5;
+			} else if (page >= totalPages - 2) {
+				start = totalPages - 4;
+			}
+
+			for (let i = start; i <= end; i++) pages.push(i);
+		}
+
+		return pages;
+	});
+
+	async function goToPage(page: number) {
+		if (page < 1 || page > data.pagination.totalPages || isNavigating) return;
+
+		isNavigating = true;
+		const url = new URL(window.location.href);
+		if (page === 1) {
+			url.searchParams.delete('page');
+		} else {
+			url.searchParams.set('page', page.toString());
+		}
+		await goto(url.toString(), { keepFocus: true, noScroll: true });
+		isNavigating = false;
+
+		// Scroll to history section smoothly
+		document
+			.querySelector('.history-panel')
+			?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	}
 </script>
 
 <div class="sync-command-center">
@@ -245,10 +297,7 @@
 								>
 									{#if progress?.status === 'running'}
 										<svg viewBox="0 0 24 24" fill="currentColor">
-											<path
-												d="M12 4V2A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8Z"
-												class="spinner-path"
-											/>
+											<path d="M12 4V2A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8Z" class="spinner-path" />
 										</svg>
 									{:else if progress?.status === 'completed'}
 										<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
@@ -503,7 +552,13 @@
 							class="cron-input"
 						/>
 						<button type="submit" class="cron-update-btn" aria-label="Update schedule">
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+							<svg
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								aria-hidden="true"
+							>
 								<polyline points="20 6 9 17 4 12" />
 							</svg>
 						</button>
@@ -533,10 +588,10 @@
 				<span class="panel-icon">📋</span>
 				Sync History
 			</h2>
-			<span class="history-count">{data.historyCount.toLocaleString()} total syncs</span>
+			<span class="history-count">{data.pagination.total.toLocaleString()} total syncs</span>
 		</div>
 
-		{#if data.history.length === 0}
+		{#if data.history.length === 0 && data.pagination.page === 1}
 			<div class="empty-state">
 				<div class="empty-icon">
 					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -547,8 +602,8 @@
 				<span>Run your first sync to see results here</span>
 			</div>
 		{:else}
-			<div class="history-list">
-				{#each data.history as sync, i (sync.id)}
+			<div class="history-list" class:loading={isNavigating}>
+				{#each data.history as sync (sync.id)}
 					<div
 						class="history-item"
 						class:completed={sync.status === 'completed'}
@@ -602,6 +657,120 @@
 					</div>
 				{/each}
 			</div>
+
+			<!-- Pagination Controls -->
+			{#if data.pagination.totalPages > 1}
+				<div class="pagination" class:loading={isNavigating}>
+					<div class="pagination-info">
+						<span class="pagination-range">
+							Showing {(data.pagination.page - 1) * data.pagination.pageSize + 1}–{Math.min(
+								data.pagination.page * data.pagination.pageSize,
+								data.pagination.total
+							)} of {data.pagination.total.toLocaleString()}
+						</span>
+					</div>
+
+					<div class="pagination-controls">
+						<!-- First Page -->
+						<button
+							type="button"
+							class="pagination-btn"
+							disabled={!canGoPrevious || isNavigating}
+							onclick={() => goToPage(1)}
+							aria-label="Go to first page"
+						>
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<polyline points="11 17 6 12 11 7" />
+								<polyline points="18 17 13 12 18 7" />
+							</svg>
+						</button>
+
+						<!-- Previous Page -->
+						<button
+							type="button"
+							class="pagination-btn"
+							disabled={!canGoPrevious || isNavigating}
+							onclick={() => goToPage(data.pagination.page - 1)}
+							aria-label="Go to previous page"
+						>
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<polyline points="15 18 9 12 15 6" />
+							</svg>
+						</button>
+
+						<!-- Page Numbers -->
+						<div class="pagination-pages">
+							{#if visiblePages[0] > 1}
+								<button
+									type="button"
+									class="pagination-page"
+									onclick={() => goToPage(1)}
+									disabled={isNavigating}
+								>
+									1
+								</button>
+								{#if visiblePages[0] > 2}
+									<span class="pagination-ellipsis">…</span>
+								{/if}
+							{/if}
+
+							{#each visiblePages as pageNum (pageNum)}
+								<button
+									type="button"
+									class="pagination-page"
+									class:active={pageNum === data.pagination.page}
+									onclick={() => goToPage(pageNum)}
+									disabled={isNavigating}
+									aria-current={pageNum === data.pagination.page ? 'page' : undefined}
+								>
+									{pageNum}
+								</button>
+							{/each}
+
+							{#if visiblePages[visiblePages.length - 1] < data.pagination.totalPages}
+								{#if visiblePages[visiblePages.length - 1] < data.pagination.totalPages - 1}
+									<span class="pagination-ellipsis">…</span>
+								{/if}
+								<button
+									type="button"
+									class="pagination-page"
+									onclick={() => goToPage(data.pagination.totalPages)}
+									disabled={isNavigating}
+								>
+									{data.pagination.totalPages}
+								</button>
+							{/if}
+						</div>
+
+						<!-- Next Page -->
+						<button
+							type="button"
+							class="pagination-btn"
+							disabled={!canGoNext || isNavigating}
+							onclick={() => goToPage(data.pagination.page + 1)}
+							aria-label="Go to next page"
+						>
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<polyline points="9 18 15 12 9 6" />
+							</svg>
+						</button>
+
+						<!-- Last Page -->
+						<button
+							type="button"
+							class="pagination-btn"
+							disabled={!canGoNext || isNavigating}
+							onclick={() => goToPage(data.pagination.totalPages)}
+							aria-label="Go to last page"
+						>
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<polyline points="13 17 18 12 13 7" />
+								<polyline points="6 17 11 12 6 7" />
+							</svg>
+						</button>
+					</div>
+				</div>
+			{/if}
 		{/if}
 	</section>
 </div>
@@ -1347,6 +1516,12 @@
 		color: hsl(var(--muted-foreground));
 	}
 
+	.history-list.loading {
+		opacity: 0.5;
+		pointer-events: none;
+		transition: opacity 0.15s ease;
+	}
+
 	.empty-state {
 		display: flex;
 		flex-direction: column;
@@ -1497,6 +1672,118 @@
 		flex-shrink: 0;
 	}
 
+	/* ===== Pagination ===== */
+	.pagination {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 1rem;
+		padding: 1.25rem;
+		border-top: 1px solid hsl(var(--border) / 0.5);
+		background: hsl(var(--muted) / 0.2);
+	}
+
+	.pagination.loading {
+		opacity: 0.6;
+		pointer-events: none;
+	}
+
+	.pagination-info {
+		text-align: center;
+	}
+
+	.pagination-range {
+		font-size: 0.8125rem;
+		color: hsl(var(--muted-foreground));
+		font-variant-numeric: tabular-nums;
+	}
+
+	.pagination-controls {
+		display: flex;
+		align-items: center;
+		gap: 0.375rem;
+	}
+
+	.pagination-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 36px;
+		height: 36px;
+		background: hsl(var(--muted));
+		border: 1px solid hsl(var(--border));
+		border-radius: 8px;
+		color: hsl(var(--foreground));
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.pagination-btn:hover:not(:disabled) {
+		background: hsl(var(--primary) / 0.15);
+		border-color: hsl(var(--primary) / 0.5);
+		color: hsl(var(--primary));
+	}
+
+	.pagination-btn:disabled {
+		opacity: 0.4;
+		cursor: not-allowed;
+	}
+
+	.pagination-btn svg {
+		width: 18px;
+		height: 18px;
+	}
+
+	.pagination-pages {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+		margin: 0 0.25rem;
+	}
+
+	.pagination-page {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 36px;
+		height: 36px;
+		padding: 0 0.5rem;
+		background: transparent;
+		border: 1px solid transparent;
+		border-radius: 8px;
+		color: hsl(var(--muted-foreground));
+		font-size: 0.875rem;
+		font-weight: 500;
+		font-variant-numeric: tabular-nums;
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.pagination-page:hover:not(:disabled):not(.active) {
+		background: hsl(var(--muted));
+		color: hsl(var(--foreground));
+	}
+
+	.pagination-page.active {
+		background: hsl(var(--primary));
+		border-color: hsl(var(--primary));
+		color: hsl(var(--primary-foreground));
+		font-weight: 600;
+	}
+
+	.pagination-page:disabled {
+		cursor: not-allowed;
+	}
+
+	.pagination-ellipsis {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 28px;
+		color: hsl(var(--muted-foreground));
+		font-size: 0.875rem;
+	}
+
 	/* ===== Responsive Design ===== */
 	@media (max-width: 900px) {
 		.content-grid {
@@ -1547,6 +1834,35 @@
 
 		.history-error {
 			grid-column: 1 / -1;
+		}
+
+		/* Pagination responsive */
+		.pagination {
+			padding: 1rem;
+		}
+
+		.pagination-btn {
+			width: 32px;
+			height: 32px;
+		}
+
+		.pagination-btn svg {
+			width: 16px;
+			height: 16px;
+		}
+
+		.pagination-page {
+			min-width: 32px;
+			height: 32px;
+			font-size: 0.8125rem;
+		}
+
+		.pagination-pages {
+			gap: 0.125rem;
+		}
+
+		.pagination-range {
+			font-size: 0.75rem;
 		}
 	}
 </style>
