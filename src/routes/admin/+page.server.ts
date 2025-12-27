@@ -1,6 +1,10 @@
 import type { PageServerLoad } from './$types';
 import { getUserCount } from '$lib/server/admin/users.service';
-import { getPlayHistoryCount, getLastSuccessfulSync, isSyncRunning } from '$lib/server/sync/service';
+import {
+	getPlayHistoryCount,
+	getLastSuccessfulSync,
+	isSyncRunning
+} from '$lib/server/sync/service';
 import { getSchedulerStatus } from '$lib/server/sync/scheduler';
 import { calculateServerStats } from '$lib/server/stats/engine';
 
