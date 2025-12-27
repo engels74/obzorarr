@@ -187,7 +187,9 @@
 				{#if data.lastSync}
 					<div class="sync-row">
 						<span class="sync-label">Records Synced</span>
-						<span class="sync-value highlight">{data.lastSync.recordsProcessed.toLocaleString()}</span>
+						<span class="sync-value highlight"
+							>{data.lastSync.recordsProcessed.toLocaleString()}</span
+						>
 					</div>
 				{/if}
 

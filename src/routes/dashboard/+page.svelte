@@ -253,7 +253,11 @@
 	}
 
 	.wrapped-card.personal .card-icon-wrap {
-		background: linear-gradient(135deg, hsl(var(--primary) / 0.2) 0%, hsl(var(--primary) / 0.1) 100%);
+		background: linear-gradient(
+			135deg,
+			hsl(var(--primary) / 0.2) 0%,
+			hsl(var(--primary) / 0.1) 100%
+		);
 		border: 1px solid hsl(var(--primary) / 0.2);
 	}
 

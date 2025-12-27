@@ -620,9 +620,7 @@
 							<h2>User Identity</h2>
 						</div>
 					</div>
-					<p class="panel-description">
-						Control how usernames appear in server-wide statistics.
-					</p>
+					<p class="panel-description">Control how usernames appear in server-wide statistics.</p>
 
 					<h3 class="subsection-title">
 						<VenetianMask class="subsection-icon" />
@@ -864,7 +862,10 @@
 							{/if}
 						</label>
 
-						<label class="option-card" class:selected={selectedDefaultShareMode === 'private-oauth'}>
+						<label
+							class="option-card"
+							class:selected={selectedDefaultShareMode === 'private-oauth'}
+						>
 							<input
 								type="radio"
 								name="defaultShareMode"
@@ -1181,8 +1182,8 @@
 			<AlertDialog.Description>
 				{getHistoryConfirmationMessage()}
 				<br /><br />
-				<strong>This action cannot be undone.</strong> Statistics cache for affected years will also
-				be cleared.
+				<strong>This action cannot be undone.</strong> Statistics cache for affected years will also be
+				cleared.
 			</AlertDialog.Description>
 		</AlertDialog.Header>
 		<AlertDialog.Footer>

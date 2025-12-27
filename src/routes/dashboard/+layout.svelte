@@ -105,12 +105,7 @@
 				{#each navItems as item (item.href)}
 					{@const active = isActive(item.href)}
 					<li>
-						<a
-							href={item.href}
-							class="nav-link"
-							class:active
-							onclick={closeSidebar}
-						>
+						<a href={item.href} class="nav-link" class:active onclick={closeSidebar}>
 							<span class="nav-icon-wrap" class:active>
 								<item.icon class="nav-icon" />
 							</span>

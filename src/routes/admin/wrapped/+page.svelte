@@ -44,9 +44,7 @@
 				<span class="year-display">{data.currentYear}</span>
 				<span class="title-text">Wrapped</span>
 			</h1>
-			<p class="hero-subtitle">
-				Discover viewing journeys and manage the wrapped experience
-			</p>
+			<p class="hero-subtitle">Discover viewing journeys and manage the wrapped experience</p>
 		</div>
 		<div class="hero-decoration">
 			<div class="floating-ring ring-1"></div>
@@ -95,9 +93,7 @@
 					</div>
 					<div class="card-text">
 						<h2 class="card-title">Server Wrapped</h2>
-						<p class="card-description">
-							Server-wide viewing stats and community highlights
-						</p>
+						<p class="card-description">Server-wide viewing stats and community highlights</p>
 					</div>
 					<div class="card-cta">
 						<span class="cta-text">Explore together</span>
@@ -624,7 +620,8 @@
 
 	/* Animations */
 	@keyframes ambientPulse {
-		0%, 100% {
+		0%,
+		100% {
 			opacity: 0.12;
 			transform: scale(1);
 		}
@@ -655,7 +652,8 @@
 	}
 
 	@keyframes ringExpand {
-		0%, 100% {
+		0%,
+		100% {
 			transform: translate(-50%, -50%) scale(0.8);
 			opacity: 0;
 		}
@@ -666,7 +664,8 @@
 	}
 
 	@keyframes sparkle {
-		0%, 100% {
+		0%,
+		100% {
 			transform: scale(1) rotate(0deg);
 		}
 		50% {
