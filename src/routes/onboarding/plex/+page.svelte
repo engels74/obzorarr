@@ -53,6 +53,9 @@
 	let iconRef: HTMLElement | undefined = $state();
 	let contentRef: HTMLElement | undefined = $state();
 
+	// Track animated elements to avoid re-animating them
+	let animatedElements = new WeakSet<Element>();
+
 	// Icon glow animation
 	$effect(() => {
 		if (!iconRef) return;
@@ -68,19 +71,44 @@
 		return () => animation.stop?.();
 	});
 
-	// Stagger content animation
+	// Stagger content animation - re-runs when content structure changes
 	$effect(() => {
 		if (!contentRef) return;
-		const items = contentRef.querySelectorAll('.animate-item');
-		if (items.length === 0) return;
 
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const animation = (animate as any)(
-			items,
-			{ opacity: [0, 1], transform: ['translateY(12px)', 'translateY(0)'] },
-			{ duration: 0.4, delay: stagger(0.08), easing: [0.22, 1, 0.36, 1] }
-		);
-		return () => animation.stop?.();
+		// Track underlying state variables that affect DOM structure
+		// When these change, new .animate-item elements may be added to the DOM
+		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+		localAuthState?.isAuthenticated;
+		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+		localAuthState?.isAdmin;
+		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+		data.isAuthenticated;
+		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+		isLoadingServers;
+		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+		servers.length;
+
+		// Use requestAnimationFrame to ensure DOM has updated after state change
+		const rafId = requestAnimationFrame(() => {
+			if (!contentRef) return;
+			const items = contentRef.querySelectorAll('.animate-item');
+			// Filter to only animate elements that haven't been animated yet
+			const newItems = Array.from(items).filter((item) => !animatedElements.has(item));
+
+			if (newItems.length === 0) return;
+
+			// Mark these elements as animated before starting animation
+			newItems.forEach((item) => animatedElements.add(item));
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(animate as any)(
+				newItems,
+				{ opacity: [0, 1], transform: ['translateY(12px)', 'translateY(0)'] },
+				{ duration: 0.4, delay: stagger(0.08), easing: [0.22, 1, 0.36, 1] }
+			);
+		});
+
+		return () => cancelAnimationFrame(rafId);
 	});
 
 	// Cleanup polling on unmount
