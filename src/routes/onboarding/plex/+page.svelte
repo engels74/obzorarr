@@ -293,14 +293,34 @@
 
 		<!-- Pre-configured flow -->
 		{#if data.hasEnvConfig}
-			<div class="config-status animate-item">
-				<div class="status-badge configured">
-					<span class="status-dot"></span>
-					<span class="status-text">Pre-configured</span>
+			<div class="preconfigured-card animate-item">
+				<div class="preconfigured-icon">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+						<rect x="2" y="3" width="20" height="14" rx="2" />
+						<line x1="8" y1="21" x2="16" y2="21" />
+						<line x1="12" y1="17" x2="12" y2="21" />
+					</svg>
 				</div>
-				{#if data.plexServerUrl}
-					<p class="server-url">{formatServerUrl(data.plexServerUrl)}</p>
-				{/if}
+				<div class="preconfigured-info">
+					<div class="preconfigured-header">
+						<span class="preconfigured-title">Plex Media Server</span>
+						<span class="preconfigured-badge">
+							<svg class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+								<path d="M7 11V7a5 5 0 0 1 10 0v4" />
+							</svg>
+							ENV
+						</span>
+					</div>
+					{#if data.plexServerUrl}
+						<span class="preconfigured-url">{formatServerUrl(data.plexServerUrl)}</span>
+					{/if}
+				</div>
+				<div class="preconfigured-check">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+						<path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round" />
+					</svg>
+				</div>
 			</div>
 
 			{#if !data.isAuthenticated}
@@ -544,52 +564,120 @@
 		height: 100%;
 	}
 
-	/* Config Status */
-	.config-status {
-		text-align: center;
+	/* Pre-configured Server Card */
+	.preconfigured-card {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		padding: 1.125rem 1.25rem;
+		background: linear-gradient(
+			135deg,
+			rgba(34, 197, 94, 0.08) 0%,
+			rgba(34, 197, 94, 0.02) 100%
+		);
+		border: 1px solid rgba(34, 197, 94, 0.25);
+		border-radius: 14px;
+		width: 100%;
+		position: relative;
+		overflow: hidden;
 	}
 
-	.status-badge {
+	.preconfigured-card::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background: radial-gradient(
+			ellipse at top left,
+			rgba(34, 197, 94, 0.1) 0%,
+			transparent 50%
+		);
+		pointer-events: none;
+	}
+
+	.preconfigured-icon {
+		flex-shrink: 0;
+		width: 44px;
+		height: 44px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: rgba(34, 197, 94, 0.12);
+		border-radius: 11px;
+		color: hsl(142, 71%, 55%);
+		position: relative;
+	}
+
+	.preconfigured-icon svg {
+		width: 24px;
+		height: 24px;
+	}
+
+	.preconfigured-info {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 0.375rem;
+		min-width: 0;
+	}
+
+	.preconfigured-header {
+		display: flex;
+		align-items: center;
+		gap: 0.625rem;
+		flex-wrap: wrap;
+	}
+
+	.preconfigured-title {
+		font-size: 0.95rem;
+		font-weight: 600;
+		color: rgba(255, 255, 255, 0.95);
+	}
+
+	.preconfigured-badge {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.5rem;
-		padding: 0.5rem 1rem;
-		border-radius: 9999px;
-		font-size: 0.8rem;
-		font-weight: 600;
-		letter-spacing: 0.03em;
+		gap: 0.3rem;
+		padding: 0.2rem 0.5rem;
+		font-size: 0.65rem;
+		font-weight: 700;
 		text-transform: uppercase;
-	}
-
-	.status-badge.configured {
-		background: rgba(34, 197, 94, 0.15);
-		color: hsl(142, 71%, 55%);
+		letter-spacing: 0.05em;
+		background: rgba(34, 197, 94, 0.2);
+		color: hsl(142, 71%, 60%);
+		border-radius: 5px;
 		border: 1px solid rgba(34, 197, 94, 0.3);
 	}
 
-	.status-dot {
-		width: 6px;
-		height: 6px;
-		border-radius: 50%;
-		background: currentColor;
-		animation: dot-pulse 2s ease-in-out infinite;
+	.preconfigured-badge .lock-icon {
+		width: 10px;
+		height: 10px;
 	}
 
-	@keyframes dot-pulse {
-		0%,
-		100% {
-			opacity: 1;
-		}
-		50% {
-			opacity: 0.5;
-		}
-	}
-
-	.server-url {
-		margin: 0.5rem 0 0;
-		font-size: 0.9rem;
-		color: rgba(255, 255, 255, 0.5);
+	.preconfigured-url {
+		font-size: 0.8rem;
+		color: rgba(255, 255, 255, 0.45);
 		font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+		letter-spacing: -0.01em;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.preconfigured-check {
+		flex-shrink: 0;
+		width: 28px;
+		height: 28px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: rgba(34, 197, 94, 0.15);
+		border-radius: 50%;
+		color: hsl(142, 71%, 55%);
+	}
+
+	.preconfigured-check svg {
+		width: 15px;
+		height: 15px;
 	}
 
 	/* Action Section */
@@ -962,6 +1050,29 @@
 		.plex-button {
 			width: 100%;
 			min-width: unset;
+		}
+
+		.preconfigured-card {
+			padding: 1rem;
+			gap: 0.875rem;
+		}
+
+		.preconfigured-icon {
+			width: 38px;
+			height: 38px;
+		}
+
+		.preconfigured-icon svg {
+			width: 20px;
+			height: 20px;
+		}
+
+		.preconfigured-title {
+			font-size: 0.875rem;
+		}
+
+		.preconfigured-url {
+			font-size: 0.75rem;
 		}
 
 		.server-card {
