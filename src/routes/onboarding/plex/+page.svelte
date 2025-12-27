@@ -83,11 +83,8 @@
 		};
 	});
 
-	// Track if we need to fetch servers after OAuth completes
-	let shouldFetchServers = $state(false);
-
-	// Fetch servers after authentication (for no-ENV flow)
-	// Only runs on client and when conditions are met
+	// Fetch servers on page load for authenticated admins (no-ENV flow)
+	// This handles the case when user reloads the page while already authenticated
 	$effect(() => {
 		if (!browser) return;
 
@@ -95,17 +92,11 @@
 		// - No ENV config (manual server selection flow)
 		// - User is authenticated as admin
 		// - No servers loaded yet
-		const canFetch = !data.hasEnvConfig && data.isAuthenticated && data.isAdmin;
-		const needsFetch = canFetch && servers.length === 0;
+		const shouldFetch =
+			!data.hasEnvConfig && data.isAuthenticated && data.isAdmin && servers.length === 0;
 
-		// Fetch if conditions are met, or if explicitly triggered after OAuth
-		// (shouldFetchServers acts as a re-trigger mechanism)
-		if (needsFetch || (shouldFetchServers && canFetch)) {
-			shouldFetchServers = false;
+		if (shouldFetch) {
 			fetchServers();
-		} else if (shouldFetchServers) {
-			// Reset flag if conditions aren't met (e.g., ENV flow)
-			shouldFetchServers = false;
 		}
 	});
 
@@ -196,10 +187,12 @@
 						// 5. Refresh page data to get new auth status
 						await invalidateAll();
 
-						// 6. Explicitly trigger server fetch for no-ENV flow
-						// This ensures the UI updates after OAuth without requiring a page reload
-						// The $effect will check conditions before actually fetching
-						shouldFetchServers = true;
+						// 6. For no-ENV flow, directly fetch servers after OAuth
+						// We know hasEnvConfig is stable (determined by ENV vars, not session)
+						// and the session cookie is already set from the callback
+						if (!data.hasEnvConfig && servers.length === 0) {
+							await fetchServers();
+						}
 
 						isOAuthLoading = false;
 					}
