@@ -18,7 +18,8 @@
 	let anonymizationMode = $state(data.settings.anonymizationMode);
 	let defaultShareMode = $state(data.settings.defaultShareMode);
 	let allowUserControl = $state(data.settings.allowUserControl);
-	let enableFunFacts = $state(data.funFactConfig.mode !== 'none');
+	// Fun facts are enabled if mode is set to a valid frequency value
+	let enableFunFacts = $state(data.funFactConfig.count > 0);
 	let funFactFrequency = $state(data.funFactConfig.mode || 'normal');
 
 	// Slide toggles
@@ -51,6 +52,7 @@
 	}
 
 	// Theme color mapping for swatches
+	const defaultColors = { primary: '#3b82f6', accent: '#60a5fa', bg: '#0f172a' };
 	const themeColors: Record<string, { primary: string; accent: string; bg: string }> = {
 		'modern-minimal': { primary: '#3b82f6', accent: '#60a5fa', bg: '#0f172a' },
 		supabase: { primary: '#3ecf8e', accent: '#24b47e', bg: '#1c1c1c' },
@@ -58,6 +60,10 @@
 		'amber-minimal': { primary: '#f59e0b', accent: '#fbbf24', bg: '#1a1410' },
 		'soviet-red': { primary: '#b91c1c', accent: '#991b1b', bg: '#1a0a0a' }
 	};
+
+	function getThemeColors(themeValue: string) {
+		return themeColors[themeValue] ?? defaultColors;
+	}
 </script>
 
 <OnboardingCard
@@ -125,7 +131,7 @@
 								<p class="setting-description">Applied to the dashboard and admin pages</p>
 								<div class="theme-swatches">
 									{#each data.themeOptions as option}
-										{@const colors = themeColors[option.value] || themeColors['modern-minimal']}
+										{@const colors = getThemeColors(option.value)}
 										<button
 											type="button"
 											class="theme-swatch"
@@ -151,7 +157,7 @@
 								<p class="setting-description">Applied to the animated year-end slideshow</p>
 								<div class="theme-swatches">
 									{#each data.themeOptions as option}
-										{@const colors = themeColors[option.value] || themeColors['modern-minimal']}
+										{@const colors = getThemeColors(option.value)}
 										<button
 											type="button"
 											class="theme-swatch"

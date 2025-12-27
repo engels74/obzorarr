@@ -42,7 +42,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const parseResult = SelectServerSchema.safeParse(body);
 
 		if (!parseResult.success) {
-			const errorMessage = parseResult.error.errors[0]?.message ?? 'Invalid request';
+			const errorMessage = parseResult.error.issues[0]?.message ?? 'Invalid request';
 			error(400, errorMessage);
 		}
 

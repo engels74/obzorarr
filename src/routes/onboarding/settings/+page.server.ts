@@ -244,7 +244,7 @@ export const actions: Actions = {
 			// Validate
 			const parseResult = SettingsSchema.safeParse(rawData);
 			if (!parseResult.success) {
-				const errorMessage = parseResult.error.errors[0]?.message ?? 'Invalid settings';
+				const errorMessage = parseResult.error.issues[0]?.message ?? 'Invalid settings';
 				return fail(400, { error: errorMessage });
 			}
 

@@ -41,7 +41,8 @@
 	// Icon glow animation
 	$effect(() => {
 		if (!iconRef) return;
-		const animation = animate(
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const animation = (animate as any)(
 			iconRef,
 			{
 				opacity: [0, 1],
@@ -49,7 +50,7 @@
 			},
 			{ duration: 0.5, easing: [0.22, 1, 0.36, 1] }
 		);
-		return () => animation.stop();
+		return () => animation.stop?.();
 	});
 
 	// Stagger content animation
