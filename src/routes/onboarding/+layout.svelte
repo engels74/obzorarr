@@ -3,11 +3,46 @@
 	import StepIndicator from '$lib/components/onboarding/StepIndicator.svelte';
 	import Logo from '$lib/components/Logo.svelte';
 	import { animate } from 'motion';
+	import { loadThemeFont } from '$lib/utils/theme-fonts';
 
 	let { data, children }: { data: LayoutData; children: any } = $props();
 
 	let logoRef: HTMLElement | undefined = $state();
 	let contentRef: HTMLElement | undefined = $state();
+
+	// Theme class derived from layout data
+	const themeClass = $derived(`theme-${data.uiTheme ?? 'modern-minimal'}`);
+
+	// All available theme classes for removal
+	const themeClasses = [
+		'theme-modern-minimal',
+		'theme-supabase',
+		'theme-doom-64',
+		'theme-amber-minimal',
+		'theme-soviet-red',
+		'theme-obsidian-premium',
+		'theme-aurora-premium',
+		'theme-champagne-premium'
+	];
+
+	// Apply theme class to body and load font
+	$effect(() => {
+		// Remove all existing theme classes
+		document.body.classList.remove(...themeClasses);
+
+		// Add the current theme class
+		document.body.classList.add(themeClass);
+
+		// Add onboarding route class for potential styling hooks
+		document.body.classList.add('onboarding-route');
+
+		// Load theme-specific font
+		loadThemeFont(data.uiTheme ?? 'modern-minimal');
+
+		return () => {
+			document.body.classList.remove('onboarding-route');
+		};
+	});
 
 	// Animate logo on mount
 	$effect(() => {
@@ -70,18 +105,18 @@
 		overflow-x: hidden;
 		display: flex;
 		flex-direction: column;
-		background: hsl(220, 20%, 8%);
+		background: hsl(var(--background));
 	}
 
-	/* Background gradient - cinematic theater lighting */
+	/* Background gradient - cinematic theater lighting using theme colors */
 	.bg-gradient {
 		position: fixed;
 		inset: 0;
 		background:
-			radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255, 140, 50, 0.08) 0%, transparent 50%),
-			radial-gradient(ellipse 60% 40% at 20% 80%, rgba(255, 80, 50, 0.05) 0%, transparent 40%),
-			radial-gradient(ellipse 60% 40% at 80% 80%, rgba(180, 100, 255, 0.03) 0%, transparent 40%),
-			linear-gradient(180deg, hsl(220, 25%, 6%) 0%, hsl(220, 20%, 10%) 100%);
+			radial-gradient(ellipse 80% 50% at 50% 0%, hsl(var(--primary) / 0.08) 0%, transparent 50%),
+			radial-gradient(ellipse 60% 40% at 20% 80%, hsl(var(--primary) / 0.05) 0%, transparent 40%),
+			radial-gradient(ellipse 60% 40% at 80% 80%, hsl(var(--accent) / 0.03) 0%, transparent 40%),
+			linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--card)) 100%);
 		z-index: 0;
 		pointer-events: none;
 	}
@@ -151,7 +186,7 @@
 		font-weight: 500;
 		letter-spacing: 0.15em;
 		text-transform: uppercase;
-		color: rgba(255, 160, 50, 0.7);
+		color: hsl(var(--primary) / 0.7);
 		margin: 0;
 	}
 

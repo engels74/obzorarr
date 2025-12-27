@@ -64,15 +64,15 @@
 		opacity: 0; /* Start hidden for animation */
 	}
 
-	/* Ambient glow effect */
+	/* Ambient glow effect - uses theme primary color */
 	.card-glow {
 		position: absolute;
 		inset: -1px;
 		background: linear-gradient(
 			135deg,
-			rgba(255, 160, 50, 0.15) 0%,
-			rgba(255, 100, 50, 0.05) 50%,
-			rgba(255, 160, 50, 0.1) 100%
+			hsl(var(--primary) / 0.15) 0%,
+			hsl(var(--primary) / 0.05) 50%,
+			hsl(var(--primary) / 0.1) 100%
 		);
 		border-radius: 20px;
 		filter: blur(20px);

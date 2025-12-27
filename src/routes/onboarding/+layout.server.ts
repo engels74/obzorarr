@@ -6,7 +6,11 @@ import {
 	OnboardingSteps,
 	type OnboardingStep
 } from '$lib/server/onboarding';
-import { getApiConfigWithSources, hasPlexEnvConfig } from '$lib/server/admin/settings.service';
+import {
+	getApiConfigWithSources,
+	hasPlexEnvConfig,
+	getUITheme
+} from '$lib/server/admin/settings.service';
 import { getServerName } from '$lib/server/plex/server-name.service';
 import { redirect } from '@sveltejs/kit';
 
@@ -27,8 +31,12 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		redirect(303, locals.user?.isAdmin ? '/admin' : '/');
 	}
 
-	const currentStep = await getOnboardingStep();
-	const apiConfig = await getApiConfigWithSources();
+	// Load current step, API config, and UI theme in parallel
+	const [currentStep, apiConfig, uiTheme] = await Promise.all([
+		getOnboardingStep(),
+		getApiConfigWithSources(),
+		getUITheme()
+	]);
 	const hasEnvConfigValue = hasPlexEnvConfig();
 
 	// Fetch server name if ENV config is present (for display purposes)
@@ -58,6 +66,9 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		plexConfigured: !!(apiConfig.plex.serverUrl.value && apiConfig.plex.token.value),
 		plexServerUrl: apiConfig.plex.serverUrl.value,
 		plexConfigSource: apiConfig.plex.serverUrl.source,
-		plexServerName: serverName
+		plexServerName: serverName,
+
+		// UI theme (overrides root layout's uiTheme for fresh data during onboarding)
+		uiTheme
 	};
 };

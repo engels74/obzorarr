@@ -123,14 +123,14 @@
 		color: rgba(255, 255, 255, 0.4);
 	}
 
-	/* Active state - warm amber glow */
+	/* Active state - uses theme primary color */
 	.active .step-circle {
-		background: linear-gradient(135deg, hsl(35, 100%, 50%) 0%, hsl(25, 100%, 45%) 100%);
-		border: 2px solid hsl(35, 100%, 55%);
-		color: hsl(20, 20%, 10%);
+		background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+		border: 2px solid hsl(var(--primary));
+		color: hsl(var(--primary-foreground));
 		box-shadow:
-			0 0 20px rgba(255, 160, 50, 0.4),
-			0 0 40px rgba(255, 160, 50, 0.2),
+			0 0 20px hsl(var(--primary) / 0.4),
+			0 0 40px hsl(var(--primary) / 0.2),
 			inset 0 1px 0 rgba(255, 255, 255, 0.3);
 		animation: pulse-glow 2s ease-in-out infinite;
 	}
@@ -147,14 +147,14 @@
 		0%,
 		100% {
 			box-shadow:
-				0 0 20px rgba(255, 160, 50, 0.4),
-				0 0 40px rgba(255, 160, 50, 0.2),
+				0 0 20px hsl(var(--primary) / 0.4),
+				0 0 40px hsl(var(--primary) / 0.2),
 				inset 0 1px 0 rgba(255, 255, 255, 0.3);
 		}
 		50% {
 			box-shadow:
-				0 0 25px rgba(255, 160, 50, 0.5),
-				0 0 50px rgba(255, 160, 50, 0.3),
+				0 0 25px hsl(var(--primary) / 0.5),
+				0 0 50px hsl(var(--primary) / 0.3),
 				inset 0 1px 0 rgba(255, 255, 255, 0.3);
 		}
 	}
@@ -179,7 +179,7 @@
 	.connector-fill {
 		width: 0%;
 		height: 100%;
-		background: linear-gradient(90deg, hsl(142, 71%, 45%) 0%, hsl(35, 100%, 50%) 100%);
+		background: linear-gradient(90deg, hsl(142, 71%, 45%) 0%, hsl(var(--primary)) 100%);
 		border-radius: 1px;
 		transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
 	}
@@ -204,7 +204,7 @@
 	}
 
 	.active .step-label {
-		color: hsl(35, 100%, 60%);
+		color: hsl(var(--primary));
 	}
 
 	.completed .step-label {

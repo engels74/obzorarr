@@ -3,6 +3,7 @@
 	import { untrack } from 'svelte';
 	import { animate } from 'motion';
 	import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
+	import { loadThemeFont } from '$lib/utils/theme-fonts';
 	import type { PageData, ActionData } from './$types';
 
 	/**
@@ -21,6 +22,32 @@
 	let allowUserControl = $state(untrack(() => data.settings.allowUserControl));
 	let enableFunFacts = $state(untrack(() => data.funFactConfig.count > 0));
 	let funFactFrequency = $state(untrack(() => data.funFactConfig.mode || 'normal'));
+
+	// All available theme classes for removal
+	const themeClasses = [
+		'theme-modern-minimal',
+		'theme-supabase',
+		'theme-doom-64',
+		'theme-amber-minimal',
+		'theme-soviet-red',
+		'theme-obsidian-premium',
+		'theme-aurora-premium',
+		'theme-champagne-premium'
+	];
+
+	// Live theme preview: Apply theme class when uiTheme changes
+	$effect(() => {
+		const themeClass = `theme-${uiTheme}`;
+
+		// Remove all existing theme classes
+		document.body.classList.remove(...themeClasses);
+
+		// Add the current theme class
+		document.body.classList.add(themeClass);
+
+		// Load theme-specific font
+		loadThemeFont(uiTheme);
+	});
 
 	// Slide toggles
 	let slideStates = $state<Record<string, boolean>>(
@@ -594,7 +621,7 @@
 		gap: 1rem;
 		padding: 0.875rem 1rem;
 		background: rgba(0, 0, 0, 0.2);
-		border: 1px solid rgba(251, 191, 36, 0.1);
+		border: 1px solid hsl(var(--primary) / 0.1);
 		border-radius: 0.875rem;
 		margin-bottom: 1rem;
 	}
@@ -648,9 +675,9 @@
 	}
 
 	.substep-dot.active {
-		border-color: hsl(35, 100%, 55%);
-		background: linear-gradient(135deg, hsl(35, 100%, 50%) 0%, hsl(25, 100%, 45%) 100%);
-		box-shadow: 0 0 12px rgba(255, 160, 50, 0.4);
+		border-color: hsl(var(--primary));
+		background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+		box-shadow: 0 0 12px hsl(var(--primary) / 0.4);
 	}
 
 	.dot-check {
@@ -801,28 +828,28 @@
 	}
 
 	.btn-next {
-		background: rgba(251, 191, 36, 0.15);
-		border: 1px solid rgba(251, 191, 36, 0.3);
-		color: #fbbf24;
+		background: hsl(var(--primary) / 0.15);
+		border: 1px solid hsl(var(--primary) / 0.3);
+		color: hsl(var(--primary));
 	}
 
 	.btn-next:hover:not(:disabled) {
-		background: rgba(251, 191, 36, 0.25);
-		border-color: rgba(251, 191, 36, 0.5);
+		background: hsl(var(--primary) / 0.25);
+		border-color: hsl(var(--primary) / 0.5);
 		transform: translateX(2px);
 	}
 
 	.btn-save {
-		background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+		background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
 		border: none;
-		color: #1a1410;
+		color: hsl(var(--primary-foreground));
 		font-weight: 600;
-		box-shadow: 0 4px 16px rgba(251, 191, 36, 0.25);
+		box-shadow: 0 4px 16px hsl(var(--primary) / 0.25);
 	}
 
 	.btn-save:hover:not(:disabled) {
 		transform: translateY(-2px);
-		box-shadow: 0 6px 24px rgba(251, 191, 36, 0.35);
+		box-shadow: 0 6px 24px hsl(var(--primary) / 0.35);
 	}
 
 	.btn-save:disabled {
@@ -973,8 +1000,8 @@
 	}
 
 	.radio-card.selected .radio-card-content {
-		background: rgba(251, 191, 36, 0.08);
-		border-color: rgba(251, 191, 36, 0.35);
+		background: hsl(var(--primary) / 0.08);
+		border-color: hsl(var(--primary) / 0.35);
 	}
 
 	.radio-indicator {
@@ -991,8 +1018,8 @@
 	}
 
 	.radio-card.selected .radio-indicator {
-		border-color: #fbbf24;
-		background: #fbbf24;
+		border-color: hsl(var(--primary));
+		background: hsl(var(--primary));
 	}
 
 	.radio-dot {
@@ -1004,7 +1031,7 @@
 	}
 
 	.radio-card.selected .radio-dot {
-		background: #1a1410;
+		background: hsl(var(--primary-foreground));
 	}
 
 	.radio-text {
@@ -1081,7 +1108,7 @@
 	}
 
 	.toggle-switch.active {
-		background: linear-gradient(135deg, #fbbf24, #f59e0b);
+		background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
 	}
 
 	.toggle-knob {
@@ -1153,7 +1180,7 @@
 	}
 
 	.slide-toggle.enabled {
-		border-color: rgba(251, 191, 36, 0.2);
+		border-color: hsl(var(--primary) / 0.2);
 	}
 
 	.slide-name {
@@ -1164,7 +1191,7 @@
 	/* Frequency Options */
 	.frequency-group {
 		padding-left: 1.5rem;
-		border-left: 2px solid rgba(251, 191, 36, 0.2);
+		border-left: 2px solid hsl(var(--primary) / 0.2);
 		animation: fadeSlide 0.3s ease;
 	}
 
@@ -1211,8 +1238,8 @@
 	}
 
 	.frequency-option.selected {
-		background: rgba(251, 191, 36, 0.1);
-		border-color: rgba(251, 191, 36, 0.4);
+		background: hsl(var(--primary) / 0.1);
+		border-color: hsl(var(--primary) / 0.4);
 	}
 
 	.frequency-label {
@@ -1230,8 +1257,8 @@
 	.spinner {
 		width: 1rem;
 		height: 1rem;
-		border: 2px solid rgba(26, 20, 16, 0.3);
-		border-top-color: #1a1410;
+		border: 2px solid hsl(var(--primary-foreground) / 0.3);
+		border-top-color: hsl(var(--primary-foreground));
 		border-radius: 50%;
 		animation: spin 0.8s linear infinite;
 	}
