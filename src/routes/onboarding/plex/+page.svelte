@@ -303,7 +303,7 @@
 				</div>
 				<div class="preconfigured-info">
 					<div class="preconfigured-header">
-						<span class="preconfigured-title">{data.plexServerName ?? 'Plex Media Server'}</span>
+						<span class="preconfigured-title">Plex Media Server</span>
 						<span class="preconfigured-badge">
 							<svg
 								class="lock-icon"
@@ -318,6 +318,9 @@
 							ENV
 						</span>
 					</div>
+					{#if data.plexServerName}
+						<span class="preconfigured-server-name">{data.plexServerName}</span>
+					{/if}
 					{#if data.plexServerUrl}
 						<span class="preconfigured-url">{formatServerUrl(data.plexServerUrl)}</span>
 					{/if}
@@ -629,6 +632,12 @@
 		font-size: 0.95rem;
 		font-weight: 600;
 		color: rgba(255, 255, 255, 0.95);
+	}
+
+	.preconfigured-server-name {
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: rgba(255, 255, 255, 0.7);
 	}
 
 	.preconfigured-badge {
@@ -1067,6 +1076,10 @@
 
 		.preconfigured-title {
 			font-size: 0.875rem;
+		}
+
+		.preconfigured-server-name {
+			font-size: 0.8rem;
 		}
 
 		.preconfigured-url {
