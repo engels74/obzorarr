@@ -386,9 +386,6 @@ export async function startSync(options: StartSyncOptions = {}): Promise<SyncRes
 			}
 		}
 
-		// Complete the sync
-		await completeSyncRecord(syncId, recordsProcessed, maxViewedAt);
-
 		// Invalidate stats cache for affected years
 		if (recordsInserted > 0) {
 			const minYear = minViewedAt
@@ -471,6 +468,9 @@ export async function startSync(options: StartSyncOptions = {}): Promise<SyncRes
 				}
 			}
 		}
+
+		// Complete the sync record in database (after enrichment)
+		await completeSyncRecord(syncId, recordsProcessed, maxViewedAt);
 
 		// Final progress update
 		onProgress?.({
