@@ -678,26 +678,27 @@
 																<div class="connection-header">
 																	<Tooltip.Root>
 																		<Tooltip.Trigger>
-																			<span
-																				class="connection-badge {info.type}"
-																				role="button"
-																				tabindex="0"
-																			>
-																				{#if info.isSSL}
-																					<svg
-																						class="ssl-lock-icon"
-																						viewBox="0 0 24 24"
-																						fill="none"
-																						stroke="currentColor"
-																						stroke-width="2.5"
-																						aria-hidden="true"
-																					>
-																						<rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-																						<path d="M7 11V7a5 5 0 0 1 10 0v4" />
-																					</svg>
-																				{/if}
-																				{info.label}
-																			</span>
+																			{#snippet child({ props })}
+																				<span
+																					{...props}
+																					class="connection-badge {info.type}"
+																				>
+																					{#if info.isSSL}
+																						<svg
+																							class="ssl-lock-icon"
+																							viewBox="0 0 24 24"
+																							fill="none"
+																							stroke="currentColor"
+																							stroke-width="2.5"
+																							aria-hidden="true"
+																						>
+																							<rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+																							<path d="M7 11V7a5 5 0 0 1 10 0v4" />
+																						</svg>
+																					{/if}
+																					{info.label}
+																				</span>
+																			{/snippet}
 																		</Tooltip.Trigger>
 																		<Tooltip.Content
 																			side="top"

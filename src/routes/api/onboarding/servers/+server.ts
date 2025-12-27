@@ -56,6 +56,32 @@ export const GET: RequestHandler = async ({ cookies, locals }) => {
 				}
 			}
 
+			// Map connections and potentially add generated .plex.direct connection
+			const mappedConnections =
+				server.connections?.map((conn) => ({
+					uri: conn.uri,
+					local: conn.local ?? false,
+					relay: conn.relay ?? false
+				})) ?? [];
+
+			// Check if any connection already has .plex.direct
+			const hasPlexDirectConnection = mappedConnections.some((conn) =>
+				conn.uri.includes('.plex.direct')
+			);
+
+			// If no .plex.direct connection exists, generate and add one to the list
+			if (!hasPlexDirectConnection) {
+				const generatedUrl = generatePlexDirectUrl(server);
+				if (generatedUrl) {
+					// Add the generated SSL connection at the beginning (highest priority)
+					mappedConnections.unshift({
+						uri: generatedUrl,
+						local: false,
+						relay: false
+					});
+				}
+			}
+
 			return {
 				name: server.name,
 				clientIdentifier: server.clientIdentifier,
@@ -63,11 +89,7 @@ export const GET: RequestHandler = async ({ cookies, locals }) => {
 				accessToken: server.accessToken,
 				bestConnectionUrl,
 				publicAddress: server.publicAddress,
-				connections: server.connections?.map((conn) => ({
-					uri: conn.uri,
-					local: conn.local ?? false,
-					relay: conn.relay ?? false
-				}))
+				connections: mappedConnections
 			};
 		});
 
