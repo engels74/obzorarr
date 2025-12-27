@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { untrack } from 'svelte';
 	import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
 	import type { PageData, ActionData } from './$types';
 
@@ -12,19 +13,20 @@
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
-	// Form state
-	let uiTheme = $state(data.settings.uiTheme);
-	let wrappedTheme = $state(data.settings.wrappedTheme);
-	let anonymizationMode = $state(data.settings.anonymizationMode);
-	let defaultShareMode = $state(data.settings.defaultShareMode);
-	let allowUserControl = $state(data.settings.allowUserControl);
+	// Form state - initialized from server data, editable locally
+	// Using untrack() to explicitly capture initial values (form state doesn't need to react to data changes)
+	let uiTheme = $state(untrack(() => data.settings.uiTheme));
+	let wrappedTheme = $state(untrack(() => data.settings.wrappedTheme));
+	let anonymizationMode = $state(untrack(() => data.settings.anonymizationMode));
+	let defaultShareMode = $state(untrack(() => data.settings.defaultShareMode));
+	let allowUserControl = $state(untrack(() => data.settings.allowUserControl));
 	// Fun facts are enabled if mode is set to a valid frequency value
-	let enableFunFacts = $state(data.funFactConfig.count > 0);
-	let funFactFrequency = $state(data.funFactConfig.mode || 'normal');
+	let enableFunFacts = $state(untrack(() => data.funFactConfig.count > 0));
+	let funFactFrequency = $state(untrack(() => data.funFactConfig.mode || 'normal'));
 
 	// Slide toggles
 	let slideStates = $state<Record<string, boolean>>(
-		Object.fromEntries(data.slideOptions.map((s) => [s.type, s.enabled]))
+		untrack(() => Object.fromEntries(data.slideOptions.map((s) => [s.type, s.enabled])))
 	);
 
 	// Compute enabled slides string
@@ -139,7 +141,7 @@
 						<div class="section-body">
 							<!-- UI Theme -->
 							<div class="setting-group">
-								<label class="setting-label">Dashboard Theme</label>
+								<span class="setting-label">Dashboard Theme</span>
 								<p class="setting-description">Applied to the dashboard and admin pages</p>
 								<div class="theme-swatches">
 									{#each data.themeOptions as option}
@@ -165,7 +167,7 @@
 
 							<!-- Wrapped Theme -->
 							<div class="setting-group">
-								<label class="setting-label">Wrapped Presentation Theme</label>
+								<span class="setting-label">Wrapped Presentation Theme</span>
 								<p class="setting-description">Applied to the animated year-end slideshow</p>
 								<div class="theme-swatches">
 									{#each data.themeOptions as option}
@@ -218,7 +220,7 @@
 						<div class="section-body">
 							<!-- Anonymization Mode -->
 							<div class="setting-group">
-								<label class="setting-label">User Identity in Stats</label>
+								<span class="setting-label">User Identity in Stats</span>
 								<p class="setting-description">How usernames appear in server-wide statistics</p>
 								<div class="radio-cards">
 									{#each data.anonymizationOptions as option}
@@ -246,7 +248,7 @@
 
 							<!-- Default Share Mode -->
 							<div class="setting-group">
-								<label class="setting-label">Default Sharing Mode</label>
+								<span class="setting-label">Default Sharing Mode</span>
 								<p class="setting-description">How wrapped pages are shared by default</p>
 								<div class="radio-cards">
 									{#each data.shareModeOptions as option}
@@ -287,6 +289,7 @@
 										class:active={allowUserControl}
 										onclick={() => (allowUserControl = !allowUserControl)}
 										aria-pressed={allowUserControl}
+										aria-label="Allow User Control"
 									>
 										<span class="toggle-knob"></span>
 									</button>
@@ -336,6 +339,7 @@
 											class:active={slideStates[slide.type]}
 											onclick={() => (slideStates[slide.type] = !slideStates[slide.type])}
 											aria-pressed={slideStates[slide.type]}
+											aria-label="Toggle {slide.label}"
 										>
 											<span class="toggle-knob"></span>
 										</button>
@@ -389,6 +393,7 @@
 											class:active={enableFunFacts}
 											onclick={() => (enableFunFacts = !enableFunFacts)}
 											aria-pressed={enableFunFacts}
+											aria-label="Enable AI Fun Facts"
 										>
 											<span class="toggle-knob"></span>
 										</button>
@@ -398,7 +403,7 @@
 								<!-- Fun Fact Frequency (shown when enabled) -->
 								{#if enableFunFacts}
 									<div class="setting-group frequency-group">
-										<label class="setting-label">Fun Fact Frequency</label>
+										<span class="setting-label">Fun Fact Frequency</span>
 										<div class="frequency-options">
 											{#each data.funFactOptions as option}
 												<label

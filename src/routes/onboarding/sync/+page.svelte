@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { browser } from '$app/environment';
+	import { untrack } from 'svelte';
 	import { animate, stagger } from 'motion';
 	import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
 	import type { PageData, ActionData } from './$types';
@@ -14,15 +15,18 @@
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
-	// Sync state
+	// Sync state - initialized from server data, updated via SSE
+	// Using untrack() to explicitly capture initial values (state is updated via SSE, not prop changes)
 	type SyncStatus = 'idle' | 'running' | 'completed' | 'failed' | 'cancelled';
 
-	let syncStatus = $state<SyncStatus>(data.syncRunning ? 'running' : 'idle');
-	let recordsProcessed = $state(data.currentProgress?.recordsProcessed ?? 0);
-	let recordsInserted = $state(data.currentProgress?.recordsInserted ?? 0);
-	let phase = $state<'fetching' | 'enriching' | null>(data.currentProgress?.phase ?? null);
-	let enrichmentTotal = $state(data.currentProgress?.enrichmentTotal ?? 0);
-	let enrichmentProcessed = $state(data.currentProgress?.enrichmentProcessed ?? 0);
+	let syncStatus = $state<SyncStatus>(untrack(() => (data.syncRunning ? 'running' : 'idle')));
+	let recordsProcessed = $state(untrack(() => data.currentProgress?.recordsProcessed ?? 0));
+	let recordsInserted = $state(untrack(() => data.currentProgress?.recordsInserted ?? 0));
+	let phase = $state<'fetching' | 'enriching' | null>(
+		untrack(() => data.currentProgress?.phase ?? null)
+	);
+	let enrichmentTotal = $state(untrack(() => data.currentProgress?.enrichmentTotal ?? 0));
+	let enrichmentProcessed = $state(untrack(() => data.currentProgress?.enrichmentProcessed ?? 0));
 	let isStarting = $state(false);
 	let error = $state<string | null>(null);
 
