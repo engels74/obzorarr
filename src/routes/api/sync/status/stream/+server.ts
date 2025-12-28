@@ -88,7 +88,7 @@ export const GET: RequestHandler = async ({ request }) => {
 };
 
 function simplifyProgress(progress: LiveSyncProgress | null): SimpleProgress | null {
-	if (!progress || progress.status !== 'running') return null;
+	if (!progress || (progress.status !== 'running' && progress.status !== 'completed')) return null;
 
 	return {
 		phase: progress.phase ?? 'fetching',
