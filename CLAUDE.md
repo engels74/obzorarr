@@ -33,6 +33,25 @@ bun run format           # Format with Prettier
 bun run format:check     # Check formatting
 ```
 
+## Codebase Search Strategy
+
+**Always use `mcp__auggie-mcp__codebase-retrieval` as your primary method for:**
+
+- Exploring the codebase and understanding architecture
+- Finding existing patterns before implementing new features
+- Locating relevant code when the exact file location is unknown
+- Gathering context before making edits
+- Planning tasks in plan mode
+
+> **Note:** This semantic search tool provides better results than grep/find for understanding code relationships. Use grep only for finding exact string matches or all occurrences of a known identifier.
+
+## Coding Guidelines
+
+**Always follow the coding patterns established in:**
+`.augment/rules/bun-svelte-pro.md`
+
+Before making any changes, review this file to ensure consistency with project standards.
+
 ## Architecture
 
 ### Request Flow
