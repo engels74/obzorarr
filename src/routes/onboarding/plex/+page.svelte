@@ -887,7 +887,7 @@
 												onclick={toggleCustomUrl}
 												disabled={isSavingServer || isTestingCustomUrl}
 											>
-												<span>Having trouble connecting?</span>
+												<span>Using a reverse proxy? Enter custom URL</span>
 												<svg
 													class="toggle-chevron"
 													class:rotated={showCustomUrl}
