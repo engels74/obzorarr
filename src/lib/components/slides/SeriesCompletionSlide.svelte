@@ -26,9 +26,7 @@
 	const displayedSeries = $derived(seriesCompletion.slice(0, limit));
 	const hasSeries = $derived(displayedSeries.length > 0);
 
-	const completedCount = $derived(
-		seriesCompletion.filter((s) => s.percentComplete >= 100).length
-	);
+	const completedCount = $derived(seriesCompletion.filter((s) => s.percentComplete >= 100).length);
 
 	const personality = $derived.by(() => {
 		if (seriesCompletion.length === 0) return null;
@@ -155,7 +153,9 @@
 								<div class="progress-track">
 									<div
 										class="progress-bar"
-										style="width: {series.percentComplete}%; background: {getProgressColor(series.percentComplete)};"
+										style="width: {series.percentComplete}%; background: {getProgressColor(
+											series.percentComplete
+										)};"
 									></div>
 								</div>
 								<span class="progress-text">

@@ -23,9 +23,7 @@
 	const possessive = $derived(getPossessive(messagingContext));
 	const hasData = $derived(decadeDistribution.length > 0);
 
-	const maxCount = $derived(
-		hasData ? Math.max(...decadeDistribution.map((d) => d.count)) : 0
-	);
+	const maxCount = $derived(hasData ? Math.max(...decadeDistribution.map((d) => d.count)) : 0);
 
 	const topDecade = $derived.by(() => {
 		if (!hasData) return null;
@@ -154,7 +152,9 @@
 								bind:this={bars[i]}
 								class="bar"
 								class:top={isTop}
-								style="height: {Math.max(height, 5)}%; --decade-color: {getDecadeColor(decade.decade)};"
+								style="height: {Math.max(height, 5)}%; --decade-color: {getDecadeColor(
+									decade.decade
+								)};"
 							>
 								<span class="bar-count">{decade.count}</span>
 							</div>
@@ -165,7 +165,11 @@
 			</div>
 
 			{#if topDecade}
-				<div bind:this={badge} class="era-badge" style="--era-color: {getDecadeColor(topDecade.decade)};">
+				<div
+					bind:this={badge}
+					class="era-badge"
+					style="--era-color: {getDecadeColor(topDecade.decade)};"
+				>
 					<span class="era-decade">{topDecade.decade}</span>
 					<span class="era-message">{eraMessage}</span>
 				</div>
@@ -235,7 +239,11 @@
 
 	.bar {
 		width: 100%;
-		background: linear-gradient(180deg, var(--decade-color), color-mix(in srgb, var(--decade-color) 60%, transparent));
+		background: linear-gradient(
+			180deg,
+			var(--decade-color),
+			color-mix(in srgb, var(--decade-color) 60%, transparent)
+		);
 		border-radius: var(--radius) var(--radius) 0 0;
 		transform-origin: bottom center;
 		display: flex;
@@ -277,7 +285,11 @@
 		align-items: center;
 		gap: 0.25rem;
 		padding: 0.75rem 1.5rem;
-		background: linear-gradient(135deg, color-mix(in srgb, var(--era-color) 20%, transparent), color-mix(in srgb, var(--era-color) 10%, transparent));
+		background: linear-gradient(
+			135deg,
+			color-mix(in srgb, var(--era-color) 20%, transparent),
+			color-mix(in srgb, var(--era-color) 10%, transparent)
+		);
 		border: 1px solid color-mix(in srgb, var(--era-color) 30%, transparent);
 		border-radius: 2rem;
 	}

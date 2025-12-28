@@ -26,9 +26,7 @@
 	const displayedRewatches = $derived(topRewatches.slice(0, limit));
 	const hasRewatches = $derived(displayedRewatches.length > 0);
 
-	const totalRewatches = $derived(
-		topRewatches.reduce((sum, item) => sum + item.rewatchCount, 0)
-	);
+	const totalRewatches = $derived(topRewatches.reduce((sum, item) => sum + item.rewatchCount, 0));
 
 	const personality = $derived.by(() => {
 		if (topRewatches.length === 0) return null;
@@ -76,7 +74,10 @@
 		if (validCards.length > 0) {
 			const cardsAnim = animate(
 				validCards,
-				{ opacity: [0, 1], transform: ['translateX(-20px) rotate(-2deg)', 'translateX(0) rotate(0)'] },
+				{
+					opacity: [0, 1],
+					transform: ['translateX(-20px) rotate(-2deg)', 'translateX(0) rotate(0)']
+				},
 				{
 					type: 'spring',
 					...SPRING_PRESETS.bouncy,

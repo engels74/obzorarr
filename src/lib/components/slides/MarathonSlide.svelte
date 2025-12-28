@@ -152,7 +152,12 @@
 						{#each marathonDay.items.slice(0, 6) as item, i}
 							<div bind:this={items[i]} class="item">
 								{#if item.thumb}
-									<img src={getThumbUrl(item.thumb) ?? ''} alt="" class="item-thumb" loading="lazy" />
+									<img
+										src={getThumbUrl(item.thumb) ?? ''}
+										alt=""
+										class="item-thumb"
+										loading="lazy"
+									/>
 								{:else}
 									<div class="item-placeholder"></div>
 								{/if}

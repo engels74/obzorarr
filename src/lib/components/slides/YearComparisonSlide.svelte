@@ -48,12 +48,8 @@
 	const maxMinutes = $derived(
 		yearComparison ? Math.max(yearComparison.thisYear, yearComparison.lastYear, 1) : 1
 	);
-	const thisYearWidth = $derived(
-		yearComparison ? (yearComparison.thisYear / maxMinutes) * 100 : 0
-	);
-	const lastYearWidth = $derived(
-		yearComparison ? (yearComparison.lastYear / maxMinutes) * 100 : 0
-	);
+	const thisYearWidth = $derived(yearComparison ? (yearComparison.thisYear / maxMinutes) * 100 : 0);
+	const lastYearWidth = $derived(yearComparison ? (yearComparison.lastYear / maxMinutes) * 100 : 0);
 
 	let container: HTMLElement | undefined = $state();
 	let bars: HTMLElement[] = $state([]);
@@ -166,7 +162,12 @@
 				</div>
 			</div>
 
-			<div bind:this={changeIndicator} class="change-indicator" class:increase={isIncrease} class:decrease={isDecrease}>
+			<div
+				bind:this={changeIndicator}
+				class="change-indicator"
+				class:increase={isIncrease}
+				class:decrease={isDecrease}
+			>
 				<span class="change-arrow">{isIncrease ? '↑' : isDecrease ? '↓' : '→'}</span>
 				<span class="change-percent">
 					{isIncrease ? '+' : ''}{Math.round(yearComparison.percentChange)}%
@@ -257,7 +258,11 @@
 	}
 
 	.bar.last-year {
-		background: linear-gradient(90deg, hsl(var(--muted-foreground) / 0.5), hsl(var(--muted-foreground) / 0.3));
+		background: linear-gradient(
+			90deg,
+			hsl(var(--muted-foreground) / 0.5),
+			hsl(var(--muted-foreground) / 0.3)
+		);
 	}
 
 	.bar-value {

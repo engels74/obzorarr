@@ -253,7 +253,9 @@ const rewatchItemArbitrary: fc.Arbitrary<RewatchItem> = fc.record({
  * Generate a valid MarathonDay
  */
 const marathonDayArbitrary: fc.Arbitrary<MarathonDay> = fc.record({
-	date: fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }).map(d => d.toISOString().split('T')[0]!),
+	date: fc
+		.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') })
+		.map((d) => d.toISOString().split('T')[0]!),
 	minutes: fc.float({ min: 0, max: 1440, noNaN: true }),
 	plays: fc.integer({ min: 1, max: 100 }),
 	items: fc.array(
@@ -277,9 +279,10 @@ const watchStreakArbitrary: fc.Arbitrary<WatchStreak> = fc
 	.map((streak) => ({
 		longestStreak: streak.longestStreak,
 		startDate: streak.startDate.toISOString().split('T')[0]!,
-		endDate: streak.endDate > streak.startDate
-			? streak.endDate.toISOString().split('T')[0]!
-			: streak.startDate.toISOString().split('T')[0]!
+		endDate:
+			streak.endDate > streak.startDate
+				? streak.endDate.toISOString().split('T')[0]!
+				: streak.startDate.toISOString().split('T')[0]!
 	}));
 
 /**

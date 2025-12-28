@@ -38,15 +38,15 @@
 		watchTimeByWeekday.minutes.indexOf(Math.max(...watchTimeByWeekday.minutes))
 	);
 
-	const weekdayTotal = $derived(
-		watchTimeByWeekday.minutes.slice(1, 6).reduce((a, b) => a + b, 0)
-	);
+	const weekdayTotal = $derived(watchTimeByWeekday.minutes.slice(1, 6).reduce((a, b) => a + b, 0));
 	const weekendTotal = $derived(
 		(watchTimeByWeekday.minutes[0] ?? 0) + (watchTimeByWeekday.minutes[6] ?? 0)
 	);
 	const totalMinutes = $derived(weekdayTotal + weekendTotal);
 
-	const weekendPercent = $derived(totalMinutes > 0 ? Math.round((weekendTotal / totalMinutes) * 100) : 0);
+	const weekendPercent = $derived(
+		totalMinutes > 0 ? Math.round((weekendTotal / totalMinutes) * 100) : 0
+	);
 
 	function formatHours(minutes: number): string {
 		const hours = Math.floor(minutes / 60);

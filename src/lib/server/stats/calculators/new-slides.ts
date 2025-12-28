@@ -136,8 +136,10 @@ export function calculateMarathonDay(records: PlayHistoryRecord[]): MarathonDay 
 		dayStats.set(dateStr, existing);
 	}
 
-	let maxDay: { date: string; stats: (typeof dayStats extends Map<string, infer V> ? V : never) } | null =
-		null;
+	let maxDay: {
+		date: string;
+		stats: typeof dayStats extends Map<string, infer V> ? V : never;
+	} | null = null;
 
 	for (const [date, stats] of dayStats) {
 		if (!maxDay || stats.minutes > maxDay.stats.minutes) {
