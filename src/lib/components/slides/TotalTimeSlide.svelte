@@ -37,16 +37,15 @@
 	// State for animated number display
 	let displayedHours = $state(0);
 
-	const formattedTime = $derived.by(() => {
+	// Separate number and unit to prevent layout jitter during animation
+	const formattedValue = $derived.by(() => {
 		if (totalWatchTimeMinutes < 60) {
-			return `${Math.round(totalWatchTimeMinutes)} minutes`;
+			return `${Math.round(totalWatchTimeMinutes)}`;
 		}
-		if (hours < 24) {
-			return `${hours} hours`;
-		}
-		// For hours >= 24, show final value; animation updates DOM directly
-		return `${formatNumber(hours)} hours`;
+		return formatNumber(hours);
 	});
+
+	const unit = $derived(totalWatchTimeMinutes < 60 ? 'minutes' : 'hours');
 
 	const comparisonText = $derived.by(() => {
 		if (days >= 7) {
@@ -61,11 +60,12 @@
 	// Element references for animation
 	let container: HTMLElement | undefined = $state();
 	let numberEl: HTMLElement | undefined = $state();
+	let valueEl: HTMLElement | undefined = $state();
 	let subtitleEl: HTMLElement | undefined = $state();
 
 	// Animation effect with cleanup
 	$effect(() => {
-		if (!container || !numberEl || !subtitleEl || !active) return;
+		if (!container || !numberEl || !valueEl || !subtitleEl || !active) return;
 
 		// Check reduced motion preference
 		const shouldAnimate = !prefersReducedMotion.current;
@@ -88,8 +88,8 @@
 			hours >= 24
 				? (() => {
 						const updateDOM = (value: number) => {
-							if (numberEl) {
-								numberEl.textContent = `${formatNumber(value)} hours`;
+							if (valueEl) {
+								valueEl.textContent = formatNumber(value);
 							}
 						};
 						return animateNumber(0, hours, 1800, updateDOM, () => {
@@ -151,9 +151,10 @@
 	<div bind:this={container} class="content">
 		<h2 class="title">{subject} watched</h2>
 
-		<p bind:this={numberEl} class="stat-number">
-			{formattedTime}
-		</p>
+		<div bind:this={numberEl} class="stat-number">
+			<span bind:this={valueEl} class="stat-value">{formattedValue}</span>
+			<span class="stat-unit">{unit}</span>
+		</div>
 
 		<p bind:this={subtitleEl} class="subtitle">
 			{comparisonText}
@@ -187,11 +188,33 @@
 	}
 
 	.stat-number {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		margin: 0.5rem 0;
+		line-height: 1;
+	}
+
+	.stat-value {
 		font-size: clamp(3rem, 12vw, 7rem);
 		font-weight: 800;
-		margin: 0.5rem 0;
 		letter-spacing: -0.03em;
-		line-height: 1;
+		background: linear-gradient(
+			180deg,
+			hsl(var(--primary)) 0%,
+			hsl(calc(var(--primary-hue) + 15) 60% 55%) 100%
+		);
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
+		background-clip: text;
+		filter: drop-shadow(0 0 30px var(--slide-glow-color, hsl(var(--primary) / 0.5)))
+			drop-shadow(0 0 60px var(--slide-accent-glow, hsl(var(--primary) / 0.3)));
+	}
+
+	.stat-unit {
+		font-size: clamp(2rem, 8vw, 5rem);
+		font-weight: 800;
+		letter-spacing: -0.03em;
 		background: linear-gradient(
 			180deg,
 			hsl(var(--primary)) 0%,
@@ -225,8 +248,14 @@
 			font-size: 0.875rem;
 		}
 
-		.stat-number {
+		.stat-value {
 			font-size: clamp(2.5rem, 14vw, 4rem);
+			filter: drop-shadow(0 0 20px var(--slide-glow-color, hsl(var(--primary) / 0.4)))
+				drop-shadow(0 0 40px var(--slide-accent-glow, hsl(var(--primary) / 0.2)));
+		}
+
+		.stat-unit {
+			font-size: clamp(1.5rem, 10vw, 2.5rem);
 			filter: drop-shadow(0 0 20px var(--slide-glow-color, hsl(var(--primary) / 0.4)))
 				drop-shadow(0 0 40px var(--slide-accent-glow, hsl(var(--primary) / 0.2)));
 		}
@@ -242,8 +271,12 @@
 			font-size: 1.125rem;
 		}
 
-		.stat-number {
+		.stat-value {
 			font-size: clamp(3.5rem, 10vw, 5.5rem);
+		}
+
+		.stat-unit {
+			font-size: clamp(2rem, 7vw, 3.5rem);
 		}
 
 		.subtitle {
@@ -262,8 +295,15 @@
 			letter-spacing: 0.12em;
 		}
 
-		.stat-number {
+		.stat-value {
 			font-size: clamp(4rem, 12vw, 8rem);
+			filter: drop-shadow(0 0 40px var(--slide-glow-color, hsl(var(--primary) / 0.5)))
+				drop-shadow(0 0 80px var(--slide-accent-glow, hsl(var(--primary) / 0.35)))
+				drop-shadow(0 0 120px hsl(var(--primary) / 0.2));
+		}
+
+		.stat-unit {
+			font-size: clamp(2.5rem, 8vw, 5.5rem);
 			filter: drop-shadow(0 0 40px var(--slide-glow-color, hsl(var(--primary) / 0.5)))
 				drop-shadow(0 0 80px var(--slide-accent-glow, hsl(var(--primary) / 0.35)))
 				drop-shadow(0 0 120px hsl(var(--primary) / 0.2));
