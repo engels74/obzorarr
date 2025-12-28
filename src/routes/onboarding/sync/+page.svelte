@@ -330,7 +330,7 @@
 
 		<!-- Error display -->
 		{#if error}
-			<div class="error-banner animate-item">
+			<div class="error-banner">
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 					<circle cx="12" cy="12" r="10" />
 					<line x1="12" y1="8" x2="12" y2="12" />
@@ -342,7 +342,7 @@
 
 		<!-- Warning banner (while running) -->
 		{#if isRunning}
-			<div class="warning-banner animate-item">
+			<div class="warning-banner">
 				<div class="warning-icon">
 					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 						<path
@@ -363,7 +363,7 @@
 
 		<!-- Success message -->
 		{#if isComplete}
-			<div class="success-banner animate-item">
+			<div class="success-banner">
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 					<path
 						d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
@@ -377,7 +377,7 @@
 
 		<!-- Info about continuing -->
 		{#if hasStarted && !hasFailed}
-			<p class="continue-hint animate-item">
+			<p class="continue-hint">
 				{#if isComplete}
 					You're all set! Continue to customize your experience.
 				{:else}
@@ -755,6 +755,7 @@
 		border: 1px solid rgba(250, 204, 21, 0.25);
 		border-radius: 12px;
 		width: 100%;
+		animation: fade-slide-in 0.3s ease-out;
 	}
 
 	.warning-icon {
@@ -799,6 +800,7 @@
 		width: 100%;
 		font-size: 0.9rem;
 		color: hsl(142, 71%, 60%);
+		animation: fade-slide-in 0.3s ease-out;
 	}
 
 	.success-banner svg {
@@ -819,6 +821,7 @@
 		width: 100%;
 		font-size: 0.875rem;
 		color: hsl(0, 84%, 70%);
+		animation: fade-slide-in 0.3s ease-out;
 	}
 
 	.error-banner svg {
@@ -841,6 +844,7 @@
 		font-size: 0.85rem;
 		color: rgba(255, 255, 255, 0.5);
 		text-align: center;
+		animation: fade-slide-in 0.3s ease-out;
 	}
 
 	/* Continue button */
