@@ -35,13 +35,11 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		error(404, 'Invalid year');
 	}
 
-	// Trigger live sync in background (fire-and-forget)
 	triggerLiveSyncIfNeeded('user-wrapped').catch(() => {});
 
 	const { identifier } = params;
 	let userId: number;
 
-	// Detect if identifier is a share token (UUID) or user ID (number)
 	if (isValidTokenFormat(identifier)) {
 		try {
 			const tokenResult = await checkTokenAccess(identifier);
@@ -58,8 +56,6 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			throw err;
 		}
 	} else {
-		// User ID access (e.g., from username lookup) is always allowed
-		// Share mode restrictions only apply to share token access
 		const parsedId = parseInt(identifier, 10);
 		if (isNaN(parsedId) || parsedId <= 0) {
 			error(404, 'Invalid identifier');
@@ -74,8 +70,6 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		error(404, 'User not found');
 	}
 
-	// Use accountId for stats queries (falls back to plexId for backward compatibility)
-	// accountId is the Plex server's local ID, which may differ from plexId (Plex.tv ID)
 	const statsAccountId = user.accountId ?? user.plexId;
 	const stats = await calculateUserStats(statsAccountId, year);
 
@@ -165,7 +159,6 @@ export const actions: Actions = {
 			return fail(400, { error: 'Invalid user identifier' });
 		}
 
-		// Verify ownership or admin status
 		if (locals.user.id !== userId && !locals.user.isAdmin) {
 			return fail(403, { error: 'Not authorized to change share settings' });
 		}

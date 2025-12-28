@@ -4,13 +4,6 @@ import { eq, and, or, lt, desc, sql, like, inArray } from 'drizzle-orm';
 import type { LogEntry, NewLogEntry, LogQueryOptions, LogQueryResult, LogLevelType } from './types';
 import { LogSettingsKey, LogSettingsDefaults } from './types';
 
-/**
- * Logging Service
- *
- * Provides database operations for the logging system.
- * Handles log insertion, querying, and cleanup.
- */
-
 export async function insertLog(entry: NewLogEntry): Promise<void> {
 	await db.insert(logs).values({
 		level: entry.level,
@@ -37,10 +30,6 @@ export async function insertLogsBatch(entries: NewLogEntry[]): Promise<void> {
 	await db.insert(logs).values(values);
 }
 
-/**
- * Query logs with filtering and pagination.
- * Supports level filtering, text search, time ranges, and cursor-based pagination.
- */
 export async function queryLogs(options: LogQueryOptions = {}): Promise<LogQueryResult> {
 	const { levels, search, source, fromTimestamp, toTimestamp, cursor, limit = 100 } = options;
 
@@ -77,7 +66,6 @@ export async function queryLogs(options: LogQueryOptions = {}): Promise<LogQuery
 		.where(whereClause);
 	const totalCount = countResult[0]?.count ?? 0;
 
-	// Fetch limit + 1 to detect if more results exist
 	const logResults = await db
 		.select()
 		.from(logs)
@@ -95,7 +83,6 @@ export async function queryLogs(options: LogQueryOptions = {}): Promise<LogQuery
 	};
 }
 
-/** Get logs newer than a specific ID (used for SSE streaming). */
 export async function getLogsAfterId(afterId: number, limit = 100): Promise<LogEntry[]> {
 	const result = await db
 		.select()
@@ -174,7 +161,6 @@ export async function trimLogsToCount(keepCount: number): Promise<number> {
 	return result.length;
 }
 
-/** Run retention cleanup based on configured settings (age and count limits). */
 export async function runRetentionCleanup(): Promise<{ byAge: number; byCount: number }> {
 	const retentionDays = await getLogRetentionDays();
 	const maxCount = await getLogMaxCount();

@@ -18,13 +18,11 @@ import { checkServerWrappedAccess } from '$lib/server/sharing/access-control';
 import { ShareAccessDeniedError } from '$lib/server/sharing/types';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
-	// Validate year parameter (4-digit number, reasonable range 2000-2100)
 	const year = parseInt(params.year, 10);
 	if (isNaN(year) || year < 2000 || year > 2100) {
 		error(404, 'Invalid year');
 	}
 
-	// Check access using server-wide share settings
 	try {
 		await checkServerWrappedAccess({
 			year,
@@ -37,45 +35,30 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		throw err;
 	}
 
-	// Trigger live sync in background (fire-and-forget)
 	triggerLiveSyncIfNeeded('server-wrapped').catch(() => {});
 
-	// Get viewing user ID for anonymization (null if not authenticated)
 	const viewingUserId = locals.user?.id ?? null;
-
-	// Fetch stats with anonymization applied
 	const stats = await getServerStatsWithAnonymization(year, viewingUserId);
 
-	// Initialize default slide config if needed and fetch configurations
 	await initializeDefaultSlideConfig();
 	const [slideConfigs, customSlides] = await Promise.all([
 		getEnabledSlides(),
 		getEnabledCustomSlides(year)
 	]);
 
-	// Build base slide render configs
 	const baseSlides = buildSlideRenderConfigs(slideConfigs, customSlides);
-
-	// Convert custom slides to map for component usage
 	const customSlidesMap = customSlidesToMap(customSlides);
 
-	// Get fun fact frequency setting and generate fun facts
 	const frequencyConfig = await getFunFactFrequency();
 	let funFacts: Awaited<ReturnType<typeof generateFunFacts>> = [];
 	try {
 		funFacts = await generateFunFacts(stats, { count: frequencyConfig.count });
 	} catch (err) {
 		console.warn('Failed to generate fun facts:', err);
-		// Continue without fun facts rather than failing the page
 	}
 
-	// Intersperse fun facts into slides
 	const slides = intersperseFunFacts(baseSlides, funFacts);
-
-	// Get logo visibility (server-wide pages don't have per-user control)
 	const logoVisibility = await getLogoVisibility(null, year);
-
-	// Get server name for messaging
 	const serverName = await getServerName();
 
 	return {
@@ -86,8 +69,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		isServerWrapped: true,
 		serverName,
 		showLogo: logoVisibility.showLogo,
-		canUserControlLogo: false, // Server-wide pages don't have per-user logo control
-		// Share modal data (server-wide pages use separate admin-controlled share mode)
+		canUserControlLogo: false,
 		currentUrl: `/wrapped/${year}`,
 		isAdmin: locals.user?.isAdmin ?? false
 	};

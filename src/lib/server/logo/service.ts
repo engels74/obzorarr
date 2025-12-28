@@ -19,7 +19,6 @@ export async function getLogoVisibility(
 ): Promise<LogoVisibilityResult> {
 	const mode = await getWrappedLogoMode();
 
-	// ALWAYS_SHOW mode
 	if (mode === WrappedLogoMode.ALWAYS_SHOW) {
 		return {
 			showLogo: true,
@@ -28,7 +27,6 @@ export async function getLogoVisibility(
 		};
 	}
 
-	// ALWAYS_HIDE mode
 	if (mode === WrappedLogoMode.ALWAYS_HIDE) {
 		return {
 			showLogo: false,
@@ -37,9 +35,7 @@ export async function getLogoVisibility(
 		};
 	}
 
-	// USER_CHOICE mode - check user preference
 	if (userId === null) {
-		// Server-wide wrapped - default to showing
 		return {
 			showLogo: true,
 			canUserControl: false,
@@ -47,7 +43,6 @@ export async function getLogoVisibility(
 		};
 	}
 
-	// Get user's preference from shareSettings
 	const result = await db
 		.select({ showLogo: shareSettings.showLogo })
 		.from(shareSettings)
@@ -55,8 +50,6 @@ export async function getLogoVisibility(
 		.limit(1);
 
 	const settings = result[0];
-
-	// If no setting or null, default to true (show logo)
 	const showLogo = settings?.showLogo ?? true;
 
 	return {
@@ -77,7 +70,6 @@ export async function setUserLogoPreference(
 		throw new Error('User cannot control logo visibility in current mode');
 	}
 
-	// Check if shareSettings exists for this user/year
 	const existing = await db
 		.select({ id: shareSettings.id })
 		.from(shareSettings)
@@ -85,13 +77,11 @@ export async function setUserLogoPreference(
 		.limit(1);
 
 	if (existing.length > 0) {
-		// Update existing record
 		await db
 			.update(shareSettings)
 			.set({ showLogo })
 			.where(and(eq(shareSettings.userId, userId), eq(shareSettings.year, year)));
 	} else {
-		// Create new record with logo preference
 		await db.insert(shareSettings).values({
 			userId,
 			year,

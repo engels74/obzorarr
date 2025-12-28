@@ -110,10 +110,8 @@ export interface SlideRenderConfig {
 	type: SlideType | 'fun-fact';
 	enabled: boolean;
 	sortOrder: number;
-	/** Only present for custom slides */
 	customSlideId?: number;
 	customTitle?: string;
 	customContent?: string;
-	/** Only present for interspersed fun-fact slides */
 	funFact?: FunFactData;
 }

@@ -14,32 +14,18 @@ import {
 import { getServerName } from '$lib/server/plex/server-name.service';
 import { redirect } from '@sveltejs/kit';
 
-/**
- * Onboarding Layout Server Load
- *
- * Provides shared data for all onboarding pages:
- * - Current step and total steps
- * - Authentication status
- * - Plex configuration status
- *
- * Redirects to main app if onboarding is already complete.
- */
 export const load: LayoutServerLoad = async ({ locals }) => {
-	// If onboarding is complete, redirect to appropriate page
 	const isComplete = await isOnboardingComplete();
 	if (isComplete) {
 		redirect(303, locals.user?.isAdmin ? '/admin' : '/');
 	}
 
-	// Load current step, API config, and UI theme in parallel
 	const [currentStep, apiConfig, uiTheme] = await Promise.all([
 		getOnboardingStep(),
 		getApiConfigWithSources(),
 		getUITheme()
 	]);
 	const hasEnvConfigValue = hasPlexEnvConfig();
-
-	// Fetch server name if ENV config is present (for display purposes)
 	const serverName = hasEnvConfigValue ? await getServerName() : null;
 
 	const steps: { id: OnboardingStep; label: string }[] = [
@@ -50,25 +36,18 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 	];
 
 	return {
-		// Step information
 		steps,
 		currentStep,
 		currentStepIndex: getStepNumber(currentStep) - 1,
 		totalSteps: 4,
-
-		// Auth status
 		isAuthenticated: !!locals.user,
 		isAdmin: locals.user?.isAdmin ?? false,
 		username: locals.user?.username,
-
-		// Plex configuration
 		hasEnvConfig: hasEnvConfigValue,
 		plexConfigured: !!(apiConfig.plex.serverUrl.value && apiConfig.plex.token.value),
 		plexServerUrl: apiConfig.plex.serverUrl.value,
 		plexConfigSource: apiConfig.plex.serverUrl.source,
 		plexServerName: serverName,
-
-		// UI theme (overrides root layout's uiTheme for fresh data during onboarding)
 		uiTheme
 	};
 };

@@ -9,25 +9,16 @@
 	import { createPersonalContext } from '$lib/components/slides/messaging-context';
 	import SlideRenderer from './SlideRenderer.svelte';
 
-	// Register GSAP plugin at module level (per bun-svelte-pro.md)
 	gsap.registerPlugin(ScrollTrigger);
 
 	interface Props {
-		/** Statistics data to display */
 		stats: UserStats | ServerStats;
-		/** Ordered slide configuration */
 		slides: SlideRenderConfig[];
-		/** Custom slides data (keyed by id) */
 		customSlides?: Map<number, CustomSlide>;
-		/** Initial scroll position (slide index from Story Mode) */
 		initialSlideIndex?: number;
-		/** Callback when mode toggle requested, provides current visible slide index */
 		onModeSwitch?: (currentSlideIndex: number) => void;
-		/** Callback to close/exit scroll mode */
 		onClose?: () => void;
-		/** Additional CSS classes */
 		class?: string;
-		/** Messaging context for server-wide vs personal wrapped */
 		messagingContext?: SlideMessagingContext;
 	}
 
@@ -42,34 +33,21 @@
 		messagingContext = createPersonalContext()
 	}: Props = $props();
 
-	/** Container element reference */
 	let container: HTMLElement | undefined = $state();
-
-	/** Section element references (indexed by slide index) */
 	let sectionRefs: (HTMLElement | undefined)[] = $state([]);
-
-	/** Currently visible section index (for position preservation) */
 	let visibleSectionIndex = $state(0);
-
-	/** Whether initial scroll has been performed */
 	let hasScrolledToInitial = $state(false);
 
-	/** Filter to only enabled slides */
 	const enabledSlides = $derived(slides.filter((s) => s.enabled));
-
-	/** Total number of enabled slides */
 	const totalSlides = $derived(enabledSlides.length);
 
-	/** Initial scroll position handling (Story Mode → Scroll Mode) */
 	$effect(() => {
-		// Only run once after sections are rendered
 		if (hasScrolledToInitial || !container) return;
 		if (sectionRefs.filter(Boolean).length < enabledSlides.length) return;
 
 		const targetIndex = Math.max(0, Math.min(initialSlideIndex, enabledSlides.length - 1));
 
 		if (targetIndex > 0) {
-			// Use tick to ensure DOM is ready, then scroll
 			tick().then(() => {
 				const targetSection = sectionRefs[targetIndex];
 				if (targetSection) {
@@ -85,20 +63,15 @@
 		}
 	});
 
-	/** GSAP ScrollTrigger animations with reduced motion support */
 	$effect(() => {
 		if (!container) return;
 
-		// Wait for sections to be rendered
 		const validSections = sectionRefs.filter(Boolean);
 		if (validSections.length === 0) return;
 
-		// Create GSAP context for scoped animations and cleanup
 		const ctx = gsap.context(() => {
-			// Use matchMedia for reduced motion support
 			const mm = gsap.matchMedia();
 
-			// Full animations for users who prefer motion
 			mm.add('(prefers-reduced-motion: no-preference)', () => {
 				sectionRefs.forEach((section, index) => {
 					if (!section) return;
@@ -106,7 +79,6 @@
 					const content = section.querySelector('.slide-content');
 					if (!content) return;
 
-					// Animate slide content on viewport entry
 					gsap.from(content, {
 						scrollTrigger: {
 							trigger: section,
@@ -129,7 +101,6 @@
 				});
 			});
 
-			// Reduced animations for users who prefer reduced motion
 			mm.add('(prefers-reduced-motion: reduce)', () => {
 				sectionRefs.forEach((section, index) => {
 					if (!section) return;
@@ -137,10 +108,8 @@
 					const content = section.querySelector('.slide-content');
 					if (!content) return;
 
-					// Set content visible immediately (no animation)
 					gsap.set(content, { opacity: 1 });
 
-					// Still track visible sections for position preservation
 					ScrollTrigger.create({
 						trigger: section,
 						start: 'top 80%',
@@ -155,7 +124,6 @@
 			});
 		}, container);
 
-		// CRITICAL: Cleanup function to dispose GSAP context
 		return () => {
 			ctx.revert();
 		};

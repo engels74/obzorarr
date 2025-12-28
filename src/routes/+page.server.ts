@@ -61,10 +61,8 @@ export const actions: Actions = {
 			});
 		}
 
-		// Access control (share mode) is handled by the wrapped page route itself
 		const currentYear = new Date().getFullYear();
 
-		// Trigger live sync in background (fire-and-forget)
 		triggerLiveSyncIfNeeded('landing-page-lookup').catch(() => {});
 
 		redirect(303, `/wrapped/${currentYear}/u/${userResult.userId}`);

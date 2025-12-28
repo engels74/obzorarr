@@ -19,19 +19,12 @@
 	} from '$lib/components/slides';
 
 	interface Props {
-		/** Slide configuration */
 		slide: SlideRenderConfig;
-		/** Statistics data (user or server) */
 		stats: UserStats | ServerStats;
-		/** Custom slides data for custom type slides */
 		customSlides?: Map<number, CustomSlide>;
-		/** Whether this slide is currently active/visible */
 		active?: boolean;
-		/** Callback when slide animation completes */
 		onAnimationComplete?: () => void;
-		/** Additional CSS classes */
 		class?: string;
-		/** Messaging context for server-wide vs personal wrapped */
 		messagingContext?: SlideMessagingContext;
 	}
 
@@ -131,7 +124,6 @@
 			{onAnimationComplete}
 		/>
 	{:else if slide.type === 'custom' && slide.customTitle && slide.customContent}
-		<!-- Fallback for inline custom slide data -->
 		<CustomSlideComponent
 			title={slide.customTitle}
 			content={slide.customContent}
@@ -139,7 +131,6 @@
 			{onAnimationComplete}
 		/>
 	{:else}
-		<!-- Fallback for unknown slide types -->
 		<div class="unknown-slide">
 			<p>Unknown slide type: {slide.type}</p>
 		</div>

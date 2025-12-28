@@ -28,25 +28,19 @@ export async function* paginateAll<T>(
 	do {
 		const pageResult = await fetchPage(offset, pageSize);
 
-		// Update total size from first response
 		if (totalSize === undefined) {
 			totalSize = pageResult.totalSize;
 		}
 
 		pageNumber++;
 
-		// Yield the items from this page
 		yield {
 			items: pageResult.items,
 			pageNumber,
 			offset
 		};
 
-		// Move to next page
 		offset += pageResult.size;
-
-		// Guard against empty pages causing infinite loops
-		// Continue until we've fetched all records
 	} while (offset < (totalSize ?? 0) && offset > 0);
 }
 
@@ -61,20 +55,12 @@ export async function fetchAllPaginated<T>(
 	for await (const { items } of paginateAll(fetchPage, pageSize)) {
 		allItems.push(...items);
 		pagesFetched++;
-
-		// Get totalSize from first page (it's consistent across pages)
-		if (pagesFetched === 1) {
-			// We need to get totalSize from the page result
-			// Since we're yielding, we need to track this differently
-		}
 	}
 
-	// For totalSize, we need to refetch it or track it in the generator
-	// Let's create a version that tracks this properly
 	return {
 		items: allItems,
 		pagesFetched,
-		totalSize: allItems.length // This will be correct if all items are fetched
+		totalSize: allItems.length
 	};
 }
 
@@ -94,7 +80,6 @@ export async function fetchAllPaginatedWithStats<T>(
 	do {
 		const pageResult = await fetchPage(offset, pageSize);
 
-		// Capture totalSize from first response
 		if (pagesFetched === 0) {
 			totalSize = pageResult.totalSize;
 		}
@@ -102,10 +87,7 @@ export async function fetchAllPaginatedWithStats<T>(
 		allItems.push(...pageResult.items);
 		pagesFetched++;
 
-		// Move to next page
 		offset += pageResult.size;
-
-		// Guard against infinite loops and continue until all records fetched
 	} while (offset < totalSize && offset > 0);
 
 	return {

@@ -15,12 +15,7 @@ import {
 	getServerWrappedShareMode
 } from './service';
 
-// Property 15: Share Mode Access Control
-// - Public: all requests allowed
-// - Private OAuth: only authenticated server members
-// - Private Link: only valid share token
 export function checkAccess(context: AccessCheckContext): AccessCheckResult {
-	// Owner always has access
 	if (context.isOwner) {
 		return { allowed: true, reason: 'owner' };
 	}
@@ -60,7 +55,6 @@ export function checkAccess(context: AccessCheckContext): AccessCheckResult {
 			return { allowed: true, reason: 'valid_token' };
 
 		default:
-			// Unknown mode - deny access
 			return {
 				allowed: false,
 				denialReason: 'mode_requires_auth'
@@ -69,17 +63,13 @@ export function checkAccess(context: AccessCheckContext): AccessCheckResult {
 }
 
 export interface CheckWrappedAccessOptions {
-	/** User ID of the wrapped page owner */
 	userId: number;
-	/** Year of the wrapped page */
 	year: number;
-	/** Authenticated user (from event.locals.user) */
 	currentUser?: {
 		id: number;
 		plexId: number;
 		isAdmin: boolean;
 	};
-	/** Share token from URL parameter */
 	shareToken?: string;
 }
 
@@ -88,32 +78,28 @@ export interface CheckWrappedAccessResult {
 	accessReason: string;
 }
 
-// The effective share mode is the MORE RESTRICTIVE of:
-// - The user's configured share mode
-// - The global default share mode (floor)
+/**
+ * Effective share mode is the MORE RESTRICTIVE of user's mode and global floor.
+ */
 export async function checkWrappedAccess(
 	options: CheckWrappedAccessOptions
 ): Promise<CheckWrappedAccessResult> {
 	const { userId, year, currentUser, shareToken } = options;
 
-	// Get or create share settings with defaults
 	const settings = await getOrCreateShareSettings({ userId, year });
 
-	// Get global floor and calculate effective mode
 	const globalFloor = await getGlobalDefaultShareMode();
 	const effectiveMode = getMoreRestrictiveMode(settings.mode, globalFloor);
 
-	// Build access context with EFFECTIVE mode (floor enforcement)
 	const context: AccessCheckContext = {
 		shareMode: effectiveMode,
 		shareToken,
 		validToken: settings.shareToken,
 		isAuthenticated: !!currentUser,
-		isServerMember: !!currentUser, // If authenticated, they passed membership check
+		isServerMember: !!currentUser,
 		isOwner: currentUser?.id === userId || currentUser?.isAdmin === true
 	};
 
-	// Check access
 	const result = checkAccess(context);
 
 	if (!result.allowed) {
@@ -132,7 +118,6 @@ export async function checkWrappedAccess(
 	}
 
 	return {
-		// Return settings with effective mode so UI reflects actual access
 		settings: {
 			...settings,
 			mode: effectiveMode
@@ -166,9 +151,7 @@ export async function checkTokenAccess(token: string): Promise<CheckTokenAccessR
 }
 
 export interface CheckServerWrappedAccessOptions {
-	/** Year of the wrapped page */
 	year: number;
-	/** Authenticated user (from event.locals.user) */
 	currentUser?: {
 		id: number;
 		plexId: number;
@@ -181,26 +164,20 @@ export interface CheckServerWrappedAccessResult {
 	accessReason: string;
 }
 
-// Server-wide pages use the SERVER_WRAPPED_SHARE_MODE setting.
-// Admins always have access.
-// Note: Private Link mode is not supported for server-wide pages (no user to own the token).
 export async function checkServerWrappedAccess(
 	options: CheckServerWrappedAccessOptions
 ): Promise<CheckServerWrappedAccessResult> {
 	const { currentUser } = options;
 
-	// Get server wrapped share mode
 	const shareMode = await getServerWrappedShareMode();
 
-	// Build access context (no owner for server-wide, but admin counts as owner)
 	const context: AccessCheckContext = {
 		shareMode,
 		isAuthenticated: !!currentUser,
 		isServerMember: !!currentUser,
-		isOwner: currentUser?.isAdmin === true // Only admins are "owners" of server stats
+		isOwner: currentUser?.isAdmin === true
 	};
 
-	// Check access
 	const result = checkAccess(context);
 
 	if (!result.allowed) {

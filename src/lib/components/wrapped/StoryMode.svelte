@@ -11,19 +11,12 @@
 	import SlideRenderer from './SlideRenderer.svelte';
 
 	interface Props {
-		/** Statistics data to display */
 		stats: UserStats | ServerStats;
-		/** Ordered slide configuration */
 		slides: SlideRenderConfig[];
-		/** Custom slides data (keyed by id) */
 		customSlides?: Map<number, CustomSlide>;
-		/** Callback when presentation completes (last slide advanced) */
 		onComplete?: () => void;
-		/** Callback to close/exit story mode */
 		onClose?: () => void;
-		/** Additional CSS classes */
 		class?: string;
-		/** Messaging context for server-wide vs personal wrapped */
 		messagingContext?: SlideMessagingContext;
 	}
 
@@ -37,44 +30,32 @@
 		messagingContext = createPersonalContext()
 	}: Props = $props();
 
-	/** Edge zone percentage for tap navigation (15% on each side) */
 	const EDGE_ZONE_PERCENT = 0.15;
-
-	/** Minimum swipe distance to trigger navigation (pixels) */
 	const SWIPE_THRESHOLD = 50;
-
-	/** Animation duration (milliseconds) */
 	const ANIMATION_DURATION = 400;
 
-	// Slide navigation state using the store
 	const navigation = createSlideState();
 
-	// Initialize when slides change
 	$effect(() => {
 		navigation.initialize(slides.length);
 	});
 
-	// Touch tracking state
 	let touchStartX = $state(0);
 	let touchStartY = $state(0);
 	let isTouching = $state(false);
 
-	// Element references
 	let container: HTMLElement | undefined = $state();
 	let currentSlideEl: HTMLElement | undefined = $state();
 	let previousSlideEl: HTMLElement | undefined = $state();
 
-	// Animation state
 	let isTransitioning = $state(false);
 	let showPreviousSlide = $state(false);
 	let previousSlideIndex = $state(-1);
 
-	// Track component mount state and active animation for cleanup
 	let mounted = $state(true);
 	let activeEnterAnim: { stop: () => void; finished: Promise<void> } | null = $state(null);
 	let transitionTimeout: ReturnType<typeof setTimeout> | null = $state(null);
 
-	// Cleanup on component destroy
 	$effect(() => {
 		return () => {
 			mounted = false;
@@ -87,13 +68,9 @@
 		};
 	});
 
-	/** Current slide configuration */
 	const currentSlide = $derived(slides[navigation.currentSlide]);
-
-	/** Previous slide configuration (for exit animation) */
 	const previousSlide = $derived(previousSlideIndex >= 0 ? slides[previousSlideIndex] : null);
 
-	/** Navigate to the next slide */
 	function goToNext(): void {
 		if (isTransitioning || !navigation.canGoNext) {
 			// If on last slide and trying to go next, call onComplete
@@ -111,7 +88,6 @@
 		animateTransition('forward');
 	}
 
-	/** Navigate to the previous slide */
 	function goToPrevious(): void {
 		if (isTransitioning || !navigation.canGoPrevious) return;
 
@@ -127,7 +103,6 @@
 		const shouldAnimate = !prefersReducedMotion.current;
 
 		if (!shouldAnimate || !currentSlideEl) {
-			// Instant transition for reduced motion
 			finishTransition();
 			return;
 		}
@@ -137,14 +112,12 @@
 		const enterFrom = direction === 'forward' ? 'translateX(100%)' : 'translateX(-100%)';
 		const exitTo = direction === 'forward' ? 'translateX(-100%)' : 'translateX(100%)';
 
-		// Get element reference for animation
 		const slideEl = currentSlideEl;
 		if (!slideEl) {
 			finishTransition();
 			return;
 		}
 
-		// Stop any previous animation before starting new one
 		if (activeEnterAnim) {
 			activeEnterAnim.stop();
 			activeEnterAnim = null;
@@ -154,7 +127,6 @@
 			transitionTimeout = null;
 		}
 
-		// Animate current slide entering (using any to bypass Motion overload inference issue)
 		const enterKeyframes = { opacity: [0, 1], transform: [enterFrom, 'translateX(0)'] } as Record<
 			string,
 			unknown
@@ -182,15 +154,13 @@
 			)(prevEl, exitKeyframes, { duration: ANIMATION_DURATION / 1000, easing: [0.4, 0, 0.2, 1] });
 		}
 
-		// Fallback timeout to ensure transition always completes
-		// This prevents stuck states if the animation promise never resolves
+		// Fallback timeout prevents stuck states if the animation promise never resolves
 		transitionTimeout = setTimeout(() => {
 			if (mounted && isTransitioning) {
 				finishTransition();
 			}
 		}, ANIMATION_DURATION + 100);
 
-		// Handle animation completion with proper error handling
 		enterAnim.finished
 			.then(() => {
 				if (transitionTimeout) {
@@ -202,7 +172,6 @@
 				}
 			})
 			.catch(() => {
-				// Animation was stopped or failed - ensure we still clean up
 				if (transitionTimeout) {
 					clearTimeout(transitionTimeout);
 					transitionTimeout = null;
@@ -213,9 +182,8 @@
 			});
 	}
 
-	/** Finish the transition and clean up. Idempotent - safe to call multiple times. */
 	function finishTransition(): void {
-		if (!isTransitioning) return; // Already finished
+		if (!isTransitioning) return;
 
 		showPreviousSlide = false;
 		previousSlideIndex = -1;
@@ -229,7 +197,6 @@
 
 		const target = event.target as HTMLElement;
 
-		// Don't navigate if clicking on interactive elements
 		if (target.closest('a, button, input, select, textarea')) {
 			return;
 		}
@@ -240,12 +207,9 @@
 		const clickX = event.clientX - rect.left;
 		const relativeX = clickX / rect.width;
 
-		// Left edge zone → previous
 		if (relativeX < EDGE_ZONE_PERCENT) {
 			goToPrevious();
-		}
-		// Right edge zone or center → next
-		else {
+		} else {
 			goToNext();
 		}
 	}
@@ -273,13 +237,10 @@
 		const deltaX = touch.clientX - touchStartX;
 		const deltaY = touch.clientY - touchStartY;
 
-		// Only process horizontal swipes (more horizontal than vertical)
 		if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > SWIPE_THRESHOLD) {
 			if (deltaX < 0) {
-				// Swipe left → next
 				goToNext();
 			} else {
-				// Swipe right → previous
 				goToPrevious();
 			}
 		}
@@ -330,10 +291,7 @@
 		}
 	}
 
-	function handleSlideAnimationComplete(): void {
-		// Slide internal animation completed
-		// Could trigger additional effects here if needed
-	}
+	function handleSlideAnimationComplete(): void {}
 </script>
 
 <svelte:window onkeydown={handleKeyDown} />

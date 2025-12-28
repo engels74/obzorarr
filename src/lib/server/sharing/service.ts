@@ -50,14 +50,13 @@ export async function getGlobalAllowUserControl(): Promise<boolean> {
 
 	const setting = result[0];
 	if (!setting) {
-		return false; // Default to admin-only control
+		return false;
 	}
 
 	return setting.value === 'true';
 }
 
 export async function setGlobalShareDefaults(defaults: GlobalShareDefaults): Promise<void> {
-	// Upsert default share mode
 	await db
 		.insert(appSettings)
 		.values({
@@ -69,7 +68,6 @@ export async function setGlobalShareDefaults(defaults: GlobalShareDefaults): Pro
 			set: { value: defaults.defaultShareMode }
 		});
 
-	// Upsert allow user control
 	await db
 		.insert(appSettings)
 		.values({
@@ -82,7 +80,6 @@ export async function setGlobalShareDefaults(defaults: GlobalShareDefaults): Pro
 		});
 }
 
-/** Get the server-wide wrapped share mode (controls access to /wrapped/[year]). */
 export async function getServerWrappedShareMode(): Promise<ShareModeType> {
 	const result = await db
 		.select()
@@ -136,20 +133,16 @@ export async function getShareSettings(
 	};
 }
 
-/** Get or create share settings with global defaults. */
 export async function getOrCreateShareSettings(
 	options: GetOrCreateShareSettingsOptions
 ): Promise<ShareSettings> {
 	const { userId, year, createIfMissing = true } = options;
 
-	// Always get current global setting for canUserControl
-	// This ensures admin toggle has immediate effect for all users
+	// Always get current global setting - ensures admin toggle has immediate effect
 	const allowUserControl = await getGlobalAllowUserControl();
 
-	// Try to get existing settings
 	const existing = await getShareSettings(userId, year);
 	if (existing) {
-		// Merge with current global setting (fixes stale canUserControl issue)
 		return {
 			...existing,
 			canUserControl: allowUserControl
@@ -160,10 +153,7 @@ export async function getOrCreateShareSettings(
 		throw new ShareSettingsNotFoundError();
 	}
 
-	// Create with global defaults
 	const defaultMode = await getGlobalDefaultShareMode();
-
-	// Generate token if mode is private-link
 	const shareToken = defaultMode === ShareMode.PRIVATE_LINK ? generateShareToken() : null;
 
 	const result = await db
@@ -197,17 +187,13 @@ export async function updateShareSettings(
 	updates: UpdateShareSettings,
 	isAdmin: boolean
 ): Promise<ShareSettings> {
-	// Get existing settings or create defaults
 	const existing = await getOrCreateShareSettings({ userId, year });
 
-	// Check permission for non-admins
 	if (!isAdmin) {
-		// Check if user is allowed to control their settings
 		if (!existing.canUserControl) {
 			throw new PermissionExceededError('You do not have permission to change share settings.');
 		}
 
-		// Floor enforcement: user cannot set mode less restrictive than global floor
 		if (updates.mode !== undefined) {
 			const globalFloor = await getGlobalDefaultShareMode();
 			if (!meetsPrivacyFloor(updates.mode, globalFloor)) {
@@ -217,24 +203,20 @@ export async function updateShareSettings(
 			}
 		}
 
-		// Users cannot change canUserControl
 		if (updates.canUserControl !== undefined) {
 			throw new PermissionExceededError('Only admins can change user control permissions.');
 		}
 	}
 
-	// Prepare update values
 	const updateValues: Record<string, unknown> = {};
 
 	if (updates.mode !== undefined) {
 		updateValues.mode = updates.mode;
 
-		// Generate new token when switching to private-link mode
 		if (updates.mode === ShareMode.PRIVATE_LINK && !existing.shareToken) {
 			updateValues.shareToken = generateShareToken();
 		}
 
-		// Clear token when switching away from private-link mode
 		if (updates.mode !== ShareMode.PRIVATE_LINK) {
 			updateValues.shareToken = null;
 		}
@@ -244,7 +226,6 @@ export async function updateShareSettings(
 		updateValues.canUserControl = updates.canUserControl;
 	}
 
-	// Only update if there are changes
 	if (Object.keys(updateValues).length > 0) {
 		await db
 			.update(shareSettings)
@@ -252,7 +233,6 @@ export async function updateShareSettings(
 			.where(and(eq(shareSettings.userId, userId), eq(shareSettings.year, year)));
 	}
 
-	// Return updated settings
 	const updated = await getShareSettings(userId, year);
 	if (!updated) {
 		throw new ShareError('Failed to retrieve updated settings', 'UPDATE_FAILED');
@@ -261,7 +241,6 @@ export async function updateShareSettings(
 	return updated;
 }
 
-/** Regenerate share token (only valid when mode is private-link). */
 export async function regenerateShareToken(userId: number, year: number): Promise<string> {
 	const settings = await getShareSettings(userId, year);
 
@@ -283,7 +262,6 @@ export async function regenerateShareToken(userId: number, year: number): Promis
 	return newToken;
 }
 
-/** Find share settings by share token (for validating private-link access). */
 export async function getShareSettingsByToken(token: string): Promise<ShareSettings | null> {
 	if (!isValidTokenFormat(token)) {
 		return null;
@@ -327,23 +305,19 @@ export async function getAllUserShareSettings(userId: number): Promise<ShareSett
 	}));
 }
 
-/** Update user's logo preference (only allowed when wrappedLogoMode is 'user_choice'). */
 export async function updateUserLogoPreference(
 	userId: number,
 	year: number,
 	showLogo: boolean | null
 ): Promise<void> {
-	// Check if settings exist
 	const existing = await getShareSettings(userId, year);
 
 	if (existing) {
-		// Update existing
 		await db
 			.update(shareSettings)
 			.set({ showLogo })
 			.where(and(eq(shareSettings.userId, userId), eq(shareSettings.year, year)));
 	} else {
-		// Create new settings with logo preference
 		const defaultMode = await getGlobalDefaultShareMode();
 		const allowUserControl = await getGlobalAllowUserControl();
 		const shareToken = defaultMode === ShareMode.PRIVATE_LINK ? generateShareToken() : null;

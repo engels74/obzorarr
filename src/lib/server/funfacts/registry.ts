@@ -24,7 +24,6 @@ const registry: TemplateRegistry = {
 };
 
 export function registerTemplate(template: FactTemplate, options: RegisterOptions = {}): void {
-	// Validate template structure with Zod
 	const parsed = FactTemplateSchema.parse(template);
 	const { weight = 1.0, allowOverride = false } = options;
 
@@ -34,14 +33,11 @@ export function registerTemplate(template: FactTemplate, options: RegisterOption
 
 	const entry: TemplateEntry = { template: parsed, weight };
 
-	// Update main registry
 	registry.templates.set(parsed.id, entry);
 
-	// Update category index
 	const category = parsed.category as FactCategory;
 	const categoryEntries = registry.byCategory.get(category) ?? [];
 
-	// Remove existing entry with same ID if overriding
 	const existingIndex = categoryEntries.findIndex((e) => e.template.id === parsed.id);
 	if (existingIndex >= 0) {
 		categoryEntries.splice(existingIndex, 1);
@@ -86,9 +82,7 @@ export function getTemplateCounts(): Record<FactCategory, number> {
 	return counts as Record<FactCategory, number>;
 }
 
-// Templates can define seasonal relevance for specific months
 function getSeasonalBoost(template: FactTemplate): number {
-	// Check for seasonal property (will be added to extended template type)
 	const seasonal = (template as FactTemplate & { seasonal?: { months: number[]; boost: number } })
 		.seasonal;
 	if (!seasonal) return 1.0;
@@ -97,26 +91,22 @@ function getSeasonalBoost(template: FactTemplate): number {
 	return seasonal.months.includes(currentMonth) ? seasonal.boost : 1.0;
 }
 
-// Priority ranges from 0-100, with 50 being normal (1.0x)
 function getPriorityMultiplier(template: FactTemplate): number {
 	const priority = (template as FactTemplate & { priority?: number }).priority;
 	if (priority === undefined) return 1.0;
-	return priority / 50; // 0 = 0x, 50 = 1x, 100 = 2x
+	return priority / 50;
 }
 
-// Uses Fisher-Yates-based weighted selection
 export function selectWeightedTemplates(
 	templates: FactTemplate[],
 	count: number,
 	excludeIds: string[] = []
 ): FactTemplate[] {
-	// Filter out excluded templates
 	const available = templates.filter((t) => !excludeIds.includes(t.id));
 
 	if (available.length === 0) return [];
 	if (available.length <= count) return available;
 
-	// Build weighted pool
 	const weightedPool: { template: FactTemplate; effectiveWeight: number }[] = available.map(
 		(template) => {
 			const baseWeight = getTemplateWeight(template.id);

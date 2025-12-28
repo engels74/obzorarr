@@ -36,7 +36,6 @@ export const DELAY_PRESETS = {
 	long: 0.6
 } as const;
 
-/** Animate a number with easeOutExpo easing. Returns cleanup function. */
 export function animateNumber(
 	from: number,
 	to: number,

@@ -13,12 +13,7 @@ import {
 const SLIDES_ENABLED_MIGRATION_KEY = 'slides_enabled_migration_v1';
 const FUN_FACT_REMOVAL_MIGRATION_KEY = 'fun_fact_slide_removal_v1';
 
-/**
- * Initialize default slide configuration.
- * Creates entries for all standard slide types and applies migrations.
- */
 export async function initializeDefaultSlideConfig(): Promise<void> {
-	// Check if the enabled migration has been applied
 	const migrationApplied = await db
 		.select()
 		.from(appSettings)
@@ -27,7 +22,6 @@ export async function initializeDefaultSlideConfig(): Promise<void> {
 
 	const needsMigration = migrationApplied.length === 0;
 
-	// Check if fun-fact removal migration has been applied
 	const funFactRemovalApplied = await db
 		.select()
 		.from(appSettings)
@@ -36,40 +30,32 @@ export async function initializeDefaultSlideConfig(): Promise<void> {
 
 	const needsFunFactRemoval = funFactRemovalApplied.length === 0;
 
-	// Apply fun-fact removal migration if needed
 	if (needsFunFactRemoval) {
-		// Delete any fun-fact entries from slideConfig
 		await db.delete(slideConfig).where(eq(slideConfig.slideType, 'fun-fact'));
 
-		// Mark migration as applied
 		await db
 			.insert(appSettings)
 			.values({ key: FUN_FACT_REMOVAL_MIGRATION_KEY, value: 'applied' })
 			.onConflictDoNothing();
 	}
 
-	// Fetch all existing configs in a single query
 	const existingConfigs = await db.select().from(slideConfig);
 	const existingTypes = new Set(existingConfigs.map((c) => c.slideType));
 
-	// Calculate next sortOrder (after all existing slides)
 	const maxSortOrder =
 		existingConfigs.length > 0 ? Math.max(...existingConfigs.map((c) => c.sortOrder)) : -1;
 
 	let nextSortOrder = maxSortOrder + 1;
 
-	// Process default slides
 	for (const slideType of DEFAULT_SLIDE_ORDER) {
 		if (!existingTypes.has(slideType)) {
-			// Insert missing slide with enabled: true
 			await db.insert(slideConfig).values({
 				slideType,
 				enabled: true,
 				sortOrder: nextSortOrder++
 			});
 		} else if (needsMigration) {
-			// One-time migration: ensure existing default slides are enabled
-			// This fixes slides that were created with enabled: false from a previous bug
+			// One-time migration: fixes slides created with enabled: false from a previous bug
 			await db
 				.update(slideConfig)
 				.set({ enabled: true })
@@ -77,7 +63,6 @@ export async function initializeDefaultSlideConfig(): Promise<void> {
 		}
 	}
 
-	// Mark migration as applied
 	if (needsMigration) {
 		await db
 			.insert(appSettings)
@@ -136,19 +121,16 @@ export async function updateSlideConfig(
 	type: SlideType,
 	updates: UpdateSlideConfig
 ): Promise<SlideConfig> {
-	// Validate the slide type
 	const parsed = SlideTypeSchema.safeParse(type);
 	if (!parsed.success) {
 		throw new SlideError(`Invalid slide type: ${type}`, 'INVALID_SLIDE_TYPE');
 	}
 
-	// Check if the slide config exists
 	const existing = await getSlideConfigByType(type);
 	if (!existing) {
 		throw new SlideError(`Slide config not found for type: ${type}`, 'NOT_FOUND');
 	}
 
-	// Prepare update values
 	const updateValues: Record<string, unknown> = {};
 
 	if (updates.enabled !== undefined) {
@@ -159,12 +141,10 @@ export async function updateSlideConfig(
 		updateValues.sortOrder = updates.sortOrder;
 	}
 
-	// Only update if there are changes
 	if (Object.keys(updateValues).length > 0) {
 		await db.update(slideConfig).set(updateValues).where(eq(slideConfig.slideType, type));
 	}
 
-	// Return updated config
 	const updated = await getSlideConfigByType(type);
 	if (!updated) {
 		throw new SlideError('Failed to retrieve updated config', 'UPDATE_FAILED');
@@ -174,7 +154,6 @@ export async function updateSlideConfig(
 }
 
 export async function reorderSlides(newOrder: SlideType[]): Promise<SlideConfig[]> {
-	// Validate all slide types
 	for (const type of newOrder) {
 		const parsed = SlideTypeSchema.safeParse(type);
 		if (!parsed.success) {
@@ -182,7 +161,6 @@ export async function reorderSlides(newOrder: SlideType[]): Promise<SlideConfig[
 		}
 	}
 
-	// Update each slide's sortOrder
 	for (let i = 0; i < newOrder.length; i++) {
 		const slideType = newOrder[i];
 		if (!slideType) continue;
@@ -190,7 +168,6 @@ export async function reorderSlides(newOrder: SlideType[]): Promise<SlideConfig[
 		await db.update(slideConfig).set({ sortOrder: i }).where(eq(slideConfig.slideType, slideType));
 	}
 
-	// Return updated configs
 	return getAllSlideConfigs();
 }
 
@@ -203,11 +180,7 @@ export async function toggleSlide(type: SlideType): Promise<SlideConfig> {
 	return updateSlideConfig(type, { enabled: !existing.enabled });
 }
 
-/** Reset to default configuration (primarily used for testing). */
 export async function resetToDefaultConfig(): Promise<void> {
-	// Delete all existing configs
 	await db.delete(slideConfig);
-
-	// Reinitialize with defaults
 	await initializeDefaultSlideConfig();
 }

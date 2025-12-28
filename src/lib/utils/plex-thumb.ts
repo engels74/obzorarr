@@ -1,4 +1,3 @@
-/** Transform Plex thumbnail paths to proxied URLs via /plex/thumb endpoint. */
 export function getThumbUrl(thumb: string | null | undefined): string | null {
 	if (!thumb) {
 		return null;

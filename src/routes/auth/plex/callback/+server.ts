@@ -51,7 +51,6 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 	try {
 		const plexUser = await getPlexUserInfo(authToken);
 
-		// Check if we're in onboarding mode with no server configured
 		const isOnboarding = await requiresOnboarding();
 		const apiConfig = await getApiConfigWithSources();
 		const hasServerConfigured = !!apiConfig.plex.serverUrl.value;
@@ -67,12 +66,11 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 			}
 
 			isAdmin = true;
-			accountId = 1; // Server owners have local accountId = 1
+			accountId = 1;
 		} else {
 			const membership = await requireServerMembership(authToken);
 
 			isAdmin = membership.isOwner;
-			// Server owners have local accountId = 1, shared users have accountId = plexId
 			accountId = membership.isOwner ? 1 : plexUser.id;
 		}
 
@@ -141,7 +139,6 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		if (err instanceof PlexAuthApiError) {
 			console.error('Plex API error:', err.message);
 
-			// Check if it's an auth error (invalid token)
 			if (err.statusCode === 401) {
 				error(401, {
 					message: 'Invalid or expired auth token. Please try again.'

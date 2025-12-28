@@ -77,7 +77,6 @@ interface ManagedAccount {
 	thumb: string | null;
 }
 
-// Local accounts created on the server (not Plex.tv shared users)
 async function fetchManagedAccounts(): Promise<ManagedAccount[]> {
 	if (!env.PLEX_SERVER_URL || !env.PLEX_TOKEN) {
 		return [];
@@ -103,7 +102,6 @@ async function fetchManagedAccounts(): Promise<ManagedAccount[]> {
 
 		const data = await response.json();
 
-		// Parse JSON response - structure: { MediaContainer: { Account: [...] } }
 		const accounts: ManagedAccount[] = [];
 
 		interface PlexAccount {
@@ -116,7 +114,6 @@ async function fetchManagedAccounts(): Promise<ManagedAccount[]> {
 		const plexAccounts = mediaContainer.MediaContainer?.Account ?? [];
 
 		for (const account of plexAccounts) {
-			// Skip accounts without a name (like the root account id=0)
 			if (account.id !== undefined && account.name) {
 				accounts.push({
 					id: account.id,
@@ -137,7 +134,6 @@ async function fetchManagedAccounts(): Promise<ManagedAccount[]> {
 	}
 }
 
-// Uses v2 friends endpoint (returns JSON) instead of legacy shared_servers (XML)
 async function fetchSharedUsers(machineIdentifier: string): Promise<PlexSharedServerUser[]> {
 	const endpoint = `${PLEX_TV_URL}/api/v2/friends`;
 
@@ -167,8 +163,6 @@ async function fetchSharedUsers(machineIdentifier: string): Promise<PlexSharedSe
 		return [];
 	}
 
-	// Filter friends to only those with access to this specific server
-	// and map to PlexSharedServerUser format for compatibility
 	return result.data
 		.filter((friend) =>
 			friend.sharedServers?.some((s) => s.machineIdentifier === machineIdentifier)
@@ -189,14 +183,12 @@ export interface PlexAccountInfo {
 	isOwner: boolean;
 }
 
-// Account ID mapping: owner = 1, shared users = plexId
 export async function syncPlexAccounts(): Promise<number> {
 	logger.info('Starting Plex accounts sync...', 'PlexAccountsSync');
 
 	const accounts: PlexAccountInfo[] = [];
 
 	try {
-		// Fetch owner info using the admin token
 		const ownerData = await getPlexUserInfo(env.PLEX_TOKEN ?? '');
 
 		// Server owner has accountId = 1 in play history
@@ -208,14 +200,12 @@ export async function syncPlexAccounts(): Promise<number> {
 			isOwner: true
 		});
 
-		// Fetch server machine identifier and shared users
 		const machineIdentifier = await getServerMachineIdentifier();
 		const sharedUsersData = await fetchSharedUsers(machineIdentifier);
 
-		// Shared users have accountId = plexId in play history
 		for (const user of sharedUsersData) {
 			accounts.push({
-				accountId: user.id, // For shared users, accountId equals plexId
+				accountId: user.id,
 				plexId: user.id,
 				username: user.username,
 				thumb: user.thumb ?? null,
@@ -223,19 +213,17 @@ export async function syncPlexAccounts(): Promise<number> {
 			});
 		}
 
-		// Fetch managed accounts from local server (these are local accounts, not Plex.tv users)
 		const managedAccountsData = await fetchManagedAccounts();
 		let managedCount = 0;
 
 		for (const account of managedAccountsData) {
-			// Skip if we already have this accountId (owner or shared user takes precedence)
 			if (accounts.some((a) => a.accountId === account.id)) {
 				continue;
 			}
 
 			accounts.push({
 				accountId: account.id,
-				plexId: account.id, // Managed accounts don't have Plex.tv IDs, use local ID
+				plexId: account.id,
 				username: account.name,
 				thumb: account.thumb,
 				isOwner: false
@@ -243,7 +231,6 @@ export async function syncPlexAccounts(): Promise<number> {
 			managedCount++;
 		}
 
-		// Upsert all accounts into the database
 		for (const account of accounts) {
 			await db
 				.insert(plexAccounts)
@@ -315,9 +302,7 @@ export interface UserLookupResult {
 	accountId: number;
 }
 
-// Used for landing page quick access - find registered users by username
 export async function findUserByUsername(username: string): Promise<UserLookupResult | null> {
-	// Step 1: Find in plexAccounts (case-insensitive using LOWER())
 	const plexAccountResults = await db
 		.select()
 		.from(plexAccounts)
@@ -326,11 +311,9 @@ export async function findUserByUsername(username: string): Promise<UserLookupRe
 
 	const plexAccount = plexAccountResults[0];
 	if (!plexAccount) {
-		return null; // Username not found on server
+		return null;
 	}
 
-	// Step 2: Check if this account is registered in users table
-	// Match by accountId or plexId (handles both owner and shared users)
 	const userResults = await db
 		.select()
 		.from(users)
@@ -339,7 +322,7 @@ export async function findUserByUsername(username: string): Promise<UserLookupRe
 
 	const user = userResults[0];
 	if (!user) {
-		return null; // User exists in Plex but hasn't registered with Obzorarr
+		return null;
 	}
 
 	return {

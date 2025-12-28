@@ -97,7 +97,6 @@ export const actions: Actions = {
 		}
 
 		try {
-			// Start sync in background (returns immediately)
 			const result = await startBackgroundSync(backfillYear);
 
 			if (!result.started) {
