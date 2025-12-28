@@ -382,14 +382,19 @@ export function selectBestConnection(server: PlexResource): string | undefined {
 	return undefined;
 }
 
-export function generatePlexDirectUrl(server: PlexResource): string | undefined {
+export function generatePlexDirectUrl(
+	server: PlexResource,
+	machineIdentifier?: string
+): string | undefined {
 	if (!server.publicAddress) {
 		return undefined;
 	}
 
-	// Extract machineId from existing plex.direct connection
-	let machineId: string | undefined;
-	if (server.connections) {
+	// Strategy 1: Use provided machineIdentifier
+	let machineId: string | undefined = machineIdentifier;
+
+	// Strategy 2: Extract from existing plex.direct connection (fallback)
+	if (!machineId && server.connections) {
 		const plexDirectConn = server.connections.find((c) => c.uri.includes('.plex.direct'));
 		if (plexDirectConn) {
 			machineId = extractPlexDirectMachineId(plexDirectConn.uri);

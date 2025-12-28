@@ -439,13 +439,17 @@ interface PlexResourceLike {
 	connections?: PlexConnection[];
 }
 
-function generatePlexDirectUrl(server: PlexResourceLike): string | undefined {
+function generatePlexDirectUrl(
+	server: PlexResourceLike,
+	machineIdentifier?: string
+): string | undefined {
 	if (!server.publicAddress) {
 		return undefined;
 	}
 
-	let machineId: string | undefined;
-	if (server.connections) {
+	let machineId: string | undefined = machineIdentifier;
+
+	if (!machineId && server.connections) {
 		const plexDirectConn = server.connections.find((c) => c.uri.includes('.plex.direct'));
 		if (plexDirectConn) {
 			machineId = extractPlexDirectMachineId(plexDirectConn.uri);
@@ -470,6 +474,49 @@ function generatePlexDirectUrl(server: PlexResourceLike): string | undefined {
 }
 
 describe('generatePlexDirectUrl', () => {
+	describe('with provided machineIdentifier', () => {
+		it('uses provided machineIdentifier over extracting from connections', () => {
+			const server: PlexResourceLike = {
+				publicAddress: '89.150.152.18',
+				connections: [
+					{ uri: 'http://89.150.152.18:32400', local: false, relay: false, port: 32400 }
+				]
+			};
+
+			const result = generatePlexDirectUrl(server, 'abcdef1234567890abcdef1234567890');
+			expect(result).toBe(
+				'https://89-150-152-18.abcdef1234567890abcdef1234567890.plex.direct:32400'
+			);
+		});
+
+		it('uses provided machineIdentifier when no plex.direct connection exists', () => {
+			const server: PlexResourceLike = {
+				publicAddress: '192.168.1.100',
+				connections: [
+					{ uri: 'http://192.168.1.100:32400', local: true, relay: false, port: 32400 },
+					{ uri: 'http://10.0.0.1:32400', local: false, relay: false, port: 8443 }
+				]
+			};
+
+			const result = generatePlexDirectUrl(server, '241d8bc0ff5b413799df831a83ba172d');
+			expect(result).toBe(
+				'https://192-168-1-100.241d8bc0ff5b413799df831a83ba172d.plex.direct:8443'
+			);
+		});
+
+		it('uses provided machineIdentifier even when connections is empty', () => {
+			const server: PlexResourceLike = {
+				publicAddress: '10.0.0.1',
+				connections: []
+			};
+
+			const result = generatePlexDirectUrl(server, 'fedcba0987654321fedcba0987654321');
+			expect(result).toBe(
+				'https://10-0-0-1.fedcba0987654321fedcba0987654321.plex.direct:32400'
+			);
+		});
+	});
+
 	describe('valid generation', () => {
 		it('generates URL with 32-char machineId from existing plex.direct connection', () => {
 			const server: PlexResourceLike = {
