@@ -119,7 +119,10 @@ Set in `.env` for development without real Plex OAuth:
 ```
 DEV_BYPASS_AUTH=true
 DEV_BYPASS_USER=              # empty=owner, "random", <plexId>, or <username>
+DEV_PLEX_TOKEN=               # For onboarding testing when PLEX_TOKEN is empty
 ```
+
+To test the onboarding flow, set `DEV_PLEX_TOKEN` to a valid Plex.tv token while leaving `PLEX_SERVER_URL` and `PLEX_TOKEN` empty.
 
 ## Testing
 
