@@ -41,10 +41,8 @@ export const GET: RequestHandler = async ({ cookies, locals }) => {
 					conn.uri.includes('.plex.direct')
 				);
 
-				const machineIdentifier = server.clientIdentifier;
-
-				if (!hasPlexDirectConnection && machineIdentifier) {
-					const generatedUrl = generatePlexDirectUrl(server, machineIdentifier);
+				if (!hasPlexDirectConnection) {
+					const generatedUrl = generatePlexDirectUrl(server);
 					if (generatedUrl) {
 						mappedConnections.unshift({
 							uri: generatedUrl,
@@ -56,7 +54,7 @@ export const GET: RequestHandler = async ({ cookies, locals }) => {
 
 				let bestConnectionUrl = selectBestConnection(server);
 				if (bestConnectionUrl && !bestConnectionUrl.includes('.plex.direct')) {
-					const generatedUrl = generatePlexDirectUrl(server, machineIdentifier);
+					const generatedUrl = generatePlexDirectUrl(server);
 					if (generatedUrl) {
 						bestConnectionUrl = generatedUrl;
 					}

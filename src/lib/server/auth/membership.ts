@@ -175,7 +175,7 @@ function urlsMatch(url1: string, url2: string): boolean {
 }
 
 export async function getPlexResources(authToken: string): Promise<PlexResource[]> {
-	const endpoint = `${PLEX_TV_URL}/api/v2/resources`;
+	const endpoint = `${PLEX_TV_URL}/api/v2/resources?includeHttps=1`;
 
 	try {
 		const response = await fetch(endpoint, {
