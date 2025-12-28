@@ -19,16 +19,6 @@ import {
 } from '$lib/server/sync/scheduler';
 import { cancelSync } from '$lib/server/sync/progress';
 
-/**
- * Admin Sync Page Server
- *
- * Handles sync management operations.
- */
-
-// =============================================================================
-// Validation Schemas
-// =============================================================================
-
 const CronExpressionSchema = z.string().regex(/^[\d\s\*\/\-,]+$/, 'Invalid cron expression format');
 
 const BackfillYearSchema = z
@@ -37,15 +27,9 @@ const BackfillYearSchema = z
 	.transform((val) => (val ? parseInt(val, 10) : undefined))
 	.pipe(z.number().min(2000).max(2100).optional());
 
-// =============================================================================
-// Load Function
-// =============================================================================
-
-/** Default page size for sync history pagination */
 const HISTORY_PAGE_SIZE = 8;
 
 export const load: PageServerLoad = async ({ url }) => {
-	// Parse page from URL searchParams (default to 1)
 	const pageParam = url.searchParams.get('page');
 	const page = Math.max(1, parseInt(pageParam ?? '1', 10) || 1);
 
@@ -57,7 +41,6 @@ export const load: PageServerLoad = async ({ url }) => {
 		getPlayHistoryCount()
 	]);
 
-	// Get available years for backfill (current year and last 5 years)
 	const currentYear = new Date().getFullYear();
 	const availableYears = Array.from({ length: 6 }, (_, i) => currentYear - i);
 
@@ -99,19 +82,11 @@ export const load: PageServerLoad = async ({ url }) => {
 	};
 };
 
-// =============================================================================
-// Actions
-// =============================================================================
-
 export const actions: Actions = {
-	/**
-	 * Start a manual sync (runs in background with progress tracking)
-	 */
 	startSync: async ({ request }) => {
 		const formData = await request.formData();
 		const backfillYearRaw = formData.get('backfillYear');
 
-		// Parse backfill year if provided
 		let backfillYear: number | undefined;
 		if (backfillYearRaw && backfillYearRaw !== '') {
 			const parsed = BackfillYearSchema.safeParse(backfillYearRaw);
@@ -140,9 +115,6 @@ export const actions: Actions = {
 		}
 	},
 
-	/**
-	 * Cancel a running sync
-	 */
 	cancelSync: async () => {
 		const cancelled = cancelSync();
 
@@ -156,9 +128,6 @@ export const actions: Actions = {
 		};
 	},
 
-	/**
-	 * Update the scheduler cron expression
-	 */
 	updateSchedule: async ({ request }) => {
 		const formData = await request.formData();
 		const cronExpression = formData.get('cronExpression');
@@ -181,9 +150,6 @@ export const actions: Actions = {
 		}
 	},
 
-	/**
-	 * Pause the scheduler
-	 */
 	pauseScheduler: async () => {
 		try {
 			pauseSyncScheduler();
@@ -194,9 +160,6 @@ export const actions: Actions = {
 		}
 	},
 
-	/**
-	 * Resume the scheduler
-	 */
 	resumeScheduler: async () => {
 		try {
 			resumeSyncScheduler();
@@ -207,9 +170,6 @@ export const actions: Actions = {
 		}
 	},
 
-	/**
-	 * Initialize scheduler with default settings
-	 */
 	initScheduler: async ({ request }) => {
 		const formData = await request.formData();
 		const cronExpression = formData.get('cronExpression');

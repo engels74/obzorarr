@@ -1,12 +1,3 @@
-/**
- * POST /api/onboarding/select-server
- *
- * Saves selected server configuration to appSettings.
- * Used during onboarding when user selects their Plex server.
- *
- * Requires authenticated admin user (server owner).
- */
-
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { z } from 'zod';
@@ -17,9 +8,6 @@ import {
 } from '$lib/server/admin/settings.service';
 import { logger } from '$lib/server/logging';
 
-/**
- * Request body schema
- */
 const SelectServerSchema = z.object({
 	serverUrl: z.string().url('Invalid server URL'),
 	accessToken: z.string().min(1, 'Access token is required'),
@@ -27,7 +15,6 @@ const SelectServerSchema = z.object({
 });
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-	// Require authenticated admin user
 	if (!locals.user) {
 		error(401, 'Authentication required');
 	}
@@ -37,7 +24,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 
 	try {
-		// Parse and validate request body
 		const body = await request.json();
 		const parseResult = SelectServerSchema.safeParse(body);
 
@@ -48,11 +34,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		const { serverUrl, accessToken, serverName } = parseResult.data;
 
-		// Store Plex configuration in database
 		await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, serverUrl);
 		await setAppSetting(AppSettingsKey.PLEX_TOKEN, accessToken);
-
-		// Cache server name for display
 		await setCachedServerName(serverName);
 
 		logger.info(`Onboarding: Server configured - ${serverName} (${serverUrl})`, 'Onboarding');
@@ -62,7 +45,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			serverName
 		});
 	} catch (err) {
-		// Re-throw SvelteKit errors
 		if (err && typeof err === 'object' && 'status' in err) {
 			throw err;
 		}

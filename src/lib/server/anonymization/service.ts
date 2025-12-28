@@ -11,38 +11,6 @@ import {
 	type AnonymizableUser
 } from './types';
 
-/**
- * Anonymization Service
- *
- * Core service for managing anonymization settings and applying
- * anonymization transformations to user data in statistics.
- *
- * Property 18: Anonymization Mode Display
- * For any anonymization mode M and viewing user V:
- * - If M = 'real': all usernames SHALL be displayed as-is
- * - If M = 'anonymous': all usernames SHALL be replaced with generic identifiers
- * - If M = 'hybrid': only V's username SHALL be displayed, others anonymized
- *
- * @module anonymization/service
- */
-
-// =============================================================================
-// Pure Anonymization Functions
-// =============================================================================
-
-/**
- * Apply anonymization to an array of users based on mode
- *
- * This is a pure function that transforms user data based on the
- * anonymization mode. It is designed for property-based testing.
- *
- * Property 18: Anonymization Mode Display
- *
- * @param users - Array of users to anonymize
- * @param mode - The anonymization mode to apply
- * @param viewingUserId - The ID of the viewing user (null if unauthenticated)
- * @returns Array of users with usernames potentially anonymized
- */
 export function applyAnonymization<T extends AnonymizableUser>(
 	users: T[],
 	mode: AnonymizationModeType,
@@ -72,27 +40,10 @@ export function applyAnonymization<T extends AnonymizableUser>(
 	}
 }
 
-/**
- * Generate an anonymous identifier for a user
- *
- * Creates "User #1", "User #2", etc. style identifiers.
- *
- * @param index - Zero-based index of the user
- * @returns Anonymous identifier string
- */
 export function generateAnonymousIdentifier(index: number): string {
 	return `User #${index + 1}`;
 }
 
-// =============================================================================
-// Global Settings
-// =============================================================================
-
-/**
- * Get the global default anonymization mode
- *
- * @returns The global default anonymization mode, defaults to 'real'
- */
 export async function getGlobalAnonymizationMode(): Promise<AnonymizationModeType> {
 	const result = await db
 		.select()
@@ -109,11 +60,6 @@ export async function getGlobalAnonymizationMode(): Promise<AnonymizationModeTyp
 	return parsed.success ? parsed.data : AnonymizationMode.REAL;
 }
 
-/**
- * Set the global default anonymization mode (admin only)
- *
- * @param mode - The anonymization mode to set as default
- */
 export async function setGlobalAnonymizationMode(mode: AnonymizationModeType): Promise<void> {
 	await db
 		.insert(appSettings)
@@ -127,15 +73,6 @@ export async function setGlobalAnonymizationMode(mode: AnonymizationModeType): P
 		});
 }
 
-// =============================================================================
-// Per-Stat Settings
-// =============================================================================
-
-/**
- * Get per-stat anonymization overrides
- *
- * @returns Per-stat anonymization settings
- */
 export async function getPerStatAnonymization(): Promise<PerStatAnonymizationSettings> {
 	const result = await db
 		.select()
@@ -156,11 +93,6 @@ export async function getPerStatAnonymization(): Promise<PerStatAnonymizationSet
 	}
 }
 
-/**
- * Set per-stat anonymization overrides (admin only)
- *
- * @param settings - The per-stat settings to save
- */
 export async function setPerStatAnonymization(
 	settings: PerStatAnonymizationSettings
 ): Promise<void> {
@@ -178,14 +110,6 @@ export async function setPerStatAnonymization(
 		});
 }
 
-/**
- * Get the effective anonymization mode for a specific stat
- *
- * Checks per-stat overrides first, falls back to global default.
- *
- * @param statName - The name of the stat (e.g., 'topViewers')
- * @returns The effective anonymization mode for this stat
- */
 export async function getAnonymizationModeForStat(
 	statName: keyof PerStatAnonymizationSettings
 ): Promise<AnonymizationModeType> {

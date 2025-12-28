@@ -1,12 +1,3 @@
-/**
- * Plex Accounts Sync Service
- *
- * Fetches all server members from Plex (owner + shared users) and stores
- * their information in the plex_accounts table. This enables displaying
- * real Plex usernames in Top Contributors and other statistics for ALL
- * users who have watched content, not just those registered with Obzorarr.
- */
-
 import { env } from '$env/dynamic/private';
 import { db } from '$lib/server/db/client';
 import { plexAccounts, users } from '$lib/server/db/schema';
@@ -22,10 +13,6 @@ import {
 	type PlexSharedServerUser
 } from '$lib/server/auth/types';
 import { getPlexUserInfo } from '$lib/server/auth/plex-oauth';
-
-// =============================================================================
-// Constants
-// =============================================================================
 
 const PLEX_TV_URL = 'https://plex.tv';
 
@@ -43,13 +30,6 @@ const PLEX_SERVER_HEADERS = {
 	'X-Plex-Version': PLEX_VERSION
 } as const;
 
-// =============================================================================
-// Internal Functions
-// =============================================================================
-
-/**
- * Get the server's machine identifier from the local Plex server
- */
 async function getServerMachineIdentifier(): Promise<string> {
 	if (!env.PLEX_SERVER_URL || !env.PLEX_TOKEN) {
 		throw new PlexAuthApiError(
@@ -91,19 +71,13 @@ async function getServerMachineIdentifier(): Promise<string> {
 	return result.data.MediaContainer.machineIdentifier;
 }
 
-/**
- * Managed user account from local Plex server
- */
 interface ManagedAccount {
 	id: number;
 	name: string;
 	thumb: string | null;
 }
 
-/**
- * Fetch managed accounts from the local Plex server.
- * These are local accounts created on the server (not Plex.tv shared users).
- */
+// Local accounts created on the server (not Plex.tv shared users)
 async function fetchManagedAccounts(): Promise<ManagedAccount[]> {
 	if (!env.PLEX_SERVER_URL || !env.PLEX_TOKEN) {
 		return [];
@@ -163,12 +137,7 @@ async function fetchManagedAccounts(): Promise<ManagedAccount[]> {
 	}
 }
 
-/**
- * Fetch users who have access to the server (excluding owner)
- *
- * Uses the v2 friends endpoint which properly returns JSON instead of the
- * legacy shared_servers endpoint which returns XML.
- */
+// Uses v2 friends endpoint (returns JSON) instead of legacy shared_servers (XML)
 async function fetchSharedUsers(machineIdentifier: string): Promise<PlexSharedServerUser[]> {
 	const endpoint = `${PLEX_TV_URL}/api/v2/friends`;
 
@@ -212,10 +181,6 @@ async function fetchSharedUsers(machineIdentifier: string): Promise<PlexSharedSe
 		}));
 }
 
-// =============================================================================
-// Public API
-// =============================================================================
-
 export interface PlexAccountInfo {
 	accountId: number;
 	plexId: number;
@@ -224,20 +189,7 @@ export interface PlexAccountInfo {
 	isOwner: boolean;
 }
 
-/**
- * Sync all Plex server members to the plex_accounts table.
- *
- * This fetches the server owner and all shared users from the Plex API,
- * then upserts their information into the database. This ensures that
- * Top Contributors and other statistics can display real Plex usernames
- * for ALL users who have watched content.
- *
- * Account ID mapping:
- * - Server owner: accountId = 1 (Plex's local admin account)
- * - Shared users: accountId = plexId (their Plex.tv account ID)
- *
- * @returns The number of accounts synced
- */
+// Account ID mapping: owner = 1, shared users = plexId
 export async function syncPlexAccounts(): Promise<number> {
 	logger.info('Starting Plex accounts sync...', 'PlexAccountsSync');
 
@@ -331,12 +283,6 @@ export async function syncPlexAccounts(): Promise<number> {
 	}
 }
 
-/**
- * Get a username for an accountId from the plex_accounts table.
- *
- * @param accountId - The Plex account ID from play history
- * @returns The username if found, null otherwise
- */
 export async function getPlexUsername(accountId: number): Promise<string | null> {
 	const result = await db.query.plexAccounts.findFirst({
 		where: (accounts, { eq }) => eq(accounts.accountId, accountId),
@@ -346,11 +292,6 @@ export async function getPlexUsername(accountId: number): Promise<string | null>
 	return result?.username ?? null;
 }
 
-/**
- * Get all Plex accounts from the database.
- *
- * @returns Map of accountId to PlexAccountInfo
- */
 export async function getAllPlexAccounts(): Promise<Map<number, PlexAccountInfo>> {
 	const results = await db.select().from(plexAccounts);
 
@@ -368,40 +309,13 @@ export async function getAllPlexAccounts(): Promise<Map<number, PlexAccountInfo>
 	return map;
 }
 
-/**
- * Result of a username lookup for quick access
- */
 export interface UserLookupResult {
-	/** The user's database ID (from users table) */
 	userId: number;
-	/** The user's Plex username */
 	username: string;
-	/** The local Plex account ID */
 	accountId: number;
 }
 
-/**
- * Find a registered user by their Plex username (case-insensitive).
- *
- * This is used for the landing page quick access feature, allowing users
- * to enter their username to view their wrapped page without logging in.
- *
- * The lookup process:
- * 1. Search plex_accounts table for the username (case-insensitive)
- * 2. If found, check if they have a registered account in the users table
- * 3. Only return users who have authenticated with Obzorarr
- *
- * @param username - The Plex username to search for
- * @returns User info if found and registered, null otherwise
- *
- * @example
- * ```typescript
- * const user = await findUserByUsername('JohnDoe');
- * if (user) {
- *   redirect(303, `/wrapped/2024/u/${user.userId}`);
- * }
- * ```
- */
+// Used for landing page quick access - find registered users by username
 export async function findUserByUsername(username: string): Promise<UserLookupResult | null> {
 	// Step 1: Find in plexAccounts (case-insensitive using LOWER())
 	const plexAccountResults = await db

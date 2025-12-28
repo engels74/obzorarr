@@ -1,22 +1,4 @@
-/**
- * Fun Facts Constants
- *
- * Shared constants for fun fact generation including:
- * - Time equivalency conversion factors
- * - Entertainment franchise durations
- * - Display constants (month names)
- *
- * @module server/funfacts/constants
- */
-
-// =============================================================================
-// Time Equivalency Factors
-// =============================================================================
-
-/**
- * Time equivalency conversion factors
- * All values are in hours unless otherwise noted
- */
+// All values are in hours unless otherwise noted
 export const EQUIVALENCY_FACTORS = {
 	/** One-way flight from NYC to Tokyo in hours */
 	FLIGHT_NYC_TOKYO_HOURS: 14,
@@ -42,14 +24,6 @@ export const EQUIVALENCY_FACTORS = {
 	PODCAST_EPISODE_HOURS: 0.75
 } as const;
 
-// =============================================================================
-// Entertainment Franchise Factors (for Entertainment Trivia templates)
-// =============================================================================
-
-/**
- * Entertainment franchise total runtimes in hours
- * Used for pop culture comparison templates
- */
 export const ENTERTAINMENT_FACTORS = {
 	/** Game of Thrones complete series (8 seasons) in hours */
 	GAME_OF_THRONES_HOURS: 70,
@@ -69,13 +43,6 @@ export const ENTERTAINMENT_FACTORS = {
 	THE_WIRE_HOURS: 60
 } as const;
 
-// =============================================================================
-// Display Constants
-// =============================================================================
-
-/**
- * Month names for display
- */
 export const MONTH_NAMES = [
 	'January',
 	'February',
@@ -91,9 +58,6 @@ export const MONTH_NAMES = [
 	'December'
 ] as const;
 
-/**
- * Hour format helpers for display
- */
 export function formatHour(hour: number): string {
 	const period = hour >= 12 ? 'PM' : 'AM';
 	const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;

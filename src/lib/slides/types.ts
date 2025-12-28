@@ -1,21 +1,5 @@
 import { z } from 'zod';
 
-/**
- * Shared Slides Types
- *
- * Client-safe type definitions for the slides system.
- * These types can be imported in both client and server code.
- *
- * @module slides/types
- */
-
-// =============================================================================
-// Zod Schemas
-// =============================================================================
-
-/**
- * Slide type schema for validation
- */
 export const SlideTypeSchema = z.enum([
 	'total-time',
 	'top-movies',
@@ -30,9 +14,6 @@ export const SlideTypeSchema = z.enum([
 
 export type SlideTypeValue = z.infer<typeof SlideTypeSchema>;
 
-/**
- * Input for updating slide config
- */
 export const UpdateSlideConfigSchema = z.object({
 	enabled: z.boolean().optional(),
 	sortOrder: z.number().int().nonnegative().optional()
@@ -40,9 +21,6 @@ export const UpdateSlideConfigSchema = z.object({
 
 export type UpdateSlideConfig = z.infer<typeof UpdateSlideConfigSchema>;
 
-/**
- * Input for creating custom slide
- */
 export const CreateCustomSlideSchema = z.object({
 	title: z.string().min(1).max(200),
 	content: z.string().min(1).max(10000),
@@ -53,9 +31,6 @@ export const CreateCustomSlideSchema = z.object({
 
 export type CreateCustomSlide = z.infer<typeof CreateCustomSlideSchema>;
 
-/**
- * Input for updating custom slide
- */
 export const UpdateCustomSlideSchema = z.object({
 	title: z.string().min(1).max(200).optional(),
 	content: z.string().min(1).max(10000).optional(),
@@ -66,13 +41,6 @@ export const UpdateCustomSlideSchema = z.object({
 
 export type UpdateCustomSlide = z.infer<typeof UpdateCustomSlideSchema>;
 
-// =============================================================================
-// TypeScript Interfaces
-// =============================================================================
-
-/**
- * Slide configuration record from database
- */
 export interface SlideConfig {
 	id: number;
 	slideType: SlideTypeValue;
@@ -80,9 +48,6 @@ export interface SlideConfig {
 	sortOrder: number;
 }
 
-/**
- * Custom slide record from database
- */
 export interface CustomSlide {
 	id: number;
 	title: string;
@@ -92,18 +57,12 @@ export interface CustomSlide {
 	year: number | null;
 }
 
-/**
- * Rendered slide info for presentation
- */
 export interface RenderedSlide {
 	type: SlideTypeValue;
 	sortOrder: number;
 	customSlideId?: number;
 }
 
-/**
- * Markdown validation result
- */
 export interface MarkdownValidationResult {
 	valid: boolean;
 	errors: string[];

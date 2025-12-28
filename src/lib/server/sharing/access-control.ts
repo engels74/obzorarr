@@ -15,31 +15,10 @@ import {
 	getServerWrappedShareMode
 } from './service';
 
-/**
- * Access Control Module
- *
- * Implements access control logic for wrapped pages.
- *
- * Property 15: Share Mode Access Control
- * - Public: all requests allowed
- * - Private OAuth: only authenticated server members
- * - Private Link: only valid share token
- *
- * @module sharing/access-control
- */
-
-// =============================================================================
-// Core Access Control
-// =============================================================================
-
-/**
- * Check if access is allowed based on context
- *
- * Property 15: Share Mode Access Control
- *
- * @param context - Access check context
- * @returns Access check result
- */
+// Property 15: Share Mode Access Control
+// - Public: all requests allowed
+// - Private OAuth: only authenticated server members
+// - Private Link: only valid share token
 export function checkAccess(context: AccessCheckContext): AccessCheckResult {
 	// Owner always has access
 	if (context.isOwner) {
@@ -89,13 +68,6 @@ export function checkAccess(context: AccessCheckContext): AccessCheckResult {
 	}
 }
 
-// =============================================================================
-// Route Guard Helpers
-// =============================================================================
-
-/**
- * Options for wrapped page access check
- */
 export interface CheckWrappedAccessOptions {
 	/** User ID of the wrapped page owner */
 	userId: number;
@@ -111,27 +83,14 @@ export interface CheckWrappedAccessOptions {
 	shareToken?: string;
 }
 
-/**
- * Result of wrapped access check
- */
 export interface CheckWrappedAccessResult {
 	settings: ShareSettings;
 	accessReason: string;
 }
 
-/**
- * Check access to a wrapped page with floor enforcement
- *
- * High-level function for use in route load functions.
- * The effective share mode is the MORE RESTRICTIVE of:
- * - The user's configured share mode
- * - The global default share mode (floor)
- *
- * @param options - Access check options
- * @returns Share settings if access is allowed
- * @throws ShareAccessDeniedError if access is denied
- * @throws InvalidShareTokenError if token is invalid
- */
+// The effective share mode is the MORE RESTRICTIVE of:
+// - The user's configured share mode
+// - The global default share mode (floor)
 export async function checkWrappedAccess(
 	options: CheckWrappedAccessOptions
 ): Promise<CheckWrappedAccessResult> {
@@ -182,22 +141,12 @@ export async function checkWrappedAccess(
 	};
 }
 
-/**
- * Result of token access check
- */
 export interface CheckTokenAccessResult {
 	settings: ShareSettings;
 	userId: number;
 	year: number;
 }
 
-/**
- * Check access by share token (for /wrapped/{year}/u/{token} routes)
- *
- * @param token - The share token from URL
- * @returns Share settings if token is valid
- * @throws InvalidShareTokenError if token is invalid
- */
 export async function checkTokenAccess(token: string): Promise<CheckTokenAccessResult> {
 	const settings = await getShareSettingsByToken(token);
 
@@ -216,13 +165,6 @@ export async function checkTokenAccess(token: string): Promise<CheckTokenAccessR
 	};
 }
 
-// =============================================================================
-// Server-Wide Wrapped Access Control
-// =============================================================================
-
-/**
- * Options for server-wide wrapped access check
- */
 export interface CheckServerWrappedAccessOptions {
 	/** Year of the wrapped page */
 	year: number;
@@ -234,27 +176,14 @@ export interface CheckServerWrappedAccessOptions {
 	};
 }
 
-/**
- * Result of server wrapped access check
- */
 export interface CheckServerWrappedAccessResult {
 	shareMode: ShareModeType;
 	accessReason: string;
 }
 
-/**
- * Check access to server-wide wrapped page
- *
- * Server-wide pages use the SERVER_WRAPPED_SHARE_MODE setting.
- * Admins always have access.
- *
- * Note: Private Link mode is not supported for server-wide pages
- * (there's no user to own the token).
- *
- * @param options - Access check options
- * @returns Access info if allowed
- * @throws ShareAccessDeniedError if access is denied
- */
+// Server-wide pages use the SERVER_WRAPPED_SHARE_MODE setting.
+// Admins always have access.
+// Note: Private Link mode is not supported for server-wide pages (no user to own the token).
 export async function checkServerWrappedAccess(
 	options: CheckServerWrappedAccessOptions
 ): Promise<CheckServerWrappedAccessResult> {

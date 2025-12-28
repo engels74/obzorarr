@@ -7,24 +7,10 @@ import {
 	getAvailableYears
 } from '$lib/server/admin/users.service';
 
-/**
- * Admin Users Page Server
- *
- * Handles user management operations.
- */
-
-// =============================================================================
-// Validation Schemas
-// =============================================================================
-
 const UpdateUserPermissionSchema = z.object({
 	userId: z.coerce.number().int().positive(),
 	canUserControl: z.coerce.boolean()
 });
-
-// =============================================================================
-// Load Function
-// =============================================================================
 
 export const load: PageServerLoad = async () => {
 	const year = new Date().getFullYear();
@@ -51,14 +37,7 @@ export const load: PageServerLoad = async () => {
 	};
 };
 
-// =============================================================================
-// Actions
-// =============================================================================
-
 export const actions: Actions = {
-	/**
-	 * Update a user's share control permission
-	 */
 	updateUserPermission: async ({ request }) => {
 		const formData = await request.formData();
 		const year = new Date().getFullYear();

@@ -11,24 +11,6 @@ import {
 } from './types';
 import { validateMarkdownSyntax } from './renderer';
 
-/**
- * Custom Slides Service
- *
- * Core service for managing admin-created custom Markdown slides.
- *
- * @module slides/custom.service
- */
-
-// =============================================================================
-// Create Operations
-// =============================================================================
-
-/**
- * Create a new custom slide
- *
- * @param data - The custom slide data
- * @returns Created custom slide
- */
 export async function createCustomSlide(data: CreateCustomSlide): Promise<CustomSlide> {
 	// Validate input
 	const parsed = CreateCustomSlideSchema.safeParse(data);
@@ -76,16 +58,6 @@ export async function createCustomSlide(data: CreateCustomSlide): Promise<Custom
 	};
 }
 
-// =============================================================================
-// Read Operations
-// =============================================================================
-
-/**
- * Get all custom slides, optionally filtered by year
- *
- * @param year - Optional year to filter by (null for all years)
- * @returns Array of custom slides
- */
 export async function getAllCustomSlides(year?: number): Promise<CustomSlide[]> {
 	let results;
 
@@ -110,16 +82,9 @@ export async function getAllCustomSlides(year?: number): Promise<CustomSlide[]> 
 	}));
 }
 
-/**
- * Get enabled custom slides for a year
- *
- * Retrieves slides that are:
- * 1. Enabled
- * 2. Either matching the specific year OR applicable to all years (year = null)
- *
- * @param year - The year to get slides for
- * @returns Array of enabled custom slides
- */
+// Retrieves slides that are:
+// 1. Enabled
+// 2. Either matching the specific year OR applicable to all years (year = null)
 export async function getEnabledCustomSlides(year: number): Promise<CustomSlide[]> {
 	// Get slides matching the year OR with null year (applicable to all years)
 	const yearMatches = await db
@@ -147,12 +112,6 @@ export async function getEnabledCustomSlides(year: number): Promise<CustomSlide[
 	}));
 }
 
-/**
- * Get custom slide by ID
- *
- * @param id - The custom slide ID
- * @returns Custom slide or null if not found
- */
 export async function getCustomSlideById(id: number): Promise<CustomSlide | null> {
 	const result = await db.select().from(customSlides).where(eq(customSlides.id, id)).limit(1);
 
@@ -171,17 +130,6 @@ export async function getCustomSlideById(id: number): Promise<CustomSlide | null
 	};
 }
 
-// =============================================================================
-// Update Operations
-// =============================================================================
-
-/**
- * Update custom slide
- *
- * @param id - The custom slide ID
- * @param updates - The fields to update
- * @returns Updated custom slide
- */
 export async function updateCustomSlide(
 	id: number,
 	updates: UpdateCustomSlide
@@ -246,12 +194,6 @@ export async function updateCustomSlide(
 	return updated;
 }
 
-/**
- * Toggle custom slide enabled state
- *
- * @param id - The custom slide ID
- * @returns Updated custom slide
- */
 export async function toggleCustomSlide(id: number): Promise<CustomSlide> {
 	const existing = await getCustomSlideById(id);
 	if (!existing) {
@@ -261,15 +203,6 @@ export async function toggleCustomSlide(id: number): Promise<CustomSlide> {
 	return updateCustomSlide(id, { enabled: !existing.enabled });
 }
 
-// =============================================================================
-// Delete Operations
-// =============================================================================
-
-/**
- * Delete custom slide
- *
- * @param id - The custom slide ID
- */
 export async function deleteCustomSlide(id: number): Promise<void> {
 	const existing = await getCustomSlideById(id);
 	if (!existing) {
@@ -279,25 +212,10 @@ export async function deleteCustomSlide(id: number): Promise<void> {
 	await db.delete(customSlides).where(eq(customSlides.id, id));
 }
 
-// =============================================================================
-// Validation
-// =============================================================================
-
-/**
- * Validate Markdown content
- *
- * @param content - The Markdown content to validate
- * @returns Validation result with errors if invalid
- */
 export function validateMarkdown(content: string): { valid: boolean; errors: string[] } {
 	return validateMarkdownSyntax(content);
 }
 
-/**
- * Get next available sort order for custom slides
- *
- * @returns Next sort order value
- */
 export async function getNextSortOrder(): Promise<number> {
 	const allSlides = await getAllCustomSlides();
 	if (allSlides.length === 0) {

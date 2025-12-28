@@ -10,61 +10,13 @@ import {
 	clearSyncProgress
 } from './progress';
 
-/**
- * Sync Scheduler
- *
- * Croner-based scheduling for automatic sync operations.
- * Provides overrun protection and configurable cron expressions.
- *
- * @module sync/scheduler
- */
-
-// =============================================================================
-// Constants
-// =============================================================================
-
-/**
- * Default cron expression: daily at midnight UTC
- */
 const DEFAULT_CRON_EXPRESSION = '0 0 * * *';
-
-/**
- * Default timezone for cron expression
- */
 const DEFAULT_TIMEZONE = 'UTC';
-
-/**
- * Name for the sync job
- */
 const JOB_NAME = 'plex-sync';
-
-/**
- * Log interval for progress updates (every N pages)
- */
 const PROGRESS_LOG_INTERVAL = 10;
 
-// =============================================================================
-// Scheduler State
-// =============================================================================
-
-/**
- * Singleton scheduler instance
- */
 let schedulerInstance: Cron | null = null;
 
-// =============================================================================
-// Scheduler Functions
-// =============================================================================
-
-/**
- * Set up the sync scheduler with Croner
- *
- * Creates a Croner job that runs sync at the specified schedule.
- * Uses overrun protection to prevent overlapping sync runs.
- *
- * @param options - Scheduler configuration
- * @returns The Cron job instance
- */
 export function setupSyncScheduler(options: SchedulerOptions = {}): Cron {
 	const {
 		cronExpression = DEFAULT_CRON_EXPRESSION,
@@ -73,7 +25,6 @@ export function setupSyncScheduler(options: SchedulerOptions = {}): Cron {
 		startImmediately = true
 	} = options;
 
-	// Stop existing scheduler if running
 	if (schedulerInstance) {
 		stopSyncScheduler();
 	}
@@ -81,7 +32,7 @@ export function setupSyncScheduler(options: SchedulerOptions = {}): Cron {
 	const cronOptions: CronOptions = {
 		name: JOB_NAME,
 		timezone,
-		protect, // Overrun protection - prevents overlapping runs
+		protect,
 		paused: !startImmediately,
 		catch: (error: unknown, job: Cron) => {
 			logger.error(`Sync job "${job.name}" failed: ${error}`, 'Scheduler');
@@ -92,7 +43,6 @@ export function setupSyncScheduler(options: SchedulerOptions = {}): Cron {
 		logger.info(`Starting scheduled sync at ${new Date().toISOString()}`, 'Scheduler');
 
 		try {
-			// Double-check no sync is running (extra safety with protect: true)
 			if (await isSyncRunning()) {
 				logger.info('Sync already in progress, skipping scheduled run', 'Scheduler');
 				return;
@@ -100,7 +50,6 @@ export function setupSyncScheduler(options: SchedulerOptions = {}): Cron {
 
 			const result = await startSync({
 				onProgress: (progress) => {
-					// Log progress periodically
 					if (progress.currentPage % PROGRESS_LOG_INTERVAL === 0) {
 						logger.info(
 							`Progress: page ${progress.currentPage}, ${progress.recordsProcessed} records processed`,
@@ -131,11 +80,6 @@ export function setupSyncScheduler(options: SchedulerOptions = {}): Cron {
 	return schedulerInstance;
 }
 
-/**
- * Stop the sync scheduler
- *
- * Stops the Croner job and clears the scheduler instance.
- */
 export function stopSyncScheduler(): void {
 	if (schedulerInstance) {
 		schedulerInstance.stop();
@@ -144,12 +88,6 @@ export function stopSyncScheduler(): void {
 	}
 }
 
-/**
- * Pause the sync scheduler
- *
- * Pauses the scheduler without destroying it.
- * Can be resumed with resumeSyncScheduler().
- */
 export function pauseSyncScheduler(): void {
 	if (schedulerInstance) {
 		schedulerInstance.pause();
@@ -157,11 +95,6 @@ export function pauseSyncScheduler(): void {
 	}
 }
 
-/**
- * Resume the sync scheduler
- *
- * Resumes a paused scheduler.
- */
 export function resumeSyncScheduler(): void {
 	if (schedulerInstance) {
 		schedulerInstance.resume();
@@ -169,11 +102,6 @@ export function resumeSyncScheduler(): void {
 	}
 }
 
-/**
- * Get scheduler status
- *
- * @returns Current scheduler status including next/previous run times
- */
 export function getSchedulerStatus(): SchedulerStatus {
 	if (!schedulerInstance) {
 		return {
@@ -194,15 +122,6 @@ export function getSchedulerStatus(): SchedulerStatus {
 	};
 }
 
-/**
- * Trigger an immediate sync (outside of schedule)
- *
- * Useful for manual sync button in admin panel.
- * Runs in foreground and returns the result.
- *
- * @param backfillYear - Optional year to backfill from
- * @returns Result of the sync operation
- */
 export async function triggerImmediateSync(backfillYear?: number): Promise<SyncResult> {
 	logger.info('Manual sync triggered', 'Scheduler');
 
@@ -219,38 +138,24 @@ export async function triggerImmediateSync(backfillYear?: number): Promise<SyncR
 	});
 }
 
-/**
- * Start a manual sync in the background with progress tracking
- *
- * Starts the sync operation without blocking. Progress is tracked
- * in the in-memory store and can be streamed to clients via SSE.
- *
- * @param backfillYear - Optional year to backfill from
- * @returns Object indicating if sync was started successfully
- */
 export async function startBackgroundSync(
 	backfillYear?: number
 ): Promise<{ started: boolean; error?: string }> {
 	logger.info('Background sync triggered', 'ManualSync');
 
-	// Check if sync is already running
 	if (await isSyncRunning()) {
 		return { started: false, error: 'A sync is already in progress' };
 	}
 
-	// Generate a temporary sync ID (will be replaced when startSync creates the record)
-	// We use a negative number to distinguish from real DB IDs
+	// Use negative timestamp to distinguish from real DB IDs
 	const tempSyncId = -Date.now();
 
-	// Initialize progress tracking and get abort signal
 	const signal = startSyncProgress(tempSyncId);
 
-	// Start sync in background (don't await)
 	startSync({
 		backfillYear,
 		signal,
 		onProgress: (progress) => {
-			// Update progress store on every callback (including enrichment fields)
 			updateProgressStore({
 				recordsProcessed: progress.recordsProcessed,
 				recordsInserted: progress.recordsInserted,
@@ -261,7 +166,6 @@ export async function startBackgroundSync(
 				enrichmentProcessed: progress.enrichmentProcessed
 			});
 
-			// Log progress periodically (only during fetch phase, enrichment logging is in service.ts)
 			if (!progress.phase || progress.phase === 'fetching') {
 				if (progress.currentPage % PROGRESS_LOG_INTERVAL === 0) {
 					logger.info(
@@ -273,7 +177,6 @@ export async function startBackgroundSync(
 		}
 	})
 		.then((result) => {
-			// Update progress store with final result
 			if (result.status === 'completed') {
 				completeSyncProgress(
 					result.recordsProcessed,
@@ -289,7 +192,6 @@ export async function startBackgroundSync(
 				logger.error(`Sync failed: ${result.error}`, 'ManualSync');
 			}
 
-			// Clear progress after a delay to allow clients to see the final state
 			setTimeout(() => {
 				clearSyncProgress();
 			}, 5000);
@@ -297,16 +199,13 @@ export async function startBackgroundSync(
 		.catch((error) => {
 			const message = error instanceof Error ? error.message : 'Unknown error';
 
-			// Check if this was a cancellation
 			if (message === 'Sync cancelled') {
 				logger.info('Sync was cancelled by user', 'ManualSync');
-				// Status already set to 'cancelled' by cancelSync()
 			} else {
 				failSyncProgress(message);
 				logger.error(`Sync error: ${message}`, 'ManualSync');
 			}
 
-			// Clear progress after a delay
 			setTimeout(() => {
 				clearSyncProgress();
 			}, 5000);
@@ -315,15 +214,6 @@ export async function startBackgroundSync(
 	return { started: true };
 }
 
-/**
- * Update scheduler cron expression
- *
- * Restarts the scheduler with a new cron expression.
- *
- * @param cronExpression - New cron expression
- * @param timezone - Optional timezone (defaults to UTC)
- * @returns The new Cron job instance
- */
 export function updateSchedulerCron(cronExpression: string, timezone?: string): Cron {
 	return setupSyncScheduler({
 		cronExpression,
@@ -333,11 +223,6 @@ export function updateSchedulerCron(cronExpression: string, timezone?: string): 
 	});
 }
 
-/**
- * Check if scheduler is configured
- *
- * @returns True if a scheduler instance exists
- */
 export function isSchedulerConfigured(): boolean {
 	return schedulerInstance !== null;
 }

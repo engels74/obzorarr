@@ -1,22 +1,6 @@
 import type { FactGenerationContext, AIPersona } from '../types';
 import { MONTH_NAMES, formatHour } from '../constants';
 
-/**
- * AI Prompt Builders
- *
- * Builds enhanced prompts for AI-based fun fact generation
- * with support for different personas.
- *
- * @module server/funfacts/ai/prompts
- */
-
-// =============================================================================
-// Persona Definitions
-// =============================================================================
-
-/**
- * Persona descriptions for AI generation
- */
 export const AI_PERSONAS: Record<Exclude<AIPersona, 'random'>, string> = {
 	witty: 'a witty entertainment columnist who loves clever pop culture references and wordplay',
 	wholesome: 'an encouraging friend who celebrates viewing achievements with warmth and positivity',
@@ -24,31 +8,16 @@ export const AI_PERSONAS: Record<Exclude<AIPersona, 'random'>, string> = {
 		'a data-loving analyst who finds fascinating patterns and loves precise statistics and comparisons'
 };
 
-/**
- * Get a random persona (excluding 'random' itself)
- */
 export function getRandomPersona(): Exclude<AIPersona, 'random'> {
 	const personas: Exclude<AIPersona, 'random'>[] = ['witty', 'wholesome', 'nerdy'];
 	const index = Math.floor(Math.random() * personas.length);
 	return personas[index] ?? 'witty';
 }
 
-/**
- * Resolve persona (handle 'random' option)
- */
 export function resolvePersona(persona: AIPersona): Exclude<AIPersona, 'random'> {
 	return persona === 'random' ? getRandomPersona() : persona;
 }
 
-// =============================================================================
-// Prompt Builders
-// =============================================================================
-
-/**
- * Build the system prompt for AI generation
- * @param persona - The AI persona to use
- * @param scope - Whether this is for a single user ('user') or server-wide stats ('server')
- */
 export function buildSystemPrompt(
 	persona: Exclude<AIPersona, 'random'>,
 	scope: 'user' | 'server' = 'user'
@@ -83,9 +52,6 @@ IMPORTANT: Respond ONLY with valid JSON in exactly this format:
 }`;
 }
 
-/**
- * Build the user prompt with viewing statistics context
- */
 export function buildUserPrompt(context: FactGenerationContext, count: number): string {
 	const parts: string[] = [];
 
@@ -165,9 +131,6 @@ export function buildUserPrompt(context: FactGenerationContext, count: number): 
 	return parts.join('\n');
 }
 
-/**
- * Build the complete prompt for AI generation
- */
 export function buildEnhancedPrompt(
 	context: FactGenerationContext,
 	count: number,

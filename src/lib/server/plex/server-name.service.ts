@@ -2,36 +2,8 @@ import { getCachedServerName, setCachedServerName } from '$lib/server/admin/sett
 import { getApiConfigWithSources } from '$lib/server/admin/settings.service';
 import { logger } from '$lib/server/logging';
 
-/**
- * Server Name Service
- *
- * Fetches and caches the Plex server's friendly name for use in
- * wrapped presentation messaging.
- *
- * @module plex/server-name
- */
-
-// =============================================================================
-// Constants
-// =============================================================================
-
-/**
- * Plex root endpoint (returns server capabilities including friendlyName)
- */
 const ROOT_ENDPOINT = '/';
 
-// =============================================================================
-// Server Name Functions
-// =============================================================================
-
-/**
- * Fetch the server name directly from Plex API
- *
- * Makes a request to the root endpoint to get the server's
- * friendlyName from capabilities. Does not cache the result.
- *
- * @returns The server's friendly name or null if unavailable
- */
 export async function fetchServerNameFromPlex(): Promise<string | null> {
 	try {
 		const config = await getApiConfigWithSources();
@@ -76,14 +48,6 @@ export async function fetchServerNameFromPlex(): Promise<string | null> {
 	}
 }
 
-/**
- * Get the server name, using cache if available
- *
- * First checks the database cache, then fetches from Plex if not cached.
- * Caches the result for future calls.
- *
- * @returns The server's friendly name or null if unavailable
- */
 export async function getServerName(): Promise<string | null> {
 	// Check cache first
 	const cached = await getCachedServerName();
@@ -100,14 +64,6 @@ export async function getServerName(): Promise<string | null> {
 	return fetched;
 }
 
-/**
- * Refresh the server name from Plex
- *
- * Forces a fresh fetch from Plex API and updates the cache.
- * Use this after testing Plex connection or when the server name may have changed.
- *
- * @returns The server's friendly name or null if unavailable
- */
 export async function refreshServerName(): Promise<string | null> {
 	const fetched = await fetchServerNameFromPlex();
 	if (fetched) {

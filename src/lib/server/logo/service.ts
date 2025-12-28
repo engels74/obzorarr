@@ -7,47 +7,12 @@ import {
 	type WrappedLogoModeType
 } from '$lib/server/admin/settings.service';
 
-/**
- * Logo Service
- *
- * Handles logo visibility logic for wrapped pages.
- * Supports three modes:
- * - ALWAYS_SHOW: Logo always visible
- * - ALWAYS_HIDE: Logo always hidden
- * - USER_CHOICE: Users can toggle their preference
- *
- * @module logo/service
- */
-
-// =============================================================================
-// Types
-// =============================================================================
-
 export interface LogoVisibilityResult {
-	/** Whether to show the logo */
 	showLogo: boolean;
-	/** Whether the user can control logo visibility */
 	canUserControl: boolean;
-	/** The current global mode */
 	mode: WrappedLogoModeType;
 }
 
-// =============================================================================
-// Main Functions
-// =============================================================================
-
-/**
- * Get logo visibility for a wrapped page
- *
- * Logic:
- * - ALWAYS_SHOW: return true
- * - ALWAYS_HIDE: return false
- * - USER_CHOICE: check user's preference in shareSettings
- *
- * @param userId - The user ID (null for server-wide wrapped)
- * @param year - The year
- * @returns Logo visibility and control information
- */
 export async function getLogoVisibility(
 	userId: number | null,
 	year: number
@@ -101,16 +66,6 @@ export async function getLogoVisibility(
 	};
 }
 
-/**
- * Set user's logo preference
- *
- * Only works when mode is USER_CHOICE
- *
- * @param userId - The user ID
- * @param year - The year
- * @param showLogo - Whether to show the logo
- * @throws Error if mode is not USER_CHOICE
- */
 export async function setUserLogoPreference(
 	userId: number,
 	year: number,

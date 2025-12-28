@@ -1,24 +1,11 @@
 import type { RequestHandler } from './$types';
 import { getSyncProgress, type LiveSyncProgress } from '$lib/server/sync/progress';
 
-/**
- * Public SSE Endpoint for Sync Status Streaming
- *
- * Streams simplified sync status to connected clients using Server-Sent Events.
- * This endpoint is public (no auth required) for use on wrapped pages.
- *
- * Polls the in-memory progress store every 500ms.
- *
- * @module api/sync/status/stream
- */
-
 const POLL_INTERVAL_MS = 500;
 
 export const GET: RequestHandler = async ({ request }) => {
-	// Create a readable stream for SSE
 	const stream = new ReadableStream({
 		async start(controller) {
-			// Send initial connection event with current status
 			const initialProgress = getSyncProgress();
 			controller.enqueue(
 				formatSSE({
@@ -28,14 +15,12 @@ export const GET: RequestHandler = async ({ request }) => {
 				})
 			);
 
-			// Poll for status updates
 			let lastProgress: LiveSyncProgress | null = initialProgress;
 			let terminalEventSent = false;
 			const intervalId = setInterval(() => {
 				try {
 					const currentProgress = getSyncProgress();
 
-					// Send update when status changes
 					if (currentProgress) {
 						const hasChanged =
 							!lastProgress ||
@@ -55,7 +40,6 @@ export const GET: RequestHandler = async ({ request }) => {
 							lastProgress = { ...currentProgress };
 						}
 
-						// Send terminal event (only once) with proper status
 						if (
 							!terminalEventSent &&
 							(currentProgress.status === 'completed' ||
@@ -72,7 +56,6 @@ export const GET: RequestHandler = async ({ request }) => {
 							terminalEventSent = true;
 						}
 					} else if (lastProgress !== null) {
-						// Progress was cleared (sync ended)
 						controller.enqueue(
 							formatSSE({
 								type: 'idle',
@@ -84,11 +67,10 @@ export const GET: RequestHandler = async ({ request }) => {
 						terminalEventSent = false;
 					}
 				} catch {
-					// Silently ignore errors, keep connection open
+					// Silently ignore errors
 				}
 			}, POLL_INTERVAL_MS);
 
-			// Handle client disconnect
 			request.signal.addEventListener('abort', () => {
 				clearInterval(intervalId);
 				controller.close();
@@ -105,9 +87,6 @@ export const GET: RequestHandler = async ({ request }) => {
 	});
 };
 
-/**
- * Simplify progress data for public consumption
- */
 function simplifyProgress(progress: LiveSyncProgress | null): SimpleProgress | null {
 	if (!progress || progress.status !== 'running') return null;
 
@@ -120,17 +99,10 @@ function simplifyProgress(progress: LiveSyncProgress | null): SimpleProgress | n
 	};
 }
 
-/**
- * Format data as SSE event
- */
 function formatSSE(data: SSEEvent): string {
 	return `data: ${JSON.stringify(data)}\n\n`;
 }
 
-/**
- * Simplified progress for public display
- * Compatible with SyncIndicator and onboarding sync page requirements
- */
 interface SimpleProgress {
 	phase: 'fetching' | 'enriching';
 	recordsProcessed: number;
@@ -139,9 +111,6 @@ interface SimpleProgress {
 	enrichmentProcessed?: number;
 }
 
-/**
- * SSE event types
- */
 type SSEEvent =
 	| { type: 'connected'; inProgress: boolean; progress: SimpleProgress | null }
 	| { type: 'update'; inProgress: boolean; progress: SimpleProgress | null }

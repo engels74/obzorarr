@@ -1,54 +1,18 @@
 import { marked } from 'marked';
 import type { MarkdownValidationResult } from './types';
 
-/**
- * Markdown Renderer
- *
- * Utilities for rendering and validating Markdown content
- * used in custom slides.
- *
- * Implements Requirement 9.2: System validates Markdown syntax
- *
- * @module slides/renderer
- */
-
-// =============================================================================
-// Configuration
-// =============================================================================
-
-/**
- * Markdown rendering options
- */
 export interface MarkdownOptions {
-	/** Whether to sanitize HTML output (default: true) */
 	sanitize?: boolean;
-	/** Whether to allow raw HTML in Markdown (default: false) */
 	allowHtml?: boolean;
-	/** Whether to add breaks on single newlines (default: false) */
 	breaks?: boolean;
 }
 
-// Configure marked with secure defaults
 marked.setOptions({
-	gfm: true, // GitHub Flavored Markdown
+	gfm: true,
 	breaks: false,
 	async: false
 });
 
-// =============================================================================
-// Rendering
-// =============================================================================
-
-/**
- * Render Markdown to HTML
- *
- * Converts Markdown content to HTML with configurable options.
- * Uses marked for parsing, which supports GitHub Flavored Markdown.
- *
- * @param content - The Markdown content to render
- * @param options - Rendering options
- * @returns HTML string
- */
 export function renderMarkdown(content: string, options: MarkdownOptions = {}): string {
 	const { breaks = false } = options;
 
@@ -67,34 +31,11 @@ export function renderMarkdown(content: string, options: MarkdownOptions = {}): 
 	return content;
 }
 
-/**
- * Render Markdown to HTML synchronously
- *
- * Guaranteed synchronous rendering for use in components.
- *
- * @param content - The Markdown content to render
- * @returns HTML string
- */
 export function renderMarkdownSync(content: string): string {
 	const result = marked.parse(content, { async: false });
 	return typeof result === 'string' ? result : content;
 }
 
-// =============================================================================
-// Validation
-// =============================================================================
-
-/**
- * Validate Markdown syntax
- *
- * Checks if the Markdown content is valid and parseable.
- * This is a basic validation that ensures the content can be parsed.
- *
- * Implements Requirement 9.2
- *
- * @param content - The Markdown content to validate
- * @returns Validation result with errors if invalid
- */
 export function validateMarkdownSyntax(content: string): MarkdownValidationResult {
 	const errors: string[] = [];
 
@@ -142,19 +83,6 @@ export function validateMarkdownSyntax(content: string): MarkdownValidationResul
 	}
 }
 
-// =============================================================================
-// Utilities
-// =============================================================================
-
-/**
- * Extract plain text from Markdown
- *
- * Useful for generating previews or excerpts.
- *
- * @param content - The Markdown content
- * @param maxLength - Maximum length of the plain text (default: 200)
- * @returns Plain text string
- */
 export function markdownToPlainText(content: string, maxLength: number = 200): string {
 	// Parse to HTML first
 	const html = renderMarkdownSync(content);
@@ -181,12 +109,6 @@ export function markdownToPlainText(content: string, maxLength: number = 200): s
 	return truncated + '...';
 }
 
-/**
- * Check if content contains potentially unsafe HTML
- *
- * @param content - The Markdown content to check
- * @returns True if potentially unsafe content is detected
- */
 export function containsUnsafeHtml(content: string): boolean {
 	// Check for script tags
 	if (/<script[^>]*>/i.test(content)) {
@@ -211,25 +133,12 @@ export function containsUnsafeHtml(content: string): boolean {
 	return false;
 }
 
-/**
- * Get word count from Markdown content
- *
- * @param content - The Markdown content
- * @returns Word count
- */
 export function getWordCount(content: string): number {
 	const plainText = markdownToPlainText(content, Infinity);
 	const words = plainText.split(/\s+/).filter((word) => word.length > 0);
 	return words.length;
 }
 
-/**
- * Get estimated reading time in minutes
- *
- * @param content - The Markdown content
- * @param wordsPerMinute - Reading speed (default: 200)
- * @returns Estimated reading time in minutes
- */
 export function getReadingTime(content: string, wordsPerMinute: number = 200): number {
 	const wordCount = getWordCount(content);
 	return Math.ceil(wordCount / wordsPerMinute);

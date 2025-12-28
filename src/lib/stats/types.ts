@@ -1,21 +1,5 @@
 import { z } from 'zod';
 
-/**
- * Shared Statistics Types
- *
- * Client-safe type definitions for the statistics system.
- * These types can be imported in both client and server code.
- *
- * @module stats/types
- */
-
-// =============================================================================
-// Zod Schemas (source of truth for runtime validation)
-// =============================================================================
-
-/**
- * A ranked item in a top list (movies, shows, genres)
- */
 export const RankedItemSchema = z.object({
 	rank: z.number().int().positive(),
 	title: z.string(),
@@ -23,9 +7,7 @@ export const RankedItemSchema = z.object({
 	thumb: z.string().nullable()
 });
 
-/**
- * A binge watching session - consecutive plays within 30 minutes
- */
+// Binge session: consecutive plays within 30 minutes
 export const BingeSessionSchema = z.object({
 	startTime: z.number().int(), // Unix timestamp
 	endTime: z.number().int(), // Unix timestamp
@@ -33,9 +15,6 @@ export const BingeSessionSchema = z.object({
 	totalMinutes: z.number().nonnegative()
 });
 
-/**
- * A single watch record (first/last watch of year)
- */
 export const WatchRecordSchema = z.object({
 	title: z.string(),
 	viewedAt: z.number().int(), // Unix timestamp
@@ -43,25 +22,16 @@ export const WatchRecordSchema = z.object({
 	type: z.enum(['movie', 'episode', 'track'])
 });
 
-/**
- * Monthly distribution data with both watch time and play counts
- */
 export const MonthlyDistributionSchema = z.object({
 	minutes: z.array(z.number().nonnegative()).length(12),
 	plays: z.array(z.number().int().nonnegative()).length(12)
 });
 
-/**
- * Hourly distribution data with both watch time and play counts
- */
 export const HourlyDistributionSchema = z.object({
 	minutes: z.array(z.number().nonnegative()).length(24),
 	plays: z.array(z.number().int().nonnegative()).length(24)
 });
 
-/**
- * Complete statistics for a single user
- */
 export const UserStatsSchema = z.object({
 	userId: z.number().int().positive(),
 	year: z.number().int().min(2000).max(2100),
@@ -78,9 +48,6 @@ export const UserStatsSchema = z.object({
 	lastWatch: WatchRecordSchema.nullable()
 });
 
-/**
- * Complete server-wide statistics
- */
 export const ServerStatsSchema = z.object({
 	year: z.number().int().min(2000).max(2100),
 	totalUsers: z.number().int().nonnegative(),
@@ -104,10 +71,6 @@ export const ServerStatsSchema = z.object({
 	lastWatch: WatchRecordSchema.nullable()
 });
 
-// =============================================================================
-// TypeScript Types (inferred from Zod schemas)
-// =============================================================================
-
 export type RankedItem = z.infer<typeof RankedItemSchema>;
 export type BingeSession = z.infer<typeof BingeSessionSchema>;
 export type WatchRecord = z.infer<typeof WatchRecordSchema>;
@@ -116,21 +79,12 @@ export type HourlyDistribution = z.infer<typeof HourlyDistributionSchema>;
 export type UserStats = z.infer<typeof UserStatsSchema>;
 export type ServerStats = z.infer<typeof ServerStatsSchema>;
 
-/**
- * Union type for any stats object
- */
 export type Stats = UserStats | ServerStats;
 
-/**
- * Type guard to check if stats is UserStats
- */
 export function isUserStats(stats: Stats): stats is UserStats {
 	return 'userId' in stats && 'percentileRank' in stats;
 }
 
-/**
- * Type guard to check if stats is ServerStats
- */
 export function isServerStats(stats: Stats): stats is ServerStats {
 	return 'totalUsers' in stats && 'topViewers' in stats;
 }

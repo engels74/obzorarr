@@ -1,27 +1,10 @@
 import type { FactGenerationContext } from '../types';
 import { ENTERTAINMENT_FACTORS } from '../constants';
 
-/**
- * Context Enricher
- *
- * Enriches the generation context with calculated values
- * for entertainment trivia comparisons.
- *
- * @module server/funfacts/ai/context-enricher
- */
-
-/**
- * Round to one decimal place
- */
 function round1(value: number): number {
 	return Math.round(value * 10) / 10;
 }
 
-/**
- * Enriches the base generation context with entertainment trivia calculations
- * @param baseContext - The base context from stats
- * @returns Enriched context with entertainment comparisons
- */
 export function enrichContext(baseContext: FactGenerationContext): FactGenerationContext {
 	const { hours } = baseContext;
 
@@ -39,16 +22,10 @@ export function enrichContext(baseContext: FactGenerationContext): FactGeneratio
 	};
 }
 
-/**
- * Check if context has been enriched with entertainment data
- */
 export function isContextEnriched(context: FactGenerationContext): boolean {
 	return context.gotCount !== undefined;
 }
 
-/**
- * Ensure context is enriched (idempotent)
- */
 export function ensureEnrichedContext(context: FactGenerationContext): FactGenerationContext {
 	if (isContextEnriched(context)) {
 		return context;

@@ -11,25 +11,8 @@ import {
 import { logger } from '$lib/server/logging';
 import { getApiConfigWithSources } from '$lib/server/admin/settings.service';
 
-/**
- * Server Membership Verification Module
- *
- * Verifies that a user is a member of the configured Plex server
- * and determines if they are the server owner (admin).
- */
-
-// =============================================================================
-// Constants
-// =============================================================================
-
-/**
- * Plex.tv API base URL
- */
 const PLEX_TV_URL = 'https://plex.tv';
 
-/**
- * Headers for Plex.tv API requests
- */
 const PLEX_TV_HEADERS = {
 	Accept: 'application/json',
 	'X-Plex-Client-Identifier': PLEX_CLIENT_ID,
@@ -37,18 +20,6 @@ const PLEX_TV_HEADERS = {
 	'X-Plex-Version': PLEX_VERSION
 } as const;
 
-// =============================================================================
-// Server URL Normalization
-// =============================================================================
-
-/**
- * Normalize a URL for comparison
- *
- * Removes trailing slashes and normalizes protocol/host.
- *
- * @param url - URL to normalize
- * @returns Normalized URL string
- */
 function normalizeUrl(url: string): string {
 	try {
 		const parsed = new URL(url);
@@ -64,18 +35,6 @@ function normalizeUrl(url: string): string {
 	}
 }
 
-/**
- * Extract the machine identifier from a .plex.direct URL
- *
- * .plex.direct URLs follow the pattern:
- * https://{IP-with-dashes}.{machineIdentifier}.plex.direct:{port}
- *
- * The machine identifier is a 32-character hex string that uniquely
- * identifies a Plex server and never changes, unlike the IP portion.
- *
- * @param url - URL to extract from
- * @returns Machine identifier if URL is a .plex.direct URL, undefined otherwise
- */
 export function extractPlexDirectMachineId(url: string): string | undefined {
 	try {
 		const parsed = new URL(url);
@@ -109,17 +68,6 @@ export function extractPlexDirectMachineId(url: string): string | undefined {
 	}
 }
 
-/**
- * Extract the IP address and port from a .plex.direct URL
- *
- * .plex.direct URLs follow the pattern:
- * https://{IP-with-dashes}.{machineIdentifier}.plex.direct:{port}
- *
- * The IP portion uses dashes instead of dots (e.g., 89-150-152-18 for 89.150.152.18)
- *
- * @param url - URL to extract from
- * @returns Object with ip and port if URL is a valid .plex.direct URL, undefined otherwise
- */
 export function extractPlexDirectIpAndPort(url: string): { ip: string; port: string } | undefined {
 	try {
 		const parsed = new URL(url);
@@ -173,18 +121,6 @@ export function extractPlexDirectIpAndPort(url: string): { ip: string; port: str
 	}
 }
 
-/**
- * Check if a .plex.direct URL matches a server's connection by IP and port
- *
- * Compares the IP address embedded in the .plex.direct URL against
- * the address in each of the server's connection URIs. This is useful
- * when the machineId embedded in the URL doesn't match the server's
- * clientIdentifier.
- *
- * @param plexDirectUrl - The configured .plex.direct URL
- * @param connections - Array of connection objects from the server resource
- * @returns True if any connection matches by IP and port
- */
 function matchesByIpAndPort(
 	plexDirectUrl: string,
 	connections: Array<{ address: string; port: number }> | undefined
@@ -218,17 +154,6 @@ function matchesByIpAndPort(
 	});
 }
 
-/**
- * Check if two URLs point to the same server
- *
- * For .plex.direct domains, compares the machine identifier portion
- * since the IP portion can vary based on network conditions.
- * For other domains, compares origin exactly.
- *
- * @param url1 - First URL
- * @param url2 - Second URL
- * @returns True if URLs point to the same server
- */
 function urlsMatch(url1: string, url2: string): boolean {
 	// First, try extracting machine IDs for .plex.direct domains
 	const machineId1 = extractPlexDirectMachineId(url1);
@@ -249,17 +174,6 @@ function urlsMatch(url1: string, url2: string): boolean {
 	return normalizeUrl(url1) === normalizeUrl(url2);
 }
 
-// =============================================================================
-// Resource Fetching
-// =============================================================================
-
-/**
- * Get all Plex resources (servers) the user has access to
- *
- * @param authToken - User's Plex auth token
- * @returns Array of Plex resources
- * @throws PlexAuthApiError on network or API errors
- */
 export async function getPlexResources(authToken: string): Promise<PlexResource[]> {
 	const endpoint = `${PLEX_TV_URL}/api/v2/resources`;
 
@@ -307,34 +221,12 @@ export async function getPlexResources(authToken: string): Promise<PlexResource[
 	}
 }
 
-/**
- * Filter resources to only include Plex Media Servers
- *
- * @param resources - All Plex resources
- * @returns Only server resources
- */
 export function filterServerResources(resources: PlexResource[]): PlexResource[] {
 	return resources.filter(
 		(resource) => resource.provides?.includes('server') || resource.product === 'Plex Media Server'
 	);
 }
 
-// =============================================================================
-// Membership Verification
-// =============================================================================
-
-/**
- * Find the configured server in the user's accessible servers
- *
- * Matches servers using multiple strategies:
- * 1. For .plex.direct URLs: Extract machine ID and match against clientIdentifier
- * 2. For .plex.direct URLs: Extract embedded IP and match against connection addresses
- * 3. Fall back to comparing connection URIs against the configured server URL
- *
- * @param servers - Array of server resources
- * @param configuredUrl - The configured server URL (from database or env)
- * @returns The matching server resource, or undefined if not found
- */
 function findConfiguredServer(
 	servers: PlexResource[],
 	configuredUrl: string
@@ -376,25 +268,6 @@ function findConfiguredServer(
 	});
 }
 
-/**
- * Verify if a user is a member of the configured Plex server
- *
- * Uses the user's auth token to query their accessible servers
- * and checks if the configured server is among them.
- *
- * @param userToken - The user's Plex auth token
- * @returns Membership result with isMember, isOwner, and serverName
- * @throws PlexAuthApiError on network or API errors
- *
- * @example
- * ```typescript
- * const membership = await verifyServerMembership(authToken);
- * if (!membership.isMember) {
- *   throw new NotServerMemberError();
- * }
- * const isAdmin = membership.isOwner;
- * ```
- */
 export async function verifyServerMembership(userToken: string): Promise<MembershipResult> {
 	// Get all resources the user has access to
 	const resources = await getPlexResources(userToken);
@@ -451,24 +324,6 @@ export async function verifyServerMembership(userToken: string): Promise<Members
 	};
 }
 
-/**
- * Verify server membership and throw if not a member
- *
- * Convenience function that throws NotServerMemberError if
- * the user is not a member of the configured server.
- *
- * @param userToken - The user's Plex auth token
- * @returns Membership result (only if user is a member)
- * @throws NotServerMemberError if user is not a server member
- * @throws PlexAuthApiError on network or API errors
- *
- * @example
- * ```typescript
- * const membership = await requireServerMembership(authToken);
- * // User is guaranteed to be a member at this point
- * const isAdmin = membership.isOwner;
- * ```
- */
 export async function requireServerMembership(userToken: string): Promise<MembershipResult> {
 	const membership = await verifyServerMembership(userToken);
 
@@ -479,25 +334,10 @@ export async function requireServerMembership(userToken: string): Promise<Member
 	return membership;
 }
 
-/**
- * Determine the user's role based on membership
- *
- * Pure function for property testing.
- *
- * @param isOwner - Whether the user owns the server
- * @returns Object with isAdmin flag
- */
 export function determineRole(isOwner: boolean): { isAdmin: boolean } {
 	return { isAdmin: isOwner };
 }
 
-// =============================================================================
-// Server Ownership Verification (for onboarding without configured server)
-// =============================================================================
-
-/**
- * Result of server ownership verification
- */
 export interface OwnershipResult {
 	isOwner: boolean;
 	server?: PlexResource;
@@ -505,17 +345,6 @@ export interface OwnershipResult {
 	bestConnectionUrl?: string;
 }
 
-/**
- * Select the best connection URL for a server
- *
- * Priority order:
- * 1. .plex.direct URLs (HTTPS, uses machine identifier for secure connection)
- * 2. Public IP addresses (non-local, non-relay connections)
- * 3. Local IP addresses (fallback)
- *
- * @param server - The Plex server resource
- * @returns The best connection URL, or undefined if no connections available
- */
 export function selectBestConnection(server: PlexResource): string | undefined {
 	const connections = server.connections;
 	if (!connections || connections.length === 0) {
@@ -553,15 +382,6 @@ export function selectBestConnection(server: PlexResource): string | undefined {
 	return undefined;
 }
 
-/**
- * Generate a .plex.direct URL from server information
- *
- * .plex.direct URLs follow the pattern:
- * https://{IP-with-dashes}.{machineIdentifier}.plex.direct:{port}
- *
- * @param server - The Plex server resource
- * @returns A .plex.direct URL, or undefined if not enough info available
- */
 export function generatePlexDirectUrl(server: PlexResource): string | undefined {
 	// Need public address and client identifier
 	if (!server.publicAddress || !server.clientIdentifier) {
@@ -589,17 +409,6 @@ export function generatePlexDirectUrl(server: PlexResource): string | undefined 
 	return url;
 }
 
-/**
- * Verify if a user owns any Plex server (for onboarding without configured server)
- *
- * This is used during the onboarding flow when no PLEX_SERVER_URL is configured.
- * It checks if the user owns at least one server and returns the first owned server
- * with the best connection URL.
- *
- * @param userToken - The user's Plex auth token
- * @returns Ownership result with server info and best connection URL
- * @throws PlexAuthApiError on network or API errors
- */
 export async function verifyServerOwnership(userToken: string): Promise<OwnershipResult> {
 	// Get all resources the user has access to
 	const resources = await getPlexResources(userToken);

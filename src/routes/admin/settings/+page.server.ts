@@ -45,16 +45,6 @@ import {
 } from '$lib/server/sharing/service';
 import type { ShareModeType } from '$lib/server/sharing/types';
 
-/**
- * Admin Settings Page Server
- *
- * Handles application settings management.
- */
-
-// =============================================================================
-// Validation Schemas
-// =============================================================================
-
 const ThemeSchema = z.enum([
 	'modern-minimal',
 	'supabase',
@@ -65,7 +55,6 @@ const ThemeSchema = z.enum([
 const AnonymizationSchema = z.enum(['real', 'anonymous', 'hybrid']);
 const WrappedLogoModeSchema = z.enum(['always_show', 'always_hide', 'user_choice']);
 
-// Sharing schemas
 const ShareModeSchema = z.enum(['public', 'private-oauth', 'private-link']);
 const GlobalDefaultsSchema = z.object({
 	defaultShareMode: ShareModeSchema,
@@ -74,7 +63,6 @@ const GlobalDefaultsSchema = z.object({
 // Server-wide wrapped only supports public and private-oauth (not private-link)
 const ServerWrappedModeSchema = z.enum(['public', 'private-oauth']);
 
-// Consolidated privacy settings schema for single-form submission
 const PrivacySettingsSchema = z.object({
 	anonymizationMode: AnonymizationSchema,
 	logoMode: WrappedLogoModeSchema,
@@ -97,21 +85,10 @@ const LogSettingsSchema = z.object({
 	debugEnabled: z.boolean()
 });
 
-// =============================================================================
-// Types
-// =============================================================================
-
-/**
- * Settings value with source information for UI display
- */
 interface SettingValue {
 	value: string;
 	source: ConfigSource;
 }
-
-// =============================================================================
-// Load Function
-// =============================================================================
 
 export const load: PageServerLoad = async () => {
 	const [
@@ -181,7 +158,6 @@ export const load: PageServerLoad = async () => {
 			maxCount: logMaxCount,
 			debugEnabled: logDebugEnabled
 		},
-		// Sharing settings
 		globalDefaults: {
 			defaultShareMode,
 			allowUserControl
@@ -190,14 +166,7 @@ export const load: PageServerLoad = async () => {
 	};
 };
 
-// =============================================================================
-// Actions
-// =============================================================================
-
 export const actions: Actions = {
-	/**
-	 * Update API configuration (Plex, OpenAI)
-	 */
 	updateApiConfig: async ({ request }) => {
 		const formData = await request.formData();
 
@@ -242,9 +211,6 @@ export const actions: Actions = {
 		}
 	},
 
-	/**
-	 * Test Plex connection
-	 */
 	testPlexConnection: async ({ request }) => {
 		const formData = await request.formData();
 		const plexServerUrl = formData.get('plexServerUrl')?.toString();
@@ -282,9 +248,6 @@ export const actions: Actions = {
 		}
 	},
 
-	/**
-	 * Update UI theme (dashboard, admin, all non-wrapped pages)
-	 */
 	updateUITheme: async ({ request }) => {
 		const formData = await request.formData();
 		const theme = formData.get('theme');
@@ -303,9 +266,6 @@ export const actions: Actions = {
 		}
 	},
 
-	/**
-	 * Update wrapped theme (/wrapped/* slideshow pages)
-	 */
 	updateWrappedTheme: async ({ request }) => {
 		const formData = await request.formData();
 		const theme = formData.get('theme');
@@ -324,9 +284,6 @@ export const actions: Actions = {
 		}
 	},
 
-	/**
-	 * Update anonymization mode
-	 */
 	updateAnonymization: async ({ request }) => {
 		const formData = await request.formData();
 		const mode = formData.get('anonymizationMode');
@@ -345,9 +302,6 @@ export const actions: Actions = {
 		}
 	},
 
-	/**
-	 * Update wrapped page logo mode
-	 */
 	updateWrappedLogoMode: async ({ request }) => {
 		const formData = await request.formData();
 		const mode = formData.get('logoMode');
@@ -366,9 +320,6 @@ export const actions: Actions = {
 		}
 	},
 
-	/**
-	 * Get cache count for confirmation dialog
-	 */
 	getCacheCount: async ({ request }) => {
 		const formData = await request.formData();
 		const yearStr = formData.get('year')?.toString();
@@ -390,9 +341,6 @@ export const actions: Actions = {
 		}
 	},
 
-	/**
-	 * Clear stats cache for a year
-	 */
 	clearCache: async ({ request }) => {
 		const formData = await request.formData();
 		const yearStr = formData.get('year')?.toString();
@@ -418,9 +366,6 @@ export const actions: Actions = {
 		}
 	},
 
-	/**
-	 * Get play history count for confirmation dialog
-	 */
 	getPlayHistoryCount: async ({ request }) => {
 		const formData = await request.formData();
 		const yearStr = formData.get('year')?.toString();
@@ -442,9 +387,6 @@ export const actions: Actions = {
 		}
 	},
 
-	/**
-	 * Clear play history for a year (or all years)
-	 */
 	clearPlayHistory: async ({ request }) => {
 		const formData = await request.formData();
 		const yearStr = formData.get('year')?.toString();
@@ -473,9 +415,6 @@ export const actions: Actions = {
 		}
 	},
 
-	/**
-	 * Update logging settings
-	 */
 	updateLogSettings: async ({ request }) => {
 		const formData = await request.formData();
 
@@ -504,7 +443,6 @@ export const actions: Actions = {
 				setDebugEnabled(parsed.data.debugEnabled)
 			]);
 
-			// Clear the debug cache in the logger
 			logger.clearDebugCache();
 
 			return { success: true, message: 'Logging settings updated' };
@@ -514,9 +452,6 @@ export const actions: Actions = {
 		}
 	},
 
-	/**
-	 * Update global share defaults (privacy floor and user control)
-	 */
 	updateGlobalDefaults: async ({ request }) => {
 		const formData = await request.formData();
 
@@ -543,9 +478,6 @@ export const actions: Actions = {
 		}
 	},
 
-	/**
-	 * Update server-wide wrapped share mode
-	 */
 	updateServerWrappedMode: async ({ request }) => {
 		const formData = await request.formData();
 		const mode = formData.get('serverWrappedShareMode');
@@ -567,9 +499,6 @@ export const actions: Actions = {
 		}
 	},
 
-	/**
-	 * Update all privacy settings in one action (consolidated form)
-	 */
 	updatePrivacySettings: async ({ request }) => {
 		const formData = await request.formData();
 
@@ -590,7 +519,6 @@ export const actions: Actions = {
 		}
 
 		try {
-			// Update all privacy settings in parallel
 			await Promise.all([
 				setAnonymizationMode(parsed.data.anonymizationMode as AnonymizationModeType),
 				setWrappedLogoMode(parsed.data.logoMode as WrappedLogoModeType),

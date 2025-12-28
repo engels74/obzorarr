@@ -12,20 +12,7 @@ import {
 } from './types';
 import { getPlexUserInfo } from './plex-oauth';
 
-/**
- * Development Users Module
- *
- * Fetches real user information from the Plex server for dev-bypass authentication.
- * This module provides access to:
- * - Server owner information (via PLEX_TOKEN)
- * - Shared users who have access to the server
- *
- * SECURITY: This module should only be used in development mode.
- */
-
-// =============================================================================
-// Constants
-// =============================================================================
+// SECURITY: This module should only be used in development mode.
 
 const PLEX_TV_URL = 'https://plex.tv';
 
@@ -36,12 +23,7 @@ const PLEX_TV_HEADERS = {
 	'X-Plex-Version': PLEX_VERSION
 } as const;
 
-/**
- * Headers for local Plex Media Server requests
- *
- * The Plex server requires client identification headers to return JSON responses.
- * Without these, the server may return XML instead.
- */
+// Plex server requires these headers to return JSON instead of XML
 const PLEX_SERVER_HEADERS = {
 	Accept: 'application/json',
 	'X-Plex-Client-Identifier': PLEX_CLIENT_ID,
@@ -49,12 +31,7 @@ const PLEX_SERVER_HEADERS = {
 	'X-Plex-Version': PLEX_VERSION
 } as const;
 
-/** Cache duration for server users (5 minutes) */
 const CACHE_DURATION_MS = 5 * 60 * 1000;
-
-// =============================================================================
-// Cache
-// =============================================================================
 
 interface CachedUsers {
 	owner: NormalizedServerUser;
@@ -64,13 +41,6 @@ interface CachedUsers {
 
 let usersCache: CachedUsers | null = null;
 
-// =============================================================================
-// Server Identity
-// =============================================================================
-
-/**
- * Get the server's machine identifier from the local Plex server
- */
 async function getServerMachineIdentifier(): Promise<string> {
 	if (!env.PLEX_SERVER_URL || !env.PLEX_TOKEN) {
 		throw new PlexAuthApiError(
@@ -112,16 +82,7 @@ async function getServerMachineIdentifier(): Promise<string> {
 	return result.data.MediaContainer.machineIdentifier;
 }
 
-// =============================================================================
-// Shared Users
-// =============================================================================
-
-/**
- * Fetch users who have access to the server (excluding owner)
- *
- * Uses the v2 friends endpoint which properly returns JSON instead of the
- * legacy shared_servers endpoint which returns XML.
- */
+// Uses v2 friends endpoint (returns JSON) instead of legacy shared_servers (XML)
 async function fetchSharedUsers(machineIdentifier: string): Promise<PlexSharedServerUser[]> {
 	const endpoint = `${PLEX_TV_URL}/api/v2/friends`;
 
@@ -165,15 +126,6 @@ async function fetchSharedUsers(machineIdentifier: string): Promise<PlexSharedSe
 		}));
 }
 
-// =============================================================================
-// Public API
-// =============================================================================
-
-/**
- * Fetch all users with access to the server (owner + shared users)
- *
- * Results are cached for 5 minutes to avoid excessive API calls.
- */
 export async function getServerUsers(): Promise<{
 	owner: NormalizedServerUser;
 	sharedUsers: NormalizedServerUser[];
@@ -218,20 +170,11 @@ export async function getServerUsers(): Promise<{
 	return { owner, sharedUsers };
 }
 
-/**
- * Get the server owner's information
- */
 export async function getServerOwner(): Promise<NormalizedServerUser> {
 	const { owner } = await getServerUsers();
 	return owner;
 }
 
-/**
- * Get a specific user by Plex ID
- *
- * @param plexId - The Plex user ID to find
- * @returns The user if found, null otherwise
- */
 export async function getUserById(plexId: number): Promise<NormalizedServerUser | null> {
 	const { owner, sharedUsers } = await getServerUsers();
 
@@ -242,12 +185,6 @@ export async function getUserById(plexId: number): Promise<NormalizedServerUser 
 	return sharedUsers.find((user) => user.plexId === plexId) ?? null;
 }
 
-/**
- * Get a specific user by username
- *
- * @param username - The username to find (case-insensitive)
- * @returns The user if found, null otherwise
- */
 export async function getUserByUsername(username: string): Promise<NormalizedServerUser | null> {
 	const { owner, sharedUsers } = await getServerUsers();
 	const lowerUsername = username.toLowerCase();
@@ -259,11 +196,6 @@ export async function getUserByUsername(username: string): Promise<NormalizedSer
 	return sharedUsers.find((user) => user.username.toLowerCase() === lowerUsername) ?? null;
 }
 
-/**
- * Get a random non-owner user from the server
- *
- * @returns A random shared user, or null if no shared users exist
- */
 export async function getRandomNonOwnerUser(): Promise<NormalizedServerUser | null> {
 	const { sharedUsers } = await getServerUsers();
 
@@ -275,12 +207,6 @@ export async function getRandomNonOwnerUser(): Promise<NormalizedServerUser | nu
 	return sharedUsers[randomIndex] ?? null;
 }
 
-/**
- * Resolve a user identifier (can be Plex ID or username)
- *
- * @param identifier - Either a numeric Plex ID or a username string
- * @returns The resolved user, or null if not found
- */
 export async function resolveUserIdentifier(
 	identifier: string
 ): Promise<NormalizedServerUser | null> {
@@ -295,9 +221,6 @@ export async function resolveUserIdentifier(
 	return getUserByUsername(identifier);
 }
 
-/**
- * Clear the users cache (useful for testing)
- */
 export function clearUsersCache(): void {
 	usersCache = null;
 }

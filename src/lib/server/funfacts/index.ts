@@ -9,10 +9,6 @@ export type {
 	SeasonalConfig
 } from './types';
 
-// =============================================================================
-// Schema Exports
-// =============================================================================
-
 export {
 	FunFactSchema,
 	FactCategorySchema,

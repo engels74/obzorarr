@@ -20,29 +20,9 @@ import { db } from '$lib/server/db/client';
 import { sessions } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 
-/**
- * User Settings Page Server
- *
- * Provides user-specific settings management:
- * - Privacy: Share mode controls (when permitted)
- * - Display: Logo visibility (when global mode is 'user_choice')
- * - Account: Read-only user profile information
- */
-
-// =============================================================================
-// Validation Schemas
-// =============================================================================
-
 const ShareModeSchema = z.enum(['public', 'private-oauth', 'private-link']);
 const LogoPreferenceSchema = z.enum(['show', 'hide']);
 
-// =============================================================================
-// Helper Functions
-// =============================================================================
-
-/**
- * Get session expiration for the current user
- */
 async function getSessionExpiration(userId: number): Promise<Date | null> {
 	const result = await db
 		.select({ expiresAt: sessions.expiresAt })
@@ -53,16 +33,10 @@ async function getSessionExpiration(userId: number): Promise<Date | null> {
 	return result[0]?.expiresAt ?? null;
 }
 
-// =============================================================================
-// Load Function
-// =============================================================================
-
 export const load: PageServerLoad = async ({ locals, cookies }) => {
-	// User is guaranteed by dashboard layout
 	const userId = locals.user!.id;
 	const currentYear = new Date().getFullYear();
 
-	// Load all data in parallel
 	const [userProfile, shareSettings, wrappedLogoMode, userLogoPreference, sessionExpiration] =
 		await Promise.all([
 			getUserFullProfile(userId),
@@ -93,14 +67,7 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 	};
 };
 
-// =============================================================================
-// Form Actions
-// =============================================================================
-
 export const actions: Actions = {
-	/**
-	 * Update share mode for user's wrapped page
-	 */
 	updateShareMode: async ({ request, locals }) => {
 		const userId = locals.user!.id;
 		const currentYear = new Date().getFullYear();
@@ -108,14 +75,12 @@ export const actions: Actions = {
 		const formData = await request.formData();
 		const mode = formData.get('mode');
 
-		// Validate input
 		const parsed = ShareModeSchema.safeParse(mode);
 		if (!parsed.success) {
 			return fail(400, { error: 'Invalid share mode', action: 'updateShareMode' });
 		}
 
 		try {
-			// Check if user has permission and if mode meets privacy floor
 			const shareSettings = await getOrCreateShareSettings({ userId, year: currentYear });
 
 			if (!shareSettings.canUserControl) {
@@ -134,7 +99,6 @@ export const actions: Actions = {
 				});
 			}
 
-			// Update share mode
 			await updateShareSettings(userId, currentYear, { mode: parsed.data }, false);
 
 			return { success: true, message: 'Sharing settings updated', action: 'updateShareMode' };
@@ -144,15 +108,11 @@ export const actions: Actions = {
 		}
 	},
 
-	/**
-	 * Regenerate share token for private-link mode
-	 */
 	regenerateToken: async ({ locals }) => {
 		const userId = locals.user!.id;
 		const currentYear = new Date().getFullYear();
 
 		try {
-			// Check if user has permission
 			const shareSettings = await getOrCreateShareSettings({ userId, year: currentYear });
 
 			if (!shareSettings.canUserControl) {
@@ -169,7 +129,6 @@ export const actions: Actions = {
 				});
 			}
 
-			// Regenerate token
 			await regenerateShareToken(userId, currentYear);
 
 			return { success: true, message: 'Share link regenerated', action: 'regenerateToken' };
@@ -179,9 +138,6 @@ export const actions: Actions = {
 		}
 	},
 
-	/**
-	 * Update logo visibility preference
-	 */
 	updateLogoPreference: async ({ request, locals }) => {
 		const userId = locals.user!.id;
 		const currentYear = new Date().getFullYear();
@@ -189,14 +145,12 @@ export const actions: Actions = {
 		const formData = await request.formData();
 		const preference = formData.get('logoPreference');
 
-		// Validate input
 		const parsed = LogoPreferenceSchema.safeParse(preference);
 		if (!parsed.success) {
 			return fail(400, { error: 'Invalid logo preference', action: 'updateLogoPreference' });
 		}
 
 		try {
-			// Check if user can control logo
 			const wrappedLogoMode = await getWrappedLogoMode();
 			if (wrappedLogoMode !== WrappedLogoMode.USER_CHOICE) {
 				return fail(403, {
@@ -205,7 +159,6 @@ export const actions: Actions = {
 				});
 			}
 
-			// Update logo preference
 			const showLogo = parsed.data === 'show';
 			await updateUserLogoPreference(userId, currentYear, showLogo);
 

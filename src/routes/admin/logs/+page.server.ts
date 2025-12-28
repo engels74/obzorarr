@@ -17,23 +17,6 @@ import {
 	type LogLevelType
 } from '$lib/server/logging';
 
-/**
- * Admin Logs Page Server
- *
- * Handles log viewing and management operations.
- *
- * Features:
- * - Load logs with filtering and pagination
- * - Filter by log level, search text, source, date range
- * - Clear all logs
- * - Export logs as JSON
- * - Trigger manual retention cleanup
- */
-
-// =============================================================================
-// Validation Schemas
-// =============================================================================
-
 const LogLevelFilterSchema = z
 	.string()
 	.nullish()
@@ -70,17 +53,12 @@ const CursorSchema = z
 		return isNaN(parsed) ? undefined : parsed;
 	});
 
-// =============================================================================
-// Load Function
-// =============================================================================
-
 export const load: PageServerLoad = async ({ url }) => {
 	// Initialize retention scheduler if not already configured
 	if (!isRetentionSchedulerConfigured()) {
 		setupLogRetentionScheduler();
 	}
 
-	// Parse query parameters
 	const levelsParam = url.searchParams.get('levels');
 	const search = url.searchParams.get('search') || undefined;
 	const source = url.searchParams.get('source') || undefined;
@@ -89,14 +67,12 @@ export const load: PageServerLoad = async ({ url }) => {
 	const limitParam = url.searchParams.get('limit');
 	const cursorParam = url.searchParams.get('cursor');
 
-	// Parse and validate
 	const levels = LogLevelFilterSchema.parse(levelsParam);
 	const fromTimestamp = TimestampSchema.parse(fromParam);
 	const toTimestamp = TimestampSchema.parse(toParam);
 	const limit = LimitSchema.parse(limitParam);
 	const cursor = CursorSchema.parse(cursorParam);
 
-	// Fetch data in parallel
 	const [logsResult, sources, levelCounts, retentionDays, maxCount, debugEnabled, retentionStatus] =
 		await Promise.all([
 			queryLogs({ levels, search, source, fromTimestamp, toTimestamp, cursor, limit }),
@@ -135,14 +111,7 @@ export const load: PageServerLoad = async ({ url }) => {
 	};
 };
 
-// =============================================================================
-// Actions
-// =============================================================================
-
 export const actions: Actions = {
-	/**
-	 * Clear all logs
-	 */
 	clearLogs: async () => {
 		try {
 			const count = await deleteAllLogs();
@@ -153,9 +122,6 @@ export const actions: Actions = {
 		}
 	},
 
-	/**
-	 * Trigger manual retention cleanup
-	 */
 	runCleanup: async () => {
 		try {
 			const result = await triggerRetentionCleanup();
@@ -169,11 +135,7 @@ export const actions: Actions = {
 		}
 	},
 
-	/**
-	 * Export logs as JSON
-	 */
 	exportLogs: async ({ url }) => {
-		// Parse the same filters as load function
 		const levelsParam = url.searchParams.get('levels');
 		const search = url.searchParams.get('search') || undefined;
 		const source = url.searchParams.get('source') || undefined;
@@ -192,10 +154,9 @@ export const actions: Actions = {
 				source,
 				fromTimestamp,
 				toTimestamp,
-				limit: 10000 // Reasonable max for export
+				limit: 10000
 			});
 
-			// Return as JSON download
 			return {
 				success: true,
 				exportData: JSON.stringify(result.logs, null, 2),

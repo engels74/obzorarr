@@ -29,24 +29,7 @@ import { getLogoVisibility, setUserLogoPreference } from '$lib/server/logo';
 import { getFunFactFrequency } from '$lib/server/admin/settings.service';
 import { triggerLiveSyncIfNeeded } from '$lib/server/sync/live-sync';
 
-/**
- * Per-user Wrapped Page Load Function
- *
- * Loads user-specific statistics for the Year in Review page.
- * Handles both user ID and share token access patterns.
- *
- * The identifier can be:
- * - A numeric user ID (internal database ID)
- * - A UUID share token for private-link access
- *
- * Property 15: Share Mode Access Control
- * Property 22: URL Route Parsing
- *
- * @module routes/wrapped/[year]/u/[identifier]
- */
-
 export const load: PageServerLoad = async ({ params, locals }) => {
-	// Validate year parameter (4-digit number, reasonable range 2000-2100)
 	const year = parseInt(params.year, 10);
 	if (isNaN(year) || year < 2000 || year > 2100) {
 		error(404, 'Invalid year');
@@ -56,11 +39,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	triggerLiveSyncIfNeeded('user-wrapped').catch(() => {});
 
 	const { identifier } = params;
-	let userId: number; // Internal database user ID
+	let userId: number;
 
 	// Detect if identifier is a share token (UUID) or user ID (number)
 	if (isValidTokenFormat(identifier)) {
-		// It's a share token - use token-based access (no further auth check needed)
 		try {
 			const tokenResult = await checkTokenAccess(identifier);
 			userId = tokenResult.userId;
@@ -76,7 +58,6 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			throw err;
 		}
 	} else {
-		// It's a user ID - parse and validate
 		// User ID access (e.g., from username lookup) is always allowed
 		// Share mode restrictions only apply to share token access
 		const parsedId = parseInt(identifier, 10);
@@ -86,8 +67,6 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		userId = parsedId;
 	}
 
-	// Get user from database to retrieve accountId (needed for stats)
-	// The stats engine uses playHistory.accountId to match viewing history
 	const userResult = await db.select().from(users).where(eq(users.id, userId)).limit(1);
 
 	const user = userResult[0];
@@ -96,43 +75,32 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	}
 
 	// Use accountId for stats queries (falls back to plexId for backward compatibility)
-	// Note: accountId is the Plex server's local ID, which may differ from plexId (Plex.tv ID)
+	// accountId is the Plex server's local ID, which may differ from plexId (Plex.tv ID)
 	const statsAccountId = user.accountId ?? user.plexId;
 	const stats = await calculateUserStats(statsAccountId, year);
 
-	// Initialize default slide config if needed and fetch configurations
 	await initializeDefaultSlideConfig();
 	const [slideConfigs, customSlides] = await Promise.all([
 		getEnabledSlides(),
 		getEnabledCustomSlides(year)
 	]);
 
-	// Build base slide render configs
 	const baseSlides = buildSlideRenderConfigs(slideConfigs, customSlides);
-
-	// Convert custom slides to map for component usage
 	const customSlidesMap = customSlidesToMap(customSlides);
 
-	// Get fun fact frequency setting and generate fun facts
 	const frequencyConfig = await getFunFactFrequency();
 	let funFacts: Awaited<ReturnType<typeof generateFunFacts>> = [];
 	try {
 		funFacts = await generateFunFacts(stats, { count: frequencyConfig.count });
 	} catch (err) {
 		console.warn('Failed to generate fun facts:', err);
-		// Continue without fun facts rather than failing the page
 	}
 
-	// Intersperse fun facts into slides
 	const slides = intersperseFunFacts(baseSlides, funFacts);
 
-	// Get logo visibility (per-user pages can have user control if mode is USER_CHOICE)
 	const logoVisibility = await getLogoVisibility(userId, year);
-
-	// Get share settings for the modal
 	const shareSettings = await getOrCreateShareSettings({ userId, year });
 
-	// Determine ownership and permissions
 	const isOwner = locals.user?.id === userId;
 	const isAdmin = locals.user?.isAdmin ?? false;
 
@@ -144,10 +112,9 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		userId,
 		username: user.username,
 		isServerWrapped: false,
-		serverName: null, // Personal wrapped doesn't use server name
+		serverName: null,
 		showLogo: logoVisibility.showLogo,
 		canUserControlLogo: logoVisibility.canUserControl,
-		// Share modal data
 		shareSettings: {
 			mode: shareSettings.mode,
 			shareToken: shareSettings.shareToken,
@@ -159,16 +126,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	};
 };
 
-// =============================================================================
-// Actions
-// =============================================================================
-
 export const actions: Actions = {
-	/**
-	 * Toggle user's logo preference for this wrapped page
-	 */
 	toggleLogo: async ({ request, params, locals }) => {
-		// Require authentication for preference changes
 		if (!locals.user) {
 			return fail(401, { error: 'Authentication required' });
 		}
@@ -191,11 +150,7 @@ export const actions: Actions = {
 		}
 	},
 
-	/**
-	 * Update share mode for this wrapped page
-	 */
 	updateShareMode: async ({ request, params, locals }) => {
-		// Require authentication
 		if (!locals.user) {
 			return fail(401, { error: 'Authentication required' });
 		}
@@ -205,7 +160,6 @@ export const actions: Actions = {
 			return fail(400, { error: 'Invalid year' });
 		}
 
-		// Parse and validate the identifier as userId
 		const userId = parseInt(params.identifier, 10);
 		if (isNaN(userId) || userId <= 0) {
 			return fail(400, { error: 'Invalid user identifier' });
@@ -219,7 +173,6 @@ export const actions: Actions = {
 		const formData = await request.formData();
 		const modeValue = formData.get('mode')?.toString();
 
-		// Validate share mode
 		const parseResult = ShareModeSchema.safeParse(modeValue);
 		if (!parseResult.success) {
 			return fail(400, { error: 'Invalid share mode' });
@@ -249,11 +202,7 @@ export const actions: Actions = {
 		}
 	},
 
-	/**
-	 * Regenerate share token for private-link mode (admin only)
-	 */
 	regenerateToken: async ({ params, locals }) => {
-		// Require admin authentication
 		if (!locals.user?.isAdmin) {
 			return fail(403, { error: 'Admin access required' });
 		}
@@ -263,7 +212,6 @@ export const actions: Actions = {
 			return fail(400, { error: 'Invalid year' });
 		}
 
-		// Parse and validate the identifier as userId
 		const userId = parseInt(params.identifier, 10);
 		if (isNaN(userId) || userId <= 0) {
 			return fail(400, { error: 'Invalid user identifier' });

@@ -19,73 +19,19 @@ import { getApiConfigWithSources } from '$lib/server/admin/settings.service';
 import { requiresOnboarding } from '$lib/server/onboarding';
 import { z } from 'zod';
 
-/**
- * Plex OAuth Callback Endpoint
- *
- * Completes the OAuth flow by:
- * 1. Validating the auth token
- * 2. Getting user info from Plex
- * 3. Verifying server membership
- * 4. Creating/updating user in database
- * 5. Creating a session
- * 6. Setting the session cookie
- */
-
-// =============================================================================
-// Request Schemas
-// =============================================================================
-
 const CallbackRequestSchema = z.object({
 	authToken: z.string().min(1, 'Auth token is required')
 });
-
-// =============================================================================
-// Cookie Configuration
-// =============================================================================
 
 const COOKIE_OPTIONS = {
 	path: '/',
 	httpOnly: true,
 	secure: process.env.NODE_ENV === 'production',
 	sameSite: 'lax' as const,
-	maxAge: Math.floor(SESSION_DURATION_MS / 1000) // Convert to seconds
+	maxAge: Math.floor(SESSION_DURATION_MS / 1000)
 };
 
-// =============================================================================
-// POST /auth/plex/callback - Complete OAuth
-// =============================================================================
-
-/**
- * Complete the Plex OAuth flow
- *
- * Validates the auth token, checks server membership,
- * and creates a session for the user.
- *
- * @example Request:
- * ```json
- * { "authToken": "abc123..." }
- * ```
- *
- * @example Response (success):
- * ```json
- * {
- *   "user": {
- *     "id": 1,
- *     "plexId": 12345,
- *     "username": "john",
- *     "isAdmin": true
- *   }
- * }
- * ```
- *
- * @example Response (not a member):
- * HTTP 403
- * ```json
- * { "message": "You are not a member of this Plex server." }
- * ```
- */
 export const POST: RequestHandler = async ({ request, cookies }) => {
-	// Parse and validate request body
 	let body: unknown;
 	try {
 		body = await request.json();
@@ -103,10 +49,8 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 	const { authToken } = parseResult.data;
 
 	try {
-		// Step 1: Get user info from Plex
 		const plexUser = await getPlexUserInfo(authToken);
 
-		// Step 2: Verify server membership or ownership
 		// Check if we're in onboarding mode with no server configured
 		const isOnboarding = await requiresOnboarding();
 		const apiConfig = await getApiConfigWithSources();
@@ -116,27 +60,22 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		let accountId: number;
 
 		if (isOnboarding && !hasServerConfigured) {
-			// During onboarding with no server configured, check if user owns any server
 			const ownership = await verifyServerOwnership(authToken);
 
 			if (!ownership.isOwner) {
 				throw new NotServerMemberError('You must own a Plex server to configure Obzorarr.');
 			}
 
-			// User owns a server, grant admin access for onboarding
 			isAdmin = true;
 			accountId = 1; // Server owners have local accountId = 1
 		} else {
-			// Normal flow: verify membership of the configured server
 			const membership = await requireServerMembership(authToken);
 
 			isAdmin = membership.isOwner;
-			// Determine accountId for matching with playHistory
 			// Server owners have local accountId = 1, shared users have accountId = plexId
 			accountId = membership.isOwner ? 1 : plexUser.id;
 		}
 
-		// Step 3: Create or update user in database
 		const existingUser = await db.query.users.findFirst({
 			where: eq(users.plexId, plexUser.id)
 		});
@@ -144,7 +83,6 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		let userId: number;
 
 		if (existingUser) {
-			// Update existing user
 			await db
 				.update(users)
 				.set({
@@ -158,7 +96,6 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 
 			userId = existingUser.id;
 		} else {
-			// Create new user
 			const result = await db
 				.insert(users)
 				.values({
@@ -178,17 +115,14 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 			userId = insertedUser.id;
 		}
 
-		// Step 4: Create session
 		const sessionId = await createSession({
 			userId,
 			plexToken: authToken,
 			isAdmin
 		});
 
-		// Step 5: Set session cookie
 		cookies.set('session', sessionId, COOKIE_OPTIONS);
 
-		// Step 6: Return user info
 		return json({
 			user: {
 				id: userId,
