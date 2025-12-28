@@ -271,10 +271,12 @@ export function seriesProgressToCompletion(
 	const items: SeriesCompletionItem[] = [];
 
 	for (const [, series] of seriesMap) {
-		const totalEpisodes = totalEpisodesMap.get(series.grandparentRatingKey) ?? series.watchedEpisodes;
-		const percentComplete = totalEpisodes > 0
-			? Math.min(100, Math.round((series.watchedEpisodes / totalEpisodes) * 100))
-			: 0;
+		const totalEpisodes =
+			totalEpisodesMap.get(series.grandparentRatingKey) ?? series.watchedEpisodes;
+		const percentComplete =
+			totalEpisodes > 0
+				? Math.min(100, Math.round((series.watchedEpisodes / totalEpisodes) * 100))
+				: 0;
 
 		items.push({
 			show: series.show,
@@ -286,7 +288,5 @@ export function seriesProgressToCompletion(
 		});
 	}
 
-	return items
-		.sort((a, b) => b.watchedEpisodes - a.watchedEpisodes)
-		.slice(0, limit);
+	return items.sort((a, b) => b.watchedEpisodes - a.watchedEpisodes).slice(0, limit);
 }
