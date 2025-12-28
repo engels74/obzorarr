@@ -580,7 +580,7 @@
 	.phase-section {
 		text-align: center;
 		width: 100%;
-		min-height: 90px;
+		min-height: 60px;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
