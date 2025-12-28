@@ -63,8 +63,11 @@ sqlite.exec(`
 		thumb TEXT,
 		duration INTEGER,
 		grandparent_title TEXT,
+		grandparent_rating_key TEXT,
+		grandparent_thumb TEXT,
 		parent_title TEXT,
-		genres TEXT
+		genres TEXT,
+		release_year INTEGER
 	);
 
 	-- Sync status table
@@ -147,6 +150,7 @@ sqlite.exec(`
 		rating_key TEXT PRIMARY KEY,
 		duration INTEGER,
 		genres TEXT,
+		release_year INTEGER,
 		fetched_at INTEGER NOT NULL,
 		fetch_failed INTEGER DEFAULT 0
 	);

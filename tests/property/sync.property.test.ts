@@ -60,8 +60,11 @@ function createTestDatabase() {
 			thumb TEXT,
 			duration INTEGER,
 			grandparent_title TEXT,
+			grandparent_rating_key TEXT,
+			grandparent_thumb TEXT,
 			parent_title TEXT,
-			genres TEXT
+			genres TEXT,
+			release_year INTEGER
 		)
 	`);
 

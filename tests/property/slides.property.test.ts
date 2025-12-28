@@ -34,6 +34,14 @@ const slideTypeArbitrary: fc.Arbitrary<SlideType> = fc.constantFrom(
 	'top-shows',
 	'genres',
 	'distribution',
+	'weekday-patterns',
+	'content-type',
+	'decade',
+	'series-completion',
+	'rewatch',
+	'marathon',
+	'streak',
+	'year-comparison',
 	'percentile',
 	'binge',
 	'first-last'
@@ -357,7 +365,7 @@ describe('Slide Configuration Service', () => {
 	});
 
 	it('enabled slides are in sorted order', async () => {
-		// Reorder slides
+		// Reorder slides - must include ALL slide types to avoid sortOrder collisions
 		const newOrder: SlideType[] = [
 			'binge',
 			'total-time',
@@ -366,7 +374,15 @@ describe('Slide Configuration Service', () => {
 			'top-shows',
 			'genres',
 			'distribution',
-			'first-last'
+			'first-last',
+			'weekday-patterns',
+			'content-type',
+			'decade',
+			'series-completion',
+			'rewatch',
+			'marathon',
+			'streak',
+			'year-comparison'
 		];
 		await reorderSlides(newOrder);
 
