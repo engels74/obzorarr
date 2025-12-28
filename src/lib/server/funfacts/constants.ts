@@ -1,4 +1,3 @@
-// All values are in hours unless otherwise noted
 export const EQUIVALENCY_FACTORS = {
 	FLIGHT_NYC_TOKYO_HOURS: 14,
 	LOTR_EXTENDED_TOTAL_HOURS: 11.4,

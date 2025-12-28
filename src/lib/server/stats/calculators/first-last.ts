@@ -2,8 +2,6 @@ import type { WatchRecord } from '../types';
 import type { PlayHistoryRecord } from '../utils';
 
 function mapToWatchRecord(record: PlayHistoryRecord): WatchRecord {
-	// Determine the display title based on content type
-	// For episodes, use the show title (grandparentTitle) if available
 	const displayTitle =
 		record.type === 'episode' && record.grandparentTitle
 			? `${record.grandparentTitle}: ${record.title}`

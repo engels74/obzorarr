@@ -2,7 +2,7 @@ export type { PlayHistoryRecord } from '$lib/server/db/schema';
 
 export interface YearFilter {
 	year: number;
-	startTimestamp: number; // Jan 1 00:00:00 UTC (Unix seconds)
+	startTimestamp: number;
 	endTimestamp: number;
 }
 

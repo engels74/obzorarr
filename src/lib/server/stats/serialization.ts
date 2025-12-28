@@ -57,7 +57,6 @@ export function parseServerStats(json: string): ServerStats {
 	return result.data;
 }
 
-/** Automatically detects stats type based on presence of userId or totalUsers field. */
 export function parseStats(json: string): Stats {
 	let parsed: unknown;
 

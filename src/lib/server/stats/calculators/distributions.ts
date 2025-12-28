@@ -2,7 +2,6 @@ import { getMonthFromTimestamp, getHourFromTimestamp } from '../utils';
 import type { PlayHistoryRecord } from '../utils';
 import type { MonthlyDistribution, HourlyDistribution } from '../types';
 
-/** Returns minutes and plays arrays with 12 elements (index 0 = January). */
 export function calculateMonthlyDistribution(records: PlayHistoryRecord[]): MonthlyDistribution {
 	// Initialize 12 buckets with zeros for both minutes and plays
 	const minutes: number[] = Array.from({ length: 12 }, () => 0);
@@ -19,7 +18,6 @@ export function calculateMonthlyDistribution(records: PlayHistoryRecord[]): Mont
 	return { minutes, plays };
 }
 
-/** Returns minutes and plays arrays with 24 elements (index 0 = midnight UTC). */
 export function calculateHourlyDistribution(records: PlayHistoryRecord[]): HourlyDistribution {
 	// Initialize 24 buckets with zeros for both minutes and plays
 	const minutes: number[] = Array.from({ length: 24 }, () => 0);

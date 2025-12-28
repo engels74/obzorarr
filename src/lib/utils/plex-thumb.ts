@@ -1,8 +1,4 @@
-/**
- * Transform Plex thumbnail paths to proxied URLs.
- * Plex returns paths like `/library/metadata/123/thumb/456` which need
- * to be transformed to `/plex/thumb/library/metadata/123/thumb/456`.
- */
+/** Transform Plex thumbnail paths to proxied URLs via /plex/thumb endpoint. */
 export function getThumbUrl(thumb: string | null | undefined): string | null {
 	if (!thumb) {
 		return null;

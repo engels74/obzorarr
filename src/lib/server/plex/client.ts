@@ -24,7 +24,6 @@ function getPlexHeaders() {
 const DEFAULT_PAGE_SIZE = 100;
 const HISTORY_ENDPOINT = '/status/sessions/history/all';
 
-/** Make a request to the Plex API. Caller should validate response with Zod. */
 export async function plexRequest<T>(
 	endpoint: string,
 	params?: URLSearchParams,
@@ -134,7 +133,6 @@ async function fetchHistoryPage(
 	};
 }
 
-/** Async generator that yields pages of history items for memory-efficient processing */
 export async function* fetchAllHistory(
 	options: FetchHistoryOptions = {}
 ): AsyncGenerator<HistoryPageWithStats, void, unknown> {
@@ -160,7 +158,6 @@ export async function* fetchAllHistory(
 	} while (offset < (totalSize ?? 0) && offset > 0);
 }
 
-/** Convenience function that collects all history pages into a single array */
 export async function fetchAllHistoryArray(
 	options: FetchHistoryOptions = {}
 ): Promise<ValidPlexHistoryMetadata[]> {
@@ -186,19 +183,16 @@ export function getServerUrl(): string {
 	return env.PLEX_SERVER_URL ?? '';
 }
 
-/** Configurable via METADATA_CONCURRENCY env var (1-20, default: 5) */
 const METADATA_CONCURRENCY = Math.max(
 	1,
 	Math.min(20, parseInt(env.METADATA_CONCURRENCY ?? '5', 10) || 5)
 );
 
-/** Duration and genres not available in history endpoint */
 export interface EnrichmentData {
 	duration: number | null;
 	genres: string[];
 }
 
-/** Fetch duration and genres for a media item from Plex library */
 export async function fetchMediaMetadata(
 	ratingKey: string,
 	signal?: AbortSignal
@@ -229,7 +223,6 @@ export async function fetchMediaMetadata(
 	}
 }
 
-/** Fetch metadata for multiple items with concurrency control */
 export async function fetchMetadataBatch(
 	ratingKeys: string[],
 	signal?: AbortSignal

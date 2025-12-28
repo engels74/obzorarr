@@ -4,7 +4,6 @@ import { playHistory } from '$lib/server/db/schema';
 import type * as schema from '$lib/server/db/schema';
 import type { YearFilter } from '../utils';
 
-/** Percentile = (users with less watch time) / total users * 100 */
 export function calculatePercentileRank(
 	userWatchTimeMinutes: number,
 	allUserWatchTimes: number[]

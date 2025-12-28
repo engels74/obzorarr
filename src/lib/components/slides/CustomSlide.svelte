@@ -4,15 +4,7 @@
 	import BaseSlide from './BaseSlide.svelte';
 	import type { CustomSlideProps } from './types';
 
-	/**
-	 * CustomSlide Component
-	 *
-	 * Displays admin-created Markdown content as a slide.
-	 * The Markdown is rendered server-side and passed as HTML.
-	 */
-
 	interface Props extends CustomSlideProps {
-		/** Pre-rendered HTML content (rendered server-side for security) */
 		renderedHtml?: string;
 	}
 

@@ -7,13 +7,6 @@
 	import { createPersonalContext } from './messaging-context';
 	import { SPRING_PRESETS, DELAY_PRESETS } from '$lib/utils/animation-presets';
 
-	/**
-	 * FunFactSlide Component
-	 *
-	 * Displays a fun fact or comparison about the user's viewing habits
-	 * with floating animated icon, glass container, and glow effects.
-	 */
-
 	interface Props extends FunFactSlideProps {
 		messagingContext?: SlideMessagingContext;
 	}

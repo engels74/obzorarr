@@ -3,7 +3,7 @@ import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
 export const users = sqliteTable('users', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
 	plexId: integer('plex_id').unique().notNull(),
-	/** Local Plex account ID for matching playHistory.accountId. Differs from plexId (Plex.tv ID). */
+	// Local Plex account ID (differs from plexId which is the Plex.tv ID)
 	accountId: integer('account_id'),
 	username: text('username').notNull(),
 	email: text('email'),
@@ -12,10 +12,7 @@ export const users = sqliteTable('users', {
 	createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date())
 });
 
-/**
- * Play history table. accountId is NOT a foreign key to preserve historical data
- * when users are removed from Plex server.
- */
+// accountId intentionally has no FK to preserve history when users leave the server
 export const playHistory = sqliteTable(
 	'play_history',
 	{
@@ -111,7 +108,6 @@ export const logs = sqliteTable(
 	]
 );
 
-/** Caches Plex server member info for displaying usernames in statistics. */
 export const plexAccounts = sqliteTable('plex_accounts', {
 	accountId: integer('account_id').primaryKey(),
 	plexId: integer('plex_id').notNull(),
@@ -121,7 +117,6 @@ export const plexAccounts = sqliteTable('plex_accounts', {
 	updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date())
 });
 
-/** Caches media metadata from Plex to reduce API calls during enrichment. */
 export const metadataCache = sqliteTable('metadata_cache', {
 	ratingKey: text('rating_key').primaryKey(),
 	duration: integer('duration'),

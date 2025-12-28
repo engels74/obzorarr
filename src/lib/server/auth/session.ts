@@ -74,7 +74,6 @@ export async function cleanupExpiredSessions(): Promise<void> {
 	await db.delete(sessions).where(lt(sessions.expiresAt, now));
 }
 
-/** Get the Plex token for a session (used for Plex API requests on behalf of a user). */
 export async function getSessionPlexToken(sessionId: string): Promise<string | null> {
 	const now = new Date();
 
@@ -93,7 +92,6 @@ export async function getSessionPlexToken(sessionId: string): Promise<string | n
 	return session.plexToken;
 }
 
-/** Extend a session's expiration time (for sliding session expiration). */
 export async function extendSession(
 	sessionId: string,
 	durationMs: number = SESSION_DURATION_MS

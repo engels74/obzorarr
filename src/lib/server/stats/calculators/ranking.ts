@@ -96,7 +96,6 @@ export function calculateTopShows(
 	return toRankedItems(aggregates, limit);
 }
 
-/** Each play can contribute to multiple genres since genres are stored as JSON arrays. */
 export function calculateTopGenres(
 	records: PlayHistoryRecord[],
 	options: RankingOptions = {}

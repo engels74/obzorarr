@@ -33,7 +33,6 @@ export async function getCachedStats(
 ): Promise<Stats | null> {
 	const statsType = userId === null ? 'server' : 'user';
 
-	// Build the where clause based on whether we're looking for user or server stats
 	const whereCondition =
 		userId === null
 			? and(
@@ -54,7 +53,6 @@ export async function getCachedStats(
 		return null;
 	}
 
-	// Check if expired
 	const calculatedAt = cached.calculatedAt;
 	if (!calculatedAt) {
 		return null;
@@ -65,11 +63,9 @@ export async function getCachedStats(
 		return null;
 	}
 
-	// Parse and return
 	try {
 		return parseStats(cached.statsJson);
 	} catch {
-		// If parsing fails, treat as cache miss
 		return null;
 	}
 }
@@ -78,7 +74,6 @@ export async function cacheStats(stats: Stats, userId: number | null, year: numb
 	const statsType = userId === null ? 'server' : 'user';
 	const statsJson = serializeStats(stats);
 
-	// Delete existing cache entry
 	const whereCondition =
 		userId === null
 			? and(
@@ -94,7 +89,6 @@ export async function cacheStats(stats: Stats, userId: number | null, year: numb
 
 	await db.delete(cachedStats).where(whereCondition);
 
-	// Insert new cache entry
 	await db.insert(cachedStats).values({
 		userId,
 		year,
@@ -104,7 +98,6 @@ export async function cacheStats(stats: Stats, userId: number | null, year: numb
 }
 
 export async function invalidateCache(userId?: number | null, year?: number): Promise<void> {
-	// Build conditions
 	const conditions = [];
 
 	if (userId !== undefined) {
@@ -120,7 +113,6 @@ export async function invalidateCache(userId?: number | null, year?: number): Pr
 	}
 
 	if (conditions.length === 0) {
-		// Delete all cache
 		await db.delete(cachedStats);
 	} else {
 		await db.delete(cachedStats).where(and(...conditions));
@@ -134,7 +126,6 @@ export async function calculateUserStats(
 ): Promise<UserStats> {
 	const { forceRecalculate = false, cacheTtlSeconds = DEFAULT_CACHE_TTL_SECONDS } = options;
 
-	// Check cache first (unless forced)
 	if (!forceRecalculate) {
 		const cached = await getCachedStats(userId, year, cacheTtlSeconds);
 		if (cached && 'userId' in cached) {
@@ -142,10 +133,8 @@ export async function calculateUserStats(
 		}
 	}
 
-	// Create year filter
 	const yearFilter = createYearFilter(year);
 
-	// Fetch all user records for the year
 	const records = await db
 		.select()
 		.from(playHistory)
@@ -158,31 +147,25 @@ export async function calculateUserStats(
 		)
 		.orderBy(asc(playHistory.viewedAt));
 
-	// Calculate each statistic
 	const watchTime = calculateWatchTime(records);
-
-	// Filter records by type for rankings
 	const movies = records.filter((r) => r.type === 'movie');
 	const episodes = records.filter((r) => r.type === 'episode');
 
 	const topMovies = calculateTopMovies(movies);
 	const topShows = calculateTopShows(episodes);
-	const topGenres = calculateTopGenres(records); // Returns empty for now
+	const topGenres = calculateTopGenres(records);
 
 	const watchTimeByMonth = calculateMonthlyDistribution(records);
 	const watchTimeByHour = calculateHourlyDistribution(records);
 
-	// Calculate percentile (requires all users' data)
 	const allUsersWatchTime = await getAllUsersWatchTime(db, yearFilter);
 	const allWatchTimes = Array.from(allUsersWatchTime.values());
 	const percentileRank = calculatePercentileRank(watchTime.totalWatchTimeMinutes, allWatchTimes);
 
-	// Detect binge and first/last
 	const longestBinge = detectLongestBinge(records);
 	const firstWatch = findFirstWatch(records);
 	const lastWatch = findLastWatch(records);
 
-	// Assemble result
 	const stats: UserStats = {
 		userId,
 		year,
@@ -199,10 +182,7 @@ export async function calculateUserStats(
 		lastWatch
 	};
 
-	// Validate with Zod schema
 	const validated = UserStatsSchema.parse(stats);
-
-	// Cache the result
 	await cacheStats(validated, userId, year);
 
 	return validated;
@@ -214,7 +194,6 @@ export async function calculateServerStats(
 ): Promise<ServerStats> {
 	const { forceRecalculate = false, cacheTtlSeconds = DEFAULT_CACHE_TTL_SECONDS } = options;
 
-	// Check cache first (unless forced)
 	if (!forceRecalculate) {
 		const cached = await getCachedStats(null, year, cacheTtlSeconds);
 		if (cached && 'totalUsers' in cached) {
@@ -222,10 +201,8 @@ export async function calculateServerStats(
 		}
 	}
 
-	// Create year filter
 	const yearFilter = createYearFilter(year);
 
-	// Fetch all records for the year
 	const records = await db
 		.select()
 		.from(playHistory)
@@ -237,10 +214,7 @@ export async function calculateServerStats(
 		)
 		.orderBy(asc(playHistory.viewedAt));
 
-	// Calculate aggregate stats
 	const watchTime = calculateWatchTime(records);
-
-	// Filter records by type for rankings
 	const movies = records.filter((r) => r.type === 'movie');
 	const episodes = records.filter((r) => r.type === 'episode');
 
@@ -251,19 +225,13 @@ export async function calculateServerStats(
 	const watchTimeByMonth = calculateMonthlyDistribution(records);
 	const watchTimeByHour = calculateHourlyDistribution(records);
 
-	// Get all users' watch times
 	const allUsersWatchTime = await getAllUsersWatchTime(db, yearFilter);
 	const totalUsers = allUsersWatchTime.size;
-
-	// Calculate top viewers
 	const topViewers = await calculateTopViewers(allUsersWatchTime);
-
-	// Detect binge and first/last for server
 	const longestBinge = detectLongestBinge(records);
 	const firstWatch = findFirstWatch(records);
 	const lastWatch = findLastWatch(records);
 
-	// Assemble result
 	const stats: ServerStats = {
 		year,
 		totalUsers,
@@ -280,10 +248,7 @@ export async function calculateServerStats(
 		lastWatch
 	};
 
-	// Validate with Zod schema
 	const validated = ServerStatsSchema.parse(stats);
-
-	// Cache the result
 	await cacheStats(validated, null, year);
 
 	return validated;
@@ -293,27 +258,22 @@ async function calculateTopViewers(
 	watchTimeMap: Map<number, number>
 ): Promise<ServerStats['topViewers']> {
 	const limit = 10;
-
-	// Sort users by watch time descending
 	const sortedUsers = Array.from(watchTimeMap.entries())
 		.sort((a, b) => b[1] - a[1])
 		.slice(0, limit);
 
-	// Get usernames from the users table
 	const accountIds = sortedUsers.map(([accountId]) => accountId);
 
 	if (accountIds.length === 0) {
 		return [];
 	}
 
-	// Plex accounts is the primary source for usernames (includes all server members)
 	const plexAccountResults = await db.select().from(plexAccounts);
 	const userMap = new Map<number, string>();
 	for (const account of plexAccountResults) {
 		userMap.set(account.accountId, account.username);
 	}
 
-	// Fall back to users table if plex_accounts sync hasn't run
 	const userResults = await db.select().from(users);
 	for (const user of userResults) {
 		if (user.accountId !== null && !userMap.has(user.accountId)) {
@@ -330,7 +290,6 @@ async function calculateTopViewers(
 		if (!entry) continue;
 
 		const [accountId, totalMinutes] = entry;
-		// Fallback format is distinct from anonymized names (which use "User #1", "User #2", etc.)
 		const username = userMap.get(accountId) ?? `User ${accountId}`;
 
 		topViewers.push({
@@ -344,7 +303,6 @@ async function calculateTopViewers(
 	return topViewers;
 }
 
-/** Get server stats with anonymization applied to topViewers based on settings. */
 export async function getServerStatsWithAnonymization(
 	year: number,
 	viewingUserId: number | null,
