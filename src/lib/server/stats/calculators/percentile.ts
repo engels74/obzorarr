@@ -1,31 +1,10 @@
-/**
- * Percentile Calculator
- *
- * Property 13: Percentile Calculation
- * For any user U among N users, the percentile rank SHALL equal
- * (number of users with less watch time than U) / N * 100.
- */
-
 import { and, gte, lte, sql } from 'drizzle-orm';
 import type { BunSQLiteDatabase } from 'drizzle-orm/bun-sqlite';
 import { playHistory } from '$lib/server/db/schema';
 import type * as schema from '$lib/server/db/schema';
 import type { YearFilter } from '../utils';
 
-/**
- * Calculate user's percentile rank among all server users
- *
- * @param userWatchTimeMinutes - The user's total watch time in minutes
- * @param allUserWatchTimes - Array of all users' watch times (including this user)
- * @returns Percentile rank (0-100)
- *
- * @example
- * ```ts
- * // User watched 100 minutes, 3 others watched [50, 75, 150]
- * const percentile = calculatePercentileRank(100, [50, 75, 100, 150]);
- * // percentile = 50 (2 users have less watch time out of 4)
- * ```
- */
+/** Percentile = (users with less watch time) / total users * 100 */
 export function calculatePercentileRank(
 	userWatchTimeMinutes: number,
 	allUserWatchTimes: number[]
@@ -48,22 +27,6 @@ export function calculatePercentileRank(
 	return percentile;
 }
 
-/**
- * Get all users' total watch times for a year from the database
- *
- * Aggregates play history by accountId and sums durations.
- *
- * @param db - Drizzle database instance
- * @param yearFilter - Year filter with timestamps
- * @returns Map of accountId to total watch time in minutes
- *
- * @example
- * ```ts
- * const yearFilter = createYearFilter(2024);
- * const watchTimes = await getAllUsersWatchTime(db, yearFilter);
- * // Map { 1 => 5000, 2 => 3000, 3 => 7500 }
- * ```
- */
 export async function getAllUsersWatchTime(
 	db: BunSQLiteDatabase<typeof schema>,
 	yearFilter: YearFilter

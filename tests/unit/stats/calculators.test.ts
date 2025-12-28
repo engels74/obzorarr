@@ -1,9 +1,3 @@
-/**
- * Unit tests for Statistics Calculators
- *
- * These tests verify specific edge cases and examples for each calculator module.
- */
-
 import { describe, expect, it } from 'bun:test';
 
 import {
@@ -31,10 +25,6 @@ import {
 
 import type { PlayHistoryRecord } from '$lib/server/db/schema';
 
-// =============================================================================
-// Test Helpers
-// =============================================================================
-
 function createRecord(overrides: Partial<PlayHistoryRecord> = {}): PlayHistoryRecord {
 	return {
 		id: 1,
@@ -53,10 +43,6 @@ function createRecord(overrides: Partial<PlayHistoryRecord> = {}): PlayHistoryRe
 		...overrides
 	};
 }
-
-// =============================================================================
-// Utils Tests
-// =============================================================================
 
 describe('Utils', () => {
 	describe('getYearStartTimestamp', () => {
@@ -110,10 +96,6 @@ describe('Utils', () => {
 	});
 });
 
-// =============================================================================
-// Watch Time Calculator Tests
-// =============================================================================
-
 describe('Watch Time Calculator', () => {
 	it('calculates total watch time correctly', () => {
 		const records = [
@@ -147,10 +129,6 @@ describe('Watch Time Calculator', () => {
 		expect(result.totalPlays).toBe(0);
 	});
 });
-
-// =============================================================================
-// Ranking Calculator Tests
-// =============================================================================
 
 describe('Ranking Calculator', () => {
 	describe('calculateTopMovies', () => {
@@ -366,10 +344,6 @@ describe('Ranking Calculator', () => {
 	});
 });
 
-// =============================================================================
-// Distribution Calculator Tests
-// =============================================================================
-
 describe('Distribution Calculators', () => {
 	describe('calculateMonthlyDistribution', () => {
 		it('distributes watch time to correct months', () => {
@@ -446,10 +420,6 @@ describe('Distribution Calculators', () => {
 	});
 });
 
-// =============================================================================
-// Percentile Calculator Tests
-// =============================================================================
-
 describe('Percentile Calculator', () => {
 	it('calculates percentile correctly', () => {
 		// User with 100 min, others have 50, 75, 150
@@ -481,10 +451,6 @@ describe('Percentile Calculator', () => {
 		expect(percentile).toBe(0);
 	});
 });
-
-// =============================================================================
-// Binge Detector Tests
-// =============================================================================
 
 describe('Binge Detector', () => {
 	it('detects binge session with small gaps', () => {
@@ -555,10 +521,6 @@ describe('Binge Detector', () => {
 		expect(BINGE_GAP_THRESHOLD_SECONDS).toBe(30 * 60);
 	});
 });
-
-// =============================================================================
-// First/Last Watch Finder Tests
-// =============================================================================
 
 describe('First/Last Watch Finder', () => {
 	describe('findFirstWatch', () => {

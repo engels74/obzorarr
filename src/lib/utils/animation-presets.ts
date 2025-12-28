@@ -1,10 +1,3 @@
-/**
- * Animation Presets for Premium Wrapped Slides
- *
- * Provides consistent timing, easing, and physics across all slide animations.
- * Used with Motion One library for unified animation behavior.
- */
-
 export const SPRING_PRESETS = {
 	gentle: { stiffness: 120, damping: 20 },
 	snappy: { stiffness: 200, damping: 18 },
@@ -43,29 +36,7 @@ export const DELAY_PRESETS = {
 	long: 0.6
 } as const;
 
-/**
- * Create a number counting animation (odometer effect)
- *
- * Animates from a start value to an end value with easing,
- * calling the update callback with the current value on each frame.
- *
- * @param from - Starting number
- * @param to - Target number
- * @param duration - Animation duration in milliseconds
- * @param onUpdate - Callback with current value on each frame
- * @param onComplete - Optional callback when animation completes
- * @returns Cleanup function to stop the animation
- *
- * @example
- * ```ts
- * const stop = animateNumber(0, 4561, 1500, (value) => {
- *   displayedHours = value;
- * });
- *
- * // In cleanup:
- * return () => stop();
- * ```
- */
+/** Animate a number with easeOutExpo easing. Returns cleanup function. */
 export function animateNumber(
 	from: number,
 	to: number,
@@ -104,10 +75,6 @@ export function animateNumber(
 	};
 }
 
-/**
- * Create a decimal number counting animation.
- * Similar to animateNumber but preserves decimal precision.
- */
 export function animateDecimal(
 	from: number,
 	to: number,
@@ -148,13 +115,6 @@ export function animateDecimal(
 	};
 }
 
-/**
- * Format a large number with commas.
- *
- * @example
- * formatNumber(4561) // "4,561"
- * formatNumber(1234567) // "1,234,567"
- */
 export function formatNumber(num: number): string {
 	return num.toLocaleString('en-US');
 }

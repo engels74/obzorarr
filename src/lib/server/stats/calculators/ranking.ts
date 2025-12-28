@@ -1,42 +1,18 @@
-/**
- * Ranking Calculator
- *
- * Property 10: Ranking Correctness
- * For any set of items with play counts, the top N ranking SHALL be ordered
- * by count descending, with ties broken consistently (alphabetically by title).
- */
-
 import type { RankedItem } from '../types';
 import type { PlayHistoryRecord } from '../utils';
 
-/**
- * Options for ranking calculations
- */
 export interface RankingOptions {
-	/** Maximum number of items to return (default: 10) */
 	limit?: number;
 }
 
-/** Default limit for top items */
 const DEFAULT_LIMIT = 10;
 
-/**
- * Internal structure for aggregating play counts
- */
 interface ItemAggregate {
 	title: string;
 	count: number;
 	thumb: string | null;
 }
 
-/**
- * Group records by a key and count plays
- *
- * @param records - Play history records
- * @param getKey - Function to extract grouping key from record
- * @param getThumb - Function to extract thumb URL from record
- * @returns Array of aggregated items sorted by count desc, then title asc
- */
 function aggregateAndRank(
 	records: PlayHistoryRecord[],
 	getKey: (record: PlayHistoryRecord) => string | null,
@@ -73,13 +49,6 @@ function aggregateAndRank(
 	});
 }
 
-/**
- * Convert aggregates to ranked items with ranks assigned
- *
- * @param aggregates - Sorted array of aggregates
- * @param limit - Maximum number to return
- * @returns Array of RankedItems with rank assigned
- */
 function toRankedItems(aggregates: ItemAggregate[], limit: number): RankedItem[] {
 	return aggregates.slice(0, limit).map((item, index) => ({
 		rank: index + 1,
@@ -89,22 +58,6 @@ function toRankedItems(aggregates: ItemAggregate[], limit: number): RankedItem[]
 	}));
 }
 
-/**
- * Calculate top movies by play count
- *
- * Groups movies by title and counts unique plays.
- *
- * @param records - Play history records (should be pre-filtered to type='movie')
- * @param options - Ranking options
- * @returns Top movies ranked by play count
- *
- * @example
- * ```ts
- * const movies = records.filter(r => r.type === 'movie');
- * const topMovies = calculateTopMovies(movies);
- * // [{ rank: 1, title: 'Avatar', count: 5, thumb: '...' }, ...]
- * ```
- */
 export function calculateTopMovies(
 	records: PlayHistoryRecord[],
 	options: RankingOptions = {}
@@ -123,22 +76,6 @@ export function calculateTopMovies(
 	return toRankedItems(aggregates, limit);
 }
 
-/**
- * Calculate top shows by episode play count
- *
- * Groups episodes by show name (grandparentTitle) and counts total episode plays.
- *
- * @param records - Play history records (should be pre-filtered to type='episode')
- * @param options - Ranking options
- * @returns Top shows ranked by total episode plays
- *
- * @example
- * ```ts
- * const episodes = records.filter(r => r.type === 'episode');
- * const topShows = calculateTopShows(episodes);
- * // [{ rank: 1, title: 'Breaking Bad', count: 42, thumb: '...' }, ...]
- * ```
- */
 export function calculateTopShows(
 	records: PlayHistoryRecord[],
 	options: RankingOptions = {}
@@ -159,23 +96,7 @@ export function calculateTopShows(
 	return toRankedItems(aggregates, limit);
 }
 
-/**
- * Calculate top genres by play count
- *
- * Aggregates genre counts across all plays. Each play can contribute
- * to multiple genres (e.g., a movie can be both "Action" and "Drama").
- * Genres are stored as JSON arrays in the play history records.
- *
- * @param records - Play history records with optional genre data
- * @param options - Ranking options including limit
- * @returns Top genres ranked by play count
- *
- * @example
- * ```ts
- * const topGenres = calculateTopGenres(records);
- * // [{ rank: 1, title: 'Action', count: 42, thumb: null }, ...]
- * ```
- */
+/** Each play can contribute to multiple genres since genres are stored as JSON arrays. */
 export function calculateTopGenres(
 	records: PlayHistoryRecord[],
 	options: RankingOptions = {}
