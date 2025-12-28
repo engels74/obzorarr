@@ -20,7 +20,6 @@
 		messagingContext = createPersonalContext()
 	}: Props = $props();
 
-	const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 	const WEEKDAY_FULL_NAMES = [
 		'Sunday',
 		'Monday',
@@ -30,6 +29,11 @@
 		'Friday',
 		'Saturday'
 	];
+
+	// Display order: Monday-first (Mon, Tue, Wed, Thu, Fri, Sat, Sun)
+	// Maps display position to original data index (where 0=Sunday in JS getDay())
+	const DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0] as const;
+	const DISPLAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 	const possessive = $derived(getPossessive(messagingContext));
 
@@ -143,14 +147,15 @@
 
 		<div class="chart-container">
 			<div class="bars">
-				{#each watchTimeByWeekday.minutes as minutes, i}
+				{#each DISPLAY_ORDER as dataIdx, displayIdx}
+					{@const minutes = watchTimeByWeekday.minutes[dataIdx] ?? 0}
 					{@const height = maxMinutes > 0 ? (minutes / maxMinutes) * 100 : 0}
-					{@const isPeak = i === peakDay && minutes > 0}
-					{@const isWeekend = i === 0 || i === 6}
+					{@const isPeak = dataIdx === peakDay && minutes > 0}
+					{@const isWeekend = dataIdx === 0 || dataIdx === 6}
 					<div class="bar-wrapper">
 						<div class="bar-track">
 							<div
-								bind:this={bars[i]}
+								bind:this={bars[displayIdx]}
 								class="bar"
 								class:peak={isPeak}
 								class:weekend={isWeekend}
@@ -159,7 +164,7 @@
 								<span class="bar-value">{formatHours(minutes)}</span>
 							</div>
 						</div>
-						<span class="bar-label" class:peak={isPeak}>{WEEKDAY_NAMES[i]}</span>
+						<span class="bar-label" class:peak={isPeak}>{DISPLAY_NAMES[displayIdx]}</span>
 					</div>
 				{/each}
 			</div>
