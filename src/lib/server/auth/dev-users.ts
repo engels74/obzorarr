@@ -141,11 +141,7 @@ export async function getServerUsers(): Promise<{
 	const config = await getPlexConfig();
 
 	if (!config.token) {
-		throw new PlexAuthApiError(
-			'Plex token is not configured',
-			undefined,
-			'/dev-users'
-		);
+		throw new PlexAuthApiError('Plex token is not configured', undefined, '/dev-users');
 	}
 
 	// Fetch owner info using the admin token

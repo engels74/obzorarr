@@ -58,7 +58,10 @@ async function testConnection(url: string, accessToken: string): Promise<Connect
 		}
 
 		if (!response.ok) {
-			return { success: false, error: `Server returned error: ${response.status} ${response.statusText}` };
+			return {
+				success: false,
+				error: `Server returned error: ${response.status} ${response.statusText}`
+			};
 		}
 
 		const data = await response.json();
@@ -85,7 +88,11 @@ async function testConnection(url: string, accessToken: string): Promise<Connect
 				fetchError.message.includes('SSL') ||
 				fetchError.message.includes('TLS')
 			) {
-				return { success: false, error: 'SSL certificate error - try a different connection type or check your server configuration' };
+				return {
+					success: false,
+					error:
+						'SSL certificate error - try a different connection type or check your server configuration'
+				};
 			}
 
 			if (
@@ -93,7 +100,11 @@ async function testConnection(url: string, accessToken: string): Promise<Connect
 				fetchError.message.includes('ECONNREFUSED') ||
 				fetchError.message.includes('getaddrinfo')
 			) {
-				return { success: false, error: 'Could not connect to server - check the URL and ensure the server is reachable from this host' };
+				return {
+					success: false,
+					error:
+						'Could not connect to server - check the URL and ensure the server is reachable from this host'
+				};
 			}
 
 			return { success: false, error: `Connection failed: ${fetchError.message}` };

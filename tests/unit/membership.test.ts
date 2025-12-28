@@ -511,9 +511,7 @@ describe('generatePlexDirectUrl', () => {
 			};
 
 			const result = generatePlexDirectUrl(server, 'fedcba0987654321fedcba0987654321');
-			expect(result).toBe(
-				'https://10-0-0-1.fedcba0987654321fedcba0987654321.plex.direct:32400'
-			);
+			expect(result).toBe('https://10-0-0-1.fedcba0987654321fedcba0987654321.plex.direct:32400');
 		});
 	});
 
@@ -571,9 +569,7 @@ describe('generatePlexDirectUrl', () => {
 			};
 
 			const result = generatePlexDirectUrl(server);
-			expect(result).toBe(
-				'https://10-0-0-1.abcdef1234567890abcdef1234567890.plex.direct:32403'
-			);
+			expect(result).toBe('https://10-0-0-1.abcdef1234567890abcdef1234567890.plex.direct:32403');
 		});
 	});
 

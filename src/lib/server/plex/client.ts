@@ -34,11 +34,7 @@ export async function plexRequest<T>(
 	const config = await getPlexConfig();
 
 	if (!config.serverUrl) {
-		throw new PlexApiError(
-			'Plex server URL is not configured',
-			undefined,
-			endpoint
-		);
+		throw new PlexApiError('Plex server URL is not configured', undefined, endpoint);
 	}
 
 	// Build URL with optional query parameters
