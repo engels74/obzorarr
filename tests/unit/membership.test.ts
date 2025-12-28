@@ -422,3 +422,174 @@ describe('IP and Port Matching for .plex.direct URLs', () => {
 		expect(matchingConnection).toBeUndefined();
 	});
 });
+
+/**
+ * Generate a plex.direct URL using the machineIdentifier from existing connections.
+ * This duplicates the logic from membership.ts for testing.
+ */
+interface PlexConnection {
+	uri: string;
+	local?: boolean;
+	relay?: boolean;
+	port: number;
+}
+
+interface PlexResourceLike {
+	publicAddress?: string;
+	connections?: PlexConnection[];
+}
+
+function generatePlexDirectUrl(server: PlexResourceLike): string | undefined {
+	if (!server.publicAddress) {
+		return undefined;
+	}
+
+	let machineId: string | undefined;
+	if (server.connections) {
+		const plexDirectConn = server.connections.find((c) => c.uri.includes('.plex.direct'));
+		if (plexDirectConn) {
+			machineId = extractPlexDirectMachineId(plexDirectConn.uri);
+		}
+	}
+
+	if (!machineId) {
+		return undefined;
+	}
+
+	const ipWithDashes = server.publicAddress.replace(/\./g, '-');
+
+	let port = 32400;
+	if (server.connections) {
+		const nonLocalConnection = server.connections.find((c) => !c.local && !c.relay);
+		if (nonLocalConnection) {
+			port = nonLocalConnection.port;
+		}
+	}
+
+	return `https://${ipWithDashes}.${machineId}.plex.direct:${port}`;
+}
+
+describe('generatePlexDirectUrl', () => {
+	describe('valid generation', () => {
+		it('generates URL with 32-char machineId from existing plex.direct connection', () => {
+			const server: PlexResourceLike = {
+				publicAddress: '89.150.152.18',
+				connections: [
+					{
+						uri: 'https://10-0-2-123.93b10b279ff8456686414add109854cd.plex.direct:32400',
+						local: false,
+						relay: false,
+						port: 32400
+					}
+				]
+			};
+
+			const result = generatePlexDirectUrl(server);
+			expect(result).toBe(
+				'https://89-150-152-18.93b10b279ff8456686414add109854cd.plex.direct:32400'
+			);
+		});
+
+		it('uses port from non-local non-relay connection', () => {
+			const server: PlexResourceLike = {
+				publicAddress: '192.168.1.100',
+				connections: [
+					{
+						uri: 'https://10-0-2-123.a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4.plex.direct:8443',
+						local: false,
+						relay: false,
+						port: 8443
+					}
+				]
+			};
+
+			const result = generatePlexDirectUrl(server);
+			expect(result).toBe(
+				'https://192-168-1-100.a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4.plex.direct:8443'
+			);
+		});
+
+		it('extracts machineId from any plex.direct connection', () => {
+			const server: PlexResourceLike = {
+				publicAddress: '10.0.0.1',
+				connections: [
+					{ uri: 'http://192.168.1.100:32400', local: true, relay: false, port: 32400 },
+					{
+						uri: 'https://64-71-188-222.abcdef1234567890abcdef1234567890.plex.direct:32403',
+						local: false,
+						relay: false,
+						port: 32403
+					}
+				]
+			};
+
+			const result = generatePlexDirectUrl(server);
+			expect(result).toBe(
+				'https://10-0-0-1.abcdef1234567890abcdef1234567890.plex.direct:32403'
+			);
+		});
+	});
+
+	describe('returns undefined', () => {
+		it('returns undefined when no publicAddress', () => {
+			const server: PlexResourceLike = {
+				connections: [
+					{
+						uri: 'https://10-0-2-123.93b10b279ff8456686414add109854cd.plex.direct:32400',
+						local: false,
+						relay: false,
+						port: 32400
+					}
+				]
+			};
+
+			expect(generatePlexDirectUrl(server)).toBeUndefined();
+		});
+
+		it('returns undefined when no plex.direct connection exists', () => {
+			const server: PlexResourceLike = {
+				publicAddress: '89.150.152.18',
+				connections: [
+					{ uri: 'http://192.168.1.100:32400', local: true, relay: false, port: 32400 },
+					{ uri: 'http://89.150.152.18:32400', local: false, relay: false, port: 32400 }
+				]
+			};
+
+			expect(generatePlexDirectUrl(server)).toBeUndefined();
+		});
+
+		it('returns undefined when connections array is empty', () => {
+			const server: PlexResourceLike = {
+				publicAddress: '89.150.152.18',
+				connections: []
+			};
+
+			expect(generatePlexDirectUrl(server)).toBeUndefined();
+		});
+
+		it('returns undefined when connections is undefined', () => {
+			const server: PlexResourceLike = {
+				publicAddress: '89.150.152.18'
+			};
+
+			expect(generatePlexDirectUrl(server)).toBeUndefined();
+		});
+
+		it('returns undefined when plex.direct URL has invalid machineId', () => {
+			const server: PlexResourceLike = {
+				publicAddress: '89.150.152.18',
+				connections: [
+					{
+						// machineId is too short (not 32 chars)
+						uri: 'https://10-0-2-123.abc123.plex.direct:32400',
+						local: false,
+						relay: false,
+						port: 32400
+					}
+				]
+			};
+
+			expect(generatePlexDirectUrl(server)).toBeUndefined();
+		});
+	});
+});

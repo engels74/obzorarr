@@ -383,15 +383,26 @@ export function selectBestConnection(server: PlexResource): string | undefined {
 }
 
 export function generatePlexDirectUrl(server: PlexResource): string | undefined {
-	// Need public address and client identifier
-	if (!server.publicAddress || !server.clientIdentifier) {
+	if (!server.publicAddress) {
 		return undefined;
 	}
 
-	// Convert IP dots to dashes
+	// Extract machineId from existing plex.direct connection
+	let machineId: string | undefined;
+	if (server.connections) {
+		const plexDirectConn = server.connections.find((c) => c.uri.includes('.plex.direct'));
+		if (plexDirectConn) {
+			machineId = extractPlexDirectMachineId(plexDirectConn.uri);
+		}
+	}
+
+	if (!machineId) {
+		logger.debug('Cannot generate plex.direct URL: no machineIdentifier available', 'Membership');
+		return undefined;
+	}
+
 	const ipWithDashes = server.publicAddress.replace(/\./g, '-');
 
-	// Default to port 32400 if not specified, find it from connections
 	let port = 32400;
 	if (server.connections) {
 		const nonLocalConnection = server.connections.find((c) => !c.local && !c.relay);
@@ -400,10 +411,7 @@ export function generatePlexDirectUrl(server: PlexResource): string | undefined 
 		}
 	}
 
-	// Check if HTTPS is required
-	const protocol = server.httpsRequired ? 'https' : 'https'; // Always use HTTPS for .plex.direct
-
-	const url = `${protocol}://${ipWithDashes}.${server.clientIdentifier}.plex.direct:${port}`;
+	const url = `https://${ipWithDashes}.${machineId}.plex.direct:${port}`;
 	logger.debug(`Generated .plex.direct URL: ${url}`, 'Membership');
 
 	return url;
