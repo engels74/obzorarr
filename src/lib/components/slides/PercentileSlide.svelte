@@ -158,6 +158,8 @@
 		position: relative;
 		width: 220px;
 		height: 220px;
+		aspect-ratio: 1;
+		flex-shrink: 0;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -234,7 +236,7 @@
 		backdrop-filter: blur(20px);
 		-webkit-backdrop-filter: blur(20px);
 		width: calc(100% - 10px);
-		height: calc(100% - 10px);
+		aspect-ratio: 1;
 		justify-content: center;
 		box-shadow:
 			inset 0 2px 4px hsl(0 0% 100% / 0.1),
@@ -341,7 +343,6 @@
 		.stat-container {
 			padding: 1.25rem;
 			width: calc(100% - 8px);
-			height: calc(100% - 8px);
 		}
 
 		.prefix {
@@ -409,7 +410,6 @@
 		.stat-container {
 			padding: 2.5rem;
 			width: calc(100% - 12px);
-			height: calc(100% - 12px);
 		}
 
 		.prefix {
