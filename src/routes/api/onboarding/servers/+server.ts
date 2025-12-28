@@ -30,21 +30,32 @@ export const GET: RequestHandler = async ({ cookies, locals }) => {
 
 		const formattedServers = await Promise.all(
 			servers.map(async (server) => {
-				const mappedConnections =
-					server.connections?.map((conn) => ({
-						uri: conn.uri,
-						local: conn.local ?? false,
-						relay: conn.relay ?? false
-					})) ?? [];
+				// Filter connections for cleaner UX:
+				// 1. Public plex.direct URLs (recommended for external access)
+				// 2. Local non-plex.direct URLs (HTTP, for same-network users)
+				// Exclude: local plex.direct URLs (confusing Docker IPs)
+				const filteredConnections =
+					server.connections
+						?.filter((conn) => {
+							const isPlexDirect = conn.uri.includes('.plex.direct');
+							const isLocal = conn.local ?? false;
+							// Keep public plex.direct OR local non-plex.direct (HTTP)
+							return (isPlexDirect && !isLocal) || (!isPlexDirect && isLocal);
+						})
+						.map((conn) => ({
+							uri: conn.uri,
+							local: conn.local ?? false,
+							relay: conn.relay ?? false
+						})) ?? [];
 
-				const hasPlexDirectConnection = mappedConnections.some((conn) =>
-					conn.uri.includes('.plex.direct')
+				const hasPublicPlexDirect = filteredConnections.some(
+					(conn) => conn.uri.includes('.plex.direct') && !conn.local
 				);
 
-				if (!hasPlexDirectConnection) {
+				if (!hasPublicPlexDirect) {
 					const generatedUrl = generatePlexDirectUrl(server);
 					if (generatedUrl) {
-						mappedConnections.unshift({
+						filteredConnections.unshift({
 							uri: generatedUrl,
 							local: false,
 							relay: false
@@ -67,7 +78,7 @@ export const GET: RequestHandler = async ({ cookies, locals }) => {
 					accessToken: server.accessToken,
 					bestConnectionUrl,
 					publicAddress: server.publicAddress,
-					connections: mappedConnections
+					connections: filteredConnections
 				};
 			})
 		);
