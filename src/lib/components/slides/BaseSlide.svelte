@@ -35,7 +35,7 @@
 		background: transparent;
 		color: hsl(var(--foreground));
 		position: relative;
-		overflow: hidden;
+		overflow: visible;
 	}
 
 	/* Note: Noise and vignette effects are now applied at the StoryMode/ScrollMode level
