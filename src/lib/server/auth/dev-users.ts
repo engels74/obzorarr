@@ -82,7 +82,6 @@ async function getServerMachineIdentifier(): Promise<string> {
 	return result.data.MediaContainer.machineIdentifier;
 }
 
-// Uses v2 friends endpoint (returns JSON) instead of legacy shared_servers (XML)
 async function fetchSharedUsers(machineIdentifier: string): Promise<PlexSharedServerUser[]> {
 	const endpoint = `${PLEX_TV_URL}/api/v2/friends`;
 

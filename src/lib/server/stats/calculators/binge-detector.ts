@@ -16,7 +16,6 @@ export function detectAllBingeSessions(records: PlayHistoryRecord[]): BingeSessi
 		return [];
 	}
 
-	// Sort records by viewedAt ascending
 	const sorted = [...records].sort((a, b) => a.viewedAt - b.viewedAt);
 
 	const sessions: BingeSession[] = [];
@@ -26,7 +25,6 @@ export function detectAllBingeSessions(records: PlayHistoryRecord[]): BingeSessi
 		const duration = record.duration ?? 0;
 
 		if (!currentSession) {
-			// Start a new session
 			currentSession = {
 				startTime: record.viewedAt,
 				endTime: record.viewedAt,
@@ -34,16 +32,13 @@ export function detectAllBingeSessions(records: PlayHistoryRecord[]): BingeSessi
 				totalSeconds: duration
 			};
 		} else {
-			// Check if this record continues the current session
 			const gap = record.viewedAt - currentSession.endTime;
 
 			if (gap <= BINGE_GAP_THRESHOLD_SECONDS) {
-				// Continue the session
 				currentSession.endTime = record.viewedAt;
 				currentSession.plays += 1;
 				currentSession.totalSeconds += duration;
 			} else {
-				// Gap too large, save current session and start new one
 				sessions.push({
 					startTime: currentSession.startTime,
 					endTime: currentSession.endTime,
@@ -61,7 +56,6 @@ export function detectAllBingeSessions(records: PlayHistoryRecord[]): BingeSessi
 		}
 	}
 
-	// Don't forget the last session
 	if (currentSession) {
 		sessions.push({
 			startTime: currentSession.startTime,
@@ -71,7 +65,6 @@ export function detectAllBingeSessions(records: PlayHistoryRecord[]): BingeSessi
 		});
 	}
 
-	// Sort by totalMinutes descending
 	return sessions.sort((a, b) => b.totalMinutes - a.totalMinutes);
 }
 
@@ -82,7 +75,6 @@ export function detectLongestBinge(records: PlayHistoryRecord[]): BingeSession |
 		return null;
 	}
 
-	// Sessions are already sorted by totalMinutes descending
 	const longest = sessions[0];
 	return longest ?? null;
 }

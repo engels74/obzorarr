@@ -22,14 +22,9 @@ import { logger } from '$lib/server/logging';
 export const load: PageServerLoad = async ({ parent }) => {
 	const parentData = await parent();
 
-	// Check if sync is already running
 	const syncRunning = await isSyncRunning();
 	const currentProgress = getSyncProgress();
-
-	// Get current play history count
 	const historyCount = await getPlayHistoryCount();
-
-	// Get current year for backfill
 	const currentYear = new Date().getFullYear();
 
 	return {
@@ -54,15 +49,11 @@ export const actions: Actions = {
 		}
 
 		try {
-			// Check if already running
 			if (await isSyncRunning()) {
 				return { success: true, message: 'Sync is already running' };
 			}
 
-			// Get current year for backfill
 			const currentYear = new Date().getFullYear();
-
-			// Start background sync
 			const result = await startBackgroundSync(currentYear);
 
 			if (!result.started) {
@@ -92,7 +83,6 @@ export const actions: Actions = {
 
 		logger.info('Onboarding: Proceeding to settings (sync may still be running)', 'Onboarding');
 
-		// Advance to settings step
 		await setOnboardingStep(OnboardingSteps.SETTINGS);
 		redirect(303, '/onboarding/settings');
 	}

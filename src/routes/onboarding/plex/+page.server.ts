@@ -19,13 +19,11 @@ import { logger } from '$lib/server/logging';
 export const load: PageServerLoad = async ({ parent, locals }) => {
 	const parentData = await parent();
 
-	// If user is authenticated and admin, check if they can proceed
 	const canProceed = parentData.hasEnvConfig && parentData.isAuthenticated && parentData.isAdmin;
 
 	return {
 		...parentData,
 		canProceed,
-		// If not admin but authenticated, show error
 		isNonAdminUser: parentData.isAuthenticated && !parentData.isAdmin
 	};
 };
@@ -42,7 +40,6 @@ export const actions: Actions = {
 			return fail(401, { error: 'Please sign in with Plex first' });
 		}
 
-		// Get session to verify membership
 		const sessionId = cookies.get('session');
 		if (!sessionId) {
 			return fail(401, { error: 'Session not found' });
@@ -54,7 +51,6 @@ export const actions: Actions = {
 				return fail(401, { error: 'Session expired. Please sign in again.' });
 			}
 
-			// Verify user is server owner
 			const membership = await verifyServerMembership(plexToken);
 
 			if (!membership.isMember) {
@@ -75,11 +71,9 @@ export const actions: Actions = {
 
 			logger.info(`Onboarding: Admin verified - ${locals.user.username}`, 'Onboarding');
 
-			// Advance to sync step
 			await setOnboardingStep(OnboardingSteps.SYNC);
 			redirect(303, '/onboarding/sync');
 		} catch (err) {
-			// Handle redirect (expected)
 			if (
 				err instanceof Response ||
 				(err &&
@@ -122,7 +116,6 @@ export const actions: Actions = {
 
 		logger.info(`Onboarding: Server selection complete - ${locals.user.username}`, 'Onboarding');
 
-		// Advance to sync step
 		await setOnboardingStep(OnboardingSteps.SYNC);
 		redirect(303, '/onboarding/sync');
 	}

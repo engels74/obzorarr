@@ -45,21 +45,16 @@ export function buildGenerationContext(stats: UserStats | ServerStats): FactGene
 	const hours = Math.floor(stats.totalWatchTimeMinutes / 60);
 	const days = Math.round((hours / 24) * 10) / 10;
 
-	// Find peak hour (0-23)
 	const peakHour = stats.watchTimeByHour.minutes.indexOf(
 		Math.max(...stats.watchTimeByHour.minutes)
 	);
 
-	// Find peak month (0-11)
 	const peakMonth = stats.watchTimeByMonth.minutes.indexOf(
 		Math.max(...stats.watchTimeByMonth.minutes)
 	);
 
-	// Count unique movies and shows
 	const uniqueMovies = stats.topMovies.length;
 	const uniqueShows = stats.topShows.length;
-
-	// Determine scope based on stats type
 	const scope = isUserStats(stats) ? 'user' : 'server';
 
 	const baseContext: FactGenerationContext = {
