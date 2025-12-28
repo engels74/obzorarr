@@ -291,6 +291,12 @@
 				throw new Error((errData as { message?: string }).message || 'Failed to save server');
 			}
 
+			const result = (await response.json()) as { success: boolean; error?: string };
+
+			if (!result.success) {
+				throw new Error(result.error || 'Connection test failed');
+			}
+
 			serverSaved = true;
 		} catch (err) {
 			oauthError = err instanceof Error ? err.message : 'Failed to save server';
