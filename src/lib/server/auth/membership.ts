@@ -351,21 +351,32 @@ export function selectBestConnection(server: PlexResource): string | undefined {
 		return undefined;
 	}
 
-	// Priority 1: Find .plex.direct URL (most reliable for external access)
-	const plexDirectConnection = connections.find((c) => c.uri.includes('.plex.direct') && !c.relay);
-	if (plexDirectConnection) {
-		logger.debug(`Selected .plex.direct connection: ${plexDirectConnection.uri}`, 'Membership');
-		return plexDirectConnection.uri;
+	// Priority 1: Find public .plex.direct URL (best for external access)
+	const publicPlexDirect = connections.find(
+		(c) => c.uri.includes('.plex.direct') && !c.local && !c.relay
+	);
+	if (publicPlexDirect) {
+		logger.debug(`Selected public .plex.direct connection: ${publicPlexDirect.uri}`, 'Membership');
+		return publicPlexDirect.uri;
 	}
 
-	// Priority 2: Find public (non-local, non-relay) connection
+	// Priority 2: Find local .plex.direct URL (for same-network access)
+	const localPlexDirect = connections.find(
+		(c) => c.uri.includes('.plex.direct') && c.local && !c.relay
+	);
+	if (localPlexDirect) {
+		logger.debug(`Selected local .plex.direct connection: ${localPlexDirect.uri}`, 'Membership');
+		return localPlexDirect.uri;
+	}
+
+	// Priority 3: Find public (non-local, non-relay) connection
 	const publicConnection = connections.find((c) => !c.local && !c.relay);
 	if (publicConnection) {
 		logger.debug(`Selected public connection: ${publicConnection.uri}`, 'Membership');
 		return publicConnection.uri;
 	}
 
-	// Priority 3: Find local (non-relay) connection as fallback
+	// Priority 4: Find local (non-relay) connection as fallback
 	const localConnection = connections.find((c) => c.local && !c.relay);
 	if (localConnection) {
 		logger.debug(`Selected local connection: ${localConnection.uri}`, 'Membership');
