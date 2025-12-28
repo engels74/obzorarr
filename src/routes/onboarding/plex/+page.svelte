@@ -1574,7 +1574,6 @@
 		border-radius: 4px;
 		cursor: help;
 		transition: all 0.15s ease;
-		pointer-events: none;
 	}
 
 	.connection-badge:hover {
@@ -1727,9 +1726,12 @@
 		box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.2);
 	}
 
-	/* Tooltip Styling */
+	/* Tooltip Styling - portal container needs z-index to appear above positioned cards */
+	:global([id^='bits-']:has(.connection-tooltip)) {
+		z-index: 100 !important;
+	}
+
 	:global(.connection-tooltip) {
-		z-index: 9999;
 		background: rgba(15, 23, 42, 0.95);
 		backdrop-filter: blur(12px);
 		-webkit-backdrop-filter: blur(12px);
