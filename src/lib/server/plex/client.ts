@@ -11,23 +11,6 @@ import {
 	type HistoryPageWithStats
 } from './types';
 
-/**
- * Plex API Client
- *
- * Provides type-safe communication with Plex Media Server.
- * Uses $env/dynamic/private for runtime token access.
- *
- * @module plex/client
- */
-
-// =============================================================================
-// Constants
-// =============================================================================
-
-/**
- * Get standard headers for all Plex API requests
- * Per bun-svelte-pro.md and Plex API documentation
- */
 function getPlexHeaders() {
 	return {
 		Accept: 'application/json',
@@ -38,37 +21,10 @@ function getPlexHeaders() {
 	};
 }
 
-/**
- * Default page size for paginated requests
- */
 const DEFAULT_PAGE_SIZE = 100;
-
-/**
- * Play history endpoint
- */
 const HISTORY_ENDPOINT = '/status/sessions/history/all';
 
-// =============================================================================
-// Generic Request Function
-// =============================================================================
-
-/**
- * Make a request to the Plex API
- *
- * Handles authentication, JSON parsing, and error handling.
- * Does NOT perform response validation - caller should validate with Zod.
- *
- * @param endpoint - API endpoint path (e.g., '/status/sessions/history/all')
- * @param params - Optional URL search parameters
- * @param signal - Optional abort signal for cancellation
- * @returns Raw JSON response from Plex
- * @throws PlexApiError on network or HTTP errors
- *
- * @example
- * ```typescript
- * const response = await plexRequest<PlexHistoryResponse>('/status/sessions/history/all');
- * ```
- */
+/** Make a request to the Plex API. Caller should validate response with Zod. */
 export async function plexRequest<T>(
 	endpoint: string,
 	params?: URLSearchParams,
@@ -120,19 +76,6 @@ export async function plexRequest<T>(
 	}
 }
 
-// =============================================================================
-// History Fetching
-// =============================================================================
-
-/**
- * Fetch a single page of play history from Plex
- *
- * @param offset - Starting offset for pagination
- * @param options - Fetch options including page size and filters
- * @returns Validated page result with items and pagination info
- * @throws PlexApiError on network/HTTP errors
- * @throws PlexValidationError on response validation failure
- */
 async function fetchHistoryPage(
 	offset: number,
 	options: FetchHistoryOptions = {}
@@ -145,14 +88,11 @@ async function fetchHistoryPage(
 		signal
 	} = options;
 
-	// Build query parameters
 	const params = new URLSearchParams();
 	params.set('X-Plex-Container-Start', String(offset));
 	params.set('X-Plex-Container-Size', String(pageSize));
 
-	// Add optional filters
 	if (minViewedAt !== undefined) {
-		// Filter for records viewed after this timestamp
 		params.set('viewedAt>', String(minViewedAt));
 	}
 
@@ -164,10 +104,7 @@ async function fetchHistoryPage(
 		params.set('librarySectionID', String(librarySectionId));
 	}
 
-	// Make request
 	const rawResponse = await plexRequest<unknown>(HISTORY_ENDPOINT, params, signal);
-
-	// Validate response with Zod
 	const result = PlexHistoryResponseSchema.safeParse(rawResponse);
 
 	if (!result.success) {
@@ -178,13 +115,10 @@ async function fetchHistoryPage(
 	}
 
 	const container = result.data.MediaContainer;
-
-	// Filter out items without required fields (deleted media, corrupted entries, etc.)
 	const rawItems = container.Metadata;
 	const validItems = rawItems.filter(hasRequiredFields);
-
-	// Log filtered items for visibility
 	const skippedCount = rawItems.length - validItems.length;
+
 	if (skippedCount > 0) {
 		console.warn(
 			`[Plex] Skipped ${skippedCount} history items without required fields (ratingKey/title)`
@@ -200,32 +134,7 @@ async function fetchHistoryPage(
 	};
 }
 
-/**
- * Fetch all play history from Plex with automatic pagination
- *
- * This is an async generator that yields pages of history items with stats.
- * Use this for memory-efficient processing of large history datasets.
- *
- * @param options - Fetch options including page size and filters
- * @yields Objects with items array and skippedCount for each page
- *
- * @example
- * ```typescript
- * // Process all history pages
- * for await (const { items, skippedCount } of fetchAllHistory({ pageSize: 100 })) {
- *   for (const item of items) {
- *     console.log(item.title, item.viewedAt);
- *   }
- *   console.log(`Skipped ${skippedCount} items without required fields`);
- * }
- *
- * // Collect all items into a single array
- * const allItems: ValidPlexHistoryMetadata[] = [];
- * for await (const { items } of fetchAllHistory()) {
- *   allItems.push(...items);
- * }
- * ```
- */
+/** Async generator that yields pages of history items for memory-efficient processing */
 export async function* fetchAllHistory(
 	options: FetchHistoryOptions = {}
 ): AsyncGenerator<HistoryPageWithStats, void, unknown> {
@@ -236,13 +145,10 @@ export async function* fetchAllHistory(
 	do {
 		const pageResult = await fetchHistoryPage(offset, options);
 
-		// Update total size from first response
 		if (totalSize === undefined) {
 			totalSize = pageResult.totalSize;
 		}
 
-		// Yield the items and skipped count from this page
-		// Always yield to propagate skipped count even if no valid items
 		if (pageResult.items.length > 0 || pageResult.skippedCount > 0) {
 			yield {
 				items: pageResult.items,
@@ -250,29 +156,11 @@ export async function* fetchAllHistory(
 			};
 		}
 
-		// Move to next page
 		offset += pageResult.size;
-
-		// Continue until we've fetched all records
-		// Guard against empty pages causing infinite loops
 	} while (offset < (totalSize ?? 0) && offset > 0);
 }
 
-/**
- * Fetch all play history as a single array
- *
- * Convenience function that collects all pages into a single array.
- * Use fetchAllHistory() generator for memory-efficient processing of large datasets.
- *
- * @param options - Fetch options including page size and filters
- * @returns Array of all validated history metadata items (with ratingKey guaranteed)
- *
- * @example
- * ```typescript
- * const history = await fetchAllHistoryArray({ minViewedAt: 1704067200 });
- * console.log(`Fetched ${history.length} records`);
- * ```
- */
+/** Convenience function that collects all history pages into a single array */
 export async function fetchAllHistoryArray(
 	options: FetchHistoryOptions = {}
 ): Promise<ValidPlexHistoryMetadata[]> {
@@ -285,18 +173,8 @@ export async function fetchAllHistoryArray(
 	return allItems;
 }
 
-// =============================================================================
-// Utility Functions
-// =============================================================================
-
-/**
- * Check if the Plex server is reachable and authenticated
- *
- * @returns true if server responds successfully, false otherwise
- */
 export async function checkConnection(): Promise<boolean> {
 	try {
-		// Use a lightweight endpoint to check connectivity
 		await plexRequest<unknown>('/');
 		return true;
 	} catch {
@@ -304,50 +182,23 @@ export async function checkConnection(): Promise<boolean> {
 	}
 }
 
-/**
- * Get the configured Plex server URL (for display/debugging)
- *
- * Note: Does NOT expose the token, only the server URL.
- */
 export function getServerUrl(): string {
 	return env.PLEX_SERVER_URL ?? '';
 }
 
-// =============================================================================
-// Metadata Fetching (for duration and genre enrichment)
-// =============================================================================
-
-/**
- * Concurrency limit for metadata batch requests
- * Configurable via METADATA_CONCURRENCY env var (1-20, default: 5)
- */
+/** Configurable via METADATA_CONCURRENCY env var (1-20, default: 5) */
 const METADATA_CONCURRENCY = Math.max(
 	1,
 	Math.min(20, parseInt(env.METADATA_CONCURRENCY ?? '5', 10) || 5)
 );
 
-/**
- * Enrichment data returned from Plex metadata endpoint
- *
- * Contains additional metadata that is not available in the history endpoint,
- * including duration and genres for statistics calculation.
- */
+/** Duration and genres not available in history endpoint */
 export interface EnrichmentData {
-	/** Duration in seconds, or null if not available */
 	duration: number | null;
-	/** Array of genre names (e.g., ["Action", "Drama"]) */
 	genres: string[];
 }
 
-/**
- * Fetch metadata for a single media item from Plex library
- *
- * Retrieves duration and genres which are not available in the history endpoint.
- *
- * @param ratingKey - The rating key of the media item
- * @param signal - Optional abort signal for cancellation
- * @returns EnrichmentData with duration and genres, or null if fetch failed
- */
+/** Fetch duration and genres for a media item from Plex library */
 export async function fetchMediaMetadata(
 	ratingKey: string,
 	signal?: AbortSignal
@@ -370,9 +221,7 @@ export async function fetchMediaMetadata(
 		}
 
 		return {
-			// Convert from milliseconds to seconds
 			duration: item.duration ? Math.floor(item.duration / 1000) : null,
-			// Extract genre names from tag objects
 			genres: item.Genre?.map((g) => g.tag) ?? []
 		};
 	} catch {
@@ -380,23 +229,7 @@ export async function fetchMediaMetadata(
 	}
 }
 
-/**
- * Fetch metadata for multiple media items with concurrency control
- *
- * Makes parallel requests to the Plex library metadata endpoint,
- * limited to METADATA_CONCURRENCY concurrent requests to avoid
- * overwhelming the server.
- *
- * @param ratingKeys - Array of rating keys to fetch metadata for
- * @param signal - Optional abort signal for cancellation
- * @returns Map of ratingKey to EnrichmentData (null if unavailable)
- *
- * @example
- * ```typescript
- * const metadata = await fetchMetadataBatch(['12345', '67890']);
- * const data = metadata.get('12345'); // { duration: 7200, genres: ["Action"] } or null
- * ```
- */
+/** Fetch metadata for multiple items with concurrency control */
 export async function fetchMetadataBatch(
 	ratingKeys: string[],
 	signal?: AbortSignal
@@ -407,9 +240,7 @@ export async function fetchMetadataBatch(
 		return results;
 	}
 
-	// Process in batches with concurrency limit
 	for (let i = 0; i < ratingKeys.length; i += METADATA_CONCURRENCY) {
-		// Check for cancellation before each batch
 		if (signal?.aborted) {
 			break;
 		}

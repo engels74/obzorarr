@@ -1,47 +1,12 @@
 import { z } from 'zod';
 
-/**
- * Authentication Types and Zod Schemas
- *
- * These types are used for:
- * 1. Plex OAuth PIN-based authentication
- * 2. Session management
- * 3. Server membership verification
- *
- * Based on Plex.tv API documentation.
- */
-
-// =============================================================================
-// Constants
-// =============================================================================
-
-/**
- * Session duration in milliseconds (7 days)
- */
+/** Session duration: 7 days */
 export const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 
-/**
- * Plex OAuth client identifier
- */
 export const PLEX_CLIENT_ID = 'obzorarr';
-
-/**
- * Plex OAuth product name
- */
 export const PLEX_PRODUCT = 'Obzorarr';
-
-/**
- * Plex OAuth product version
- */
 export const PLEX_VERSION = '1.0.0';
 
-// =============================================================================
-// Error Types
-// =============================================================================
-
-/**
- * Base error for authentication failures
- */
 export class AuthError extends Error {
 	constructor(
 		message: string,
@@ -53,9 +18,6 @@ export class AuthError extends Error {
 	}
 }
 
-/**
- * Error when user is not a member of the configured Plex server
- */
 export class NotServerMemberError extends AuthError {
 	constructor(message = 'You are not a member of this Plex server.') {
 		super(message, 'NOT_SERVER_MEMBER');
@@ -63,9 +25,6 @@ export class NotServerMemberError extends AuthError {
 	}
 }
 
-/**
- * Error when Plex OAuth PIN has expired
- */
 export class PinExpiredError extends AuthError {
 	constructor(message = 'Login session expired. Please try again.') {
 		super(message, 'PIN_EXPIRED');
@@ -73,9 +32,6 @@ export class PinExpiredError extends AuthError {
 	}
 }
 
-/**
- * Error when session is invalid or expired
- */
 export class SessionExpiredError extends AuthError {
 	constructor(message = 'Your session has expired. Please log in again.') {
 		super(message, 'SESSION_EXPIRED');
@@ -83,9 +39,6 @@ export class SessionExpiredError extends AuthError {
 	}
 }
 
-/**
- * Error when Plex API request fails
- */
 export class PlexAuthApiError extends AuthError {
 	constructor(
 		message: string,
@@ -98,15 +51,7 @@ export class PlexAuthApiError extends AuthError {
 	}
 }
 
-// =============================================================================
-// Zod Schemas for Plex OAuth API
-// =============================================================================
-
-/**
- * Plex PIN response from POST /api/v2/pins
- *
- * Used to initiate the OAuth flow.
- */
+/** Plex PIN response from POST /api/v2/pins - used to initiate the OAuth flow */
 export const PlexPinResponseSchema = z.object({
 	id: z.number().int(),
 	code: z.string(),
@@ -132,11 +77,7 @@ export const PlexPinResponseSchema = z.object({
 	newRegistration: z.boolean().nullable().optional()
 });
 
-/**
- * Plex user info response from GET /api/v2/user
- *
- * Contains user profile information after successful authentication.
- */
+/** Plex user info response from GET /api/v2/user */
 export const PlexUserSchema = z.object({
 	id: z.number().int(),
 	uuid: z.string(),
@@ -196,11 +137,7 @@ export const PlexUserSchema = z.object({
 	backupCodesCreated: z.boolean().optional()
 });
 
-/**
- * Plex resource (server) from GET /api/v2/resources
- *
- * Used to check server membership and ownership.
- */
+/** Plex resource (server) from GET /api/v2/resources */
 export const PlexResourceSchema = z.object({
 	name: z.string(),
 	product: z.string().optional(),
@@ -240,26 +177,12 @@ export const PlexResourceSchema = z.object({
 		.optional()
 });
 
-/**
- * Array of Plex resources response
- */
 export const PlexResourcesResponseSchema = z.array(PlexResourceSchema);
-
-// =============================================================================
-// TypeScript Types (inferred from Zod schemas)
-// =============================================================================
 
 export type PlexPinResponse = z.infer<typeof PlexPinResponseSchema>;
 export type PlexUser = z.infer<typeof PlexUserSchema>;
 export type PlexResource = z.infer<typeof PlexResourceSchema>;
 
-// =============================================================================
-// Session Types
-// =============================================================================
-
-/**
- * Data returned when validating a session
- */
 export interface SessionData {
 	id: string;
 	userId: number;
@@ -269,9 +192,6 @@ export interface SessionData {
 	expiresAt: Date;
 }
 
-/**
- * Options for creating a session
- */
 export interface CreateSessionOptions {
 	userId: number;
 	plexToken: string;
@@ -279,22 +199,12 @@ export interface CreateSessionOptions {
 	durationMs?: number;
 }
 
-/**
- * Result of server membership verification
- */
 export interface MembershipResult {
 	isMember: boolean;
 	isOwner: boolean;
 	serverName?: string;
 }
 
-// =============================================================================
-// OAuth Flow Types
-// =============================================================================
-
-/**
- * PIN info returned to client for OAuth initiation
- */
 export interface PinInfo {
 	pinId: number;
 	code: string;
@@ -302,21 +212,11 @@ export interface PinInfo {
 	expiresAt: string;
 }
 
-/**
- * Options for polling a PIN
- */
 export interface PollPinOptions {
 	maxAttempts?: number;
 	intervalMs?: number;
 }
 
-// =============================================================================
-// Zod Schemas for Plex Shared Servers API
-// =============================================================================
-
-/**
- * Section shared with a user from GET /api/servers/{machineId}/shared_servers
- */
 export const PlexSharedSectionSchema = z.object({
 	id: z.number().int(),
 	key: z.number().int(),
@@ -325,11 +225,7 @@ export const PlexSharedSectionSchema = z.object({
 	shared: z.boolean().optional()
 });
 
-/**
- * Shared server user from GET /api/servers/{machineId}/shared_servers
- *
- * Represents a user who has access to the Plex server.
- */
+/** Shared server user from GET /api/servers/{machineId}/shared_servers */
 export const PlexSharedServerUserSchema = z.object({
 	id: z.number().int(),
 	username: z.string(),
@@ -351,11 +247,6 @@ export const PlexSharedServerUserSchema = z.object({
 	sections: z.array(PlexSharedSectionSchema).optional()
 });
 
-/**
- * Response from GET /api/servers/{machineId}/shared_servers
- *
- * Contains the MediaContainer with SharedServer array.
- */
 export const PlexSharedServersResponseSchema = z.object({
 	MediaContainer: z.object({
 		friendlyName: z.string().nullish(),
@@ -366,9 +257,6 @@ export const PlexSharedServersResponseSchema = z.object({
 	})
 });
 
-/**
- * Server identity response from GET /identity
- */
 export const PlexServerIdentitySchema = z.object({
 	MediaContainer: z.object({
 		machineIdentifier: z.string(),
@@ -378,24 +266,11 @@ export const PlexServerIdentitySchema = z.object({
 	})
 });
 
-// =============================================================================
-// TypeScript Types for Shared Servers
-// =============================================================================
-
 export type PlexSharedSection = z.infer<typeof PlexSharedSectionSchema>;
 export type PlexSharedServerUser = z.infer<typeof PlexSharedServerUserSchema>;
 export type PlexSharedServersResponse = z.infer<typeof PlexSharedServersResponseSchema>;
 export type PlexServerIdentity = z.infer<typeof PlexServerIdentitySchema>;
 
-// =============================================================================
-// Zod Schemas for Plex V2 Friends API
-// =============================================================================
-
-/**
- * Shared server reference from GET /api/v2/friends
- *
- * Represents a server that is shared with a friend.
- */
 export const PlexFriendSharedServerSchema = z.object({
 	id: z.number().int(),
 	name: z.string().optional(),
@@ -409,11 +284,6 @@ export const PlexFriendSharedServerSchema = z.object({
 	pending: z.boolean().optional()
 });
 
-/**
- * Friend user from GET /api/v2/friends
- *
- * Represents a friend/shared user with their server access info.
- */
 export const PlexFriendSchema = z.object({
 	id: z.number().int(),
 	uuid: z.string().optional(),
@@ -429,26 +299,13 @@ export const PlexFriendSchema = z.object({
 	sharedSources: z.array(z.unknown()).optional()
 });
 
-/**
- * Response from GET /api/v2/friends
- *
- * Returns an array of friends with their shared server access.
- */
 export const PlexFriendsResponseSchema = z.array(PlexFriendSchema);
-
-// =============================================================================
-// TypeScript Types for V2 Friends API
-// =============================================================================
 
 export type PlexFriendSharedServer = z.infer<typeof PlexFriendSharedServerSchema>;
 export type PlexFriend = z.infer<typeof PlexFriendSchema>;
 export type PlexFriendsResponse = z.infer<typeof PlexFriendsResponseSchema>;
 
-/**
- * Normalized server user for dev-bypass
- *
- * Combines data from either the owner (PlexUser) or shared users (PlexSharedServerUser)
- */
+/** Normalized server user for dev-bypass - combines data from owner or shared users */
 export interface NormalizedServerUser {
 	plexId: number;
 	username: string;
