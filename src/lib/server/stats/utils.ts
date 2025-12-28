@@ -29,3 +29,11 @@ export function getMonthFromTimestamp(viewedAt: number): number {
 export function getHourFromTimestamp(viewedAt: number): number {
 	return new Date(viewedAt * 1000).getUTCHours();
 }
+
+export function getDayOfWeekFromTimestamp(viewedAt: number): number {
+	return new Date(viewedAt * 1000).getUTCDay();
+}
+
+export function getDateStringFromTimestamp(viewedAt: number): string {
+	return new Date(viewedAt * 1000).toISOString().split('T')[0]!;
+}

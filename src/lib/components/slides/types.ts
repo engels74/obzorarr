@@ -4,8 +4,16 @@ import type {
 	BingeSession,
 	WatchRecord,
 	MonthlyDistribution,
-	HourlyDistribution
-} from '$lib/server/stats/types';
+	HourlyDistribution,
+	WeekdayDistribution,
+	ContentTypeBreakdown,
+	DecadeDistributionItem,
+	SeriesCompletionItem,
+	RewatchItem,
+	MarathonDay,
+	WatchStreak,
+	YearComparison
+} from '$lib/stats/types';
 
 export type SlideType =
 	| 'total-time'
@@ -16,6 +24,14 @@ export type SlideType =
 	| 'percentile'
 	| 'binge'
 	| 'first-last'
+	| 'weekday-patterns'
+	| 'content-type'
+	| 'decade'
+	| 'series-completion'
+	| 'rewatch'
+	| 'marathon'
+	| 'streak'
+	| 'year-comparison'
 	| 'custom';
 
 export const DEFAULT_SLIDE_ORDER: readonly SlideType[] = [
@@ -24,6 +40,14 @@ export const DEFAULT_SLIDE_ORDER: readonly SlideType[] = [
 	'top-shows',
 	'genres',
 	'distribution',
+	'weekday-patterns',
+	'content-type',
+	'decade',
+	'series-completion',
+	'rewatch',
+	'marathon',
+	'streak',
+	'year-comparison',
 	'percentile',
 	'binge',
 	'first-last'
@@ -114,4 +138,38 @@ export interface SlideRenderConfig {
 	customTitle?: string;
 	customContent?: string;
 	funFact?: FunFactData;
+}
+
+export interface WeekdayPatternsSlideProps extends BaseSlideProps {
+	watchTimeByWeekday: WeekdayDistribution;
+}
+
+export interface ContentTypeSlideProps extends BaseSlideProps {
+	contentTypes: ContentTypeBreakdown;
+}
+
+export interface DecadeSlideProps extends BaseSlideProps {
+	decadeDistribution: DecadeDistributionItem[];
+}
+
+export interface SeriesCompletionSlideProps extends BaseSlideProps {
+	seriesCompletion: SeriesCompletionItem[];
+	limit?: number;
+}
+
+export interface RewatchSlideProps extends BaseSlideProps {
+	topRewatches: RewatchItem[];
+	limit?: number;
+}
+
+export interface MarathonSlideProps extends BaseSlideProps {
+	marathonDay: MarathonDay | null;
+}
+
+export interface StreakSlideProps extends BaseSlideProps {
+	watchStreak: WatchStreak | null;
+}
+
+export interface YearComparisonSlideProps extends BaseSlideProps {
+	yearComparison: YearComparison | null;
 }

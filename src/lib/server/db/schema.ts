@@ -28,7 +28,8 @@ export const playHistory = sqliteTable(
 		duration: integer('duration'),
 		grandparentTitle: text('grandparent_title'),
 		parentTitle: text('parent_title'),
-		genres: text('genres')
+		genres: text('genres'),
+		releaseYear: integer('release_year')
 	},
 	(table) => [index('idx_play_history_rating_key').on(table.ratingKey)]
 );
@@ -121,6 +122,7 @@ export const metadataCache = sqliteTable('metadata_cache', {
 	ratingKey: text('rating_key').primaryKey(),
 	duration: integer('duration'),
 	genres: text('genres'),
+	releaseYear: integer('release_year'),
 	fetchedAt: integer('fetched_at').notNull(),
 	fetchFailed: integer('fetch_failed', { mode: 'boolean' }).default(false)
 });

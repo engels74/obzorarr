@@ -30,6 +30,14 @@
 		percentile: 'Percentile Ranking',
 		binge: 'Longest Binge',
 		'first-last': 'First & Last Watch',
+		'weekday-patterns': 'Weekday Patterns',
+		'content-type': 'Content Type',
+		decade: 'Content Era',
+		'series-completion': 'Series Progress',
+		rewatch: 'Rewatched Content',
+		marathon: 'Marathon Day',
+		streak: 'Watching Streak',
+		'year-comparison': 'Year Comparison',
 		custom: 'Custom Slide'
 	};
 

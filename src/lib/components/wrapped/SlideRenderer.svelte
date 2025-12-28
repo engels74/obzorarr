@@ -15,7 +15,15 @@
 		BingeSlide,
 		FirstLastSlide,
 		FunFactSlide,
-		CustomSlide as CustomSlideComponent
+		CustomSlide as CustomSlideComponent,
+		WeekdayPatternsSlide,
+		ContentTypeSlide,
+		DecadeSlide,
+		SeriesCompletionSlide,
+		RewatchSlide,
+		MarathonSlide,
+		StreakSlide,
+		YearComparisonSlide
 	} from '$lib/components/slides';
 
 	interface Props {
@@ -129,6 +137,62 @@
 			content={slide.customContent}
 			{active}
 			{onAnimationComplete}
+		/>
+	{:else if slide.type === 'weekday-patterns'}
+		<WeekdayPatternsSlide
+			watchTimeByWeekday={stats.watchTimeByWeekday}
+			{active}
+			{onAnimationComplete}
+			{messagingContext}
+		/>
+	{:else if slide.type === 'content-type'}
+		<ContentTypeSlide
+			contentTypes={stats.contentTypes}
+			{active}
+			{onAnimationComplete}
+			{messagingContext}
+		/>
+	{:else if slide.type === 'decade'}
+		<DecadeSlide
+			decadeDistribution={stats.decadeDistribution}
+			{active}
+			{onAnimationComplete}
+			{messagingContext}
+		/>
+	{:else if slide.type === 'series-completion'}
+		<SeriesCompletionSlide
+			seriesCompletion={stats.seriesCompletion}
+			{active}
+			{onAnimationComplete}
+			{messagingContext}
+		/>
+	{:else if slide.type === 'rewatch'}
+		<RewatchSlide
+			topRewatches={stats.topRewatches}
+			{active}
+			{onAnimationComplete}
+			{messagingContext}
+		/>
+	{:else if slide.type === 'marathon'}
+		<MarathonSlide
+			marathonDay={stats.marathonDay}
+			{active}
+			{onAnimationComplete}
+			{messagingContext}
+		/>
+	{:else if slide.type === 'streak'}
+		<StreakSlide
+			watchStreak={stats.watchStreak}
+			{active}
+			{onAnimationComplete}
+			{messagingContext}
+		/>
+	{:else if slide.type === 'year-comparison'}
+		<YearComparisonSlide
+			yearComparison={stats.yearComparison}
+			{active}
+			{onAnimationComplete}
+			{messagingContext}
 		/>
 	{:else}
 		<div class="unknown-slide">

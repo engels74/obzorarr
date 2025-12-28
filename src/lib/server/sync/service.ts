@@ -39,7 +39,8 @@ function mapPlexRecordToDbInsert(record: ValidPlexHistoryMetadata) {
 		// Convert duration from milliseconds to seconds if present
 		duration: record.duration !== undefined ? Math.floor(record.duration / 1000) : null,
 		grandparentTitle: record.grandparentTitle ?? null,
-		parentTitle: record.parentTitle ?? null
+		parentTitle: record.parentTitle ?? null,
+		releaseYear: record.year ?? null
 	};
 }
 
@@ -443,10 +444,13 @@ export async function enrichMetadata(
 			id: playHistory.id,
 			ratingKey: playHistory.ratingKey,
 			duration: playHistory.duration,
-			genres: playHistory.genres
+			genres: playHistory.genres,
+			releaseYear: playHistory.releaseYear
 		})
 		.from(playHistory)
-		.where(or(isNull(playHistory.duration), isNull(playHistory.genres)));
+		.where(
+			or(isNull(playHistory.duration), isNull(playHistory.genres), isNull(playHistory.releaseYear))
+		);
 
 	if (records.length === 0) {
 		return { enriched: 0, failed: 0 };
@@ -493,6 +497,7 @@ export async function enrichMetadata(
 					ratingKey: rk,
 					duration: data?.duration ?? null,
 					genres: data?.genres?.length ? JSON.stringify(data.genres) : null,
+					releaseYear: data?.releaseYear ?? null,
 					fetchedAt: Math.floor(Date.now() / 1000),
 					fetchFailed: data === null
 				};
@@ -507,6 +512,7 @@ export async function enrichMetadata(
 						set: {
 							duration: entry.duration,
 							genres: entry.genres,
+							releaseYear: entry.releaseYear,
 							fetchedAt: entry.fetchedAt,
 							fetchFailed: entry.fetchFailed
 						}
@@ -532,7 +538,7 @@ export async function enrichMetadata(
 		}
 
 		for (const record of recordGroup) {
-			const updates: { duration?: number; genres?: string } = {};
+			const updates: { duration?: number; genres?: string; releaseYear?: number } = {};
 
 			if (record.duration === null && metadata.duration != null) {
 				updates.duration = metadata.duration;
@@ -542,8 +548,12 @@ export async function enrichMetadata(
 				updates.genres = metadata.genres;
 			}
 
+			if (record.releaseYear === null && metadata.releaseYear != null) {
+				updates.releaseYear = metadata.releaseYear;
+			}
+
 			if (Object.keys(updates).length > 0) {
-				const key = `${updates.duration ?? 'null'}|${updates.genres ?? 'null'}`;
+				const key = `${updates.duration ?? 'null'}|${updates.genres ?? 'null'}|${updates.releaseYear ?? 'null'}`;
 				const ids = updateBatches.get(key) ?? [];
 				ids.push(record.id);
 				updateBatches.set(key, ids);
@@ -558,13 +568,17 @@ export async function enrichMetadata(
 		const parts = key.split('|');
 		const durStr = parts[0] ?? 'null';
 		const genStr = parts[1] ?? 'null';
-		const updates: { duration?: number; genres?: string } = {};
+		const yearStr = parts[2] ?? 'null';
+		const updates: { duration?: number; genres?: string; releaseYear?: number } = {};
 
 		if (durStr !== 'null') {
 			updates.duration = parseInt(durStr, 10);
 		}
 		if (genStr !== 'null') {
 			updates.genres = genStr;
+		}
+		if (yearStr !== 'null') {
+			updates.releaseYear = parseInt(yearStr, 10);
 		}
 
 		await db.update(playHistory).set(updates).where(inArray(playHistory.id, ids));

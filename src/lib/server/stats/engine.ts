@@ -16,7 +16,14 @@ import {
 	getAllUsersWatchTime,
 	detectLongestBinge,
 	findFirstWatch,
-	findLastWatch
+	findLastWatch,
+	calculateWeekdayDistribution,
+	calculateContentTypeBreakdown,
+	calculateDecadeDistribution,
+	calculateTopRewatches,
+	calculateMarathonDay,
+	calculateWatchStreak,
+	calculateYearComparison
 } from './calculators';
 
 export interface CalculateStatsOptions {
@@ -157,6 +164,30 @@ export async function calculateUserStats(
 
 	const watchTimeByMonth = calculateMonthlyDistribution(records);
 	const watchTimeByHour = calculateHourlyDistribution(records);
+	const watchTimeByWeekday = calculateWeekdayDistribution(records);
+
+	const contentTypes = calculateContentTypeBreakdown(records);
+	const decadeDistribution = calculateDecadeDistribution(records);
+	const topRewatches = calculateTopRewatches(records);
+	const marathonDay = calculateMarathonDay(records);
+	const watchStreak = calculateWatchStreak(records);
+
+	const previousYearFilter = createYearFilter(year - 1);
+	const previousYearRecords = await db
+		.select()
+		.from(playHistory)
+		.where(
+			and(
+				eq(playHistory.accountId, userId),
+				gte(playHistory.viewedAt, previousYearFilter.startTimestamp),
+				lte(playHistory.viewedAt, previousYearFilter.endTimestamp)
+			)
+		);
+	const previousYearWatchTime = calculateWatchTime(previousYearRecords);
+	const yearComparison = calculateYearComparison(
+		watchTime.totalWatchTimeMinutes,
+		previousYearWatchTime.totalWatchTimeMinutes
+	);
 
 	const allUsersWatchTime = await getAllUsersWatchTime(db, yearFilter);
 	const allWatchTimes = Array.from(allUsersWatchTime.values());
@@ -176,6 +207,14 @@ export async function calculateUserStats(
 		topGenres,
 		watchTimeByMonth,
 		watchTimeByHour,
+		watchTimeByWeekday,
+		contentTypes,
+		decadeDistribution,
+		seriesCompletion: [],
+		topRewatches,
+		marathonDay,
+		watchStreak,
+		yearComparison,
 		percentileRank,
 		longestBinge,
 		firstWatch,
@@ -224,6 +263,29 @@ export async function calculateServerStats(
 
 	const watchTimeByMonth = calculateMonthlyDistribution(records);
 	const watchTimeByHour = calculateHourlyDistribution(records);
+	const watchTimeByWeekday = calculateWeekdayDistribution(records);
+
+	const contentTypes = calculateContentTypeBreakdown(records);
+	const decadeDistribution = calculateDecadeDistribution(records);
+	const topRewatches = calculateTopRewatches(records);
+	const marathonDay = calculateMarathonDay(records);
+	const watchStreak = calculateWatchStreak(records);
+
+	const previousYearFilter = createYearFilter(year - 1);
+	const previousYearRecords = await db
+		.select()
+		.from(playHistory)
+		.where(
+			and(
+				gte(playHistory.viewedAt, previousYearFilter.startTimestamp),
+				lte(playHistory.viewedAt, previousYearFilter.endTimestamp)
+			)
+		);
+	const previousYearWatchTime = calculateWatchTime(previousYearRecords);
+	const yearComparison = calculateYearComparison(
+		watchTime.totalWatchTimeMinutes,
+		previousYearWatchTime.totalWatchTimeMinutes
+	);
 
 	const allUsersWatchTime = await getAllUsersWatchTime(db, yearFilter);
 	const totalUsers = allUsersWatchTime.size;
@@ -242,6 +304,14 @@ export async function calculateServerStats(
 		topGenres,
 		watchTimeByMonth,
 		watchTimeByHour,
+		watchTimeByWeekday,
+		contentTypes,
+		decadeDistribution,
+		seriesCompletion: [],
+		topRewatches,
+		marathonDay,
+		watchStreak,
+		yearComparison,
 		topViewers,
 		longestBinge,
 		firstWatch,

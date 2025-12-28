@@ -69,10 +69,11 @@ export const PlexGenreTagSchema = z.object({
 
 export type PlexGenreTag = z.infer<typeof PlexGenreTagSchema>;
 
-/** Metadata from library endpoint - includes duration and genres not in history */
+/** Metadata from library endpoint - includes duration, genres, and year not in history */
 export const PlexLibraryMetadataItemSchema = z.object({
 	ratingKey: z.string(),
 	duration: z.number().int().optional(),
+	year: z.number().int().optional(),
 	Genre: z.array(PlexGenreTagSchema).optional().default([])
 });
 

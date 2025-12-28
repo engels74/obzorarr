@@ -200,6 +200,7 @@ const METADATA_CONCURRENCY = Math.max(
 export interface EnrichmentData {
 	duration: number | null;
 	genres: string[];
+	releaseYear: number | null;
 }
 
 export async function fetchMediaMetadata(
@@ -225,7 +226,8 @@ export async function fetchMediaMetadata(
 
 		return {
 			duration: item.duration ? Math.floor(item.duration / 1000) : null,
-			genres: item.Genre?.map((g) => g.tag) ?? []
+			genres: item.Genre?.map((g) => g.tag) ?? [],
+			releaseYear: item.year ?? null
 		};
 	} catch {
 		return null;

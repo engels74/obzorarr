@@ -18,3 +18,13 @@ export {
 } from './binge-detector';
 
 export { findFirstWatch, findLastWatch } from './first-last';
+
+export {
+	calculateWeekdayDistribution,
+	calculateContentTypeBreakdown,
+	calculateDecadeDistribution,
+	calculateTopRewatches,
+	calculateMarathonDay,
+	calculateWatchStreak,
+	calculateYearComparison
+} from './new-slides';

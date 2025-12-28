@@ -9,6 +9,14 @@ export const SlideTypeSchema = z.enum([
 	'percentile',
 	'binge',
 	'first-last',
+	'weekday-patterns',
+	'content-type',
+	'decade',
+	'series-completion',
+	'rewatch',
+	'marathon',
+	'streak',
+	'year-comparison',
 	'custom'
 ]);
 

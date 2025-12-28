@@ -8,6 +8,13 @@
       "when": 1766833955332,
       "tag": "0000_dry_unus",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1766952380334,
+      "tag": "0001_modern_vector",
+      "breakpoints": true
     }
   ]
 }

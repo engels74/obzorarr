@@ -5,7 +5,15 @@ import type {
 	ServerStats,
 	RankedItem,
 	BingeSession,
-	WatchRecord
+	WatchRecord,
+	WeekdayDistribution,
+	ContentTypeBreakdown,
+	DecadeDistributionItem,
+	SeriesCompletionItem,
+	RewatchItem,
+	MarathonDay,
+	WatchStreak,
+	YearComparison
 } from '$lib/server/stats/types';
 import {
 	serializeStats,
@@ -165,6 +173,125 @@ const hourlyDistributionArbitrary = fc.record({
 });
 
 /**
+ * Generate a valid WeekdayDistribution (7 days)
+ */
+const weekdayDistributionArbitrary: fc.Arbitrary<WeekdayDistribution> = fc.record({
+	minutes: fc
+		.tuple(
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true }),
+			fc.float({ min: 0, max: 100000, noNaN: true })
+		)
+		.map((tuple) => [...tuple]),
+	plays: fc
+		.tuple(
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 }),
+			fc.integer({ min: 0, max: 10000 })
+		)
+		.map((tuple) => [...tuple])
+});
+
+/**
+ * Generate a valid ContentTypeBreakdown
+ */
+const contentTypeBreakdownArbitrary: fc.Arbitrary<ContentTypeBreakdown> = fc.record({
+	movies: fc.record({
+		count: fc.integer({ min: 0, max: 10000 }),
+		minutes: fc.float({ min: 0, max: 1000000, noNaN: true })
+	}),
+	episodes: fc.record({
+		count: fc.integer({ min: 0, max: 100000 }),
+		minutes: fc.float({ min: 0, max: 10000000, noNaN: true })
+	}),
+	tracks: fc.record({
+		count: fc.integer({ min: 0, max: 100000 }),
+		minutes: fc.float({ min: 0, max: 1000000, noNaN: true })
+	})
+});
+
+/**
+ * Generate a valid DecadeDistributionItem
+ */
+const decadeDistributionItemArbitrary: fc.Arbitrary<DecadeDistributionItem> = fc.record({
+	decade: fc.constantFrom('1950s', '1960s', '1970s', '1980s', '1990s', '2000s', '2010s', '2020s'),
+	count: fc.integer({ min: 0, max: 10000 }),
+	minutes: fc.float({ min: 0, max: 1000000, noNaN: true })
+});
+
+/**
+ * Generate a valid SeriesCompletionItem
+ */
+const seriesCompletionItemArbitrary: fc.Arbitrary<SeriesCompletionItem> = fc.record({
+	show: fc.string({ minLength: 1, maxLength: 200 }),
+	thumb: fc.option(fc.string({ minLength: 1, maxLength: 500 }), { nil: null }),
+	grandparentRatingKey: fc.string({ minLength: 1, maxLength: 50 }),
+	watchedEpisodes: fc.integer({ min: 0, max: 1000 }),
+	totalEpisodes: fc.integer({ min: 1, max: 1000 }),
+	percentComplete: fc.float({ min: 0, max: 100, noNaN: true })
+});
+
+/**
+ * Generate a valid RewatchItem
+ */
+const rewatchItemArbitrary: fc.Arbitrary<RewatchItem> = fc.record({
+	title: fc.string({ minLength: 1, maxLength: 200 }),
+	thumb: fc.option(fc.string({ minLength: 1, maxLength: 500 }), { nil: null }),
+	type: fc.constantFrom('movie', 'episode', 'track') as fc.Arbitrary<'movie' | 'episode' | 'track'>,
+	rewatchCount: fc.integer({ min: 2, max: 100 })
+});
+
+/**
+ * Generate a valid MarathonDay
+ */
+const marathonDayArbitrary: fc.Arbitrary<MarathonDay> = fc.record({
+	date: fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }).map(d => d.toISOString().split('T')[0]!),
+	minutes: fc.float({ min: 0, max: 1440, noNaN: true }),
+	plays: fc.integer({ min: 1, max: 100 }),
+	items: fc.array(
+		fc.record({
+			title: fc.string({ minLength: 1, maxLength: 200 }),
+			thumb: fc.option(fc.string({ minLength: 1, maxLength: 500 }), { nil: null })
+		}),
+		{ minLength: 0, maxLength: 20 }
+	)
+});
+
+/**
+ * Generate a valid WatchStreak
+ */
+const watchStreakArbitrary: fc.Arbitrary<WatchStreak> = fc
+	.record({
+		longestStreak: fc.integer({ min: 1, max: 365 }),
+		startDate: fc.date({ min: new Date('2020-01-01'), max: new Date('2030-06-30') }),
+		endDate: fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') })
+	})
+	.map((streak) => ({
+		longestStreak: streak.longestStreak,
+		startDate: streak.startDate.toISOString().split('T')[0]!,
+		endDate: streak.endDate > streak.startDate
+			? streak.endDate.toISOString().split('T')[0]!
+			: streak.startDate.toISOString().split('T')[0]!
+	}));
+
+/**
+ * Generate a valid YearComparison
+ */
+const yearComparisonArbitrary: fc.Arbitrary<YearComparison> = fc.record({
+	thisYear: fc.float({ min: 0, max: 10000000, noNaN: true }),
+	lastYear: fc.float({ min: 0, max: 10000000, noNaN: true }),
+	percentChange: fc.float({ min: -100, max: 1000, noNaN: true })
+});
+
+/**
  * Generate a valid UserStats object
  */
 const userStatsArbitrary: fc.Arbitrary<UserStats> = fc.record({
@@ -180,7 +307,15 @@ const userStatsArbitrary: fc.Arbitrary<UserStats> = fc.record({
 	percentileRank: fc.float({ min: 0, max: 100, noNaN: true }),
 	longestBinge: fc.option(bingeSessionArbitrary, { nil: null }),
 	firstWatch: fc.option(watchRecordArbitrary, { nil: null }),
-	lastWatch: fc.option(watchRecordArbitrary, { nil: null })
+	lastWatch: fc.option(watchRecordArbitrary, { nil: null }),
+	watchTimeByWeekday: weekdayDistributionArbitrary,
+	contentTypes: contentTypeBreakdownArbitrary,
+	decadeDistribution: fc.array(decadeDistributionItemArbitrary, { minLength: 0, maxLength: 8 }),
+	seriesCompletion: fc.array(seriesCompletionItemArbitrary, { minLength: 0, maxLength: 10 }),
+	topRewatches: fc.array(rewatchItemArbitrary, { minLength: 0, maxLength: 10 }),
+	marathonDay: fc.option(marathonDayArbitrary, { nil: null }),
+	watchStreak: fc.option(watchStreakArbitrary, { nil: null }),
+	yearComparison: fc.option(yearComparisonArbitrary, { nil: null })
 });
 
 /**
@@ -207,7 +342,15 @@ const serverStatsArbitrary: fc.Arbitrary<ServerStats> = fc.record({
 	),
 	longestBinge: fc.option(bingeSessionArbitrary, { nil: null }),
 	firstWatch: fc.option(watchRecordArbitrary, { nil: null }),
-	lastWatch: fc.option(watchRecordArbitrary, { nil: null })
+	lastWatch: fc.option(watchRecordArbitrary, { nil: null }),
+	watchTimeByWeekday: weekdayDistributionArbitrary,
+	contentTypes: contentTypeBreakdownArbitrary,
+	decadeDistribution: fc.array(decadeDistributionItemArbitrary, { minLength: 0, maxLength: 8 }),
+	seriesCompletion: fc.array(seriesCompletionItemArbitrary, { minLength: 0, maxLength: 10 }),
+	topRewatches: fc.array(rewatchItemArbitrary, { minLength: 0, maxLength: 10 }),
+	marathonDay: fc.option(marathonDayArbitrary, { nil: null }),
+	watchStreak: fc.option(watchStreakArbitrary, { nil: null }),
+	yearComparison: fc.option(yearComparisonArbitrary, { nil: null })
 });
 
 // =============================================================================
@@ -349,6 +492,22 @@ describe('Property 21: Statistics Serialization Round-Trip', () => {
 	});
 });
 
+// Helper for default new stat fields
+const defaultNewFields = {
+	watchTimeByWeekday: { minutes: [0, 0, 0, 0, 0, 0, 0], plays: [0, 0, 0, 0, 0, 0, 0] },
+	contentTypes: {
+		movies: { count: 0, minutes: 0 },
+		episodes: { count: 0, minutes: 0 },
+		tracks: { count: 0, minutes: 0 }
+	},
+	decadeDistribution: [],
+	seriesCompletion: [],
+	topRewatches: [],
+	marathonDay: null,
+	watchStreak: null,
+	yearComparison: null
+};
+
 // Additional unit tests for edge cases
 describe('Serialization edge cases', () => {
 	it('handles UserStats with empty arrays', () => {
@@ -371,7 +530,8 @@ describe('Serialization edge cases', () => {
 			percentileRank: 0,
 			longestBinge: null,
 			firstWatch: null,
-			lastWatch: null
+			lastWatch: null,
+			...defaultNewFields
 		};
 
 		const json = serializeStats(stats);
@@ -402,7 +562,8 @@ describe('Serialization edge cases', () => {
 			percentileRank: 75.5,
 			longestBinge: null,
 			firstWatch: null,
-			lastWatch: null
+			lastWatch: null,
+			...defaultNewFields
 		};
 
 		const json = serializeStats(stats);
@@ -453,7 +614,8 @@ describe('Serialization edge cases', () => {
 				viewedAt: 1735689600,
 				thumb: null,
 				type: 'episode'
-			}
+			},
+			...defaultNewFields
 		};
 
 		const json = serializeStats(stats);
