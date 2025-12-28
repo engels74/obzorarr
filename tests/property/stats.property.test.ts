@@ -60,7 +60,7 @@ const playHistoryRecordArbitrary: fc.Arbitrary<PlayHistoryRecord> = fc.record({
 			.map((arr) => JSON.stringify(arr)),
 		{ nil: null }
 	),
-	releaseYear: fc.option(fc.integer({ min: 1900, max: 2024 }), { nil: null })
+	releaseYear: fc.option(fc.integer({ min: 1900, max: new Date().getFullYear() }), { nil: null })
 });
 
 /**
@@ -101,7 +101,7 @@ const episodeRecordArbitrary: fc.Arbitrary<PlayHistoryRecord> = fc
 				.map((arr) => JSON.stringify(arr)),
 			{ nil: null }
 		),
-		releaseYear: fc.option(fc.integer({ min: 1900, max: 2024 }), { nil: null })
+		releaseYear: fc.option(fc.integer({ min: 1900, max: new Date().getFullYear() }), { nil: null })
 	})
 	.map((record) => record as PlayHistoryRecord);
 
