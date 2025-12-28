@@ -50,6 +50,16 @@
 	let isSavingServer = $state(false);
 	let serverSaved = $state(false);
 
+	// Custom URL state (for reverse proxy connections)
+	let showCustomUrl = $state(false);
+	let customUrl = $state('');
+	let isTestingCustomUrl = $state(false);
+	let customUrlTestResult = $state<{
+		success: boolean;
+		serverName?: string;
+		error?: string;
+	} | null>(null);
+
 	// Animation refs
 	let iconRef: HTMLElement | undefined = $state();
 	let contentRef: HTMLElement | undefined = $state();
@@ -396,6 +406,90 @@
 			};
 			return priority(a) - priority(b);
 		});
+	}
+
+	/**
+	 * Test a custom URL connection (for reverse proxy setups)
+	 */
+	async function testCustomConnection(server: (typeof servers)[0]) {
+		if (!customUrl.trim()) {
+			customUrlTestResult = { success: false, error: 'Please enter a URL' };
+			return;
+		}
+
+		// Basic URL validation
+		try {
+			new URL(customUrl);
+		} catch {
+			customUrlTestResult = { success: false, error: 'Please enter a valid URL' };
+			return;
+		}
+
+		isTestingCustomUrl = true;
+		customUrlTestResult = null;
+		oauthError = null;
+
+		try {
+			const response = await fetch('/api/onboarding/test-connection', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					url: customUrl,
+					accessToken: server.accessToken
+				})
+			});
+
+			const result = (await response.json()) as {
+				success: boolean;
+				serverName?: string;
+				error?: string;
+			};
+
+			customUrlTestResult = result;
+
+			if (result.success) {
+				// Auto-save the custom connection after a brief delay
+				setTimeout(async () => {
+					await handleConnectionSelect(server, {
+						uri: customUrl,
+						local: false,
+						relay: false
+					});
+				}, 500);
+			}
+		} catch (err) {
+			customUrlTestResult = {
+				success: false,
+				error: err instanceof Error ? err.message : 'Connection test failed'
+			};
+		} finally {
+			isTestingCustomUrl = false;
+		}
+	}
+
+	/**
+	 * Toggle custom URL section visibility
+	 */
+	function toggleCustomUrl() {
+		showCustomUrl = !showCustomUrl;
+		if (!showCustomUrl) {
+			// Reset state when closing
+			customUrl = '';
+			customUrlTestResult = null;
+		}
+	}
+
+	/**
+	 * Check if custom URL input is valid for testing
+	 */
+	function isValidUrl(url: string): boolean {
+		if (!url.trim()) return false;
+		try {
+			new URL(url);
+			return true;
+		} catch {
+			return false;
+		}
 	}
 
 	// Derived states - use local auth state if available, fall back to data props
@@ -774,6 +868,135 @@
 									{:else if isExpanded}
 										<div class="connections-panel">
 											<p class="no-connections">No connections available for this server.</p>
+										</div>
+									{/if}
+
+									<!-- Custom URL Section -->
+									{#if isExpanded && !serverSaved}
+										<div class="custom-url-section">
+											<!-- Divider -->
+											<div class="custom-url-divider">
+												<span>or</span>
+											</div>
+
+											<!-- Toggle Button -->
+											<button
+												type="button"
+												class="custom-url-toggle"
+												class:expanded={showCustomUrl}
+												onclick={toggleCustomUrl}
+												disabled={isSavingServer || isTestingCustomUrl}
+											>
+												<span>Having trouble connecting?</span>
+												<svg
+													class="toggle-chevron"
+													class:rotated={showCustomUrl}
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+												>
+													<path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+												</svg>
+											</button>
+
+											<!-- Expanded Form -->
+											{#if showCustomUrl}
+												<div class="custom-url-form">
+													<p class="custom-url-help" id="custom-url-help">
+														Enter your reverse proxy URL (e.g., https://plex.yourdomain.com)
+													</p>
+
+													<div class="custom-url-input-row">
+														<input
+															type="url"
+															class="custom-url-input"
+															class:error={customUrlTestResult?.success === false}
+															placeholder="https://plex.yourdomain.com"
+															bind:value={customUrl}
+															disabled={isTestingCustomUrl || isSavingServer}
+															aria-label="Custom Plex server URL"
+															aria-describedby="custom-url-help"
+														/>
+														<button
+															type="button"
+															class="custom-url-test-btn"
+															onclick={() => testCustomConnection(server)}
+															disabled={!isValidUrl(customUrl) ||
+																isTestingCustomUrl ||
+																isSavingServer}
+														>
+															{#if isTestingCustomUrl}
+																<span class="test-spinner"></span>
+																<span>Testing...</span>
+															{:else}
+																<svg
+																	viewBox="0 0 24 24"
+																	fill="none"
+																	stroke="currentColor"
+																	stroke-width="2"
+																>
+																	<path
+																		d="M22 11.08V12a10 10 0 11-5.93-9.14"
+																		stroke-linecap="round"
+																		stroke-linejoin="round"
+																	/>
+																	<path
+																		d="M22 4L12 14.01l-3-3"
+																		stroke-linecap="round"
+																		stroke-linejoin="round"
+																	/>
+																</svg>
+																<span>Test Connection</span>
+															{/if}
+														</button>
+													</div>
+
+													<!-- Status Display -->
+													{#if customUrlTestResult}
+														<div
+															class="custom-url-status"
+															class:success={customUrlTestResult.success}
+															class:error={!customUrlTestResult.success}
+															role="status"
+															aria-live="polite"
+														>
+															{#if customUrlTestResult.success}
+																<svg
+																	class="status-icon"
+																	viewBox="0 0 24 24"
+																	fill="none"
+																	stroke="currentColor"
+																	stroke-width="2.5"
+																>
+																	<path
+																		d="M20 6L9 17l-5-5"
+																		stroke-linecap="round"
+																		stroke-linejoin="round"
+																	/>
+																</svg>
+																<span
+																	>Connected to {customUrlTestResult.serverName ||
+																		'Plex Server'}</span
+																>
+															{:else}
+																<svg
+																	class="status-icon"
+																	viewBox="0 0 24 24"
+																	fill="none"
+																	stroke="currentColor"
+																	stroke-width="2"
+																>
+																	<circle cx="12" cy="12" r="10" />
+																	<line x1="15" y1="9" x2="9" y2="15" />
+																	<line x1="9" y1="9" x2="15" y2="15" />
+																</svg>
+																<span>{customUrlTestResult.error}</span>
+															{/if}
+														</div>
+													{/if}
+												</div>
+											{/if}
 										</div>
 									{/if}
 								</div>
@@ -1609,6 +1832,212 @@
 		color: rgba(255, 255, 255, 0.7);
 	}
 
+	/* Custom URL Section */
+	.custom-url-section {
+		padding: 0 1rem 1rem;
+		margin-top: -0.5rem;
+	}
+
+	.custom-url-divider {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		margin: 0.75rem 0;
+		color: rgba(255, 255, 255, 0.35);
+		font-size: 0.75rem;
+		text-transform: uppercase;
+		letter-spacing: 0.1em;
+	}
+
+	.custom-url-divider::before,
+	.custom-url-divider::after {
+		content: '';
+		flex: 1;
+		height: 1px;
+		background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+	}
+
+	.custom-url-toggle {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		width: 100%;
+		padding: 0.625rem 1rem;
+		background: transparent;
+		border: none;
+		color: rgba(255, 255, 255, 0.5);
+		font-size: 0.85rem;
+		cursor: pointer;
+		transition: color 0.2s ease;
+	}
+
+	.custom-url-toggle:hover:not(:disabled) {
+		color: rgba(255, 255, 255, 0.7);
+	}
+
+	.custom-url-toggle:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.toggle-chevron {
+		width: 16px;
+		height: 16px;
+		transition: transform 0.2s ease;
+	}
+
+	.toggle-chevron.rotated {
+		transform: rotate(180deg);
+	}
+
+	.custom-url-form {
+		margin-top: 0.75rem;
+		padding: 1rem;
+		background: rgba(255, 255, 255, 0.02);
+		border: 1px solid rgba(255, 255, 255, 0.06);
+		border-radius: 10px;
+		animation: slideDown 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+	}
+
+	@keyframes slideDown {
+		from {
+			opacity: 0;
+			transform: translateY(-8px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	.custom-url-help {
+		margin: 0 0 0.75rem;
+		font-size: 0.8rem;
+		color: rgba(255, 255, 255, 0.5);
+	}
+
+	.custom-url-input-row {
+		display: flex;
+		gap: 0.5rem;
+	}
+
+	.custom-url-input {
+		flex: 1;
+		min-width: 0;
+		padding: 0.75rem 1rem;
+		background: rgba(255, 255, 255, 0.03);
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		border-radius: 8px;
+		color: rgba(255, 255, 255, 0.9);
+		font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+		font-size: 0.875rem;
+		transition: all 0.2s ease;
+	}
+
+	.custom-url-input:focus {
+		outline: none;
+		border-color: hsl(var(--primary) / 0.5);
+		box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
+	}
+
+	.custom-url-input::placeholder {
+		color: rgba(255, 255, 255, 0.3);
+	}
+
+	.custom-url-input:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
+	.custom-url-input.error {
+		border-color: rgba(239, 68, 68, 0.5);
+	}
+
+	.custom-url-input.error:focus {
+		box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+	}
+
+	.custom-url-test-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.75rem 1rem;
+		background: hsl(var(--primary) / 0.15);
+		border: 1px solid hsl(var(--primary) / 0.3);
+		border-radius: 8px;
+		color: hsl(var(--primary));
+		font-size: 0.85rem;
+		font-weight: 500;
+		white-space: nowrap;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.custom-url-test-btn:hover:not(:disabled) {
+		background: hsl(var(--primary) / 0.25);
+		border-color: hsl(var(--primary) / 0.5);
+	}
+
+	.custom-url-test-btn:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.custom-url-test-btn svg {
+		width: 16px;
+		height: 16px;
+	}
+
+	.test-spinner {
+		width: 16px;
+		height: 16px;
+		border: 2px solid hsl(var(--primary) / 0.3);
+		border-top-color: hsl(var(--primary));
+		border-radius: 50%;
+		animation: spin 0.8s linear infinite;
+	}
+
+	.custom-url-status {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		margin-top: 0.75rem;
+		padding: 0.75rem 1rem;
+		border-radius: 8px;
+		font-size: 0.85rem;
+		animation: fadeIn 0.2s ease;
+	}
+
+	@keyframes fadeIn {
+		from {
+			opacity: 0;
+			transform: scale(0.98);
+		}
+		to {
+			opacity: 1;
+			transform: scale(1);
+		}
+	}
+
+	.custom-url-status.success {
+		background: rgba(34, 197, 94, 0.1);
+		border: 1px solid rgba(34, 197, 94, 0.25);
+		color: hsl(142, 71%, 55%);
+	}
+
+	.custom-url-status.error {
+		background: rgba(239, 68, 68, 0.1);
+		border: 1px solid rgba(239, 68, 68, 0.25);
+		color: hsl(0, 84%, 70%);
+	}
+
+	.custom-url-status .status-icon {
+		flex-shrink: 0;
+		width: 18px;
+		height: 18px;
+	}
+
 	@keyframes spin {
 		to {
 			transform: rotate(360deg);
@@ -1680,6 +2109,28 @@
 		}
 
 		.connection-uri {
+			font-size: 0.75rem;
+		}
+
+		.custom-url-section {
+			padding: 0 0.75rem 0.75rem;
+		}
+
+		.custom-url-input-row {
+			flex-direction: column;
+		}
+
+		.custom-url-test-btn {
+			width: 100%;
+			justify-content: center;
+		}
+
+		.custom-url-input {
+			font-size: 0.8rem;
+			padding: 0.625rem 0.75rem;
+		}
+
+		.custom-url-help {
 			font-size: 0.75rem;
 		}
 	}
