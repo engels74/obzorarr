@@ -353,9 +353,9 @@
 					</svg>
 				</div>
 				<div class="warning-content">
-					<p class="warning-title">Keep this page open</p>
+					<p class="warning-title">Sync will continue</p>
 					<p class="warning-text">
-						Sync will continue in the background if you proceed, but progress won't be visible.
+						Navigate away anytime - the sync runs independently on the server.
 					</p>
 				</div>
 			</div>
