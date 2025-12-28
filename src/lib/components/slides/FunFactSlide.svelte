@@ -54,11 +54,10 @@
 		const animations: ReturnType<typeof animate>[] = [];
 
 		// Animate container with playful entry
-		const containerAnim = animate(
-			container,
-			KEYFRAMES.playfulEntry,
-			{ type: 'spring', ...SPRING_PRESETS.snappy }
-		);
+		const containerAnim = animate(container, KEYFRAMES.playfulEntry, {
+			type: 'spring',
+			...SPRING_PRESETS.snappy
+		});
 		animations.push(containerAnim);
 
 		// Animate icon with bounce-in

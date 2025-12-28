@@ -111,13 +111,9 @@
 		navigation.startAnimation();
 
 		const enterFrom =
-			direction === 'forward'
-				? 'translateX(80%) scale(0.98)'
-				: 'translateX(-80%) scale(0.98)';
+			direction === 'forward' ? 'translateX(80%) scale(0.98)' : 'translateX(-80%) scale(0.98)';
 		const exitTo =
-			direction === 'forward'
-				? 'translateX(-100%) scale(0.95)'
-				: 'translateX(100%) scale(0.95)';
+			direction === 'forward' ? 'translateX(-100%) scale(0.95)' : 'translateX(100%) scale(0.95)';
 
 		const slideEl = currentSlideEl;
 		if (!slideEl) {

@@ -77,11 +77,7 @@
 		border-radius: calc(var(--radius) * 2);
 		padding: 2rem;
 		box-shadow:
-			var(
-				--shadow-elevation-medium,
-				0 4px 8px hsl(0 0% 0% / 0.4),
-				0 8px 16px hsl(0 0% 0% / 0.2)
-			),
+			var(--shadow-elevation-medium, 0 4px 8px hsl(0 0% 0% / 0.4), 0 8px 16px hsl(0 0% 0% / 0.2)),
 			inset 0 1px 0 hsl(0 0% 100% / 0.08);
 		position: relative;
 		z-index: 3;

@@ -111,21 +111,21 @@
 
 		// Animate first card from left
 		if (firstCard) {
-			const firstAnim = animate(
-				firstCard,
-				KEYFRAMES.cardFromLeft,
-				{ type: 'spring', ...SPRING_PRESETS.snappy, delay: DELAY_PRESETS.short }
-			);
+			const firstAnim = animate(firstCard, KEYFRAMES.cardFromLeft, {
+				type: 'spring',
+				...SPRING_PRESETS.snappy,
+				delay: DELAY_PRESETS.short
+			});
 			animations.push(firstAnim);
 		}
 
 		// Animate last card from right
 		if (lastCard) {
-			const lastAnim = animate(
-				lastCard,
-				KEYFRAMES.cardFromRight,
-				{ type: 'spring', ...SPRING_PRESETS.snappy, delay: DELAY_PRESETS.medium }
-			);
+			const lastAnim = animate(lastCard, KEYFRAMES.cardFromRight, {
+				type: 'spring',
+				...SPRING_PRESETS.snappy,
+				delay: DELAY_PRESETS.medium
+			});
 			animations.push(lastAnim);
 
 			lastAnim.finished.then(() => {
