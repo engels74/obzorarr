@@ -1,22 +1,9 @@
 import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
 
-/**
- * Plex users table
- * Stores user information from Plex OAuth
- */
 export const users = sqliteTable('users', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
 	plexId: integer('plex_id').unique().notNull(),
-	/**
-	 * The Plex server's local account ID for this user.
-	 *
-	 * This is used to match viewing history in playHistory.accountId.
-	 * For shared users, this typically equals plexId.
-	 * For server owners, this is often 1 (the local admin account ID).
-	 *
-	 * Note: This differs from plexId which is the Plex.tv account ID
-	 * used for OAuth authentication.
-	 */
+	/** Local Plex account ID for matching playHistory.accountId. Differs from plexId (Plex.tv ID). */
 	accountId: integer('account_id'),
 	username: text('username').notNull(),
 	email: text('email'),
@@ -26,15 +13,8 @@ export const users = sqliteTable('users', {
 });
 
 /**
- * Play history table
- * Stores viewing history from Plex sync
- *
- * Historical Data Preservation (Requirements 13.1, 13.3):
- * The accountId field is intentionally NOT a foreign key to users.plexId.
- * This design ensures that viewing history is preserved when users are
- * removed from the Plex server, allowing:
- * - Server-wide statistics to include all historical viewing data
- * - Re-authenticated users to regain access to their wrapped pages
+ * Play history table. accountId is NOT a foreign key to preserve historical data
+ * when users are removed from Plex server.
  */
 export const playHistory = sqliteTable(
 	'play_history',
@@ -43,108 +23,69 @@ export const playHistory = sqliteTable(
 		historyKey: text('history_key').unique().notNull(),
 		ratingKey: text('rating_key').notNull(),
 		title: text('title').notNull(),
-		type: text('type').notNull(), // 'movie', 'episode', etc.
-		viewedAt: integer('viewed_at').notNull(), // Unix timestamp
-		/**
-		 * Plex account ID of the user who viewed this content.
-		 *
-		 * IMPORTANT: This field is intentionally NOT a foreign key to users.plexId.
-		 * This design ensures historical data preservation (Requirements 13.1, 13.3):
-		 * - Viewing history remains in database when users are removed from Plex server
-		 * - Server-wide statistics include all historical viewing data
-		 * - When removed users re-authenticate, their plexId matches this accountId
-		 *
-		 * The accountId value comes from Plex's accountID in the history API response.
-		 */
+		type: text('type').notNull(),
+		viewedAt: integer('viewed_at').notNull(),
 		accountId: integer('account_id').notNull(),
 		librarySectionId: integer('library_section_id').notNull(),
 		thumb: text('thumb'),
-		duration: integer('duration'), // Duration in seconds
-		grandparentTitle: text('grandparent_title'), // Show name for episodes
-		parentTitle: text('parent_title'), // Season name for episodes
-		genres: text('genres') // JSON array of genre names, e.g., '["Action", "Drama"]'
+		duration: integer('duration'),
+		grandparentTitle: text('grandparent_title'),
+		parentTitle: text('parent_title'),
+		genres: text('genres')
 	},
 	(table) => [index('idx_play_history_rating_key').on(table.ratingKey)]
 );
 
-/**
- * Sync status table
- * Tracks synchronization operations
- */
 export const syncStatus = sqliteTable('sync_status', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
 	startedAt: integer('started_at', { mode: 'timestamp' }).notNull(),
 	completedAt: integer('completed_at', { mode: 'timestamp' }),
 	recordsProcessed: integer('records_processed').default(0),
-	lastViewedAt: integer('last_viewed_at'), // Unix timestamp of most recent viewedAt
-	status: text('status').notNull(), // 'running', 'completed', 'failed'
+	lastViewedAt: integer('last_viewed_at'),
+	status: text('status').notNull(),
 	error: text('error')
 });
 
-/**
- * Cached stats table
- * Stores pre-calculated statistics for performance
- */
 export const cachedStats = sqliteTable('cached_stats', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
-	userId: integer('user_id'), // null for server-wide stats
+	userId: integer('user_id'),
 	year: integer('year').notNull(),
-	statsType: text('stats_type').notNull(), // 'user', 'server'
-	statsJson: text('stats_json').notNull(), // JSON-serialized stats
+	statsType: text('stats_type').notNull(),
+	statsJson: text('stats_json').notNull(),
 	calculatedAt: integer('calculated_at', { mode: 'timestamp' }).$defaultFn(() => new Date())
 });
 
-/**
- * Share settings table
- * Controls wrapped page visibility and user preferences
- */
 export const shareSettings = sqliteTable('share_settings', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
 	userId: integer('user_id').notNull(),
 	year: integer('year').notNull(),
-	mode: text('mode').notNull().default('public'), // 'public', 'private-oauth', 'private-link'
+	mode: text('mode').notNull().default('public'),
 	shareToken: text('share_token').unique(),
 	canUserControl: integer('can_user_control', { mode: 'boolean' }).default(false),
-	showLogo: integer('show_logo', { mode: 'boolean' }) // null = inherit from global setting
+	showLogo: integer('show_logo', { mode: 'boolean' })
 });
 
-/**
- * Custom slides table
- * Admin-created markdown slides
- */
 export const customSlides = sqliteTable('custom_slides', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
 	title: text('title').notNull(),
-	content: text('content').notNull(), // Markdown content
+	content: text('content').notNull(),
 	enabled: integer('enabled', { mode: 'boolean' }).default(true),
 	sortOrder: integer('sort_order').notNull(),
-	year: integer('year') // null for all years
+	year: integer('year')
 });
 
-/**
- * Slide configuration table
- * Controls which slides are shown and their order
- */
 export const slideConfig = sqliteTable('slide_config', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
-	slideType: text('slide_type').notNull(), // 'total-time', 'top-movies', etc.
+	slideType: text('slide_type').notNull(),
 	enabled: integer('enabled', { mode: 'boolean' }).default(true),
 	sortOrder: integer('sort_order').notNull()
 });
 
-/**
- * App settings table
- * Key-value store for application configuration
- */
 export const appSettings = sqliteTable('app_settings', {
 	key: text('key').primaryKey(),
 	value: text('value').notNull()
 });
 
-/**
- * Sessions table
- * User authentication sessions
- */
 export const sessions = sqliteTable('sessions', {
 	id: text('id').primaryKey(),
 	userId: integer('user_id').notNull(),
@@ -153,19 +94,15 @@ export const sessions = sqliteTable('sessions', {
 	expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull()
 });
 
-/**
- * Application logs table
- * Stores persistent logs for admin viewing
- */
 export const logs = sqliteTable(
 	'logs',
 	{
 		id: integer('id').primaryKey({ autoIncrement: true }),
-		level: text('level').notNull(), // 'DEBUG', 'INFO', 'WARN', 'ERROR'
+		level: text('level').notNull(),
 		message: text('message').notNull(),
-		source: text('source'), // Component name (e.g., 'Scheduler', 'Sync')
-		metadata: text('metadata'), // JSON-serialized additional data
-		timestamp: integer('timestamp').notNull() // Unix timestamp in ms
+		source: text('source'),
+		metadata: text('metadata'),
+		timestamp: integer('timestamp').notNull()
 	},
 	(table) => [
 		index('idx_logs_timestamp').on(table.timestamp),
@@ -174,42 +111,23 @@ export const logs = sqliteTable(
 	]
 );
 
-/**
- * Plex accounts table
- * Caches Plex server member information for displaying usernames in statistics.
- * This stores ALL server members (owner + shared users), not just those who've authenticated.
- * Updated during sync to ensure Top Contributors shows real Plex usernames.
- */
+/** Caches Plex server member info for displaying usernames in statistics. */
 export const plexAccounts = sqliteTable('plex_accounts', {
-	/**
-	 * The local Plex account ID used in playHistory.accountId.
-	 * For shared users, this equals their plexId.
-	 * For the server owner, this is typically 1.
-	 */
 	accountId: integer('account_id').primaryKey(),
-	/** The Plex.tv account ID (for reference/linking to users table) */
 	plexId: integer('plex_id').notNull(),
-	/** The user's Plex username */
 	username: text('username').notNull(),
-	/** Avatar thumbnail URL */
 	thumb: text('thumb'),
-	/** Whether this is the server owner */
 	isOwner: integer('is_owner', { mode: 'boolean' }).default(false),
-	/** When this record was last updated */
 	updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date())
 });
 
-/**
- * Metadata cache table
- * Caches media metadata fetched from Plex to reduce API calls during enrichment.
- * Metadata (duration, genres) rarely changes, so caching is safe.
- */
+/** Caches media metadata from Plex to reduce API calls during enrichment. */
 export const metadataCache = sqliteTable('metadata_cache', {
 	ratingKey: text('rating_key').primaryKey(),
-	duration: integer('duration'), // Duration in seconds
-	genres: text('genres'), // JSON array of genre names
-	fetchedAt: integer('fetched_at').notNull(), // Unix timestamp when fetched
-	fetchFailed: integer('fetch_failed', { mode: 'boolean' }).default(false) // True if API fetch failed
+	duration: integer('duration'),
+	genres: text('genres'),
+	fetchedAt: integer('fetched_at').notNull(),
+	fetchFailed: integer('fetch_failed', { mode: 'boolean' }).default(false)
 });
 
 // Export table types for type inference

@@ -16,23 +16,6 @@ import type {
 } from './types';
 import { AIGenerationError, InsufficientStatsError } from './types';
 
-/**
- * Fun Facts Service
- *
- * Generates contextual fun facts for wrapped pages using either:
- * - AI generation via OpenAI-compatible API (when configured)
- * - Predefined templates with interpolation (fallback)
- *
- * @module server/funfacts/service
- */
-
-// =============================================================================
-// Configuration
-// =============================================================================
-
-/**
- * Get fun facts service configuration from app settings
- */
 export async function getFunFactsConfig(): Promise<FunFactsConfig> {
 	const [apiKey, baseUrl, model, persona] = await Promise.all([
 		getAppSetting(AppSettingsKey.OPENAI_API_KEY),
@@ -52,23 +35,11 @@ export async function getFunFactsConfig(): Promise<FunFactsConfig> {
 	};
 }
 
-/**
- * Check if AI generation is available
- */
 export async function isAIAvailable(): Promise<boolean> {
 	const config = await getFunFactsConfig();
 	return config.aiEnabled && Boolean(config.openaiApiKey);
 }
 
-// =============================================================================
-// Context Building
-// =============================================================================
-
-/**
- * Build generation context from stats
- * Extracts and computes values needed for template interpolation
- * Also enriches context with entertainment trivia calculations
- */
 export function buildGenerationContext(stats: UserStats | ServerStats): FactGenerationContext {
 	// Use Math.floor to avoid rounding < 30 mins to 0 hours
 	const hours = Math.floor(stats.totalWatchTimeMinutes / 60);
@@ -117,13 +88,6 @@ export function buildGenerationContext(stats: UserStats | ServerStats): FactGene
 	return enrichContext(baseContext);
 }
 
-// =============================================================================
-// Template Logic
-// =============================================================================
-
-/**
- * Check if a template is applicable given the context
- */
 export function isTemplateApplicable(
 	template: FactTemplate,
 	context: FactGenerationContext
@@ -173,21 +137,11 @@ export function isTemplateApplicable(
 	return true;
 }
 
-// =============================================================================
-// Pronoun Support
-// =============================================================================
-
-/**
- * Pronoun mappings for user vs server scope
- */
 const PRONOUNS = {
 	user: { subject: 'You', possessive: 'Your', object: 'you' },
 	server: { subject: 'We', possessive: 'Our', object: 'us' }
 } as const;
 
-/**
- * Get pronoun replacements based on scope
- */
 function getPronounReplacements(scope: 'user' | 'server'): Record<string, string> {
 	const p = PRONOUNS[scope];
 	return {
@@ -199,21 +153,10 @@ function getPronounReplacements(scope: 'user' | 'server'): Record<string, string
 	};
 }
 
-// =============================================================================
-// Template Logic
-// =============================================================================
-
-/**
- * Pluralize a word based on count
- * Returns singular form if count is 1, plural form otherwise
- */
 function pluralize(count: number, singular: string, plural: string): string {
 	return count === 1 ? singular : plural;
 }
 
-/**
- * Interpolate template with context values
- */
 export function interpolateTemplate(template: string, context: FactGenerationContext): string {
 	const {
 		FLIGHT_NYC_TOKYO_HOURS,
@@ -306,9 +249,6 @@ export function interpolateTemplate(template: string, context: FactGenerationCon
 	});
 }
 
-/**
- * Generate a fun fact from a template
- */
 export function generateFromTemplate(
 	template: FactTemplate,
 	context: FactGenerationContext
@@ -322,9 +262,6 @@ export function generateFromTemplate(
 	};
 }
 
-/**
- * Select random templates without duplicates
- */
 export function selectRandomTemplates(
 	templates: FactTemplate[],
 	count: number,
@@ -348,13 +285,6 @@ export function selectRandomTemplates(
 	return selected;
 }
 
-// =============================================================================
-// AI Generation
-// =============================================================================
-
-/**
- * Parse AI response into FunFact array
- */
 function parseAIResponse(data: unknown): FunFact[] {
 	try {
 		const response = data as {
@@ -388,12 +318,7 @@ function parseAIResponse(data: unknown): FunFact[] {
 	}
 }
 
-/**
- * Generate fun facts using AI (OpenAI-compatible API)
- *
- * Includes retry logic for transient failures (network errors, timeouts, 5xx errors).
- * Non-retryable errors (4xx) are thrown immediately.
- */
+/** Generate fun facts using AI with retry logic for transient failures. */
 export async function generateWithAI(
 	stats: Stats,
 	config: FunFactsConfig,
@@ -485,15 +410,6 @@ export async function generateWithAI(
 	throw lastError ?? new AIGenerationError('AI generation failed after retries');
 }
 
-// =============================================================================
-// Main Entry Points
-// =============================================================================
-
-/**
- * Generate fun facts from templates only
- *
- * Uses weighted selection from registry for variety
- */
 export function generateFromTemplates(
 	context: FactGenerationContext,
 	options: Omit<GenerateFunFactsOptions, 'preferAI'> & { useWeightedSelection?: boolean } = {}
@@ -526,9 +442,6 @@ export function generateFromTemplates(
 	return selected.map((template) => generateFromTemplate(template, context));
 }
 
-/**
- * Main function: Generate fun facts for stats
- */
 export async function generateFunFacts(
 	stats: UserStats | ServerStats,
 	options: GenerateFunFactsOptions = {}

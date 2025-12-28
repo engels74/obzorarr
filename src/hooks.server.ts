@@ -8,16 +8,6 @@ import { logger } from '$lib/server/logging';
 import { requiresOnboarding, getOnboardingStep } from '$lib/server/onboarding';
 import { env } from '$env/dynamic/private';
 
-/**
- * Server Hooks
- *
- * Handles authentication and authorization for all server requests.
- */
-
-// =============================================================================
-// Cookie Configuration
-// =============================================================================
-
 const COOKIE_DELETE_OPTIONS = {
 	path: '/'
 };
@@ -30,29 +20,8 @@ const COOKIE_OPTIONS = {
 	maxAge: Math.floor(SESSION_DURATION_MS / 1000)
 };
 
-// =============================================================================
-// Dev Bypass State
-// =============================================================================
-
-/**
- * Track if dev bypass has been logged this server instance
- * to avoid spamming the logs on every request
- */
 let devBypassLogged = false;
 
-// =============================================================================
-// Authentication Handle
-// =============================================================================
-
-/**
- * Authentication middleware
- *
- * Validates the session cookie and populates event.locals.user.
- * Clears invalid/expired session cookies.
- *
- * When DEV_BYPASS_AUTH=true in development mode, automatically
- * creates an admin session without requiring Plex OAuth.
- */
 const authHandle: Handle = async ({ event, resolve }) => {
 	// Check for dev bypass mode (development only)
 	if (isDevBypassEnabled()) {
@@ -113,22 +82,6 @@ const authHandle: Handle = async ({ event, resolve }) => {
 	return resolve(event);
 };
 
-// =============================================================================
-// Onboarding Handle
-// =============================================================================
-
-/**
- * Onboarding middleware
- *
- * Redirects users to the onboarding flow if setup is not complete.
- * Skips check for:
- * - Static assets (_app, favicon)
- * - Auth routes (/auth)
- * - API routes for onboarding (/api/onboarding)
- * - Onboarding routes themselves (/onboarding)
- *
- * Can be bypassed in development with DEV_BYPASS_ONBOARDING=true
- */
 const onboardingHandle: Handle = async ({ event, resolve }) => {
 	// Skip if dev bypass is enabled for onboarding
 	if (isDevBypassEnabled() && env.DEV_BYPASS_ONBOARDING === 'true') {
@@ -166,17 +119,6 @@ const onboardingHandle: Handle = async ({ event, resolve }) => {
 	return resolve(event);
 };
 
-// =============================================================================
-// Authorization Handle
-// =============================================================================
-
-/**
- * Authorization middleware
- *
- * Protects admin routes from unauthorized access.
- * - Unauthenticated users are redirected to home
- * - Non-admin users are redirected to home
- */
 const authorizationHandle: Handle = async ({ event, resolve }) => {
 	// Check if this is an admin route
 	if (event.url.pathname.startsWith('/admin')) {
@@ -194,16 +136,6 @@ const authorizationHandle: Handle = async ({ event, resolve }) => {
 	return resolve(event);
 };
 
-// =============================================================================
-// Error Handle
-// =============================================================================
-
-/**
- * Error handler
- *
- * Logs unexpected errors and returns sanitized error messages.
- * Per bun-svelte-pro.md guidelines.
- */
 export const handleError: HandleServerError = async ({ error, event }) => {
 	// Log the full error for debugging
 	logger.error(`Unexpected error: ${error}`, 'ErrorHandler', {
@@ -217,13 +149,4 @@ export const handleError: HandleServerError = async ({ error, event }) => {
 	};
 };
 
-// =============================================================================
-// Combined Handle
-// =============================================================================
-
-/**
- * Combined server handle
- *
- * Runs authentication first, then onboarding check, then authorization.
- */
 export const handle = sequence(authHandle, onboardingHandle, authorizationHandle);

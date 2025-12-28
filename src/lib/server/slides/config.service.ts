@@ -10,37 +10,12 @@ import {
 	type SlideTypeValue
 } from './types';
 
-// Key for tracking whether slides have been migrated to enabled state
 const SLIDES_ENABLED_MIGRATION_KEY = 'slides_enabled_migration_v1';
-// Key for tracking whether fun-fact slide type has been removed
 const FUN_FACT_REMOVAL_MIGRATION_KEY = 'fun_fact_slide_removal_v1';
 
 /**
- * Slide Configuration Service
- *
- * Core service for managing slide configurations including
- * enable/disable and reordering functionality.
- *
- * Property 19: Slide Order Persistence
- * Property 20: Disabled Slide Exclusion
- *
- * @module slides/config.service
- */
-
-// =============================================================================
-// Initialization
-// =============================================================================
-
-/**
- * Initialize default slide configuration
- *
- * Creates entries for all standard slide types if they don't exist.
- * New slides are appended after existing ones to avoid sortOrder conflicts.
- * Also applies migrations:
- * - One-time migration to enable all default slides (fixes a bug
- *   where slides were created with enabled: false).
- * - One-time migration to remove fun-fact slide type (now interspersed dynamically)
- *
+ * Initialize default slide configuration.
+ * Creates entries for all standard slide types and applies migrations.
  */
 export async function initializeDefaultSlideConfig(): Promise<void> {
 	// Check if the enabled migration has been applied
@@ -111,15 +86,6 @@ export async function initializeDefaultSlideConfig(): Promise<void> {
 	}
 }
 
-// =============================================================================
-// Read Operations
-// =============================================================================
-
-/**
- * Get all slide configurations ordered by sortOrder
- *
- * @returns All slide configurations in display order
- */
 export async function getAllSlideConfigs(): Promise<SlideConfig[]> {
 	const results = await db.select().from(slideConfig).orderBy(asc(slideConfig.sortOrder));
 
@@ -131,12 +97,6 @@ export async function getAllSlideConfigs(): Promise<SlideConfig[]> {
 	}));
 }
 
-/**
- * Get slide config by type
- *
- * @param type - The slide type to retrieve
- * @returns Slide configuration or null if not found
- */
 export async function getSlideConfigByType(type: SlideType): Promise<SlideConfig | null> {
 	const result = await db
 		.select()
@@ -157,13 +117,6 @@ export async function getSlideConfigByType(type: SlideType): Promise<SlideConfig
 	};
 }
 
-/**
- * Get only enabled slides in order
- *
- * Property 20: Disabled Slide Exclusion
- *
- * @returns Enabled slide configurations in display order
- */
 export async function getEnabledSlides(): Promise<SlideConfig[]> {
 	const results = await db
 		.select()
@@ -179,17 +132,6 @@ export async function getEnabledSlides(): Promise<SlideConfig[]> {
 	}));
 }
 
-// =============================================================================
-// Update Operations
-// =============================================================================
-
-/**
- * Update slide configuration
- *
- * @param type - The slide type to update
- * @param updates - The fields to update
- * @returns Updated slide configuration
- */
 export async function updateSlideConfig(
 	type: SlideType,
 	updates: UpdateSlideConfig
@@ -231,14 +173,6 @@ export async function updateSlideConfig(
 	return updated;
 }
 
-/**
- * Reorder slides - update all sortOrder values
- *
- * Property 19: Slide Order Persistence
- *
- * @param newOrder - Array of slide types in new order
- * @returns Updated slide configurations in new order
- */
 export async function reorderSlides(newOrder: SlideType[]): Promise<SlideConfig[]> {
 	// Validate all slide types
 	for (const type of newOrder) {
@@ -260,14 +194,6 @@ export async function reorderSlides(newOrder: SlideType[]): Promise<SlideConfig[
 	return getAllSlideConfigs();
 }
 
-/**
- * Toggle slide enabled state
- *
- * Convenience method for enabling/disabling slides.
- *
- * @param type - The slide type to toggle
- * @returns Updated slide configuration
- */
 export async function toggleSlide(type: SlideType): Promise<SlideConfig> {
 	const existing = await getSlideConfigByType(type);
 	if (!existing) {
@@ -277,16 +203,7 @@ export async function toggleSlide(type: SlideType): Promise<SlideConfig> {
 	return updateSlideConfig(type, { enabled: !existing.enabled });
 }
 
-// =============================================================================
-// Reset Operations
-// =============================================================================
-
-/**
- * Reset to default configuration
- *
- * Clears all slide configs and reinitializes with defaults.
- * Primarily used for testing.
- */
+/** Reset to default configuration (primarily used for testing). */
 export async function resetToDefaultConfig(): Promise<void> {
 	// Delete all existing configs
 	await db.delete(slideConfig);

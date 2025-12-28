@@ -1,29 +1,8 @@
 import { insertLogsBatch, isDebugEnabled } from './service';
 import { LogLevel, type LogLevelType, type NewLogEntry } from './types';
 
-/**
- * Logger
- *
- * A production-ready logger with batched database writes.
- * Provides debug, info, warn, and error methods.
- *
- * Features:
- * - Batched writes (flush every 100ms or 50 entries)
- * - Respects DEBUG level setting
- * - Also outputs to console for stdout/stderr capture
- * - Non-blocking async writes
- */
-
-// =============================================================================
-// Configuration
-// =============================================================================
-
 const BATCH_SIZE = 50;
 const FLUSH_INTERVAL_MS = 100;
-
-// =============================================================================
-// Logger Class
-// =============================================================================
 
 class Logger {
 	private buffer: NewLogEntry[] = [];
@@ -31,12 +10,8 @@ class Logger {
 	private isFlushing = false;
 	private debugEnabledCache: boolean | null = null;
 	private debugCacheExpiry = 0;
-	private readonly DEBUG_CACHE_TTL_MS = 30000; // Cache debug setting for 30s
+	private readonly DEBUG_CACHE_TTL_MS = 30000;
 
-	/**
-	 * Log a debug message
-	 * Only persisted if debug logging is enabled in settings
-	 */
 	async debug(message: string, source?: string, metadata?: Record<string, unknown>): Promise<void> {
 		// Check if debug is enabled (with caching)
 		const debugEnabled = await this.isDebugEnabled();
@@ -50,33 +25,21 @@ class Logger {
 		console.debug(`[${source ?? 'App'}] ${message}`);
 	}
 
-	/**
-	 * Log an info message
-	 */
 	info(message: string, source?: string, metadata?: Record<string, unknown>): void {
 		this.addToBuffer({ level: LogLevel.INFO, message, source, metadata });
 		console.log(`[${source ?? 'App'}] ${message}`);
 	}
 
-	/**
-	 * Log a warning message
-	 */
 	warn(message: string, source?: string, metadata?: Record<string, unknown>): void {
 		this.addToBuffer({ level: LogLevel.WARN, message, source, metadata });
 		console.warn(`[${source ?? 'App'}] ${message}`);
 	}
 
-	/**
-	 * Log an error message
-	 */
 	error(message: string, source?: string, metadata?: Record<string, unknown>): void {
 		this.addToBuffer({ level: LogLevel.ERROR, message, source, metadata });
 		console.error(`[${source ?? 'App'}] ${message}`);
 	}
 
-	/**
-	 * Add an entry to the buffer and schedule flush
-	 */
 	private addToBuffer(entry: NewLogEntry): void {
 		this.buffer.push(entry);
 
@@ -95,9 +58,6 @@ class Logger {
 		}
 	}
 
-	/**
-	 * Flush the buffer to the database
-	 */
 	private async flush(): Promise<void> {
 		if (this.isFlushing || this.buffer.length === 0) {
 			return;
@@ -130,9 +90,6 @@ class Logger {
 		}
 	}
 
-	/**
-	 * Check if debug logging is enabled (with caching)
-	 */
 	private async isDebugEnabled(): Promise<boolean> {
 		const now = Date.now();
 
@@ -154,40 +111,15 @@ class Logger {
 		return this.debugEnabledCache;
 	}
 
-	/**
-	 * Force flush any pending logs (useful for shutdown)
-	 */
 	async forceFlush(): Promise<void> {
 		await this.flush();
 	}
 
-	/**
-	 * Clear the debug enabled cache (call after settings change)
-	 */
 	clearDebugCache(): void {
 		this.debugEnabledCache = null;
 		this.debugCacheExpiry = 0;
 	}
 }
 
-// =============================================================================
-// Singleton Instance
-// =============================================================================
-
-/**
- * Singleton logger instance
- *
- * Usage:
- * ```typescript
- * import { logger } from '$lib/server/logging';
- *
- * logger.info('Starting sync', 'Scheduler');
- * logger.error('Sync failed', 'Sync', { error: error.message });
- * logger.warn('Rate limited', 'PlexAPI', { retryAfter: 60 });
- * await logger.debug('Processing item', 'Sync', { itemId: 123 });
- * ```
- */
 export const logger = new Logger();
-
-// Export the class for testing purposes (allows creating fresh instances)
 export { Logger };

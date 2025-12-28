@@ -16,52 +16,15 @@ import {
 	type GetOrCreateShareSettingsOptions
 } from './types';
 
-/**
- * Sharing Service
- *
- * Core service for managing share settings and tokens.
- *
- * @module sharing/service
- */
-
-// =============================================================================
-// Token Generation
-// =============================================================================
-
-/**
- * Generate a unique share token
- *
- * Uses crypto.randomUUID() for cryptographically secure,
- * globally unique tokens.
- *
- * Property 16: Share Token Uniqueness
- *
- * @returns A unique share token string
- */
 export function generateShareToken(): string {
 	return crypto.randomUUID();
 }
 
-/**
- * Validate token format (UUID v4)
- *
- * @param token - The token to validate
- * @returns True if the token is a valid UUID v4 format
- */
 export function isValidTokenFormat(token: string): boolean {
 	const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 	return uuidV4Regex.test(token);
 }
 
-// =============================================================================
-// Global Defaults
-// =============================================================================
-
-/**
- * Get the global default share mode
- *
- * @returns The global default share mode, defaults to 'public'
- */
 export async function getGlobalDefaultShareMode(): Promise<ShareModeType> {
 	const result = await db
 		.select()
@@ -78,11 +41,6 @@ export async function getGlobalDefaultShareMode(): Promise<ShareModeType> {
 	return parsed.success ? parsed.data : ShareMode.PUBLIC;
 }
 
-/**
- * Get whether users are allowed to control their own share settings
- *
- * @returns Whether user control is globally enabled
- */
 export async function getGlobalAllowUserControl(): Promise<boolean> {
 	const result = await db
 		.select()
@@ -98,11 +56,6 @@ export async function getGlobalAllowUserControl(): Promise<boolean> {
 	return setting.value === 'true';
 }
 
-/**
- * Set global share defaults (admin only)
- *
- * @param defaults - The global defaults to set
- */
 export async function setGlobalShareDefaults(defaults: GlobalShareDefaults): Promise<void> {
 	// Upsert default share mode
 	await db
@@ -129,18 +82,7 @@ export async function setGlobalShareDefaults(defaults: GlobalShareDefaults): Pro
 		});
 }
 
-// =============================================================================
-// Server-Wide Wrapped Share Mode
-// =============================================================================
-
-/**
- * Get the server-wide wrapped share mode
- *
- * This is SEPARATE from the per-user global default.
- * Controls access to /wrapped/[year] (server-wide) pages.
- *
- * @returns The server wrapped share mode, defaults to 'public'
- */
+/** Get the server-wide wrapped share mode (controls access to /wrapped/[year]). */
 export async function getServerWrappedShareMode(): Promise<ShareModeType> {
 	const result = await db
 		.select()
@@ -157,11 +99,6 @@ export async function getServerWrappedShareMode(): Promise<ShareModeType> {
 	return parsed.success ? parsed.data : ShareMode.PUBLIC;
 }
 
-/**
- * Set the server-wide wrapped share mode (admin only)
- *
- * @param mode - The share mode for server-wide wrapped pages
- */
 export async function setServerWrappedShareMode(mode: ShareModeType): Promise<void> {
 	await db
 		.insert(appSettings)
@@ -175,17 +112,6 @@ export async function setServerWrappedShareMode(mode: ShareModeType): Promise<vo
 		});
 }
 
-// =============================================================================
-// Share Settings CRUD
-// =============================================================================
-
-/**
- * Get share settings for a user and year
- *
- * @param userId - The user's database ID
- * @param year - The wrapped year
- * @returns Share settings or null if not found
- */
 export async function getShareSettings(
 	userId: number,
 	year: number
@@ -210,14 +136,7 @@ export async function getShareSettings(
 	};
 }
 
-/**
- * Get or create share settings with global defaults
- *
- * If no settings exist, creates them with global defaults.
- *
- * @param options - Options including userId, year, and createIfMissing
- * @returns Share settings (created with defaults if missing)
- */
+/** Get or create share settings with global defaults. */
 export async function getOrCreateShareSettings(
 	options: GetOrCreateShareSettingsOptions
 ): Promise<ShareSettings> {
@@ -272,15 +191,6 @@ export async function getOrCreateShareSettings(
 	};
 }
 
-/**
- * Update share settings for a user
- *
- * @param userId - The user's database ID
- * @param year - The wrapped year
- * @param updates - The fields to update
- * @param isAdmin - Whether the requester is an admin
- * @returns Updated share settings
- */
 export async function updateShareSettings(
 	userId: number,
 	year: number,
@@ -351,15 +261,7 @@ export async function updateShareSettings(
 	return updated;
 }
 
-/**
- * Regenerate share token for a user
- *
- * Only valid when mode is private-link.
- *
- * @param userId - The user's database ID
- * @param year - The wrapped year
- * @returns The new share token
- */
+/** Regenerate share token (only valid when mode is private-link). */
 export async function regenerateShareToken(userId: number, year: number): Promise<string> {
 	const settings = await getShareSettings(userId, year);
 
@@ -381,14 +283,7 @@ export async function regenerateShareToken(userId: number, year: number): Promis
 	return newToken;
 }
 
-/**
- * Find share settings by share token
- *
- * Used for validating private-link access.
- *
- * @param token - The share token from URL
- * @returns Share settings or null if token not found
- */
+/** Find share settings by share token (for validating private-link access). */
 export async function getShareSettingsByToken(token: string): Promise<ShareSettings | null> {
 	if (!isValidTokenFormat(token)) {
 		return null;
@@ -414,24 +309,12 @@ export async function getShareSettingsByToken(token: string): Promise<ShareSetti
 	};
 }
 
-/**
- * Delete share settings for a user and year
- *
- * @param userId - The user's database ID
- * @param year - The wrapped year
- */
 export async function deleteShareSettings(userId: number, year: number): Promise<void> {
 	await db
 		.delete(shareSettings)
 		.where(and(eq(shareSettings.userId, userId), eq(shareSettings.year, year)));
 }
 
-/**
- * Get all share settings for a user (all years)
- *
- * @param userId - The user's database ID
- * @returns Array of share settings
- */
 export async function getAllUserShareSettings(userId: number): Promise<ShareSettings[]> {
 	const results = await db.select().from(shareSettings).where(eq(shareSettings.userId, userId));
 
@@ -444,16 +327,7 @@ export async function getAllUserShareSettings(userId: number): Promise<ShareSett
 	}));
 }
 
-/**
- * Update user's logo preference for their wrapped page
- *
- * Only allowed when global wrappedLogoMode is 'user_choice'.
- * The caller should verify this permission before calling.
- *
- * @param userId - The user's database ID
- * @param year - The wrapped year
- * @param showLogo - Whether to show the logo (true/false, or null to inherit global setting)
- */
+/** Update user's logo preference (only allowed when wrappedLogoMode is 'user_choice'). */
 export async function updateUserLogoPreference(
 	userId: number,
 	year: number,
@@ -485,13 +359,6 @@ export async function updateUserLogoPreference(
 	}
 }
 
-/**
- * Get user's logo preference for their wrapped page
- *
- * @param userId - The user's database ID
- * @param year - The wrapped year
- * @returns Logo preference (true = show, false = hide, null = inherit from global)
- */
 export async function getUserLogoPreference(userId: number, year: number): Promise<boolean | null> {
 	const result = await db
 		.select({ showLogo: shareSettings.showLogo })

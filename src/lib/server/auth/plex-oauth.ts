@@ -12,33 +12,9 @@ import {
 	type PollPinOptions
 } from './types';
 
-/**
- * Plex OAuth Module
- *
- * Implements Plex PIN-based OAuth authentication flow:
- * 1. Request a PIN from plex.tv
- * 2. User authorizes at Plex auth URL
- * 3. Poll PIN until authToken is present
- * 4. Use authToken to get user information
- */
-
-// =============================================================================
-// Constants
-// =============================================================================
-
-/**
- * Plex.tv API base URL
- */
 const PLEX_TV_URL = 'https://plex.tv';
-
-/**
- * Plex auth webapp URL
- */
 const PLEX_AUTH_URL = 'https://app.plex.tv/auth';
 
-/**
- * Standard headers for Plex.tv API requests
- */
 const PLEX_TV_HEADERS = {
 	Accept: 'application/json',
 	'Content-Type': 'application/x-www-form-urlencoded',
@@ -51,34 +27,12 @@ const PLEX_TV_HEADERS = {
 	'X-Plex-Device-Name': PLEX_PRODUCT
 } as const;
 
-/**
- * Default polling options
- */
 const DEFAULT_POLL_OPTIONS: Required<PollPinOptions> = {
-	maxAttempts: 60, // 5 minutes at 5 second intervals
+	maxAttempts: 60,
 	intervalMs: 5000
 };
 
-// =============================================================================
-// PIN Request
-// =============================================================================
-
-/**
- * Request a new PIN from Plex.tv
- *
- * Creates a new PIN that the user will authorize at the Plex auth URL.
- * The PIN expires after 15 minutes.
- *
- * @returns PIN response with id, code, and expiration
- * @throws PlexAuthApiError on network or API errors
- *
- * @example
- * ```typescript
- * const pin = await requestPin();
- * const authUrl = buildPlexOAuthUrl(pin.code);
- * // Redirect user to authUrl
- * ```
- */
+/** Request a new PIN from Plex.tv. The PIN expires after 15 minutes. */
 export async function requestPin(): Promise<PlexPinResponse> {
 	const endpoint = `${PLEX_TV_URL}/api/v2/pins`;
 
@@ -127,19 +81,7 @@ export async function requestPin(): Promise<PlexPinResponse> {
 	}
 }
 
-// =============================================================================
-// PIN Polling
-// =============================================================================
-
-/**
- * Check the status of a PIN
- *
- * Queries the PIN to see if the user has authorized it.
- *
- * @param pinId - The PIN ID from requestPin()
- * @returns PIN response with authToken if authorized
- * @throws PlexAuthApiError on network or API errors
- */
+/** Check if a PIN has been authorized. Returns authToken if authorized. */
 export async function checkPinStatus(pinId: number): Promise<PlexPinResponse> {
 	const endpoint = `${PLEX_TV_URL}/api/v2/pins/${pinId}`;
 
@@ -188,28 +130,7 @@ export async function checkPinStatus(pinId: number): Promise<PlexPinResponse> {
 	}
 }
 
-/**
- * Poll a PIN until the user authorizes it
- *
- * Continuously checks the PIN status until:
- * - authToken is present (success)
- * - maxAttempts is reached (timeout)
- * - PIN expires (error)
- *
- * @param pinId - The PIN ID from requestPin()
- * @param options - Polling options (maxAttempts, intervalMs)
- * @returns The auth token when authorized
- * @throws PinExpiredError if PIN expires or timeout reached
- * @throws PlexAuthApiError on network or API errors
- *
- * @example
- * ```typescript
- * const pin = await requestPin();
- * // User authorizes at Plex...
- * const authToken = await pollPinForToken(pin.id);
- * const user = await getPlexUserInfo(authToken);
- * ```
- */
+/** Poll a PIN until the user authorizes it or timeout is reached. */
 export async function pollPinForToken(
 	pinId: number,
 	options: PollPinOptions = {}
@@ -230,30 +151,7 @@ export async function pollPinForToken(
 	throw new PinExpiredError('Login timed out. Please try again.');
 }
 
-// =============================================================================
-// User Info
-// =============================================================================
-
-/**
- * Get Plex user information using auth token
- *
- * Retrieves the user's profile information including:
- * - id (Plex user ID)
- * - uuid (unique identifier)
- * - username
- * - email
- * - thumb (avatar URL)
- *
- * @param authToken - The auth token from pollPinForToken()
- * @returns Plex user information
- * @throws PlexAuthApiError on network or API errors
- *
- * @example
- * ```typescript
- * const user = await getPlexUserInfo(authToken);
- * console.log(`Welcome, ${user.username}!`);
- * ```
- */
+/** Get Plex user profile information using an auth token. */
 export async function getPlexUserInfo(authToken: string): Promise<PlexUser> {
 	const endpoint = `${PLEX_TV_URL}/api/v2/user`;
 
@@ -301,31 +199,7 @@ export async function getPlexUserInfo(authToken: string): Promise<PlexUser> {
 	}
 }
 
-// =============================================================================
-// OAuth URL Building
-// =============================================================================
-
-/**
- * Build the Plex OAuth authorization URL
- *
- * Constructs the URL where users will authorize the application.
- * The URL includes:
- * - Client identifier
- * - PIN code
- * - Product information
- * - Forward URL (where to return after auth)
- *
- * @param pinCode - The PIN code from requestPin()
- * @param forwardUrl - Optional URL to redirect after auth (defaults to close popup)
- * @returns The full Plex OAuth URL
- *
- * @example
- * ```typescript
- * const pin = await requestPin();
- * const authUrl = buildPlexOAuthUrl(pin.code);
- * window.open(authUrl, 'plex-auth', 'width=800,height=600');
- * ```
- */
+/** Build the Plex OAuth authorization URL for a given PIN code. */
 export function buildPlexOAuthUrl(pinCode: string, forwardUrl?: string): string {
 	const params = new URLSearchParams({
 		clientID: PLEX_CLIENT_ID,
@@ -347,26 +221,7 @@ export function buildPlexOAuthUrl(pinCode: string, forwardUrl?: string): string 
 	return `${PLEX_AUTH_URL}#?${params.toString()}`;
 }
 
-// =============================================================================
-// Convenience Functions
-// =============================================================================
-
-/**
- * Get complete PIN info for client-side OAuth flow
- *
- * Requests a PIN and returns all information needed to initiate
- * the OAuth flow from the client.
- *
- * @returns PIN info including id, code, authUrl, and expiresAt
- * @throws PlexAuthApiError on network or API errors
- *
- * @example
- * ```typescript
- * const pinInfo = await getPinInfo();
- * // Return to client:
- * // { pinId: 123, code: 'ABC123', authUrl: 'https://...', expiresAt: '...' }
- * ```
- */
+/** Get complete PIN info for initiating OAuth flow from the client. */
 export async function getPinInfo(): Promise<PinInfo> {
 	const pin = await requestPin();
 

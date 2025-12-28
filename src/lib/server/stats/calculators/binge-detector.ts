@@ -1,23 +1,9 @@
-/**
- * Binge Session Detector
- *
- * Property 14: Binge Session Detection
- * For any sequence of plays, the longest binge session SHALL be the maximum
- * contiguous sequence where each consecutive pair has viewedAt difference <= 30 minutes.
- */
-
 import type { BingeSession } from '../types';
 import type { PlayHistoryRecord } from '../utils';
 
-/**
- * Maximum gap between plays to be considered a binge session (in seconds)
- * 30 minutes = 1800 seconds
- */
+/** Maximum gap between plays to be considered a binge session (30 minutes). */
 export const BINGE_GAP_THRESHOLD_SECONDS = 30 * 60;
 
-/**
- * Internal representation of a binge session being built
- */
 interface SessionBuilder {
 	startTime: number;
 	endTime: number;
@@ -25,15 +11,6 @@ interface SessionBuilder {
 	totalSeconds: number;
 }
 
-/**
- * Detect all binge sessions from play history
- *
- * A binge session is a sequence of consecutive plays where the gap
- * between each play is at most 30 minutes.
- *
- * @param records - Play history records
- * @returns All binge sessions sorted by totalMinutes descending
- */
 export function detectAllBingeSessions(records: PlayHistoryRecord[]): BingeSession[] {
 	if (records.length === 0) {
 		return [];
@@ -98,23 +75,6 @@ export function detectAllBingeSessions(records: PlayHistoryRecord[]): BingeSessi
 	return sessions.sort((a, b) => b.totalMinutes - a.totalMinutes);
 }
 
-/**
- * Detect the longest binge session from play history
- *
- * @param records - Play history records
- * @returns Longest binge session or null if no plays
- *
- * @example
- * ```ts
- * // Records with gaps:
- * // 10:00 - Movie A (90 min)
- * // 11:20 - Movie B (120 min) <- 10 min gap from end of A
- * // 15:00 - Movie C (90 min) <- 2 hour gap, new session
- *
- * const binge = detectLongestBinge(records);
- * // binge = { startTime: 10:00, endTime: 11:20, plays: 2, totalMinutes: 210 }
- * ```
- */
 export function detectLongestBinge(records: PlayHistoryRecord[]): BingeSession | null {
 	const sessions = detectAllBingeSessions(records);
 
