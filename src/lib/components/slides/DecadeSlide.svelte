@@ -148,15 +148,17 @@
 						{@const height = maxCount > 0 ? (decade.count / maxCount) * 100 : 0}
 						{@const isTop = topDecade && decade.decade === topDecade.decade}
 						<div class="bar-wrapper">
-							<div
-								bind:this={bars[i]}
-								class="bar"
-								class:top={isTop}
-								style="height: {Math.max(height, 5)}%; --decade-color: {getDecadeColor(
-									decade.decade
-								)};"
-							>
-								<span class="bar-count">{decade.count}</span>
+							<div class="bar-track">
+								<div
+									bind:this={bars[i]}
+									class="bar"
+									class:top={isTop}
+									style="height: {Math.max(height, 5)}%; --decade-color: {getDecadeColor(
+										decade.decade
+									)};"
+								>
+									<span class="bar-count">{decade.count}</span>
+								</div>
 							</div>
 							<span class="bar-label" class:top={isTop}>{decade.decade}</span>
 						</div>
@@ -223,7 +225,6 @@
 	.timeline {
 		display: flex;
 		justify-content: center;
-		align-items: flex-end;
 		height: 160px;
 		gap: 0.5rem;
 	}
@@ -235,6 +236,15 @@
 		gap: 0.5rem;
 		flex: 1;
 		max-width: 60px;
+		height: 100%;
+	}
+
+	.bar-track {
+		flex: 1;
+		width: 100%;
+		display: flex;
+		align-items: flex-end;
+		justify-content: center;
 	}
 
 	.bar {

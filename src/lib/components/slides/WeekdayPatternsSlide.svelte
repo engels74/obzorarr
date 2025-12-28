@@ -148,14 +148,16 @@
 					{@const isPeak = i === peakDay && minutes > 0}
 					{@const isWeekend = i === 0 || i === 6}
 					<div class="bar-wrapper">
-						<div
-							bind:this={bars[i]}
-							class="bar"
-							class:peak={isPeak}
-							class:weekend={isWeekend}
-							style="height: {Math.max(height, 2)}%;"
-						>
-							<span class="bar-value">{formatHours(minutes)}</span>
+						<div class="bar-track">
+							<div
+								bind:this={bars[i]}
+								class="bar"
+								class:peak={isPeak}
+								class:weekend={isWeekend}
+								style="height: {Math.max(height, 2)}%;"
+							>
+								<span class="bar-value">{formatHours(minutes)}</span>
+							</div>
 						</div>
 						<span class="bar-label" class:peak={isPeak}>{WEEKDAY_NAMES[i]}</span>
 					</div>
@@ -216,7 +218,6 @@
 	.bars {
 		display: flex;
 		justify-content: space-around;
-		align-items: flex-end;
 		height: 180px;
 		gap: 0.5rem;
 	}
@@ -227,6 +228,15 @@
 		align-items: center;
 		gap: 0.5rem;
 		flex: 1;
+		height: 100%;
+	}
+
+	.bar-track {
+		flex: 1;
+		width: 100%;
+		display: flex;
+		align-items: flex-end;
+		justify-content: center;
 	}
 
 	.bar {
