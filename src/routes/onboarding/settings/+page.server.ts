@@ -134,12 +134,12 @@ export const load: PageServerLoad = async ({ parent }) => {
 		{
 			value: AnonymizationMode.ANONYMOUS,
 			label: 'Anonymous',
-			description: 'Hide all usernames (e.g., "User 1", "User 2")'
+			description: 'Hide all usernames (e.g., "User #1", "User #2")'
 		},
 		{
 			value: AnonymizationMode.HYBRID,
 			label: 'Hybrid',
-			description: 'Users choose their own anonymization'
+			description: 'Users see their own name, others are anonymized'
 		}
 	];
 
