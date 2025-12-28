@@ -78,9 +78,6 @@ export interface CheckWrappedAccessResult {
 	accessReason: string;
 }
 
-/**
- * Effective share mode is the MORE RESTRICTIVE of user's mode and global floor.
- */
 export async function checkWrappedAccess(
 	options: CheckWrappedAccessOptions
 ): Promise<CheckWrappedAccessResult> {

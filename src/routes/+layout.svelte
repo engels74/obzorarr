@@ -7,16 +7,8 @@
 
 	let { children } = $props();
 
-	/**
-	 * Check if current route is a wrapped page.
-	 */
 	const isWrappedRoute = $derived($page.url?.pathname?.startsWith('/wrapped') ?? false);
 
-	/**
-	 * Compute the effective theme class.
-	 * Uses wrappedTheme only when on /wrapped/* routes,
-	 * otherwise uses uiTheme for all other pages.
-	 */
 	const effectiveTheme = $derived.by(() => {
 		const data = $page.data as { wrappedTheme?: string; uiTheme?: string };
 		if (isWrappedRoute && data.wrappedTheme) {
@@ -26,10 +18,6 @@
 	});
 	const themeClass = $derived(`theme-${effectiveTheme}`);
 
-	/**
-	 * Apply theme class and load font for the theme.
-	 * Uses $effect to ensure reactivity and proper cleanup.
-	 */
 	$effect(() => {
 		const themeClasses = [
 			'theme-modern-minimal',

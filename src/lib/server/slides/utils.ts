@@ -41,10 +41,6 @@ export function customSlidesToMap(customSlides: CustomSlide[]): Map<number, Cust
 	return map;
 }
 
-/**
- * Intersperse fun facts evenly throughout the slides array.
- * With N slides and M fun facts, inserts after position: floor((i+1) * N / (M+1)) - 1
- */
 export function intersperseFunFacts(
 	slides: SlideRenderConfig[],
 	funFacts: FunFact[]
