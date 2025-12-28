@@ -358,7 +358,12 @@
 		margin: 0;
 		font-size: 1.75rem;
 		font-weight: 700;
-		background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 50%, hsl(var(--primary)) 100%);
+		background: linear-gradient(
+			135deg,
+			hsl(var(--primary)) 0%,
+			hsl(var(--accent)) 50%,
+			hsl(var(--primary)) 100%
+		);
 		background-size: 200% auto;
 		-webkit-background-clip: text;
 		-webkit-text-fill-color: transparent;
