@@ -7,13 +7,6 @@
 	import { getPossessive, createPersonalContext } from './messaging-context';
 	import { SPRING_PRESETS, DELAY_PRESETS } from '$lib/utils/animation-presets';
 
-	/**
-	 * PercentileSlide Component
-	 *
-	 * Displays the user's percentile ranking among all server users
-	 * with a circular container, animated conic gradient border, and premium styling.
-	 */
-
 	interface Props extends PercentileSlideProps {
 		messagingContext?: SlideMessagingContext;
 	}
@@ -28,7 +21,6 @@
 		messagingContext = createPersonalContext()
 	}: Props = $props();
 
-	// Get possessive for messaging
 	const possessive = $derived(getPossessive(messagingContext));
 
 	// Compute the "top X%" value

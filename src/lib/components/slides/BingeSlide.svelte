@@ -7,13 +7,6 @@
 	import { createPersonalContext } from './messaging-context';
 	import { SPRING_PRESETS, DELAY_PRESETS } from '$lib/utils/animation-presets';
 
-	/**
-	 * BingeSlide Component
-	 *
-	 * Displays information about the user's longest binge watching session
-	 * with premium hero-style glassmorphism container and gradient text effects.
-	 */
-
 	interface Props extends BingeSlideProps {
 		messagingContext?: SlideMessagingContext;
 	}
@@ -27,7 +20,6 @@
 		messagingContext = createPersonalContext()
 	}: Props = $props();
 
-	// Check if we have binge data
 	const hasBinge = $derived(longestBinge !== null);
 
 	// Format duration

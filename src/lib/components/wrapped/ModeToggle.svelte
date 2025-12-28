@@ -1,13 +1,4 @@
 <script lang="ts">
-	/**
-	 * ModeToggle Component
-	 *
-	 * Toggle button for switching between Story Mode and Scroll Mode.
-	 * Displays the target mode name and icon.
-	 *
-	 * @module components/wrapped/ModeToggle
-	 */
-
 	type ViewMode = 'story' | 'scroll';
 
 	interface Props {

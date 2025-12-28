@@ -10,15 +10,6 @@
 	import ProgressBar from './ProgressBar.svelte';
 	import SlideRenderer from './SlideRenderer.svelte';
 
-	/**
-	 * StoryMode Component
-	 *
-	 * Full-screen slide presentation with tap/click/swipe navigation.
-	 * Displays statistics slides in a Spotify Wrapped-style experience.
-	 *
-	 * @module components/wrapped/StoryMode
-	 */
-
 	interface Props {
 		/** Statistics data to display */
 		stats: UserStats | ServerStats;

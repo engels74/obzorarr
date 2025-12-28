@@ -318,7 +318,6 @@ function parseAIResponse(data: unknown): FunFact[] {
 	}
 }
 
-/** Generate fun facts using AI with retry logic for transient failures. */
 export async function generateWithAI(
 	stats: Stats,
 	config: FunFactsConfig,

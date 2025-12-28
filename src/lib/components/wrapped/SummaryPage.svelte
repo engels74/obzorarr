@@ -5,13 +5,6 @@
 	import { isUserStats, isServerStats } from '$lib/stats/types';
 	import { SPRING_PRESETS, STAGGER_PRESETS, DELAY_PRESETS } from '$lib/utils/animation-presets';
 
-	/**
-	 * SummaryPage Component
-	 *
-	 * Full-page summary shown after the wrapped slideshow completes.
-	 * Displays key statistics in glassmorphism cards with premium styling.
-	 */
-
 	interface Props {
 		stats: UserStats | ServerStats;
 		year: number;

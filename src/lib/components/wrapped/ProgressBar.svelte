@@ -1,13 +1,4 @@
 <script lang="ts">
-	/**
-	 * ProgressBar Component
-	 *
-	 * Displays progress through the story mode slides.
-	 * Uses segmented bars with animation.
-	 *
-	 * @module components/wrapped/ProgressBar
-	 */
-
 	interface Props {
 		/** Current slide index (0-based) */
 		current: number;

@@ -1,19 +1,4 @@
 <script lang="ts">
-	/**
-	 * Sync Indicator Component
-	 *
-	 * Displays a subtle indicator when a background sync is in progress.
-	 * Shows sync phase and progress information.
-	 *
-	 * Features:
-	 * - Fixed position in bottom-right corner
-	 * - Animated spinner with progress text
-	 * - Respects prefers-reduced-motion
-	 * - Accessible with ARIA live region
-	 *
-	 * @module components/SyncIndicator
-	 */
-
 	import type { LiveSyncProgress } from '$lib/sync/types';
 
 	interface Props {

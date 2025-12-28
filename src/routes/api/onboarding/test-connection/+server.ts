@@ -1,12 +1,3 @@
-/**
- * POST /api/onboarding/test-connection
- *
- * Tests connectivity to a custom Plex server URL.
- * Used during onboarding when user enters a reverse proxy URL.
- *
- * Requires authenticated admin user (server owner).
- */
-
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { z } from 'zod';
@@ -18,9 +9,6 @@ import {
 } from '$lib/server/auth/types';
 import { logger } from '$lib/server/logging';
 
-/**
- * Headers for Plex Media Server requests
- */
 const PLEX_SERVER_HEADERS = {
 	Accept: 'application/json',
 	'X-Plex-Client-Identifier': PLEX_CLIENT_ID,
@@ -28,17 +16,11 @@ const PLEX_SERVER_HEADERS = {
 	'X-Plex-Version': PLEX_VERSION
 } as const;
 
-/**
- * Request body schema
- */
 const TestConnectionSchema = z.object({
 	url: z.string().url('Invalid URL format'),
 	accessToken: z.string().min(1, 'Access token is required')
 });
 
-/**
- * Connection test timeout in milliseconds
- */
 const CONNECTION_TIMEOUT_MS = 10000;
 
 export const POST: RequestHandler = async ({ request, locals }) => {
@@ -119,10 +101,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			const { machineIdentifier, friendlyName } = identityResult.data.MediaContainer;
 			const serverName = friendlyName || 'Plex Media Server';
 
-			logger.info(
-				`Connection test successful: ${serverName} (${machineIdentifier})`,
-				'Onboarding'
-			);
+			logger.info(`Connection test successful: ${serverName} (${machineIdentifier})`, 'Onboarding');
 
 			return json({
 				success: true,

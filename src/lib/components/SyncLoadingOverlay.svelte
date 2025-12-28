@@ -1,20 +1,4 @@
 <script lang="ts">
-	/**
-	 * Sync Loading Overlay Component
-	 *
-	 * Displays a full-page loading overlay when sync is in progress.
-	 * Used on wrapped pages to block stale content during data sync.
-	 *
-	 * Features:
-	 * - Full viewport coverage with themed background
-	 * - Centered loading spinner with progress text
-	 * - Respects prefers-reduced-motion
-	 * - Accessible with ARIA attributes
-	 * - Smooth fade-in/fade-out transitions
-	 *
-	 * @module components/SyncLoadingOverlay
-	 */
-
 	import type { LiveSyncProgress } from '$lib/sync/types';
 	import { prefersReducedMotion } from 'svelte/motion';
 	import { fade } from 'svelte/transition';

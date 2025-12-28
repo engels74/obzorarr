@@ -12,13 +12,6 @@
 		DELAY_PRESETS
 	} from '$lib/utils/animation-presets';
 
-	/**
-	 * TotalTimeSlide Component
-	 *
-	 * Displays the user's total watch time with animated number counting reveal.
-	 * Features premium gradient text and glow effects.
-	 */
-
 	interface Props extends TotalTimeSlideProps {
 		messagingContext?: SlideMessagingContext;
 	}
@@ -32,7 +25,6 @@
 		messagingContext = createPersonalContext()
 	}: Props = $props();
 
-	// Get subject for messaging (e.g., "You", "We", or server name)
 	const subject = $derived(getSubject(messagingContext));
 
 	// Derived computed values
@@ -44,8 +36,6 @@
 	// State for animated number display
 	let displayedHours = $state(0);
 
-	// Format for initial display and SSR - animation updates DOM directly
-	// This avoids triggering Svelte reactivity ~60 times/second during count-up
 	const formattedTime = $derived.by(() => {
 		if (totalWatchTimeMinutes < 60) {
 			return `${Math.round(totalWatchTimeMinutes)} minutes`;

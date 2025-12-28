@@ -8,13 +8,6 @@
 	import { getPossessive, createPersonalContext } from './messaging-context';
 	import { SPRING_PRESETS, STAGGER_PRESETS, DELAY_PRESETS } from '$lib/utils/animation-presets';
 
-	/**
-	 * TopShowsSlide Component
-	 *
-	 * Displays the user's top TV shows with premium glassmorphism cards.
-	 * Features staggered list animation and hover effects.
-	 */
-
 	interface Props extends TopShowsSlideProps {
 		messagingContext?: SlideMessagingContext;
 	}
@@ -29,10 +22,8 @@
 		messagingContext = createPersonalContext()
 	}: Props = $props();
 
-	// Get possessive for messaging
 	const possessive = $derived(getPossessive(messagingContext));
 
-	// Limit the displayed shows
 	const displayedShows = $derived(topShows.slice(0, limit));
 	const hasShows = $derived(displayedShows.length > 0);
 

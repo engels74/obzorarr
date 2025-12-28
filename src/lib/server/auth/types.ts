@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-/** Session duration: 7 days */
 export const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 
 export const PLEX_CLIENT_ID = 'obzorarr';
@@ -51,7 +50,6 @@ export class PlexAuthApiError extends AuthError {
 	}
 }
 
-/** Plex PIN response from POST /api/v2/pins - used to initiate the OAuth flow */
 export const PlexPinResponseSchema = z.object({
 	id: z.number().int(),
 	code: z.string(),
@@ -77,7 +75,6 @@ export const PlexPinResponseSchema = z.object({
 	newRegistration: z.boolean().nullable().optional()
 });
 
-/** Plex user info response from GET /api/v2/user */
 export const PlexUserSchema = z.object({
 	id: z.number().int(),
 	uuid: z.string(),
@@ -137,7 +134,6 @@ export const PlexUserSchema = z.object({
 	backupCodesCreated: z.boolean().optional()
 });
 
-/** Plex resource (server) from GET /api/v2/resources */
 export const PlexResourceSchema = z.object({
 	name: z.string(),
 	product: z.string().optional(),
@@ -225,7 +221,6 @@ export const PlexSharedSectionSchema = z.object({
 	shared: z.boolean().optional()
 });
 
-/** Shared server user from GET /api/servers/{machineId}/shared_servers */
 export const PlexSharedServerUserSchema = z.object({
 	id: z.number().int(),
 	username: z.string(),
@@ -305,7 +300,6 @@ export type PlexFriendSharedServer = z.infer<typeof PlexFriendSharedServerSchema
 export type PlexFriend = z.infer<typeof PlexFriendSchema>;
 export type PlexFriendsResponse = z.infer<typeof PlexFriendsResponseSchema>;
 
-/** Normalized server user for dev-bypass - combines data from owner or shared users */
 export interface NormalizedServerUser {
 	plexId: number;
 	username: string;

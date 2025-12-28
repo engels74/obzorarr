@@ -31,13 +31,6 @@ import {
 } from '$lib/server/admin/settings.service';
 import { getAvailableYears } from '$lib/server/admin/users.service';
 
-/**
- * Admin Slides Page Server
- *
- * Handles loading slide configurations and form actions for
- * managing slides and custom slides.
- */
-
 export const load: PageServerLoad = async () => {
 	// Initialize default config if needed
 	await initializeDefaultSlideConfig();

@@ -1,26 +1,10 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 
-	/**
-	 * BaseSlide Component
-	 *
-	 * Shared wrapper component for all slides providing:
-	 * - Layered premium background system (gradient + noise + vignette)
-	 * - Glassmorphism variant for luxurious effects
-	 * - Reduced motion support
-	 * - Active state management
-	 *
-	 * Implements premium visual aesthetics for wrapped pages
-	 */
-
 	interface Props {
-		/** Whether the slide is currently active/visible */
 		active?: boolean;
-		/** Additional CSS classes */
 		class?: string;
-		/** Variant for different visual treatments */
 		variant?: 'default' | 'highlight' | 'dark' | 'glass';
-		/** Children content */
 		children: Snippet;
 	}
 

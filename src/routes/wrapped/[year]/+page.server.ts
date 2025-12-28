@@ -17,15 +17,6 @@ import { triggerLiveSyncIfNeeded } from '$lib/server/sync/live-sync';
 import { checkServerWrappedAccess } from '$lib/server/sharing/access-control';
 import { ShareAccessDeniedError } from '$lib/server/sharing/types';
 
-/**
- * Server-wide Wrapped Page Load Function
- *
- * Loads server-wide statistics for the Year in Review page.
- * Applies anonymization based on the viewing user.
- *
- * @module routes/wrapped/[year]
- */
-
 export const load: PageServerLoad = async ({ params, locals }) => {
 	// Validate year parameter (4-digit number, reasonable range 2000-2100)
 	const year = parseInt(params.year, 10);

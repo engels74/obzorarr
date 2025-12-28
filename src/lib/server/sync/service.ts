@@ -22,7 +22,6 @@ export class SyncError extends Error {
 	}
 }
 
-/** Get Unix timestamp for January 1st 00:00:00 UTC of a given year */
 export function getYearStartTimestamp(year: number): number {
 	return Math.floor(new Date(Date.UTC(year, 0, 1, 0, 0, 0)).getTime() / 1000);
 }
@@ -140,7 +139,6 @@ async function updateSyncProgress(syncId: number, recordsProcessed: number): Pro
 	await db.update(syncStatus).set({ recordsProcessed }).where(eq(syncStatus.id, syncId));
 }
 
-/** Insert batch using onConflictDoNothing to skip duplicate historyKeys */
 async function insertHistoryBatch(
 	records: ValidPlexHistoryMetadata[]
 ): Promise<{ inserted: number; skipped: number }> {
@@ -435,10 +433,6 @@ export interface EnrichMetadataResult {
 	failed: number;
 }
 
-/**
- * Enrich play history records with metadata from Plex library.
- * Deduplicates by ratingKey and uses metadata cache to avoid redundant API calls.
- */
 export async function enrichMetadata(
 	options: EnrichMetadataOptions = {}
 ): Promise<EnrichMetadataResult> {

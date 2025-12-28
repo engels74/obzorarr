@@ -8,13 +8,6 @@
 	import { getPossessive, createPersonalContext } from './messaging-context';
 	import { SPRING_PRESETS, DELAY_PRESETS } from '$lib/utils/animation-presets';
 
-	/**
-	 * FirstLastSlide Component
-	 *
-	 * Displays the first and last content watched in the year
-	 * with premium glassmorphism cards and hover lift effects.
-	 */
-
 	interface Props extends FirstLastSlideProps {
 		messagingContext?: SlideMessagingContext;
 	}
@@ -29,10 +22,8 @@
 		messagingContext = createPersonalContext()
 	}: Props = $props();
 
-	// Get possessive for messaging
 	const possessive = $derived(getPossessive(messagingContext));
 
-	// Check if we have data
 	const hasFirst = $derived(firstWatch !== null);
 	const hasLast = $derived(lastWatch !== null);
 	const hasAny = $derived(hasFirst || hasLast);

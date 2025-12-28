@@ -5,14 +5,6 @@
 	import type { TopViewersSlideProps } from './types';
 	import { SPRING_PRESETS, STAGGER_PRESETS, DELAY_PRESETS } from '$lib/utils/animation-presets';
 
-	/**
-	 * TopViewersSlide Component
-	 *
-	 * Displays the top contributors/viewers on the server for server-wide wrapped.
-	 * Shows ranked list of usernames with their total watch time.
-	 * Features gold/silver/bronze medal badges for top 3 and glassmorphism cards.
-	 */
-
 	let {
 		topViewers,
 		limit = 10,
@@ -22,14 +14,12 @@
 		children
 	}: TopViewersSlideProps = $props();
 
-	// Medal colors for top 3 positions
 	const medalColors = {
 		1: { bg: 'hsl(45 90% 50%)', glow: 'hsl(45 90% 50% / 0.4)' }, // Gold
 		2: { bg: 'hsl(210 10% 70%)', glow: 'hsl(210 10% 70% / 0.4)' }, // Silver
 		3: { bg: 'hsl(30 60% 45%)', glow: 'hsl(30 60% 45% / 0.4)' } // Bronze
 	} as const;
 
-	// Limit the displayed viewers
 	const displayedViewers = $derived(topViewers.slice(0, limit));
 	const hasViewers = $derived(displayedViewers.length > 0);
 
@@ -37,7 +27,6 @@
 	let container: HTMLElement | undefined = $state();
 	let listItems: HTMLElement[] = $state([]);
 
-	// Format watch time in hours/days
 	function formatWatchTime(minutes: number): string {
 		if (minutes < 60) {
 			return `${Math.round(minutes)}m`;
@@ -54,7 +43,6 @@
 		return `${days}d ${remainingHours}h`;
 	}
 
-	// Format watch time for accessibility/tooltips
 	function formatWatchTimeDetailed(minutes: number): string {
 		if (minutes < 60) {
 			return `${Math.round(minutes)} minutes`;

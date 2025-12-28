@@ -8,13 +8,6 @@
 	import { getPossessive, createPersonalContext } from './messaging-context';
 	import { SPRING_PRESETS, STAGGER_PRESETS, DELAY_PRESETS } from '$lib/utils/animation-presets';
 
-	/**
-	 * TopMoviesSlide Component
-	 *
-	 * Displays the user's top movies with premium glassmorphism cards.
-	 * Features staggered list animation and hover effects.
-	 */
-
 	interface Props extends TopMoviesSlideProps {
 		messagingContext?: SlideMessagingContext;
 	}
@@ -29,7 +22,6 @@
 		messagingContext = createPersonalContext()
 	}: Props = $props();
 
-	// Get possessive for messaging (e.g., "Your", "Our", or "MovieNight's")
 	const possessive = $derived(getPossessive(messagingContext));
 
 	// Limit the displayed movies

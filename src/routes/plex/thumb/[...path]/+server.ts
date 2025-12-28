@@ -2,32 +2,9 @@ import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
 
-/**
- * Plex Thumbnail Proxy Endpoint
- *
- * Proxies thumbnail requests to the Plex Media Server.
- * This is needed because Plex returns relative thumbnail paths like
- * `/library/metadata/70612/thumb/1765677730` which need to be
- * served through SvelteKit to the client.
- *
- * Route: /plex/thumb/[...path]
- * Example: /plex/thumb/library/metadata/70612/thumb/1765677730
- *
- * Caching Strategy:
- * - Thumbnails are cached for 7 days (immutable content based on timestamp)
- * - Browser caching reduces requests to both SvelteKit and Plex server
- */
-
-/**
- * Cache duration in seconds (7 days)
- * Plex thumbnails are immutable - the timestamp in the URL changes when updated
- */
+// 7 days - thumbnails are immutable (URL timestamp changes on update)
 const CACHE_MAX_AGE = 7 * 24 * 60 * 60;
 
-/**
- * Get standard headers for Plex API requests
- * Must be a function since env vars are read at runtime
- */
 function getPlexHeaders() {
 	return {
 		'X-Plex-Token': env.PLEX_TOKEN ?? '',
@@ -37,25 +14,12 @@ function getPlexHeaders() {
 	};
 }
 
-/**
- * Allowed path prefixes to prevent abuse
- * Only allow library metadata thumbnail paths
- */
 const ALLOWED_PATH_PATTERNS = [/^library\/metadata\/\d+\/thumb\/\d+$/];
 
-/**
- * Validate that the path is an allowed thumbnail path
- */
 function isAllowedPath(path: string): boolean {
 	return ALLOWED_PATH_PATTERNS.some((pattern) => pattern.test(path));
 }
 
-/**
- * GET /plex/thumb/[...path]
- *
- * Proxies thumbnail requests to Plex server with authentication
- * and appropriate caching headers.
- */
 export const GET: RequestHandler = async ({ params }) => {
 	const { path } = params;
 

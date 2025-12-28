@@ -27,7 +27,6 @@ function aggregateAndRank(
 		const existing = aggregates.get(key);
 		if (existing) {
 			existing.count += 1;
-			// Keep the first thumb we encounter (or update if we didn't have one)
 			if (!existing.thumb && record.thumb) {
 				existing.thumb = record.thumb;
 			}
@@ -40,7 +39,6 @@ function aggregateAndRank(
 		}
 	}
 
-	// Sort by count descending, then title ascending for tie-breaking
 	return Array.from(aggregates.values()).sort((a, b) => {
 		if (b.count !== a.count) {
 			return b.count - a.count;
@@ -63,8 +61,6 @@ export function calculateTopMovies(
 	options: RankingOptions = {}
 ): RankedItem[] {
 	const { limit = DEFAULT_LIMIT } = options;
-
-	// Filter to movies only (in case caller didn't pre-filter)
 	const movies = records.filter((r) => r.type === 'movie');
 
 	const aggregates = aggregateAndRank(
@@ -81,14 +77,10 @@ export function calculateTopShows(
 	options: RankingOptions = {}
 ): RankedItem[] {
 	const { limit = DEFAULT_LIMIT } = options;
-
-	// Filter to episodes only (in case caller didn't pre-filter)
 	const episodes = records.filter((r) => r.type === 'episode');
 
 	const aggregates = aggregateAndRank(
 		episodes,
-		// Use grandparentTitle (show name) for grouping
-		// Fall back to title if grandparentTitle is not available
 		(record) => record.grandparentTitle ?? record.title,
 		(record) => record.thumb
 	);
@@ -101,14 +93,11 @@ export function calculateTopGenres(
 	options: RankingOptions = {}
 ): RankedItem[] {
 	const { limit = DEFAULT_LIMIT } = options;
-
-	// Aggregate genre counts
 	const genreCounts = new Map<string, number>();
 
 	for (const record of records) {
 		if (!record.genres) continue;
 
-		// Parse JSON array of genre names
 		let genres: unknown;
 		try {
 			genres = JSON.parse(record.genres);
@@ -117,7 +106,6 @@ export function calculateTopGenres(
 			continue;
 		}
 
-		// Count each genre
 		for (const genre of genres) {
 			if (typeof genre === 'string' && genre.length > 0) {
 				genreCounts.set(genre, (genreCounts.get(genre) ?? 0) + 1);
@@ -125,7 +113,6 @@ export function calculateTopGenres(
 		}
 	}
 
-	// Convert to array and sort by count desc, then title asc for tie-breaking
 	const sorted = Array.from(genreCounts.entries())
 		.map(([title, count]) => ({ title, count, thumb: null }))
 		.sort((a, b) => {
@@ -135,11 +122,10 @@ export function calculateTopGenres(
 			return a.title.localeCompare(b.title);
 		});
 
-	// Assign ranks and limit
 	return sorted.slice(0, limit).map((item, index) => ({
 		rank: index + 1,
 		title: item.title,
 		count: item.count,
-		thumb: null // Genres don't have thumbnails
+		thumb: null
 	}));
 }

@@ -9,7 +9,6 @@ export const ShareSettingsKey = {
 	SERVER_WRAPPED_SHARE_MODE: 'server_wrapped_share_mode'
 } as const;
 
-// Privacy levels for floor enforcement (higher = more restrictive)
 export const ShareModePrivacyLevel = {
 	[ShareMode.PUBLIC]: 0,
 	[ShareMode.PRIVATE_LINK]: 1,

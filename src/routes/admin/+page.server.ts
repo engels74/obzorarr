@@ -8,12 +8,6 @@ import {
 import { getSchedulerStatus } from '$lib/server/sync/scheduler';
 import { calculateServerStats } from '$lib/server/stats/engine';
 
-/**
- * Admin Dashboard Server
- *
- * Loads overview data for the admin dashboard.
- */
-
 export const load: PageServerLoad = async () => {
 	const year = new Date().getFullYear();
 

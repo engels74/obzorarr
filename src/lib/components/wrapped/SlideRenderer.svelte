@@ -18,15 +18,6 @@
 		CustomSlide as CustomSlideComponent
 	} from '$lib/components/slides';
 
-	/**
-	 * SlideRenderer Component
-	 *
-	 * Dynamically renders the appropriate slide component based on type.
-	 * Maps slide configuration and stats to component props.
-	 *
-	 * @module components/wrapped/SlideRenderer
-	 */
-
 	interface Props {
 		/** Slide configuration */
 		slide: SlideRenderConfig;

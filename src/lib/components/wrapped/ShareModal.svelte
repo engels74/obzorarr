@@ -3,13 +3,6 @@
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import type { ShareModeType } from '$lib/sharing/types';
 
-	/**
-	 * ShareModal Component
-	 *
-	 * Dialog for sharing wrapped pages with copy-to-clipboard
-	 * and permission-based sharing controls.
-	 */
-
 	interface ShareSettings {
 		mode: ShareModeType;
 		shareToken: string | null | undefined;

@@ -8,13 +8,6 @@
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import { SPRING_PRESETS, STAGGER_PRESETS, DELAY_PRESETS } from '$lib/utils/animation-presets';
 
-	/**
-	 * GenresSlide Component
-	 *
-	 * Displays the user's top genres with premium glassmorphism cards
-	 * and gradient-filled bars with glow effects.
-	 */
-
 	interface Props extends GenresSlideProps {
 		messagingContext?: SlideMessagingContext;
 	}
@@ -29,7 +22,6 @@
 		messagingContext = createPersonalContext()
 	}: Props = $props();
 
-	// Genre color palette - HSL format for consistency with theme system
 	const GENRE_COLORS: Record<string, string> = {
 		Action: 'hsl(15 70% 50%)',
 		Adventure: 'hsl(35 65% 55%)',
@@ -62,17 +54,14 @@
 		return `${plays} ${plays === 1 ? 'play' : 'plays'}`;
 	}
 
-	// Get possessive for messaging
 	const possessive = $derived(getPossessive(messagingContext));
 
-	// Limit and calculate percentages
 	const displayedGenres = $derived(topGenres.slice(0, limit));
 	const hasGenres = $derived(displayedGenres.length > 0);
 	const maxCount = $derived(
 		displayedGenres.length > 0 ? Math.max(...displayedGenres.map((g) => g.count)) : 0
 	);
 
-	// Calculate bar width percentages
 	const genresWithPercentage = $derived(
 		displayedGenres.map((genre) => ({
 			...genre,

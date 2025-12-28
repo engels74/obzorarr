@@ -12,7 +12,6 @@ export function calculatePercentileRank(
 		return 0;
 	}
 
-	// Count users with less watch time than this user
 	let usersWithLess = 0;
 	for (const watchTime of allUserWatchTimes) {
 		if (watchTime < userWatchTimeMinutes) {
@@ -20,17 +19,13 @@ export function calculatePercentileRank(
 		}
 	}
 
-	// Calculate percentile: (users with less) / total * 100
-	const percentile = (usersWithLess / allUserWatchTimes.length) * 100;
-
-	return percentile;
+	return (usersWithLess / allUserWatchTimes.length) * 100;
 }
 
 export async function getAllUsersWatchTime(
 	db: BunSQLiteDatabase<typeof schema>,
 	yearFilter: YearFilter
 ): Promise<Map<number, number>> {
-	// Aggregate duration by accountId for records in the year range
 	const results = await db
 		.select({
 			accountId: playHistory.accountId,
@@ -45,7 +40,6 @@ export async function getAllUsersWatchTime(
 		)
 		.groupBy(playHistory.accountId);
 
-	// Convert to Map with minutes
 	const watchTimeMap = new Map<number, number>();
 	for (const row of results) {
 		const totalMinutes = row.totalSeconds / 60;

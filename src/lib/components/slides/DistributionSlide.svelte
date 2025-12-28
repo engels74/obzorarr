@@ -8,16 +8,6 @@
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import { SPRING_PRESETS, STAGGER_PRESETS, DELAY_PRESETS } from '$lib/utils/animation-presets';
 
-	/**
-	 * DistributionSlide Component
-	 *
-	 * Displays watch time distribution by month or hour with premium gradient bar charts.
-	 * Features glassmorphism containers, peak highlighting with glow effects,
-	 * and detailed tooltips on hover.
-	 * On desktop/tablet (>=768px), shows both monthly and hourly side-by-side.
-	 * On mobile (<768px), shows single chart with toggle.
-	 */
-
 	interface Props extends DistributionSlideProps {
 		messagingContext?: SlideMessagingContext;
 	}

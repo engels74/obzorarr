@@ -12,15 +12,6 @@
 	// Register GSAP plugin at module level (per bun-svelte-pro.md)
 	gsap.registerPlugin(ScrollTrigger);
 
-	/**
-	 * ScrollMode Component
-	 *
-	 * Displays all statistics on a single scrollable page with scroll-triggered
-	 * animations using GSAP ScrollTrigger.
-	 *
-	 * @module components/wrapped/ScrollMode
-	 */
-
 	interface Props {
 		/** Statistics data to display */
 		stats: UserStats | ServerStats;
