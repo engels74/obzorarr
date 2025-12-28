@@ -1,4 +1,3 @@
-import { env } from '$env/dynamic/private';
 import { logger } from '$lib/server/logging';
 import {
 	PlexFriendsResponseSchema,
@@ -11,6 +10,7 @@ import {
 	type PlexSharedServerUser
 } from './types';
 import { getPlexUserInfo } from './plex-oauth';
+import { getPlexConfig, type PlexConfig } from '$lib/server/admin/settings.service';
 
 // SECURITY: This module should only be used in development mode.
 
@@ -41,8 +41,8 @@ interface CachedUsers {
 
 let usersCache: CachedUsers | null = null;
 
-async function getServerMachineIdentifier(): Promise<string> {
-	if (!env.PLEX_SERVER_URL || !env.PLEX_TOKEN) {
+async function getServerMachineIdentifier(config: PlexConfig): Promise<string> {
+	if (!config.serverUrl || !config.token) {
 		throw new PlexAuthApiError(
 			'PLEX_SERVER_URL and PLEX_TOKEN must be configured',
 			undefined,
@@ -50,12 +50,12 @@ async function getServerMachineIdentifier(): Promise<string> {
 		);
 	}
 
-	const endpoint = `${env.PLEX_SERVER_URL}/identity`;
+	const endpoint = `${config.serverUrl}/identity`;
 
 	const response = await fetch(endpoint, {
 		headers: {
 			...PLEX_SERVER_HEADERS,
-			'X-Plex-Token': env.PLEX_TOKEN
+			'X-Plex-Token': config.token
 		}
 	});
 
@@ -82,13 +82,16 @@ async function getServerMachineIdentifier(): Promise<string> {
 	return result.data.MediaContainer.machineIdentifier;
 }
 
-async function fetchSharedUsers(machineIdentifier: string): Promise<PlexSharedServerUser[]> {
+async function fetchSharedUsers(
+	machineIdentifier: string,
+	token: string
+): Promise<PlexSharedServerUser[]> {
 	const endpoint = `${PLEX_TV_URL}/api/v2/friends`;
 
 	const response = await fetch(endpoint, {
 		headers: {
 			...PLEX_TV_HEADERS,
-			'X-Plex-Token': env.PLEX_TOKEN ?? ''
+			'X-Plex-Token': token
 		}
 	});
 
@@ -134,8 +137,19 @@ export async function getServerUsers(): Promise<{
 		return { owner: usersCache.owner, sharedUsers: usersCache.sharedUsers };
 	}
 
+	// Get merged config (database takes priority over environment)
+	const config = await getPlexConfig();
+
+	if (!config.token) {
+		throw new PlexAuthApiError(
+			'Plex token is not configured',
+			undefined,
+			'/dev-users'
+		);
+	}
+
 	// Fetch owner info using the admin token
-	const ownerData = await getPlexUserInfo(env.PLEX_TOKEN ?? '');
+	const ownerData = await getPlexUserInfo(config.token);
 	const owner: NormalizedServerUser = {
 		plexId: ownerData.id,
 		username: ownerData.username,
@@ -145,8 +159,8 @@ export async function getServerUsers(): Promise<{
 	};
 
 	// Fetch server machine identifier and shared users
-	const machineIdentifier = await getServerMachineIdentifier();
-	const sharedUsersData = await fetchSharedUsers(machineIdentifier);
+	const machineIdentifier = await getServerMachineIdentifier(config);
+	const sharedUsersData = await fetchSharedUsers(machineIdentifier, config.token);
 
 	// Normalize shared users
 	const sharedUsers: NormalizedServerUser[] = sharedUsersData.map((user) => ({

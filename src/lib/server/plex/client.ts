@@ -10,11 +10,12 @@ import {
 	type HistoryPageResult,
 	type HistoryPageWithStats
 } from './types';
+import { getPlexConfig, type PlexConfig } from '$lib/server/admin/settings.service';
 
-function getPlexHeaders() {
+function getPlexHeaders(token: string) {
 	return {
 		Accept: 'application/json',
-		'X-Plex-Token': env.PLEX_TOKEN ?? '',
+		'X-Plex-Token': token,
 		'X-Plex-Client-Identifier': 'obzorarr',
 		'X-Plex-Product': 'Obzorarr',
 		'X-Plex-Version': '1.0.0'
@@ -29,8 +30,19 @@ export async function plexRequest<T>(
 	params?: URLSearchParams,
 	signal?: AbortSignal
 ): Promise<T> {
+	// Get merged config (database takes priority over environment)
+	const config = await getPlexConfig();
+
+	if (!config.serverUrl) {
+		throw new PlexApiError(
+			'Plex server URL is not configured',
+			undefined,
+			endpoint
+		);
+	}
+
 	// Build URL with optional query parameters
-	const url = new URL(endpoint, env.PLEX_SERVER_URL ?? '');
+	const url = new URL(endpoint, config.serverUrl);
 	if (params) {
 		params.forEach((value, key) => {
 			url.searchParams.set(key, value);
@@ -40,7 +52,7 @@ export async function plexRequest<T>(
 	try {
 		const response = await fetch(url.toString(), {
 			method: 'GET',
-			headers: getPlexHeaders(),
+			headers: getPlexHeaders(config.token),
 			signal
 		});
 
@@ -179,8 +191,9 @@ export async function checkConnection(): Promise<boolean> {
 	}
 }
 
-export function getServerUrl(): string {
-	return env.PLEX_SERVER_URL ?? '';
+export async function getServerUrl(): Promise<string> {
+	const config = await getPlexConfig();
+	return config.serverUrl;
 }
 
 const METADATA_CONCURRENCY = Math.max(

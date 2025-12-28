@@ -11,6 +11,7 @@ import {
 	resolveUserIdentifier,
 	getServerUsers
 } from './dev-users';
+import { getPlexConfig } from '$lib/server/admin/settings.service';
 
 const FALLBACK_PLEX_ID = 999999999;
 const FALLBACK_USERNAME = 'dev-admin';
@@ -283,8 +284,9 @@ export async function getOrCreateDevSession(): Promise<string> {
 		await db.delete(sessions).where(eq(sessions.id, DEV_SESSION_ID));
 	}
 
-	// Get the Plex token from environment (used for Plex API calls)
-	const plexToken = env.PLEX_TOKEN ?? 'dev-token';
+	// Get the Plex token from merged config (database takes priority over environment)
+	const config = await getPlexConfig();
+	const plexToken = config.token || 'dev-token';
 
 	// Create new dev session with long expiration
 	const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);

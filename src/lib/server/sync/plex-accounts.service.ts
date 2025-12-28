@@ -1,4 +1,3 @@
-import { env } from '$env/dynamic/private';
 import { db } from '$lib/server/db/client';
 import { plexAccounts, users } from '$lib/server/db/schema';
 import { sql, or, eq } from 'drizzle-orm';
@@ -13,6 +12,7 @@ import {
 	type PlexSharedServerUser
 } from '$lib/server/auth/types';
 import { getPlexUserInfo } from '$lib/server/auth/plex-oauth';
+import { getPlexConfig, type PlexConfig } from '$lib/server/admin/settings.service';
 
 const PLEX_TV_URL = 'https://plex.tv';
 
@@ -30,8 +30,8 @@ const PLEX_SERVER_HEADERS = {
 	'X-Plex-Version': PLEX_VERSION
 } as const;
 
-async function getServerMachineIdentifier(): Promise<string> {
-	if (!env.PLEX_SERVER_URL || !env.PLEX_TOKEN) {
+async function getServerMachineIdentifier(config: PlexConfig): Promise<string> {
+	if (!config.serverUrl || !config.token) {
 		throw new PlexAuthApiError(
 			'PLEX_SERVER_URL and PLEX_TOKEN must be configured',
 			undefined,
@@ -39,12 +39,12 @@ async function getServerMachineIdentifier(): Promise<string> {
 		);
 	}
 
-	const endpoint = `${env.PLEX_SERVER_URL}/identity`;
+	const endpoint = `${config.serverUrl}/identity`;
 
 	const response = await fetch(endpoint, {
 		headers: {
 			...PLEX_SERVER_HEADERS,
-			'X-Plex-Token': env.PLEX_TOKEN ?? ''
+			'X-Plex-Token': config.token
 		}
 	});
 
@@ -77,18 +77,18 @@ interface ManagedAccount {
 	thumb: string | null;
 }
 
-async function fetchManagedAccounts(): Promise<ManagedAccount[]> {
-	if (!env.PLEX_SERVER_URL || !env.PLEX_TOKEN) {
+async function fetchManagedAccounts(config: PlexConfig): Promise<ManagedAccount[]> {
+	if (!config.serverUrl || !config.token) {
 		return [];
 	}
 
-	const endpoint = `${env.PLEX_SERVER_URL}/accounts`;
+	const endpoint = `${config.serverUrl}/accounts`;
 
 	try {
 		const response = await fetch(endpoint, {
 			headers: {
 				...PLEX_SERVER_HEADERS,
-				'X-Plex-Token': env.PLEX_TOKEN ?? ''
+				'X-Plex-Token': config.token
 			}
 		});
 
@@ -134,13 +134,16 @@ async function fetchManagedAccounts(): Promise<ManagedAccount[]> {
 	}
 }
 
-async function fetchSharedUsers(machineIdentifier: string): Promise<PlexSharedServerUser[]> {
+async function fetchSharedUsers(
+	machineIdentifier: string,
+	token: string
+): Promise<PlexSharedServerUser[]> {
 	const endpoint = `${PLEX_TV_URL}/api/v2/friends`;
 
 	const response = await fetch(endpoint, {
 		headers: {
 			...PLEX_TV_HEADERS,
-			'X-Plex-Token': env.PLEX_TOKEN ?? ''
+			'X-Plex-Token': token
 		}
 	});
 
@@ -186,10 +189,21 @@ export interface PlexAccountInfo {
 export async function syncPlexAccounts(): Promise<number> {
 	logger.info('Starting Plex accounts sync...', 'PlexAccountsSync');
 
+	// Get merged config (database takes priority over environment)
+	const config = await getPlexConfig();
+
+	if (!config.serverUrl || !config.token) {
+		throw new PlexAuthApiError(
+			'Plex is not configured. Please complete the onboarding process.',
+			undefined,
+			'/sync/accounts'
+		);
+	}
+
 	const accounts: PlexAccountInfo[] = [];
 
 	try {
-		const ownerData = await getPlexUserInfo(env.PLEX_TOKEN ?? '');
+		const ownerData = await getPlexUserInfo(config.token);
 
 		// Server owner has accountId = 1 in play history
 		accounts.push({
@@ -200,8 +214,8 @@ export async function syncPlexAccounts(): Promise<number> {
 			isOwner: true
 		});
 
-		const machineIdentifier = await getServerMachineIdentifier();
-		const sharedUsersData = await fetchSharedUsers(machineIdentifier);
+		const machineIdentifier = await getServerMachineIdentifier(config);
+		const sharedUsersData = await fetchSharedUsers(machineIdentifier, config.token);
 
 		for (const user of sharedUsersData) {
 			accounts.push({
@@ -213,7 +227,7 @@ export async function syncPlexAccounts(): Promise<number> {
 			});
 		}
 
-		const managedAccountsData = await fetchManagedAccounts();
+		const managedAccountsData = await fetchManagedAccounts(config);
 		let managedCount = 0;
 
 		for (const account of managedAccountsData) {

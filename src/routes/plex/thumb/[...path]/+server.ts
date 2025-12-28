@@ -1,12 +1,12 @@
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { env } from '$env/dynamic/private';
+import { getPlexConfig } from '$lib/server/admin/settings.service';
 
 const CACHE_MAX_AGE = 7 * 24 * 60 * 60;
 
-function getPlexHeaders() {
+function getPlexHeaders(token: string) {
 	return {
-		'X-Plex-Token': env.PLEX_TOKEN ?? '',
+		'X-Plex-Token': token,
 		'X-Plex-Client-Identifier': 'obzorarr',
 		'X-Plex-Product': 'Obzorarr',
 		'X-Plex-Version': '1.0.0'
@@ -30,12 +30,19 @@ export const GET: RequestHandler = async ({ params }) => {
 		error(400, { message: 'Invalid thumbnail path' });
 	}
 
-	const plexUrl = new URL(`/${path}`, env.PLEX_SERVER_URL ?? '');
+	// Get merged config (database takes priority over environment)
+	const config = await getPlexConfig();
+
+	if (!config.serverUrl) {
+		error(503, { message: 'Plex server is not configured' });
+	}
+
+	const plexUrl = new URL(`/${path}`, config.serverUrl);
 
 	try {
 		const response = await fetch(plexUrl.toString(), {
 			method: 'GET',
-			headers: getPlexHeaders()
+			headers: getPlexHeaders(config.token)
 		});
 
 		if (!response.ok) {

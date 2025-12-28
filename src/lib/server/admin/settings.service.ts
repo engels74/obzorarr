@@ -379,3 +379,33 @@ export function hasPlexEnvConfig(): boolean {
 export function hasOpenAIEnvConfig(): boolean {
 	return Boolean(env.OPENAI_API_KEY || env.OPENAI_API_URL || env.OPENAI_MODEL);
 }
+
+/**
+ * Simple Plex configuration interface for use by services
+ */
+export interface PlexConfig {
+	serverUrl: string;
+	token: string;
+}
+
+/**
+ * Get the merged Plex configuration (database takes priority over environment).
+ * This should be used by all Plex-related services to ensure they use
+ * settings configured during onboarding.
+ */
+export async function getPlexConfig(): Promise<PlexConfig> {
+	const config = await getApiConfigWithSources();
+	return {
+		serverUrl: config.plex.serverUrl.value,
+		token: config.plex.token.value
+	};
+}
+
+/**
+ * Check if Plex is configured (either via database or environment variables).
+ * Returns true if both serverUrl and token are available.
+ */
+export async function isPlexConfigured(): Promise<boolean> {
+	const config = await getPlexConfig();
+	return Boolean(config.serverUrl && config.token);
+}
