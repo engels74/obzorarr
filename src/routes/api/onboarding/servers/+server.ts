@@ -22,13 +22,28 @@ const PLEX_SERVER_HEADERS = {
 	'X-Plex-Version': PLEX_VERSION
 } as const;
 
+interface FetchMachineIdResult {
+	machineIdentifier?: string;
+	error?: {
+		type: 'timeout' | 'ssl' | 'network' | 'http' | 'parse' | 'unknown';
+		message: string;
+		statusCode?: number;
+	};
+}
+
 async function fetchMachineIdentifier(
 	connectionUri: string,
-	accessToken: string
-): Promise<string | undefined> {
+	accessToken: string,
+	serverName?: string
+): Promise<FetchMachineIdResult> {
+	const normalizedUrl = connectionUri.replace(/\/+$/, '');
+	const endpoint = `${normalizedUrl}/identity`;
+	const logPrefix = serverName ? `[${serverName}]` : '';
+
+	logger.debug(`${logPrefix} Fetching machineIdentifier from: ${endpoint}`, 'Onboarding');
+
 	try {
-		const normalizedUrl = connectionUri.replace(/\/+$/, '');
-		const response = await fetch(`${normalizedUrl}/identity`, {
+		const response = await fetch(endpoint, {
 			headers: {
 				...PLEX_SERVER_HEADERS,
 				'X-Plex-Token': accessToken
@@ -36,13 +51,47 @@ async function fetchMachineIdentifier(
 			signal: AbortSignal.timeout(5000)
 		});
 
-		if (!response.ok) return undefined;
+		if (!response.ok) {
+			const msg = `HTTP ${response.status} ${response.statusText}`;
+			logger.debug(`${logPrefix} Identity fetch failed: ${msg}`, 'Onboarding');
+			return { error: { type: 'http', message: msg, statusCode: response.status } };
+		}
 
 		const data = await response.json();
 		const result = PlexServerIdentitySchema.safeParse(data);
-		return result.success ? result.data.MediaContainer.machineIdentifier : undefined;
-	} catch {
-		return undefined;
+
+		if (!result.success) {
+			logger.debug(`${logPrefix} Invalid identity response: ${result.error.message}`, 'Onboarding');
+			return { error: { type: 'parse', message: 'Invalid response schema' } };
+		}
+
+		const machineIdentifier = result.data.MediaContainer.machineIdentifier;
+		logger.debug(`${logPrefix} Got machineIdentifier: ${machineIdentifier}`, 'Onboarding');
+		return { machineIdentifier };
+	} catch (err) {
+		const errMsg = err instanceof Error ? err.message : String(err);
+
+		if (err instanceof Error) {
+			if (err.name === 'AbortError' || err.name === 'TimeoutError') {
+				logger.debug(`${logPrefix} Timeout: ${endpoint}`, 'Onboarding');
+				return { error: { type: 'timeout', message: 'Connection timed out (5s)' } };
+			}
+			if (errMsg.includes('certificate') || errMsg.includes('SSL') || errMsg.includes('TLS')) {
+				logger.debug(`${logPrefix} SSL error: ${errMsg}`, 'Onboarding');
+				return { error: { type: 'ssl', message: errMsg } };
+			}
+			if (
+				errMsg.includes('ENOTFOUND') ||
+				errMsg.includes('ECONNREFUSED') ||
+				errMsg.includes('ETIMEDOUT')
+			) {
+				logger.debug(`${logPrefix} Network error: ${errMsg}`, 'Onboarding');
+				return { error: { type: 'network', message: errMsg } };
+			}
+		}
+
+		logger.debug(`${logPrefix} Unknown error: ${errMsg}`, 'Onboarding');
+		return { error: { type: 'unknown', message: errMsg } };
 	}
 }
 
@@ -80,20 +129,37 @@ export const GET: RequestHandler = async ({ cookies, locals }) => {
 
 				let machineIdentifier: string | undefined;
 
-				if (!hasPlexDirectConnection && server.publicAddress && server.accessToken) {
-					const publicConnection = server.connections?.find(
-						(c) => !c.local && !c.relay && !c.uri.includes('.plex.direct')
-					);
-					if (publicConnection) {
-						machineIdentifier = await fetchMachineIdentifier(
-							publicConnection.uri,
-							server.accessToken
+				if (!hasPlexDirectConnection && server.accessToken) {
+					const candidates = [
+						...(server.connections?.filter(
+							(c) => !c.local && !c.relay && !c.uri.includes('.plex.direct')
+						) ?? []),
+						...(server.connections?.filter((c) => c.local && !c.relay) ?? [])
+					];
+
+					for (const conn of candidates) {
+						const result = await fetchMachineIdentifier(
+							conn.uri,
+							server.accessToken,
+							server.name
 						);
+						if (result.machineIdentifier) {
+							machineIdentifier = result.machineIdentifier;
+							break;
+						}
+					}
+
+					if (!machineIdentifier && candidates.length > 0) {
 						logger.debug(
-							`Fetched machineIdentifier for ${server.name}: ${machineIdentifier ?? 'unavailable'}`,
+							`Failed to fetch machineIdentifier for ${server.name} after ${candidates.length} attempt(s)`,
 							'Onboarding'
 						);
 					}
+				} else if (!hasPlexDirectConnection && !server.accessToken) {
+					logger.debug(
+						`No accessToken for ${server.name}, cannot fetch machineIdentifier`,
+						'Onboarding'
+					);
 				}
 
 				if (!hasPlexDirectConnection && machineIdentifier) {
