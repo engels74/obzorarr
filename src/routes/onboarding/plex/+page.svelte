@@ -268,7 +268,10 @@
 		server: (typeof servers)[0],
 		connection: { uri: string; local: boolean; relay: boolean }
 	) {
-		if (!server.owned) return;
+		if (!server.owned) {
+			oauthError = 'Cannot configure a server you do not own.';
+			return;
+		}
 
 		selectedServer = server.clientIdentifier;
 		selectedConnection = connection.uri;
@@ -709,7 +712,10 @@
 															class:selected={isConnSelected}
 															class:saving={isSavingServer && isConnSelected}
 															class:ssl={info.isSSL}
-															onclick={() => handleConnectionSelect(server, connection)}
+															onclick={(e) => {
+																e.stopPropagation();
+																handleConnectionSelect(server, connection);
+															}}
 															disabled={isSavingServer}
 														>
 															<div class="connection-info">
@@ -1568,6 +1574,7 @@
 		border-radius: 4px;
 		cursor: help;
 		transition: all 0.15s ease;
+		pointer-events: none;
 	}
 
 	.connection-badge:hover {
