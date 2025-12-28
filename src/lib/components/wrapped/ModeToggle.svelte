@@ -72,7 +72,7 @@
 	.mode-toggle {
 		position: fixed;
 		top: 1rem;
-		left: 1rem;
+		right: 4rem;
 		z-index: 100;
 		display: flex;
 		align-items: center;
@@ -120,6 +120,8 @@
 
 	@media (max-width: 768px) {
 		.mode-toggle {
+			top: 0.75rem;
+			right: 3rem;
 			padding: 0.5rem;
 			border-radius: 50%;
 		}
@@ -134,6 +136,12 @@
 			clip: rect(0, 0, 0, 0);
 			white-space: nowrap;
 			border: 0;
+		}
+	}
+
+	@media (min-width: 1024px) {
+		.mode-toggle {
+			right: 4.5rem;
 		}
 	}
 
