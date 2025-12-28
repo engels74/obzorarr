@@ -39,40 +39,33 @@ export function renderMarkdownSync(content: string): string {
 export function validateMarkdownSyntax(content: string): MarkdownValidationResult {
 	const errors: string[] = [];
 
-	// Check for empty content
 	if (!content || content.trim().length === 0) {
 		errors.push('Content cannot be empty');
 		return { valid: false, errors };
 	}
 
-	// Check maximum length
 	if (content.length > 10000) {
 		errors.push('Content exceeds maximum length of 10000 characters');
 		return { valid: false, errors };
 	}
 
 	try {
-		// Attempt to parse the Markdown
 		const result = marked.parse(content, { async: false });
 
-		// Check if parsing produced output
 		if (typeof result !== 'string' || result.trim().length === 0) {
 			errors.push('Markdown parsing produced no output');
 			return { valid: false, errors };
 		}
 
-		// Check for unbalanced code blocks
 		const codeBlockCount = (content.match(/```/g) ?? []).length;
 		if (codeBlockCount % 2 !== 0) {
 			errors.push('Unbalanced code blocks (missing closing ```)');
 			return { valid: false, errors };
 		}
 
-		// Check for unclosed inline code
 		const inlineCodeMatches = content.match(/(?<!`)`(?!`)/g) ?? [];
 		if (inlineCodeMatches.length % 2 !== 0) {
-			// This is a warning but not an error - Markdown can handle this
-			// errors.push('Potentially unclosed inline code');
+			// Warning only - Markdown can handle unclosed inline code
 		}
 
 		return { valid: true, errors: [] };
@@ -110,22 +103,18 @@ export function markdownToPlainText(content: string, maxLength: number = 200): s
 }
 
 export function containsUnsafeHtml(content: string): boolean {
-	// Check for script tags
 	if (/<script[^>]*>/i.test(content)) {
 		return true;
 	}
 
-	// Check for event handlers
 	if (/\son\w+\s*=/i.test(content)) {
 		return true;
 	}
 
-	// Check for javascript: URLs
 	if (/javascript:/i.test(content)) {
 		return true;
 	}
 
-	// Check for data: URLs with HTML/script content
 	if (/data:[^;]*;base64.*<script/i.test(content)) {
 		return true;
 	}

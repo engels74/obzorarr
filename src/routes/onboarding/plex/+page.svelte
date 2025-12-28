@@ -7,23 +7,13 @@
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import type { PageData, ActionData } from './$types';
 
-	/**
-	 * Onboarding Step 1: Plex Configuration
-	 *
-	 * Two flows:
-	 * 1. ENV configured: Show "Sign in as Admin" → verify → proceed
-	 * 2. No ENV: Show "Sign in with Plex" → select server → proceed
-	 */
-
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
-	// OAuth state
 	let isOAuthLoading = $state(false);
 	let oauthError = $state<string | null>(null);
 	let pollIntervalId: ReturnType<typeof setInterval> | null = null;
 	let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
-	// Local auth state for immediate UI updates after OAuth
 	// Bypasses SvelteKit data prop reactivity timing issues
 	let localAuthState = $state<{
 		isAuthenticated: boolean;
@@ -31,7 +21,6 @@
 		username: string | null;
 	} | null>(null);
 
-	// Server selection state (for no-ENV flow)
 	let servers = $state<
 		Array<{
 			name: string;
@@ -50,7 +39,6 @@
 	let isSavingServer = $state(false);
 	let serverSaved = $state(false);
 
-	// Custom URL state (for reverse proxy connections)
 	let showCustomUrl = $state(false);
 	let customUrl = $state('');
 	let isTestingCustomUrl = $state(false);
@@ -60,14 +48,10 @@
 		error?: string;
 	} | null>(null);
 
-	// Animation refs
 	let iconRef: HTMLElement | undefined = $state();
 	let contentRef: HTMLElement | undefined = $state();
-
-	// Track animated elements to avoid re-animating them
 	let animatedElements = new WeakSet<Element>();
 
-	// Icon glow animation
 	$effect(() => {
 		if (!iconRef) return;
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -82,7 +66,6 @@
 		return () => animation.stop?.();
 	});
 
-	// Stagger content animation - re-runs when content structure changes
 	$effect(() => {
 		if (!contentRef) return;
 
@@ -122,7 +105,6 @@
 		return () => cancelAnimationFrame(rafId);
 	});
 
-	// Cleanup polling on unmount
 	$effect(() => {
 		return () => {
 			if (pollIntervalId) clearInterval(pollIntervalId);
@@ -130,7 +112,6 @@
 		};
 	});
 
-	// Initialize local auth state from data if already authenticated (page refresh case)
 	$effect(() => {
 		if (browser && localAuthState === null && data.isAuthenticated) {
 			localAuthState = {
@@ -141,20 +122,12 @@
 		}
 	});
 
-	// Fetch servers on page load for authenticated admins (no-ENV flow)
-	// This handles the case when user reloads the page while already authenticated
 	$effect(() => {
 		if (!browser) return;
 
-		// Use effective states which include local auth state for immediate OAuth response
 		const isAuth = localAuthState?.isAuthenticated ?? data.isAuthenticated;
 		const isAdm = localAuthState?.isAdmin ?? data.isAdmin;
 
-		// Check if we should fetch servers:
-		// - No ENV config (manual server selection flow)
-		// - User is authenticated as admin
-		// - No servers loaded yet
-		// - Not currently loading (prevent double fetches)
 		const shouldFetch =
 			!data.hasEnvConfig && isAuth && isAdm && servers.length === 0 && !isLoadingServers;
 
@@ -165,14 +138,11 @@
 
 	async function fetchServers() {
 		isLoadingServers = true;
-		oauthError = null; // Clear previous errors
+		oauthError = null;
 		try {
 			const response = await fetch('/api/onboarding/servers');
 			if (!response.ok) {
-				// Handle specific error cases
 				if (response.status === 401) {
-					// Session expired or Plex token invalid - clear the stale session
-					// and refresh auth state so the login button appears
 					await fetch('/auth/logout', { method: 'POST' });
 					await invalidateAll();
 					throw new Error('Session expired. Please sign in again.');
@@ -194,7 +164,6 @@
 		oauthError = null;
 
 		try {
-			// 1. Get PIN info
 			const response = await fetch('/auth/plex');
 			if (!response.ok) {
 				const errData = await response.json().catch(() => ({}));
@@ -202,10 +171,8 @@
 			}
 			const { pinId, authUrl } = (await response.json()) as { pinId: number; authUrl: string };
 
-			// 2. Open Plex auth in new window
 			const authWindow = window.open(authUrl, 'plex-auth', 'width=600,height=700');
 
-			// 3. Poll for completion
 			pollIntervalId = setInterval(async () => {
 				try {
 					const pollResponse = await fetch('/auth/plex', {
@@ -233,7 +200,6 @@
 						pollIntervalId = null;
 						authWindow?.close();
 
-						// 4. Complete auth via callback endpoint
 						const callbackResponse = await fetch('/auth/plex/callback', {
 							method: 'POST',
 							headers: { 'Content-Type': 'application/json' },
@@ -245,22 +211,16 @@
 							throw new Error((errData as { message?: string }).message || 'Login failed');
 						}
 
-						// 5. Extract user info from callback response and update local state immediately
 						const callbackData = (await callbackResponse.json()) as {
 							user: { id: number; plexId: number; username: string; isAdmin: boolean };
 						};
 
-						// Update local auth state immediately - triggers UI re-render
-						// This bypasses SvelteKit data prop reactivity timing issues
 						localAuthState = {
 							isAuthenticated: true,
 							isAdmin: callbackData.user.isAdmin,
 							username: callbackData.user.username
 						};
 
-						// 6. Refresh page data in background (fire and forget)
-						// The $effect at lines 133-153 will automatically trigger fetchServers()
-						// when localAuthState changes, so no explicit call needed here
 						invalidateAll();
 
 						isOAuthLoading = false;
@@ -273,7 +233,6 @@
 				}
 			}, 2000);
 
-			// Timeout after 5 minutes
 			timeoutId = setTimeout(
 				() => {
 					if (pollIntervalId) {
@@ -342,9 +301,6 @@
 		}
 	}
 
-	/**
-	 * Get connection type label and styling info
-	 */
 	function getConnectionInfo(connection: { uri: string; local: boolean; relay: boolean }): {
 		label: string;
 		type: 'secure' | 'local' | 'remote' | 'relay';
@@ -391,9 +347,6 @@
 		};
 	}
 
-	/**
-	 * Sort connections by preference: secure > remote > local > relay
-	 */
 	function sortConnections(
 		connections: Array<{ uri: string; local: boolean; relay: boolean }>
 	): Array<{ uri: string; local: boolean; relay: boolean }> {
@@ -408,16 +361,12 @@
 		});
 	}
 
-	/**
-	 * Test a custom URL connection (for reverse proxy setups)
-	 */
 	async function testCustomConnection(server: (typeof servers)[0]) {
 		if (!customUrl.trim()) {
 			customUrlTestResult = { success: false, error: 'Please enter a URL' };
 			return;
 		}
 
-		// Basic URL validation
 		try {
 			new URL(customUrl);
 		} catch {
@@ -448,7 +397,6 @@
 			customUrlTestResult = result;
 
 			if (result.success) {
-				// Auto-save the custom connection after a brief delay
 				setTimeout(async () => {
 					await handleConnectionSelect(server, {
 						uri: customUrl,
@@ -467,21 +415,14 @@
 		}
 	}
 
-	/**
-	 * Toggle custom URL section visibility
-	 */
 	function toggleCustomUrl() {
 		showCustomUrl = !showCustomUrl;
 		if (!showCustomUrl) {
-			// Reset state when closing
 			customUrl = '';
 			customUrlTestResult = null;
 		}
 	}
 
-	/**
-	 * Check if custom URL input is valid for testing
-	 */
 	function isValidUrl(url: string): boolean {
 		if (!url.trim()) return false;
 		try {
@@ -492,8 +433,6 @@
 		}
 	}
 
-	// Derived states - use local auth state if available, fall back to data props
-	// This ensures immediate UI updates after OAuth without waiting for SvelteKit data invalidation
 	const effectiveIsAuthenticated = $derived(
 		localAuthState?.isAuthenticated ?? data.isAuthenticated
 	);
@@ -511,7 +450,6 @@
 		(data.hasEnvConfig && data.canProceed) || (!data.hasEnvConfig && serverSaved)
 	);
 
-	// Format server URL for display
 	function formatServerUrl(url: string | null): string {
 		if (!url) return '';
 		try {

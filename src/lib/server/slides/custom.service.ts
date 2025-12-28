@@ -12,7 +12,6 @@ import {
 import { validateMarkdownSyntax } from './renderer';
 
 export async function createCustomSlide(data: CreateCustomSlide): Promise<CustomSlide> {
-	// Validate input
 	const parsed = CreateCustomSlideSchema.safeParse(data);
 	if (!parsed.success) {
 		const errors = parsed.error.flatten().fieldErrors;
@@ -22,7 +21,6 @@ export async function createCustomSlide(data: CreateCustomSlide): Promise<Custom
 
 	const validData = parsed.data;
 
-	// Validate Markdown syntax
 	const markdownValidation = validateMarkdownSyntax(validData.content);
 	if (!markdownValidation.valid) {
 		throw new SlideError(
@@ -31,7 +29,6 @@ export async function createCustomSlide(data: CreateCustomSlide): Promise<Custom
 		);
 	}
 
-	// Insert the custom slide
 	const result = await db
 		.insert(customSlides)
 		.values({
@@ -134,7 +131,6 @@ export async function updateCustomSlide(
 	id: number,
 	updates: UpdateCustomSlide
 ): Promise<CustomSlide> {
-	// Validate input
 	const parsed = UpdateCustomSlideSchema.safeParse(updates);
 	if (!parsed.success) {
 		const errors = parsed.error.flatten().fieldErrors;
@@ -144,13 +140,11 @@ export async function updateCustomSlide(
 
 	const validUpdates = parsed.data;
 
-	// Check if the slide exists
 	const existing = await getCustomSlideById(id);
 	if (!existing) {
 		throw new SlideError(`Custom slide not found with id: ${id}`, 'NOT_FOUND');
 	}
 
-	// Validate Markdown if content is being updated
 	if (validUpdates.content !== undefined) {
 		const markdownValidation = validateMarkdownSyntax(validUpdates.content);
 		if (!markdownValidation.valid) {
@@ -161,7 +155,6 @@ export async function updateCustomSlide(
 		}
 	}
 
-	// Prepare update values
 	const updateValues: Record<string, unknown> = {};
 
 	if (validUpdates.title !== undefined) {
@@ -180,12 +173,10 @@ export async function updateCustomSlide(
 		updateValues.year = validUpdates.year;
 	}
 
-	// Only update if there are changes
 	if (Object.keys(updateValues).length > 0) {
 		await db.update(customSlides).set(updateValues).where(eq(customSlides.id, id));
 	}
 
-	// Return updated slide
 	const updated = await getCustomSlideById(id);
 	if (!updated) {
 		throw new SlideError('Failed to retrieve updated slide', 'UPDATE_FAILED');

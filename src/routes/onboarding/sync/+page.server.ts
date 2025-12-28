@@ -1,10 +1,3 @@
-/**
- * Onboarding Step 2: Initial Data Sync
- *
- * Triggers the initial Plex history sync and shows progress.
- * User can continue to next step while sync runs in background.
- */
-
 import type { PageServerLoad, Actions } from './$types';
 import { fail, redirect } from '@sveltejs/kit';
 import { setOnboardingStep, OnboardingSteps } from '$lib/server/onboarding';
@@ -16,9 +9,6 @@ import {
 } from '$lib/server/sync';
 import { logger } from '$lib/server/logging';
 
-/**
- * Load function - provides sync status
- */
 export const load: PageServerLoad = async ({ parent }) => {
 	const parentData = await parent();
 
@@ -36,13 +26,7 @@ export const load: PageServerLoad = async ({ parent }) => {
 	};
 };
 
-/**
- * Form actions
- */
 export const actions: Actions = {
-	/**
-	 * Start the initial sync
-	 */
 	startSync: async ({ locals }) => {
 		if (!locals.user?.isAdmin) {
 			return fail(403, { error: 'Admin access required' });
@@ -73,9 +57,6 @@ export const actions: Actions = {
 		}
 	},
 
-	/**
-	 * Continue to settings step (sync continues in background)
-	 */
 	continue: async ({ locals }) => {
 		if (!locals.user?.isAdmin) {
 			return fail(403, { error: 'Admin access required' });

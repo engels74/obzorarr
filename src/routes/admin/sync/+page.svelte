@@ -5,16 +5,6 @@
 	import { handleFormToast } from '$lib/utils/form-toast';
 	import type { PageData, ActionData } from './$types';
 
-	/**
-	 * Admin Sync Page - Command Center Design
-	 *
-	 * Manages Plex sync operations with a visually striking interface:
-	 * - Real-time sync progress with animated indicators
-	 * - Scheduler configuration with visual status
-	 * - Comprehensive sync history
-	 */
-
-	// Progress data from SSE
 	interface SyncProgress {
 		syncId: number;
 		status: 'running' | 'completed' | 'failed' | 'cancelled';
@@ -31,24 +21,20 @@
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
-	// Local state
 	let selectedBackfillYear = $state<string>('');
 	let cronExpression = $state('0 0 * * *');
 	let isSyncing = $state(false);
 	let isCancelling = $state(false);
 
-	// Show toast notifications for form responses
 	$effect(() => {
 		handleFormToast(form);
 	});
 
-	// SSE state
 	let eventSource = $state<EventSource | null>(null);
 	let progress = $state<SyncProgress | null>(null);
 	let isConnected = $state(false);
 	let syncCompleted = $state(false);
 
-	// Derived states
 	const syncActive = $derived(
 		(data.isRunning && !syncCompleted) || (progress !== null && progress.status === 'running')
 	);
@@ -77,7 +63,6 @@
 		}
 	});
 
-	// SSE Functions
 	function connectSSE() {
 		if (eventSource) eventSource.close();
 
@@ -130,12 +115,10 @@
 		isConnected = false;
 	}
 
-	// Sync cron expression with data
 	$effect(() => {
 		cronExpression = data.schedulerStatus.cronExpression ?? '0 0 * * *';
 	});
 
-	// Connect to SSE if sync is running on page load
 	$effect(() => {
 		if (browser && data.isRunning && !eventSource && !syncCompleted) {
 			isSyncing = true;
@@ -143,12 +126,10 @@
 		}
 	});
 
-	// Cleanup on unmount
 	$effect(() => {
 		return () => disconnectSSE();
 	});
 
-	// Utility functions
 	function formatDate(isoDate: string | null): string {
 		if (!isoDate) return 'N/A';
 		return new Date(isoDate).toLocaleString();
@@ -187,14 +168,11 @@
 		{ label: 'Weekly', value: '0 0 * * 0' }
 	];
 
-	// Pagination state
 	let isNavigating = $state(false);
 
-	// Pagination helpers
 	const canGoPrevious = $derived(data.pagination.page > 1);
 	const canGoNext = $derived(data.pagination.page < data.pagination.totalPages);
 
-	// Calculate visible page numbers (show max 5 pages centered around current)
 	const visiblePages = $derived.by(() => {
 		const { page, totalPages } = data.pagination;
 		const pages: number[] = [];
@@ -220,7 +198,6 @@
 		return pages;
 	});
 
-	// Safely access first/last visible pages for pagination display
 	const firstVisiblePage = $derived(visiblePages.at(0));
 	const lastVisiblePage = $derived(visiblePages.at(-1));
 
@@ -237,7 +214,6 @@
 		await goto(url.toString(), { keepFocus: true, noScroll: true });
 		isNavigating = false;
 
-		// Scroll to history section smoothly
 		document
 			.querySelector('.history-panel')
 			?.scrollIntoView({ behavior: 'smooth', block: 'start' });
