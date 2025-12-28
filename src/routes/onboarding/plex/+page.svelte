@@ -1726,7 +1726,12 @@
 		box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.2);
 	}
 
-	/* Tooltip Styling - portal container needs z-index to appear above positioned cards */
+	/*
+	 * Tooltip portal z-index override
+	 * bits-ui sets inline `z-index: auto` on portal elements, which can only be
+	 * overridden with !important. This ensures tooltips appear above the card
+	 * (which has z-index: 10 from .onboarding-container).
+	 */
 	:global([id^='bits-']:has(.connection-tooltip)) {
 		z-index: 100 !important;
 	}
