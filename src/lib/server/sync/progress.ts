@@ -25,9 +25,12 @@ export function updateSyncProgress(
 	update: Partial<Omit<LiveSyncProgress, 'syncId' | 'startedAt'>>
 ): void {
 	if (currentProgress) {
+		const filteredUpdate = Object.fromEntries(
+			Object.entries(update).filter(([, value]) => value !== undefined)
+		);
 		currentProgress = {
 			...currentProgress,
-			...update
+			...filteredUpdate
 		};
 	}
 }
