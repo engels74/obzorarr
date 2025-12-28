@@ -9,7 +9,6 @@ import { toast } from '$lib/services/toast';
  * @module utils/form-toast
  */
 
-/** Form action response shape */
 interface FormResponse {
 	success?: boolean;
 	error?: string;

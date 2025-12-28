@@ -51,10 +51,6 @@
 		messagingContext = createPersonalContext()
 	}: Props = $props();
 
-	// ==========================================================================
-	// State
-	// ==========================================================================
-
 	/** Container element reference */
 	let container: HTMLElement | undefined = $state();
 
@@ -67,20 +63,13 @@
 	/** Whether initial scroll has been performed */
 	let hasScrolledToInitial = $state(false);
 
-	// ==========================================================================
-	// Derived Values
-	// ==========================================================================
-
 	/** Filter to only enabled slides */
 	const enabledSlides = $derived(slides.filter((s) => s.enabled));
 
 	/** Total number of enabled slides */
 	const totalSlides = $derived(enabledSlides.length);
 
-	// ==========================================================================
-	// Initial Scroll Position (Story Mode → Scroll Mode)
-	// ==========================================================================
-
+	/** Initial scroll position handling (Story Mode → Scroll Mode) */
 	$effect(() => {
 		// Only run once after sections are rendered
 		if (hasScrolledToInitial || !container) return;
@@ -105,10 +94,7 @@
 		}
 	});
 
-	// ==========================================================================
-	// GSAP ScrollTrigger Animations
-	// ==========================================================================
-
+	/** GSAP ScrollTrigger animations with reduced motion support */
 	$effect(() => {
 		if (!container) return;
 
@@ -184,20 +170,10 @@
 		};
 	});
 
-	// ==========================================================================
-	// Event Handlers
-	// ==========================================================================
-
-	/**
-	 * Handle mode switch request - passes current visible section to callback
-	 */
 	function handleModeSwitch(): void {
 		onModeSwitch?.(visibleSectionIndex);
 	}
 
-	/**
-	 * Handle keyboard events for navigation
-	 */
 	function handleKeyDown(event: KeyboardEvent): void {
 		if (event.key === 'Escape') {
 			event.preventDefault();

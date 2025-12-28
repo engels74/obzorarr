@@ -21,22 +21,9 @@
 
 	let { mode, onModeChange, class: klass = '' }: Props = $props();
 
-	// ==========================================================================
-	// Derived Values
-	// ==========================================================================
-
-	/** Target mode when toggled */
 	const targetMode = $derived<ViewMode>(mode === 'story' ? 'scroll' : 'story');
-
-	/** Label for accessibility and tooltip */
 	const label = $derived(mode === 'story' ? 'Switch to Scroll Mode' : 'Switch to Story Mode');
-
-	/** Display text (shows target mode name) */
 	const displayText = $derived(mode === 'story' ? 'Scroll' : 'Story');
-
-	// ==========================================================================
-	// Event Handlers
-	// ==========================================================================
 
 	function handleClick(): void {
 		onModeChange(targetMode);
@@ -59,7 +46,6 @@
 	title={label}
 >
 	{#if mode === 'story'}
-		<!-- Scroll icon (arrows up/down) - indicates switching to scroll mode -->
 		<svg
 			viewBox="0 0 24 24"
 			fill="none"
@@ -74,7 +60,6 @@
 			<path d="M8 17l4 4 4-4" />
 		</svg>
 	{:else}
-		<!-- Slides icon (stacked rectangles) - indicates switching to story mode -->
 		<svg
 			viewBox="0 0 24 24"
 			fill="none"
@@ -142,7 +127,6 @@
 		white-space: nowrap;
 	}
 
-	/* Mobile: Hide label, show icon only */
 	@media (max-width: 768px) {
 		.mode-toggle {
 			padding: 0.5rem;
@@ -150,7 +134,6 @@
 		}
 
 		.toggle-label {
-			/* Screen reader only on mobile */
 			position: absolute;
 			width: 1px;
 			height: 1px;
@@ -163,7 +146,6 @@
 		}
 	}
 
-	/* Reduced motion */
 	@media (prefers-reduced-motion: reduce) {
 		.mode-toggle {
 			transition: none;

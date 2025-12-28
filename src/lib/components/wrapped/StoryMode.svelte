@@ -46,10 +46,6 @@
 		messagingContext = createPersonalContext()
 	}: Props = $props();
 
-	// ==========================================================================
-	// Constants
-	// ==========================================================================
-
 	/** Edge zone percentage for tap navigation (15% on each side) */
 	const EDGE_ZONE_PERCENT = 0.15;
 
@@ -58,10 +54,6 @@
 
 	/** Animation duration (milliseconds) */
 	const ANIMATION_DURATION = 400;
-
-	// ==========================================================================
-	// State
-	// ==========================================================================
 
 	// Slide navigation state using the store
 	const navigation = createSlideState();
@@ -104,23 +96,13 @@
 		};
 	});
 
-	// ==========================================================================
-	// Derived Values
-	// ==========================================================================
-
 	/** Current slide configuration */
 	const currentSlide = $derived(slides[navigation.currentSlide]);
 
 	/** Previous slide configuration (for exit animation) */
 	const previousSlide = $derived(previousSlideIndex >= 0 ? slides[previousSlideIndex] : null);
 
-	// ==========================================================================
-	// Navigation Handlers
-	// ==========================================================================
-
-	/**
-	 * Navigate to the next slide
-	 */
+	/** Navigate to the next slide */
 	function goToNext(): void {
 		if (isTransitioning || !navigation.canGoNext) {
 			// If on last slide and trying to go next, call onComplete
@@ -138,9 +120,7 @@
 		animateTransition('forward');
 	}
 
-	/**
-	 * Navigate to the previous slide
-	 */
+	/** Navigate to the previous slide */
 	function goToPrevious(): void {
 		if (isTransitioning || !navigation.canGoPrevious) return;
 
@@ -152,9 +132,6 @@
 		animateTransition('backward');
 	}
 
-	/**
-	 * Animate the slide transition
-	 */
 	function animateTransition(direction: 'forward' | 'backward'): void {
 		const shouldAnimate = !prefersReducedMotion.current;
 
@@ -245,10 +222,7 @@
 			});
 	}
 
-	/**
-	 * Finish the transition and clean up
-	 * Idempotent - safe to call multiple times
-	 */
+	/** Finish the transition and clean up. Idempotent - safe to call multiple times. */
 	function finishTransition(): void {
 		if (!isTransitioning) return; // Already finished
 
@@ -259,13 +233,6 @@
 		navigation.endAnimation();
 	}
 
-	// ==========================================================================
-	// Event Handlers
-	// ==========================================================================
-
-	/**
-	 * Handle click/tap events
-	 */
 	function handleClick(event: MouseEvent): void {
 		if (isTransitioning) return;
 
@@ -292,9 +259,6 @@
 		}
 	}
 
-	/**
-	 * Handle touch start
-	 */
 	function handleTouchStart(event: TouchEvent): void {
 		if (event.touches.length !== 1) return;
 
@@ -306,9 +270,6 @@
 		isTouching = true;
 	}
 
-	/**
-	 * Handle touch end - detect swipe
-	 */
 	function handleTouchEnd(event: TouchEvent): void {
 		if (!isTouching) return;
 
@@ -335,9 +296,6 @@
 		isTouching = false;
 	}
 
-	/**
-	 * Handle keyboard navigation
-	 */
 	function handleKeyDown(event: KeyboardEvent): void {
 		if (isTransitioning) return;
 
@@ -381,9 +339,6 @@
 		}
 	}
 
-	/**
-	 * Handle slide animation complete
-	 */
 	function handleSlideAnimationComplete(): void {
 		// Slide internal animation completed
 		// Could trigger additional effects here if needed
