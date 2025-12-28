@@ -66,6 +66,18 @@ function createMockUserStats(overrides: Partial<UserStats> = {}): UserStats {
 				.fill(0)
 				.map((_, i) => (i >= 19 && i <= 23 ? 10 : 2))
 		},
+		watchTimeByWeekday: { minutes: Array(7).fill(857), plays: Array(7).fill(29) },
+		contentTypes: {
+			movies: { count: 50, minutes: 3000 },
+			episodes: { count: 150, minutes: 3000 },
+			tracks: { count: 0, minutes: 0 }
+		},
+		decadeDistribution: [],
+		seriesCompletion: [],
+		topRewatches: [],
+		marathonDay: null,
+		watchStreak: null,
+		yearComparison: null,
 		percentileRank: 85,
 		longestBinge: {
 			startTime: 1704067200,
@@ -90,6 +102,18 @@ function createMockServerStats(overrides: Partial<ServerStats> = {}): ServerStat
 		topGenres: [],
 		watchTimeByMonth: { minutes: Array(12).fill(5000), plays: Array(12).fill(100) },
 		watchTimeByHour: { minutes: Array(24).fill(2500), plays: Array(24).fill(50) },
+		watchTimeByWeekday: { minutes: Array(7).fill(8571), plays: Array(7).fill(286) },
+		contentTypes: {
+			movies: { count: 500, minutes: 30000 },
+			episodes: { count: 1500, minutes: 30000 },
+			tracks: { count: 0, minutes: 0 }
+		},
+		decadeDistribution: [],
+		seriesCompletion: [],
+		topRewatches: [],
+		marathonDay: null,
+		watchStreak: null,
+		yearComparison: null,
 		topViewers: [{ rank: 1, userId: 1, username: 'TopUser', totalMinutes: 10000 }],
 		longestBinge: {
 			startTime: 1704067200,

@@ -51,6 +51,18 @@ function createMockUserStats(overrides: Partial<UserStats> = {}): UserStats {
 				.fill(0)
 				.map((_, i) => (i >= 19 && i <= 23 ? 10 : 2))
 		},
+		watchTimeByWeekday: { minutes: Array(7).fill(857), plays: Array(7).fill(29) },
+		contentTypes: {
+			movies: { count: 50, minutes: 3000 },
+			episodes: { count: 150, minutes: 3000 },
+			tracks: { count: 0, minutes: 0 }
+		},
+		decadeDistribution: [],
+		seriesCompletion: [],
+		topRewatches: [],
+		marathonDay: null,
+		watchStreak: null,
+		yearComparison: null,
 		percentileRank: 85,
 		longestBinge: {
 			startTime: 1704067200,

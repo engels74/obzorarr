@@ -195,7 +195,7 @@ export const KEYFRAMES = {
 		opacity: [0, 1],
 		transform: ['translateX(20px) scale(0.95)', 'translateX(0) scale(1)']
 	}
-} as const;
+};
 
 export type SpringPreset = keyof typeof SPRING_PRESETS;
 export type StaggerPreset = keyof typeof STAGGER_PRESETS;

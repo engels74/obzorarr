@@ -40,6 +40,7 @@ function createRecord(overrides: Partial<PlayHistoryRecord> = {}): PlayHistoryRe
 		grandparentTitle: null,
 		parentTitle: null,
 		genres: null,
+		releaseYear: null,
 		...overrides
 	};
 }

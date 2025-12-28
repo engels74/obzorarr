@@ -59,7 +59,8 @@ const playHistoryRecordArbitrary: fc.Arbitrary<PlayHistoryRecord> = fc.record({
 			})
 			.map((arr) => JSON.stringify(arr)),
 		{ nil: null }
-	)
+	),
+	releaseYear: fc.option(fc.integer({ min: 1900, max: 2024 }), { nil: null })
 });
 
 /**
@@ -99,7 +100,8 @@ const episodeRecordArbitrary: fc.Arbitrary<PlayHistoryRecord> = fc
 				})
 				.map((arr) => JSON.stringify(arr)),
 			{ nil: null }
-		)
+		),
+		releaseYear: fc.option(fc.integer({ min: 1900, max: 2024 }), { nil: null })
 	})
 	.map((record) => record as PlayHistoryRecord);
 
@@ -582,7 +584,8 @@ describe('Property 14: Binge Session Detection', () => {
 							duration,
 							grandparentTitle: null,
 							parentTitle: null,
-							genres: null
+							genres: null,
+							releaseYear: null
 						});
 					}
 
@@ -612,7 +615,8 @@ describe('Property 14: Binge Session Detection', () => {
 				duration: 3600,
 				grandparentTitle: null,
 				parentTitle: null,
-				genres: null
+				genres: null,
+				releaseYear: null
 			},
 			{
 				id: 2,
@@ -627,7 +631,8 @@ describe('Property 14: Binge Session Detection', () => {
 				duration: 3600,
 				grandparentTitle: null,
 				parentTitle: null,
-				genres: null
+				genres: null,
+				releaseYear: null
 			}
 		];
 
