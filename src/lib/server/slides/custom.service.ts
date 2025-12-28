@@ -96,7 +96,6 @@ export async function getEnabledCustomSlides(year: number): Promise<CustomSlide[
 		.where(and(eq(customSlides.enabled, true), isNull(customSlides.year)))
 		.orderBy(asc(customSlides.sortOrder));
 
-	// Combine and sort by sortOrder
 	const combined = [...yearMatches, ...allYearSlides].sort((a, b) => a.sortOrder - b.sortOrder);
 
 	return combined.map((record) => ({
