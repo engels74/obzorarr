@@ -195,7 +195,7 @@ export async function getServerUrl(): Promise<string> {
 
 const METADATA_CONCURRENCY = Math.max(
 	1,
-	Math.min(20, parseInt(env.METADATA_CONCURRENCY ?? '5', 10) || 5)
+	Math.min(20, parseInt(env.METADATA_CONCURRENCY ?? '8', 10) || 8)
 );
 
 export interface EnrichmentData {
