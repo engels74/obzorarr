@@ -32,21 +32,28 @@ export const GET: RequestHandler = async ({ cookies, locals }) => {
 			servers.map(async (server) => {
 				// Filter connections for cleaner UX:
 				// 1. Public plex.direct URLs (recommended for external access)
-				// 2. Local non-plex.direct URLs (HTTP, for same-network users)
-				// Exclude: local plex.direct URLs (confusing Docker IPs)
+				// 2. Local HTTP URLs (for same-network users)
+				// Exclude: local plex.direct URLs (confusing Docker IPs with long hashes)
 				const filteredConnections =
-					server.connections
-						?.filter((conn) => {
-							const isPlexDirect = conn.uri.includes('.plex.direct');
-							const isLocal = conn.local ?? false;
-							// Keep public plex.direct OR local non-plex.direct (HTTP)
-							return (isPlexDirect && !isLocal) || (!isPlexDirect && isLocal);
-						})
-						.map((conn) => ({
-							uri: conn.uri,
-							local: conn.local ?? false,
-							relay: conn.relay ?? false
-						})) ?? [];
+					server.connections?.flatMap((conn) => {
+						const isPlexDirect = conn.uri.includes('.plex.direct');
+						const isLocal = conn.local ?? false;
+						const isRelay = conn.relay ?? false;
+
+						// Keep public plex.direct URL (best for external access)
+						if (isPlexDirect && !isLocal && !isRelay) {
+							return [{ uri: conn.uri, local: false, relay: false }];
+						}
+
+						// For local connections, construct HTTP URL from address/port
+						// (skip plex.direct local URLs as they're confusing Docker IPs)
+						if (isLocal && !isRelay) {
+							const httpUri = `http://${conn.address}:${conn.port}`;
+							return [{ uri: httpUri, local: true, relay: false }];
+						}
+
+						return [];
+					}) ?? [];
 
 				const hasPublicPlexDirect = filteredConnections.some(
 					(conn) => conn.uri.includes('.plex.direct') && !conn.local
