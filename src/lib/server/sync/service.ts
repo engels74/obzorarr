@@ -26,6 +26,12 @@ export function getYearStartTimestamp(year: number): number {
 	return Math.floor(new Date(Date.UTC(year, 0, 1, 0, 0, 0)).getTime() / 1000);
 }
 
+function extractRatingKeyFromPath(path: string | undefined | null): string | null {
+	if (!path) return null;
+	const match = path.match(/\/library\/metadata\/(\d+)/);
+	return match?.[1] ?? null;
+}
+
 function mapPlexRecordToDbInsert(record: ValidPlexHistoryMetadata) {
 	return {
 		historyKey: record.historyKey,
@@ -39,6 +45,8 @@ function mapPlexRecordToDbInsert(record: ValidPlexHistoryMetadata) {
 		// Convert duration from milliseconds to seconds if present
 		duration: record.duration !== undefined ? Math.floor(record.duration / 1000) : null,
 		grandparentTitle: record.grandparentTitle ?? null,
+		grandparentRatingKey: extractRatingKeyFromPath(record.grandparentKey),
+		grandparentThumb: record.grandparentThumb ?? null,
 		parentTitle: record.parentTitle ?? null,
 		releaseYear: record.year ?? null
 	};

@@ -15,6 +15,13 @@
       "when": 1766952380334,
       "tag": "0001_modern_vector",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1766958861570,
+      "tag": "0002_soft_james_howlett",
+      "breakpoints": true
     }
   ]
 }

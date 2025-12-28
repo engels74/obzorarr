@@ -91,6 +91,25 @@ export type PlexHistoryMetadata = z.infer<typeof PlexHistoryMetadataSchema>;
 export type PlexMediaContainer = z.infer<typeof PlexMediaContainerSchema>;
 export type PlexHistoryResponse = z.infer<typeof PlexHistoryResponseSchema>;
 
+export const PlexShowMetadataItemSchema = z.object({
+	ratingKey: z.string(),
+	title: z.string(),
+	leafCount: z.number().int().optional(),
+	childCount: z.number().int().optional(),
+	thumb: z.string().optional()
+});
+
+export const PlexShowMetadataContainerSchema = z.object({
+	Metadata: z.array(PlexShowMetadataItemSchema).optional().default([])
+});
+
+export const PlexShowMetadataResponseSchema = z.object({
+	MediaContainer: PlexShowMetadataContainerSchema
+});
+
+export type PlexShowMetadataItem = z.infer<typeof PlexShowMetadataItemSchema>;
+export type PlexShowMetadataResponse = z.infer<typeof PlexShowMetadataResponseSchema>;
+
 /** History metadata with guaranteed ratingKey and title */
 export type ValidPlexHistoryMetadata = PlexHistoryMetadata & { ratingKey: string; title: string };
 

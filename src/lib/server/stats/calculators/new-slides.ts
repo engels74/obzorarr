@@ -7,7 +7,8 @@ import type {
 	RewatchItem,
 	MarathonDay,
 	WatchStreak,
-	YearComparison
+	YearComparison,
+	SeriesCompletionItem
 } from '$lib/stats/types';
 
 export function calculateWeekdayDistribution(records: PlayHistoryRecord[]): WeekdayDistribution {
@@ -224,4 +225,68 @@ export function calculateYearComparison(
 		lastYear: previousYearMinutes,
 		percentChange: Math.round(percentChange * 10) / 10
 	};
+}
+
+export interface SeriesProgress {
+	show: string;
+	thumb: string | null;
+	grandparentRatingKey: string;
+	watchedEpisodes: number;
+	uniqueEpisodeKeys: Set<string>;
+}
+
+export function calculateSeriesProgress(records: PlayHistoryRecord[]): Map<string, SeriesProgress> {
+	const seriesMap = new Map<string, SeriesProgress>();
+	const episodes = records.filter((r) => r.type === 'episode');
+
+	for (const record of episodes) {
+		const showKey = record.grandparentRatingKey || record.grandparentTitle;
+		if (!showKey) continue;
+
+		const existing = seriesMap.get(showKey);
+		if (existing) {
+			if (!existing.uniqueEpisodeKeys.has(record.ratingKey)) {
+				existing.uniqueEpisodeKeys.add(record.ratingKey);
+				existing.watchedEpisodes++;
+			}
+		} else {
+			seriesMap.set(showKey, {
+				show: record.grandparentTitle || 'Unknown Show',
+				thumb: record.grandparentThumb || record.thumb,
+				grandparentRatingKey: record.grandparentRatingKey || showKey,
+				watchedEpisodes: 1,
+				uniqueEpisodeKeys: new Set([record.ratingKey])
+			});
+		}
+	}
+
+	return seriesMap;
+}
+
+export function seriesProgressToCompletion(
+	seriesMap: Map<string, SeriesProgress>,
+	totalEpisodesMap: Map<string, number>,
+	limit: number = 10
+): SeriesCompletionItem[] {
+	const items: SeriesCompletionItem[] = [];
+
+	for (const [, series] of seriesMap) {
+		const totalEpisodes = totalEpisodesMap.get(series.grandparentRatingKey) ?? series.watchedEpisodes;
+		const percentComplete = totalEpisodes > 0
+			? Math.min(100, Math.round((series.watchedEpisodes / totalEpisodes) * 100))
+			: 0;
+
+		items.push({
+			show: series.show,
+			thumb: series.thumb,
+			grandparentRatingKey: series.grandparentRatingKey,
+			watchedEpisodes: series.watchedEpisodes,
+			totalEpisodes,
+			percentComplete
+		});
+	}
+
+	return items
+		.sort((a, b) => b.watchedEpisodes - a.watchedEpisodes)
+		.slice(0, limit);
 }

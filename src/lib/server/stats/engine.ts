@@ -23,8 +23,14 @@ import {
 	calculateTopRewatches,
 	calculateMarathonDay,
 	calculateWatchStreak,
-	calculateYearComparison
+	calculateYearComparison,
+	calculateSeriesProgress,
+	seriesProgressToCompletion
 } from './calculators';
+import { fetchShowsMetadataBatch } from '$lib/server/plex/client';
+
+import type { SeriesCompletionItem } from '$lib/stats/types';
+import type { PlayHistoryRecord } from '$lib/server/db/schema';
 
 export interface CalculateStatsOptions {
 	forceRecalculate?: boolean;
@@ -32,6 +38,38 @@ export interface CalculateStatsOptions {
 }
 
 const DEFAULT_CACHE_TTL_SECONDS = 3600;
+
+async function calculateSeriesCompletion(
+	records: PlayHistoryRecord[],
+	limit: number = 10
+): Promise<SeriesCompletionItem[]> {
+	const seriesMap = calculateSeriesProgress(records);
+
+	if (seriesMap.size === 0) {
+		return [];
+	}
+
+	const showRatingKeys = Array.from(seriesMap.values())
+		.filter((s) => /^\d+$/.test(s.grandparentRatingKey))
+		.map((s) => s.grandparentRatingKey);
+
+	const totalEpisodesMap = new Map<string, number>();
+
+	if (showRatingKeys.length > 0) {
+		try {
+			const showMetadata = await fetchShowsMetadataBatch(showRatingKeys);
+			for (const [ratingKey, metadata] of showMetadata) {
+				if (metadata?.leafCount) {
+					totalEpisodesMap.set(ratingKey, metadata.leafCount);
+				}
+			}
+		} catch {
+			// Plex API unavailable, fall back to watched episodes as total
+		}
+	}
+
+	return seriesProgressToCompletion(seriesMap, totalEpisodesMap, limit);
+}
 
 export async function getCachedStats(
 	userId: number | null,
@@ -196,6 +234,7 @@ export async function calculateUserStats(
 	const longestBinge = detectLongestBinge(records);
 	const firstWatch = findFirstWatch(records);
 	const lastWatch = findLastWatch(records);
+	const seriesCompletion = await calculateSeriesCompletion(records);
 
 	const stats: UserStats = {
 		userId,
@@ -210,7 +249,7 @@ export async function calculateUserStats(
 		watchTimeByWeekday,
 		contentTypes,
 		decadeDistribution,
-		seriesCompletion: [],
+		seriesCompletion,
 		topRewatches,
 		marathonDay,
 		watchStreak,
@@ -293,6 +332,7 @@ export async function calculateServerStats(
 	const longestBinge = detectLongestBinge(records);
 	const firstWatch = findFirstWatch(records);
 	const lastWatch = findLastWatch(records);
+	const seriesCompletion = await calculateSeriesCompletion(records);
 
 	const stats: ServerStats = {
 		year,
@@ -307,7 +347,7 @@ export async function calculateServerStats(
 		watchTimeByWeekday,
 		contentTypes,
 		decadeDistribution,
-		seriesCompletion: [],
+		seriesCompletion,
 		topRewatches,
 		marathonDay,
 		watchStreak,

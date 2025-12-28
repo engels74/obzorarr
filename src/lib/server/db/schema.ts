@@ -27,6 +27,8 @@ export const playHistory = sqliteTable(
 		thumb: text('thumb'),
 		duration: integer('duration'),
 		grandparentTitle: text('grandparent_title'),
+		grandparentRatingKey: text('grandparent_rating_key'),
+		grandparentThumb: text('grandparent_thumb'),
 		parentTitle: text('parent_title'),
 		genres: text('genres'),
 		releaseYear: integer('release_year')

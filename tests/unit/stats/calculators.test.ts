@@ -38,6 +38,8 @@ function createRecord(overrides: Partial<PlayHistoryRecord> = {}): PlayHistoryRe
 		thumb: null,
 		duration: 3600, // 1 hour
 		grandparentTitle: null,
+		grandparentRatingKey: null,
+		grandparentThumb: null,
 		parentTitle: null,
 		genres: null,
 		releaseYear: null,

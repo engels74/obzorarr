@@ -26,5 +26,8 @@ export {
 	calculateTopRewatches,
 	calculateMarathonDay,
 	calculateWatchStreak,
-	calculateYearComparison
+	calculateYearComparison,
+	calculateSeriesProgress,
+	seriesProgressToCompletion,
+	type SeriesProgress
 } from './new-slides';

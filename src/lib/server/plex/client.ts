@@ -2,6 +2,7 @@ import { env } from '$env/dynamic/private';
 import {
 	PlexHistoryResponseSchema,
 	PlexLibraryMetadataResponseSchema,
+	PlexShowMetadataResponseSchema,
 	PlexApiError,
 	PlexValidationError,
 	hasRequiredFields,
@@ -252,6 +253,72 @@ export async function fetchMetadataBatch(
 		const batch = ratingKeys.slice(i, i + METADATA_CONCURRENCY);
 		const promises = batch.map(async (ratingKey) => {
 			const metadata = await fetchMediaMetadata(ratingKey, signal);
+			results.set(ratingKey, metadata);
+		});
+
+		await Promise.all(promises);
+	}
+
+	return results;
+}
+
+export interface ShowMetadata {
+	ratingKey: string;
+	title: string;
+	leafCount: number | null;
+	thumb: string | null;
+}
+
+export async function fetchShowMetadata(
+	ratingKey: string,
+	signal?: AbortSignal
+): Promise<ShowMetadata | null> {
+	try {
+		const response = await plexRequest<unknown>(
+			`/library/metadata/${ratingKey}`,
+			undefined,
+			signal
+		);
+
+		const result = PlexShowMetadataResponseSchema.safeParse(response);
+		if (!result.success) {
+			return null;
+		}
+
+		const item = result.data.MediaContainer.Metadata[0];
+		if (!item) {
+			return null;
+		}
+
+		return {
+			ratingKey: item.ratingKey,
+			title: item.title,
+			leafCount: item.leafCount ?? null,
+			thumb: item.thumb ?? null
+		};
+	} catch {
+		return null;
+	}
+}
+
+export async function fetchShowsMetadataBatch(
+	ratingKeys: string[],
+	signal?: AbortSignal
+): Promise<Map<string, ShowMetadata | null>> {
+	const results = new Map<string, ShowMetadata | null>();
+
+	if (ratingKeys.length === 0) {
+		return results;
+	}
+
+	for (let i = 0; i < ratingKeys.length; i += METADATA_CONCURRENCY) {
+		if (signal?.aborted) {
+			break;
+		}
+
+		const batch = ratingKeys.slice(i, i + METADATA_CONCURRENCY);
+		const promises = batch.map(async (ratingKey) => {
+			const metadata = await fetchShowMetadata(ratingKey, signal);
 			results.set(ratingKey, metadata);
 		});
 
