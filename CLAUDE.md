@@ -15,7 +15,7 @@ bun run dev              # Start dev server (localhost:3000)
 
 # Database
 bun run db:generate      # Generate Drizzle migrations
-bun run db:migrate       # Apply migrations
+bun run db:migrate       # Apply migrations (custom script: scripts/migrate.ts)
 bun run db:studio        # Open Drizzle Studio GUI
 
 # Testing
@@ -25,25 +25,13 @@ bun test tests/unit/stats/percentile.test.ts  # Run single test file
 # Build & Production
 bun run build            # Build for production
 bun run preview          # Preview production build
-bun ./build              # Run production server
+bun run start            # Run production server (bun ./build)
 
 # Code Quality
 bun run check            # TypeScript + Svelte type checking
 bun run format           # Format with Prettier
 bun run format:check     # Check formatting
 ```
-
-## Codebase Search Strategy
-
-**Always use `mcp__auggie-mcp__codebase-retrieval` as your primary method for:**
-
-- Exploring the codebase and understanding architecture
-- Finding existing patterns before implementing new features
-- Locating relevant code when the exact file location is unknown
-- Gathering context before making edits
-- Planning tasks in plan mode
-
-> **Note:** This semantic search tool provides better results than grep/find for understanding code relationships. Use grep only for finding exact string matches or all occurrences of a known identifier.
 
 ## Coding Guidelines
 
@@ -83,15 +71,18 @@ Requests flow through sequential hooks in `src/hooks.server.ts`:
 
 ### Key Services (`src/lib/server/`)
 
-| Service     | Purpose                                                |
-| ----------- | ------------------------------------------------------ |
-| `auth/`     | Plex OAuth flow, session management, dev bypass        |
-| `plex/`     | Plex API client with pagination                        |
-| `sync/`     | History sync engine with Croner scheduler              |
-| `stats/`    | Stats calculation with caching (1hr TTL)               |
-| `slides/`   | Slide configuration and custom slides                  |
-| `funfacts/` | AI-generated or templated fun facts                    |
-| `sharing/`  | Share tokens, access modes (public/restricted/private) |
+| Service          | Purpose                                                |
+| ---------------- | ------------------------------------------------------ |
+| `auth/`          | Plex OAuth flow, session management, dev bypass        |
+| `plex/`          | Plex API client with pagination                        |
+| `sync/`          | History sync engine with Croner scheduler              |
+| `stats/`         | Stats calculation with caching (1hr TTL)               |
+| `slides/`        | Slide configuration and custom slides                  |
+| `funfacts/`      | AI-generated or templated fun facts                    |
+| `sharing/`       | Share tokens, access modes (public/restricted/private) |
+| `logging/`       | Structured logging with retention policies             |
+| `anonymization/` | User stats anonymization (REAL, ANONYMOUS, HYBRID)     |
+| `ratelimit/`     | Rate limiting for API endpoints                        |
 
 ### Database Schema (`src/lib/server/db/schema.ts`)
 
@@ -126,10 +117,12 @@ To test the onboarding flow, set `DEV_PLEX_TOKEN` to a valid Plex.tv token while
 
 ## Testing
 
-Tests use Bun's test runner with in-memory SQLite. Test setup (`tests/setup.ts`) mocks SvelteKit's `$env` modules.
+Tests use Bun's test runner with in-memory SQLite. Test setup (`tests/setup.ts`) mocks SvelteKit's `$env` modules and creates all database tables.
 
 - **Unit tests**: `tests/unit/` - Direct function testing
-- **Property tests**: `tests/property/` - fast-check based property testing
+- **Property tests**: `tests/property/` - fast-check based generative testing
+
+Run tests with `--env-file=.env.test` (configured in package.json).
 
 ## Key Patterns
 
@@ -145,6 +138,6 @@ Uses Server-Sent Events (SSE) via `/api/sync/status/stream` for real-time progre
 
 Zod schemas validate all external data (Plex API responses, form inputs).
 
-### Anonymization
+### Logging
 
-Stats can be anonymized per-user with modes: REAL, ANONYMOUS, HYBRID.
+Uses structured logging via `logger` from `$lib/server/logging`. Logs are stored in SQLite with configurable retention.
