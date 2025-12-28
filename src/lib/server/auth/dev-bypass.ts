@@ -12,12 +12,17 @@ import {
 	getServerUsers
 } from './dev-users';
 import { getPlexConfig } from '$lib/server/admin/settings.service';
+import { getPlexUserInfo } from './plex-oauth';
 
 const FALLBACK_PLEX_ID = 999999999;
 const FALLBACK_USERNAME = 'dev-admin';
 const DEV_SESSION_ID = 'dev-bypass-session-00000000-0000-0000-0000-000000000000';
 
 let cachedRandomUser: NormalizedServerUser | null = null;
+
+function getDevPlexToken(): string | undefined {
+	return env.DEV_PLEX_TOKEN?.trim() || undefined;
+}
 
 export function isDevBypassEnabled(): boolean {
 	// SECURITY: Never enable in production
@@ -106,6 +111,36 @@ async function getFallbackUser(): Promise<NormalizedServerUser> {
 
 async function resolveTargetUser(): Promise<NormalizedServerUser> {
 	const bypassUserSetting = env.DEV_BYPASS_USER?.trim() ?? '';
+	const devPlexToken = getDevPlexToken();
+
+	// Check if main Plex server is configured
+	const config = await getPlexConfig();
+	const hasConfiguredServer = Boolean(config.serverUrl && config.token);
+
+	// When DEV_PLEX_TOKEN is set and main Plex is not configured,
+	// use the dev token to fetch user identity for onboarding testing
+	if (devPlexToken && !hasConfiguredServer && !bypassUserSetting) {
+		try {
+			const userInfo = await getPlexUserInfo(devPlexToken);
+			logger.info(
+				`Dev bypass: Using DEV_PLEX_TOKEN identity ${userInfo.id} (${userInfo.username}) for onboarding testing`,
+				'DevBypass'
+			);
+			return {
+				plexId: userInfo.id,
+				username: userInfo.username,
+				email: userInfo.email,
+				thumb: userInfo.thumb ?? null,
+				isOwner: true
+			};
+		} catch (error) {
+			logger.warn(
+				`Dev bypass: Failed to fetch user info using DEV_PLEX_TOKEN: ${error instanceof Error ? error.message : 'Unknown error'}`,
+				'DevBypass'
+			);
+			// Fall through to existing flow
+		}
+	}
 
 	try {
 		// Case 1: No setting - use server owner
@@ -284,9 +319,11 @@ export async function getOrCreateDevSession(): Promise<string> {
 		await db.delete(sessions).where(eq(sessions.id, DEV_SESSION_ID));
 	}
 
-	// Get the Plex token from merged config (database takes priority over environment)
+	// Get the Plex token for the session
+	// Priority: DEV_PLEX_TOKEN (for onboarding testing) > configured token > fallback
+	const devPlexToken = getDevPlexToken();
 	const config = await getPlexConfig();
-	const plexToken = config.token || 'dev-token';
+	const plexToken = devPlexToken || config.token || 'dev-token';
 
 	// Create new dev session with long expiration
 	const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
