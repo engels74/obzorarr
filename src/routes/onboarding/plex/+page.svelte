@@ -5,6 +5,7 @@
 	import { animate, stagger } from 'motion';
 	import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
 	import * as Tooltip from '$lib/components/ui/tooltip';
+	import { toast } from '$lib/services/toast';
 	import type { PageData, ActionData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -302,7 +303,9 @@
 
 			serverSaved = true;
 		} catch (err) {
-			oauthError = err instanceof Error ? err.message : 'Failed to save server';
+			const errorMessage = err instanceof Error ? err.message : 'Failed to save server';
+			toast.error(errorMessage);
+			oauthError = errorMessage;
 			selectedServer = null;
 			selectedConnection = null;
 		} finally {
