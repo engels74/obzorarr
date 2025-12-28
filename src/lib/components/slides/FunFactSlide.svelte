@@ -61,13 +61,13 @@
 		);
 		animations.push(containerAnim);
 
-		// Animate icon with bounce-in (reduced rotation from 180deg to 90deg)
+		// Animate icon with bounce-in
 		if (iconEl) {
 			const iconAnim = animate(
 				iconEl,
 				{
-					transform: ['scale(0) rotate(-90deg)', 'scale(1.1) rotate(5deg)', 'scale(1) rotate(0deg)'],
-					opacity: [0, 1, 1]
+					transform: ['scale(0) rotate(-15deg)', 'scale(1) rotate(0deg)'],
+					opacity: [0, 1]
 				},
 				{
 					type: 'spring',

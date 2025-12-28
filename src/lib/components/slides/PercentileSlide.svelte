@@ -69,12 +69,12 @@
 		);
 		animations.push(containerAnim);
 
-		// Animate number with two-phase scale and reduced rotation
+		// Animate number with bouncy scale
 		const numberAnim = animate(
 			numberEl,
 			{
-				transform: ['scale(0) rotate(-5deg)', 'scale(1.1) rotate(2deg)', 'scale(1) rotate(0deg)'],
-				opacity: [0, 1, 1]
+				transform: ['scale(0)', 'scale(1)'],
+				opacity: [0, 1]
 			},
 			{
 				type: 'spring',
