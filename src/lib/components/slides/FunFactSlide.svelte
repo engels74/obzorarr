@@ -5,7 +5,7 @@
 	import type { FunFactSlideProps } from './types';
 	import type { SlideMessagingContext } from './messaging-context';
 	import { createPersonalContext } from './messaging-context';
-	import { SPRING_PRESETS, DELAY_PRESETS } from '$lib/utils/animation-presets';
+	import { SPRING_PRESETS, DELAY_PRESETS, KEYFRAMES } from '$lib/utils/animation-presets';
 
 	interface Props extends FunFactSlideProps {
 		messagingContext?: SlideMessagingContext;
@@ -53,21 +53,21 @@
 
 		const animations: ReturnType<typeof animate>[] = [];
 
-		// Animate container
+		// Animate container with playful entry
 		const containerAnim = animate(
 			container,
-			{ opacity: [0, 1], transform: ['translateY(20px)', 'translateY(0)'] },
+			KEYFRAMES.playfulEntry,
 			{ type: 'spring', ...SPRING_PRESETS.snappy }
 		);
 		animations.push(containerAnim);
 
-		// Animate icon with spring bounce (bouncy preset creates natural overshoot)
+		// Animate icon with bounce-in (reduced rotation from 180deg to 90deg)
 		if (iconEl) {
 			const iconAnim = animate(
 				iconEl,
 				{
-					transform: ['scale(0) rotate(-180deg)', 'scale(1) rotate(0deg)'],
-					opacity: [0, 1]
+					transform: ['scale(0) rotate(-90deg)', 'scale(1.1) rotate(5deg)', 'scale(1) rotate(0deg)'],
+					opacity: [0, 1, 1]
 				},
 				{
 					type: 'spring',
@@ -81,7 +81,7 @@
 		// Animate fact text
 		const factAnim = animate(
 			factEl,
-			{ opacity: [0, 1], transform: ['translateY(20px)', 'translateY(0)'] },
+			{ opacity: [0, 1], transform: ['translateY(25px)', 'translateY(0)'] },
 			{ type: 'spring', ...SPRING_PRESETS.gentle, delay: DELAY_PRESETS.medium }
 		);
 		animations.push(factAnim);
@@ -139,17 +139,19 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 1.25rem;
+		gap: 1.5rem;
 		z-index: 1;
-		max-width: 650px;
+		max-width: 750px;
 		text-align: center;
-		padding: 2rem;
-		background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.35));
-		backdrop-filter: blur(20px);
-		-webkit-backdrop-filter: blur(20px);
+		padding: 2.5rem;
+		background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
+		backdrop-filter: blur(var(--slide-glass-blur, 20px));
+		-webkit-backdrop-filter: blur(var(--slide-glass-blur, 20px));
 		border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
 		border-radius: calc(var(--radius) * 2.5);
-		box-shadow: var(--shadow-elevation-high, 0 8px 24px hsl(0 0% 0% / 0.4));
+		box-shadow:
+			var(--shadow-elevation-high, 0 8px 24px hsl(0 0% 0% / 0.4)),
+			inset 0 1px 0 hsl(0 0% 100% / 0.05);
 		position: relative;
 	}
 
@@ -166,10 +168,10 @@
 	}
 
 	.icon {
-		font-size: 4rem;
+		font-size: 4.5rem;
 		line-height: 1;
 		margin-bottom: 0.5rem;
-		filter: drop-shadow(0 0 20px hsl(var(--primary) / 0.4));
+		filter: drop-shadow(0 0 25px var(--slide-glow-color, hsl(var(--primary) / 0.4)));
 		/* Floating animation */
 		animation: float 3s ease-in-out infinite;
 	}
@@ -203,7 +205,7 @@
 		font-size: clamp(1.5rem, 4vw, 2rem);
 		font-weight: 700;
 		color: hsl(var(--foreground));
-		line-height: 1.4;
+		line-height: 1.35;
 	}
 
 	.comparison {
@@ -270,14 +272,14 @@
 	@media (min-width: 1024px) {
 		.content {
 			max-width: var(--content-max-lg, 850px);
-			gap: 1.5rem;
-			padding: 3rem 3rem;
+			gap: 1.75rem;
+			padding: 3.5rem;
 		}
 
 		.icon {
-			font-size: 6rem;
+			font-size: 7rem;
 			margin-bottom: 0.75rem;
-			filter: drop-shadow(0 0 30px hsl(var(--primary) / 0.5));
+			filter: drop-shadow(0 0 40px var(--slide-glow-color, hsl(var(--primary) / 0.5)));
 		}
 
 		.title {

@@ -5,7 +5,7 @@
 	import type { PercentileSlideProps } from './types';
 	import type { SlideMessagingContext } from './messaging-context';
 	import { getPossessive, createPersonalContext } from './messaging-context';
-	import { SPRING_PRESETS, DELAY_PRESETS } from '$lib/utils/animation-presets';
+	import { SPRING_PRESETS, DELAY_PRESETS, KEYFRAMES } from '$lib/utils/animation-presets';
 
 	interface Props extends PercentileSlideProps {
 		messagingContext?: SlideMessagingContext;
@@ -61,20 +61,20 @@
 
 		const animations: ReturnType<typeof animate>[] = [];
 
-		// Animate container
+		// Animate container with dramatic center focus
 		const containerAnim = animate(
 			container,
-			{ opacity: [0, 1], transform: ['translateY(20px)', 'translateY(0)'] },
-			{ type: 'spring', ...SPRING_PRESETS.snappy }
+			{ opacity: [0, 1], transform: ['scale(0.9)', 'scale(1)'] },
+			{ type: 'spring', ...SPRING_PRESETS.impactful }
 		);
 		animations.push(containerAnim);
 
-		// Animate number with dramatic bounce (spring physics creates natural overshoot)
+		// Animate number with two-phase scale and reduced rotation
 		const numberAnim = animate(
 			numberEl,
 			{
-				transform: ['scale(0) rotate(-10deg)', 'scale(1) rotate(0deg)'],
-				opacity: [0, 1]
+				transform: ['scale(0) rotate(-5deg)', 'scale(1.1) rotate(2deg)', 'scale(1) rotate(0deg)'],
+				opacity: [0, 1, 1]
 			},
 			{
 				type: 'spring',
@@ -84,10 +84,10 @@
 		);
 		animations.push(numberAnim);
 
-		// Animate message
+		// Animate message with gentle lift
 		const messageAnim = animate(
 			messageEl,
-			{ opacity: [0, 1], transform: ['translateY(15px)', 'translateY(0)'] },
+			{ opacity: [0, 1], transform: ['translateY(20px)', 'translateY(0)'] },
 			{ type: 'spring', ...SPRING_PRESETS.gentle, delay: DELAY_PRESETS.long }
 		);
 		animations.push(messageAnim);
@@ -141,8 +141,9 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 1.5rem;
+		gap: 2rem;
 		z-index: 1;
+		max-width: var(--content-max-sm, 600px);
 	}
 
 	.title {
@@ -156,8 +157,8 @@
 	/* Wrapper for gradient ring effect */
 	.stat-wrapper {
 		position: relative;
-		width: 220px;
-		height: 220px;
+		width: 240px;
+		height: 240px;
 		aspect-ratio: 1;
 		flex-shrink: 0;
 		display: flex;
@@ -233,8 +234,8 @@
 		padding: 2rem;
 		border-radius: 50%;
 		background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.5));
-		backdrop-filter: blur(20px);
-		-webkit-backdrop-filter: blur(20px);
+		backdrop-filter: blur(var(--slide-glass-blur, 20px));
+		-webkit-backdrop-filter: blur(var(--slide-glass-blur, 20px));
 		width: calc(100% - 10px);
 		aspect-ratio: 1;
 		justify-content: center;
@@ -293,22 +294,26 @@
 		font-weight: 600;
 		color: hsl(var(--foreground));
 		text-align: center;
-		padding: 0.5rem 1.25rem;
-		background: hsl(var(--primary) / 0.08);
+		padding: 0.75rem 1.5rem;
+		background: hsl(var(--primary) / 0.1);
 		border-radius: calc(var(--radius) * 1.5);
+		box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.05);
 	}
 
 	/* Gold styling for top performer message */
 	.top-performer ~ .message {
-		background: hsl(45 90% 50% / 0.1);
+		background: hsl(45 90% 50% / 0.12);
 		color: hsl(45 75% 65%);
+		box-shadow:
+			inset 0 1px 0 hsl(45 90% 70% / 0.1),
+			0 0 20px hsl(45 90% 50% / 0.15);
 	}
 
 	.total-users {
-		font-size: 0.875rem;
+		font-size: 0.9375rem;
 		color: hsl(var(--muted-foreground));
-		padding: 0.25rem 0.75rem;
-		background: hsl(var(--primary) / 0.05);
+		padding: 0.375rem 0.875rem;
+		background: hsl(var(--primary) / 0.06);
 		border-radius: var(--radius);
 	}
 
@@ -319,7 +324,7 @@
 	/* Mobile: compact circle */
 	@media (max-width: 767px) {
 		.content {
-			gap: 1.25rem;
+			gap: 1.5rem;
 		}
 
 		.title {
@@ -327,8 +332,8 @@
 		}
 
 		.stat-wrapper {
-			width: 170px;
-			height: 170px;
+			width: 190px;
+			height: 190px;
 		}
 
 		.gradient-ring {
@@ -341,7 +346,7 @@
 		}
 
 		.stat-container {
-			padding: 1.25rem;
+			padding: 1.5rem;
 			width: calc(100% - 8px);
 		}
 
@@ -351,7 +356,11 @@
 
 		.message {
 			font-size: 1.25rem;
-			padding: 0.375rem 1rem;
+			padding: 0.5rem 1rem;
+		}
+
+		.total-users {
+			font-size: 0.875rem;
 		}
 	}
 
@@ -386,7 +395,7 @@
 	/* Desktop: large circle */
 	@media (min-width: 1024px) {
 		.content {
-			gap: 2rem;
+			gap: 2.5rem;
 		}
 
 		.title {
@@ -394,8 +403,8 @@
 		}
 
 		.stat-wrapper {
-			width: 280px;
-			height: 280px;
+			width: 300px;
+			height: 300px;
 		}
 
 		.gradient-ring {
@@ -408,7 +417,7 @@
 		}
 
 		.stat-container {
-			padding: 2.5rem;
+			padding: 2.75rem;
 			width: calc(100% - 12px);
 		}
 
@@ -422,10 +431,11 @@
 
 		.message {
 			font-size: 1.75rem;
+			padding: 0.875rem 1.75rem;
 		}
 
 		.total-users {
-			font-size: 1rem;
+			font-size: 1.0625rem;
 		}
 	}
 </style>

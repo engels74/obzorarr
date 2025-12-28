@@ -2,6 +2,7 @@
 	import { animate } from 'motion';
 	import { prefersReducedMotion } from 'svelte/motion';
 	import { createSlideState } from '$lib/stores/slide-state.svelte';
+	import { EASING_PRESETS } from '$lib/utils/animation-presets';
 	import type { SlideRenderConfig } from '$lib/components/slides/types';
 	import type { UserStats, ServerStats } from '$lib/stats/types';
 	import type { CustomSlide } from '$lib/slides/types';
@@ -32,7 +33,7 @@
 
 	const EDGE_ZONE_PERCENT = 0.15;
 	const SWIPE_THRESHOLD = 50;
-	const ANIMATION_DURATION = 400;
+	const ANIMATION_DURATION = 450;
 
 	const navigation = createSlideState();
 
@@ -109,8 +110,14 @@
 
 		navigation.startAnimation();
 
-		const enterFrom = direction === 'forward' ? 'translateX(100%)' : 'translateX(-100%)';
-		const exitTo = direction === 'forward' ? 'translateX(-100%)' : 'translateX(100%)';
+		const enterFrom =
+			direction === 'forward'
+				? 'translateX(80%) scale(0.98)'
+				: 'translateX(-80%) scale(0.98)';
+		const exitTo =
+			direction === 'forward'
+				? 'translateX(-100%) scale(0.95)'
+				: 'translateX(100%) scale(0.95)';
 
 		const slideEl = currentSlideEl;
 		if (!slideEl) {
@@ -127,34 +134,37 @@
 			transitionTimeout = null;
 		}
 
-		const enterKeyframes = { opacity: [0, 1], transform: [enterFrom, 'translateX(0)'] } as Record<
-			string,
-			unknown
-		>;
+		const enterKeyframes = {
+			opacity: [0, 1],
+			transform: [enterFrom, 'translateX(0) scale(1)']
+		} as Record<string, unknown>;
 		const enterAnim = (
 			animate as (
 				el: Element,
 				kf: Record<string, unknown>,
 				opts: Record<string, unknown>
 			) => { finished: Promise<void>; stop: () => void }
-		)(slideEl, enterKeyframes, { duration: ANIMATION_DURATION / 1000, easing: [0.4, 0, 0.2, 1] });
+		)(slideEl, enterKeyframes, {
+			duration: ANIMATION_DURATION / 1000,
+			easing: EASING_PRESETS.organic
+		});
 
-		// Store reference for cleanup
 		activeEnterAnim = enterAnim;
 
-		// Animate previous slide exiting
 		const prevEl = previousSlideEl;
 		if (prevEl && showPreviousSlide) {
-			const exitKeyframes = { opacity: [1, 0], transform: ['translateX(0)', exitTo] } as Record<
-				string,
-				unknown
-			>;
+			const exitKeyframes = {
+				opacity: [1, 0],
+				transform: ['translateX(0) scale(1)', exitTo]
+			} as Record<string, unknown>;
 			(
 				animate as (el: Element, kf: Record<string, unknown>, opts: Record<string, unknown>) => void
-			)(prevEl, exitKeyframes, { duration: ANIMATION_DURATION / 1000, easing: [0.4, 0, 0.2, 1] });
+			)(prevEl, exitKeyframes, {
+				duration: ANIMATION_DURATION / 1000,
+				easing: EASING_PRESETS.organic
+			});
 		}
 
-		// Fallback timeout prevents stuck states if the animation promise never resolves
 		transitionTimeout = setTimeout(() => {
 			if (mounted && isTransitioning) {
 				finishTransition();

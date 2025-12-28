@@ -5,7 +5,7 @@
 	import type { BingeSlideProps } from './types';
 	import type { SlideMessagingContext } from './messaging-context';
 	import { createPersonalContext } from './messaging-context';
-	import { SPRING_PRESETS, DELAY_PRESETS } from '$lib/utils/animation-presets';
+	import { SPRING_PRESETS, DELAY_PRESETS, KEYFRAMES } from '$lib/utils/animation-presets';
 
 	interface Props extends BingeSlideProps {
 		messagingContext?: SlideMessagingContext;
@@ -68,16 +68,17 @@
 			return;
 		}
 
-		// Animate container
+		// Animate container with impactful reveal
 		const containerAnim = animate(
 			container,
-			{ opacity: [0, 1], transform: ['translateY(20px)', 'translateY(0)'] },
-			{ type: 'spring', ...SPRING_PRESETS.snappy }
+			{ opacity: [0, 1], transform: ['scale(0.95) translateY(20px)', 'scale(1) translateY(0)'] },
+			{ type: 'spring', ...SPRING_PRESETS.impactful }
 		);
 
 		const animations = [containerAnim];
 
 		if (statEl) {
+			// Stat with bouncy scale animation
 			const statAnim = animate(
 				statEl,
 				{
@@ -92,7 +93,7 @@
 		if (detailsEl) {
 			const detailsAnim = animate(
 				detailsEl,
-				{ opacity: [0, 1], transform: ['translateY(10px)', 'translateY(0)'] },
+				{ opacity: [0, 1], transform: ['translateY(15px)', 'translateY(0)'] },
 				{ type: 'spring', ...SPRING_PRESETS.gentle, delay: DELAY_PRESETS.medium }
 			);
 			animations.push(detailsAnim);
@@ -158,8 +159,9 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 2rem;
+		gap: 2.5rem;
 		z-index: 1;
+		max-width: var(--content-max-sm, 600px);
 	}
 
 	.title {
@@ -174,15 +176,16 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		padding: 2.5rem 4rem;
+		padding: 2.75rem 4.5rem;
+		max-width: 400px;
 		background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
-		backdrop-filter: blur(20px);
-		-webkit-backdrop-filter: blur(20px);
+		backdrop-filter: blur(var(--slide-glass-blur, 20px));
+		-webkit-backdrop-filter: blur(var(--slide-glass-blur, 20px));
 		border-radius: calc(var(--radius) * 2);
 		border: 2px solid hsl(var(--primary) / 0.4);
 		box-shadow:
 			var(--shadow-elevation-high, 0 8px 24px hsl(0 0% 0% / 0.4)),
-			0 0 40px hsl(var(--primary) / 0.15),
+			0 0 40px var(--slide-glow-color, hsl(var(--primary) / 0.2)),
 			inset 0 1px 0 hsl(0 0% 100% / 0.1);
 		position: relative;
 	}
@@ -226,9 +229,10 @@
 
 	.details {
 		text-align: center;
-		padding: 0.75rem 1.5rem;
-		background: hsl(var(--primary) / 0.05);
-		border-radius: var(--radius);
+		padding: 1rem 1.75rem;
+		background: hsl(var(--primary) / 0.08);
+		border-radius: calc(var(--radius) * 1.5);
+		box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.03);
 	}
 
 	.date {
@@ -271,7 +275,7 @@
 	/* Mobile: compact container */
 	@media (max-width: 767px) {
 		.content {
-			gap: 1.5rem;
+			gap: 2rem;
 		}
 
 		.title {
@@ -279,7 +283,8 @@
 		}
 
 		.stat-container {
-			padding: 1.75rem 2.5rem;
+			padding: 2rem 3rem;
+			max-width: 320px;
 		}
 
 		.plays {
@@ -287,7 +292,7 @@
 		}
 
 		.details {
-			padding: 0.5rem 1rem;
+			padding: 0.75rem 1.25rem;
 		}
 
 		.date {

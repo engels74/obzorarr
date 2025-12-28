@@ -6,7 +6,7 @@
 	import { getThumbUrl } from '$lib/utils/plex-thumb';
 	import type { SlideMessagingContext } from './messaging-context';
 	import { getPossessive, createPersonalContext } from './messaging-context';
-	import { SPRING_PRESETS, DELAY_PRESETS } from '$lib/utils/animation-presets';
+	import { SPRING_PRESETS, DELAY_PRESETS, KEYFRAMES } from '$lib/utils/animation-presets';
 
 	interface Props extends FirstLastSlideProps {
 		messagingContext?: SlideMessagingContext;
@@ -101,35 +101,29 @@
 
 		const animations: ReturnType<typeof animate>[] = [];
 
-		// Animate container
+		// Container: opacity fade only (cards provide motion)
 		const containerAnim = animate(
 			container,
-			{ opacity: [0, 1], transform: ['translateY(20px)', 'translateY(0)'] },
-			{ type: 'spring', ...SPRING_PRESETS.snappy }
+			{ opacity: [0, 1] },
+			{ type: 'spring', ...SPRING_PRESETS.gentle }
 		);
 		animations.push(containerAnim);
 
-		// Animate first card
+		// Animate first card from left
 		if (firstCard) {
 			const firstAnim = animate(
 				firstCard,
-				{
-					opacity: [0, 1],
-					transform: ['translateX(-40px) scale(0.95)', 'translateX(0) scale(1)']
-				},
+				KEYFRAMES.cardFromLeft,
 				{ type: 'spring', ...SPRING_PRESETS.snappy, delay: DELAY_PRESETS.short }
 			);
 			animations.push(firstAnim);
 		}
 
-		// Animate last card
+		// Animate last card from right
 		if (lastCard) {
 			const lastAnim = animate(
 				lastCard,
-				{
-					opacity: [0, 1],
-					transform: ['translateX(40px) scale(0.95)', 'translateX(0) scale(1)']
-				},
+				KEYFRAMES.cardFromRight,
 				{ type: 'spring', ...SPRING_PRESETS.snappy, delay: DELAY_PRESETS.medium }
 			);
 			animations.push(lastAnim);
@@ -219,7 +213,7 @@
 
 	.cards {
 		display: flex;
-		gap: 2rem;
+		gap: 2.5rem;
 		width: 100%;
 		justify-content: center;
 		flex-wrap: wrap;
@@ -229,16 +223,18 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		padding: 1.75rem;
+		padding: 2rem;
 		background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
-		backdrop-filter: blur(16px);
-		-webkit-backdrop-filter: blur(16px);
+		backdrop-filter: blur(var(--slide-glass-blur, 20px));
+		-webkit-backdrop-filter: blur(var(--slide-glass-blur, 20px));
 		border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
 		border-radius: calc(var(--radius) * 2);
-		min-width: 200px;
-		max-width: 280px;
+		min-width: 240px;
+		max-width: 320px;
 		flex: 1;
-		box-shadow: var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.3));
+		box-shadow:
+			var(--shadow-elevation-high, 0 8px 24px hsl(0 0% 0% / 0.4)),
+			inset 0 1px 0 hsl(0 0% 100% / 0.05);
 		position: relative;
 		transition:
 			transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
@@ -261,30 +257,30 @@
 	.card:hover {
 		transform: translateY(-6px) scale(1.02);
 		box-shadow:
-			var(--shadow-elevation-high, 0 8px 24px hsl(0 0% 0% / 0.4)),
-			0 0 30px hsl(var(--primary) / 0.15);
-		border-color: hsl(var(--primary) / 0.3);
+			var(--shadow-elevation-high, 0 8px 24px hsl(0 0% 0% / 0.5)),
+			0 0 40px var(--slide-accent-glow, hsl(var(--primary) / 0.2));
+		border-color: hsl(var(--primary) / 0.4);
 	}
 
 	.card-label {
-		font-size: 0.75rem;
+		font-size: 0.8125rem;
 		text-transform: uppercase;
 		letter-spacing: 0.1em;
 		color: hsl(var(--primary));
-		margin-bottom: 1rem;
+		margin-bottom: 1.25rem;
 		font-weight: 600;
-		padding: 0.25rem 0.75rem;
+		padding: 0.375rem 0.875rem;
 		background: hsl(var(--primary) / 0.12);
 		border-radius: var(--radius);
 		text-shadow: 0 0 10px hsl(var(--primary) / 0.3);
 	}
 
 	.thumb {
-		width: 120px;
-		height: 180px;
+		width: 140px;
+		height: 210px;
 		object-fit: cover;
 		border-radius: calc(var(--radius) * 1.25);
-		margin-bottom: 1rem;
+		margin-bottom: 1.25rem;
 		box-shadow:
 			var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.4)),
 			0 0 20px hsl(var(--primary) / 0.1);
@@ -297,15 +293,15 @@
 		transform: scale(1.05);
 		box-shadow:
 			var(--shadow-elevation-high, 0 8px 24px hsl(0 0% 0% / 0.5)),
-			0 0 30px hsl(var(--primary) / 0.2);
+			0 0 35px var(--slide-glow-color, hsl(var(--primary) / 0.2));
 	}
 
 	.thumb-placeholder {
-		width: 120px;
-		height: 180px;
+		width: 140px;
+		height: 210px;
 		background: linear-gradient(135deg, hsl(var(--muted)) 0%, hsl(var(--secondary)) 100%);
 		border-radius: calc(var(--radius) * 1.25);
-		margin-bottom: 1rem;
+		margin-bottom: 1.25rem;
 	}
 
 	.card-info {
@@ -423,24 +419,24 @@
 		}
 
 		.cards {
-			gap: 2.5rem;
+			gap: 3rem;
 		}
 
 		.card {
-			max-width: 380px;
-			padding: 2rem;
+			max-width: 400px;
+			padding: 2.5rem;
 		}
 
 		.card-label {
-			font-size: 0.875rem;
-			margin-bottom: 1.25rem;
+			font-size: 0.9375rem;
+			margin-bottom: 1.5rem;
 		}
 
 		.thumb,
 		.thumb-placeholder {
-			width: 160px;
-			height: 240px;
-			margin-bottom: 1.25rem;
+			width: 180px;
+			height: 270px;
+			margin-bottom: 1.5rem;
 		}
 
 		.card-title {
@@ -448,7 +444,7 @@
 		}
 
 		.card-meta {
-			font-size: 0.875rem;
+			font-size: 0.9375rem;
 		}
 	}
 </style>

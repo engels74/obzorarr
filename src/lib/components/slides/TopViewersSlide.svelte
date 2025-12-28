@@ -3,7 +3,12 @@
 	import { prefersReducedMotion } from 'svelte/motion';
 	import BaseSlide from './BaseSlide.svelte';
 	import type { TopViewersSlideProps } from './types';
-	import { SPRING_PRESETS, STAGGER_PRESETS, DELAY_PRESETS } from '$lib/utils/animation-presets';
+	import {
+		SPRING_PRESETS,
+		DELAY_PRESETS,
+		KEYFRAMES,
+		getAdaptiveStagger
+	} from '$lib/utils/animation-presets';
 
 	let {
 		topViewers,
@@ -81,34 +86,59 @@
 
 		const animations: ReturnType<typeof animate>[] = [];
 
-		// Animate container
-		const containerAnim = animate(
-			container,
-			{ opacity: [0, 1], transform: ['translateY(20px)', 'translateY(0)'] },
-			{ type: 'spring', ...SPRING_PRESETS.snappy }
-		);
+		// Animate container with directional entry from left
+		const containerAnim = animate(container, KEYFRAMES.slideFromLeft, {
+			type: 'spring',
+			...SPRING_PRESETS.snappy
+		});
 		animations.push(containerAnim);
 
-		// Animate list items with stagger
+		// Animate list items with adaptive stagger
 		const validItems = listItems.filter(Boolean);
 		if (validItems.length > 0) {
-			const itemsAnim = animate(
-				validItems,
-				{
-					opacity: [0, 1],
-					transform: ['translateX(-30px) scale(0.95)', 'translateX(0) scale(1)']
-				},
-				{
-					type: 'spring',
-					...SPRING_PRESETS.snappy,
-					delay: stagger(STAGGER_PRESETS.normal, { startDelay: DELAY_PRESETS.short })
-				}
-			);
-			animations.push(itemsAnim);
+			const adaptiveStagger = getAdaptiveStagger(validItems.length);
 
-			itemsAnim.finished.then(() => {
-				onAnimationComplete?.();
-			});
+			// Animate first item with bouncy spring for emphasis
+			const firstItemAnim =
+				validItems[0] &&
+				animate(
+					validItems[0],
+					{
+						opacity: [0, 1],
+						transform: ['translateX(-20px) scale(0.95)', 'translateX(0) scale(1)']
+					},
+					{
+						type: 'spring',
+						...SPRING_PRESETS.bouncy,
+						delay: DELAY_PRESETS.short
+					}
+				);
+			if (firstItemAnim) animations.push(firstItemAnim);
+
+			// Animate remaining items with listItem spring
+			const remainingItems = validItems.slice(1);
+			const itemsAnim =
+				remainingItems.length > 0 &&
+				animate(
+					remainingItems,
+					{
+						opacity: [0, 1],
+						transform: ['translateX(-20px) scale(0.95)', 'translateX(0) scale(1)']
+					},
+					{
+						type: 'spring',
+						...SPRING_PRESETS.listItem,
+						delay: stagger(adaptiveStagger, { startDelay: DELAY_PRESETS.short + adaptiveStagger })
+					}
+				);
+			if (itemsAnim) animations.push(itemsAnim);
+
+			const lastAnim = itemsAnim || firstItemAnim;
+			if (lastAnim) {
+				lastAnim.finished.then(() => {
+					onAnimationComplete?.();
+				});
+			}
 		} else {
 			containerAnim.finished.then(() => {
 				onAnimationComplete?.();
@@ -210,20 +240,22 @@
 		width: 100%;
 		display: grid;
 		grid-template-columns: 1fr;
-		gap: 0.625rem;
+		gap: 0.75rem;
 	}
 
 	.viewer-item {
 		display: flex;
 		align-items: center;
 		gap: 1rem;
-		padding: 0.875rem 1.25rem;
-		background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.35));
-		backdrop-filter: blur(12px);
-		-webkit-backdrop-filter: blur(12px);
+		padding: 1rem 1.25rem;
+		background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
+		backdrop-filter: blur(var(--slide-glass-blur, 20px));
+		-webkit-backdrop-filter: blur(var(--slide-glass-blur, 20px));
 		border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
 		border-radius: calc(var(--radius) * 1.5);
-		box-shadow: var(--shadow-elevation-low, 0 2px 8px hsl(0 0% 0% / 0.25));
+		box-shadow:
+			var(--shadow-elevation-low, 0 2px 8px hsl(0 0% 0% / 0.25)),
+			inset 0 1px 0 hsl(0 0% 100% / 0.05);
 		position: relative;
 		transition:
 			transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
@@ -299,16 +331,16 @@
 
 	/* Medal badge for top 3 */
 	.medal-badge {
-		width: 36px;
-		height: 36px;
-		min-width: 36px;
+		width: 40px;
+		height: 40px;
+		min-width: 40px;
 		border-radius: 50%;
 		background: var(--medal-bg);
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		box-shadow:
-			0 2px 8px var(--medal-glow),
+			0 2px 10px var(--medal-glow),
 			inset 0 1px 0 hsl(0 0% 100% / 0.3),
 			inset 0 -1px 0 hsl(0 0% 0% / 0.2);
 		position: relative;
@@ -337,8 +369,8 @@
 	}
 
 	.avatar-placeholder {
-		width: 48px;
-		height: 48px;
+		width: 52px;
+		height: 52px;
 		background: linear-gradient(
 			135deg,
 			hsl(var(--primary) / 0.2) 0%,
@@ -350,7 +382,9 @@
 		align-items: center;
 		justify-content: center;
 		flex-shrink: 0;
-		transition: transform 0.3s ease;
+		transition:
+			transform 0.3s ease,
+			box-shadow 0.3s ease;
 	}
 
 	.viewer-item:hover .avatar-placeholder {
@@ -412,32 +446,32 @@
 		}
 
 		.viewer-list {
-			gap: 0.5rem;
+			gap: 0.625rem;
 		}
 
 		.viewer-item {
 			padding: 0.75rem 1rem;
-			gap: 0.75rem;
+			gap: 0.875rem;
 		}
 
 		.medal-badge {
-			width: 32px;
-			height: 32px;
-			min-width: 32px;
+			width: 34px;
+			height: 34px;
+			min-width: 34px;
 		}
 
 		.medal-rank {
-			font-size: 0.75rem;
+			font-size: 0.8125rem;
 		}
 
 		.avatar-placeholder {
-			width: 40px;
-			height: 40px;
+			width: 44px;
+			height: 44px;
 		}
 
 		.icon {
-			width: 18px;
-			height: 18px;
+			width: 20px;
+			height: 20px;
 		}
 
 		.username {
@@ -496,17 +530,17 @@
 
 		.viewer-list {
 			grid-template-columns: repeat(2, 1fr);
-			gap: 0.875rem;
+			gap: 1rem;
 		}
 
 		.viewer-item {
-			padding: 1.125rem 1.5rem;
+			padding: 1.25rem 1.5rem;
 		}
 
 		.medal-badge {
-			width: 42px;
-			height: 42px;
-			min-width: 42px;
+			width: 44px;
+			height: 44px;
+			min-width: 44px;
 		}
 
 		.medal-rank {
@@ -514,13 +548,13 @@
 		}
 
 		.avatar-placeholder {
-			width: 56px;
-			height: 56px;
+			width: 60px;
+			height: 60px;
 		}
 
 		.icon {
-			width: 26px;
-			height: 26px;
+			width: 28px;
+			height: 28px;
 		}
 
 		.username {

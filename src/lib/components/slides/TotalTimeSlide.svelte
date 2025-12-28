@@ -9,7 +9,8 @@
 		animateNumber,
 		formatNumber,
 		SPRING_PRESETS,
-		DELAY_PRESETS
+		DELAY_PRESETS,
+		KEYFRAMES
 	} from '$lib/utils/animation-presets';
 
 	interface Props extends TotalTimeSlideProps {
@@ -86,15 +87,12 @@
 		const stopNumberAnim =
 			hours >= 24
 				? (() => {
-						// Direct DOM update function - bypasses reactive state updates
 						const updateDOM = (value: number) => {
 							if (numberEl) {
 								numberEl.textContent = `${formatNumber(value)} hours`;
 							}
 						};
-						// Start from 0, animate to hours, over 1500ms
-						return animateNumber(0, hours, 1500, updateDOM, () => {
-							// Set final state for consistency after animation completes
+						return animateNumber(0, hours, 1800, updateDOM, () => {
 							displayedHours = hours;
 						});
 					})()
@@ -103,28 +101,27 @@
 						return () => {};
 					})();
 
-		// Animate container
-		const containerAnim = animate(
-			container,
-			{ opacity: [0, 1], transform: ['translateY(30px)', 'translateY(0)'] },
-			{ type: 'spring', ...SPRING_PRESETS.snappy }
-		);
+		// Animate container with zoom-in effect
+		const containerAnim = animate(container, KEYFRAMES.zoomFadeIn, {
+			type: 'spring',
+			...SPRING_PRESETS.snappy
+		});
 
-		// Animate number with scale (spring physics creates natural overshoot)
+		// Animate number with impactful scale (more pronounced overshoot)
 		const numberAnim = animate(
 			numberEl,
 			{
-				transform: ['scale(0.6)', 'scale(1)'],
+				transform: ['scale(0.5)', 'scale(1)'],
 				opacity: [0, 1]
 			},
 			{
 				type: 'spring',
-				...SPRING_PRESETS.bouncy,
-				delay: DELAY_PRESETS.short
+				...SPRING_PRESETS.impactful,
+				delay: DELAY_PRESETS.short + DELAY_PRESETS.micro
 			}
 		);
 
-		// Animate subtitle with fade-up
+		// Animate subtitle with gentle fade-up
 		const subtitleAnim = animate(
 			subtitleEl,
 			{ opacity: [0, 1], transform: ['translateY(15px)', 'translateY(0)'] },
@@ -175,12 +172,13 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 1.25rem;
+		gap: 1.5rem;
+		max-width: var(--content-max-sm, 600px);
 		z-index: 1;
 	}
 
 	.title {
-		font-size: 1.5rem;
+		font-size: 1rem;
 		font-weight: 600;
 		color: hsl(var(--muted-foreground));
 		text-transform: uppercase;
@@ -189,22 +187,21 @@
 	}
 
 	.stat-number {
-		font-size: clamp(3rem, 10vw, 6rem);
+		font-size: clamp(3rem, 12vw, 7rem);
 		font-weight: 800;
 		margin: 0.5rem 0;
-		letter-spacing: -0.02em;
-		/* Gradient text effect */
+		letter-spacing: -0.03em;
+		line-height: 1;
 		background: linear-gradient(
 			180deg,
 			hsl(var(--primary)) 0%,
-			hsl(calc(var(--primary-hue) + 15) 70% 65%) 100%
+			hsl(calc(var(--primary-hue) + 15) 60% 55%) 100%
 		);
 		-webkit-background-clip: text;
 		-webkit-text-fill-color: transparent;
 		background-clip: text;
-		/* Glow effect via filter */
-		filter: drop-shadow(0 0 30px hsl(var(--primary) / 0.5))
-			drop-shadow(0 0 60px hsl(var(--primary) / 0.3));
+		filter: drop-shadow(0 0 30px var(--slide-glow-color, hsl(var(--primary) / 0.5)))
+			drop-shadow(0 0 60px var(--slide-accent-glow, hsl(var(--primary) / 0.3)));
 	}
 
 	.subtitle {
@@ -221,17 +218,17 @@
 	/* Mobile: compact typography */
 	@media (max-width: 767px) {
 		.content {
-			gap: 1rem;
+			gap: 1.25rem;
 		}
 
 		.title {
-			font-size: 1.25rem;
+			font-size: 0.875rem;
 		}
 
 		.stat-number {
-			font-size: clamp(2.5rem, 12vw, 4rem);
-			filter: drop-shadow(0 0 20px hsl(var(--primary) / 0.4))
-				drop-shadow(0 0 40px hsl(var(--primary) / 0.2));
+			font-size: clamp(2.5rem, 14vw, 4rem);
+			filter: drop-shadow(0 0 20px var(--slide-glow-color, hsl(var(--primary) / 0.4)))
+				drop-shadow(0 0 40px var(--slide-accent-glow, hsl(var(--primary) / 0.2)));
 		}
 
 		.subtitle {
@@ -242,7 +239,7 @@
 	/* Tablet: medium typography */
 	@media (min-width: 768px) and (max-width: 1023px) {
 		.title {
-			font-size: 1.75rem;
+			font-size: 1.125rem;
 		}
 
 		.stat-number {
@@ -257,17 +254,18 @@
 	/* Desktop: large typography with enhanced glow */
 	@media (min-width: 1024px) {
 		.content {
-			gap: 1.5rem;
+			gap: 2rem;
 		}
 
 		.title {
-			font-size: 2rem;
+			font-size: 1.25rem;
+			letter-spacing: 0.12em;
 		}
 
 		.stat-number {
-			font-size: clamp(4rem, 12vw, 7rem);
-			filter: drop-shadow(0 0 40px hsl(var(--primary) / 0.5))
-				drop-shadow(0 0 80px hsl(var(--primary) / 0.35))
+			font-size: clamp(4rem, 12vw, 8rem);
+			filter: drop-shadow(0 0 40px var(--slide-glow-color, hsl(var(--primary) / 0.5)))
+				drop-shadow(0 0 80px var(--slide-accent-glow, hsl(var(--primary) / 0.35)))
 				drop-shadow(0 0 120px hsl(var(--primary) / 0.2));
 		}
 

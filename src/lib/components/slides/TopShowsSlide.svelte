@@ -6,7 +6,12 @@
 	import { getThumbUrl } from '$lib/utils/plex-thumb';
 	import type { SlideMessagingContext } from './messaging-context';
 	import { getPossessive, createPersonalContext } from './messaging-context';
-	import { SPRING_PRESETS, STAGGER_PRESETS, DELAY_PRESETS } from '$lib/utils/animation-presets';
+	import {
+		SPRING_PRESETS,
+		DELAY_PRESETS,
+		KEYFRAMES,
+		getAdaptiveStagger
+	} from '$lib/utils/animation-presets';
 
 	interface Props extends TopShowsSlideProps {
 		messagingContext?: SlideMessagingContext;
@@ -49,36 +54,61 @@
 			return;
 		}
 
-		// Animate container
-		const containerAnim = animate(
-			container,
-			{ opacity: [0, 1], transform: ['translateY(20px)', 'translateY(0)'] },
-			{ type: 'spring', ...SPRING_PRESETS.snappy }
-		);
+		// Animate container with directional entry from left
+		const containerAnim = animate(container, KEYFRAMES.slideFromLeft, {
+			type: 'spring',
+			...SPRING_PRESETS.snappy
+		});
 
-		// Animate list items with stagger
+		// Animate list items with adaptive stagger
 		const validItems = listItems.filter(Boolean);
 		if (validItems.length > 0) {
-			const itemsAnim = animate(
-				validItems,
-				{
-					opacity: [0, 1],
-					transform: ['translateX(-30px) scale(0.95)', 'translateX(0) scale(1)']
-				},
-				{
-					type: 'spring',
-					...SPRING_PRESETS.snappy,
-					delay: stagger(STAGGER_PRESETS.normal, { startDelay: DELAY_PRESETS.short })
-				}
-			);
+			const adaptiveStagger = getAdaptiveStagger(validItems.length);
 
-			itemsAnim.finished.then(() => {
-				onAnimationComplete?.();
-			});
+			// Animate first item with bouncy spring for emphasis
+			const firstItemAnim =
+				validItems[0] &&
+				animate(
+					validItems[0],
+					{
+						opacity: [0, 1],
+						transform: ['translateX(-20px) scale(0.95)', 'translateX(0) scale(1)']
+					},
+					{
+						type: 'spring',
+						...SPRING_PRESETS.bouncy,
+						delay: DELAY_PRESETS.short
+					}
+				);
+
+			// Animate remaining items with listItem spring
+			const remainingItems = validItems.slice(1);
+			const itemsAnim =
+				remainingItems.length > 0 &&
+				animate(
+					remainingItems,
+					{
+						opacity: [0, 1],
+						transform: ['translateX(-20px) scale(0.95)', 'translateX(0) scale(1)']
+					},
+					{
+						type: 'spring',
+						...SPRING_PRESETS.listItem,
+						delay: stagger(adaptiveStagger, { startDelay: DELAY_PRESETS.short + adaptiveStagger })
+					}
+				);
+
+			const lastAnim = itemsAnim || firstItemAnim;
+			if (lastAnim) {
+				lastAnim.finished.then(() => {
+					onAnimationComplete?.();
+				});
+			}
 
 			return () => {
 				containerAnim.stop();
-				itemsAnim.stop();
+				firstItemAnim?.stop();
+				itemsAnim && itemsAnim.stop();
 			};
 		}
 
@@ -131,7 +161,7 @@
 		gap: 2rem;
 		z-index: 1;
 		width: 100%;
-		max-width: 600px;
+		max-width: var(--content-max-md, 800px);
 	}
 
 	.title {
@@ -140,7 +170,7 @@
 		color: hsl(var(--primary));
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		text-shadow: 0 0 30px hsl(var(--primary) / 0.3);
+		text-shadow: 0 0 30px var(--slide-glow-color, hsl(var(--primary) / 0.3));
 	}
 
 	.show-list {
@@ -150,30 +180,49 @@
 		width: 100%;
 		display: grid;
 		grid-template-columns: 1fr;
-		gap: 0.625rem;
+		gap: 0.75rem;
 	}
 
 	.show-item {
 		display: flex;
 		align-items: center;
-		gap: 1rem;
-		padding: 0.875rem 1.125rem;
+		gap: 1.25rem;
+		padding: 1rem 1.25rem;
 		background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
-		backdrop-filter: blur(12px);
-		-webkit-backdrop-filter: blur(12px);
+		backdrop-filter: blur(var(--slide-glass-blur, 20px));
+		-webkit-backdrop-filter: blur(var(--slide-glass-blur, 20px));
 		border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
 		border-radius: calc(var(--radius) * 1.5);
 		box-shadow: var(--shadow-elevation-low, 0 2px 4px hsl(0 0% 0% / 0.2));
+		position: relative;
 		transition:
 			transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
 			box-shadow 0.3s ease,
 			border-color 0.3s ease;
 	}
 
+	/* Top highlight line for all items */
+	.show-item::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 1px;
+		background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.2), transparent);
+		border-radius: inherit;
+		opacity: 0;
+		transition: opacity 0.3s ease;
+	}
+
+	.show-item:hover::before {
+		opacity: 1;
+	}
+
 	.show-item:hover {
 		transform: translateY(-2px) scale(1.01);
 		box-shadow: var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.3));
-		border-color: hsl(var(--primary) / 0.3);
+		border-color: hsl(var(--primary) / 0.4);
 	}
 
 	/* First item gets special treatment */
@@ -187,14 +236,8 @@
 	}
 
 	.show-item.first::before {
-		content: '';
-		position: absolute;
-		top: 0;
-		left: 0;
-		right: 0;
-		height: 1px;
 		background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.5), transparent);
-		border-radius: inherit;
+		opacity: 1;
 	}
 
 	.rank {
@@ -215,8 +258,8 @@
 	}
 
 	.thumb {
-		width: 50px;
-		height: 75px;
+		width: 56px;
+		height: 84px;
 		object-fit: cover;
 		border-radius: calc(var(--radius) * 0.75);
 		background: hsl(var(--muted));
@@ -228,12 +271,14 @@
 
 	.show-item:hover .thumb {
 		transform: scale(1.05);
-		box-shadow: var(--shadow-elevation-medium, 0 4px 8px hsl(0 0% 0% / 0.4));
+		box-shadow:
+			var(--shadow-elevation-medium, 0 4px 8px hsl(0 0% 0% / 0.4)),
+			0 0 20px var(--slide-glow-color, hsl(var(--primary) / 0.15));
 	}
 
 	.thumb-placeholder {
-		width: 50px;
-		height: 75px;
+		width: 56px;
+		height: 84px;
 		background: linear-gradient(135deg, hsl(var(--muted)) 0%, hsl(var(--secondary)) 100%);
 		border-radius: calc(var(--radius) * 0.75);
 	}
@@ -278,18 +323,18 @@
 		}
 
 		.show-list {
-			gap: 0.5rem;
+			gap: 0.625rem;
 		}
 
 		.show-item {
-			padding: 0.625rem 0.75rem;
-			gap: 0.75rem;
+			padding: 0.75rem 1rem;
+			gap: 1rem;
 		}
 
 		.thumb,
 		.thumb-placeholder {
-			width: 40px;
-			height: 60px;
+			width: 48px;
+			height: 72px;
 		}
 
 		.rank {
@@ -304,18 +349,14 @@
 
 	/* Tablet: wider single column */
 	@media (min-width: 768px) and (max-width: 1023px) {
-		.content {
-			max-width: var(--content-max-md, 800px);
-		}
-
 		.show-item {
 			padding: 1rem 1.25rem;
 		}
 
 		.thumb,
 		.thumb-placeholder {
-			width: 55px;
-			height: 82px;
+			width: 56px;
+			height: 84px;
 		}
 	}
 
@@ -331,18 +372,17 @@
 
 		.show-list {
 			grid-template-columns: repeat(2, 1fr);
-			gap: 0.75rem;
+			gap: 1rem;
 		}
 
 		.show-item {
-			padding: 1rem 1.25rem;
-			position: relative;
+			padding: 1.125rem 1.5rem;
 		}
 
 		.thumb,
 		.thumb-placeholder {
-			width: 55px;
-			height: 82px;
+			width: 64px;
+			height: 96px;
 		}
 
 		.show-title {

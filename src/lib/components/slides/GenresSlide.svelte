@@ -6,7 +6,12 @@
 	import type { SlideMessagingContext } from './messaging-context';
 	import { getPossessive, createPersonalContext } from './messaging-context';
 	import * as Tooltip from '$lib/components/ui/tooltip';
-	import { SPRING_PRESETS, STAGGER_PRESETS, DELAY_PRESETS } from '$lib/utils/animation-presets';
+	import {
+		SPRING_PRESETS,
+		DELAY_PRESETS,
+		KEYFRAMES,
+		getAdaptiveStagger
+	} from '$lib/utils/animation-presets';
 
 	interface Props extends GenresSlideProps {
 		messagingContext?: SlideMessagingContext;
@@ -96,16 +101,17 @@
 			return;
 		}
 
-		// Animate container
+		// Animate container with subtle lift
 		const containerAnim = animate(
 			container,
-			{ opacity: [0, 1], transform: ['translateY(20px)', 'translateY(0)'] },
+			{ opacity: [0, 1], transform: ['translateY(25px) scale(0.98)', 'translateY(0) scale(1)'] },
 			{ type: 'spring', ...SPRING_PRESETS.snappy }
 		);
 
 		// Animate genre items with stagger
 		const validItems = genreItems.filter(Boolean);
 		const validBars = bars.filter(Boolean);
+		const adaptiveStagger = getAdaptiveStagger(validItems.length);
 
 		if (validItems.length > 0) {
 			const itemsAnim = animate(
@@ -117,11 +123,11 @@
 				{
 					type: 'spring',
 					...SPRING_PRESETS.snappy,
-					delay: stagger(STAGGER_PRESETS.normal, { startDelay: DELAY_PRESETS.short })
+					delay: stagger(adaptiveStagger, { startDelay: DELAY_PRESETS.short })
 				}
 			);
 
-			// Animate bars with stagger (after items start appearing)
+			// Animate bars with dramatic spring and additional per-bar delay
 			if (validBars.length > 0) {
 				const barsAnim = animate(
 					validBars,
@@ -129,7 +135,9 @@
 					{
 						type: 'spring',
 						...SPRING_PRESETS.dramatic,
-						delay: stagger(STAGGER_PRESETS.normal, { startDelay: DELAY_PRESETS.medium })
+						delay: stagger(adaptiveStagger + DELAY_PRESETS.micro, {
+							startDelay: DELAY_PRESETS.medium
+						})
 					}
 				);
 
@@ -221,7 +229,7 @@
 		gap: 2rem;
 		z-index: 1;
 		width: 100%;
-		max-width: 600px;
+		max-width: var(--content-max-md, 800px);
 	}
 
 	.title {
@@ -230,21 +238,23 @@
 		color: hsl(var(--primary));
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		text-shadow: 0 0 30px hsl(var(--primary) / 0.3);
+		text-shadow: 0 0 30px var(--slide-glow-color, hsl(var(--primary) / 0.3));
 	}
 
 	.genre-list {
 		width: 100%;
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
-		padding: 1.25rem;
+		gap: 1rem;
+		padding: 1.5rem;
 		background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
-		backdrop-filter: blur(16px);
-		-webkit-backdrop-filter: blur(16px);
+		backdrop-filter: blur(var(--slide-glass-blur, 20px));
+		-webkit-backdrop-filter: blur(var(--slide-glass-blur, 20px));
 		border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
 		border-radius: calc(var(--radius) * 2);
-		box-shadow: var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.3));
+		box-shadow:
+			var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.3)),
+			inset 0 1px 0 hsl(0 0% 100% / 0.05);
 		position: relative;
 	}
 
@@ -261,7 +271,7 @@
 	}
 
 	.genre-item {
-		padding: 0.75rem 1rem;
+		padding: 1rem 1.25rem;
 		border-radius: calc(var(--radius) * 1.25);
 		background: hsl(var(--primary-hue) 20% 15% / 0.3);
 		border: 1px solid transparent;
@@ -276,8 +286,8 @@
 	.genre-item:hover {
 		transform: translateX(4px);
 		background: hsl(var(--primary-hue) 20% 18% / 0.4);
-		border-color: hsl(var(--primary) / 0.15);
-		box-shadow: 0 2px 8px hsl(0 0% 0% / 0.2);
+		border-color: hsl(var(--primary) / 0.2);
+		box-shadow: 0 2px 12px hsl(0 0% 0% / 0.25);
 	}
 
 	/* First genre gets special treatment */
@@ -334,9 +344,9 @@
 
 	.bar-container {
 		width: 100%;
-		height: 10px;
+		height: 12px;
 		background: hsl(var(--muted) / 0.2);
-		border-radius: 5px;
+		border-radius: 6px;
 		overflow: visible;
 		position: relative;
 	}
@@ -365,17 +375,17 @@
 		background: linear-gradient(
 			90deg,
 			var(--genre-color) 0%,
-			color-mix(in srgb, var(--genre-color) 80%, white) 50%,
+			color-mix(in srgb, var(--genre-color) 85%, white) 50%,
 			var(--genre-color) 100%
 		);
-		border-radius: 5px;
+		border-radius: 6px;
 		transform-origin: left center;
 		min-width: 4px;
 		position: relative;
 		overflow: hidden;
 		cursor: pointer;
 		box-shadow:
-			0 0 8px color-mix(in srgb, var(--genre-color) 50%, transparent),
+			0 0 10px color-mix(in srgb, var(--genre-color) 40%, transparent),
 			inset 0 1px 0 hsl(0 0% 100% / 0.2);
 		transition:
 			transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
@@ -390,16 +400,16 @@
 		right: 0;
 		height: 40%;
 		background: linear-gradient(180deg, hsl(0 0% 100% / 0.25) 0%, hsl(0 0% 100% / 0) 100%);
-		border-radius: 5px 5px 0 0;
+		border-radius: 6px 6px 0 0;
 		pointer-events: none;
 	}
 
 	.bar:hover {
-		transform: scaleY(1.4) scaleX(1.02) !important;
-		filter: brightness(1.15);
+		transform: scaleY(1.2) scaleX(1.05) !important;
+		filter: brightness(1.1);
 		box-shadow:
-			0 0 20px var(--genre-color),
-			0 0 40px color-mix(in srgb, var(--genre-color) 50%, transparent),
+			0 0 15px var(--genre-color),
+			0 0 30px color-mix(in srgb, var(--genre-color) 40%, transparent),
 			inset 0 1px 0 hsl(0 0% 100% / 0.3);
 	}
 

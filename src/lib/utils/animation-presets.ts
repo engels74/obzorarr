@@ -2,7 +2,10 @@ export const SPRING_PRESETS = {
 	gentle: { stiffness: 120, damping: 20 },
 	snappy: { stiffness: 200, damping: 18 },
 	bouncy: { stiffness: 180, damping: 12 },
-	dramatic: { stiffness: 100, damping: 15 }
+	dramatic: { stiffness: 100, damping: 15 },
+	impactful: { stiffness: 160, damping: 10 },
+	soft: { stiffness: 100, damping: 22 },
+	listItem: { stiffness: 220, damping: 20 }
 } as const;
 
 export const STAGGER_PRESETS = {
@@ -25,16 +28,28 @@ export const EASING_PRESETS = {
 	bounce: [0.34, 1.56, 0.64, 1] as const,
 	sharp: [0.4, 0, 0.6, 1] as const,
 	easeOut: [0, 0, 0.2, 1] as const,
-	easeIn: [0.4, 0, 1, 1] as const
+	easeIn: [0.4, 0, 1, 1] as const,
+	organic: [0.32, 0, 0.14, 1] as const,
+	glide: [0.25, 0.1, 0.25, 1] as const
 } as const;
 
 export const DELAY_PRESETS = {
 	none: 0,
+	micro: 0.05,
 	minimal: 0.1,
+	transition: 0.15,
 	short: 0.2,
+	sequence: 0.25,
 	medium: 0.4,
 	long: 0.6
 } as const;
+
+export function getAdaptiveStagger(itemCount: number): number {
+	if (itemCount <= 3) return STAGGER_PRESETS.slow;
+	if (itemCount <= 6) return STAGGER_PRESETS.normal;
+	if (itemCount <= 12) return STAGGER_PRESETS.fast;
+	return 0.03;
+}
 
 export function animateNumber(
 	from: number,
@@ -151,6 +166,34 @@ export const KEYFRAMES = {
 	},
 	barGrowX: {
 		transform: ['scaleX(0)', 'scaleX(1)']
+	},
+	zoomFadeIn: {
+		opacity: [0, 1],
+		transform: ['scale(0.95) translateY(15px)', 'scale(1) translateY(0)']
+	},
+	slideFromLeft: {
+		opacity: [0, 1],
+		transform: ['translateX(-15px)', 'translateX(0)']
+	},
+	dramaticScale: {
+		opacity: [0, 1],
+		transform: ['scale(0.9)', 'scale(1)']
+	},
+	playfulEntry: {
+		opacity: [0, 1],
+		transform: ['translateY(30px) rotate(-1deg)', 'translateY(0) rotate(0deg)']
+	},
+	impactReveal: {
+		opacity: [0, 1],
+		transform: ['scale(0.95) translateY(20px)', 'scale(1) translateY(0)']
+	},
+	cardFromLeft: {
+		opacity: [0, 1],
+		transform: ['translateX(-20px) scale(0.95)', 'translateX(0) scale(1)']
+	},
+	cardFromRight: {
+		opacity: [0, 1],
+		transform: ['translateX(20px) scale(0.95)', 'translateX(0) scale(1)']
 	}
 } as const;
 

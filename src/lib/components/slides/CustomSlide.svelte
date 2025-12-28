@@ -3,6 +3,7 @@
 	import { prefersReducedMotion } from 'svelte/motion';
 	import BaseSlide from './BaseSlide.svelte';
 	import type { CustomSlideProps } from './types';
+	import { SPRING_PRESETS, DELAY_PRESETS } from '$lib/utils/animation-presets';
 
 	interface Props extends CustomSlideProps {
 		renderedHtml?: string;
@@ -39,23 +40,31 @@
 
 		const animations: ReturnType<typeof animate>[] = [];
 
-		// Animate container
+		// Animate container with gentle spring
 		const containerAnim = animate(
 			container,
 			{ opacity: [0, 1], transform: ['translateY(20px)', 'translateY(0)'] },
-			{ type: 'spring', stiffness: 200, damping: 20 }
+			{ type: 'spring', ...SPRING_PRESETS.gentle }
 		);
 		animations.push(containerAnim);
 
-		// Animate title
+		// Animate title with simple fade
 		if (titleEl) {
-			const titleAnim = animate(titleEl, { opacity: [0, 1] }, { duration: 0.4, delay: 0.2 });
+			const titleAnim = animate(
+				titleEl,
+				{ opacity: [0, 1] },
+				{ duration: 0.4, delay: DELAY_PRESETS.short }
+			);
 			animations.push(titleAnim);
 		}
 
-		// Animate content
+		// Animate content with simple fade
 		if (contentEl) {
-			const contentAnim = animate(contentEl, { opacity: [0, 1] }, { duration: 0.4, delay: 0.3 });
+			const contentAnim = animate(
+				contentEl,
+				{ opacity: [0, 1] },
+				{ duration: 0.4, delay: DELAY_PRESETS.medium }
+			);
 			animations.push(contentAnim);
 
 			contentAnim.finished.then(() => {
@@ -100,25 +109,26 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 2rem;
+		gap: 2.5rem;
 		z-index: 1;
-		max-width: 700px;
+		max-width: var(--content-max-md, 750px);
 		width: 100%;
 	}
 
 	.title {
 		font-size: 1.75rem;
 		font-weight: 700;
-		color: var(--primary);
+		color: hsl(var(--primary));
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 		text-align: center;
+		text-shadow: 0 0 30px hsl(var(--primary) / 0.3);
 	}
 
 	.markdown-content {
-		font-size: 1.125rem;
+		font-size: 1.1875rem;
 		line-height: 1.7;
-		color: var(--foreground);
+		color: hsl(var(--foreground));
 		text-align: left;
 		width: 100%;
 	}
@@ -127,7 +137,7 @@
 	.markdown-content :global(h1),
 	.markdown-content :global(h2),
 	.markdown-content :global(h3) {
-		color: var(--primary);
+		color: hsl(var(--primary));
 		margin-top: 1.5rem;
 		margin-bottom: 0.75rem;
 	}
@@ -159,7 +169,7 @@
 	}
 
 	.markdown-content :global(strong) {
-		color: var(--primary);
+		color: hsl(var(--primary));
 		font-weight: 700;
 	}
 
@@ -168,7 +178,7 @@
 	}
 
 	.markdown-content :global(a) {
-		color: var(--primary);
+		color: hsl(var(--primary));
 		text-decoration: underline;
 		text-underline-offset: 2px;
 	}
@@ -178,11 +188,11 @@
 	}
 
 	.markdown-content :global(blockquote) {
-		border-left: 4px solid var(--primary);
+		border-left: 4px solid hsl(var(--primary));
 		padding-left: 1rem;
 		margin: 1rem 0;
 		font-style: italic;
-		color: var(--muted-foreground);
+		color: hsl(var(--muted-foreground));
 	}
 
 	.markdown-content :global(code) {
@@ -208,7 +218,7 @@
 
 	.markdown-content :global(hr) {
 		border: none;
-		border-top: 1px solid var(--border);
+		border-top: 1px solid hsl(var(--border));
 		margin: 2rem 0;
 	}
 
@@ -246,7 +256,7 @@
 	/* Tablet: medium content */
 	@media (min-width: 768px) and (max-width: 1023px) {
 		.content {
-			max-width: 800px;
+			max-width: var(--content-max-md, 800px);
 		}
 
 		.title {
@@ -274,8 +284,8 @@
 	/* Desktop: wide content */
 	@media (min-width: 1024px) {
 		.content {
-			max-width: 950px;
-			gap: 2.5rem;
+			max-width: var(--content-max-lg, 950px);
+			gap: 3rem;
 		}
 
 		.title {

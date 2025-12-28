@@ -56,6 +56,18 @@
 	--content-max-md: 800px;
 	--content-max-lg: 900px;
 	--content-max-xl: 1100px;
+
+	/* Default shadow elevation system (overridden by premium themes) */
+	--shadow-elevation-low: 0 1px 2px hsl(0 0% 0% / 0.3), 0 2px 4px hsl(0 0% 0% / 0.2);
+	--shadow-elevation-medium: 0 4px 8px hsl(0 0% 0% / 0.4), 0 8px 16px hsl(0 0% 0% / 0.2);
+	--shadow-elevation-high: 0 8px 16px hsl(0 0% 0% / 0.5), 0 16px 32px hsl(0 0% 0% / 0.3);
+
+	/* Default slide-specific variables (overridden by premium themes) */
+	--slide-glass-bg: hsl(var(--primary-hue) 20% 12% / 0.4);
+	--slide-glass-border: hsl(var(--primary-hue) 30% 40% / 0.2);
+	--slide-glass-blur: 20px;
+	--slide-glow-color: hsl(var(--primary) / 0.4);
+	--slide-accent-glow: hsl(var(--accent) / 0.3);
 }
 
 /* Dark mode class (same as :root since app is dark-only) */
@@ -465,6 +477,113 @@
 	-webkit-background-clip: text;
 	-webkit-text-fill-color: transparent;
 	background-clip: text;
+}
+
+/* =============================================================================
+   Slide Animation Utilities
+   Hover transitions, shadow effects, and micro-animations
+   ============================================================================= */
+
+/* Standard hover transition timing */
+:root {
+	--transition-hover: 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+	--transition-fast: 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Shadow transition utility for interactive elements */
+.shadow-transition {
+	transition: box-shadow var(--transition-hover);
+}
+
+/* Combined hover transition utility */
+.hover-transition {
+	transition:
+		transform var(--transition-hover),
+		box-shadow var(--transition-hover),
+		border-color var(--transition-hover);
+}
+
+/* Shimmer effect for hero text */
+@keyframes shimmer {
+	0% {
+		background-position: -200% center;
+	}
+	100% {
+		background-position: 200% center;
+	}
+}
+
+.text-shimmer {
+	background: linear-gradient(
+		90deg,
+		hsl(var(--primary)) 0%,
+		hsl(calc(var(--primary-hue) + 30) 80% 75%) 50%,
+		hsl(var(--primary)) 100%
+	);
+	background-size: 200% auto;
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+	animation: shimmer 3s linear infinite;
+}
+
+/* Pulsing glow effect for emphasis */
+@keyframes pulse-glow {
+	0%,
+	100% {
+		box-shadow:
+			var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.4)),
+			0 0 20px var(--slide-glow-color, hsl(var(--primary) / 0.3));
+	}
+	50% {
+		box-shadow:
+			var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.4)),
+			0 0 40px var(--slide-glow-color, hsl(var(--primary) / 0.5));
+	}
+}
+
+.glow-pulse {
+	animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Breathing scale effect for settled elements */
+@keyframes breathe {
+	0%,
+	100% {
+		transform: scale(1);
+	}
+	50% {
+		transform: scale(1.01);
+	}
+}
+
+.breathe {
+	animation: breathe 4s ease-in-out infinite;
+}
+
+/* Floating effect for icons */
+@keyframes float {
+	0%,
+	100% {
+		transform: translateY(0);
+	}
+	50% {
+		transform: translateY(-8px);
+	}
+}
+
+.float {
+	animation: float 3s ease-in-out infinite;
+}
+
+/* Disable animations for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+	.text-shimmer,
+	.glow-pulse,
+	.breathe,
+	.float {
+		animation: none;
+	}
 }
 
 /* Base reset and styles */

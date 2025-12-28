@@ -29,9 +29,8 @@
 		align-items: center;
 		justify-content: center;
 		min-height: 100vh;
-		padding: 2rem;
+		padding: 2rem 1.5rem;
 		text-align: center;
-		/* Transparent background - inherits from StoryMode/ScrollMode parent */
 		background: transparent;
 		color: hsl(var(--foreground));
 		position: relative;
@@ -77,11 +76,13 @@
 		border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.3));
 		border-radius: calc(var(--radius) * 2);
 		padding: 2rem;
-		box-shadow: var(
-			--shadow-elevation-medium,
-			0 4px 8px hsl(0 0% 0% / 0.4),
-			0 8px 16px hsl(0 0% 0% / 0.2)
-		);
+		box-shadow:
+			var(
+				--shadow-elevation-medium,
+				0 4px 8px hsl(0 0% 0% / 0.4),
+				0 8px 16px hsl(0 0% 0% / 0.2)
+			),
+			inset 0 1px 0 hsl(0 0% 100% / 0.08);
 		position: relative;
 		z-index: 3;
 	}
@@ -103,7 +104,7 @@
 	/* Mobile: compact padding */
 	@media (max-width: 767px) {
 		.slide {
-			padding: 1rem;
+			padding: 1.25rem 1rem;
 		}
 
 		.variant-glass > :global(.content),
@@ -117,14 +118,14 @@
 	/* Tablet: medium padding */
 	@media (min-width: 768px) {
 		.slide {
-			padding: 2rem;
+			padding: 2rem 1.5rem;
 		}
 	}
 
 	/* Desktop: generous padding */
 	@media (min-width: 1024px) {
 		.slide {
-			padding: 3rem;
+			padding: 2.5rem 2rem;
 		}
 
 		.variant-glass > :global(.content),

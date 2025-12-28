@@ -6,7 +6,13 @@
 	import type { SlideMessagingContext } from './messaging-context';
 	import { getSubject, getPossessive, createPersonalContext } from './messaging-context';
 	import * as Tooltip from '$lib/components/ui/tooltip';
-	import { SPRING_PRESETS, STAGGER_PRESETS, DELAY_PRESETS } from '$lib/utils/animation-presets';
+	import {
+		SPRING_PRESETS,
+		STAGGER_PRESETS,
+		DELAY_PRESETS,
+		KEYFRAMES,
+		getAdaptiveStagger
+	} from '$lib/utils/animation-presets';
 
 	interface Props extends DistributionSlideProps {
 		messagingContext?: SlideMessagingContext;
@@ -171,18 +177,20 @@
 			return;
 		}
 
-		// Animate container
+		// Animate container with subtle fade (let bars be the focus)
 		const containerAnim = animate(
 			container,
-			{ opacity: [0, 1], transform: ['translateY(20px)', 'translateY(0)'] },
-			{ type: 'spring', ...SPRING_PRESETS.snappy }
+			{ opacity: [0, 1] },
+			{ type: 'spring', ...SPRING_PRESETS.gentle, delay: DELAY_PRESETS.micro }
 		);
 		animations.push(containerAnim);
 
 		if (showDualView) {
-			// Dual view: animate monthly bars first, then hourly
+			// Dual view: animate monthly bars first, then hourly with staggered delay
 			const validMonthlyBars = monthlyBars.filter(Boolean);
 			const validHourlyBars = hourlyBars.filter(Boolean);
+			const monthlyStagger = getAdaptiveStagger(validMonthlyBars.length);
+			const hourlyStagger = getAdaptiveStagger(validHourlyBars.length);
 
 			if (validMonthlyBars.length > 0) {
 				const monthlyAnim = animate(
@@ -191,20 +199,21 @@
 					{
 						type: 'spring',
 						...SPRING_PRESETS.dramatic,
-						delay: stagger(STAGGER_PRESETS.fast, { startDelay: DELAY_PRESETS.short })
+						delay: stagger(monthlyStagger, { startDelay: DELAY_PRESETS.short })
 					}
 				);
 				animations.push(monthlyAnim);
 			}
 
 			if (validHourlyBars.length > 0) {
+				// 100ms delay between charts
 				const hourlyAnim = animate(
 					validHourlyBars,
 					{ transform: ['scaleY(0)', 'scaleY(1)'] },
 					{
 						type: 'spring',
 						...SPRING_PRESETS.dramatic,
-						delay: stagger(STAGGER_PRESETS.fast / 2, { startDelay: DELAY_PRESETS.long }) // Start after monthly
+						delay: stagger(hourlyStagger, { startDelay: DELAY_PRESETS.short + 0.1 })
 					}
 				);
 				animations.push(hourlyAnim);
@@ -213,7 +222,6 @@
 					onAnimationComplete?.();
 				});
 			} else if (validMonthlyBars.length > 0) {
-				// Only monthly bars exist, wait for monthly animation to complete
 				const monthlyAnimRef = animations[1];
 				if (monthlyAnimRef) {
 					monthlyAnimRef.finished.then(() => {
@@ -222,8 +230,10 @@
 				}
 			}
 		} else {
-			// Single view: animate all bars
+			// Single view: animate all bars with adaptive stagger
 			const validBars = singleViewBars.filter(Boolean);
+			const adaptiveStagger = getAdaptiveStagger(validBars.length);
+
 			if (validBars.length > 0) {
 				const barsAnim = animate(
 					validBars,
@@ -231,7 +241,7 @@
 					{
 						type: 'spring',
 						...SPRING_PRESETS.dramatic,
-						delay: stagger(STAGGER_PRESETS.fast, { startDelay: DELAY_PRESETS.short })
+						delay: stagger(adaptiveStagger, { startDelay: DELAY_PRESETS.short })
 					}
 				);
 				animations.push(barsAnim);
@@ -445,10 +455,10 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 1.5rem;
+		gap: 2rem;
 		z-index: 1;
 		width: 100%;
-		max-width: 700px;
+		max-width: var(--content-max-md, 800px);
 	}
 
 	.title {
@@ -465,15 +475,17 @@
 		align-items: flex-end;
 		justify-content: center;
 		gap: 0.25rem;
-		height: 200px;
+		height: 220px;
 		width: 100%;
-		padding: 1.25rem 1rem 1rem;
+		padding: 1.5rem 1.25rem 1rem;
 		background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
-		backdrop-filter: blur(16px);
-		-webkit-backdrop-filter: blur(16px);
+		backdrop-filter: blur(var(--slide-glass-blur, 20px));
+		-webkit-backdrop-filter: blur(var(--slide-glass-blur, 20px));
 		border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
 		border-radius: calc(var(--radius) * 2);
-		box-shadow: var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.3));
+		box-shadow:
+			var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.3)),
+			inset 0 1px 0 hsl(0 0% 100% / 0.05);
 		position: relative;
 	}
 
@@ -499,7 +511,7 @@
 		align-items: center;
 		justify-content: flex-end;
 		flex: 1;
-		max-width: 40px;
+		max-width: 45px;
 		height: 100%;
 		position: relative;
 	}
@@ -528,7 +540,7 @@
 	}
 
 	.data-label {
-		font-size: 0.5rem;
+		font-size: 0.5625rem;
 		color: hsl(var(--muted-foreground));
 		margin-bottom: 0.125rem;
 		opacity: 0;
@@ -784,7 +796,7 @@
 	/* Mobile: compact layout */
 	@media (max-width: 767px) {
 		.content {
-			gap: 1.25rem;
+			gap: 1.5rem;
 		}
 
 		.title {
@@ -792,12 +804,16 @@
 		}
 
 		.chart-container {
-			height: 160px;
-			padding: 1rem 0.75rem 0.75rem;
+			height: 180px;
+			padding: 1rem 0.875rem 0.75rem;
+		}
+
+		.bar-wrapper {
+			max-width: 35px;
 		}
 
 		.data-label {
-			font-size: 0.4375rem;
+			font-size: 0.5rem;
 		}
 
 		.label {
@@ -837,16 +853,16 @@
 		}
 
 		.dual-view .chart-container {
-			height: 200px;
-			max-width: 650px;
+			height: 220px;
+			max-width: 700px;
 		}
 
 		.dual-view .monthly .bar-wrapper {
-			max-width: 40px;
+			max-width: 45px;
 		}
 
 		.dual-view .hourly .bar-wrapper {
-			max-width: 20px;
+			max-width: 22px;
 		}
 
 		.section-title {
@@ -860,22 +876,26 @@
 			max-width: var(--content-max-lg, 900px);
 		}
 
+		.chart-container {
+			height: 240px;
+		}
+
 		.charts-grid {
 			grid-template-columns: repeat(2, 1fr);
 			gap: 2.5rem;
 		}
 
 		.dual-view .chart-container {
-			height: 200px;
+			height: 240px;
 			max-width: none;
 		}
 
 		.dual-view .monthly .bar-wrapper {
-			max-width: 35px;
+			max-width: 38px;
 		}
 
 		.dual-view .hourly .bar-wrapper {
-			max-width: 16px;
+			max-width: 18px;
 		}
 
 		.section-title {
@@ -888,6 +908,10 @@
 
 		.bar-highlight {
 			border-radius: 4px 4px 0 0;
+		}
+
+		.data-label {
+			font-size: 0.625rem;
 		}
 	}
 </style>
