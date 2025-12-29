@@ -93,7 +93,7 @@ Obzorarr is a **"Plex Wrapped"** application that syncs viewing history from you
 services:
   obzorarr:
     container_name: obzorarr
-    image: ghcr.io/engels74/obzorarr
+    image: ghcr.io/engels74/obzorarr-docker
     ports:
       - 3000:3000
     environment:
