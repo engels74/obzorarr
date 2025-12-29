@@ -87,7 +87,7 @@ Obzorarr is a **"Plex Wrapped"** application that syncs viewing history from you
 
 ## Quick Start
 
-### Docker (Recommended)
+### Docker (Recommended) — [Image Repo](https://github.com/engels74/obzorarr-docker)
 
 ```yaml
 services:
