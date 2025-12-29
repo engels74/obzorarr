@@ -22,6 +22,13 @@
       "when": 1766958861570,
       "tag": "0002_soft_james_howlett",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1767046608447,
+      "tag": "0003_charming_prima",
+      "breakpoints": true
     }
   ]
 }

@@ -427,8 +427,8 @@ export async function getSyncHistory(
 }
 
 export async function getPlayHistoryCount(): Promise<number> {
-	const result = await db.select({ id: playHistory.id }).from(playHistory);
-	return result.length;
+	const result = await db.select({ count: count() }).from(playHistory);
+	return result[0]?.count ?? 0;
 }
 
 export interface EnrichMetadataOptions {
@@ -511,22 +511,28 @@ export async function enrichMetadata(
 				};
 			});
 
-			for (const entry of cacheEntries) {
-				await db
-					.insert(metadataCache)
-					.values(entry)
-					.onConflictDoUpdate({
-						target: metadataCache.ratingKey,
-						set: {
-							duration: entry.duration,
-							genres: entry.genres,
-							releaseYear: entry.releaseYear,
-							fetchedAt: entry.fetchedAt,
-							fetchFailed: entry.fetchFailed
-						}
-					});
+			if (cacheEntries.length > 0) {
+				await db.transaction(async (tx) => {
+					for (const entry of cacheEntries) {
+						await tx
+							.insert(metadataCache)
+							.values(entry)
+							.onConflictDoUpdate({
+								target: metadataCache.ratingKey,
+								set: {
+									duration: entry.duration,
+									genres: entry.genres,
+									releaseYear: entry.releaseYear,
+									fetchedAt: entry.fetchedAt,
+									fetchFailed: entry.fetchFailed
+								}
+							});
+					}
+				});
 
-				cachedMap.set(entry.ratingKey, entry);
+				for (const entry of cacheEntries) {
+					cachedMap.set(entry.ratingKey, entry);
+				}
 			}
 
 			totalProcessed += batch.length;

@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, isNull, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, isNull, lte, or, sql } from 'drizzle-orm';
 import { db } from '$lib/server/db/client';
 import { cachedStats, playHistory, users, plexAccounts } from '$lib/server/db/schema';
 import type { UserStats, ServerStats, Stats } from './types';
@@ -378,19 +378,30 @@ async function calculateTopViewers(
 		return [];
 	}
 
-	const plexAccountResults = await db.select().from(plexAccounts);
+	const plexAccountResults = await db
+		.select()
+		.from(plexAccounts)
+		.where(inArray(plexAccounts.accountId, accountIds));
+
 	const userMap = new Map<number, string>();
 	for (const account of plexAccountResults) {
 		userMap.set(account.accountId, account.username);
 	}
 
-	const userResults = await db.select().from(users);
-	for (const user of userResults) {
-		if (user.accountId !== null && !userMap.has(user.accountId)) {
-			userMap.set(user.accountId, user.username);
-		}
-		if (!userMap.has(user.plexId)) {
-			userMap.set(user.plexId, user.username);
+	const missingAccountIds = accountIds.filter((id) => !userMap.has(id));
+	if (missingAccountIds.length > 0) {
+		const userResults = await db
+			.select()
+			.from(users)
+			.where(or(inArray(users.accountId, missingAccountIds), inArray(users.plexId, missingAccountIds)));
+
+		for (const user of userResults) {
+			if (user.accountId !== null && !userMap.has(user.accountId)) {
+				userMap.set(user.accountId, user.username);
+			}
+			if (!userMap.has(user.plexId)) {
+				userMap.set(user.plexId, user.username);
+			}
 		}
 	}
 
