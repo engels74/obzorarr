@@ -87,16 +87,32 @@ Obzorarr is a **"Plex Wrapped"** application that syncs viewing history from you
 
 ## Quick Start
 
+### Docker (Recommended)
+
+```yaml
+services:
+  obzorarr:
+    container_name: obzorarr
+    image: ghcr.io/engels74/obzorarr
+    ports:
+      - 3000:3000
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - UMASK=002
+      - TZ=Etc/UTC
+    volumes:
+      - /<host_folder_config>:/config
+```
+
+Replace `/<host_folder_config>` with your desired config path. Access the web UI at `http://localhost:3000` to complete setup.
+
+### From Source
+
 ```bash
-# Clone the repository
 git clone https://github.com/engels74/obzorarr.git
 cd obzorarr
-
-# Copy and configure environment
 cp .env.example .env
-# Edit .env with your Plex server URL and token
-
-# Start with bun
 bun install
 bun run dev
 ```
