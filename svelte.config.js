@@ -8,8 +8,7 @@ const config = {
 	kit: {
 		adapter: adapter({
 			out: 'build',
-			precompress: true,
-			dynamic_origin: true
+			precompress: true
 		}),
 		csrf: {
 			// Origin checking is incompatible with reverse proxy deployments.
