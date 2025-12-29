@@ -11,6 +11,15 @@ import { env } from '$env/dynamic/private';
 const proxyHandle: Handle = async ({ event, resolve }) => {
 	const proto = event.request.headers.get('x-forwarded-proto');
 	const host = event.request.headers.get('x-forwarded-host');
+	const origin = event.request.headers.get('origin');
+
+	// Debug logging for reverse proxy investigation
+	if (event.request.method === 'POST') {
+		logger.info(
+			`[ProxyHandle] POST ${event.url.pathname} | Origin header: ${origin} | X-Forwarded-Proto: ${proto} | X-Forwarded-Host: ${host} | event.url.origin: ${event.url.origin}`,
+			'ProxyHandle'
+		);
+	}
 
 	if (proto && host) {
 		const forwardedUrl = new URL(event.url);
@@ -22,6 +31,13 @@ const proxyHandle: Handle = async ({ event, resolve }) => {
 			writable: true,
 			configurable: true
 		});
+
+		if (event.request.method === 'POST') {
+			logger.info(
+				`[ProxyHandle] Rewrote event.url.origin to: ${forwardedUrl.origin}`,
+				'ProxyHandle'
+			);
+		}
 	}
 
 	return resolve(event);

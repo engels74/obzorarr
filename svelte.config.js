@@ -13,12 +13,7 @@ const config = {
 			xff_depth: 1,
 			protocol_header: 'x-forwarded-proto',
 			host_header: 'x-forwarded-host'
-		}),
-		csrf: {
-			// Disable origin checking to support reverse proxy deployments.
-			// Security is maintained through Plex OAuth authentication.
-			checkOrigin: false
-		}
+		})
 	}
 };
 
