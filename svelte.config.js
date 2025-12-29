@@ -9,7 +9,10 @@ const config = {
 		adapter: adapter({
 			out: 'build',
 			precompress: true,
-			dynamic_origin: true
+			dynamic_origin: true,
+			xff_depth: 1,
+			protocol_header: 'x-forwarded-proto',
+			host_header: 'x-forwarded-host'
 		})
 	}
 };
