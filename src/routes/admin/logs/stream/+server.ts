@@ -1,7 +1,9 @@
 import type { RequestHandler } from './$types';
 import { getLogsAfterId, getLatestLogId, type LogEntry } from '$lib/server/logging';
 
-const POLL_INTERVAL_MS = 1000;
+const POLL_INTERVAL_BASE_MS = 1000;
+const POLL_INTERVAL_MAX_MS = 5000;
+const BACKOFF_MULTIPLIER = 1.5;
 
 export const GET: RequestHandler = async ({ request }) => {
 	const url = new URL(request.url);
@@ -12,7 +14,10 @@ export const GET: RequestHandler = async ({ request }) => {
 		async start(controller) {
 			controller.enqueue(formatSSE({ type: 'connected', lastId }));
 
-			const intervalId = setInterval(async () => {
+			let currentInterval = POLL_INTERVAL_BASE_MS;
+			let intervalId: ReturnType<typeof setInterval>;
+
+			const poll = async () => {
 				try {
 					const newLogs = await getLogsAfterId(lastId);
 
@@ -25,6 +30,19 @@ export const GET: RequestHandler = async ({ request }) => {
 						if (lastLog) {
 							lastId = lastLog.id;
 						}
+
+						if (currentInterval !== POLL_INTERVAL_BASE_MS) {
+							currentInterval = POLL_INTERVAL_BASE_MS;
+							clearInterval(intervalId);
+							intervalId = setInterval(poll, currentInterval);
+						}
+					} else {
+						const newInterval = Math.min(currentInterval * BACKOFF_MULTIPLIER, POLL_INTERVAL_MAX_MS);
+						if (newInterval !== currentInterval) {
+							currentInterval = newInterval;
+							clearInterval(intervalId);
+							intervalId = setInterval(poll, currentInterval);
+						}
 					}
 				} catch (error) {
 					controller.enqueue(
@@ -34,7 +52,9 @@ export const GET: RequestHandler = async ({ request }) => {
 						})
 					);
 				}
-			}, POLL_INTERVAL_MS);
+			};
+
+			intervalId = setInterval(poll, currentInterval);
 
 			request.signal.addEventListener('abort', () => {
 				clearInterval(intervalId);

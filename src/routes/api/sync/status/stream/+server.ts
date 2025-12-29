@@ -1,7 +1,8 @@
 import type { RequestHandler } from './$types';
 import { getSyncProgress, type LiveSyncProgress } from '$lib/server/sync/progress';
 
-const POLL_INTERVAL_MS = 500;
+const POLL_INTERVAL_ACTIVE_MS = 500;
+const POLL_INTERVAL_IDLE_MS = 2000;
 
 export const GET: RequestHandler = async ({ request }) => {
 	const stream = new ReadableStream({
@@ -17,9 +18,20 @@ export const GET: RequestHandler = async ({ request }) => {
 
 			let lastProgress: LiveSyncProgress | null = initialProgress;
 			let terminalEventSent = false;
-			const intervalId = setInterval(() => {
+			let currentInterval = initialProgress?.status === 'running' ? POLL_INTERVAL_ACTIVE_MS : POLL_INTERVAL_IDLE_MS;
+			let intervalId: ReturnType<typeof setInterval>;
+
+			const poll = () => {
 				try {
 					const currentProgress = getSyncProgress();
+					const isActive = currentProgress?.status === 'running';
+					const newInterval = isActive ? POLL_INTERVAL_ACTIVE_MS : POLL_INTERVAL_IDLE_MS;
+
+					if (newInterval !== currentInterval) {
+						currentInterval = newInterval;
+						clearInterval(intervalId);
+						intervalId = setInterval(poll, currentInterval);
+					}
 
 					if (currentProgress) {
 						const hasChanged =
@@ -69,7 +81,9 @@ export const GET: RequestHandler = async ({ request }) => {
 				} catch {
 					// Silently ignore errors
 				}
-			}, POLL_INTERVAL_MS);
+			};
+
+			intervalId = setInterval(poll, currentInterval);
 
 			request.signal.addEventListener('abort', () => {
 				clearInterval(intervalId);

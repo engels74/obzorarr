@@ -33,7 +33,12 @@ export const playHistory = sqliteTable(
 		genres: text('genres'),
 		releaseYear: integer('release_year')
 	},
-	(table) => [index('idx_play_history_rating_key').on(table.ratingKey)]
+	(table) => [
+		index('idx_play_history_rating_key').on(table.ratingKey),
+		index('idx_play_history_account_id').on(table.accountId),
+		index('idx_play_history_viewed_at').on(table.viewedAt),
+		index('idx_play_history_account_viewed').on(table.accountId, table.viewedAt)
+	]
 );
 
 export const syncStatus = sqliteTable('sync_status', {
@@ -46,14 +51,18 @@ export const syncStatus = sqliteTable('sync_status', {
 	error: text('error')
 });
 
-export const cachedStats = sqliteTable('cached_stats', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	userId: integer('user_id'),
-	year: integer('year').notNull(),
-	statsType: text('stats_type').notNull(),
-	statsJson: text('stats_json').notNull(),
-	calculatedAt: integer('calculated_at', { mode: 'timestamp' }).$defaultFn(() => new Date())
-});
+export const cachedStats = sqliteTable(
+	'cached_stats',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		userId: integer('user_id'),
+		year: integer('year').notNull(),
+		statsType: text('stats_type').notNull(),
+		statsJson: text('stats_json').notNull(),
+		calculatedAt: integer('calculated_at', { mode: 'timestamp' }).$defaultFn(() => new Date())
+	},
+	(table) => [index('idx_cached_stats_lookup').on(table.userId, table.year, table.statsType)]
+);
 
 export const shareSettings = sqliteTable('share_settings', {
 	id: integer('id').primaryKey({ autoIncrement: true }),

@@ -28,6 +28,7 @@
 		"fast-check": "^4.5.2",
 		"prettier": "^3.7.4",
 		"prettier-plugin-svelte": "^3.4.1",
+		"rollup-plugin-visualizer": "^6.0.5",
 		"svelte": "^5.46.1",
 		"svelte-adapter-bun": "^1.0.0",
 		"svelte-check": "^4.3.5",
