@@ -9,11 +9,13 @@ const config = {
 		adapter: adapter({
 			out: 'build',
 			precompress: true,
-			dynamic_origin: true,
-			xff_depth: 1,
-			protocol_header: 'x-forwarded-proto',
-			host_header: 'x-forwarded-host'
-		})
+			dynamic_origin: true
+		}),
+		csrf: {
+			// Origin checking is incompatible with reverse proxy deployments.
+			// CSRF protection is maintained via SameSite=Lax cookies.
+			checkOrigin: false
+		}
 	}
 };
 
