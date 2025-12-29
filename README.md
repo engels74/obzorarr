@@ -43,8 +43,8 @@ Obzorarr is a **"Plex Wrapped"** application that syncs viewing history from you
 <summary><strong>Admin Dashboard</strong></summary>
 <br>
 
-| Dashboard | Settings | Sync Management |
-|:---------:|:--------:|:---------------:|
+|                                     Dashboard                                      |                                     Settings                                      |                                Sync Management                                |
+| :--------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------: | :---------------------------------------------------------------------------: |
 | <img src="public/readme/screenshots/admin-dashboard/01-dashboard.png" width="400"> | <img src="public/readme/screenshots/admin-dashboard/02-settings.png" width="400"> | <img src="public/readme/screenshots/admin-dashboard/03-sync.png" width="400"> |
 
 <p align="center">
@@ -57,20 +57,20 @@ Obzorarr is a **"Plex Wrapped"** application that syncs viewing history from you
 <summary><strong>Wrapped Presentation</strong></summary>
 <br>
 
-| Total Time | Top Movies |
-|:----------:|:----------:|
+|                                    Total Time                                     |                                    Top Movies                                     |
+| :-------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------: |
 | <img src="public/readme/screenshots/wrapped-pages/01-total-time.png" width="500"> | <img src="public/readme/screenshots/wrapped-pages/02-top-movies.png" width="500"> |
 
-| Top Shows | Genres |
-|:---------:|:------:|
+|                                    Top Shows                                     |                                    Genres                                     |
+| :------------------------------------------------------------------------------: | :---------------------------------------------------------------------------: |
 | <img src="public/readme/screenshots/wrapped-pages/03-top-shows.png" width="500"> | <img src="public/readme/screenshots/wrapped-pages/04-genres.png" width="500"> |
 
-| Percentile Ranking | Fun Facts |
-|:------------------:|:---------:|
+|                                Percentile Ranking                                 |                                    Fun Facts                                    |
+| :-------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------: |
 | <img src="public/readme/screenshots/wrapped-pages/05-percentile.png" width="500"> | <img src="public/readme/screenshots/wrapped-pages/06-fun-fact.png" width="500"> |
 
-| Summary | Share |
-|:-------:|:-----:|
+|                                    Summary                                     |                                       Share                                        |
+| :----------------------------------------------------------------------------: | :--------------------------------------------------------------------------------: |
 | <img src="public/readme/screenshots/wrapped-pages/07-summary.png" width="500"> | <img src="public/readme/screenshots/wrapped-pages/08-share-modal.png" width="500"> |
 
 </details>
