@@ -101,6 +101,8 @@ services:
       - PGID=1000
       - UMASK=002
       - TZ=Etc/UTC
+      - PLEX_SERVER_URL=http://plex-url-here:32400
+      - PLEX_TOKEN=your-plex-token-here
     volumes:
       - /<host_folder_config>:/config
 ```
