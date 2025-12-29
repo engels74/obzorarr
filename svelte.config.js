@@ -14,7 +14,7 @@ const config = {
 		csrf: {
 			// Origin checking is incompatible with reverse proxy deployments.
 			// CSRF protection is maintained via SameSite=Lax cookies.
-			checkOrigin: false
+			trustedOrigins: ['*']
 		}
 	}
 };
