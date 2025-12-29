@@ -335,13 +335,33 @@ export async function findUserByUsername(username: string): Promise<UserLookupRe
 		.limit(1);
 
 	const user = userResults[0];
-	if (!user) {
+	if (user) {
+		return {
+			userId: user.id,
+			username: user.username,
+			accountId: plexAccount.accountId
+		};
+	}
+
+	const insertResult = await db
+		.insert(users)
+		.values({
+			plexId: plexAccount.plexId,
+			accountId: plexAccount.accountId,
+			username: plexAccount.username,
+			thumb: plexAccount.thumb,
+			isAdmin: false
+		})
+		.returning({ id: users.id });
+
+	const newUser = insertResult[0];
+	if (!newUser) {
 		return null;
 	}
 
 	return {
-		userId: user.id,
-		username: user.username,
+		userId: newUser.id,
+		username: plexAccount.username,
 		accountId: plexAccount.accountId
 	};
 }
