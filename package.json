@@ -29,7 +29,7 @@
 		"prettier": "^3.7.4",
 		"prettier-plugin-svelte": "^3.4.1",
 		"svelte": "^5.46.1",
-		"svelte-adapter-bun": "^0.5.2",
+		"svelte-adapter-bun": "^1.0.0",
 		"svelte-check": "^4.3.5",
 		"typescript": "^5.9.3",
 		"unocss": "^66.5.11",
