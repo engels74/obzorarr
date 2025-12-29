@@ -8,6 +8,25 @@ import { logger } from '$lib/server/logging';
 import { requiresOnboarding, getOnboardingStep } from '$lib/server/onboarding';
 import { env } from '$env/dynamic/private';
 
+const proxyHandle: Handle = async ({ event, resolve }) => {
+	const proto = event.request.headers.get('x-forwarded-proto');
+	const host = event.request.headers.get('x-forwarded-host');
+
+	if (proto && host) {
+		const forwardedUrl = new URL(event.url);
+		forwardedUrl.protocol = proto.includes('https') ? 'https:' : 'http:';
+		forwardedUrl.host = host;
+
+		Object.defineProperty(event, 'url', {
+			value: forwardedUrl,
+			writable: true,
+			configurable: true
+		});
+	}
+
+	return resolve(event);
+};
+
 const COOKIE_DELETE_OPTIONS = {
 	path: '/'
 };
@@ -149,4 +168,4 @@ export const handleError: HandleServerError = async ({ error, event }) => {
 	};
 };
 
-export const handle = sequence(authHandle, onboardingHandle, authorizationHandle);
+export const handle = sequence(proxyHandle, authHandle, onboardingHandle, authorizationHandle);
