@@ -15,15 +15,12 @@ const BLOCKED_PATH_PATTERNS = [
 	/^\/config\.php/i,
 	/^\/setup\.php/i,
 	/^\/install\.php/i,
-	/^\/_next\//i,
-	/^\/api\/action[s]?$/i,
 	/^\/actuator/i,
 	/^\/debug\//i,
 	/^\/console/i,
 	/^\/manager/i,
 	/^\/phpinfo/i,
-	/^\/cgi-bin/i,
-	/^\/\.well-known\/security\.txt/i
+	/^\/cgi-bin/i
 ];
 
 const BLOCKED_USER_AGENT_PATTERNS = [

@@ -1,6 +1,7 @@
 import type { Handle, HandleServerError } from '@sveltejs/kit';
 import { redirect, isRedirect } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
+import { dev } from '$app/environment';
 import { validateSession } from '$lib/server/auth/session';
 import { isDevBypassEnabled, getOrCreateDevSession } from '$lib/server/auth/dev-bypass';
 import { SESSION_DURATION_MS } from '$lib/server/auth/types';
@@ -11,25 +12,20 @@ import { requestFilterHandle, rateLimitHandle } from '$lib/server/security';
 
 const securityHeadersHandle: Handle = async ({ event, resolve }) => {
 	const response = await resolve(event);
-	const headers = new Headers(response.headers);
 
-	headers.set('X-Frame-Options', 'DENY');
-	headers.set('X-Content-Type-Options', 'nosniff');
-	headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-	headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+	response.headers.set('X-Frame-Options', 'DENY');
+	response.headers.set('X-Content-Type-Options', 'nosniff');
+	response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+	response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 
 	const isHttps =
 		event.url.protocol === 'https:' ||
 		event.request.headers.get('x-forwarded-proto')?.includes('https');
 	if (isHttps) {
-		headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+		response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
 	}
 
-	return new Response(response.body, {
-		status: response.status,
-		statusText: response.statusText,
-		headers
-	});
+	return response;
 };
 
 const proxyHandle: Handle = async ({ event, resolve }) => {
@@ -58,7 +54,7 @@ const COOKIE_DELETE_OPTIONS = {
 const COOKIE_OPTIONS = {
 	path: '/',
 	httpOnly: true,
-	secure: process.env.NODE_ENV === 'production',
+	secure: !dev,
 	sameSite: 'lax' as const,
 	maxAge: Math.floor(SESSION_DURATION_MS / 1000)
 };
