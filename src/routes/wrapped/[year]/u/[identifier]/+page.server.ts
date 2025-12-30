@@ -4,7 +4,7 @@ import type { PageServerLoad, Actions } from './$types';
 import { db } from '$lib/server/db/client';
 import { users } from '$lib/server/db/schema';
 import { calculateUserStats } from '$lib/server/stats/engine';
-import { checkTokenAccess } from '$lib/server/sharing/access-control';
+import { checkTokenAccess, checkWrappedAccess } from '$lib/server/sharing/access-control';
 import {
 	isValidTokenFormat,
 	getOrCreateShareSettings,
@@ -13,6 +13,7 @@ import {
 } from '$lib/server/sharing/service';
 import {
 	InvalidShareTokenError,
+	ShareAccessDeniedError,
 	PermissionExceededError,
 	ShareModeSchema
 } from '$lib/server/sharing/types';
@@ -61,6 +62,22 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			error(404, 'Invalid identifier');
 		}
 		userId = parsedId;
+
+		try {
+			await checkWrappedAccess({
+				userId,
+				year,
+				currentUser: locals.user
+			});
+		} catch (err) {
+			if (err instanceof ShareAccessDeniedError) {
+				error(403, err.message);
+			}
+			if (err instanceof InvalidShareTokenError) {
+				error(404, 'Wrapped not found');
+			}
+			throw err;
+		}
 	}
 
 	const userResult = await db.select().from(users).where(eq(users.id, userId)).limit(1);

@@ -1,5 +1,6 @@
 import { marked } from 'marked';
 import type { MarkdownValidationResult } from './types';
+import { sanitizeMarkdownHtml } from './sanitize';
 
 export interface MarkdownOptions {
 	sanitize?: boolean;
@@ -16,24 +17,22 @@ marked.setOptions({
 export function renderMarkdown(content: string, options: MarkdownOptions = {}): string {
 	const { breaks = false } = options;
 
-	// Configure breaks option for this render
 	const htmlContent = marked.parse(content, {
 		gfm: true,
 		breaks
 	});
 
-	// marked.parse returns string | Promise<string>, but with async: false it's always string
 	if (typeof htmlContent === 'string') {
-		return htmlContent;
+		return sanitizeMarkdownHtml(htmlContent);
 	}
 
-	// Fallback (shouldn't happen with async: false)
-	return content;
+	return sanitizeMarkdownHtml(content);
 }
 
 export function renderMarkdownSync(content: string): string {
 	const result = marked.parse(content, { async: false });
-	return typeof result === 'string' ? result : content;
+	const html = typeof result === 'string' ? result : content;
+	return sanitizeMarkdownHtml(html);
 }
 
 export function validateMarkdownSyntax(content: string): MarkdownValidationResult {
