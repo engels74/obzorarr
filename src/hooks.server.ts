@@ -7,6 +7,30 @@ import { SESSION_DURATION_MS } from '$lib/server/auth/types';
 import { logger } from '$lib/server/logging';
 import { requiresOnboarding, getOnboardingStep } from '$lib/server/onboarding';
 import { env } from '$env/dynamic/private';
+import { requestFilterHandle, rateLimitHandle } from '$lib/server/security';
+
+const securityHeadersHandle: Handle = async ({ event, resolve }) => {
+	const response = await resolve(event);
+	const headers = new Headers(response.headers);
+
+	headers.set('X-Frame-Options', 'DENY');
+	headers.set('X-Content-Type-Options', 'nosniff');
+	headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+	headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+
+	const isHttps =
+		event.url.protocol === 'https:' ||
+		event.request.headers.get('x-forwarded-proto')?.includes('https');
+	if (isHttps) {
+		headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+	}
+
+	return new Response(response.body, {
+		status: response.status,
+		statusText: response.statusText,
+		headers
+	});
+};
 
 const proxyHandle: Handle = async ({ event, resolve }) => {
 	const proto = event.request.headers.get('x-forwarded-proto');
@@ -34,7 +58,7 @@ const COOKIE_DELETE_OPTIONS = {
 const COOKIE_OPTIONS = {
 	path: '/',
 	httpOnly: true,
-	secure: false, // Dev mode only
+	secure: process.env.NODE_ENV === 'production',
 	sameSite: 'lax' as const,
 	maxAge: Math.floor(SESSION_DURATION_MS / 1000)
 };
@@ -168,4 +192,12 @@ export const handleError: HandleServerError = async ({ error, event }) => {
 	};
 };
 
-export const handle = sequence(proxyHandle, authHandle, onboardingHandle, authorizationHandle);
+export const handle = sequence(
+	requestFilterHandle,
+	rateLimitHandle,
+	proxyHandle,
+	securityHeadersHandle,
+	authHandle,
+	onboardingHandle,
+	authorizationHandle
+);

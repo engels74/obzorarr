@@ -1,6 +1,7 @@
-import { json, redirect } from '@sveltejs/kit';
+import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { invalidateSession } from '$lib/server/auth/session';
+import { logger } from '$lib/server/logging';
 
 const COOKIE_OPTIONS = {
 	path: '/'
@@ -13,8 +14,7 @@ export const POST: RequestHandler = async ({ cookies }) => {
 		try {
 			await invalidateSession(sessionId);
 		} catch (err) {
-			// Log error but don't fail - the cookie will be deleted anyway
-			console.error('Error invalidating session:', err);
+			logger.error('Error invalidating session', 'Logout', { error: String(err) });
 		}
 	}
 
@@ -24,20 +24,4 @@ export const POST: RequestHandler = async ({ cookies }) => {
 		success: true,
 		message: 'Logged out successfully'
 	});
-};
-
-export const GET: RequestHandler = async ({ cookies }) => {
-	const sessionId = cookies.get('session');
-
-	if (sessionId) {
-		try {
-			await invalidateSession(sessionId);
-		} catch (err) {
-			console.error('Error invalidating session:', err);
-		}
-	}
-
-	cookies.delete('session', COOKIE_OPTIONS);
-
-	redirect(303, '/');
 };

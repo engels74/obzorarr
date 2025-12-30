@@ -8,6 +8,7 @@ import {
 	PlexServerIdentitySchema
 } from '$lib/server/auth/types';
 import { logger } from '$lib/server/logging';
+import { sanitizeConnectionError } from '$lib/server/security/error-sanitizer';
 
 const PLEX_SERVER_HEADERS = {
 	Accept: 'application/json',
@@ -154,7 +155,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				logger.debug(`Connection test failed: ${fetchError.message}`, 'Onboarding');
 				return json({
 					success: false,
-					error: `Connection failed: ${fetchError.message}`
+					error: sanitizeConnectionError(fetchError)
 				});
 			}
 

@@ -13,6 +13,7 @@ import {
 	PLEX_VERSION,
 	PlexServerIdentitySchema
 } from '$lib/server/auth/types';
+import { sanitizeConnectionError } from '$lib/server/security/error-sanitizer';
 
 const PLEX_SERVER_HEADERS = {
 	Accept: 'application/json',
@@ -107,7 +108,7 @@ async function testConnection(url: string, accessToken: string): Promise<Connect
 				};
 			}
 
-			return { success: false, error: `Connection failed: ${fetchError.message}` };
+			return { success: false, error: sanitizeConnectionError(fetchError) };
 		}
 
 		return { success: false, error: 'Connection failed - please try a different connection type' };
