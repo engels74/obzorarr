@@ -19,7 +19,7 @@ export interface RateLimitRecord {
 	windowStart: number;
 }
 
-export const DEFAULT_RATE_LIMIT: RateLimitConfig = {
+export const FALLBACK_RATE_LIMIT: RateLimitConfig = {
 	windowMs: 60_000,
 	maxRequests: 10
 };

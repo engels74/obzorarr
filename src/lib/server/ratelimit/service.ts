@@ -1,5 +1,5 @@
 import {
-	DEFAULT_RATE_LIMIT,
+	FALLBACK_RATE_LIMIT,
 	STALE_THRESHOLD_MS,
 	type RateLimitConfig,
 	type RateLimitResult,
@@ -10,7 +10,7 @@ const rateLimitStore = new Map<string, RateLimitRecord>();
 
 export function checkRateLimit(
 	ip: string,
-	config: RateLimitConfig = DEFAULT_RATE_LIMIT
+	config: RateLimitConfig = FALLBACK_RATE_LIMIT
 ): RateLimitResult {
 	const now = Date.now();
 	const record = rateLimitStore.get(ip);
