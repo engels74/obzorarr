@@ -1,6 +1,6 @@
 import sanitizeHtml from 'sanitize-html';
 
-const ALLOWED_IMAGE_MIME_TYPES = /^image\/(png|jpe?g|gif|webp|svg\+xml)$/i;
+const ALLOWED_IMAGE_MIME_TYPES = /^image\/(png|jpe?g|gif|webp)$/i;
 
 function isValidImageDataUri(src: string): boolean {
 	if (!src.startsWith('data:')) return true;
