@@ -37,6 +37,10 @@ Obzorarr is a **"Plex Wrapped"** application that syncs viewing history from you
 - **Automatic Sync** — Scheduled background sync of viewing history
 - **AI Fun Facts** — Optional AI-generated personalized insights
 
+## Issues & Support
+
+Found a bug or have a feature request? Please submit issues and feature requests to the **[obzorarr-docker repository](https://github.com/engels74/obzorarr-docker/issues)** rather than this repository. This ensures your report reaches the maintainers monitoring issue tracking across the project.
+
 ## Screenshots
 
 <details>
