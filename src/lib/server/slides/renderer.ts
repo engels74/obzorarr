@@ -3,8 +3,6 @@ import type { MarkdownValidationResult } from './types';
 import { sanitizeMarkdownHtml } from './sanitize';
 
 export interface MarkdownOptions {
-	sanitize?: boolean;
-	allowHtml?: boolean;
 	breaks?: boolean;
 }
 

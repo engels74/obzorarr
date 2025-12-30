@@ -1,5 +1,14 @@
 import sanitizeHtml from 'sanitize-html';
 
+const ALLOWED_IMAGE_MIME_TYPES = /^image\/(png|jpe?g|gif|webp|svg\+xml)$/i;
+
+function isValidImageDataUri(src: string): boolean {
+	if (!src.startsWith('data:')) return true;
+	const mimeType = src.slice(5).split(/[,;]/)[0];
+	if (!mimeType) return false;
+	return ALLOWED_IMAGE_MIME_TYPES.test(mimeType);
+}
+
 export const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
 	allowedTags: [
 		'h1',
@@ -41,7 +50,14 @@ export const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
 				rel: 'noopener noreferrer',
 				target: '_blank'
 			}
-		})
+		}),
+		img: (tagName, attribs) => {
+			if (attribs.src && !isValidImageDataUri(attribs.src)) {
+				const { src: _, ...safeAttribs } = attribs;
+				return { tagName, attribs: safeAttribs };
+			}
+			return { tagName, attribs };
+		}
 	}
 };
 
