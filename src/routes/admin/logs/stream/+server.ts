@@ -55,6 +55,7 @@ export const GET: RequestHandler = async ({ request }) => {
 			};
 
 			intervalId = setInterval(poll, currentInterval);
+			poll();
 
 			request.signal.addEventListener('abort', () => {
 				clearInterval(intervalId);
