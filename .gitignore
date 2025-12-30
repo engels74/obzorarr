@@ -30,3 +30,6 @@ vite.config.ts.timestamp-*
 
 # Docs
 docs/
+
+# Build analysis
+bundle-stats.html
