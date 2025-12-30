@@ -27,8 +27,7 @@ export const DEFAULT_RATE_LIMIT: RateLimitConfig = {
 export const RATE_LIMIT_CONFIGS = {
 	default: { windowMs: 60_000, maxRequests: 60 },
 	auth: { windowMs: 300_000, maxRequests: 10 },
-	api: { windowMs: 60_000, maxRequests: 30 },
-	formAction: { windowMs: 60_000, maxRequests: 10 }
+	api: { windowMs: 60_000, maxRequests: 30 }
 } as const satisfies Record<string, RateLimitConfig>;
 
 export const STALE_THRESHOLD_MS = 5 * 60 * 1000;

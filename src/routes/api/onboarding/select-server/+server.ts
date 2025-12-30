@@ -13,7 +13,7 @@ import {
 	PLEX_VERSION,
 	PlexServerIdentitySchema
 } from '$lib/server/auth/types';
-import { sanitizeConnectionError } from '$lib/server/security/error-sanitizer';
+import { classifyConnectionError } from '$lib/server/security';
 
 const PLEX_SERVER_HEADERS = {
 	Accept: 'application/json',
@@ -80,38 +80,10 @@ async function testConnection(url: string, accessToken: string): Promise<Connect
 		clearTimeout(timeoutId);
 
 		if (fetchError instanceof Error) {
-			if (fetchError.name === 'AbortError') {
-				return { success: false, error: 'Connection timed out - the server may be unreachable' };
-			}
-
-			if (
-				fetchError.message.includes('certificate') ||
-				fetchError.message.includes('SSL') ||
-				fetchError.message.includes('TLS')
-			) {
-				return {
-					success: false,
-					error:
-						'SSL certificate error - try a different connection type or check your server configuration'
-				};
-			}
-
-			if (
-				fetchError.message.includes('ENOTFOUND') ||
-				fetchError.message.includes('ECONNREFUSED') ||
-				fetchError.message.includes('getaddrinfo')
-			) {
-				return {
-					success: false,
-					error:
-						'Could not connect to server - check the URL and ensure the server is reachable from this host'
-				};
-			}
-
-			return { success: false, error: sanitizeConnectionError(fetchError) };
+			return { success: false, error: classifyConnectionError(fetchError) };
 		}
 
-		return { success: false, error: 'Connection failed - please try a different connection type' };
+		return { success: false, error: 'Connection failed' };
 	}
 }
 

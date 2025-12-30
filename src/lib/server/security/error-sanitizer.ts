@@ -29,6 +29,32 @@ export function sanitizeConnectionError(error: unknown): string {
 	return 'Connection failed';
 }
 
+export function classifyConnectionError(error: Error): string {
+	if (error.name === 'AbortError') {
+		return 'Connection timed out - the server may be unreachable';
+	}
+
+	const message = error.message;
+
+	if (
+		message.includes('certificate') ||
+		message.includes('SSL') ||
+		message.includes('TLS')
+	) {
+		return 'SSL certificate error - check your server configuration';
+	}
+
+	if (
+		message.includes('ENOTFOUND') ||
+		message.includes('ECONNREFUSED') ||
+		message.includes('getaddrinfo')
+	) {
+		return 'Could not connect to server - check the URL and ensure the server is reachable';
+	}
+
+	return sanitizeConnectionError(error);
+}
+
 export function sanitizeApiError(error: unknown): string {
 	if (!(error instanceof Error)) {
 		return 'An error occurred';
