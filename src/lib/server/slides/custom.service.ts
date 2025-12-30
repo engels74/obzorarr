@@ -9,7 +9,7 @@ import {
 	type CreateCustomSlide,
 	type UpdateCustomSlide
 } from './types';
-import { validateMarkdownSyntax } from './renderer';
+import { validateMarkdownSyntax, containsUnsafeHtml } from './renderer';
 
 export async function createCustomSlide(data: CreateCustomSlide): Promise<CustomSlide> {
 	const parsed = CreateCustomSlideSchema.safeParse(data);
@@ -20,6 +20,13 @@ export async function createCustomSlide(data: CreateCustomSlide): Promise<Custom
 	}
 
 	const validData = parsed.data;
+
+	if (containsUnsafeHtml(validData.content)) {
+		throw new SlideError(
+			'Content contains potentially unsafe HTML patterns',
+			'UNSAFE_CONTENT'
+		);
+	}
 
 	const markdownValidation = validateMarkdownSyntax(validData.content);
 	if (!markdownValidation.valid) {
@@ -145,6 +152,13 @@ export async function updateCustomSlide(
 	}
 
 	if (validUpdates.content !== undefined) {
+		if (containsUnsafeHtml(validUpdates.content)) {
+			throw new SlideError(
+				'Content contains potentially unsafe HTML patterns',
+				'UNSAFE_CONTENT'
+			);
+		}
+
 		const markdownValidation = validateMarkdownSyntax(validUpdates.content);
 		if (!markdownValidation.valid) {
 			throw new SlideError(
