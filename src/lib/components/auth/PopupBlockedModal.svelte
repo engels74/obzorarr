@@ -16,6 +16,7 @@
 	}
 
 	function handleContinue(): void {
+		open = false;
 		onContinue();
 	}
 

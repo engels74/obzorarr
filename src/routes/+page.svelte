@@ -172,6 +172,9 @@
 		} catch {
 			pendingPinId = null;
 			pendingAuthUrl = null;
+			isOAuthLoading = false;
+			oauthError = 'Unable to prepare redirect. Please try again.';
+			return;
 		}
 
 		isOAuthLoading = false;
