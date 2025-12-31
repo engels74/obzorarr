@@ -8,6 +8,7 @@ import {
 	PlexServerIdentitySchema
 } from '$lib/server/auth/types';
 import { logger } from '$lib/server/logging';
+import { classifyConnectionError } from '$lib/server/security';
 
 const PLEX_SERVER_HEADERS = {
 	Accept: 'application/json',
@@ -111,57 +112,19 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		} catch (fetchError) {
 			clearTimeout(timeoutId);
 
-			// Handle specific error types
 			if (fetchError instanceof Error) {
-				// Timeout error
-				if (fetchError.name === 'AbortError') {
-					logger.debug('Connection test failed: Timeout', 'Onboarding');
-					return json({
-						success: false,
-						error: 'Connection timed out - the server may be unreachable'
-					});
-				}
-
-				// SSL/TLS errors
-				if (
-					fetchError.message.includes('certificate') ||
-					fetchError.message.includes('SSL') ||
-					fetchError.message.includes('TLS')
-				) {
-					logger.debug(`Connection test failed: SSL error - ${fetchError.message}`, 'Onboarding');
-					return json({
-						success: false,
-						error: 'SSL certificate error - check your reverse proxy configuration'
-					});
-				}
-
-				// DNS/Network errors
-				if (
-					fetchError.message.includes('ENOTFOUND') ||
-					fetchError.message.includes('ECONNREFUSED') ||
-					fetchError.message.includes('getaddrinfo')
-				) {
-					logger.debug(
-						`Connection test failed: Network error - ${fetchError.message}`,
-						'Onboarding'
-					);
-					return json({
-						success: false,
-						error: 'Could not connect to server - check the URL and ensure the server is reachable'
-					});
-				}
-
-				logger.debug(`Connection test failed: ${fetchError.message}`, 'Onboarding');
+				const errorMessage = classifyConnectionError(fetchError);
+				logger.debug(`Connection test failed: ${errorMessage}`, 'Onboarding');
 				return json({
 					success: false,
-					error: `Connection failed: ${fetchError.message}`
+					error: errorMessage
 				});
 			}
 
-			logger.debug(`Connection test failed: Unknown error`, 'Onboarding');
+			logger.debug('Connection test failed: Unknown error', 'Onboarding');
 			return json({
 				success: false,
-				error: 'Connection failed - please check the URL and try again'
+				error: 'Connection failed'
 			});
 		}
 	} catch (err) {

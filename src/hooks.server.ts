@@ -1,12 +1,32 @@
 import type { Handle, HandleServerError } from '@sveltejs/kit';
 import { redirect, isRedirect } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
+import { dev } from '$app/environment';
 import { validateSession } from '$lib/server/auth/session';
 import { isDevBypassEnabled, getOrCreateDevSession } from '$lib/server/auth/dev-bypass';
 import { SESSION_DURATION_MS } from '$lib/server/auth/types';
 import { logger } from '$lib/server/logging';
 import { requiresOnboarding, getOnboardingStep } from '$lib/server/onboarding';
 import { env } from '$env/dynamic/private';
+import { requestFilterHandle, rateLimitHandle } from '$lib/server/security';
+
+const securityHeadersHandle: Handle = async ({ event, resolve }) => {
+	const response = await resolve(event);
+
+	response.headers.set('X-Frame-Options', 'DENY');
+	response.headers.set('X-Content-Type-Options', 'nosniff');
+	response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+	response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+
+	const isHttps =
+		event.url.protocol === 'https:' ||
+		event.request.headers.get('x-forwarded-proto')?.includes('https');
+	if (isHttps) {
+		response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+	}
+
+	return response;
+};
 
 const proxyHandle: Handle = async ({ event, resolve }) => {
 	const proto = event.request.headers.get('x-forwarded-proto');
@@ -34,7 +54,7 @@ const COOKIE_DELETE_OPTIONS = {
 const COOKIE_OPTIONS = {
 	path: '/',
 	httpOnly: true,
-	secure: false, // Dev mode only
+	secure: !dev,
 	sameSite: 'lax' as const,
 	maxAge: Math.floor(SESSION_DURATION_MS / 1000)
 };
@@ -168,4 +188,12 @@ export const handleError: HandleServerError = async ({ error, event }) => {
 	};
 };
 
-export const handle = sequence(proxyHandle, authHandle, onboardingHandle, authorizationHandle);
+export const handle = sequence(
+	requestFilterHandle,
+	rateLimitHandle,
+	proxyHandle,
+	securityHeadersHandle,
+	authHandle,
+	onboardingHandle,
+	authorizationHandle
+);
