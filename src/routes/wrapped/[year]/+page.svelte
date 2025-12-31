@@ -5,7 +5,8 @@
 		ScrollMode,
 		ModeToggle,
 		SummaryPage,
-		ShareModal
+		ShareModal,
+		YearNavigation
 	} from '$lib/components/wrapped';
 	import Logo from '$lib/components/Logo.svelte';
 	import { createServerContext } from '$lib/components/slides/messaging-context';
@@ -121,6 +122,11 @@
 	<div class="mode-toggle-container">
 		<ModeToggle mode={viewMode} onModeChange={handleModeChange} />
 	</div>
+
+	<!-- Year Navigation -->
+	{#if data.availableYears && data.availableYears.length > 1}
+		<YearNavigation currentYear={data.year} availableYears={data.availableYears} />
+	{/if}
 
 	<!-- Wrapped Content -->
 	{#if showSummary}
