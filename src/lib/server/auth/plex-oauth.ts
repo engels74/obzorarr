@@ -222,13 +222,13 @@ export function buildPlexOAuthUrl(pinCode: string, forwardUrl?: string): string 
 }
 
 /** Get complete PIN info for initiating OAuth flow from the client. */
-export async function getPinInfo(): Promise<PinInfo> {
+export async function getPinInfo(forwardUrl?: string): Promise<PinInfo> {
 	const pin = await requestPin();
 
 	return {
 		pinId: pin.id,
 		code: pin.code,
-		authUrl: buildPlexOAuthUrl(pin.code),
+		authUrl: buildPlexOAuthUrl(pin.code, forwardUrl),
 		expiresAt: pin.expiresAt ?? new Date(Date.now() + 15 * 60 * 1000).toISOString()
 	};
 }

@@ -8,9 +8,10 @@ const PollRequestSchema = z.object({
 	pinId: z.number().int().positive()
 });
 
-export const GET: RequestHandler = async () => {
+export const GET: RequestHandler = async ({ url }) => {
 	try {
-		const pinInfo = await getPinInfo();
+		const redirectUrl = url.searchParams.get('redirectUrl') ?? undefined;
+		const pinInfo = await getPinInfo(redirectUrl);
 
 		return json(pinInfo);
 	} catch (err) {

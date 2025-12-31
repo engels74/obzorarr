@@ -4,6 +4,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { animate, stagger } from 'motion';
 	import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
+	import PopupBlockedModal from '$lib/components/auth/PopupBlockedModal.svelte';
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import { toast } from '$lib/services/toast';
 	import type { PageData, ActionData } from './$types';
@@ -14,6 +15,12 @@
 	let oauthError = $state<string | null>(null);
 	let pollIntervalId: ReturnType<typeof setInterval> | null = null;
 	let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+	// Popup fallback state
+	let showPopupBlockedModal = $state(false);
+	let pendingPinId = $state<number | null>(null);
+	let pendingAuthUrl = $state<string | null>(null);
+	const PIN_STORAGE_KEY = 'obzorarr_plex_pin';
 
 	// Bypasses SvelteKit data prop reactivity timing issues
 	let localAuthState = $state<{
@@ -174,6 +181,17 @@
 
 			const authWindow = window.open(authUrl, 'plex-auth', 'width=600,height=700');
 
+			if (!authWindow) {
+				await handlePopupBlocked(pinId);
+				return;
+			}
+
+			await new Promise((r) => setTimeout(r, 100));
+			if (authWindow.closed) {
+				await handlePopupBlocked(pinId);
+				return;
+			}
+
 			pollIntervalId = setInterval(async () => {
 				try {
 					const pollResponse = await fetch('/auth/plex', {
@@ -251,6 +269,48 @@
 			isOAuthLoading = false;
 			oauthError = err instanceof Error ? err.message : 'Login failed';
 		}
+	}
+
+	async function handlePopupBlocked(_originalPinId: number): Promise<void> {
+		try {
+			const redirectUrl = browser ? `${window.location.origin}/auth/plex/redirect` : '';
+			const response = await fetch(`/auth/plex?redirectUrl=${encodeURIComponent(redirectUrl)}`);
+			if (!response.ok) {
+				throw new Error('Failed to prepare redirect');
+			}
+			const { pinId, authUrl } = (await response.json()) as { pinId: number; authUrl: string };
+			pendingPinId = pinId;
+			pendingAuthUrl = authUrl;
+		} catch {
+			pendingPinId = null;
+			pendingAuthUrl = null;
+		}
+
+		isOAuthLoading = false;
+		showPopupBlockedModal = true;
+	}
+
+	function handleContinueWithRedirect(): void {
+		if (!pendingPinId || !pendingAuthUrl || !browser) return;
+
+		sessionStorage.setItem(
+			PIN_STORAGE_KEY,
+			JSON.stringify({
+				pinId: pendingPinId,
+				createdAt: Date.now(),
+				context: 'onboarding'
+			})
+		);
+
+		showPopupBlockedModal = false;
+		window.location.href = pendingAuthUrl;
+	}
+
+	function handleCancelRedirect(): void {
+		pendingPinId = null;
+		pendingAuthUrl = null;
+		showPopupBlockedModal = false;
+		oauthError = 'Login cancelled. Try enabling popups for this site.';
 	}
 
 	function handleServerExpand(server: (typeof servers)[0]) {
@@ -1002,6 +1062,12 @@
 		{/if}
 	{/snippet}
 </OnboardingCard>
+
+<PopupBlockedModal
+	bind:open={showPopupBlockedModal}
+	onContinue={handleContinueWithRedirect}
+	onCancel={handleCancelRedirect}
+/>
 
 <style>
 	.plex-content {

@@ -2,7 +2,9 @@
 	import { enhance } from '$app/forms';
 	import { animate } from 'motion';
 	import { prefersReducedMotion } from 'svelte/motion';
+	import { browser } from '$app/environment';
 	import Logo from '$lib/components/Logo.svelte';
+	import PopupBlockedModal from '$lib/components/auth/PopupBlockedModal.svelte';
 	import type { PageData, ActionData } from './$types';
 
 	/**
@@ -32,6 +34,12 @@
 	let pollIntervalId: ReturnType<typeof setInterval> | null = null;
 	let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
+	// Popup fallback state
+	let showPopupBlockedModal = $state(false);
+	let pendingPinId = $state<number | null>(null);
+	let pendingAuthUrl = $state<string | null>(null);
+	const PIN_STORAGE_KEY = 'obzorarr_plex_pin';
+
 	// Element refs for animation
 	let heroContainer: HTMLElement | undefined = $state();
 
@@ -60,7 +68,6 @@
 		oauthError = null;
 
 		try {
-			// 1. Get PIN info
 			const response = await fetch('/auth/plex');
 			if (!response.ok) {
 				const errData = await response.json().catch(() => ({}));
@@ -68,10 +75,19 @@
 			}
 			const { pinId, authUrl } = (await response.json()) as { pinId: number; authUrl: string };
 
-			// 2. Open Plex auth in new window
 			const authWindow = window.open(authUrl, 'plex-auth', 'width=600,height=700');
 
-			// 3. Poll for completion
+			if (!authWindow) {
+				await handlePopupBlocked(pinId);
+				return;
+			}
+
+			await new Promise((r) => setTimeout(r, 100));
+			if (authWindow.closed) {
+				await handlePopupBlocked(pinId);
+				return;
+			}
+
 			pollIntervalId = setInterval(async () => {
 				try {
 					const pollResponse = await fetch('/auth/plex', {
@@ -83,14 +99,12 @@
 					if (!pollResponse.ok) {
 						const status = pollResponse.status;
 						if (status === 401) {
-							// PIN expired
 							if (pollIntervalId) clearInterval(pollIntervalId);
 							pollIntervalId = null;
 							isOAuthLoading = false;
 							oauthError = 'Authentication expired. Please try again.';
 							return;
 						}
-						// Other error, keep polling
 						return;
 					}
 
@@ -101,7 +115,6 @@
 						pollIntervalId = null;
 						authWindow?.close();
 
-						// 4. Complete auth via callback endpoint
 						const callbackResponse = await fetch('/auth/plex/callback', {
 							method: 'POST',
 							headers: { 'Content-Type': 'application/json' },
@@ -117,7 +130,6 @@
 							user: { isAdmin: boolean };
 						};
 
-						// 5. Redirect based on role
 						window.location.href = userData.user.isAdmin ? '/admin' : '/dashboard';
 					}
 				} catch (err) {
@@ -128,7 +140,6 @@
 				}
 			}, 2000);
 
-			// Clean up after 5 minutes (PIN expires)
 			timeoutId = setTimeout(
 				() => {
 					if (pollIntervalId) {
@@ -146,6 +157,48 @@
 			isOAuthLoading = false;
 			oauthError = err instanceof Error ? err.message : 'Login failed';
 		}
+	}
+
+	async function handlePopupBlocked(_originalPinId: number): Promise<void> {
+		try {
+			const redirectUrl = browser ? `${window.location.origin}/auth/plex/redirect` : '';
+			const response = await fetch(`/auth/plex?redirectUrl=${encodeURIComponent(redirectUrl)}`);
+			if (!response.ok) {
+				throw new Error('Failed to prepare redirect');
+			}
+			const { pinId, authUrl } = (await response.json()) as { pinId: number; authUrl: string };
+			pendingPinId = pinId;
+			pendingAuthUrl = authUrl;
+		} catch {
+			pendingPinId = null;
+			pendingAuthUrl = null;
+		}
+
+		isOAuthLoading = false;
+		showPopupBlockedModal = true;
+	}
+
+	function handleContinueWithRedirect(): void {
+		if (!pendingPinId || !pendingAuthUrl || !browser) return;
+
+		sessionStorage.setItem(
+			PIN_STORAGE_KEY,
+			JSON.stringify({
+				pinId: pendingPinId,
+				createdAt: Date.now(),
+				context: 'landing'
+			})
+		);
+
+		showPopupBlockedModal = false;
+		window.location.href = pendingAuthUrl;
+	}
+
+	function handleCancelRedirect(): void {
+		pendingPinId = null;
+		pendingAuthUrl = null;
+		showPopupBlockedModal = false;
+		oauthError = 'Login cancelled. Try enabling popups for this site.';
 	}
 </script>
 
@@ -251,6 +304,12 @@
 		<p>Spotify Wrapped-style summaries for your Plex Media Server</p>
 	</footer>
 </div>
+
+<PopupBlockedModal
+	bind:open={showPopupBlockedModal}
+	onContinue={handleContinueWithRedirect}
+	onCancel={handleCancelRedirect}
+/>
 
 <style>
 	.landing {
