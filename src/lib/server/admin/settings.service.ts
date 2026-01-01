@@ -307,6 +307,7 @@ export type ConfigSource = 'env' | 'db' | 'default';
 export interface ConfigValue<T> {
 	value: T;
 	source: ConfigSource;
+	isLocked: boolean;
 }
 
 export interface ApiConfigWithSources {
@@ -346,14 +347,14 @@ export async function getApiConfigWithSources(): Promise<ApiConfigWithSources> {
 		envValue: string,
 		defaultValue: string = ''
 	): ConfigValue<string> {
+		if (envValue) {
+			return { value: envValue, source: 'env', isLocked: true };
+		}
 		const dbValue = dbSettings[dbKey];
 		if (dbValue) {
-			return { value: dbValue, source: 'db' };
+			return { value: dbValue, source: 'db', isLocked: false };
 		}
-		if (envValue) {
-			return { value: envValue, source: 'env' };
-		}
-		return { value: defaultValue, source: 'default' };
+		return { value: defaultValue, source: 'default', isLocked: false };
 	}
 
 	return {
@@ -387,9 +388,9 @@ export interface PlexConfig {
 }
 
 /**
- * Get the merged Plex configuration (database takes priority over environment).
+ * Get the merged Plex configuration (environment takes priority over database).
  * This should be used by all Plex-related services to ensure they use
- * settings configured during onboarding.
+ * settings configured via environment variables when available.
  */
 export async function getPlexConfig(): Promise<PlexConfig> {
 	const config = await getApiConfigWithSources();
@@ -418,14 +419,14 @@ export async function getCsrfConfigWithSource(): Promise<CsrfConfigWithSource> {
 		envValue: string,
 		defaultValue: string = ''
 	): ConfigValue<string> {
+		if (envValue) {
+			return { value: envValue, source: 'env', isLocked: true };
+		}
 		const dbValue = dbSettings[dbKey];
 		if (dbValue) {
-			return { value: dbValue, source: 'db' };
+			return { value: dbValue, source: 'db', isLocked: false };
 		}
-		if (envValue) {
-			return { value: envValue, source: 'env' };
-		}
-		return { value: defaultValue, source: 'default' };
+		return { value: defaultValue, source: 'default', isLocked: false };
 	}
 
 	return {
@@ -436,4 +437,36 @@ export async function getCsrfConfigWithSource(): Promise<CsrfConfigWithSource> {
 export async function getCsrfOrigin(): Promise<string | null> {
 	const config = await getCsrfConfigWithSource();
 	return config.origin.value || null;
+}
+
+/**
+ * Clear database settings that conflict with environment variables.
+ * When ENV takes precedence, we auto-clear conflicting DB values to avoid confusion.
+ * Returns the list of setting labels that were cleared.
+ */
+export async function clearConflictingDbSettings(): Promise<string[]> {
+	const clearedSettings: string[] = [];
+	const plexEnv = getPlexEnvConfig();
+	const openaiEnv = getOpenAIEnvConfig();
+	const csrfEnvOrigin = env.ORIGIN ?? '';
+
+	const envToDbMapping: Array<{ envValue: string; dbKey: AppSettingsKeyType; label: string }> = [
+		{ envValue: plexEnv.serverUrl, dbKey: AppSettingsKey.PLEX_SERVER_URL, label: 'PLEX_SERVER_URL' },
+		{ envValue: plexEnv.token, dbKey: AppSettingsKey.PLEX_TOKEN, label: 'PLEX_TOKEN' },
+		{ envValue: openaiEnv.apiKey, dbKey: AppSettingsKey.OPENAI_API_KEY, label: 'OPENAI_API_KEY' },
+		{ envValue: openaiEnv.baseUrl, dbKey: AppSettingsKey.OPENAI_BASE_URL, label: 'OPENAI_BASE_URL' },
+		{ envValue: openaiEnv.model, dbKey: AppSettingsKey.OPENAI_MODEL, label: 'OPENAI_MODEL' },
+		{ envValue: csrfEnvOrigin, dbKey: AppSettingsKey.CSRF_ORIGIN, label: 'CSRF_ORIGIN' }
+	];
+
+	const dbSettings = await getAllAppSettings();
+
+	for (const { envValue, dbKey, label } of envToDbMapping) {
+		if (envValue && dbSettings[dbKey]) {
+			await deleteAppSetting(dbKey);
+			clearedSettings.push(label);
+		}
+	}
+
+	return clearedSettings;
 }
