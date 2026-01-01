@@ -2532,25 +2532,6 @@
 		color: hsl(145 70% 50%);
 	}
 
-	/* Readonly input field styling */
-	.readonly-input {
-		background: hsl(var(--muted) / 0.4) !important;
-		color: hsl(var(--foreground) / 0.7) !important;
-		cursor: not-allowed;
-		font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-		font-size: 0.8125rem;
-		letter-spacing: 0.01em;
-	}
-
-	.readonly-input:disabled {
-		opacity: 0.9;
-	}
-
-	.readonly-input.from-env {
-		border-color: hsl(145 50% 35% / 0.4);
-		background: hsl(145 50% 50% / 0.06) !important;
-	}
-
 	/* CSRF actions layout */
 	.csrf-actions {
 		display: flex;
