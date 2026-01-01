@@ -24,7 +24,8 @@ import {
 	clearUserStatsCache,
 	getApiConfigWithSources,
 	hasPlexEnvConfig,
-	hasOpenAIEnvConfig
+	hasOpenAIEnvConfig,
+	clearConflictingDbSettings
 } from '$lib/server/admin/settings.service';
 
 /**
@@ -397,6 +398,58 @@ describe('Admin Settings Service', () => {
 				// Test setup mocks env vars as empty strings
 				const hasConfig = hasOpenAIEnvConfig();
 				expect(hasConfig).toBe(false);
+			});
+		});
+
+		describe('clearConflictingDbSettings', () => {
+			it('clears DB settings when ENV values exist', async () => {
+				// Plex env vars ARE set in test setup, so these DB values should be cleared
+				await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, 'http://db-url:32400');
+				await setAppSetting(AppSettingsKey.PLEX_TOKEN, 'db-token');
+
+				const cleared = await clearConflictingDbSettings();
+
+				expect(cleared).toContain('PLEX_SERVER_URL');
+				expect(cleared).toContain('PLEX_TOKEN');
+
+				// Verify DB values are actually deleted
+				const dbUrl = await getAppSetting(AppSettingsKey.PLEX_SERVER_URL);
+				const dbToken = await getAppSetting(AppSettingsKey.PLEX_TOKEN);
+				expect(dbUrl).toBeNull();
+				expect(dbToken).toBeNull();
+			});
+
+			it('preserves DB settings when no ENV values exist', async () => {
+				// OpenAI env vars are empty in test setup, so DB values should be preserved
+				await setAppSetting(AppSettingsKey.OPENAI_MODEL, 'custom-model');
+				await setAppSetting(AppSettingsKey.OPENAI_BASE_URL, 'http://custom-api:8080/v1');
+
+				const cleared = await clearConflictingDbSettings();
+
+				expect(cleared).not.toContain('OPENAI_MODEL');
+				expect(cleared).not.toContain('OPENAI_BASE_URL');
+
+				// Verify DB values are preserved
+				const model = await getAppSetting(AppSettingsKey.OPENAI_MODEL);
+				const baseUrl = await getAppSetting(AppSettingsKey.OPENAI_BASE_URL);
+				expect(model).toBe('custom-model');
+				expect(baseUrl).toBe('http://custom-api:8080/v1');
+			});
+
+			it('returns correct labels for cleared settings', async () => {
+				// Set only one DB value that conflicts with ENV
+				await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, 'http://db-url:32400');
+
+				const cleared = await clearConflictingDbSettings();
+
+				expect(cleared).toEqual(['PLEX_SERVER_URL']);
+			});
+
+			it('returns empty array when no conflicts exist', async () => {
+				// No DB settings set, so nothing to clear
+				const cleared = await clearConflictingDbSettings();
+
+				expect(cleared).toEqual([]);
 			});
 		});
 	});

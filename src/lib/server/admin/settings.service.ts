@@ -337,39 +337,46 @@ function getOpenAIEnvConfig() {
 	};
 }
 
+function resolveConfigValue(
+	dbSettings: Record<string, string>,
+	dbKey: string,
+	envValue: string,
+	defaultValue: string = ''
+): ConfigValue<string> {
+	if (envValue) {
+		return { value: envValue, source: 'env', isLocked: true };
+	}
+	const dbValue = dbSettings[dbKey];
+	if (dbValue) {
+		return { value: dbValue, source: 'db', isLocked: false };
+	}
+	return { value: defaultValue, source: 'default', isLocked: false };
+}
+
 export async function getApiConfigWithSources(): Promise<ApiConfigWithSources> {
 	const dbSettings = await getAllAppSettings();
 	const plexEnv = getPlexEnvConfig();
 	const openaiEnv = getOpenAIEnvConfig();
 
-	function getConfigValue(
-		dbKey: string,
-		envValue: string,
-		defaultValue: string = ''
-	): ConfigValue<string> {
-		if (envValue) {
-			return { value: envValue, source: 'env', isLocked: true };
-		}
-		const dbValue = dbSettings[dbKey];
-		if (dbValue) {
-			return { value: dbValue, source: 'db', isLocked: false };
-		}
-		return { value: defaultValue, source: 'default', isLocked: false };
-	}
-
 	return {
 		plex: {
-			serverUrl: getConfigValue(AppSettingsKey.PLEX_SERVER_URL, plexEnv.serverUrl),
-			token: getConfigValue(AppSettingsKey.PLEX_TOKEN, plexEnv.token)
+			serverUrl: resolveConfigValue(dbSettings, AppSettingsKey.PLEX_SERVER_URL, plexEnv.serverUrl),
+			token: resolveConfigValue(dbSettings, AppSettingsKey.PLEX_TOKEN, plexEnv.token)
 		},
 		openai: {
-			apiKey: getConfigValue(AppSettingsKey.OPENAI_API_KEY, openaiEnv.apiKey),
-			baseUrl: getConfigValue(
+			apiKey: resolveConfigValue(dbSettings, AppSettingsKey.OPENAI_API_KEY, openaiEnv.apiKey),
+			baseUrl: resolveConfigValue(
+				dbSettings,
 				AppSettingsKey.OPENAI_BASE_URL,
 				openaiEnv.baseUrl,
 				'https://api.openai.com/v1'
 			),
-			model: getConfigValue(AppSettingsKey.OPENAI_MODEL, openaiEnv.model, 'gpt-4o-mini')
+			model: resolveConfigValue(
+				dbSettings,
+				AppSettingsKey.OPENAI_MODEL,
+				openaiEnv.model,
+				'gpt-4o-mini'
+			)
 		}
 	};
 }
@@ -414,23 +421,8 @@ export async function getCsrfConfigWithSource(): Promise<CsrfConfigWithSource> {
 	const dbSettings = await getAllAppSettings();
 	const envOrigin = env.ORIGIN ?? '';
 
-	function getConfigValue(
-		dbKey: string,
-		envValue: string,
-		defaultValue: string = ''
-	): ConfigValue<string> {
-		if (envValue) {
-			return { value: envValue, source: 'env', isLocked: true };
-		}
-		const dbValue = dbSettings[dbKey];
-		if (dbValue) {
-			return { value: dbValue, source: 'db', isLocked: false };
-		}
-		return { value: defaultValue, source: 'default', isLocked: false };
-	}
-
 	return {
-		origin: getConfigValue(AppSettingsKey.CSRF_ORIGIN, envOrigin)
+		origin: resolveConfigValue(dbSettings, AppSettingsKey.CSRF_ORIGIN, envOrigin)
 	};
 }
 

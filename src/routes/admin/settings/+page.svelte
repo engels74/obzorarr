@@ -382,7 +382,6 @@
 								bind:value={plexServerUrl}
 								placeholder="http://192.168.1.100:32400"
 								class:from-env={plexServerUrlLocked}
-								readonly={plexServerUrlLocked}
 								disabled={plexServerUrlLocked}
 							/>
 							{#if plexServerUrlLocked}
@@ -414,7 +413,6 @@
 									bind:value={plexToken}
 									placeholder="X-Plex-Token"
 									class:from-env={plexTokenLocked}
-									readonly={plexTokenLocked}
 									disabled={plexTokenLocked}
 								/>
 								<button
@@ -517,7 +515,6 @@
 									bind:value={openaiApiKey}
 									placeholder="sk-..."
 									class:from-env={openaiApiKeyLocked}
-									readonly={openaiApiKeyLocked}
 									disabled={openaiApiKeyLocked}
 								/>
 								<button
@@ -561,7 +558,6 @@
 									bind:value={openaiBaseUrl}
 									placeholder="https://api.openai.com/v1"
 									class:from-env={openaiBaseUrlLocked}
-									readonly={openaiBaseUrlLocked}
 									disabled={openaiBaseUrlLocked}
 								/>
 								{#if openaiBaseUrlLocked}
@@ -592,7 +588,6 @@
 									bind:value={openaiModel}
 									placeholder="gpt-4o-mini"
 									class:from-env={openaiModelLocked}
-									readonly={openaiModelLocked}
 									disabled={openaiModelLocked}
 								/>
 								{#if openaiModelLocked}
@@ -1079,7 +1074,6 @@
 									bind:value={csrfOriginValue}
 									placeholder="https://your-domain.com"
 									class:from-env={csrfOriginLocked}
-									readonly={csrfOriginLocked}
 									disabled={csrfOriginLocked}
 								/>
 								{#if !csrfOriginLocked}
