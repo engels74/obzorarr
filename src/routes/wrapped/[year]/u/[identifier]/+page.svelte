@@ -6,7 +6,8 @@
 		ScrollMode,
 		ModeToggle,
 		SummaryPage,
-		ShareModal
+		ShareModal,
+		YearNavigation
 	} from '$lib/components/wrapped';
 	import Logo from '$lib/components/Logo.svelte';
 	import { createPersonalContext } from '$lib/components/slides/messaging-context';
@@ -191,6 +192,15 @@
 	<div class="user-header" class:with-logo={showLogo}>
 		<h1 class="user-title">{data.username}'s Year in Review</h1>
 	</div>
+
+	<!-- Year Navigation -->
+	{#if data.availableYears && data.availableYears.length > 1}
+		<YearNavigation
+			currentYear={data.year}
+			availableYears={data.availableYears}
+			userIdentifier={data.userId}
+		/>
+	{/if}
 
 	<!-- Wrapped Content -->
 	{#if showSummary}

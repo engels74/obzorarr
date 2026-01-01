@@ -155,10 +155,10 @@ export async function updateUserSharePermission(
 export async function getAvailableYears(): Promise<number[]> {
 	const result = await db
 		.selectDistinct({
-			year: sql<number>`strftime('%Y', ${playHistory.viewedAt}, 'unixepoch')`
+			year: sql<string>`strftime('%Y', ${playHistory.viewedAt}, 'unixepoch')`
 		})
 		.from(playHistory)
 		.orderBy(sql`1 desc`);
 
-	return result.map((r) => r.year);
+	return result.map((r) => parseInt(r.year, 10));
 }
