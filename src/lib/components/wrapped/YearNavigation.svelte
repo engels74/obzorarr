@@ -14,8 +14,8 @@
 	const currentIndex = $derived(sortedYears.indexOf(currentYear));
 	const hasPrevious = $derived(currentIndex >= 0 && currentIndex < sortedYears.length - 1);
 	const hasNext = $derived(currentIndex > 0);
-	const previousYear = $derived<number | null>(hasPrevious ? sortedYears[currentIndex + 1] ?? null : null);
-	const nextYear = $derived<number | null>(hasNext ? sortedYears[currentIndex - 1] ?? null : null);
+	const previousYear = $derived<number | null>(hasPrevious ? sortedYears[currentIndex + 1] : null);
+	const nextYear = $derived<number | null>(hasNext ? sortedYears[currentIndex - 1] : null);
 
 	function buildUrl(year: number): string {
 		if (userIdentifier != null) {
