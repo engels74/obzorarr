@@ -37,7 +37,10 @@ export const GET: RequestHandler = async ({ request }) => {
 							intervalId = setInterval(poll, currentInterval);
 						}
 					} else {
-						const newInterval = Math.min(currentInterval * BACKOFF_MULTIPLIER, POLL_INTERVAL_MAX_MS);
+						const newInterval = Math.min(
+							currentInterval * BACKOFF_MULTIPLIER,
+							POLL_INTERVAL_MAX_MS
+						);
 						if (newInterval !== currentInterval) {
 							currentInterval = newInterval;
 							clearInterval(intervalId);

@@ -48,8 +48,7 @@
 			</div>
 			<AlertDialog.Title>Popup Blocked</AlertDialog.Title>
 			<AlertDialog.Description>
-				Your browser blocked the login popup. This is common in Safari and privacy-focused
-				browsers.
+				Your browser blocked the login popup. This is common in Safari and privacy-focused browsers.
 			</AlertDialog.Description>
 		</AlertDialog.Header>
 

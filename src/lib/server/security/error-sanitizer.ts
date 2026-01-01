@@ -36,11 +36,7 @@ export function classifyConnectionError(error: Error): string {
 
 	const message = error.message;
 
-	if (
-		message.includes('certificate') ||
-		message.includes('SSL') ||
-		message.includes('TLS')
-	) {
+	if (message.includes('certificate') || message.includes('SSL') || message.includes('TLS')) {
 		return 'SSL certificate error - check your server configuration';
 	}
 

@@ -63,7 +63,9 @@
 
 			if (!callbackResponse.ok) {
 				const errData = await callbackResponse.json().catch(() => ({}));
-				throw new Error((errData as { message?: string }).message || 'Failed to complete authentication');
+				throw new Error(
+					(errData as { message?: string }).message || 'Failed to complete authentication'
+				);
 			}
 
 			const userData = (await callbackResponse.json()) as {

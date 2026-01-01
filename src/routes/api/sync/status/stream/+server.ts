@@ -18,7 +18,8 @@ export const GET: RequestHandler = async ({ request }) => {
 
 			let lastProgress: LiveSyncProgress | null = initialProgress;
 			let terminalEventSent = false;
-			let currentInterval = initialProgress?.status === 'running' ? POLL_INTERVAL_ACTIVE_MS : POLL_INTERVAL_IDLE_MS;
+			let currentInterval =
+				initialProgress?.status === 'running' ? POLL_INTERVAL_ACTIVE_MS : POLL_INTERVAL_IDLE_MS;
 			let intervalId: ReturnType<typeof setInterval>;
 
 			const poll = () => {

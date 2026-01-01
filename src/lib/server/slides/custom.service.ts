@@ -22,10 +22,7 @@ export async function createCustomSlide(data: CreateCustomSlide): Promise<Custom
 	const validData = parsed.data;
 
 	if (containsUnsafeHtml(validData.content)) {
-		throw new SlideError(
-			'Content contains potentially unsafe HTML patterns',
-			'UNSAFE_CONTENT'
-		);
+		throw new SlideError('Content contains potentially unsafe HTML patterns', 'UNSAFE_CONTENT');
 	}
 
 	const markdownValidation = validateMarkdownSyntax(validData.content);
@@ -153,10 +150,7 @@ export async function updateCustomSlide(
 
 	if (validUpdates.content !== undefined) {
 		if (containsUnsafeHtml(validUpdates.content)) {
-			throw new SlideError(
-				'Content contains potentially unsafe HTML patterns',
-				'UNSAFE_CONTENT'
-			);
+			throw new SlideError('Content contains potentially unsafe HTML patterns', 'UNSAFE_CONTENT');
 		}
 
 		const markdownValidation = validateMarkdownSyntax(validUpdates.content);
