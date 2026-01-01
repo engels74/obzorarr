@@ -40,7 +40,6 @@
 	import Check from '@lucide/svelte/icons/check';
 	import Loader2 from '@lucide/svelte/icons/loader-2';
 	import ShieldCheck from '@lucide/svelte/icons/shield-check';
-	import Info from '@lucide/svelte/icons/info';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import BookOpen from '@lucide/svelte/icons/book-open';
 	import CircleHelp from '@lucide/svelte/icons/circle-help';
@@ -945,9 +944,9 @@
 								<h2>CSRF Protection</h2>
 								<Tooltip.Root>
 									<Tooltip.Trigger>
-										<button type="button" class="help-trigger" aria-label="Learn how CSRF protection works">
+										<span role="button" tabindex="0" class="help-trigger" aria-label="Learn how CSRF protection works">
 											<CircleHelp />
-										</button>
+										</span>
 									</Tooltip.Trigger>
 									<Tooltip.Content side="right" sideOffset={8} class="csrf-tooltip">
 										<div class="csrf-tooltip-inner">

@@ -1,6 +1,5 @@
 import { fail } from '@sveltejs/kit';
 import { z } from 'zod';
-import { env } from '$env/dynamic/private';
 import type { PageServerLoad, Actions } from './$types';
 import {
 	setAppSetting,
