@@ -333,7 +333,7 @@ function getOpenAIEnvConfig() {
 	return {
 		apiKey: env.OPENAI_API_KEY ?? '',
 		baseUrl: env.OPENAI_API_URL ?? '',
-		model: env.OPENAI_MODEL ?? 'gpt-4o-mini'
+		model: env.OPENAI_MODEL ?? ''
 	};
 }
 
