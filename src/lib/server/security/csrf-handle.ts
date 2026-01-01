@@ -2,12 +2,13 @@ import type { Handle } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
 import { logger } from '$lib/server/logging';
+import { getCsrfOrigin } from '$lib/server/admin/settings.service';
 
 const STATE_CHANGING_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
 
-// Warn once at startup if ORIGIN is not configured in production
+// Warn once at startup if ORIGIN env is not configured (database setting checked per-request)
 if (!env.ORIGIN && !dev) {
-	logger.warn('ORIGIN not configured - CSRF protection is disabled', 'CSRF');
+	logger.warn('ORIGIN env not configured - CSRF protection relies on database setting', 'CSRF');
 }
 
 function getOriginFromRequest(request: Request): string | null {
@@ -34,9 +35,10 @@ export const csrfHandle: Handle = async ({ event, resolve }) => {
 		return resolve(event);
 	}
 
-	const expectedOrigin = env.ORIGIN;
+	// Get origin from database (priority) or environment
+	const expectedOrigin = await getCsrfOrigin();
 
-	// If ORIGIN not configured, skip check (allows unconfigured dev environments)
+	// If ORIGIN not configured anywhere, skip check (allows unconfigured dev environments)
 	if (!expectedOrigin) {
 		return resolve(event);
 	}
