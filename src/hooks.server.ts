@@ -8,7 +8,7 @@ import { SESSION_DURATION_MS } from '$lib/server/auth/types';
 import { logger } from '$lib/server/logging';
 import { requiresOnboarding, getOnboardingStep } from '$lib/server/onboarding';
 import { env } from '$env/dynamic/private';
-import { requestFilterHandle, rateLimitHandle } from '$lib/server/security';
+import { requestFilterHandle, rateLimitHandle, csrfHandle } from '$lib/server/security';
 
 const securityHeadersHandle: Handle = async ({ event, resolve }) => {
 	const response = await resolve(event);
@@ -192,6 +192,7 @@ export const handle = sequence(
 	requestFilterHandle,
 	rateLimitHandle,
 	proxyHandle,
+	csrfHandle,
 	securityHeadersHandle,
 	authHandle,
 	onboardingHandle,
