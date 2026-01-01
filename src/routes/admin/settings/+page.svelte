@@ -280,6 +280,8 @@
 	let csrfOriginValue = $state('');
 	let csrfOriginSource = $state<'env' | 'db' | 'default'>('default');
 	let isSavingCsrf = $state(false);
+	let csrfClearDialogOpen = $state(false);
+	let isClearingCsrf = $state(false);
 
 	// Sync CSRF state from data
 	$effect(() => {
@@ -1058,16 +1060,14 @@
 							</form>
 
 							{#if csrfOriginSource === 'db'}
-								<form
-									method="POST"
-									action="?/clearCsrfOrigin"
-									use:enhance
+								<button
+									type="button"
+									class="btn-destructive"
+									onclick={() => (csrfClearDialogOpen = true)}
 								>
-									<button type="submit" class="btn-secondary btn-clear">
-										<X class="btn-icon" />
-										Clear Database Value
-									</button>
-								</form>
+									<X class="btn-icon" />
+									Clear Database Value
+								</button>
 							{/if}
 						</div>
 					</div>
@@ -1433,6 +1433,45 @@
 						Deleting...
 					{:else}
 						Delete {pendingHistoryCount} Record{pendingHistoryCount !== 1 ? 's' : ''}
+					{/if}
+				</AlertDialog.Action>
+			</form>
+		</AlertDialog.Footer>
+	</AlertDialog.Content>
+</AlertDialog.Root>
+
+<!-- CSRF Clear Dialog -->
+<AlertDialog.Root bind:open={csrfClearDialogOpen}>
+	<AlertDialog.Content>
+		<AlertDialog.Header>
+			<AlertDialog.Title>Clear CSRF Origin?</AlertDialog.Title>
+			<AlertDialog.Description>
+				This will remove the CSRF origin value from the database. CSRF protection will be disabled
+				unless an ORIGIN environment variable is set.
+				<br /><br />
+				You can reconfigure this setting at any time.
+			</AlertDialog.Description>
+		</AlertDialog.Header>
+		<AlertDialog.Footer>
+			<AlertDialog.Cancel disabled={isClearingCsrf}>Cancel</AlertDialog.Cancel>
+			<form
+				method="POST"
+				action="?/clearCsrfOrigin"
+				use:enhance={() => {
+					isClearingCsrf = true;
+					return async ({ update }) => {
+						await update();
+						isClearingCsrf = false;
+						csrfClearDialogOpen = false;
+					};
+				}}
+				style="display: contents;"
+			>
+				<AlertDialog.Action type="submit" disabled={isClearingCsrf} class="destructive-action">
+					{#if isClearingCsrf}
+						Clearing...
+					{:else}
+						Clear CSRF Origin
 					{/if}
 				</AlertDialog.Action>
 			</form>
@@ -1885,6 +1924,33 @@
 	}
 
 	.btn-danger:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.btn-destructive {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		padding: 0.5rem 1rem;
+		background: hsl(0 60% 25%);
+		color: hsl(0 70% 70%);
+		border: 1px solid hsl(0 50% 35%);
+		border-radius: 8px;
+		font-size: 0.8125rem;
+		font-weight: 500;
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.btn-destructive:hover:not(:disabled) {
+		background: hsl(0 70% 45%);
+		color: white;
+		border-color: hsl(0 70% 45%);
+	}
+
+	.btn-destructive:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
 	}
@@ -2492,10 +2558,6 @@
 		align-items: center;
 		flex-wrap: wrap;
 		margin-top: 1rem;
-	}
-
-	.csrf-actions .btn-clear {
-		background: hsl(var(--muted) / 0.5);
 	}
 
 	/* Help Trigger - Whisper-quiet info hint */
