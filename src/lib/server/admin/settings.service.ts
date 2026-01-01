@@ -25,7 +25,8 @@ export const AppSettingsKey = {
 	FUN_FACTS_AI_PERSONA: 'fun_facts_ai_persona',
 	ENABLE_LIVE_SYNC: 'enable_live_sync',
 	ONBOARDING_COMPLETED: 'onboarding_completed',
-	ONBOARDING_CURRENT_STEP: 'onboarding_current_step'
+	ONBOARDING_CURRENT_STEP: 'onboarding_current_step',
+	CSRF_ORIGIN: 'csrf_origin'
 } as const;
 
 export type AppSettingsKeyType = (typeof AppSettingsKey)[keyof typeof AppSettingsKey];
@@ -402,4 +403,37 @@ export async function getPlexConfig(): Promise<PlexConfig> {
 export async function isPlexConfigured(): Promise<boolean> {
 	const config = await getPlexConfig();
 	return Boolean(config.serverUrl && config.token);
+}
+
+export interface CsrfConfigWithSource {
+	origin: ConfigValue<string>;
+}
+
+export async function getCsrfConfigWithSource(): Promise<CsrfConfigWithSource> {
+	const dbSettings = await getAllAppSettings();
+	const envOrigin = env.ORIGIN ?? '';
+
+	function getConfigValue(
+		dbKey: string,
+		envValue: string,
+		defaultValue: string = ''
+	): ConfigValue<string> {
+		const dbValue = dbSettings[dbKey];
+		if (dbValue) {
+			return { value: dbValue, source: 'db' };
+		}
+		if (envValue) {
+			return { value: envValue, source: 'env' };
+		}
+		return { value: defaultValue, source: 'default' };
+	}
+
+	return {
+		origin: getConfigValue(AppSettingsKey.CSRF_ORIGIN, envOrigin)
+	};
+}
+
+export async function getCsrfOrigin(): Promise<string | null> {
+	const config = await getCsrfConfigWithSource();
+	return config.origin.value || null;
 }

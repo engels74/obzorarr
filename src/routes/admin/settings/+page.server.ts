@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { PageServerLoad, Actions } from './$types';
 import {
 	setAppSetting,
+	deleteAppSetting,
 	getUITheme,
 	setUITheme,
 	getWrappedTheme,
@@ -16,6 +17,7 @@ import {
 	countPlayHistory,
 	clearPlayHistory,
 	getApiConfigWithSources,
+	getCsrfConfigWithSource,
 	setCachedServerName,
 	AppSettingsKey,
 	ThemePresets,
@@ -85,6 +87,15 @@ const LogSettingsSchema = z.object({
 	debugEnabled: z.boolean()
 });
 
+const CsrfOriginSchema = z.object({
+	csrfOrigin: z
+		.string()
+		.url('Invalid URL format')
+		.refine((url) => url.startsWith('http://') || url.startsWith('https://'), {
+			message: 'Origin must start with http:// or https://'
+		})
+});
+
 interface SettingValue {
 	value: string;
 	source: ConfigSource;
@@ -103,7 +114,8 @@ export const load: PageServerLoad = async () => {
 		logDebugEnabled,
 		defaultShareMode,
 		allowUserControl,
-		serverWrappedShareMode
+		serverWrappedShareMode,
+		csrfConfig
 	] = await Promise.all([
 		getApiConfigWithSources(),
 		getUITheme(),
@@ -116,7 +128,8 @@ export const load: PageServerLoad = async () => {
 		isDebugEnabled(),
 		getGlobalDefaultShareMode(),
 		getGlobalAllowUserControl(),
-		getServerWrappedShareMode()
+		getServerWrappedShareMode(),
+		getCsrfConfigWithSource()
 	]);
 
 	const currentYear = new Date().getFullYear();
@@ -162,7 +175,12 @@ export const load: PageServerLoad = async () => {
 			defaultShareMode,
 			allowUserControl
 		},
-		serverWrappedShareMode
+		serverWrappedShareMode,
+		security: {
+			originValue: csrfConfig.origin.value,
+			csrfEnabled: !!csrfConfig.origin.value,
+			originSource: csrfConfig.origin.source
+		}
 	};
 };
 
@@ -532,6 +550,66 @@ export const actions: Actions = {
 			return { success: true, message: 'Privacy settings updated' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to update privacy settings';
+			return fail(500, { error: message });
+		}
+	},
+
+	testCsrfProtection: async () => {
+		const csrfConfig = await getCsrfConfigWithSource();
+		const originValue = csrfConfig.origin.value;
+
+		if (!originValue) {
+			return fail(400, {
+				error:
+					'CSRF ORIGIN is not configured. Set it via the field above or the ORIGIN environment variable.'
+			});
+		}
+
+		const sourceLabel = csrfConfig.origin.source === 'db' ? 'database' : 'environment variable';
+		return {
+			success: true,
+			message: `CSRF protection is active. Origin: ${originValue} (from ${sourceLabel})`
+		};
+	},
+
+	updateCsrfOrigin: async ({ request }) => {
+		const formData = await request.formData();
+		const csrfOrigin = formData.get('csrfOrigin')?.toString() ?? '';
+
+		if (csrfOrigin) {
+			const parsed = CsrfOriginSchema.safeParse({ csrfOrigin });
+			if (!parsed.success) {
+				return fail(400, {
+					error: 'Invalid origin URL',
+					fieldErrors: parsed.error.flatten().fieldErrors
+				});
+			}
+
+			try {
+				const normalizedOrigin = csrfOrigin.replace(/\/$/, '');
+				await setAppSetting(AppSettingsKey.CSRF_ORIGIN, normalizedOrigin);
+				return { success: true, message: 'CSRF origin updated' };
+			} catch (error) {
+				const message = error instanceof Error ? error.message : 'Failed to update CSRF origin';
+				return fail(500, { error: message });
+			}
+		} else {
+			try {
+				await deleteAppSetting(AppSettingsKey.CSRF_ORIGIN);
+				return { success: true, message: 'CSRF origin cleared (using environment variable)' };
+			} catch (error) {
+				const message = error instanceof Error ? error.message : 'Failed to clear CSRF origin';
+				return fail(500, { error: message });
+			}
+		}
+	},
+
+	clearCsrfOrigin: async () => {
+		try {
+			await deleteAppSetting(AppSettingsKey.CSRF_ORIGIN);
+			return { success: true, message: 'CSRF origin cleared (using environment variable)' };
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to clear CSRF origin';
 			return fail(500, { error: message });
 		}
 	}

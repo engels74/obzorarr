@@ -39,9 +39,17 @@
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import Check from '@lucide/svelte/icons/check';
 	import Loader2 from '@lucide/svelte/icons/loader-2';
+	import ShieldCheck from '@lucide/svelte/icons/shield-check';
+	import ChevronDown from '@lucide/svelte/icons/chevron-down';
+	import BookOpen from '@lucide/svelte/icons/book-open';
+	import CircleHelp from '@lucide/svelte/icons/circle-help';
+	import Crosshair from '@lucide/svelte/icons/crosshair';
+	import X from '@lucide/svelte/icons/x';
+
+	import * as Tooltip from '$lib/components/ui/tooltip';
 
 	// Valid tab values
-	const validTabs = ['connections', 'appearance', 'privacy', 'data', 'system'] as const;
+	const validTabs = ['connections', 'appearance', 'privacy', 'security', 'data', 'system'] as const;
 	type TabValue = (typeof validTabs)[number];
 
 	// Active tab state - initialized from URL params if available
@@ -261,9 +269,32 @@
 		{ value: 'connections' as const, label: 'Connections', icon: Plug },
 		{ value: 'appearance' as const, label: 'Appearance', icon: Palette },
 		{ value: 'privacy' as const, label: 'Privacy', icon: Shield },
+		{ value: 'security' as const, label: 'Security', icon: ShieldCheck },
 		{ value: 'data' as const, label: 'Data', icon: Database },
 		{ value: 'system' as const, label: 'System', icon: Server }
 	];
+
+	// Security state
+	let isTestingCsrf = $state(false);
+	let docsExpanded = $state(false);
+	let csrfOriginValue = $state('');
+	let csrfOriginSource = $state<'env' | 'db' | 'default'>('default');
+	let isSavingCsrf = $state(false);
+	let csrfClearDialogOpen = $state(false);
+	let isClearingCsrf = $state(false);
+
+	// Sync CSRF state from data
+	$effect(() => {
+		csrfOriginValue = data.security.originValue;
+		csrfOriginSource = data.security.originSource;
+	});
+
+	// Detect current URL for CSRF origin
+	function detectCurrentUrl() {
+		if (typeof window !== 'undefined') {
+			csrfOriginValue = window.location.origin;
+		}
+	}
 </script>
 
 <div class="settings-command-center">
@@ -903,6 +934,209 @@
 			</form>
 		{/if}
 
+		<!-- Security Tab -->
+		{#if activeTab === 'security'}
+			<Tooltip.Provider delayDuration={200}>
+				<div class="security-content">
+					<!-- CSRF Protection Panel -->
+					<section class="panel csrf-panel">
+						<div class="panel-header">
+							<div class="panel-title">
+								<ShieldCheck class="panel-icon security" />
+								<h2>CSRF Protection</h2>
+								<Tooltip.Root>
+									<Tooltip.Trigger>
+										<span role="button" tabindex="0" class="help-trigger" aria-label="Learn how CSRF protection works">
+											<CircleHelp />
+										</span>
+									</Tooltip.Trigger>
+									<Tooltip.Content side="right" sideOffset={8} class="csrf-tooltip">
+										<div class="csrf-tooltip-inner">
+											<strong>How CSRF Protection Works</strong>
+											<p>
+												When ORIGIN is set, Obzorarr validates that all state-changing requests
+												(POST, PUT, PATCH, DELETE) originate from your domain. Combined with
+												SameSite cookies, this provides robust protection without additional
+												reverse proxy configuration.
+											</p>
+										</div>
+									</Tooltip.Content>
+								</Tooltip.Root>
+							</div>
+							<div class="connection-status" class:connected={data.security.csrfEnabled}>
+								<span class="status-dot"></span>
+								<span class="status-text"
+									>{data.security.csrfEnabled ? 'Enabled' : 'Disabled'}</span
+								>
+							</div>
+						</div>
+
+					<p class="panel-description">
+						Cross-Site Request Forgery protection prevents malicious websites from making
+						unauthorized requests on behalf of authenticated users.
+					</p>
+
+					<div class="panel-form">
+						<div class="form-field">
+							<div class="field-header">
+								<label for="csrfOrigin">ORIGIN</label>
+								{#if csrfOriginSource !== 'default'}
+									<span class="source-badge" class:env={csrfOriginSource === 'env'}>
+										{getSourceLabel(csrfOriginSource)}
+									</span>
+								{/if}
+							</div>
+							<div class="input-with-action">
+								<input
+									type="url"
+									id="csrfOrigin"
+									bind:value={csrfOriginValue}
+									placeholder="https://your-domain.com"
+									class:from-env={csrfOriginSource === 'env'}
+								/>
+								<button
+									type="button"
+									class="input-action"
+									onclick={detectCurrentUrl}
+									aria-label="Detect current URL"
+									title="Auto-detect from current browser URL"
+								>
+									<Crosshair />
+								</button>
+							</div>
+							<span class="field-hint">
+								Your application's public URL. Database setting takes priority over environment variable.
+							</span>
+						</div>
+
+						<div class="csrf-actions">
+							<form
+								method="POST"
+								action="?/updateCsrfOrigin"
+								use:enhance={() => {
+									isSavingCsrf = true;
+									return async ({ update }) => {
+										isSavingCsrf = false;
+										await update();
+									};
+								}}
+							>
+								<input type="hidden" name="csrfOrigin" value={csrfOriginValue} />
+								<button type="submit" class="btn-primary" disabled={isSavingCsrf}>
+									{#if isSavingCsrf}
+										<Loader2 class="btn-icon spinning" />
+										Saving...
+									{:else}
+										<Check class="btn-icon" />
+										Save CSRF Origin
+									{/if}
+								</button>
+							</form>
+
+							<form
+								method="POST"
+								action="?/testCsrfProtection"
+								use:enhance={() => {
+									isTestingCsrf = true;
+									return async ({ update }) => {
+										isTestingCsrf = false;
+										await update();
+									};
+								}}
+							>
+								<button
+									type="submit"
+									class="btn-secondary"
+									disabled={isTestingCsrf}
+								>
+									{#if isTestingCsrf}
+										<Loader2 class="btn-icon spinning" />
+										Testing...
+									{:else}
+										<ShieldCheck class="btn-icon" />
+										Test CSRF Protection
+									{/if}
+								</button>
+							</form>
+
+							{#if csrfOriginSource === 'db'}
+								<button
+									type="button"
+									class="btn-destructive"
+									onclick={() => (csrfClearDialogOpen = true)}
+								>
+									<X class="btn-icon" />
+									Clear Database Value
+								</button>
+							{/if}
+						</div>
+					</div>
+				</section>
+
+					<!-- Reverse Proxy Documentation - Collapsible -->
+				<div class="docs-collapsible">
+					<button
+						type="button"
+						class="docs-toggle"
+						onclick={() => (docsExpanded = !docsExpanded)}
+						aria-expanded={docsExpanded}
+					>
+						<BookOpen class="docs-toggle-icon" />
+						<span class="docs-toggle-text">Reverse Proxy Documentation</span>
+						<span class="docs-chevron" class:expanded={docsExpanded}>
+							<ChevronDown />
+						</span>
+					</button>
+
+					{#if docsExpanded}
+						<div class="docs-content">
+							<p class="docs-hint">
+								Ensure your reverse proxy forwards <code>X-Forwarded-*</code> headers correctly.
+							</p>
+							<div class="docs-links-inline">
+								<a
+									href="https://docs.nginx.com/nginx/admin-guide/web-server/reverse-proxy/"
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									Nginx
+									<ExternalLink class="inline-link-icon" />
+								</a>
+								<span class="docs-separator">·</span>
+								<a
+									href="https://nginxproxymanager.com/advanced-config/"
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									NPM
+									<ExternalLink class="inline-link-icon" />
+								</a>
+								<span class="docs-separator">·</span>
+								<a
+									href="https://httpd.apache.org/docs/2.4/howto/reverse_proxy.html"
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									Apache
+									<ExternalLink class="inline-link-icon" />
+								</a>
+								<span class="docs-separator">·</span>
+								<a
+									href="https://caddyserver.com/docs/caddyfile/directives/reverse_proxy"
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									Caddy
+									<ExternalLink class="inline-link-icon" />
+								</a>
+							</div>
+						</div>
+					{/if}
+				</div>
+				</div>
+			</Tooltip.Provider>
+		{/if}
+
 		<!-- Data Tab -->
 		{#if activeTab === 'data'}
 			<div class="data-content">
@@ -1199,6 +1433,45 @@
 						Deleting...
 					{:else}
 						Delete {pendingHistoryCount} Record{pendingHistoryCount !== 1 ? 's' : ''}
+					{/if}
+				</AlertDialog.Action>
+			</form>
+		</AlertDialog.Footer>
+	</AlertDialog.Content>
+</AlertDialog.Root>
+
+<!-- CSRF Clear Dialog -->
+<AlertDialog.Root bind:open={csrfClearDialogOpen}>
+	<AlertDialog.Content>
+		<AlertDialog.Header>
+			<AlertDialog.Title>Clear CSRF Origin?</AlertDialog.Title>
+			<AlertDialog.Description>
+				This will remove the CSRF origin value from the database. CSRF protection will be disabled
+				unless an ORIGIN environment variable is set.
+				<br /><br />
+				You can reconfigure this setting at any time.
+			</AlertDialog.Description>
+		</AlertDialog.Header>
+		<AlertDialog.Footer>
+			<AlertDialog.Cancel disabled={isClearingCsrf}>Cancel</AlertDialog.Cancel>
+			<form
+				method="POST"
+				action="?/clearCsrfOrigin"
+				use:enhance={() => {
+					isClearingCsrf = true;
+					return async ({ update }) => {
+						await update();
+						isClearingCsrf = false;
+						csrfClearDialogOpen = false;
+					};
+				}}
+				style="display: contents;"
+			>
+				<AlertDialog.Action type="submit" disabled={isClearingCsrf} class="destructive-action">
+					{#if isClearingCsrf}
+						Clearing...
+					{:else}
+						Clear CSRF Origin
 					{/if}
 				</AlertDialog.Action>
 			</form>
@@ -1651,6 +1924,33 @@
 	}
 
 	.btn-danger:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.btn-destructive {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		padding: 0.5rem 1rem;
+		background: hsl(0 60% 25%);
+		color: hsl(0 70% 70%);
+		border: 1px solid hsl(0 50% 35%);
+		border-radius: 8px;
+		font-size: 0.8125rem;
+		font-weight: 500;
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.btn-destructive:hover:not(:disabled) {
+		background: hsl(0 70% 45%);
+		color: white;
+		border-color: hsl(0 70% 45%);
+	}
+
+	.btn-destructive:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
 	}
@@ -2200,6 +2500,194 @@
 		background-color: hsl(0 70% 40%) !important;
 	}
 
+	/* ===== Security Tab ===== */
+	.security-content {
+		display: grid;
+		gap: 1.5rem;
+	}
+
+	/* CSRF Panel - Shield icon with security green accent */
+	.csrf-panel {
+		position: relative;
+	}
+
+	.csrf-panel::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 3px;
+		background: linear-gradient(
+			90deg,
+			hsl(145 70% 45%) 0%,
+			hsl(145 70% 55%) 50%,
+			hsl(160 60% 45%) 100%
+		);
+		border-radius: 16px 16px 0 0;
+		opacity: 0.8;
+	}
+
+	.csrf-panel :global(.panel-icon.security) {
+		color: hsl(145 70% 50%);
+	}
+
+	/* CSRF actions layout */
+	.csrf-actions {
+		display: flex;
+		gap: 0.75rem;
+		align-items: center;
+		flex-wrap: wrap;
+		margin-top: 1rem;
+	}
+
+	/* Help Trigger - Whisper-quiet info hint */
+	.panel-title :global([data-slot="tooltip-trigger"]) {
+		all: unset;
+		display: inline-flex;
+		align-items: center;
+		vertical-align: middle;
+		margin-left: 0.375rem;
+		cursor: pointer;
+	}
+
+	.help-trigger {
+		all: unset;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+		color: hsl(var(--muted-foreground) / 0.4);
+		transition: color 0.2s ease;
+	}
+
+	.help-trigger:hover {
+		color: hsl(var(--muted-foreground) / 0.75);
+	}
+
+	.help-trigger:focus-visible {
+		color: hsl(210 60% 55%);
+	}
+
+	.help-trigger :global(svg) {
+		width: 15px;
+		height: 15px;
+	}
+
+	/* Documentation - Compact Collapsible */
+	.docs-collapsible {
+		border-radius: 10px;
+		overflow: hidden;
+	}
+
+	.docs-toggle {
+		display: flex;
+		align-items: center;
+		gap: 0.625rem;
+		width: 100%;
+		padding: 0.75rem 1rem;
+		background: hsl(var(--muted) / 0.25);
+		border: 1px solid hsl(var(--border) / 0.6);
+		border-radius: 10px;
+		color: hsl(var(--muted-foreground));
+		font-size: 0.8125rem;
+		font-weight: 500;
+		cursor: pointer;
+		transition: all 0.2s ease;
+	}
+
+	.docs-toggle:hover {
+		background: hsl(var(--muted) / 0.4);
+		color: hsl(var(--foreground));
+		border-color: hsl(var(--border));
+	}
+
+	.docs-toggle :global(.docs-toggle-icon) {
+		width: 15px;
+		height: 15px;
+		opacity: 0.6;
+	}
+
+	.docs-toggle-text {
+		flex: 1;
+		text-align: left;
+	}
+
+	.docs-chevron {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		opacity: 0.5;
+		transition: transform 0.2s ease;
+	}
+
+	.docs-chevron :global(svg) {
+		width: 16px;
+		height: 16px;
+	}
+
+	.docs-chevron.expanded {
+		transform: rotate(180deg);
+	}
+
+	.docs-content {
+		padding: 0.875rem 1rem;
+		background: hsl(var(--muted) / 0.15);
+		border: 1px solid hsl(var(--border) / 0.6);
+		border-top: none;
+		border-radius: 0 0 10px 10px;
+		margin-top: -1px;
+	}
+
+	.docs-hint {
+		font-size: 0.75rem;
+		color: hsl(var(--muted-foreground));
+		margin: 0 0 0.75rem;
+		line-height: 1.5;
+	}
+
+	.docs-hint code {
+		padding: 0.125rem 0.375rem;
+		background: hsl(var(--muted) / 0.6);
+		border-radius: 4px;
+		font-size: 0.6875rem;
+		font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+	}
+
+	.docs-links-inline {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.docs-links-inline a {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+		color: hsl(var(--primary));
+		text-decoration: none;
+		font-size: 0.8125rem;
+		font-weight: 500;
+		transition: opacity 0.15s ease;
+	}
+
+	.docs-links-inline a:hover {
+		opacity: 0.75;
+	}
+
+	.docs-links-inline :global(.inline-link-icon) {
+		width: 11px;
+		height: 11px;
+		opacity: 0.7;
+	}
+
+	.docs-separator {
+		color: hsl(var(--muted-foreground) / 0.4);
+		font-size: 0.75rem;
+		user-select: none;
+	}
+
 	/* ===== Responsive ===== */
 	@media (max-width: 768px) {
 		.settings-command-center {
@@ -2277,5 +2765,37 @@
 			position: static;
 			margin-left: auto;
 		}
+	}
+
+	/* CSRF Tooltip - Global styles for portal-rendered content */
+	:global(.csrf-tooltip) {
+		max-width: 320px !important;
+		padding: 0.875rem 1rem !important;
+		background: hsl(var(--popover)) !important;
+		border: 1px solid hsl(var(--border)) !important;
+		border-radius: 10px !important;
+		box-shadow:
+			0 4px 12px hsl(0 0% 0% / 0.15),
+			0 2px 4px hsl(0 0% 0% / 0.1) !important;
+	}
+
+	:global(.csrf-tooltip-inner) {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	:global(.csrf-tooltip-inner strong) {
+		font-size: 0.8125rem;
+		font-weight: 600;
+		color: hsl(var(--foreground));
+		letter-spacing: 0.01em;
+	}
+
+	:global(.csrf-tooltip-inner p) {
+		font-size: 0.75rem;
+		color: hsl(var(--muted-foreground));
+		line-height: 1.55;
+		margin: 0;
 	}
 </style>
