@@ -1842,8 +1842,10 @@
 
 	.field-header {
 		display: flex;
-		align-items: center;
-		justify-content: space-between;
+		align-items: flex-start;
+		flex-wrap: wrap;
+		gap: 0.25rem 0.5rem;
+		min-height: 1.5rem;
 		margin-bottom: 0.5rem;
 	}
 
@@ -2017,6 +2019,7 @@
 		display: grid;
 		grid-template-columns: repeat(2, 1fr);
 		gap: 1.5rem;
+		align-items: start;
 	}
 
 	.form-row .form-field {
