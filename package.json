@@ -16,10 +16,12 @@
 		"format:check": "prettier --check .",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "bun run scripts/migrate.ts",
-		"db:studio": "drizzle-kit studio"
+		"db:studio": "drizzle-kit studio",
+		"postinstall": "prek install || true"
 	},
 	"devDependencies": {
 		"@internationalized/date": "^3.10.1",
+		"@j178/prek": "^0.2.25",
 		"@sveltejs/kit": "^2.49.2",
 		"@sveltejs/vite-plugin-svelte": "^6.2.1",
 		"@types/bun": "^1.3.5",

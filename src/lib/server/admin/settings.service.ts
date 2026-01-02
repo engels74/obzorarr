@@ -443,10 +443,18 @@ export async function clearConflictingDbSettings(): Promise<string[]> {
 	const csrfEnvOrigin = env.ORIGIN ?? '';
 
 	const envToDbMapping: Array<{ envValue: string; dbKey: AppSettingsKeyType; label: string }> = [
-		{ envValue: plexEnv.serverUrl, dbKey: AppSettingsKey.PLEX_SERVER_URL, label: 'PLEX_SERVER_URL' },
+		{
+			envValue: plexEnv.serverUrl,
+			dbKey: AppSettingsKey.PLEX_SERVER_URL,
+			label: 'PLEX_SERVER_URL'
+		},
 		{ envValue: plexEnv.token, dbKey: AppSettingsKey.PLEX_TOKEN, label: 'PLEX_TOKEN' },
 		{ envValue: openaiEnv.apiKey, dbKey: AppSettingsKey.OPENAI_API_KEY, label: 'OPENAI_API_KEY' },
-		{ envValue: openaiEnv.baseUrl, dbKey: AppSettingsKey.OPENAI_BASE_URL, label: 'OPENAI_BASE_URL' },
+		{
+			envValue: openaiEnv.baseUrl,
+			dbKey: AppSettingsKey.OPENAI_BASE_URL,
+			label: 'OPENAI_BASE_URL'
+		},
 		{ envValue: openaiEnv.model, dbKey: AppSettingsKey.OPENAI_MODEL, label: 'OPENAI_MODEL' },
 		{ envValue: csrfEnvOrigin, dbKey: AppSettingsKey.CSRF_ORIGIN, label: 'CSRF_ORIGIN' }
 	];
