@@ -307,6 +307,7 @@ export type ConfigSource = 'env' | 'db' | 'default';
 export interface ConfigValue<T> {
 	value: T;
 	source: ConfigSource;
+	isLocked: boolean;
 }
 
 export interface ApiConfigWithSources {
@@ -332,8 +333,24 @@ function getOpenAIEnvConfig() {
 	return {
 		apiKey: env.OPENAI_API_KEY ?? '',
 		baseUrl: env.OPENAI_API_URL ?? '',
-		model: env.OPENAI_MODEL ?? 'gpt-4o-mini'
+		model: env.OPENAI_MODEL ?? ''
 	};
+}
+
+function resolveConfigValue(
+	dbSettings: Record<string, string>,
+	dbKey: string,
+	envValue: string,
+	defaultValue: string = ''
+): ConfigValue<string> {
+	if (envValue) {
+		return { value: envValue, source: 'env', isLocked: true };
+	}
+	const dbValue = dbSettings[dbKey];
+	if (dbValue) {
+		return { value: dbValue, source: 'db', isLocked: false };
+	}
+	return { value: defaultValue, source: 'default', isLocked: false };
 }
 
 export async function getApiConfigWithSources(): Promise<ApiConfigWithSources> {
@@ -341,34 +358,25 @@ export async function getApiConfigWithSources(): Promise<ApiConfigWithSources> {
 	const plexEnv = getPlexEnvConfig();
 	const openaiEnv = getOpenAIEnvConfig();
 
-	function getConfigValue(
-		dbKey: string,
-		envValue: string,
-		defaultValue: string = ''
-	): ConfigValue<string> {
-		const dbValue = dbSettings[dbKey];
-		if (dbValue) {
-			return { value: dbValue, source: 'db' };
-		}
-		if (envValue) {
-			return { value: envValue, source: 'env' };
-		}
-		return { value: defaultValue, source: 'default' };
-	}
-
 	return {
 		plex: {
-			serverUrl: getConfigValue(AppSettingsKey.PLEX_SERVER_URL, plexEnv.serverUrl),
-			token: getConfigValue(AppSettingsKey.PLEX_TOKEN, plexEnv.token)
+			serverUrl: resolveConfigValue(dbSettings, AppSettingsKey.PLEX_SERVER_URL, plexEnv.serverUrl),
+			token: resolveConfigValue(dbSettings, AppSettingsKey.PLEX_TOKEN, plexEnv.token)
 		},
 		openai: {
-			apiKey: getConfigValue(AppSettingsKey.OPENAI_API_KEY, openaiEnv.apiKey),
-			baseUrl: getConfigValue(
+			apiKey: resolveConfigValue(dbSettings, AppSettingsKey.OPENAI_API_KEY, openaiEnv.apiKey),
+			baseUrl: resolveConfigValue(
+				dbSettings,
 				AppSettingsKey.OPENAI_BASE_URL,
 				openaiEnv.baseUrl,
 				'https://api.openai.com/v1'
 			),
-			model: getConfigValue(AppSettingsKey.OPENAI_MODEL, openaiEnv.model, 'gpt-4o-mini')
+			model: resolveConfigValue(
+				dbSettings,
+				AppSettingsKey.OPENAI_MODEL,
+				openaiEnv.model,
+				'gpt-4o-mini'
+			)
 		}
 	};
 }
@@ -387,9 +395,9 @@ export interface PlexConfig {
 }
 
 /**
- * Get the merged Plex configuration (database takes priority over environment).
+ * Get the merged Plex configuration (environment takes priority over database).
  * This should be used by all Plex-related services to ensure they use
- * settings configured during onboarding.
+ * settings configured via environment variables when available.
  */
 export async function getPlexConfig(): Promise<PlexConfig> {
 	const config = await getApiConfigWithSources();
@@ -413,27 +421,44 @@ export async function getCsrfConfigWithSource(): Promise<CsrfConfigWithSource> {
 	const dbSettings = await getAllAppSettings();
 	const envOrigin = env.ORIGIN ?? '';
 
-	function getConfigValue(
-		dbKey: string,
-		envValue: string,
-		defaultValue: string = ''
-	): ConfigValue<string> {
-		const dbValue = dbSettings[dbKey];
-		if (dbValue) {
-			return { value: dbValue, source: 'db' };
-		}
-		if (envValue) {
-			return { value: envValue, source: 'env' };
-		}
-		return { value: defaultValue, source: 'default' };
-	}
-
 	return {
-		origin: getConfigValue(AppSettingsKey.CSRF_ORIGIN, envOrigin)
+		origin: resolveConfigValue(dbSettings, AppSettingsKey.CSRF_ORIGIN, envOrigin)
 	};
 }
 
 export async function getCsrfOrigin(): Promise<string | null> {
 	const config = await getCsrfConfigWithSource();
 	return config.origin.value || null;
+}
+
+/**
+ * Clear database settings that conflict with environment variables.
+ * When ENV takes precedence, we auto-clear conflicting DB values to avoid confusion.
+ * Returns the list of setting labels that were cleared.
+ */
+export async function clearConflictingDbSettings(): Promise<string[]> {
+	const clearedSettings: string[] = [];
+	const plexEnv = getPlexEnvConfig();
+	const openaiEnv = getOpenAIEnvConfig();
+	const csrfEnvOrigin = env.ORIGIN ?? '';
+
+	const envToDbMapping: Array<{ envValue: string; dbKey: AppSettingsKeyType; label: string }> = [
+		{ envValue: plexEnv.serverUrl, dbKey: AppSettingsKey.PLEX_SERVER_URL, label: 'PLEX_SERVER_URL' },
+		{ envValue: plexEnv.token, dbKey: AppSettingsKey.PLEX_TOKEN, label: 'PLEX_TOKEN' },
+		{ envValue: openaiEnv.apiKey, dbKey: AppSettingsKey.OPENAI_API_KEY, label: 'OPENAI_API_KEY' },
+		{ envValue: openaiEnv.baseUrl, dbKey: AppSettingsKey.OPENAI_BASE_URL, label: 'OPENAI_BASE_URL' },
+		{ envValue: openaiEnv.model, dbKey: AppSettingsKey.OPENAI_MODEL, label: 'OPENAI_MODEL' },
+		{ envValue: csrfEnvOrigin, dbKey: AppSettingsKey.CSRF_ORIGIN, label: 'CSRF_ORIGIN' }
+	];
+
+	const dbSettings = await getAllAppSettings();
+
+	for (const { envValue, dbKey, label } of envToDbMapping) {
+		if (envValue && dbSettings[dbKey]) {
+			await deleteAppSetting(dbKey);
+			clearedSettings.push(label);
+		}
+	}
+
+	return clearedSettings;
 }

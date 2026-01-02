@@ -19,6 +19,7 @@ import {
 	getApiConfigWithSources,
 	getCsrfConfigWithSource,
 	setCachedServerName,
+	clearConflictingDbSettings,
 	AppSettingsKey,
 	ThemePresets,
 	AnonymizationMode,
@@ -99,9 +100,18 @@ const CsrfOriginSchema = z.object({
 interface SettingValue {
 	value: string;
 	source: ConfigSource;
+	isLocked: boolean;
 }
 
 export const load: PageServerLoad = async () => {
+	const clearedSettings = await clearConflictingDbSettings();
+	if (clearedSettings.length > 0) {
+		logger.info(
+			`Auto-cleared ${clearedSettings.length} DB setting(s) due to ENV precedence: ${clearedSettings.join(', ')}`,
+			'Settings'
+		);
+	}
+
 	const [
 		apiConfig,
 		uiTheme,
@@ -179,7 +189,8 @@ export const load: PageServerLoad = async () => {
 		security: {
 			originValue: csrfConfig.origin.value,
 			csrfEnabled: !!csrfConfig.origin.value,
-			originSource: csrfConfig.origin.source
+			originSource: csrfConfig.origin.source,
+			originLocked: csrfConfig.origin.isLocked
 		}
 	};
 };
@@ -205,20 +216,22 @@ export const actions: Actions = {
 		}
 
 		try {
-			// Save each setting (only if provided)
-			if (parsed.data.plexServerUrl) {
+			const apiConfig = await getApiConfigWithSources();
+
+			// Save each setting (only if provided AND not locked by ENV)
+			if (parsed.data.plexServerUrl && !apiConfig.plex.serverUrl.isLocked) {
 				await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, parsed.data.plexServerUrl);
 			}
-			if (parsed.data.plexToken) {
+			if (parsed.data.plexToken && !apiConfig.plex.token.isLocked) {
 				await setAppSetting(AppSettingsKey.PLEX_TOKEN, parsed.data.plexToken);
 			}
-			if (parsed.data.openaiApiKey) {
+			if (parsed.data.openaiApiKey && !apiConfig.openai.apiKey.isLocked) {
 				await setAppSetting(AppSettingsKey.OPENAI_API_KEY, parsed.data.openaiApiKey);
 			}
-			if (parsed.data.openaiBaseUrl) {
+			if (parsed.data.openaiBaseUrl && !apiConfig.openai.baseUrl.isLocked) {
 				await setAppSetting(AppSettingsKey.OPENAI_BASE_URL, parsed.data.openaiBaseUrl);
 			}
-			if (parsed.data.openaiModel) {
+			if (parsed.data.openaiModel && !apiConfig.openai.model.isLocked) {
 				await setAppSetting(AppSettingsKey.OPENAI_MODEL, parsed.data.openaiModel);
 			}
 
@@ -573,6 +586,13 @@ export const actions: Actions = {
 	},
 
 	updateCsrfOrigin: async ({ request }) => {
+		const csrfConfig = await getCsrfConfigWithSource();
+		if (csrfConfig.origin.isLocked) {
+			return fail(400, {
+				error: 'CSRF origin is set via environment variable and cannot be changed here'
+			});
+		}
+
 		const formData = await request.formData();
 		const csrfOrigin = formData.get('csrfOrigin')?.toString() ?? '';
 
@@ -605,6 +625,13 @@ export const actions: Actions = {
 	},
 
 	clearCsrfOrigin: async () => {
+		const csrfConfig = await getCsrfConfigWithSource();
+		if (csrfConfig.origin.isLocked) {
+			return fail(400, {
+				error: 'CSRF origin is set via environment variable and cannot be cleared here'
+			});
+		}
+
 		try {
 			await deleteAppSetting(AppSettingsKey.CSRF_ORIGIN);
 			return { success: true, message: 'CSRF origin cleared (using environment variable)' };

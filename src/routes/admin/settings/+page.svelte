@@ -103,6 +103,14 @@
 	let openaiBaseUrlSource = $state<'env' | 'db' | 'default'>('default');
 	let openaiModelSource = $state<'env' | 'db' | 'default'>('default');
 
+	// Track locked state (ENV takes precedence and cannot be changed via UI)
+	let plexServerUrlLocked = $state(false);
+	let plexTokenLocked = $state(false);
+	let openaiApiKeyLocked = $state(false);
+	let openaiBaseUrlLocked = $state(false);
+	let openaiModelLocked = $state(false);
+	let csrfOriginLocked = $state(false);
+
 	// Sync local state with data (initial load and after form submission)
 	$effect(() => {
 		plexServerUrl = data.settings.plexServerUrl.value;
@@ -115,6 +123,11 @@
 		openaiApiKeySource = data.settings.openaiApiKey.source;
 		openaiBaseUrlSource = data.settings.openaiBaseUrl.source;
 		openaiModelSource = data.settings.openaiModel.source;
+		plexServerUrlLocked = data.settings.plexServerUrl.isLocked;
+		plexTokenLocked = data.settings.plexToken.isLocked;
+		openaiApiKeyLocked = data.settings.openaiApiKey.isLocked;
+		openaiBaseUrlLocked = data.settings.openaiBaseUrl.isLocked;
+		openaiModelLocked = data.settings.openaiModel.isLocked;
 		selectedUITheme = data.uiTheme;
 		selectedWrappedTheme = data.wrappedTheme;
 		selectedAnonymization = data.anonymizationMode;
@@ -287,6 +300,7 @@
 	$effect(() => {
 		csrfOriginValue = data.security.originValue;
 		csrfOriginSource = data.security.originSource;
+		csrfOriginLocked = data.security.originLocked;
 	});
 
 	// Detect current URL for CSRF origin
@@ -350,7 +364,12 @@
 						<div class="form-field">
 							<div class="field-header">
 								<label for="plexServerUrl">Server URL</label>
-								{#if plexServerUrlSource !== 'default'}
+								{#if plexServerUrlLocked}
+									<span class="env-lock-badge">
+										<Lock class="badge-icon" />
+										Set via environment variable
+									</span>
+								{:else if plexServerUrlSource !== 'default'}
 									<span class="source-badge" class:env={plexServerUrlSource === 'env'}>
 										{getSourceLabel(plexServerUrlSource)}
 									</span>
@@ -362,15 +381,25 @@
 								name="plexServerUrl"
 								bind:value={plexServerUrl}
 								placeholder="http://192.168.1.100:32400"
-								class:from-env={plexServerUrlSource === 'env'}
+								class:from-env={plexServerUrlLocked}
+								disabled={plexServerUrlLocked}
 							/>
-							<span class="field-hint">Your Plex Media Server address</span>
+							{#if plexServerUrlLocked}
+								<span class="field-hint env-hint">This value is set via PLEX_SERVER_URL environment variable</span>
+							{:else}
+								<span class="field-hint">Your Plex Media Server address</span>
+							{/if}
 						</div>
 
 						<div class="form-field">
 							<div class="field-header">
 								<label for="plexToken">Authentication Token</label>
-								{#if plexTokenSource !== 'default'}
+								{#if plexTokenLocked}
+									<span class="env-lock-badge">
+										<Lock class="badge-icon" />
+										Set via environment variable
+									</span>
+								{:else if plexTokenSource !== 'default'}
 									<span class="source-badge" class:env={plexTokenSource === 'env'}>
 										{getSourceLabel(plexTokenSource)}
 									</span>
@@ -383,13 +412,15 @@
 									name="plexToken"
 									bind:value={plexToken}
 									placeholder="X-Plex-Token"
-									class:from-env={plexTokenSource === 'env'}
+									class:from-env={plexTokenLocked}
+									disabled={plexTokenLocked}
 								/>
 								<button
 									type="button"
 									class="input-action"
 									onclick={() => (showPlexToken = !showPlexToken)}
 									aria-label={showPlexToken ? 'Hide token' : 'Show token'}
+									disabled={plexTokenLocked}
 								>
 									{#if showPlexToken}
 										<EyeOff />
@@ -398,14 +429,23 @@
 									{/if}
 								</button>
 							</div>
+							{#if plexTokenLocked}
+								<span class="field-hint env-hint">This value is set via PLEX_TOKEN environment variable</span>
+							{/if}
 						</div>
 
-						<div class="panel-actions">
-							<button type="submit" class="btn-primary">
-								<Check class="btn-icon" />
-								Save Plex Settings
-							</button>
-						</div>
+						{#if !plexServerUrlLocked || !plexTokenLocked}
+							<div class="panel-actions">
+								<button type="submit" class="btn-primary">
+									<Check class="btn-icon" />
+									Save Plex Settings
+								</button>
+							</div>
+						{:else}
+							<div class="panel-info">
+								<span class="info-text">All Plex settings are managed via environment variables</span>
+							</div>
+						{/if}
 					</form>
 
 					<form
@@ -456,7 +496,12 @@
 						<div class="form-field">
 							<div class="field-header">
 								<label for="openaiApiKey">API Key</label>
-								{#if openaiApiKeySource !== 'default'}
+								{#if openaiApiKeyLocked}
+									<span class="env-lock-badge">
+										<Lock class="badge-icon" />
+										Set via environment variable
+									</span>
+								{:else if openaiApiKeySource !== 'default'}
 									<span class="source-badge" class:env={openaiApiKeySource === 'env'}>
 										{getSourceLabel(openaiApiKeySource)}
 									</span>
@@ -469,13 +514,15 @@
 									name="openaiApiKey"
 									bind:value={openaiApiKey}
 									placeholder="sk-..."
-									class:from-env={openaiApiKeySource === 'env'}
+									class:from-env={openaiApiKeyLocked}
+									disabled={openaiApiKeyLocked}
 								/>
 								<button
 									type="button"
 									class="input-action"
 									onclick={() => (showOpenaiKey = !showOpenaiKey)}
 									aria-label={showOpenaiKey ? 'Hide key' : 'Show key'}
+									disabled={openaiApiKeyLocked}
 								>
 									{#if showOpenaiKey}
 										<EyeOff />
@@ -484,13 +531,21 @@
 									{/if}
 								</button>
 							</div>
+							{#if openaiApiKeyLocked}
+								<span class="field-hint env-hint">This value is set via OPENAI_API_KEY environment variable</span>
+							{/if}
 						</div>
 
 						<div class="form-row">
 							<div class="form-field">
 								<div class="field-header">
 									<label for="openaiBaseUrl">Base URL</label>
-									{#if openaiBaseUrlSource !== 'default'}
+									{#if openaiBaseUrlLocked}
+										<span class="env-lock-badge">
+											<Lock class="badge-icon" />
+											Set via environment variable
+										</span>
+									{:else if openaiBaseUrlSource !== 'default'}
 										<span class="source-badge" class:env={openaiBaseUrlSource === 'env'}>
 											{getSourceLabel(openaiBaseUrlSource)}
 										</span>
@@ -502,15 +557,25 @@
 									name="openaiBaseUrl"
 									bind:value={openaiBaseUrl}
 									placeholder="https://api.openai.com/v1"
-									class:from-env={openaiBaseUrlSource === 'env'}
+									class:from-env={openaiBaseUrlLocked}
+									disabled={openaiBaseUrlLocked}
 								/>
-								<span class="field-hint">Custom endpoint (optional)</span>
+								{#if openaiBaseUrlLocked}
+									<span class="field-hint env-hint">Set via OPENAI_API_URL environment variable</span>
+								{:else}
+									<span class="field-hint">Custom endpoint (optional)</span>
+								{/if}
 							</div>
 
 							<div class="form-field">
 								<div class="field-header">
 									<label for="openaiModel">Model</label>
-									{#if openaiModelSource !== 'default'}
+									{#if openaiModelLocked}
+										<span class="env-lock-badge">
+											<Lock class="badge-icon" />
+											Set via environment variable
+										</span>
+									{:else if openaiModelSource !== 'default'}
 										<span class="source-badge" class:env={openaiModelSource === 'env'}>
 											{getSourceLabel(openaiModelSource)}
 										</span>
@@ -522,18 +587,29 @@
 									name="openaiModel"
 									bind:value={openaiModel}
 									placeholder="gpt-4o-mini"
-									class:from-env={openaiModelSource === 'env'}
+									class:from-env={openaiModelLocked}
+									disabled={openaiModelLocked}
 								/>
-								<span class="field-hint">Default: gpt-4o-mini</span>
+								{#if openaiModelLocked}
+									<span class="field-hint env-hint">Set via OPENAI_MODEL environment variable</span>
+								{:else}
+									<span class="field-hint">Default: gpt-4o-mini</span>
+								{/if}
 							</div>
 						</div>
 
-						<div class="panel-actions">
-							<button type="submit" class="btn-primary">
-								<Check class="btn-icon" />
-								Save OpenAI Settings
-							</button>
-						</div>
+						{#if !openaiApiKeyLocked || !openaiBaseUrlLocked || !openaiModelLocked}
+							<div class="panel-actions">
+								<button type="submit" class="btn-primary">
+									<Check class="btn-icon" />
+									Save OpenAI Settings
+								</button>
+							</div>
+						{:else}
+							<div class="panel-info">
+								<span class="info-text">All OpenAI settings are managed via environment variables</span>
+							</div>
+						{/if}
 					</form>
 				</section>
 			</div>
@@ -980,7 +1056,12 @@
 						<div class="form-field">
 							<div class="field-header">
 								<label for="csrfOrigin">ORIGIN</label>
-								{#if csrfOriginSource !== 'default'}
+								{#if csrfOriginLocked}
+									<span class="env-lock-badge">
+										<Lock class="badge-icon" />
+										Set via environment variable
+									</span>
+								{:else if csrfOriginSource !== 'default'}
 									<span class="source-badge" class:env={csrfOriginSource === 'env'}>
 										{getSourceLabel(csrfOriginSource)}
 									</span>
@@ -992,46 +1073,57 @@
 									id="csrfOrigin"
 									bind:value={csrfOriginValue}
 									placeholder="https://your-domain.com"
-									class:from-env={csrfOriginSource === 'env'}
+									class:from-env={csrfOriginLocked}
+									disabled={csrfOriginLocked}
 								/>
-								<button
-									type="button"
-									class="input-action"
-									onclick={detectCurrentUrl}
-									aria-label="Detect current URL"
-									title="Auto-detect from current browser URL"
-								>
-									<Crosshair />
-								</button>
+								{#if !csrfOriginLocked}
+									<button
+										type="button"
+										class="input-action"
+										onclick={detectCurrentUrl}
+										aria-label="Detect current URL"
+										title="Auto-detect from current browser URL"
+									>
+										<Crosshair />
+									</button>
+								{/if}
 							</div>
-							<span class="field-hint">
-								Your application's public URL. Database setting takes priority over environment variable.
-							</span>
+							{#if csrfOriginLocked}
+								<span class="field-hint env-hint">
+									This value is set via ORIGIN environment variable and cannot be changed here.
+								</span>
+							{:else}
+								<span class="field-hint">
+									Your application's public URL. Environment variable takes priority over database.
+								</span>
+							{/if}
 						</div>
 
 						<div class="csrf-actions">
-							<form
-								method="POST"
-								action="?/updateCsrfOrigin"
-								use:enhance={() => {
-									isSavingCsrf = true;
-									return async ({ update }) => {
-										isSavingCsrf = false;
-										await update();
-									};
-								}}
-							>
-								<input type="hidden" name="csrfOrigin" value={csrfOriginValue} />
-								<button type="submit" class="btn-primary" disabled={isSavingCsrf}>
-									{#if isSavingCsrf}
-										<Loader2 class="btn-icon spinning" />
-										Saving...
-									{:else}
-										<Check class="btn-icon" />
-										Save CSRF Origin
-									{/if}
-								</button>
-							</form>
+							{#if !csrfOriginLocked}
+								<form
+									method="POST"
+									action="?/updateCsrfOrigin"
+									use:enhance={() => {
+										isSavingCsrf = true;
+										return async ({ update }) => {
+											isSavingCsrf = false;
+											await update();
+										};
+									}}
+								>
+									<input type="hidden" name="csrfOrigin" value={csrfOriginValue} />
+									<button type="submit" class="btn-primary" disabled={isSavingCsrf}>
+										{#if isSavingCsrf}
+											<Loader2 class="btn-icon spinning" />
+											Saving...
+										{:else}
+											<Check class="btn-icon" />
+											Save CSRF Origin
+										{/if}
+									</button>
+								</form>
+							{/if}
 
 							<form
 								method="POST"
@@ -1059,7 +1151,7 @@
 								</button>
 							</form>
 
-							{#if csrfOriginSource === 'db'}
+							{#if !csrfOriginLocked && csrfOriginSource === 'db'}
 								<button
 									type="button"
 									class="btn-destructive"
@@ -1716,8 +1808,10 @@
 
 	.field-header {
 		display: flex;
-		align-items: center;
-		justify-content: space-between;
+		align-items: flex-start;
+		flex-wrap: wrap;
+		gap: 0.25rem 0.5rem;
+		min-height: 1.5rem;
 		margin-bottom: 0.5rem;
 	}
 
@@ -1781,6 +1875,57 @@
 		color: hsl(210 80% 65%);
 	}
 
+	/* Environment Lock Badge - indicates ENV-controlled settings */
+	.env-lock-badge {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.375rem;
+		padding: 0.25rem 0.625rem;
+		background: linear-gradient(135deg, hsl(210 70% 25%), hsl(210 60% 20%));
+		border: 1px solid hsl(210 60% 35%);
+		border-radius: 6px;
+		font-size: 0.6875rem;
+		font-weight: 600;
+		color: hsl(210 80% 70%);
+		letter-spacing: 0.02em;
+	}
+
+	.env-lock-badge :global(.badge-icon) {
+		width: 12px;
+		height: 12px;
+	}
+
+	/* Locked input styling */
+	.form-field input:read-only,
+	.form-field input:disabled {
+		background: hsl(var(--muted) / 0.3);
+		border-color: hsl(210 60% 35% / 0.4);
+		color: hsl(var(--muted-foreground));
+		cursor: not-allowed;
+		opacity: 0.8;
+	}
+
+	.field-hint.env-hint {
+		color: hsl(210 60% 60%);
+		font-style: italic;
+	}
+
+	/* Panel info message (when all fields are locked) */
+	.panel-info {
+		margin-top: 1.25rem;
+		padding: 1rem;
+		background: hsl(210 60% 50% / 0.08);
+		border: 1px dashed hsl(210 60% 35% / 0.4);
+		border-radius: 8px;
+		text-align: center;
+	}
+
+	.panel-info .info-text {
+		font-size: 0.8125rem;
+		color: hsl(210 60% 60%);
+		font-style: italic;
+	}
+
 	.input-with-action {
 		display: flex;
 		gap: 0.5rem;
@@ -1813,6 +1958,11 @@
 		height: 18px;
 	}
 
+	.input-action:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
 	.input-with-suffix {
 		display: flex;
 		align-items: stretch;
@@ -1840,6 +1990,7 @@
 		display: grid;
 		grid-template-columns: repeat(2, 1fr);
 		gap: 1.5rem;
+		align-items: start;
 	}
 
 	.form-row .form-field {

@@ -24,7 +24,8 @@ import {
 	clearUserStatsCache,
 	getApiConfigWithSources,
 	hasPlexEnvConfig,
-	hasOpenAIEnvConfig
+	hasOpenAIEnvConfig,
+	clearConflictingDbSettings
 } from '$lib/server/admin/settings.service';
 
 /**
@@ -337,26 +338,50 @@ describe('Admin Settings Service', () => {
 				// Plex values come from env (test setup mocks PLEX_SERVER_URL and PLEX_TOKEN)
 				expect(config.plex.serverUrl.value).toBe('http://test-plex-server:32400');
 				expect(config.plex.serverUrl.source).toBe('env');
+				expect(config.plex.serverUrl.isLocked).toBe(true);
 				expect(config.plex.token.value).toBe('test-plex-token');
 				expect(config.plex.token.source).toBe('env');
+				expect(config.plex.token.isLocked).toBe(true);
 
 				// OpenAI env vars are empty in test setup, so defaults are used
 				expect(config.openai.baseUrl.value).toBe('https://api.openai.com/v1');
 				expect(config.openai.baseUrl.source).toBe('default');
+				expect(config.openai.baseUrl.isLocked).toBe(false);
 				expect(config.openai.model.value).toBe('gpt-4o-mini');
 				expect(config.openai.model.source).toBe('default');
+				expect(config.openai.model.isLocked).toBe(false);
 			});
 
-			it('prioritizes DB values over defaults', async () => {
-				await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, 'http://db-plex:32400');
+			it('prioritizes DB values over defaults (when ENV not set)', async () => {
+				// OpenAI env vars are empty in test setup, so DB values should take priority
 				await setAppSetting(AppSettingsKey.OPENAI_MODEL, 'gpt-4');
+				await setAppSetting(AppSettingsKey.OPENAI_BASE_URL, 'http://custom-api:8080/v1');
 
 				const config = await getApiConfigWithSources();
 
-				expect(config.plex.serverUrl.value).toBe('http://db-plex:32400');
-				expect(config.plex.serverUrl.source).toBe('db');
+				// OpenAI settings should come from DB since ENV is not set
 				expect(config.openai.model.value).toBe('gpt-4');
 				expect(config.openai.model.source).toBe('db');
+				expect(config.openai.model.isLocked).toBe(false);
+				expect(config.openai.baseUrl.value).toBe('http://custom-api:8080/v1');
+				expect(config.openai.baseUrl.source).toBe('db');
+				expect(config.openai.baseUrl.isLocked).toBe(false);
+			});
+
+			it('prioritizes ENV values over DB values', async () => {
+				// Plex env vars ARE set in test setup, so ENV should win even if DB has values
+				await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, 'http://db-plex:32400');
+				await setAppSetting(AppSettingsKey.PLEX_TOKEN, 'db-token-value');
+
+				const config = await getApiConfigWithSources();
+
+				// Plex settings should come from ENV (test setup mocks these)
+				expect(config.plex.serverUrl.value).toBe('http://test-plex-server:32400');
+				expect(config.plex.serverUrl.source).toBe('env');
+				expect(config.plex.serverUrl.isLocked).toBe(true);
+				expect(config.plex.token.value).toBe('test-plex-token');
+				expect(config.plex.token.source).toBe('env');
+				expect(config.plex.token.isLocked).toBe(true);
 			});
 		});
 
@@ -373,6 +398,58 @@ describe('Admin Settings Service', () => {
 				// Test setup mocks env vars as empty strings
 				const hasConfig = hasOpenAIEnvConfig();
 				expect(hasConfig).toBe(false);
+			});
+		});
+
+		describe('clearConflictingDbSettings', () => {
+			it('clears DB settings when ENV values exist', async () => {
+				// Plex env vars ARE set in test setup, so these DB values should be cleared
+				await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, 'http://db-url:32400');
+				await setAppSetting(AppSettingsKey.PLEX_TOKEN, 'db-token');
+
+				const cleared = await clearConflictingDbSettings();
+
+				expect(cleared).toContain('PLEX_SERVER_URL');
+				expect(cleared).toContain('PLEX_TOKEN');
+
+				// Verify DB values are actually deleted
+				const dbUrl = await getAppSetting(AppSettingsKey.PLEX_SERVER_URL);
+				const dbToken = await getAppSetting(AppSettingsKey.PLEX_TOKEN);
+				expect(dbUrl).toBeNull();
+				expect(dbToken).toBeNull();
+			});
+
+			it('preserves DB settings when no ENV values exist', async () => {
+				// OpenAI env vars are empty in test setup, so DB values should be preserved
+				await setAppSetting(AppSettingsKey.OPENAI_MODEL, 'custom-model');
+				await setAppSetting(AppSettingsKey.OPENAI_BASE_URL, 'http://custom-api:8080/v1');
+
+				const cleared = await clearConflictingDbSettings();
+
+				expect(cleared).not.toContain('OPENAI_MODEL');
+				expect(cleared).not.toContain('OPENAI_BASE_URL');
+
+				// Verify DB values are preserved
+				const model = await getAppSetting(AppSettingsKey.OPENAI_MODEL);
+				const baseUrl = await getAppSetting(AppSettingsKey.OPENAI_BASE_URL);
+				expect(model).toBe('custom-model');
+				expect(baseUrl).toBe('http://custom-api:8080/v1');
+			});
+
+			it('returns correct labels for cleared settings', async () => {
+				// Set only one DB value that conflicts with ENV
+				await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, 'http://db-url:32400');
+
+				const cleared = await clearConflictingDbSettings();
+
+				expect(cleared).toEqual(['PLEX_SERVER_URL']);
+			});
+
+			it('returns empty array when no conflicts exist', async () => {
+				// No DB settings set, so nothing to clear
+				const cleared = await clearConflictingDbSettings();
+
+				expect(cleared).toEqual([]);
 			});
 		});
 	});
