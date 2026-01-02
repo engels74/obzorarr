@@ -29,6 +29,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 	const serverName = hasEnvConfigValue ? await getServerName() : null;
 
 	const steps: { id: OnboardingStep; label: string }[] = [
+		{ id: OnboardingSteps.CSRF, label: 'Security' },
 		{ id: OnboardingSteps.PLEX, label: 'Connect' },
 		{ id: OnboardingSteps.SYNC, label: 'Sync' },
 		{ id: OnboardingSteps.SETTINGS, label: 'Configure' },
@@ -39,7 +40,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		steps,
 		currentStep,
 		currentStepIndex: getStepNumber(currentStep) - 1,
-		totalSteps: 4,
+		totalSteps: 5,
 		isAuthenticated: !!locals.user,
 		isAdmin: locals.user?.isAdmin ?? false,
 		username: locals.user?.username,

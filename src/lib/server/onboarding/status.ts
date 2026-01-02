@@ -7,6 +7,7 @@ import {
 } from '$lib/server/admin/settings.service';
 
 export const OnboardingSteps = {
+	CSRF: 'csrf',
 	PLEX: 'plex',
 	SYNC: 'sync',
 	SETTINGS: 'settings',
@@ -39,7 +40,7 @@ export async function getOnboardingStep(): Promise<OnboardingStep> {
 		return step as OnboardingStep;
 	}
 
-	return OnboardingSteps.PLEX;
+	return OnboardingSteps.CSRF;
 }
 
 export async function setOnboardingStep(step: OnboardingStep): Promise<void> {
@@ -77,6 +78,7 @@ export async function getOnboardingStatus(): Promise<OnboardingStatus> {
 
 export function getStepNumber(step: OnboardingStep): number {
 	const stepOrder: OnboardingStep[] = [
+		OnboardingSteps.CSRF,
 		OnboardingSteps.PLEX,
 		OnboardingSteps.SYNC,
 		OnboardingSteps.SETTINGS,
@@ -87,6 +89,7 @@ export function getStepNumber(step: OnboardingStep): number {
 
 export function getNextStep(currentStep: OnboardingStep): OnboardingStep | null {
 	const stepOrder: OnboardingStep[] = [
+		OnboardingSteps.CSRF,
 		OnboardingSteps.PLEX,
 		OnboardingSteps.SYNC,
 		OnboardingSteps.SETTINGS,
@@ -101,6 +104,7 @@ export function getNextStep(currentStep: OnboardingStep): OnboardingStep | null 
 
 export function getPreviousStep(currentStep: OnboardingStep): OnboardingStep | null {
 	const stepOrder: OnboardingStep[] = [
+		OnboardingSteps.CSRF,
 		OnboardingSteps.PLEX,
 		OnboardingSteps.SYNC,
 		OnboardingSteps.SETTINGS,
