@@ -40,7 +40,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		steps,
 		currentStep,
 		currentStepIndex: getStepNumber(currentStep) - 1,
-		totalSteps: 5,
+		totalSteps: steps.length,
 		isAuthenticated: !!locals.user,
 		isAdmin: locals.user?.isAdmin ?? false,
 		username: locals.user?.username,

@@ -257,7 +257,6 @@
 						};
 					}}
 				>
-					<input type="hidden" name="csrfOrigin" value={csrfOriginInput} />
 					<button type="submit" class="save-btn" disabled={isSubmitting || !csrfOriginInput}>
 						{#if isSubmitting}
 							<span class="spinner"></span>

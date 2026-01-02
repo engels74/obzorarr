@@ -31,16 +31,21 @@ export const load: PageServerLoad = async ({ request, parent }) => {
 	const parentData = await parent();
 	const csrfConfig = await getCsrfConfigWithSource();
 
-	const forwardedProto = request.headers.get('x-forwarded-proto');
-	const forwardedHost = request.headers.get('x-forwarded-host');
+	const forwardedProtoRaw = request.headers.get('x-forwarded-proto');
+	const forwardedHostRaw = request.headers.get('x-forwarded-host');
+	const forwardedProto = forwardedProtoRaw?.split(',')[0]?.trim();
+	const forwardedHost = forwardedHostRaw?.split(',')[0]?.trim();
 	const isReverseProxy = !!(forwardedProto || forwardedHost);
 
+	const requestUrl = new URL(request.url);
 	let detectedOrigin: string;
-	if (forwardedProto && forwardedHost) {
-		const proto = forwardedProto.includes('https') ? 'https' : 'http';
+	if (forwardedHost) {
+		const proto = forwardedProto?.includes('https')
+			? 'https'
+			: forwardedProto || requestUrl.protocol.replace(':', '');
 		detectedOrigin = `${proto}://${forwardedHost}`;
 	} else {
-		detectedOrigin = new URL(request.url).origin;
+		detectedOrigin = requestUrl.origin;
 	}
 
 	return {
