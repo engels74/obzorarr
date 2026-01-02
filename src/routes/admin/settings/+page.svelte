@@ -463,7 +463,19 @@
 										const result = deserialize(await response.text());
 										if (result.type === 'success' || result.type === 'failure') {
 											handleFormToast(result.data);
+										} else if (result.type === 'error') {
+											handleFormToast({
+												error: result.error?.message ?? 'An error occurred while testing connection'
+											});
+										} else {
+											handleFormToast({
+												error: 'Unexpected response from server'
+											});
 										}
+									} catch {
+										handleFormToast({
+											error: 'Failed to test connection. Please check your network and try again.'
+										});
 									} finally {
 										isTesting = false;
 									}
