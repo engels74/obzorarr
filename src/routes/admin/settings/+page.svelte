@@ -1099,36 +1099,8 @@
 							{/if}
 						</div>
 
-						{#if csrfOriginLocked}
-							<div class="csrf-actions">
-								<form
-									method="POST"
-									action="?/testCsrfProtection"
-									use:enhance={() => {
-										isTestingCsrf = true;
-										return async ({ update }) => {
-											isTestingCsrf = false;
-											await update();
-										};
-									}}
-								>
-									<button
-										type="submit"
-										class="btn-secondary"
-										disabled={isTestingCsrf}
-									>
-										{#if isTestingCsrf}
-											<Loader2 class="btn-icon spinning" />
-											Testing...
-										{:else}
-											<ShieldCheck class="btn-icon" />
-											Test CSRF Protection
-										{/if}
-									</button>
-								</form>
-							</div>
-						{:else}
-							<div class="csrf-actions">
+						<div class="csrf-actions">
+							{#if !csrfOriginLocked}
 								<form
 									method="POST"
 									action="?/updateCsrfOrigin"
@@ -1151,45 +1123,45 @@
 										{/if}
 									</button>
 								</form>
+							{/if}
 
-								<form
-									method="POST"
-									action="?/testCsrfProtection"
-									use:enhance={() => {
-										isTestingCsrf = true;
-										return async ({ update }) => {
-											isTestingCsrf = false;
-											await update();
-										};
-									}}
+							<form
+								method="POST"
+								action="?/testCsrfProtection"
+								use:enhance={() => {
+									isTestingCsrf = true;
+									return async ({ update }) => {
+										isTestingCsrf = false;
+										await update();
+									};
+								}}
+							>
+								<button
+									type="submit"
+									class="btn-secondary"
+									disabled={isTestingCsrf}
 								>
-									<button
-										type="submit"
-										class="btn-secondary"
-										disabled={isTestingCsrf}
-									>
-										{#if isTestingCsrf}
-											<Loader2 class="btn-icon spinning" />
-											Testing...
-										{:else}
-											<ShieldCheck class="btn-icon" />
-											Test CSRF Protection
-										{/if}
-									</button>
-								</form>
+									{#if isTestingCsrf}
+										<Loader2 class="btn-icon spinning" />
+										Testing...
+									{:else}
+										<ShieldCheck class="btn-icon" />
+										Test CSRF Protection
+									{/if}
+								</button>
+							</form>
 
-								{#if csrfOriginSource === 'db'}
-									<button
-										type="button"
-										class="btn-destructive"
-										onclick={() => (csrfClearDialogOpen = true)}
-									>
-										<X class="btn-icon" />
-										Clear Database Value
-									</button>
-								{/if}
-							</div>
-						{/if}
+							{#if !csrfOriginLocked && csrfOriginSource === 'db'}
+								<button
+									type="button"
+									class="btn-destructive"
+									onclick={() => (csrfClearDialogOpen = true)}
+								>
+									<X class="btn-icon" />
+									Clear Database Value
+								</button>
+							{/if}
+						</div>
 					</div>
 				</section>
 
@@ -1984,6 +1956,11 @@
 	.input-action :global(svg) {
 		width: 18px;
 		height: 18px;
+	}
+
+	.input-action:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
 	}
 
 	.input-with-suffix {
