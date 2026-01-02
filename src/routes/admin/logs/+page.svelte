@@ -24,13 +24,13 @@
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	// Filter state (reactive to URL params via data)
-	let selectedLevels = $derived<LogLevelType[]>(data.filters.levels);
-	let selectedSource = $derived(data.filters.source);
+	let selectedLevels = $derived<LogLevelType[]>(data.filters?.levels ?? []);
+	let selectedSource = $derived(data.filters?.source ?? '');
 
 	// Search needs local state for debounce pattern, synced from data
 	let searchText = $state('');
 	$effect.pre(() => {
-		searchText = data.filters.search;
+		searchText = data.filters?.search ?? '';
 	});
 	let autoScroll = $state(true);
 
