@@ -438,49 +438,54 @@
 							{/if}
 						</div>
 
-						{#if !plexServerUrlLocked || !plexTokenLocked}
-							<div class="panel-actions">
+						<div class="plex-actions">
+							{#if !plexServerUrlLocked || !plexTokenLocked}
 								<button type="submit" class="btn-primary">
 									<Check class="btn-icon" />
 									Save Plex Settings
 								</button>
-							</div>
-						{:else}
+							{/if}
+
+							<button
+								type="button"
+								class="btn-secondary"
+								disabled={isTesting || !plexServerUrl || !plexToken}
+								onclick={async () => {
+									isTesting = true;
+									const formData = new FormData();
+									formData.set('plexServerUrl', plexServerUrl);
+									formData.set('plexToken', plexToken);
+									try {
+										const response = await fetch('?/testPlexConnection', {
+											method: 'POST',
+											body: formData
+										});
+										const result = deserialize(await response.text());
+										if (result.type === 'success' || result.type === 'failure') {
+											handleFormToast(result.data);
+										}
+									} finally {
+										isTesting = false;
+									}
+								}}
+							>
+								{#if isTesting}
+									<Loader2 class="btn-icon spinning" />
+									Testing...
+								{:else}
+									<Zap class="btn-icon" />
+									Test Connection
+								{/if}
+							</button>
+						</div>
+
+						{#if plexServerUrlLocked && plexTokenLocked}
 							<div class="panel-info">
 								<span class="info-text"
 									>All Plex settings are managed via environment variables</span
 								>
 							</div>
 						{/if}
-					</form>
-
-					<form
-						method="POST"
-						action="?/testPlexConnection"
-						use:enhance={() => {
-							isTesting = true;
-							return async ({ update }) => {
-								isTesting = false;
-								await update();
-							};
-						}}
-						class="test-connection-form"
-					>
-						<input type="hidden" name="plexServerUrl" value={plexServerUrl} />
-						<input type="hidden" name="plexToken" value={plexToken} />
-						<button
-							type="submit"
-							class="btn-secondary"
-							disabled={isTesting || !plexServerUrl || !plexToken}
-						>
-							{#if isTesting}
-								<Loader2 class="btn-icon spinning" />
-								Testing...
-							{:else}
-								<Zap class="btn-icon" />
-								Test Connection
-							{/if}
-						</button>
 					</form>
 				</section>
 
@@ -1748,6 +1753,16 @@
 		border-top: 1px solid hsl(var(--border) / 0.5);
 	}
 
+	.plex-actions {
+		display: flex;
+		gap: 0.75rem;
+		align-items: center;
+		flex-wrap: wrap;
+		margin-top: 1.25rem;
+		padding-top: 1rem;
+		border-top: 1px solid hsl(var(--border) / 0.5);
+	}
+
 	.panel-badge {
 		font-size: 0.6875rem;
 		font-weight: 600;
@@ -2141,10 +2156,6 @@
 		to {
 			transform: rotate(360deg);
 		}
-	}
-
-	.test-connection-form {
-		padding: 0 1.25rem 1.25rem;
 	}
 
 	/* ===== Content Grid ===== */
