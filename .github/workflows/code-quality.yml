@@ -19,12 +19,13 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+          cache: true
 
       - name: Install dependencies
         run: bun install
 
       - name: Run prek checks
-        uses: j178/prek-action@v1
+        uses: j178/prek-action@v1.0.6
         with:
           extra-args: --all-files --hook-stage manual
         env:
