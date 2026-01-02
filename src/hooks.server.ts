@@ -9,6 +9,7 @@ import { logger } from '$lib/server/logging';
 import { requiresOnboarding, getOnboardingStep } from '$lib/server/onboarding';
 import { env } from '$env/dynamic/private';
 import { requestFilterHandle, rateLimitHandle, csrfHandle } from '$lib/server/security';
+import { clearConflictingDbSettings } from '$lib/server/admin/settings.service';
 
 const securityHeadersHandle: Handle = async ({ event, resolve }) => {
 	const response = await resolve(event);
@@ -60,6 +61,26 @@ const COOKIE_OPTIONS = {
 };
 
 let devBypassLogged = false;
+let settingsConflictsCleared = false;
+
+const initializationHandle: Handle = async ({ event, resolve }) => {
+	if (!settingsConflictsCleared) {
+		settingsConflictsCleared = true;
+		try {
+			const clearedSettings = await clearConflictingDbSettings();
+			if (clearedSettings.length > 0) {
+				logger.info(
+					`Auto-cleared ${clearedSettings.length} DB setting(s) due to ENV precedence: ${clearedSettings.join(', ')}`,
+					'Startup'
+				);
+			}
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			logger.error(`Failed to clear conflicting DB settings: ${errorMessage}`, 'Startup');
+		}
+	}
+	return resolve(event);
+};
 
 const authHandle: Handle = async ({ event, resolve }) => {
 	// Check for dev bypass mode (development only)
@@ -193,6 +214,7 @@ export const handle = sequence(
 	rateLimitHandle,
 	proxyHandle,
 	csrfHandle,
+	initializationHandle,
 	securityHeadersHandle,
 	authHandle,
 	onboardingHandle,
