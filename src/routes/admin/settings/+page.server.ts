@@ -19,7 +19,6 @@ import {
 	getApiConfigWithSources,
 	getCsrfConfigWithSource,
 	setCachedServerName,
-	clearConflictingDbSettings,
 	AppSettingsKey,
 	ThemePresets,
 	AnonymizationMode,
@@ -104,14 +103,6 @@ interface SettingValue {
 }
 
 export const load: PageServerLoad = async () => {
-	const clearedSettings = await clearConflictingDbSettings();
-	if (clearedSettings.length > 0) {
-		logger.info(
-			`Auto-cleared ${clearedSettings.length} DB setting(s) due to ENV precedence: ${clearedSettings.join(', ')}`,
-			'Settings'
-		);
-	}
-
 	const [
 		apiConfig,
 		uiTheme,
