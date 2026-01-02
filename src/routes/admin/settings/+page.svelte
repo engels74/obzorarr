@@ -385,7 +385,9 @@
 								disabled={plexServerUrlLocked}
 							/>
 							{#if plexServerUrlLocked}
-								<span class="field-hint env-hint">This value is set via PLEX_SERVER_URL environment variable</span>
+								<span class="field-hint env-hint"
+									>This value is set via PLEX_SERVER_URL environment variable</span
+								>
 							{:else}
 								<span class="field-hint">Your Plex Media Server address</span>
 							{/if}
@@ -430,7 +432,9 @@
 								</button>
 							</div>
 							{#if plexTokenLocked}
-								<span class="field-hint env-hint">This value is set via PLEX_TOKEN environment variable</span>
+								<span class="field-hint env-hint"
+									>This value is set via PLEX_TOKEN environment variable</span
+								>
 							{/if}
 						</div>
 
@@ -443,7 +447,9 @@
 							</div>
 						{:else}
 							<div class="panel-info">
-								<span class="info-text">All Plex settings are managed via environment variables</span>
+								<span class="info-text"
+									>All Plex settings are managed via environment variables</span
+								>
 							</div>
 						{/if}
 					</form>
@@ -532,7 +538,9 @@
 								</button>
 							</div>
 							{#if openaiApiKeyLocked}
-								<span class="field-hint env-hint">This value is set via OPENAI_API_KEY environment variable</span>
+								<span class="field-hint env-hint"
+									>This value is set via OPENAI_API_KEY environment variable</span
+								>
 							{/if}
 						</div>
 
@@ -561,7 +569,9 @@
 									disabled={openaiBaseUrlLocked}
 								/>
 								{#if openaiBaseUrlLocked}
-									<span class="field-hint env-hint">Set via OPENAI_API_URL environment variable</span>
+									<span class="field-hint env-hint"
+										>Set via OPENAI_API_URL environment variable</span
+									>
 								{:else}
 									<span class="field-hint">Custom endpoint (optional)</span>
 								{/if}
@@ -607,7 +617,9 @@
 							</div>
 						{:else}
 							<div class="panel-info">
-								<span class="info-text">All OpenAI settings are managed via environment variables</span>
+								<span class="info-text"
+									>All OpenAI settings are managed via environment variables</span
+								>
 							</div>
 						{/if}
 					</form>
@@ -1022,7 +1034,12 @@
 								<h2>CSRF Protection</h2>
 								<Tooltip.Root>
 									<Tooltip.Trigger>
-										<span role="button" tabindex="0" class="help-trigger" aria-label="Learn how CSRF protection works">
+										<span
+											role="button"
+											tabindex="0"
+											class="help-trigger"
+											aria-label="Learn how CSRF protection works"
+										>
 											<CircleHelp />
 										</span>
 									</Tooltip.Trigger>
@@ -1032,8 +1049,8 @@
 											<p>
 												When ORIGIN is set, Obzorarr validates that all state-changing requests
 												(POST, PUT, PATCH, DELETE) originate from your domain. Combined with
-												SameSite cookies, this provides robust protection without additional
-												reverse proxy configuration.
+												SameSite cookies, this provides robust protection without additional reverse
+												proxy configuration.
 											</p>
 										</div>
 									</Tooltip.Content>
@@ -1041,190 +1058,186 @@
 							</div>
 							<div class="connection-status" class:connected={data.security.csrfEnabled}>
 								<span class="status-dot"></span>
-								<span class="status-text"
-									>{data.security.csrfEnabled ? 'Enabled' : 'Disabled'}</span
+								<span class="status-text">{data.security.csrfEnabled ? 'Enabled' : 'Disabled'}</span
 								>
 							</div>
 						</div>
 
-					<p class="panel-description">
-						Cross-Site Request Forgery protection prevents malicious websites from making
-						unauthorized requests on behalf of authenticated users.
-					</p>
+						<p class="panel-description">
+							Cross-Site Request Forgery protection prevents malicious websites from making
+							unauthorized requests on behalf of authenticated users.
+						</p>
 
-					<div class="panel-form">
-						<div class="form-field">
-							<div class="field-header">
-								<label for="csrfOrigin">ORIGIN</label>
+						<div class="panel-form">
+							<div class="form-field">
+								<div class="field-header">
+									<label for="csrfOrigin">ORIGIN</label>
+									{#if csrfOriginLocked}
+										<span class="env-lock-badge">
+											<Lock class="badge-icon" />
+											Set via environment variable
+										</span>
+									{:else if csrfOriginSource !== 'default'}
+										<span class="source-badge" class:env={csrfOriginSource === 'env'}>
+											{getSourceLabel(csrfOriginSource)}
+										</span>
+									{/if}
+								</div>
+								<div class="input-with-action">
+									<input
+										type="url"
+										id="csrfOrigin"
+										bind:value={csrfOriginValue}
+										placeholder="https://your-domain.com"
+										class:from-env={csrfOriginLocked}
+										disabled={csrfOriginLocked}
+									/>
+									{#if !csrfOriginLocked}
+										<button
+											type="button"
+											class="input-action"
+											onclick={detectCurrentUrl}
+											aria-label="Detect current URL"
+											title="Auto-detect from current browser URL"
+										>
+											<Crosshair />
+										</button>
+									{/if}
+								</div>
 								{#if csrfOriginLocked}
-									<span class="env-lock-badge">
-										<Lock class="badge-icon" />
-										Set via environment variable
+									<span class="field-hint env-hint">
+										This value is set via ORIGIN environment variable and cannot be changed here.
 									</span>
-								{:else if csrfOriginSource !== 'default'}
-									<span class="source-badge" class:env={csrfOriginSource === 'env'}>
-										{getSourceLabel(csrfOriginSource)}
+								{:else}
+									<span class="field-hint">
+										Your application's public URL. Environment variable takes priority over
+										database.
 									</span>
 								{/if}
 							</div>
-							<div class="input-with-action">
-								<input
-									type="url"
-									id="csrfOrigin"
-									bind:value={csrfOriginValue}
-									placeholder="https://your-domain.com"
-									class:from-env={csrfOriginLocked}
-									disabled={csrfOriginLocked}
-								/>
-								{#if !csrfOriginLocked}
-									<button
-										type="button"
-										class="input-action"
-										onclick={detectCurrentUrl}
-										aria-label="Detect current URL"
-										title="Auto-detect from current browser URL"
-									>
-										<Crosshair />
-									</button>
-								{/if}
-							</div>
-							{#if csrfOriginLocked}
-								<span class="field-hint env-hint">
-									This value is set via ORIGIN environment variable and cannot be changed here.
-								</span>
-							{:else}
-								<span class="field-hint">
-									Your application's public URL. Environment variable takes priority over database.
-								</span>
-							{/if}
-						</div>
 
-						<div class="csrf-actions">
-							{#if !csrfOriginLocked}
+							<div class="csrf-actions">
+								{#if !csrfOriginLocked}
+									<form
+										method="POST"
+										action="?/updateCsrfOrigin"
+										use:enhance={() => {
+											isSavingCsrf = true;
+											return async ({ update }) => {
+												isSavingCsrf = false;
+												await update();
+											};
+										}}
+									>
+										<input type="hidden" name="csrfOrigin" value={csrfOriginValue} />
+										<button type="submit" class="btn-primary" disabled={isSavingCsrf}>
+											{#if isSavingCsrf}
+												<Loader2 class="btn-icon spinning" />
+												Saving...
+											{:else}
+												<Check class="btn-icon" />
+												Save CSRF Origin
+											{/if}
+										</button>
+									</form>
+								{/if}
+
 								<form
 									method="POST"
-									action="?/updateCsrfOrigin"
+									action="?/testCsrfProtection"
 									use:enhance={() => {
-										isSavingCsrf = true;
+										isTestingCsrf = true;
 										return async ({ update }) => {
-											isSavingCsrf = false;
+											isTestingCsrf = false;
 											await update();
 										};
 									}}
 								>
-									<input type="hidden" name="csrfOrigin" value={csrfOriginValue} />
-									<button type="submit" class="btn-primary" disabled={isSavingCsrf}>
-										{#if isSavingCsrf}
+									<button type="submit" class="btn-secondary" disabled={isTestingCsrf}>
+										{#if isTestingCsrf}
 											<Loader2 class="btn-icon spinning" />
-											Saving...
+											Testing...
 										{:else}
-											<Check class="btn-icon" />
-											Save CSRF Origin
+											<ShieldCheck class="btn-icon" />
+											Test CSRF Protection
 										{/if}
 									</button>
 								</form>
-							{/if}
 
-							<form
-								method="POST"
-								action="?/testCsrfProtection"
-								use:enhance={() => {
-									isTestingCsrf = true;
-									return async ({ update }) => {
-										isTestingCsrf = false;
-										await update();
-									};
-								}}
-							>
-								<button
-									type="submit"
-									class="btn-secondary"
-									disabled={isTestingCsrf}
-								>
-									{#if isTestingCsrf}
-										<Loader2 class="btn-icon spinning" />
-										Testing...
-									{:else}
-										<ShieldCheck class="btn-icon" />
-										Test CSRF Protection
-									{/if}
-								</button>
-							</form>
-
-							{#if !csrfOriginLocked && csrfOriginSource === 'db'}
-								<button
-									type="button"
-									class="btn-destructive"
-									onclick={() => (csrfClearDialogOpen = true)}
-								>
-									<X class="btn-icon" />
-									Clear Database Value
-								</button>
-							{/if}
-						</div>
-					</div>
-				</section>
-
-					<!-- Reverse Proxy Documentation - Collapsible -->
-				<div class="docs-collapsible">
-					<button
-						type="button"
-						class="docs-toggle"
-						onclick={() => (docsExpanded = !docsExpanded)}
-						aria-expanded={docsExpanded}
-					>
-						<BookOpen class="docs-toggle-icon" />
-						<span class="docs-toggle-text">Reverse Proxy Documentation</span>
-						<span class="docs-chevron" class:expanded={docsExpanded}>
-							<ChevronDown />
-						</span>
-					</button>
-
-					{#if docsExpanded}
-						<div class="docs-content">
-							<p class="docs-hint">
-								Ensure your reverse proxy forwards <code>X-Forwarded-*</code> headers correctly.
-							</p>
-							<div class="docs-links-inline">
-								<a
-									href="https://docs.nginx.com/nginx/admin-guide/web-server/reverse-proxy/"
-									target="_blank"
-									rel="noopener noreferrer"
-								>
-									Nginx
-									<ExternalLink class="inline-link-icon" />
-								</a>
-								<span class="docs-separator">·</span>
-								<a
-									href="https://nginxproxymanager.com/advanced-config/"
-									target="_blank"
-									rel="noopener noreferrer"
-								>
-									NPM
-									<ExternalLink class="inline-link-icon" />
-								</a>
-								<span class="docs-separator">·</span>
-								<a
-									href="https://httpd.apache.org/docs/2.4/howto/reverse_proxy.html"
-									target="_blank"
-									rel="noopener noreferrer"
-								>
-									Apache
-									<ExternalLink class="inline-link-icon" />
-								</a>
-								<span class="docs-separator">·</span>
-								<a
-									href="https://caddyserver.com/docs/caddyfile/directives/reverse_proxy"
-									target="_blank"
-									rel="noopener noreferrer"
-								>
-									Caddy
-									<ExternalLink class="inline-link-icon" />
-								</a>
+								{#if !csrfOriginLocked && csrfOriginSource === 'db'}
+									<button
+										type="button"
+										class="btn-destructive"
+										onclick={() => (csrfClearDialogOpen = true)}
+									>
+										<X class="btn-icon" />
+										Clear Database Value
+									</button>
+								{/if}
 							</div>
 						</div>
-					{/if}
-				</div>
+					</section>
+
+					<!-- Reverse Proxy Documentation - Collapsible -->
+					<div class="docs-collapsible">
+						<button
+							type="button"
+							class="docs-toggle"
+							onclick={() => (docsExpanded = !docsExpanded)}
+							aria-expanded={docsExpanded}
+						>
+							<BookOpen class="docs-toggle-icon" />
+							<span class="docs-toggle-text">Reverse Proxy Documentation</span>
+							<span class="docs-chevron" class:expanded={docsExpanded}>
+								<ChevronDown />
+							</span>
+						</button>
+
+						{#if docsExpanded}
+							<div class="docs-content">
+								<p class="docs-hint">
+									Ensure your reverse proxy forwards <code>X-Forwarded-*</code> headers correctly.
+								</p>
+								<div class="docs-links-inline">
+									<a
+										href="https://docs.nginx.com/nginx/admin-guide/web-server/reverse-proxy/"
+										target="_blank"
+										rel="noopener noreferrer"
+									>
+										Nginx
+										<ExternalLink class="inline-link-icon" />
+									</a>
+									<span class="docs-separator">·</span>
+									<a
+										href="https://nginxproxymanager.com/advanced-config/"
+										target="_blank"
+										rel="noopener noreferrer"
+									>
+										NPM
+										<ExternalLink class="inline-link-icon" />
+									</a>
+									<span class="docs-separator">·</span>
+									<a
+										href="https://httpd.apache.org/docs/2.4/howto/reverse_proxy.html"
+										target="_blank"
+										rel="noopener noreferrer"
+									>
+										Apache
+										<ExternalLink class="inline-link-icon" />
+									</a>
+									<span class="docs-separator">·</span>
+									<a
+										href="https://caddyserver.com/docs/caddyfile/directives/reverse_proxy"
+										target="_blank"
+										rel="noopener noreferrer"
+									>
+										Caddy
+										<ExternalLink class="inline-link-icon" />
+									</a>
+								</div>
+							</div>
+						{/if}
+					</div>
 				</div>
 			</Tooltip.Provider>
 		{/if}
@@ -2693,7 +2706,7 @@
 	}
 
 	/* Help Trigger - Whisper-quiet info hint */
-	.panel-title :global([data-slot="tooltip-trigger"]) {
+	.panel-title :global([data-slot='tooltip-trigger']) {
 		all: unset;
 		display: inline-flex;
 		align-items: center;

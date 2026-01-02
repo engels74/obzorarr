@@ -42,7 +42,10 @@ export const csrfHandle: Handle = async ({ event, resolve }) => {
 			const sourceLabel = config.origin.source === 'db' ? 'database' : 'environment';
 			logger.info(`CSRF protection active (origin from ${sourceLabel})`, 'CSRF');
 		} else if (!dev) {
-			logger.warn('CSRF protection disabled - no ORIGIN configured in environment or database', 'CSRF');
+			logger.warn(
+				'CSRF protection disabled - no ORIGIN configured in environment or database',
+				'CSRF'
+			);
 		}
 	}
 

@@ -1,0 +1,38 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+        exclude: ^tsconfig\.json$
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: no-commit-to-branch
+        args: ['--branch', 'main']
+      - id: check-added-large-files
+        args: ['--maxkb', '500']
+
+  - repo: local
+    hooks:
+      - id: prettier
+        name: Format with Prettier
+        entry: bunx prettier --write --ignore-unknown
+        language: system
+        types_or: [javascript, ts, svelte, json, markdown, css, yaml]
+
+      - id: svelte-check
+        name: TypeScript and Svelte type check
+        entry: bun run check
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+
+      - id: tests
+        name: Run test suite
+        entry: bun test
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
