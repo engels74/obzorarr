@@ -66,12 +66,17 @@ let settingsConflictsCleared = false;
 const initializationHandle: Handle = async ({ event, resolve }) => {
 	if (!settingsConflictsCleared) {
 		settingsConflictsCleared = true;
-		const clearedSettings = await clearConflictingDbSettings();
-		if (clearedSettings.length > 0) {
-			logger.info(
-				`Auto-cleared ${clearedSettings.length} DB setting(s) due to ENV precedence: ${clearedSettings.join(', ')}`,
-				'Startup'
-			);
+		try {
+			const clearedSettings = await clearConflictingDbSettings();
+			if (clearedSettings.length > 0) {
+				logger.info(
+					`Auto-cleared ${clearedSettings.length} DB setting(s) due to ENV precedence: ${clearedSettings.join(', ')}`,
+					'Startup'
+				);
+			}
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			logger.error(`Failed to clear conflicting DB settings: ${errorMessage}`, 'Startup');
 		}
 	}
 	return resolve(event);
