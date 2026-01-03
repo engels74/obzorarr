@@ -2482,17 +2482,18 @@
 		position: relative;
 		width: 44px;
 		height: 24px;
-		background: hsl(var(--muted));
+		background: hsl(var(--muted) / 0.5);
+		border: 1px solid hsl(var(--muted-foreground) / 0.4);
 		border-radius: 12px;
-		transition: background 0.2s ease;
+		transition: all 0.2s ease;
 		flex-shrink: 0;
 	}
 
 	.toggle-switch::after {
 		content: '';
 		position: absolute;
-		top: 2px;
-		left: 2px;
+		top: 1px;
+		left: 1px;
 		width: 20px;
 		height: 20px;
 		background: hsl(var(--foreground));
@@ -2502,6 +2503,7 @@
 
 	.toggle-label input:checked + .toggle-switch {
 		background: hsl(var(--primary));
+		border-color: hsl(var(--primary));
 	}
 
 	.toggle-label input:checked + .toggle-switch::after {
