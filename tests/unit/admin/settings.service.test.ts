@@ -1,17 +1,20 @@
 import { describe, expect, it, beforeEach, mock } from 'bun:test';
 import { db } from '$lib/server/db/client';
-import { appSettings, cachedStats, users } from '$lib/server/db/schema';
+import { appSettings, cachedStats, users, playHistory } from '$lib/server/db/schema';
 import {
 	AppSettingsKey,
 	ThemePresets,
 	AnonymizationMode,
 	WrappedLogoMode,
+	FunFactFrequency,
 	getAppSetting,
 	setAppSetting,
 	deleteAppSetting,
 	getAllAppSettings,
 	getCurrentTheme,
 	setCurrentTheme,
+	getWrappedTheme,
+	setWrappedTheme,
 	getAnonymizationMode,
 	setAnonymizationMode,
 	getDefaultYear,
@@ -22,11 +25,17 @@ import {
 	setCachedServerName,
 	clearStatsCache,
 	clearUserStatsCache,
+	countStatsCache,
+	countPlayHistory,
+	clearPlayHistory,
+	getFunFactFrequency,
+	setFunFactFrequency,
 	getApiConfigWithSources,
 	hasPlexEnvConfig,
 	hasOpenAIEnvConfig,
 	clearConflictingDbSettings
 } from '$lib/server/admin/settings.service';
+import { createYearFilter } from '$lib/server/stats/utils';
 
 /**
  * Unit tests for Admin Settings Service
@@ -145,6 +154,60 @@ describe('Admin Settings Service', () => {
 
 				const theme = await getCurrentTheme();
 				expect(theme).toBe(ThemePresets.DOOM_64);
+			});
+		});
+
+		describe('getWrappedTheme', () => {
+			it('returns default theme when no setting exists', async () => {
+				const theme = await getWrappedTheme();
+				expect(theme).toBe(ThemePresets.MODERN_MINIMAL);
+			});
+
+			it('returns WRAPPED_THEME when set', async () => {
+				await setAppSetting(AppSettingsKey.WRAPPED_THEME, ThemePresets.DOOM_64);
+
+				const theme = await getWrappedTheme();
+				expect(theme).toBe(ThemePresets.DOOM_64);
+			});
+
+			it('falls back to legacy CURRENT_THEME when WRAPPED_THEME not set', async () => {
+				await setAppSetting(AppSettingsKey.CURRENT_THEME, ThemePresets.SUPABASE);
+
+				const theme = await getWrappedTheme();
+				expect(theme).toBe(ThemePresets.SUPABASE);
+			});
+
+			it('prefers WRAPPED_THEME over legacy CURRENT_THEME', async () => {
+				await setAppSetting(AppSettingsKey.CURRENT_THEME, ThemePresets.SUPABASE);
+				await setAppSetting(AppSettingsKey.WRAPPED_THEME, ThemePresets.AMBER_MINIMAL);
+
+				const theme = await getWrappedTheme();
+				expect(theme).toBe(ThemePresets.AMBER_MINIMAL);
+			});
+
+			it('falls back to legacy CURRENT_THEME when WRAPPED_THEME is invalid', async () => {
+				await setAppSetting(AppSettingsKey.WRAPPED_THEME, 'invalid');
+				await setAppSetting(AppSettingsKey.CURRENT_THEME, ThemePresets.SOVIET_RED);
+
+				const theme = await getWrappedTheme();
+				expect(theme).toBe(ThemePresets.SOVIET_RED);
+			});
+
+			it('returns default when both themes are invalid', async () => {
+				await setAppSetting(AppSettingsKey.WRAPPED_THEME, 'invalid');
+				await setAppSetting(AppSettingsKey.CURRENT_THEME, 'also-invalid');
+
+				const theme = await getWrappedTheme();
+				expect(theme).toBe(ThemePresets.MODERN_MINIMAL);
+			});
+		});
+
+		describe('setWrappedTheme', () => {
+			it('sets wrapped theme correctly', async () => {
+				await setWrappedTheme(ThemePresets.SOVIET_RED);
+
+				const theme = await getWrappedTheme();
+				expect(theme).toBe(ThemePresets.SOVIET_RED);
 			});
 		});
 	});
@@ -270,6 +333,128 @@ describe('Admin Settings Service', () => {
 		});
 	});
 
+	describe('Fun Fact Frequency Settings', () => {
+		describe('getFunFactFrequency', () => {
+			it('returns NORMAL mode with count 4 as default', async () => {
+				const config = await getFunFactFrequency();
+				expect(config.mode).toBe(FunFactFrequency.NORMAL);
+				expect(config.count).toBe(4);
+			});
+
+			it('returns FEW mode with count 2', async () => {
+				await setAppSetting(AppSettingsKey.FUN_FACT_FREQUENCY, FunFactFrequency.FEW);
+
+				const config = await getFunFactFrequency();
+				expect(config.mode).toBe(FunFactFrequency.FEW);
+				expect(config.count).toBe(2);
+			});
+
+			it('returns NORMAL mode with count 4', async () => {
+				await setAppSetting(AppSettingsKey.FUN_FACT_FREQUENCY, FunFactFrequency.NORMAL);
+
+				const config = await getFunFactFrequency();
+				expect(config.mode).toBe(FunFactFrequency.NORMAL);
+				expect(config.count).toBe(4);
+			});
+
+			it('returns MANY mode with count 8', async () => {
+				await setAppSetting(AppSettingsKey.FUN_FACT_FREQUENCY, FunFactFrequency.MANY);
+
+				const config = await getFunFactFrequency();
+				expect(config.mode).toBe(FunFactFrequency.MANY);
+				expect(config.count).toBe(8);
+			});
+
+			it('returns CUSTOM mode with stored count', async () => {
+				await setAppSetting(AppSettingsKey.FUN_FACT_FREQUENCY, FunFactFrequency.CUSTOM);
+				await setAppSetting(AppSettingsKey.FUN_FACT_CUSTOM_COUNT, '10');
+
+				const config = await getFunFactFrequency();
+				expect(config.mode).toBe(FunFactFrequency.CUSTOM);
+				expect(config.count).toBe(10);
+			});
+
+			it('clamps CUSTOM count to minimum of 1', async () => {
+				await setAppSetting(AppSettingsKey.FUN_FACT_FREQUENCY, FunFactFrequency.CUSTOM);
+				await setAppSetting(AppSettingsKey.FUN_FACT_CUSTOM_COUNT, '0');
+
+				const config = await getFunFactFrequency();
+				expect(config.count).toBe(1);
+			});
+
+			it('clamps CUSTOM count to maximum of 15', async () => {
+				await setAppSetting(AppSettingsKey.FUN_FACT_FREQUENCY, FunFactFrequency.CUSTOM);
+				await setAppSetting(AppSettingsKey.FUN_FACT_CUSTOM_COUNT, '100');
+
+				const config = await getFunFactFrequency();
+				expect(config.count).toBe(15);
+			});
+
+			it('clamps to minimum when CUSTOM count is invalid NaN', async () => {
+				await setAppSetting(AppSettingsKey.FUN_FACT_FREQUENCY, FunFactFrequency.CUSTOM);
+				await setAppSetting(AppSettingsKey.FUN_FACT_CUSTOM_COUNT, 'not-a-number');
+
+				const config = await getFunFactFrequency();
+				expect(config.count).toBe(1);
+			});
+
+			it('defaults to 4 when CUSTOM mode but no count set', async () => {
+				await setAppSetting(AppSettingsKey.FUN_FACT_FREQUENCY, FunFactFrequency.CUSTOM);
+
+				const config = await getFunFactFrequency();
+				expect(config.count).toBe(4);
+			});
+
+			it('returns default NORMAL for invalid mode value', async () => {
+				await setAppSetting(AppSettingsKey.FUN_FACT_FREQUENCY, 'invalid-mode');
+
+				const config = await getFunFactFrequency();
+				expect(config.mode).toBe(FunFactFrequency.NORMAL);
+				expect(config.count).toBe(4);
+			});
+		});
+
+		describe('setFunFactFrequency', () => {
+			it('sets mode correctly', async () => {
+				await setFunFactFrequency(FunFactFrequency.MANY);
+
+				const config = await getFunFactFrequency();
+				expect(config.mode).toBe(FunFactFrequency.MANY);
+				expect(config.count).toBe(8);
+			});
+
+			it('sets CUSTOM mode with custom count', async () => {
+				await setFunFactFrequency(FunFactFrequency.CUSTOM, 7);
+
+				const config = await getFunFactFrequency();
+				expect(config.mode).toBe(FunFactFrequency.CUSTOM);
+				expect(config.count).toBe(7);
+			});
+
+			it('clamps custom count to min 1', async () => {
+				await setFunFactFrequency(FunFactFrequency.CUSTOM, -5);
+
+				const config = await getFunFactFrequency();
+				expect(config.count).toBe(1);
+			});
+
+			it('clamps custom count to max 15', async () => {
+				await setFunFactFrequency(FunFactFrequency.CUSTOM, 50);
+
+				const config = await getFunFactFrequency();
+				expect(config.count).toBe(15);
+			});
+
+			it('ignores customCount when mode is not CUSTOM', async () => {
+				await setFunFactFrequency(FunFactFrequency.FEW, 10);
+
+				const config = await getFunFactFrequency();
+				expect(config.mode).toBe(FunFactFrequency.FEW);
+				expect(config.count).toBe(2);
+			});
+		});
+	});
+
 	// =========================================================================
 	// Cache Management
 	// =========================================================================
@@ -322,6 +507,145 @@ describe('Admin Settings Service', () => {
 				const deleted = await clearUserStatsCache(999);
 
 				expect(deleted).toBe(0);
+			});
+		});
+
+		describe('countPlayHistory', () => {
+			beforeEach(async () => {
+				await db.delete(playHistory);
+				const yearFilter2024 = createYearFilter(2024);
+				const yearFilter2023 = createYearFilter(2023);
+				await db.insert(playHistory).values([
+					{
+						historyKey: 'hist-1',
+						ratingKey: 'key-1',
+						title: 'Movie 1',
+						type: 'movie',
+						viewedAt: yearFilter2024.startTimestamp + 1000,
+						accountId: 1,
+						librarySectionId: 1
+					},
+					{
+						historyKey: 'hist-2',
+						ratingKey: 'key-2',
+						title: 'Movie 2',
+						type: 'movie',
+						viewedAt: yearFilter2024.startTimestamp + 2000,
+						accountId: 1,
+						librarySectionId: 1
+					},
+					{
+						historyKey: 'hist-3',
+						ratingKey: 'key-3',
+						title: 'Movie 3',
+						type: 'movie',
+						viewedAt: yearFilter2023.startTimestamp + 1000,
+						accountId: 1,
+						librarySectionId: 1
+					}
+				]);
+			});
+
+			it('counts all play history when no year specified', async () => {
+				const count = await countPlayHistory();
+				expect(count).toBe(3);
+			});
+
+			it('counts play history for specific year only', async () => {
+				const count = await countPlayHistory(2024);
+				expect(count).toBe(2);
+			});
+
+			it('returns 0 when no history for year', async () => {
+				const count = await countPlayHistory(2022);
+				expect(count).toBe(0);
+			});
+		});
+
+		describe('clearPlayHistory', () => {
+			beforeEach(async () => {
+				await db.delete(playHistory);
+				const yearFilter2024 = createYearFilter(2024);
+				const yearFilter2023 = createYearFilter(2023);
+				await db.insert(playHistory).values([
+					{
+						historyKey: 'hist-1',
+						ratingKey: 'key-1',
+						title: 'Movie 1',
+						type: 'movie',
+						viewedAt: yearFilter2024.startTimestamp + 1000,
+						accountId: 1,
+						librarySectionId: 1
+					},
+					{
+						historyKey: 'hist-2',
+						ratingKey: 'key-2',
+						title: 'Movie 2',
+						type: 'movie',
+						viewedAt: yearFilter2024.startTimestamp + 2000,
+						accountId: 1,
+						librarySectionId: 1
+					},
+					{
+						historyKey: 'hist-3',
+						ratingKey: 'key-3',
+						title: 'Movie 3',
+						type: 'movie',
+						viewedAt: yearFilter2023.startTimestamp + 1000,
+						accountId: 1,
+						librarySectionId: 1
+					}
+				]);
+			});
+
+			it('clears all play history when no year specified', async () => {
+				const deleted = await clearPlayHistory();
+
+				expect(deleted).toBe(3);
+				const remaining = await countPlayHistory();
+				expect(remaining).toBe(0);
+			});
+
+			it('clears play history for specific year only', async () => {
+				const deleted = await clearPlayHistory(2024);
+
+				expect(deleted).toBe(2);
+				const remaining = await countPlayHistory();
+				expect(remaining).toBe(1);
+			});
+
+			it('returns 0 when no history for year', async () => {
+				const deleted = await clearPlayHistory(2022);
+
+				expect(deleted).toBe(0);
+			});
+
+			it('cascades to clear stats cache when deleting all history', async () => {
+				await db.delete(cachedStats);
+				await db.insert(cachedStats).values([
+					{ userId: 1, year: 2024, statsType: 'user', statsJson: '{}' },
+					{ userId: 1, year: 2023, statsType: 'user', statsJson: '{}' }
+				]);
+
+				await clearPlayHistory();
+
+				const cacheCount = await countStatsCache();
+				expect(cacheCount).toBe(0);
+			});
+
+			it('cascades to clear year-specific stats cache', async () => {
+				await db.delete(cachedStats);
+				await db.insert(cachedStats).values([
+					{ userId: 1, year: 2024, statsType: 'user', statsJson: '{}' },
+					{ userId: 1, year: 2023, statsType: 'user', statsJson: '{}' }
+				]);
+
+				await clearPlayHistory(2024);
+
+				const cache2024 = await countStatsCache(2024);
+				const cache2023 = await countStatsCache(2023);
+				expect(cache2024).toBe(0);
+				expect(cache2023).toBe(1);
 			});
 		});
 	});

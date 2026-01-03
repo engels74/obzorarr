@@ -13,7 +13,9 @@ import {
 	regenerateShareToken,
 	getShareSettingsByToken,
 	deleteShareSettings,
-	getAllUserShareSettings
+	getAllUserShareSettings,
+	updateUserLogoPreference,
+	getUserLogoPreference
 } from '$lib/server/sharing/service';
 import {
 	ShareMode,
@@ -551,6 +553,335 @@ describe('Sharing Service', () => {
 				const user1Settings = await getAllUserShareSettings(1);
 				expect(user1Settings).toHaveLength(1);
 				expect(user1Settings[0]?.userId).toBe(1);
+			});
+		});
+
+		describe('Privacy Floor Enforcement', () => {
+			beforeEach(async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_LINK,
+					allowUserControl: true
+				});
+
+				await db.insert(shareSettings).values({
+					userId,
+					year,
+					mode: ShareMode.PRIVATE_LINK,
+					shareToken: generateShareToken(),
+					canUserControl: true
+				});
+			});
+
+			it('denies user setting PUBLIC when floor is PRIVATE_LINK', async () => {
+				await expect(
+					updateShareSettings(userId, year, { mode: ShareMode.PUBLIC }, false)
+				).rejects.toBeInstanceOf(PermissionExceededError);
+			});
+
+			it('denies user setting PUBLIC when floor is PRIVATE_OAUTH', async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_OAUTH,
+					allowUserControl: true
+				});
+
+				await expect(
+					updateShareSettings(userId, year, { mode: ShareMode.PUBLIC }, false)
+				).rejects.toBeInstanceOf(PermissionExceededError);
+			});
+
+			it('denies user setting PRIVATE_LINK when floor is PRIVATE_OAUTH', async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_OAUTH,
+					allowUserControl: true
+				});
+
+				await expect(
+					updateShareSettings(userId, year, { mode: ShareMode.PRIVATE_LINK }, false)
+				).rejects.toBeInstanceOf(PermissionExceededError);
+			});
+
+			it('allows user to set mode at floor level', async () => {
+				const updated = await updateShareSettings(
+					userId,
+					year,
+					{ mode: ShareMode.PRIVATE_LINK },
+					false
+				);
+
+				expect(updated.mode).toBe(ShareMode.PRIVATE_LINK);
+			});
+
+			it('allows user to set more restrictive mode than floor', async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PUBLIC,
+					allowUserControl: true
+				});
+
+				const updated = await updateShareSettings(
+					userId,
+					year,
+					{ mode: ShareMode.PRIVATE_OAUTH },
+					false
+				);
+
+				expect(updated.mode).toBe(ShareMode.PRIVATE_OAUTH);
+			});
+
+			it('allows admin to bypass privacy floor', async () => {
+				const updated = await updateShareSettings(
+					userId,
+					year,
+					{ mode: ShareMode.PUBLIC },
+					true // isAdmin
+				);
+
+				expect(updated.mode).toBe(ShareMode.PUBLIC);
+			});
+		});
+
+		describe('Token Lifecycle', () => {
+			beforeEach(async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PUBLIC,
+					allowUserControl: true
+				});
+			});
+
+			it('preserves existing token when staying on PRIVATE_LINK', async () => {
+				const originalToken = generateShareToken();
+				await db.insert(shareSettings).values({
+					userId,
+					year,
+					mode: ShareMode.PRIVATE_LINK,
+					shareToken: originalToken,
+					canUserControl: true
+				});
+
+				const updated = await updateShareSettings(
+					userId,
+					year,
+					{ mode: ShareMode.PRIVATE_LINK },
+					true
+				);
+
+				expect(updated.shareToken).toBe(originalToken);
+			});
+
+			it('nulls token when switching from PRIVATE_LINK to PUBLIC', async () => {
+				await db.insert(shareSettings).values({
+					userId,
+					year,
+					mode: ShareMode.PRIVATE_LINK,
+					shareToken: generateShareToken(),
+					canUserControl: true
+				});
+
+				const updated = await updateShareSettings(userId, year, { mode: ShareMode.PUBLIC }, true);
+
+				expect(updated.shareToken).toBeNull();
+			});
+
+			it('nulls token when switching from PRIVATE_LINK to PRIVATE_OAUTH', async () => {
+				await db.insert(shareSettings).values({
+					userId,
+					year,
+					mode: ShareMode.PRIVATE_LINK,
+					shareToken: generateShareToken(),
+					canUserControl: true
+				});
+
+				const updated = await updateShareSettings(
+					userId,
+					year,
+					{ mode: ShareMode.PRIVATE_OAUTH },
+					true
+				);
+
+				expect(updated.shareToken).toBeNull();
+			});
+
+			it('generates new token when switching from PUBLIC to PRIVATE_LINK', async () => {
+				await db.insert(shareSettings).values({
+					userId,
+					year,
+					mode: ShareMode.PUBLIC,
+					shareToken: null,
+					canUserControl: true
+				});
+
+				const updated = await updateShareSettings(
+					userId,
+					year,
+					{ mode: ShareMode.PRIVATE_LINK },
+					true
+				);
+
+				expect(updated.shareToken).not.toBeNull();
+				expect(isValidTokenFormat(updated.shareToken!)).toBe(true);
+			});
+
+			it('generates new token when switching from PRIVATE_OAUTH to PRIVATE_LINK', async () => {
+				await db.insert(shareSettings).values({
+					userId,
+					year,
+					mode: ShareMode.PRIVATE_OAUTH,
+					shareToken: null,
+					canUserControl: true
+				});
+
+				const updated = await updateShareSettings(
+					userId,
+					year,
+					{ mode: ShareMode.PRIVATE_LINK },
+					true
+				);
+
+				expect(updated.shareToken).not.toBeNull();
+			});
+		});
+
+		describe('Logo Preference', () => {
+			describe('updateUserLogoPreference', () => {
+				it('updates showLogo when settings exist', async () => {
+					await db.insert(shareSettings).values({
+						userId,
+						year,
+						mode: ShareMode.PUBLIC,
+						shareToken: null,
+						canUserControl: false,
+						showLogo: null
+					});
+
+					await updateUserLogoPreference(userId, year, true);
+
+					const pref = await getUserLogoPreference(userId, year);
+					expect(pref).toBe(true);
+				});
+
+				it('updates showLogo to false', async () => {
+					await db.insert(shareSettings).values({
+						userId,
+						year,
+						mode: ShareMode.PUBLIC,
+						shareToken: null,
+						canUserControl: false,
+						showLogo: true
+					});
+
+					await updateUserLogoPreference(userId, year, false);
+
+					const pref = await getUserLogoPreference(userId, year);
+					expect(pref).toBe(false);
+				});
+
+				it('updates showLogo to null', async () => {
+					await db.insert(shareSettings).values({
+						userId,
+						year,
+						mode: ShareMode.PUBLIC,
+						shareToken: null,
+						canUserControl: false,
+						showLogo: true
+					});
+
+					await updateUserLogoPreference(userId, year, null);
+
+					const pref = await getUserLogoPreference(userId, year);
+					expect(pref).toBeNull();
+				});
+
+				it('creates settings with global defaults when none exist', async () => {
+					await setGlobalShareDefaults({
+						defaultShareMode: ShareMode.PRIVATE_OAUTH,
+						allowUserControl: true
+					});
+
+					await updateUserLogoPreference(userId, year, true);
+
+					const settings = await getShareSettings(userId, year);
+					expect(settings).not.toBeNull();
+					expect(settings?.mode).toBe(ShareMode.PRIVATE_OAUTH);
+					expect(settings?.canUserControl).toBe(true);
+
+					const pref = await getUserLogoPreference(userId, year);
+					expect(pref).toBe(true);
+				});
+
+				it('creates with token when default mode is PRIVATE_LINK', async () => {
+					await setGlobalShareDefaults({
+						defaultShareMode: ShareMode.PRIVATE_LINK,
+						allowUserControl: false
+					});
+
+					await updateUserLogoPreference(userId, year, false);
+
+					const settings = await getShareSettings(userId, year);
+					expect(settings?.mode).toBe(ShareMode.PRIVATE_LINK);
+					expect(settings?.shareToken).not.toBeNull();
+					expect(isValidTokenFormat(settings?.shareToken!)).toBe(true);
+				});
+
+				it('creates without token when default mode is PUBLIC', async () => {
+					await setGlobalShareDefaults({
+						defaultShareMode: ShareMode.PUBLIC,
+						allowUserControl: true
+					});
+
+					await updateUserLogoPreference(userId, year, true);
+
+					const settings = await getShareSettings(userId, year);
+					expect(settings?.mode).toBe(ShareMode.PUBLIC);
+					expect(settings?.shareToken).toBeNull();
+				});
+			});
+
+			describe('getUserLogoPreference', () => {
+				it('returns null when no settings exist', async () => {
+					const pref = await getUserLogoPreference(userId, year);
+					expect(pref).toBeNull();
+				});
+
+				it('returns null when settings exist but showLogo is null', async () => {
+					await db.insert(shareSettings).values({
+						userId,
+						year,
+						mode: ShareMode.PUBLIC,
+						shareToken: null,
+						canUserControl: false,
+						showLogo: null
+					});
+
+					const pref = await getUserLogoPreference(userId, year);
+					expect(pref).toBeNull();
+				});
+
+				it('returns true when showLogo is true', async () => {
+					await db.insert(shareSettings).values({
+						userId,
+						year,
+						mode: ShareMode.PUBLIC,
+						shareToken: null,
+						canUserControl: false,
+						showLogo: true
+					});
+
+					const pref = await getUserLogoPreference(userId, year);
+					expect(pref).toBe(true);
+				});
+
+				it('returns false when showLogo is false', async () => {
+					await db.insert(shareSettings).values({
+						userId,
+						year,
+						mode: ShareMode.PUBLIC,
+						shareToken: null,
+						canUserControl: false,
+						showLogo: false
+					});
+
+					const pref = await getUserLogoPreference(userId, year);
+					expect(pref).toBe(false);
+				});
 			});
 		});
 	});
