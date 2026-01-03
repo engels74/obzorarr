@@ -15,6 +15,8 @@ import {
 	setCurrentTheme,
 	getWrappedTheme,
 	setWrappedTheme,
+	getUITheme,
+	setUITheme,
 	getAnonymizationMode,
 	setAnonymizationMode,
 	getDefaultYear,
@@ -33,7 +35,13 @@ import {
 	getApiConfigWithSources,
 	hasPlexEnvConfig,
 	hasOpenAIEnvConfig,
-	clearConflictingDbSettings
+	clearConflictingDbSettings,
+	isPlexConfigured,
+	getCsrfConfigWithSource,
+	getCsrfOrigin,
+	isCsrfWarningDismissed,
+	dismissCsrfWarning,
+	resetCsrfWarningDismissal
 } from '$lib/server/admin/settings.service';
 import { createYearFilter } from '$lib/server/stats/utils';
 
@@ -774,6 +782,112 @@ describe('Admin Settings Service', () => {
 				const cleared = await clearConflictingDbSettings();
 
 				expect(cleared).toEqual([]);
+			});
+		});
+
+		describe('isPlexConfigured', () => {
+			it('returns true when both serverUrl and token are configured', async () => {
+				// Test setup mocks PLEX_SERVER_URL and PLEX_TOKEN via env
+				const configured = await isPlexConfigured();
+				expect(configured).toBe(true);
+			});
+		});
+	});
+
+	describe('UI Theme Settings', () => {
+		describe('getUITheme', () => {
+			it('returns default theme when no setting exists', async () => {
+				const theme = await getUITheme();
+				expect(theme).toBe(ThemePresets.MODERN_MINIMAL);
+			});
+
+			it('returns stored theme when valid', async () => {
+				await setAppSetting(AppSettingsKey.UI_THEME, ThemePresets.SUPABASE);
+				const theme = await getUITheme();
+				expect(theme).toBe(ThemePresets.SUPABASE);
+			});
+
+			it('returns default for invalid stored value', async () => {
+				await setAppSetting(AppSettingsKey.UI_THEME, 'invalid-theme');
+				const theme = await getUITheme();
+				expect(theme).toBe(ThemePresets.MODERN_MINIMAL);
+			});
+		});
+
+		describe('setUITheme', () => {
+			it('sets theme correctly', async () => {
+				await setUITheme(ThemePresets.DOOM_64);
+				const theme = await getUITheme();
+				expect(theme).toBe(ThemePresets.DOOM_64);
+			});
+		});
+	});
+
+	describe('CSRF Configuration', () => {
+		describe('getCsrfConfigWithSource', () => {
+			it('returns default values when no config exists', async () => {
+				// ENV ORIGIN is empty in test setup
+				const config = await getCsrfConfigWithSource();
+				expect(config.origin.value).toBe('');
+				expect(config.origin.source).toBe('default');
+				expect(config.origin.isLocked).toBe(false);
+			});
+
+			it('returns DB value when set in database', async () => {
+				await setAppSetting(AppSettingsKey.CSRF_ORIGIN, 'https://example.com');
+				const config = await getCsrfConfigWithSource();
+				expect(config.origin.value).toBe('https://example.com');
+				expect(config.origin.source).toBe('db');
+				expect(config.origin.isLocked).toBe(false);
+			});
+		});
+
+		describe('getCsrfOrigin', () => {
+			it('returns null when no origin configured', async () => {
+				const origin = await getCsrfOrigin();
+				expect(origin).toBeNull();
+			});
+
+			it('returns origin value when configured', async () => {
+				await setAppSetting(AppSettingsKey.CSRF_ORIGIN, 'https://example.com');
+				const origin = await getCsrfOrigin();
+				expect(origin).toBe('https://example.com');
+			});
+		});
+
+		describe('isCsrfWarningDismissed', () => {
+			it('returns false when not dismissed', async () => {
+				const dismissed = await isCsrfWarningDismissed();
+				expect(dismissed).toBe(false);
+			});
+
+			it('returns true when dismissed', async () => {
+				await setAppSetting(AppSettingsKey.CSRF_WARNING_DISMISSED, 'true');
+				const dismissed = await isCsrfWarningDismissed();
+				expect(dismissed).toBe(true);
+			});
+
+			it('returns false for invalid stored value', async () => {
+				await setAppSetting(AppSettingsKey.CSRF_WARNING_DISMISSED, 'invalid');
+				const dismissed = await isCsrfWarningDismissed();
+				expect(dismissed).toBe(false);
+			});
+		});
+
+		describe('dismissCsrfWarning', () => {
+			it('sets dismissed state to true', async () => {
+				await dismissCsrfWarning();
+				const dismissed = await isCsrfWarningDismissed();
+				expect(dismissed).toBe(true);
+			});
+		});
+
+		describe('resetCsrfWarningDismissal', () => {
+			it('resets dismissed state', async () => {
+				await dismissCsrfWarning();
+				await resetCsrfWarningDismissal();
+				const dismissed = await isCsrfWarningDismissed();
+				expect(dismissed).toBe(false);
 			});
 		});
 	});
