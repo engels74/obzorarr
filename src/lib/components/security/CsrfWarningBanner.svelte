@@ -1,0 +1,386 @@
+<script lang="ts">
+	import * as AlertDialog from '$lib/components/ui/alert-dialog';
+	import ShieldAlert from '@lucide/svelte/icons/shield-alert';
+	import X from '@lucide/svelte/icons/x';
+	import Settings from '@lucide/svelte/icons/settings';
+
+	interface Props {
+		onDismiss: () => void;
+	}
+
+	let { onDismiss }: Props = $props();
+
+	let showFirstConfirmation = $state(false);
+	let showSecondConfirmation = $state(false);
+	let isDismissing = $state(false);
+
+	function handleDismissClick() {
+		showFirstConfirmation = true;
+	}
+
+	function handleFirstConfirmationCancel() {
+		showFirstConfirmation = false;
+	}
+
+	function handleFirstConfirmationProceed() {
+		showFirstConfirmation = false;
+		showSecondConfirmation = true;
+	}
+
+	function handleSecondConfirmationCancel() {
+		showSecondConfirmation = false;
+	}
+
+	async function handlePermanentDismiss() {
+		isDismissing = true;
+		try {
+			const response = await fetch('/api/security/dismiss-csrf-warning', {
+				method: 'POST'
+			});
+
+			if (response.ok) {
+				showSecondConfirmation = false;
+				onDismiss();
+			}
+		} finally {
+			isDismissing = false;
+		}
+	}
+</script>
+
+<div class="csrf-warning-banner" role="alert">
+	<div class="banner-content">
+		<div class="banner-icon">
+			<ShieldAlert class="icon" />
+		</div>
+		<div class="banner-text">
+			<strong>Security Warning:</strong> CSRF protection is not configured. Your application may be vulnerable
+			to cross-site request forgery attacks.
+		</div>
+		<div class="banner-actions">
+			<a href="/admin/settings?tab=security" class="configure-button">
+				<Settings class="button-icon" />
+				Configure CSRF Protection
+			</a>
+			<button
+				type="button"
+				class="dismiss-button"
+				onclick={handleDismissClick}
+				aria-label="Dismiss warning"
+			>
+				<X class="dismiss-icon" />
+			</button>
+		</div>
+	</div>
+</div>
+
+<!-- First Confirmation Dialog -->
+<AlertDialog.Root bind:open={showFirstConfirmation}>
+	<AlertDialog.Content class="csrf-dialog">
+		<AlertDialog.Header>
+			<div class="dialog-icon warning">
+				<ShieldAlert class="icon" />
+			</div>
+			<AlertDialog.Title>Dismiss Security Warning?</AlertDialog.Title>
+			<AlertDialog.Description>
+				CSRF (Cross-Site Request Forgery) protection helps prevent malicious websites from making
+				unauthorized requests on behalf of your users. Without it, attackers could potentially
+				perform actions as authenticated users.
+			</AlertDialog.Description>
+		</AlertDialog.Header>
+
+		<div class="warning-card">
+			<p>
+				By dismissing this warning, you acknowledge that you understand the security implications
+				and accept the associated risks.
+			</p>
+		</div>
+
+		<AlertDialog.Footer>
+			<AlertDialog.Cancel onclick={handleFirstConfirmationCancel}>Cancel</AlertDialog.Cancel>
+			<button type="button" class="proceed-button" onclick={handleFirstConfirmationProceed}>
+				I Understand the Risk
+			</button>
+		</AlertDialog.Footer>
+	</AlertDialog.Content>
+</AlertDialog.Root>
+
+<!-- Second Confirmation Dialog -->
+<AlertDialog.Root bind:open={showSecondConfirmation}>
+	<AlertDialog.Content class="csrf-dialog">
+		<AlertDialog.Header>
+			<div class="dialog-icon danger">
+				<ShieldAlert class="icon" />
+			</div>
+			<AlertDialog.Title>Are You Absolutely Sure?</AlertDialog.Title>
+			<AlertDialog.Description>
+				This will permanently dismiss the CSRF security warning. The warning will not appear again
+				unless you manually reset it in the admin settings.
+			</AlertDialog.Description>
+		</AlertDialog.Header>
+
+		<div class="info-card">
+			<p>
+				You can re-enable this warning later by going to <strong>Admin Settings → Security</strong>
+				and clicking "Re-enable CSRF Warning".
+			</p>
+		</div>
+
+		<AlertDialog.Footer>
+			<AlertDialog.Cancel onclick={handleSecondConfirmationCancel}>Cancel</AlertDialog.Cancel>
+			<button
+				type="button"
+				class="danger-button"
+				onclick={handlePermanentDismiss}
+				disabled={isDismissing}
+			>
+				{#if isDismissing}
+					Dismissing...
+				{:else}
+					Permanently Dismiss Warning
+				{/if}
+			</button>
+		</AlertDialog.Footer>
+	</AlertDialog.Content>
+</AlertDialog.Root>
+
+<style>
+	.csrf-warning-banner {
+		background: linear-gradient(135deg, hsl(25 95% 53% / 0.15) 0%, hsl(25 95% 53% / 0.08) 100%);
+		border: 1px solid hsl(25 95% 53% / 0.3);
+		border-radius: 0.5rem;
+		padding: 0.875rem 1rem;
+		margin: 1rem;
+	}
+
+	.banner-content {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		flex-wrap: wrap;
+	}
+
+	.banner-icon {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 2.25rem;
+		height: 2.25rem;
+		background: hsl(25 95% 53% / 0.15);
+		border-radius: 0.5rem;
+		flex-shrink: 0;
+	}
+
+	.banner-icon :global(.icon) {
+		width: 1.25rem;
+		height: 1.25rem;
+		color: hsl(25 95% 53%);
+	}
+
+	.banner-text {
+		flex: 1;
+		font-size: 0.875rem;
+		color: hsl(var(--foreground));
+		line-height: 1.5;
+		min-width: 200px;
+	}
+
+	.banner-text strong {
+		color: hsl(25 95% 53%);
+	}
+
+	.banner-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		flex-shrink: 0;
+	}
+
+	.configure-button {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.375rem;
+		padding: 0.5rem 0.875rem;
+		font-size: 0.8125rem;
+		font-weight: 600;
+		color: hsl(var(--primary-foreground));
+		background: hsl(25 95% 53%);
+		border: none;
+		border-radius: 0.375rem;
+		text-decoration: none;
+		cursor: pointer;
+		transition:
+			background-color 0.15s ease,
+			box-shadow 0.15s ease;
+		white-space: nowrap;
+	}
+
+	.configure-button:hover {
+		background: hsl(25 95% 48%);
+		box-shadow: 0 0 0 3px hsl(25 95% 53% / 0.2);
+	}
+
+	.configure-button :global(.button-icon) {
+		width: 0.875rem;
+		height: 0.875rem;
+	}
+
+	.dismiss-button {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 2rem;
+		height: 2rem;
+		background: transparent;
+		border: 1px solid hsl(var(--border));
+		border-radius: 0.375rem;
+		color: hsl(var(--muted-foreground));
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.dismiss-button:hover {
+		background: hsl(var(--muted) / 0.5);
+		color: hsl(var(--foreground));
+		border-color: hsl(var(--border));
+	}
+
+	.dismiss-button :global(.dismiss-icon) {
+		width: 1rem;
+		height: 1rem;
+	}
+
+	:global(.csrf-dialog) {
+		max-width: 28rem !important;
+	}
+
+	:global(.csrf-dialog [data-slot='alert-dialog-header']) {
+		text-align: center;
+	}
+
+	:global(.csrf-dialog [data-slot='alert-dialog-title']) {
+		text-align: center;
+	}
+
+	:global(.csrf-dialog [data-slot='alert-dialog-description']) {
+		text-align: center;
+	}
+
+	.dialog-icon {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 3rem;
+		height: 3rem;
+		margin: 0 auto 0.75rem;
+		border-radius: 12px;
+	}
+
+	.dialog-icon.warning {
+		background: hsl(25 95% 53% / 0.15);
+		color: hsl(25 95% 53%);
+	}
+
+	.dialog-icon.danger {
+		background: hsl(var(--destructive) / 0.15);
+		color: hsl(var(--destructive));
+	}
+
+	.dialog-icon :global(.icon) {
+		width: 1.5rem;
+		height: 1.5rem;
+	}
+
+	.warning-card,
+	.info-card {
+		padding: 0.875rem 1rem;
+		margin: 0.5rem 0 0.25rem;
+		border-radius: 8px;
+	}
+
+	.warning-card {
+		background: hsl(25 95% 53% / 0.1);
+		border: 1px solid hsl(25 95% 53% / 0.2);
+	}
+
+	.info-card {
+		background: hsl(var(--muted) / 0.5);
+		border: 1px solid hsl(var(--border));
+	}
+
+	.warning-card p,
+	.info-card p {
+		margin: 0;
+		font-size: 0.8125rem;
+		line-height: 1.5;
+		color: hsl(var(--muted-foreground));
+	}
+
+	.proceed-button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		height: 2.5rem;
+		padding: 0 1rem;
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: hsl(var(--primary-foreground));
+		background: hsl(25 95% 53%);
+		border: none;
+		border-radius: calc(var(--radius) + 2px);
+		cursor: pointer;
+		transition:
+			background-color 0.15s ease,
+			box-shadow 0.15s ease;
+	}
+
+	.proceed-button:hover {
+		background: hsl(25 95% 48%);
+		box-shadow: 0 0 0 3px hsl(25 95% 53% / 0.2);
+	}
+
+	.danger-button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		height: 2.5rem;
+		padding: 0 1rem;
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: hsl(var(--destructive-foreground));
+		background: hsl(var(--destructive));
+		border: none;
+		border-radius: calc(var(--radius) + 2px);
+		cursor: pointer;
+		transition:
+			background-color 0.15s ease,
+			box-shadow 0.15s ease;
+	}
+
+	.danger-button:hover:not(:disabled) {
+		background: hsl(var(--destructive) / 0.9);
+		box-shadow: 0 0 0 3px hsl(var(--destructive) / 0.2);
+	}
+
+	.danger-button:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
+	@media (max-width: 640px) {
+		.banner-content {
+			flex-direction: column;
+			align-items: flex-start;
+		}
+
+		.banner-actions {
+			width: 100%;
+			margin-top: 0.5rem;
+		}
+
+		.configure-button {
+			flex: 1;
+			justify-content: center;
+		}
+	}
+</style>

@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { enhance } from '$app/forms';
+	import { invalidateAll } from '$app/navigation';
 	import type { LayoutData } from './$types';
 	import type { Snippet, Component } from 'svelte';
 	import Logo from '$lib/components/Logo.svelte';
+	import CsrfWarningBanner from '$lib/components/security/CsrfWarningBanner.svelte';
 	import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
 	import Gift from '@lucide/svelte/icons/gift';
 	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
@@ -55,12 +57,20 @@
 	// Mobile sidebar state
 	let sidebarOpen = $state(false);
 
+	// CSRF warning state
+	let showCsrfWarning = $state(data.csrfWarning.show);
+
 	function toggleSidebar() {
 		sidebarOpen = !sidebarOpen;
 	}
 
 	function closeSidebar() {
 		sidebarOpen = false;
+	}
+
+	function handleCsrfWarningDismissed() {
+		showCsrfWarning = false;
+		invalidateAll();
 	}
 </script>
 
@@ -149,6 +159,9 @@
 
 	<!-- Main content -->
 	<main class="main-content">
+		{#if showCsrfWarning}
+			<CsrfWarningBanner onDismiss={handleCsrfWarningDismissed} />
+		{/if}
 		{@render children()}
 	</main>
 </div>

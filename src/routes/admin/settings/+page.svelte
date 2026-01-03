@@ -40,6 +40,7 @@
 	import Check from '@lucide/svelte/icons/check';
 	import Loader2 from '@lucide/svelte/icons/loader-2';
 	import ShieldCheck from '@lucide/svelte/icons/shield-check';
+	import ShieldAlert from '@lucide/svelte/icons/shield-alert';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import BookOpen from '@lucide/svelte/icons/book-open';
 	import CircleHelp from '@lucide/svelte/icons/circle-help';
@@ -295,6 +296,7 @@
 	let isSavingCsrf = $state(false);
 	let csrfClearDialogOpen = $state(false);
 	let isClearingCsrf = $state(false);
+	let isResettingCsrfWarning = $state(false);
 
 	// Sync CSRF state from data
 	$effect(() => {
@@ -1190,6 +1192,30 @@
 										<X class="btn-icon" />
 										Clear Database Value
 									</button>
+								{/if}
+
+								{#if data.security.warningDismissed}
+									<form
+										method="POST"
+										action="?/resetCsrfWarning"
+										use:enhance={() => {
+											isResettingCsrfWarning = true;
+											return async ({ update }) => {
+												isResettingCsrfWarning = false;
+												await update();
+											};
+										}}
+									>
+										<button type="submit" class="btn-secondary" disabled={isResettingCsrfWarning}>
+											{#if isResettingCsrfWarning}
+												<Loader2 class="btn-icon spinning" />
+												Resetting...
+											{:else}
+												<ShieldAlert class="btn-icon" />
+												Re-enable CSRF Warning
+											{/if}
+										</button>
+									</form>
 								{/if}
 							</div>
 						</div>
