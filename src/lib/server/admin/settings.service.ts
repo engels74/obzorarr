@@ -376,7 +376,7 @@ export async function getApiConfigWithSources(): Promise<ApiConfigWithSources> {
 				dbSettings,
 				AppSettingsKey.OPENAI_MODEL,
 				openaiEnv.model,
-				'gpt-4o-mini'
+				'gpt-5-mini'
 			)
 		}
 	};

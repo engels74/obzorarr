@@ -613,7 +613,7 @@ describe('getFunFactsConfig', () => {
 		expect(config.aiEnabled).toBe(false);
 		expect(config.openaiApiKey).toBeUndefined();
 		expect(config.openaiBaseUrl).toBe('https://api.openai.com/v1');
-		expect(config.openaiModel).toBe('gpt-4o-mini');
+		expect(config.openaiModel).toBe('gpt-5-mini');
 		expect(config.maxAIRetries).toBe(2);
 		expect(config.aiTimeoutMs).toBe(10000);
 	});
@@ -718,7 +718,7 @@ describe('generateWithAI', () => {
 			aiEnabled: true,
 			openaiApiKey: 'sk-test',
 			openaiBaseUrl: 'https://api.openai.com/v1',
-			openaiModel: 'gpt-4o-mini',
+			openaiModel: 'gpt-5-mini',
 			maxAIRetries: 2,
 			aiTimeoutMs: 10000,
 			aiPersona: 'witty' as const
@@ -743,7 +743,7 @@ describe('generateWithAI', () => {
 			aiEnabled: true,
 			openaiApiKey: 'sk-invalid',
 			openaiBaseUrl: 'https://api.openai.com/v1',
-			openaiModel: 'gpt-4o-mini',
+			openaiModel: 'gpt-5-mini',
 			maxAIRetries: 2,
 			aiTimeoutMs: 10000,
 			aiPersona: 'witty' as const
@@ -784,7 +784,7 @@ describe('generateWithAI', () => {
 			aiEnabled: true,
 			openaiApiKey: 'sk-test',
 			openaiBaseUrl: 'https://api.openai.com/v1',
-			openaiModel: 'gpt-4o-mini',
+			openaiModel: 'gpt-5-mini',
 			maxAIRetries: 2,
 			aiTimeoutMs: 10000,
 			aiPersona: 'witty' as const
@@ -807,7 +807,7 @@ describe('generateWithAI', () => {
 			aiEnabled: true,
 			openaiApiKey: 'sk-test',
 			openaiBaseUrl: 'https://api.openai.com/v1',
-			openaiModel: 'gpt-4o-mini',
+			openaiModel: 'gpt-5-mini',
 			maxAIRetries: 0, // No retries for this test
 			aiTimeoutMs: 10000,
 			aiPersona: 'witty' as const
@@ -830,7 +830,7 @@ describe('generateWithAI', () => {
 			aiEnabled: true,
 			openaiApiKey: 'sk-test',
 			openaiBaseUrl: 'https://api.openai.com/v1',
-			openaiModel: 'gpt-4o-mini',
+			openaiModel: 'gpt-5-mini',
 			maxAIRetries: 0,
 			aiTimeoutMs: 10000,
 			aiPersona: 'witty' as const

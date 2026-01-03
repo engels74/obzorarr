@@ -28,7 +28,7 @@ export async function getFunFactsConfig(): Promise<FunFactsConfig> {
 		aiEnabled: Boolean(apiKey),
 		openaiApiKey: apiKey ?? undefined,
 		openaiBaseUrl: baseUrl ?? 'https://api.openai.com/v1',
-		openaiModel: model ?? 'gpt-4o-mini',
+		openaiModel: model ?? 'gpt-5-mini',
 		maxAIRetries: 2,
 		aiTimeoutMs: 10000,
 		aiPersona: (persona as AIPersona) ?? 'witty'
@@ -327,7 +327,7 @@ export async function generateWithAI(
 	const { system: systemPrompt, user: userPrompt } = buildEnhancedPrompt(context, count, persona);
 	const maxRetries = config.maxAIRetries ?? 2;
 	const baseUrl = config.openaiBaseUrl ?? 'https://api.openai.com/v1';
-	const model = config.openaiModel ?? 'gpt-4o-mini';
+	const model = config.openaiModel ?? 'gpt-5-mini';
 
 	let lastError: Error | null = null;
 

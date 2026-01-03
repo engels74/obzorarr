@@ -81,7 +81,7 @@ function createMockConfig(overrides: Partial<FunFactsConfig> = {}): FunFactsConf
 		aiEnabled: true,
 		openaiApiKey: 'test-api-key',
 		openaiBaseUrl: 'https://api.openai.com/v1',
-		openaiModel: 'gpt-4o-mini',
+		openaiModel: 'gpt-5-mini',
 		maxAIRetries: 2,
 		aiTimeoutMs: 10000,
 		aiPersona: 'witty',
@@ -135,7 +135,7 @@ describe('Fun Facts AI', () => {
 			expect(config.aiEnabled).toBe(false);
 			expect(config.openaiApiKey).toBeUndefined();
 			expect(config.openaiBaseUrl).toBe('https://api.openai.com/v1');
-			expect(config.openaiModel).toBe('gpt-4o-mini');
+			expect(config.openaiModel).toBe('gpt-5-mini');
 			expect(config.maxAIRetries).toBe(2);
 			expect(config.aiTimeoutMs).toBe(10000);
 		});

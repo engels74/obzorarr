@@ -615,14 +615,14 @@
 									id="openaiModel"
 									name="openaiModel"
 									bind:value={openaiModel}
-									placeholder="gpt-4o-mini"
+									placeholder="gpt-5-mini"
 									class:from-env={openaiModelLocked}
 									disabled={openaiModelLocked}
 								/>
 								{#if openaiModelLocked}
 									<span class="field-hint env-hint">Set via OPENAI_MODEL environment variable</span>
 								{:else}
-									<span class="field-hint">Default: gpt-4o-mini</span>
+									<span class="field-hint">Default: gpt-5-mini</span>
 								{/if}
 							</div>
 						</div>

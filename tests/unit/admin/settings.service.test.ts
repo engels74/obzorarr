@@ -679,7 +679,7 @@ describe('Admin Settings Service', () => {
 				expect(config.openai.baseUrl.value).toBe('https://api.openai.com/v1');
 				expect(config.openai.baseUrl.source).toBe('default');
 				expect(config.openai.baseUrl.isLocked).toBe(false);
-				expect(config.openai.model.value).toBe('gpt-4o-mini');
+				expect(config.openai.model.value).toBe('gpt-5-mini');
 				expect(config.openai.model.source).toBe('default');
 				expect(config.openai.model.isLocked).toBe(false);
 			});
