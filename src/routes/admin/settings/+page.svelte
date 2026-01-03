@@ -2484,6 +2484,7 @@
 
 	.toggle-switch {
 		position: relative;
+		box-sizing: border-box;
 		width: 44px;
 		height: 24px;
 		background: hsl(var(--muted) / 0.5);
