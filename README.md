@@ -21,7 +21,7 @@
 
 ## What is Obzorarr?
 
-Obzorarr is a **"Plex Wrapped"** application that syncs viewing history from your Plex Media Server and generates yearly statistics with an animated slideshow presentation - similar to Spotify Wrapped. It doesn't require Tautulli; it only relies on the [Plex API](https://developer.plex.tv/pms/).
+Obzorarr is a **"Wrapped for Plex"** application that syncs viewing history from your Plex Media Server and generates yearly statistics with an animated slideshow presentation - similar to Spotify Wrapped. It doesn't require Tautulli; it only relies on the [Plex API](https://developer.plex.tv/pms/).
 
 ## Features
 
