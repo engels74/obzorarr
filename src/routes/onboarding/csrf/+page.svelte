@@ -1,14 +1,72 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
+	import { enhance, deserialize } from '$app/forms';
 	import { animate, stagger } from 'motion';
 	import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
+	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import type { PageData, ActionData } from './$types';
+	import type { ActionResult } from '@sveltejs/kit';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
-	const initialOrigin = data.csrfConfig.value || data.detection.detectedOrigin;
-	let csrfOriginInput = $state(initialOrigin);
+	const initialOrigin = $derived(data.csrfConfig.value || data.detection.detectedOrigin);
+	let csrfOriginInput = $state<string | undefined>(undefined);
 	let isSubmitting = $state(false);
+
+	let testResult = $state<'idle' | 'testing' | 'success' | 'failure'>('idle');
+	let testError = $state<string | null>(null);
+	let testedOrigin = $state<string | null>(null);
+
+	let previousInput = $state<string | undefined>(undefined);
+
+	$effect.pre(() => {
+		if (csrfOriginInput === undefined) {
+			csrfOriginInput = initialOrigin;
+			previousInput = initialOrigin;
+		}
+	});
+	$effect(() => {
+		if (csrfOriginInput !== previousInput) {
+			previousInput = csrfOriginInput;
+			if (testResult !== 'idle') {
+				testResult = 'idle';
+				testError = null;
+			}
+		}
+	});
+
+	async function runTest() {
+		if (!csrfOriginInput) return;
+
+		testResult = 'testing';
+		testError = null;
+
+		const formData = new FormData();
+		formData.set('csrfOrigin', csrfOriginInput);
+
+		try {
+			const response = await fetch('?/testOrigin', {
+				method: 'POST',
+				body: formData
+			});
+			const text = await response.text();
+			const result: ActionResult = deserialize(text);
+
+			if (result.type === 'success') {
+				testResult = 'success';
+				testedOrigin = csrfOriginInput ?? null;
+			} else if (result.type === 'failure') {
+				testResult = 'failure';
+				const data = result.data as { testError?: string } | undefined;
+				testError = data?.testError ?? 'Test failed';
+			} else {
+				testResult = 'failure';
+				testError = 'Unexpected response';
+			}
+		} catch {
+			testResult = 'failure';
+			testError = 'Network error - could not complete test';
+		}
+	}
 
 	let iconRef: HTMLElement | undefined = $state();
 	let contentRef: HTMLElement | undefined = $state();
@@ -91,13 +149,16 @@
 					<span class="detection-value {data.detection.isReverseProxy ? 'proxy' : 'direct'}">
 						{#if data.detection.isReverseProxy}
 							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<path
-									d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+								<path d="M3 12h4m10 0h4" stroke-linecap="round" />
+								<rect
+									x="8"
+									y="8"
+									width="8"
+									height="8"
+									rx="2"
 									stroke-linecap="round"
 									stroke-linejoin="round"
 								/>
-								<polyline points="15,3 21,3 21,9" stroke-linecap="round" stroke-linejoin="round" />
-								<line x1="10" y1="14" x2="21" y2="3" stroke-linecap="round" />
 							</svg>
 							Reverse Proxy
 						{:else}
@@ -167,6 +228,17 @@
 				CSRF protection is configured via the <code>ORIGIN</code> environment variable. This setting is
 				locked and cannot be changed here.
 			</p>
+
+			<div class="locked-docs animate-item">
+				<a
+					href="https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html"
+					target="_blank"
+					rel="noopener noreferrer"
+				>
+					<span>Learn about CSRF protection</span>
+					<ExternalLink class="link-icon" />
+				</a>
+			</div>
 		{:else}
 			<div class="input-section animate-item">
 				<label for="csrfOrigin" class="input-label">CSRF Origin URL</label>
@@ -183,12 +255,49 @@
 					/>
 					{#if csrfOriginInput !== data.detection.detectedOrigin}
 						<button type="button" class="use-detected-btn" onclick={useDetectedOrigin}>
-							Use Detected
+							Detect URL
 						</button>
 					{/if}
+					<button
+						type="button"
+						onclick={runTest}
+						disabled={testResult === 'testing' || !csrfOriginInput}
+						class="test-btn"
+						class:success={testResult === 'success'}
+					>
+						{#if testResult === 'testing'}
+							<span class="spinner small"></span>
+							Testing...
+						{:else if testResult === 'success'}
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+								<path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round" />
+							</svg>
+							Verified
+						{:else}
+							Test URL
+						{/if}
+					</button>
 				</div>
 				{#if form?.error}
 					<span class="error-message">{form.error}</span>
+				{/if}
+				{#if testResult === 'failure' && testError}
+					<div class="test-result error">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<circle cx="12" cy="12" r="10" />
+							<line x1="15" y1="9" x2="9" y2="15" stroke-linecap="round" />
+							<line x1="9" y1="9" x2="15" y2="15" stroke-linecap="round" />
+						</svg>
+						<span>{testError}</span>
+					</div>
+				{:else if testResult === 'success'}
+					<div class="test-result success">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<circle cx="12" cy="12" r="10" />
+							<path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round" />
+						</svg>
+						<span>Origin verified - CSRF protection will work correctly</span>
+					</div>
 				{/if}
 				<p class="input-hint">
 					Enter the public URL where users will access Obzorarr. This protects against cross-site
@@ -221,6 +330,54 @@
 							If you plan to use a reverse proxy later, you can configure this setting now.
 						{/if}
 					</span>
+					<div class="callout-links">
+						<a
+							href="https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html"
+							target="_blank"
+							rel="noopener noreferrer"
+							class="edu-link"
+						>
+							<span>Learn about CSRF</span>
+							<ExternalLink class="link-icon" />
+						</a>
+						{#if data.detection.isReverseProxy}
+							<span class="links-divider"></span>
+							<span class="proxy-docs-label">Proxy docs</span>
+							<div class="proxy-links">
+								<a
+									href="https://docs.nginx.com/nginx/admin-guide/web-server/reverse-proxy/"
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									Nginx<ExternalLink class="link-icon-sm" />
+								</a>
+								<span class="dot-sep">·</span>
+								<a
+									href="https://nginxproxymanager.com/advanced-config/"
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									NPM<ExternalLink class="link-icon-sm" />
+								</a>
+								<span class="dot-sep">·</span>
+								<a
+									href="https://httpd.apache.org/docs/2.4/howto/reverse_proxy.html"
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									Apache<ExternalLink class="link-icon-sm" />
+								</a>
+								<span class="dot-sep">·</span>
+								<a
+									href="https://caddyserver.com/docs/caddyfile/directives/reverse_proxy"
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									Caddy<ExternalLink class="link-icon-sm" />
+								</a>
+							</div>
+						{/if}
+					</div>
 				</div>
 			</div>
 		{/if}
@@ -257,7 +414,16 @@
 						};
 					}}
 				>
-					<button type="submit" class="save-btn" disabled={isSubmitting || !csrfOriginInput}>
+					<input
+						type="hidden"
+						name="validated"
+						value={testResult === 'success' ? 'true' : 'false'}
+					/>
+					<button
+						type="submit"
+						class="save-btn"
+						disabled={isSubmitting || !csrfOriginInput || testResult !== 'success'}
+					>
 						{#if isSubmitting}
 							<span class="spinner"></span>
 						{/if}
@@ -385,7 +551,9 @@
 		background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(34, 197, 94, 0.02) 100%);
 		border: 1px solid rgba(34, 197, 94, 0.2);
 		border-radius: 12px;
-		width: 100%;
+		width: fit-content;
+		max-width: 100%;
+		margin: 0 auto;
 		position: relative;
 		overflow: hidden;
 	}
@@ -550,21 +718,143 @@
 	.use-detected-btn {
 		flex-shrink: 0;
 		padding: 0.5rem 0.75rem;
-		background: rgba(59, 130, 246, 0.12);
-		border: 1px solid rgba(59, 130, 246, 0.3);
+		background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.08) 100%);
+		border: 1px solid rgba(59, 130, 246, 0.25);
 		border-radius: 6px;
 		font-size: 0.75rem;
 		font-weight: 500;
 		color: hsl(217, 91%, 65%);
 		cursor: pointer;
-		transition:
-			background 0.2s,
-			border-color 0.2s;
+		box-shadow:
+			0 1px 2px rgba(0, 0, 0, 0.1),
+			inset 0 1px 0 rgba(255, 255, 255, 0.05);
+		transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 	}
 
 	.use-detected-btn:hover {
-		background: rgba(59, 130, 246, 0.2);
-		border-color: rgba(59, 130, 246, 0.5);
+		background: linear-gradient(135deg, rgba(59, 130, 246, 0.22) 0%, rgba(59, 130, 246, 0.12) 100%);
+		border-color: rgba(59, 130, 246, 0.4);
+		box-shadow:
+			0 4px 12px rgba(59, 130, 246, 0.15),
+			inset 0 1px 0 rgba(255, 255, 255, 0.08);
+		transform: translateY(-1px);
+	}
+
+	.use-detected-btn:active {
+		transform: translateY(0) scale(0.98);
+	}
+
+	.use-detected-btn:focus-visible {
+		outline: 2px solid hsl(217, 91%, 65%);
+		outline-offset: 2px;
+	}
+
+	.test-btn {
+		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		gap: 0.375rem;
+		padding: 0.5rem 2rem;
+		background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(34, 197, 94, 0.08) 100%);
+		border: 1px solid rgba(34, 197, 94, 0.25);
+		border-radius: 6px;
+		font-size: 0.75rem;
+		font-weight: 500;
+		color: hsl(142, 71%, 55%);
+		cursor: pointer;
+		box-shadow:
+			0 1px 2px rgba(0, 0, 0, 0.1),
+			inset 0 1px 0 rgba(255, 255, 255, 0.05);
+		transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+	}
+
+	.test-btn:hover:not(:disabled):not(.success) {
+		background: linear-gradient(135deg, rgba(34, 197, 94, 0.22) 0%, rgba(34, 197, 94, 0.12) 100%);
+		border-color: rgba(34, 197, 94, 0.4);
+		box-shadow:
+			0 4px 12px rgba(34, 197, 94, 0.15),
+			inset 0 1px 0 rgba(255, 255, 255, 0.08);
+		transform: translateY(-1px);
+	}
+
+	.test-btn:active:not(:disabled):not(.success) {
+		transform: translateY(0) scale(0.98);
+	}
+
+	.test-btn:focus-visible {
+		outline: 2px solid hsl(142, 71%, 55%);
+		outline-offset: 2px;
+	}
+
+	.test-btn:disabled {
+		opacity: 0.4;
+		cursor: not-allowed;
+		filter: grayscale(0.3);
+	}
+
+	.test-btn.success {
+		background: linear-gradient(135deg, rgba(34, 197, 94, 0.25) 0%, rgba(34, 197, 94, 0.15) 100%);
+		border-color: rgba(34, 197, 94, 0.5);
+		box-shadow:
+			0 0 0 1px rgba(34, 197, 94, 0.1),
+			0 4px 16px rgba(34, 197, 94, 0.2),
+			inset 0 1px 0 rgba(255, 255, 255, 0.1);
+		cursor: default;
+	}
+
+	.test-btn svg {
+		width: 14px;
+		height: 14px;
+	}
+
+	.test-btn.success svg {
+		animation: checkmark-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+	}
+
+	@keyframes checkmark-pop {
+		0% {
+			opacity: 0;
+			transform: scale(0.5);
+		}
+		100% {
+			opacity: 1;
+			transform: scale(1);
+		}
+	}
+
+	.spinner.small {
+		width: 12px;
+		height: 12px;
+		border-width: 1.5px;
+	}
+
+	.test-result {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.5rem;
+		padding: 0.75rem 1rem;
+		border-radius: 8px;
+		font-size: 0.85rem;
+		line-height: 1.4;
+	}
+
+	.test-result svg {
+		flex-shrink: 0;
+		width: 18px;
+		height: 18px;
+		margin-top: 0.1rem;
+	}
+
+	.test-result.success {
+		background: rgba(34, 197, 94, 0.1);
+		border: 1px solid rgba(34, 197, 94, 0.2);
+		color: hsl(142, 71%, 55%);
+	}
+
+	.test-result.error {
+		background: rgba(239, 68, 68, 0.1);
+		border: 1px solid rgba(239, 68, 68, 0.2);
+		color: hsl(0, 84%, 60%);
 	}
 
 	.error-message {
@@ -612,6 +902,145 @@
 		font-size: 0.8rem;
 		color: rgba(255, 255, 255, 0.55);
 		line-height: 1.5;
+	}
+
+	/* Educational Links */
+	.callout-links {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.625rem;
+		margin-top: 0.875rem;
+		padding-top: 0.875rem;
+		border-top: 1px solid rgba(59, 130, 246, 0.12);
+	}
+
+	.edu-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.375rem;
+		padding: 0.375rem 0.625rem;
+		background: rgba(59, 130, 246, 0.08);
+		border: 1px solid rgba(59, 130, 246, 0.18);
+		border-radius: 6px;
+		color: hsl(217, 91%, 68%);
+		text-decoration: none;
+		font-size: 0.75rem;
+		font-weight: 500;
+		transition: all 0.2s ease;
+	}
+
+	.edu-link:hover {
+		background: rgba(59, 130, 246, 0.14);
+		border-color: rgba(59, 130, 246, 0.28);
+		transform: translateY(-1px);
+	}
+
+	.edu-link:focus-visible {
+		outline: 2px solid hsl(217, 91%, 65%);
+		outline-offset: 2px;
+	}
+
+	.callout-links :global(.link-icon) {
+		width: 12px;
+		height: 12px;
+		opacity: 0.75;
+	}
+
+	.links-divider {
+		display: block;
+		width: 100%;
+		height: 1px;
+		background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+		margin: 0.25rem 0;
+	}
+
+	.proxy-docs-label {
+		font-size: 0.65rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: rgba(255, 255, 255, 0.4);
+	}
+
+	.proxy-links {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.375rem;
+	}
+
+	.proxy-links a {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.2rem;
+		color: hsl(217, 85%, 65%);
+		text-decoration: none;
+		font-size: 0.7rem;
+		font-weight: 500;
+		padding: 0.25rem 0.375rem;
+		border-radius: 4px;
+		transition: all 0.15s ease;
+	}
+
+	.proxy-links a:hover {
+		background: rgba(59, 130, 246, 0.1);
+		color: hsl(217, 91%, 72%);
+	}
+
+	.proxy-links a:focus-visible {
+		outline: 2px solid hsl(217, 91%, 65%);
+		outline-offset: 1px;
+	}
+
+	.callout-links :global(.link-icon-sm) {
+		width: 10px;
+		height: 10px;
+		opacity: 0.6;
+	}
+
+	.dot-sep {
+		color: rgba(255, 255, 255, 0.2);
+		font-size: 0.65rem;
+		user-select: none;
+	}
+
+	/* Locked State Documentation Link */
+	.locked-docs {
+		display: flex;
+		justify-content: center;
+	}
+
+	.locked-docs a {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.375rem;
+		padding: 0.5rem 0.875rem;
+		background: rgba(59, 130, 246, 0.06);
+		border: 1px solid rgba(59, 130, 246, 0.15);
+		border-radius: 8px;
+		color: hsl(217, 91%, 68%);
+		text-decoration: none;
+		font-size: 0.8rem;
+		font-weight: 500;
+		transition: all 0.2s ease;
+	}
+
+	.locked-docs a:hover {
+		background: rgba(59, 130, 246, 0.12);
+		border-color: rgba(59, 130, 246, 0.25);
+		transform: translateY(-1px);
+	}
+
+	.locked-docs a:focus-visible {
+		outline: 2px solid hsl(217, 91%, 65%);
+		outline-offset: 2px;
+	}
+
+	.locked-docs :global(.link-icon) {
+		width: 13px;
+		height: 13px;
+		opacity: 0.7;
 	}
 
 	/* Button Group */
@@ -738,6 +1167,29 @@
 		.use-detected-btn {
 			width: 100%;
 			padding: 0.625rem;
+		}
+
+		.callout-links {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 0.75rem;
+		}
+
+		.links-divider {
+			display: none;
+		}
+
+		.proxy-docs-label {
+			margin-top: 0.25rem;
+		}
+
+		.proxy-links {
+			gap: 0.5rem;
+		}
+
+		.locked-docs a {
+			width: 100%;
+			justify-content: center;
 		}
 	}
 </style>

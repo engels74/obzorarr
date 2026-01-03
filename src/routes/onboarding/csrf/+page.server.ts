@@ -61,8 +61,40 @@ export const load: PageServerLoad = async ({ request, parent }) => {
 };
 
 export const actions: Actions = {
+	testOrigin: async ({ request }) => {
+		const formData = await request.formData();
+		const proposedOrigin = formData.get('csrfOrigin')?.toString();
+
+		const result = CsrfOriginSchema.safeParse({ csrfOrigin: proposedOrigin });
+		if (!result.success) {
+			const errorMessage = result.error.issues[0]?.message ?? 'Invalid URL format';
+			return fail(400, { testError: errorMessage });
+		}
+
+		const actualOrigin = request.headers.get('origin');
+		if (!actualOrigin) {
+			return fail(400, {
+				testError: 'Could not detect browser origin. Ensure you are accessing via HTTP/HTTPS.'
+			});
+		}
+
+		if (result.data.csrfOrigin.toLowerCase() !== actualOrigin.toLowerCase()) {
+			return fail(400, {
+				testError: `Origin mismatch: browser sends "${actualOrigin}" but you configured "${result.data.csrfOrigin}"`
+			});
+		}
+
+		return { testSuccess: true, testedOrigin: result.data.csrfOrigin };
+	},
+
 	saveOrigin: async ({ request }) => {
 		const formData = await request.formData();
+		const validated = formData.get('validated') === 'true';
+
+		if (!validated) {
+			return fail(400, { error: 'Please test the origin before saving' });
+		}
+
 		const result = CsrfOriginSchema.safeParse({
 			csrfOrigin: formData.get('csrfOrigin')
 		});
