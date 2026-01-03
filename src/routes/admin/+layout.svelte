@@ -57,8 +57,16 @@
 	// Mobile sidebar state
 	let sidebarOpen = $state(false);
 
-	// CSRF warning state
-	let showCsrfWarning = $state(data.csrfWarning.show);
+	// CSRF warning state - derived from data with local override for immediate dismiss
+	let locallyDismissed = $state(false);
+	let showCsrfWarning = $derived(data.csrfWarning.show && !locallyDismissed);
+
+	// Reset local dismissed state when server re-enables the warning
+	$effect(() => {
+		if (data.csrfWarning.show) {
+			locallyDismissed = false;
+		}
+	});
 
 	function toggleSidebar() {
 		sidebarOpen = !sidebarOpen;
@@ -69,7 +77,7 @@
 	}
 
 	function handleCsrfWarningDismissed() {
-		showCsrfWarning = false;
+		locallyDismissed = true;
 		invalidateAll();
 	}
 </script>
