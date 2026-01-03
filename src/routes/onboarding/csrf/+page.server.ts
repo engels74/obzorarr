@@ -88,13 +88,12 @@ export const actions: Actions = {
 	},
 
 	saveOrigin: async ({ request }) => {
-		const formData = await request.formData();
-		const validated = formData.get('validated') === 'true';
-
-		if (!validated) {
-			return fail(400, { error: 'Please test the origin before saving' });
+		const csrfConfig = await getCsrfConfigWithSource();
+		if (csrfConfig.origin.isLocked) {
+			return fail(400, { error: 'CSRF origin is locked via ORIGIN environment variable' });
 		}
 
+		const formData = await request.formData();
 		const result = CsrfOriginSchema.safeParse({
 			csrfOrigin: formData.get('csrfOrigin')
 		});
@@ -102,6 +101,19 @@ export const actions: Actions = {
 		if (!result.success) {
 			const errorMessage = result.error.issues[0]?.message ?? 'Invalid input';
 			return fail(400, { error: errorMessage });
+		}
+
+		const actualOrigin = request.headers.get('origin');
+		if (!actualOrigin) {
+			return fail(400, {
+				error: 'Could not detect browser origin. Ensure you are accessing via HTTP/HTTPS.'
+			});
+		}
+
+		if (result.data.csrfOrigin.toLowerCase() !== actualOrigin.toLowerCase()) {
+			return fail(400, {
+				error: `Origin mismatch: browser sends "${actualOrigin}" but you configured "${result.data.csrfOrigin}"`
+			});
 		}
 
 		await setAppSetting(AppSettingsKey.CSRF_ORIGIN, result.data.csrfOrigin);
