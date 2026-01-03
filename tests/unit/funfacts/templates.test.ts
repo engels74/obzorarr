@@ -125,7 +125,7 @@ describe('Fun Facts Templates Index', () => {
 			expect(templates.length).toBe(BEHAVIORAL_TEMPLATES.length);
 		});
 
-		it('returns empty array for category with no templates', () => {
+		it('re-initializes registry when cleared and returns templates', () => {
 			initializeTemplates();
 
 			clearRegistry();

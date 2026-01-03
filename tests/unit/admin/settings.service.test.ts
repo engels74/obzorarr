@@ -185,7 +185,7 @@ describe('Admin Settings Service', () => {
 				expect(theme).toBe(ThemePresets.AMBER_MINIMAL);
 			});
 
-			it('returns default for invalid WRAPPED_THEME and valid legacy theme', async () => {
+			it('falls back to legacy CURRENT_THEME when WRAPPED_THEME is invalid', async () => {
 				await setAppSetting(AppSettingsKey.WRAPPED_THEME, 'invalid');
 				await setAppSetting(AppSettingsKey.CURRENT_THEME, ThemePresets.SOVIET_RED);
 
@@ -390,7 +390,7 @@ describe('Admin Settings Service', () => {
 				expect(config.count).toBe(15);
 			});
 
-			it('defaults to 4 when CUSTOM count is invalid NaN', async () => {
+			it('clamps to minimum when CUSTOM count is invalid NaN', async () => {
 				await setAppSetting(AppSettingsKey.FUN_FACT_FREQUENCY, FunFactFrequency.CUSTOM);
 				await setAppSetting(AppSettingsKey.FUN_FACT_CUSTOM_COUNT, 'not-a-number');
 
