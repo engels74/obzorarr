@@ -15,12 +15,12 @@ bun run dev              # Start dev server (localhost:3000)
 
 # Database
 bun run db:generate      # Generate Drizzle migrations
-bun run db:migrate       # Apply migrations (custom script: scripts/migrate.ts)
+bun run db:migrate       # Apply migrations (scripts/migrate.ts)
 bun run db:studio        # Open Drizzle Studio GUI
 
 # Testing
 bun test                 # Run all tests (uses in-memory SQLite)
-bun test tests/unit/stats/percentile.test.ts  # Run single test file
+bun test <file>          # Run single test file
 
 # Build & Production
 bun run build            # Build for production
@@ -56,15 +56,21 @@ This codebase maintains a comment-minimal style. Follow these principles:
 
 Requests flow through sequential hooks in `src/hooks.server.ts`:
 
-1. `authHandle` - Session validation, populates `event.locals.user`
-2. `onboardingHandle` - Redirects to setup wizard if needed
-3. `authorizationHandle` - Admin route protection
+1. `requestFilterHandle` - Blocks suspicious requests (path traversal, etc.)
+2. `rateLimitHandle` - Rate limiting for API endpoints
+3. `proxyHandle` - Handles X-Forwarded-\* headers for reverse proxies
+4. `csrfHandle` - CSRF protection
+5. `initializationHandle` - One-time startup tasks (clears conflicting settings)
+6. `securityHeadersHandle` - Sets security headers (X-Frame-Options, CSP, etc.)
+7. `authHandle` - Session validation, populates `event.locals.user`
+8. `onboardingHandle` - Redirects to setup wizard if not configured
+9. `authorizationHandle` - Admin route protection
 
 ### Directory Structure
 
 - **`src/lib/server/`** - Backend services (auth, sync, stats, plex client, etc.)
 - **`src/lib/components/`** - Svelte components
-  - `slides/` - Animated presentation slides (17 types)
+  - `slides/` - Animated presentation slides (19 types)
   - `ui/` - shadcn/bits-ui primitives
 - **`src/lib/stores/`** - Svelte runes stores (`*.svelte.ts`)
 - **`src/routes/`** - SvelteKit routes with SSR data loading
@@ -73,16 +79,20 @@ Requests flow through sequential hooks in `src/hooks.server.ts`:
 
 | Service          | Purpose                                                |
 | ---------------- | ------------------------------------------------------ |
-| `auth/`          | Plex OAuth flow, session management, dev bypass        |
-| `plex/`          | Plex API client with pagination                        |
-| `sync/`          | History sync engine with Croner scheduler              |
-| `stats/`         | Stats calculation with caching (1hr TTL)               |
-| `slides/`        | Slide configuration and custom slides                  |
-| `funfacts/`      | AI-generated or templated fun facts                    |
-| `sharing/`       | Share tokens, access modes (public/restricted/private) |
-| `logging/`       | Structured logging with retention policies             |
+| `admin/`         | Settings management, user administration               |
 | `anonymization/` | User stats anonymization (REAL, ANONYMOUS, HYBRID)     |
+| `auth/`          | Plex OAuth flow, session management, dev bypass        |
+| `funfacts/`      | AI-generated or templated fun facts                    |
+| `logging/`       | Structured logging with retention policies             |
+| `logo/`          | Wrapped logo visibility settings                       |
+| `onboarding/`    | Setup wizard flow and step management                  |
+| `plex/`          | Plex API client with pagination                        |
 | `ratelimit/`     | Rate limiting for API endpoints                        |
+| `security/`      | Request filtering, CSRF protection, security headers   |
+| `sharing/`       | Share tokens, access modes (public/restricted/private) |
+| `slides/`        | Slide configuration and custom slides                  |
+| `stats/`         | Stats calculation with caching (1hr TTL)               |
+| `sync/`          | History sync engine with Croner scheduler              |
 
 ### Database Schema (`src/lib/server/db/schema.ts`)
 
@@ -90,9 +100,16 @@ Key tables:
 
 - `users` - Plex users (plexId vs accountId distinction matters)
 - `playHistory` - Watch records (historyKey ensures uniqueness)
+- `syncStatus` - Sync job tracking and progress
 - `cachedStats` - Cached statistics with TTL
-- `shareSettings` - Per-user, per-year share tokens
+- `shareSettings` - Per-user, per-year share tokens and access modes
+- `customSlides` - Admin-created custom slides with markdown content
+- `slideConfig` - Slide ordering and enable/disable state
+- `appSettings` - Key-value store for application settings
+- `sessions` - User authentication sessions
+- `logs` - Structured application logs with retention
 - `plexAccounts` - Maps local accountId to Plex identity
+- `metadataCache` - Cached metadata for media items (genres, duration, year)
 
 ### Account ID vs Plex ID
 
@@ -122,7 +139,7 @@ Tests use Bun's test runner with in-memory SQLite. Test setup (`tests/setup.ts`)
 - **Unit tests**: `tests/unit/` - Direct function testing
 - **Property tests**: `tests/property/` - fast-check based generative testing
 
-Run tests with `--env-file=.env.test` (configured in package.json).
+Tests run with `--env-file=.env.test` (configured in package.json).
 
 ## Key Patterns
 
