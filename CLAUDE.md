@@ -61,7 +61,7 @@ Requests flow through sequential hooks in `src/hooks.server.ts`:
 3. `proxyHandle` - Handles X-Forwarded-\* headers for reverse proxies
 4. `csrfHandle` - CSRF protection
 5. `initializationHandle` - One-time startup tasks (clears conflicting settings)
-6. `securityHeadersHandle` - Sets security headers (X-Frame-Options, CSP, etc.)
+6. `securityHeadersHandle` - Sets security headers (X-Frame-Options, HSTS, etc.)
 7. `authHandle` - Session validation, populates `event.locals.user`
 8. `onboardingHandle` - Redirects to setup wizard if not configured
 9. `authorizationHandle` - Admin route protection
