@@ -24,11 +24,12 @@ describe('db/client module initialization', () => {
 					await import('$lib/server/db/client');
 					process.exit(0); // Should not reach here
 				} catch (e) {
-					if (e.message.includes('CRITICAL')) {
+					const message = e instanceof Error ? e.message : String(e);
+					if (message.includes('CRITICAL')) {
 						console.log('EXPECTED_ERROR');
 						process.exit(1);
 					}
-					console.error('UNEXPECTED_ERROR:', e.message);
+					console.error('UNEXPECTED_ERROR:', message);
 					process.exit(2);
 				}
 			`;
@@ -64,7 +65,8 @@ describe('db/client module initialization', () => {
 					}
 					process.exit(1);
 				} catch (e) {
-					console.error('ERROR:', e.message);
+					const message = e instanceof Error ? e.message : String(e);
+					console.error('ERROR:', message);
 					process.exit(2);
 				}
 			`;
@@ -99,7 +101,8 @@ describe('db/client module initialization', () => {
 					}
 					process.exit(1);
 				} catch (e) {
-					console.error('ERROR:', e.message);
+					const message = e instanceof Error ? e.message : String(e);
+					console.error('ERROR:', message);
 					process.exit(2);
 				}
 			`;
@@ -150,7 +153,8 @@ describe('db/client module initialization', () => {
 						process.exit(1);
 					}
 				} catch (e) {
-					console.error('ERROR:', e.message);
+					const message = e instanceof Error ? e.message : String(e);
+					console.error('ERROR:', message);
 					process.exit(2);
 				}
 			`;
