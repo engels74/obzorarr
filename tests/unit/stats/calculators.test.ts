@@ -23,29 +23,10 @@ import {
 	getHourFromTimestamp
 } from '$lib/server/stats/utils';
 
-import type { PlayHistoryRecord } from '$lib/server/db/schema';
+import { createPlayHistoryRecord, createMultipleRecords } from '../../helpers/factories';
 
-function createRecord(overrides: Partial<PlayHistoryRecord> = {}): PlayHistoryRecord {
-	return {
-		id: 1,
-		historyKey: 'key-1',
-		ratingKey: 'rating-1',
-		title: 'Test Title',
-		type: 'movie',
-		viewedAt: 1704067200, // Jan 1, 2024 00:00:00 UTC
-		accountId: 1,
-		librarySectionId: 1,
-		thumb: null,
-		duration: 3600, // 1 hour
-		grandparentTitle: null,
-		grandparentRatingKey: null,
-		grandparentThumb: null,
-		parentTitle: null,
-		genres: null,
-		releaseYear: null,
-		...overrides
-	};
-}
+// Alias for cleaner test code
+const createRecord = createPlayHistoryRecord;
 
 describe('Utils', () => {
 	describe('getYearStartTimestamp', () => {
