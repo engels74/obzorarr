@@ -26,7 +26,8 @@ export const AppSettingsKey = {
 	ENABLE_LIVE_SYNC: 'enable_live_sync',
 	ONBOARDING_COMPLETED: 'onboarding_completed',
 	ONBOARDING_CURRENT_STEP: 'onboarding_current_step',
-	CSRF_ORIGIN: 'csrf_origin'
+	CSRF_ORIGIN: 'csrf_origin',
+	CSRF_WARNING_DISMISSED: 'csrf_warning_dismissed'
 } as const;
 
 export type AppSettingsKeyType = (typeof AppSettingsKey)[keyof typeof AppSettingsKey];
@@ -469,4 +470,17 @@ export async function clearConflictingDbSettings(): Promise<string[]> {
 	}
 
 	return clearedSettings;
+}
+
+export async function isCsrfWarningDismissed(): Promise<boolean> {
+	const dismissed = await getAppSetting(AppSettingsKey.CSRF_WARNING_DISMISSED);
+	return dismissed === 'true';
+}
+
+export async function dismissCsrfWarning(): Promise<void> {
+	await setAppSetting(AppSettingsKey.CSRF_WARNING_DISMISSED, 'true');
+}
+
+export async function resetCsrfWarningDismissal(): Promise<void> {
+	await deleteAppSetting(AppSettingsKey.CSRF_WARNING_DISMISSED);
 }

@@ -19,6 +19,8 @@ import {
 	getApiConfigWithSources,
 	getCsrfConfigWithSource,
 	setCachedServerName,
+	isCsrfWarningDismissed,
+	resetCsrfWarningDismissal,
 	AppSettingsKey,
 	ThemePresets,
 	AnonymizationMode,
@@ -116,7 +118,8 @@ export const load: PageServerLoad = async () => {
 		defaultShareMode,
 		allowUserControl,
 		serverWrappedShareMode,
-		csrfConfig
+		csrfConfig,
+		csrfWarningDismissed
 	] = await Promise.all([
 		getApiConfigWithSources(),
 		getUITheme(),
@@ -130,7 +133,8 @@ export const load: PageServerLoad = async () => {
 		getGlobalDefaultShareMode(),
 		getGlobalAllowUserControl(),
 		getServerWrappedShareMode(),
-		getCsrfConfigWithSource()
+		getCsrfConfigWithSource(),
+		isCsrfWarningDismissed()
 	]);
 
 	const currentYear = new Date().getFullYear();
@@ -181,7 +185,8 @@ export const load: PageServerLoad = async () => {
 			originValue: csrfConfig.origin.value,
 			csrfEnabled: !!csrfConfig.origin.value,
 			originSource: csrfConfig.origin.source,
-			originLocked: csrfConfig.origin.isLocked
+			originLocked: csrfConfig.origin.isLocked,
+			warningDismissed: csrfWarningDismissed
 		}
 	};
 };
@@ -628,6 +633,18 @@ export const actions: Actions = {
 			return { success: true, message: 'CSRF origin cleared (using environment variable)' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to clear CSRF origin';
+			return fail(500, { error: message });
+		}
+	},
+
+	resetCsrfWarning: async () => {
+		try {
+			await resetCsrfWarningDismissal();
+			logger.info('CSRF warning re-enabled by admin', 'Security');
+			return { success: true, message: 'CSRF warning will now be shown again' };
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to reset CSRF warning';
+			logger.error(`Failed to reset CSRF warning: ${message}`, 'Security');
 			return fail(500, { error: message });
 		}
 	}
