@@ -2207,6 +2207,10 @@
 		padding-bottom: 0;
 	}
 
+	.theme-panel .panel-actions {
+		padding: 0 1.25rem 1.25rem;
+	}
+
 	.theme-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
