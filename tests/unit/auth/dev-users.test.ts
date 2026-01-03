@@ -467,5 +467,10 @@ describe('dev-users module', () => {
 			// JSON parse failures propagate as errors
 			await expect(getServerUsers()).rejects.toThrow('Unexpected end of JSON input');
 		});
+
+		// Note: Testing missing config scenarios (serverUrl/token empty) would require
+		// mocking the settings service module, which interferes with other tests.
+		// The code paths for missing config (lines 46-50, 143-144 in dev-users.ts) are
+		// defensive checks that are difficult to test in isolation.
 	});
 });

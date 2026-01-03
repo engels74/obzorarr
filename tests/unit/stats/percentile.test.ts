@@ -6,6 +6,7 @@ import {
 	getAllUsersWatchTime
 } from '$lib/server/stats/calculators/percentile';
 import { createYearFilter } from '$lib/server/stats/utils';
+import { createMultipleRecords, createTimestamp } from '../../helpers/factories';
 
 /**
  * Unit tests for Percentile Calculator
@@ -275,6 +276,21 @@ describe('Percentile Calculator', () => {
 			const watchTimes = await getAllUsersWatchTime(db, yearFilter);
 
 			expect(watchTimes.get(1)).toBe(90);
+		});
+
+		it('aggregates multiple plays from same account using factory', async () => {
+			// Use createMultipleRecords factory for coverage
+			const records = createMultipleRecords(3, {
+				accountId: 1,
+				viewedAt: createTimestamp(2024, 6, 15), // Use createTimestamp for coverage
+				duration: 1800 // 30 minutes each
+			});
+			await db.insert(playHistory).values(records);
+
+			const watchTimes = await getAllUsersWatchTime(db, yearFilter);
+
+			expect(watchTimes.size).toBe(1);
+			expect(watchTimes.get(1)).toBe(90); // 3 * 30 minutes = 90 minutes
 		});
 	});
 
