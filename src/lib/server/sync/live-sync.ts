@@ -1,14 +1,14 @@
 import { env } from '$env/dynamic/private';
+import { AppSettingsKey, getAppSetting } from '$lib/server/admin/settings.service';
+import { logger } from '$lib/server/logging';
+import { getSyncProgress, type LiveSyncProgress } from './progress';
 import { startBackgroundSync } from './scheduler';
 import { isSyncRunning } from './service';
-import { getSyncProgress, type LiveSyncProgress } from './progress';
-import { getAppSetting, AppSettingsKey } from '$lib/server/admin/settings.service';
-import { logger } from '$lib/server/logging';
 
 const LIVE_SYNC_COOLDOWN_MS = 3 * 60 * 1000;
 const LOCK_SAFETY_TIMEOUT_MS = 30 * 60 * 1000;
 const SYNC_CHECK_INTERVAL_MS = 1000;
-const PROGRESS_CLEAR_DELAY_MS = 5000;
+const _PROGRESS_CLEAR_DELAY_MS = 5000;
 
 export interface LiveSyncResult {
 	triggered: boolean;

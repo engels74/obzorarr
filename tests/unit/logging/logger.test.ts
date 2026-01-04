@@ -1,10 +1,10 @@
-import { describe, expect, it, beforeEach, afterEach, mock, spyOn } from 'bun:test';
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import { db } from '$lib/server/db/client';
-import { logs, appSettings } from '$lib/server/db/schema';
+import { appSettings, logs } from '$lib/server/db/schema';
 // Import Logger class directly to create fresh instances (avoids mock interference)
 import { Logger } from '$lib/server/logging/logger';
-import { LogLevel, LogSettingsKey } from '$lib/server/logging/types';
 import * as loggingService from '$lib/server/logging/service';
+import { LogLevel, LogSettingsKey } from '$lib/server/logging/types';
 
 /**
  * Unit tests for Logger class
@@ -210,7 +210,7 @@ describe('Logger', () => {
 			let callCount = 0;
 
 			// Replace the function temporarily
-			const mockInsert = mock(async (...args: Parameters<typeof originalInsertLogsBatch>) => {
+			const _mockInsert = mock(async (...args: Parameters<typeof originalInsertLogsBatch>) => {
 				callCount++;
 				if (callCount === 1) {
 					throw new Error('Simulated DB failure');

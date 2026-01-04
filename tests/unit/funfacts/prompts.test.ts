@@ -1,13 +1,13 @@
-import { describe, expect, it, beforeEach, afterEach } from 'bun:test';
+import { afterEach, describe, expect, it } from 'bun:test';
 import {
 	AI_PERSONAS,
-	getRandomPersona,
-	resolvePersona,
+	buildEnhancedPrompt,
 	buildSystemPrompt,
 	buildUserPrompt,
-	buildEnhancedPrompt
+	getRandomPersona,
+	resolvePersona
 } from '$lib/server/funfacts/ai/prompts';
-import type { FactGenerationContext, AIPersona } from '$lib/server/funfacts/types';
+import type { AIPersona, FactGenerationContext } from '$lib/server/funfacts/types';
 
 /**
  * Unit tests for AI Prompts Module

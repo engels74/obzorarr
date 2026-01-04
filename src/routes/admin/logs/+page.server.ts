@@ -1,21 +1,21 @@
 import { fail } from '@sveltejs/kit';
 import { z } from 'zod';
-import type { PageServerLoad, Actions } from './$types';
 import {
-	queryLogs,
+	deleteAllLogs,
 	getDistinctSources,
 	getLogCountsByLevel,
-	deleteAllLogs,
-	getLogRetentionDays,
 	getLogMaxCount,
-	isDebugEnabled,
-	setupLogRetentionScheduler,
-	isRetentionSchedulerConfigured,
+	getLogRetentionDays,
 	getRetentionSchedulerStatus,
-	triggerRetentionCleanup,
+	isDebugEnabled,
+	isRetentionSchedulerConfigured,
 	LogLevel,
-	type LogLevelType
+	type LogLevelType,
+	queryLogs,
+	setupLogRetentionScheduler,
+	triggerRetentionCleanup
 } from '$lib/server/logging';
+import type { Actions, PageServerLoad } from './$types';
 
 const LogLevelFilterSchema = z
 	.string()
@@ -32,7 +32,7 @@ const TimestampSchema = z
 	.transform((val) => {
 		if (!val) return undefined;
 		const parsed = parseInt(val, 10);
-		return isNaN(parsed) ? undefined : parsed;
+		return Number.isNaN(parsed) ? undefined : parsed;
 	});
 
 const LimitSchema = z
@@ -41,7 +41,7 @@ const LimitSchema = z
 	.transform((val) => {
 		if (!val) return 100;
 		const parsed = parseInt(val, 10);
-		return isNaN(parsed) || parsed < 1 ? 100 : Math.min(parsed, 500);
+		return Number.isNaN(parsed) || parsed < 1 ? 100 : Math.min(parsed, 500);
 	});
 
 const CursorSchema = z
@@ -50,7 +50,7 @@ const CursorSchema = z
 	.transform((val) => {
 		if (!val) return undefined;
 		const parsed = parseInt(val, 10);
-		return isNaN(parsed) ? undefined : parsed;
+		return Number.isNaN(parsed) ? undefined : parsed;
 	});
 
 export const load: PageServerLoad = async ({ url }) => {

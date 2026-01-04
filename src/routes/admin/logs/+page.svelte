@@ -3,9 +3,9 @@
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { handleFormToast } from '$lib/utils/form-toast';
-	import type { PageData, ActionData } from './$types';
 	import type { LogEntry, LogLevelType } from '$lib/server/logging';
+	import { handleFormToast } from '$lib/utils/form-toast';
+	import type { ActionData, PageData } from './$types';
 
 	/**
 	 * Admin Logs Page
@@ -102,7 +102,7 @@
 		}
 
 		const queryString = params.toString();
-		goto(`/admin/logs${queryString ? '?' + queryString : ''}`, { replaceState: true });
+		goto(`/admin/logs${queryString ? `?${queryString}` : ''}`, { replaceState: true });
 	}
 
 	// Toggle level filter

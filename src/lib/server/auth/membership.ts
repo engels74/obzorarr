@@ -1,15 +1,15 @@
+import { getApiConfigWithSources } from '$lib/server/admin/settings.service';
+import { logger } from '$lib/server/logging';
 import {
-	PlexResourcesResponseSchema,
-	PlexAuthApiError,
+	type MembershipResult,
 	NotServerMemberError,
 	PLEX_CLIENT_ID,
 	PLEX_PRODUCT,
 	PLEX_VERSION,
+	PlexAuthApiError,
 	type PlexResource,
-	type MembershipResult
+	PlexResourcesResponseSchema
 } from './types';
-import { logger } from '$lib/server/logging';
-import { getApiConfigWithSources } from '$lib/server/admin/settings.service';
 
 const PLEX_TV_URL = 'https://plex.tv';
 
@@ -104,7 +104,7 @@ export function extractPlexDirectIpAndPort(url: string): { ip: string; port: str
 		// Validate each segment is a valid octet (0-255)
 		for (const segment of ipSegments) {
 			const num = parseInt(segment, 10);
-			if (isNaN(num) || num < 0 || num > 255 || segment !== num.toString()) {
+			if (Number.isNaN(num) || num < 0 || num > 255 || segment !== num.toString()) {
 				return undefined;
 			}
 		}

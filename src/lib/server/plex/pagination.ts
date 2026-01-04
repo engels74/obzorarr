@@ -50,7 +50,7 @@ export async function fetchAllPaginated<T>(
 ): Promise<PaginationResult<T>> {
 	const allItems: T[] = [];
 	let pagesFetched = 0;
-	let totalSize = 0;
+	const _totalSize = 0;
 
 	for await (const { items } of paginateAll(fetchPage, pageSize)) {
 		allItems.push(...items);

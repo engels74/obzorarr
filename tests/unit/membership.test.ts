@@ -51,7 +51,7 @@ function extractPlexDirectIpAndPort(url: string): { ip: string; port: string } |
 		// Validate each segment is a valid octet (0-255)
 		for (const segment of ipSegments) {
 			const num = parseInt(segment, 10);
-			if (isNaN(num) || num < 0 || num > 255 || segment !== num.toString()) {
+			if (Number.isNaN(num) || num < 0 || num > 255 || segment !== num.toString()) {
 				return undefined;
 			}
 		}

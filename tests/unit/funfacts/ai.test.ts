@@ -1,17 +1,17 @@
-import { describe, expect, it, beforeEach, afterEach, mock, spyOn } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
+import { AppSettingsKey } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
 import { appSettings } from '$lib/server/db/schema';
 import {
-	getFunFactsConfig,
-	isAIAvailable,
-	generateWithAI,
+	buildGenerationContext,
 	generateFunFacts,
-	buildGenerationContext
+	generateWithAI,
+	getFunFactsConfig,
+	isAIAvailable
 } from '$lib/server/funfacts/service';
-import { AppSettingsKey } from '$lib/server/admin/settings.service';
+import type { FunFactsConfig } from '$lib/server/funfacts/types';
 import { AIGenerationError } from '$lib/server/funfacts/types';
 import type { UserStats } from '$lib/server/stats/types';
-import type { FunFactsConfig } from '$lib/server/funfacts/types';
 
 /**
  * Unit tests for Fun Facts AI Generation

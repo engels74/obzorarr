@@ -1,25 +1,23 @@
 import { fail } from '@sveltejs/kit';
 import { z } from 'zod';
-import type { PageServerLoad, Actions } from './$types';
+import { cancelSync } from '$lib/server/sync/progress';
 import {
-	isSyncRunning,
-	getLastSuccessfulSync,
-	getSyncHistory,
-	getPlayHistoryCount,
-	getYearStartTimestamp
-} from '$lib/server/sync/service';
-import {
-	startBackgroundSync,
 	getSchedulerStatus,
-	updateSchedulerCron,
 	pauseSyncScheduler,
 	resumeSyncScheduler,
 	setupSyncScheduler,
-	isSchedulerConfigured
+	startBackgroundSync,
+	updateSchedulerCron
 } from '$lib/server/sync/scheduler';
-import { cancelSync } from '$lib/server/sync/progress';
+import {
+	getLastSuccessfulSync,
+	getPlayHistoryCount,
+	getSyncHistory,
+	isSyncRunning
+} from '$lib/server/sync/service';
+import type { Actions, PageServerLoad } from './$types';
 
-const CronExpressionSchema = z.string().regex(/^[\d\s\*\/\-,]+$/, 'Invalid cron expression format');
+const CronExpressionSchema = z.string().regex(/^[\d\s*/\-,]+$/, 'Invalid cron expression format');
 
 const BackfillYearSchema = z
 	.string()

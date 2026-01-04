@@ -1,8 +1,8 @@
-import { describe, expect, it, beforeEach, afterEach } from 'bun:test';
-import * as fc from 'fast-check';
 import { Database } from 'bun:sqlite';
+import { describe, expect, it } from 'bun:test';
+import { desc, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
-import { eq, desc } from 'drizzle-orm';
+import * as fc from 'fast-check';
 import * as schema from '$lib/server/db/schema';
 
 /**
@@ -489,7 +489,7 @@ describe('Property 7: Incremental Sync Filtering', () => {
 			fc.asyncProperty(
 				fc.integer({ min: 1600000000, max: 1700000000 }), // firstSyncLastViewedAt
 				fc.integer({ min: 0, max: 100000 }), // offset to add for new records
-				async (firstSyncLastViewedAt, offset) => {
+				async (firstSyncLastViewedAt, _offset) => {
 					const db = createTestDatabase();
 
 					// Create first sync with known lastViewedAt

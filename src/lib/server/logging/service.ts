@@ -1,8 +1,8 @@
+import { and, desc, eq, inArray, like, lt, sql } from 'drizzle-orm';
 import { db } from '$lib/server/db/client';
-import { logs, appSettings } from '$lib/server/db/schema';
-import { eq, and, or, lt, desc, sql, like, inArray } from 'drizzle-orm';
-import type { LogEntry, NewLogEntry, LogQueryOptions, LogQueryResult, LogLevelType } from './types';
-import { LogSettingsKey, LogSettingsDefaults } from './types';
+import { appSettings, logs } from '$lib/server/db/schema';
+import type { LogEntry, LogLevelType, LogQueryOptions, LogQueryResult, NewLogEntry } from './types';
+import { LogSettingsDefaults, LogSettingsKey } from './types';
 
 export async function insertLog(entry: NewLogEntry): Promise<void> {
 	await db.insert(logs).values({
@@ -182,7 +182,7 @@ export async function getLogRetentionDays(): Promise<number> {
 
 	if (result[0]?.value) {
 		const parsed = parseInt(result[0].value, 10);
-		if (!isNaN(parsed) && parsed > 0) {
+		if (!Number.isNaN(parsed) && parsed > 0) {
 			return parsed;
 		}
 	}
@@ -199,7 +199,7 @@ export async function getLogMaxCount(): Promise<number> {
 
 	if (result[0]?.value) {
 		const parsed = parseInt(result[0].value, 10);
-		if (!isNaN(parsed) && parsed > 0) {
+		if (!Number.isNaN(parsed) && parsed > 0) {
 			return parsed;
 		}
 	}

@@ -8,8 +8,7 @@
  * and the plex-oauth module to test the pure logic (caching, user lookup, etc.)
  */
 
-import { describe, expect, it, beforeEach, mock, spyOn, afterEach } from 'bun:test';
-import type { NormalizedServerUser } from '$lib/server/auth/types';
+import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 
 // =============================================================================
 // Mock Setup
@@ -85,13 +84,13 @@ function createMockFriendsResponse(
 
 // Import after mocks are set up
 import {
-	getServerUsers,
+	clearUsersCache,
+	getRandomNonOwnerUser,
 	getServerOwner,
+	getServerUsers,
 	getUserById,
 	getUserByUsername,
-	getRandomNonOwnerUser,
-	resolveUserIdentifier,
-	clearUsersCache
+	resolveUserIdentifier
 } from '$lib/server/auth/dev-users';
 
 // =============================================================================

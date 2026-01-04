@@ -17,11 +17,11 @@ repos:
 
   - repo: local
     hooks:
-      - id: prettier
-        name: Format with Prettier
-        entry: bunx prettier --write --ignore-unknown
+      - id: biome
+        name: Format and lint with Biome
+        entry: bunx biome check --write
         language: system
-        types_or: [javascript, ts, svelte, json, markdown, css, yaml]
+        types_or: [javascript, ts, svelte, json, css]
 
       - id: svelte-check
         name: TypeScript and Svelte type check

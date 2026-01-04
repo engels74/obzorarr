@@ -1,18 +1,18 @@
-import { describe, expect, it, beforeEach, afterEach, spyOn, mock } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import {
-	requestPin,
+	buildPlexOAuthUrl,
 	checkPinStatus,
-	pollPinForToken,
-	getPlexUserInfo,
 	getPinInfo,
-	buildPlexOAuthUrl
+	getPlexUserInfo,
+	pollPinForToken,
+	requestPin
 } from '$lib/server/auth/plex-oauth';
 import {
-	PlexAuthApiError,
 	PinExpiredError,
 	PLEX_CLIENT_ID,
 	PLEX_PRODUCT,
-	PLEX_VERSION
+	PLEX_VERSION,
+	PlexAuthApiError
 } from '$lib/server/auth/types';
 
 /**

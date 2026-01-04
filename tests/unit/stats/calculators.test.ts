@@ -1,29 +1,28 @@
 import { describe, expect, it } from 'bun:test';
 
 import {
-	calculateWatchTime,
+	BINGE_GAP_THRESHOLD_SECONDS,
+	calculateHourlyDistribution,
+	calculateMonthlyDistribution,
+	calculatePercentileRank,
+	calculateTopGenres,
 	calculateTopMovies,
 	calculateTopShows,
-	calculateTopGenres,
-	calculateMonthlyDistribution,
-	calculateHourlyDistribution,
-	calculatePercentileRank,
-	detectLongestBinge,
+	calculateWatchTime,
 	detectAllBingeSessions,
+	detectLongestBinge,
 	findFirstWatch,
-	findLastWatch,
-	BINGE_GAP_THRESHOLD_SECONDS
+	findLastWatch
 } from '$lib/server/stats/calculators';
 
 import {
-	getYearStartTimestamp,
-	getYearEndTimestamp,
-	createYearFilter,
+	getHourFromTimestamp,
 	getMonthFromTimestamp,
-	getHourFromTimestamp
+	getYearEndTimestamp,
+	getYearStartTimestamp
 } from '$lib/server/stats/utils';
 
-import { createPlayHistoryRecord, createMultipleRecords } from '../../helpers/factories';
+import { createPlayHistoryRecord } from '../../helpers/factories';
 
 // Alias for cleaner test code
 const createRecord = createPlayHistoryRecord;

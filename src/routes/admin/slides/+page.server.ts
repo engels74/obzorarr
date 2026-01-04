@@ -1,35 +1,33 @@
 import { fail } from '@sveltejs/kit';
-import { z } from 'zod';
-import type { PageServerLoad, Actions } from './$types';
-import {
-	initializeDefaultSlideConfig,
-	getAllSlideConfigs,
-	updateSlideConfig,
-	reorderSlides,
-	toggleSlide
-} from '$lib/server/slides/config.service';
-import {
-	getAllCustomSlides,
-	createCustomSlide,
-	updateCustomSlide,
-	deleteCustomSlide,
-	getNextSortOrder,
-	toggleCustomSlide
-} from '$lib/server/slides/custom.service';
-import { renderMarkdownSync } from '$lib/server/slides/renderer';
 import type { SlideType } from '$lib/components/slides/types';
 import {
-	CreateCustomSlideSchema,
-	UpdateCustomSlideSchema,
-	SlideTypeSchema
-} from '$lib/server/slides/types';
-import {
-	getFunFactFrequency,
-	setFunFactFrequency,
 	FunFactFrequency,
-	type FunFactFrequencyType
+	type FunFactFrequencyType,
+	getFunFactFrequency,
+	setFunFactFrequency
 } from '$lib/server/admin/settings.service';
 import { getAvailableYears } from '$lib/server/admin/users.service';
+import {
+	getAllSlideConfigs,
+	initializeDefaultSlideConfig,
+	toggleSlide,
+	updateSlideConfig
+} from '$lib/server/slides/config.service';
+import {
+	createCustomSlide,
+	deleteCustomSlide,
+	getAllCustomSlides,
+	getNextSortOrder,
+	toggleCustomSlide,
+	updateCustomSlide
+} from '$lib/server/slides/custom.service';
+import { renderMarkdownSync } from '$lib/server/slides/renderer';
+import {
+	CreateCustomSlideSchema,
+	SlideTypeSchema,
+	UpdateCustomSlideSchema
+} from '$lib/server/slides/types';
+import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
 	// Initialize default config if needed
@@ -117,7 +115,7 @@ export const actions: Actions = {
 				} else if (item.type === 'custom') {
 					// Custom slide - store its new sort order
 					const customId = typeof item.id === 'string' ? parseInt(item.id, 10) : item.id;
-					if (isNaN(customId)) {
+					if (Number.isNaN(customId)) {
 						return fail(400, { error: `Invalid custom slide ID: ${item.id}` });
 					}
 					customSlideUpdates.push({ id: customId, sortOrder: i });
@@ -153,7 +151,7 @@ export const actions: Actions = {
 		}
 
 		const id = parseInt(idStr as string, 10);
-		if (isNaN(id)) {
+		if (Number.isNaN(id)) {
 			return fail(400, { error: 'Invalid slide ID' });
 		}
 
@@ -246,7 +244,7 @@ export const actions: Actions = {
 		}
 
 		const id = parseInt(idStr as string, 10);
-		if (isNaN(id)) {
+		if (Number.isNaN(id)) {
 			return fail(400, { error: 'Invalid slide ID' });
 		}
 
@@ -285,7 +283,7 @@ export const actions: Actions = {
 		}
 
 		const id = parseInt(idStr as string, 10);
-		if (isNaN(id)) {
+		if (Number.isNaN(id)) {
 			return fail(400, { error: 'Invalid slide ID' });
 		}
 
@@ -336,7 +334,7 @@ export const actions: Actions = {
 		let customCount: number | undefined;
 		if (mode === FunFactFrequency.CUSTOM && customCountStr) {
 			customCount = parseInt(customCountStr as string, 10);
-			if (isNaN(customCount) || customCount < 1 || customCount > 15) {
+			if (Number.isNaN(customCount) || customCount < 1 || customCount > 15) {
 				return fail(400, { error: 'Custom count must be between 1 and 15' });
 			}
 		}

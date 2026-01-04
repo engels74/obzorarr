@@ -69,7 +69,7 @@ export function animateNumber(
 		const progress = Math.min(elapsed / duration, 1);
 
 		// easeOutExpo - fast start, slow end
-		const eased = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+		const eased = progress === 1 ? 1 : 1 - 2 ** (-10 * progress);
 		const current = Math.round(from + (to - from) * eased);
 
 		onUpdate(current);
@@ -100,7 +100,7 @@ export function animateDecimal(
 	const startTime = performance.now();
 	let animationId: number;
 	let stopped = false;
-	const multiplier = Math.pow(10, decimals);
+	const multiplier = 10 ** decimals;
 
 	function update() {
 		if (stopped) return;
@@ -109,7 +109,7 @@ export function animateDecimal(
 		const progress = Math.min(elapsed / duration, 1);
 
 		// easeOutExpo
-		const eased = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+		const eased = progress === 1 ? 1 : 1 - 2 ** (-10 * progress);
 		const current = Math.round((from + (to - from) * eased) * multiplier) / multiplier;
 
 		onUpdate(current);

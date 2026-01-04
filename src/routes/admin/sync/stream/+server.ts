@@ -1,5 +1,5 @@
-import type { RequestHandler } from './$types';
 import { getSyncProgress, type LiveSyncProgress } from '$lib/server/sync/progress';
+import type { RequestHandler } from './$types';
 
 /**
  * SSE Endpoint for Real-Time Sync Progress Streaming
@@ -74,7 +74,7 @@ export const GET: RequestHandler = async ({ request }) => {
 						lastProgress = null;
 						terminalEventSent = false; // Reset for next sync
 					}
-				} catch (error) {
+				} catch (_error) {
 					// Send error event but keep connection open
 					controller.enqueue(
 						formatSSE({

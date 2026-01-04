@@ -1,16 +1,16 @@
+import { getPlexConfig, type PlexConfig } from '$lib/server/admin/settings.service';
 import { logger } from '$lib/server/logging';
+import { getPlexUserInfo } from './plex-oauth';
 import {
-	PlexFriendsResponseSchema,
-	PlexServerIdentitySchema,
-	PlexAuthApiError,
+	type NormalizedServerUser,
 	PLEX_CLIENT_ID,
 	PLEX_PRODUCT,
 	PLEX_VERSION,
-	type NormalizedServerUser,
+	PlexAuthApiError,
+	PlexFriendsResponseSchema,
+	PlexServerIdentitySchema,
 	type PlexSharedServerUser
 } from './types';
-import { getPlexUserInfo } from './plex-oauth';
-import { getPlexConfig, type PlexConfig } from '$lib/server/admin/settings.service';
 
 // SECURITY: This module should only be used in development mode.
 
@@ -222,7 +222,7 @@ export async function resolveUserIdentifier(
 	// Try parsing as numeric Plex ID first
 	const numericId = parseInt(identifier, 10);
 
-	if (!isNaN(numericId) && numericId > 0) {
+	if (!Number.isNaN(numericId) && numericId > 0) {
 		return getUserById(numericId);
 	}
 

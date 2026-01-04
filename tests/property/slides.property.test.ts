@@ -1,18 +1,15 @@
-import { describe, expect, it, beforeEach } from 'bun:test';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import * as fc from 'fast-check';
-
-import {
-	initializeDefaultSlideConfig,
-	getAllSlideConfigs,
-	getSlideConfigByType,
-	getEnabledSlides,
-	updateSlideConfig,
-	reorderSlides,
-	toggleSlide,
-	resetToDefaultConfig
-} from '$lib/server/slides/config.service';
-
 import { DEFAULT_SLIDE_ORDER, type SlideType } from '$lib/components/slides/types';
+import {
+	getAllSlideConfigs,
+	getEnabledSlides,
+	getSlideConfigByType,
+	reorderSlides,
+	resetToDefaultConfig,
+	toggleSlide,
+	updateSlideConfig
+} from '$lib/server/slides/config.service';
 
 /**
  * Property-based tests for Slide System

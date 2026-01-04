@@ -1,0 +1,84 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.3.11/schema.json",
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
+	"html": {
+		"experimentalFullSupportEnabled": true
+	},
+	"css": {
+		"parser": {
+			"cssModules": true
+		},
+		"linter": {
+			"enabled": true
+		}
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab",
+		"lineWidth": 100
+	},
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "single",
+			"trailingCommas": "none"
+		}
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true,
+			"suspicious": {
+				"noUnknownAtRules": "off",
+				"noExplicitAny": "warn",
+				"useIterableCallbackReturn": "off",
+				"noDuplicateProperties": "off",
+				"noImplicitAnyLet": "warn",
+				"noNonNullAssertedOptionalChain": "warn"
+			},
+			"complexity": {
+				"noImportantStyles": "off",
+				"useOptionalChain": "off"
+			},
+			"correctness": {
+				"noUnusedPrivateClassMembers": "off"
+			},
+			"style": {
+				"noNonNullAssertion": "off",
+				"noDescendingSpecificity": "off"
+			}
+		}
+	},
+	"overrides": [
+		{
+			"includes": ["**/*.svelte"],
+			"linter": {
+				"rules": {
+					"correctness": {
+						"noUnusedVariables": "off",
+						"noUnusedImports": "off"
+					},
+					"style": {
+						"useImportType": "off",
+						"useConst": "off"
+					}
+				}
+			}
+		}
+	],
+	"files": {
+		"includes": [
+			"**",
+			"!**/build",
+			"!**/.svelte-kit",
+			"!**/node_modules",
+			"!**/data",
+			"!**/drizzle",
+			"!**/*.db",
+			"!**/bun.lock"
+		]
+	}
+}

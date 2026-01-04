@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'bun:test';
 import * as fc from 'fast-check';
 import {
-	paginateAll,
-	fetchAllPaginatedWithStats,
 	calculateExpectedPages,
+	fetchAllPaginatedWithStats,
 	type PageFetcher,
-	type PageResult
+	type PageResult,
+	paginateAll
 } from '$lib/server/plex/pagination';
 
 /**
@@ -68,7 +68,7 @@ function generateTestItems(count: number): TestItem[] {
  */
 function createMockPageFetcher(
 	allItems: TestItem[],
-	pageSize: number
+	_pageSize: number
 ): { fetcher: PageFetcher<TestItem>; getPagesFetched: () => number } {
 	let pagesFetched = 0;
 

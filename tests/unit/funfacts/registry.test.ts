@@ -1,20 +1,20 @@
-import { describe, expect, it, beforeEach, afterAll } from 'bun:test';
+import { afterAll, beforeEach, describe, expect, it } from 'bun:test';
 import {
+	clearRegistry,
+	getAllTemplates,
+	getRegisteredCategories,
+	getTemplateById,
+	getTemplateCounts,
+	getTemplatesByCategory,
+	getTemplateWeight,
+	isRegistryInitialized,
+	markRegistryInitialized,
 	registerTemplate,
 	registerTemplates,
-	getAllTemplates,
-	getTemplatesByCategory,
-	getTemplateById,
-	getTemplateWeight,
-	getRegisteredCategories,
-	getTemplateCounts,
-	selectWeightedTemplates,
-	clearRegistry,
-	isRegistryInitialized,
-	markRegistryInitialized
+	selectWeightedTemplates
 } from '$lib/server/funfacts/registry';
 import { resetTemplates } from '$lib/server/funfacts/templates';
-import type { FactTemplate, FactCategory } from '$lib/server/funfacts/types';
+import type { FactTemplate } from '$lib/server/funfacts/types';
 
 function createTestTemplate(overrides: Partial<FactTemplate> = {}): FactTemplate {
 	return {

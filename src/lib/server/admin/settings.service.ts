@@ -1,8 +1,8 @@
+import { and, between, eq, sql } from 'drizzle-orm';
+import { env } from '$env/dynamic/private';
 import { db } from '$lib/server/db/client';
 import { appSettings, cachedStats, playHistory } from '$lib/server/db/schema';
-import { eq, and, sql, between } from 'drizzle-orm';
 import { createYearFilter } from '$lib/server/stats/utils';
-import { env } from '$env/dynamic/private';
 
 export const AppSettingsKey = {
 	PLEX_SERVER_URL: 'plex_server_url',
@@ -157,7 +157,7 @@ export async function getDefaultYear(): Promise<number> {
 	const year = await getAppSetting(AppSettingsKey.DEFAULT_YEAR);
 	if (year) {
 		const parsed = parseInt(year, 10);
-		if (!isNaN(parsed)) {
+		if (!Number.isNaN(parsed)) {
 			return parsed;
 		}
 	}
@@ -210,7 +210,7 @@ export async function getFunFactFrequency(): Promise<FunFactFrequencyConfig> {
 			break;
 		case FunFactFrequency.CUSTOM:
 			count = customCountStr ? parseInt(customCountStr, 10) : 4;
-			if (isNaN(count) || count < 1) count = 1;
+			if (Number.isNaN(count) || count < 1) count = 1;
 			if (count > 15) count = 15;
 			break;
 		default:

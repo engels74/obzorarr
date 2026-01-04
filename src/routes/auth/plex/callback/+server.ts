@@ -1,23 +1,19 @@
-import { json, error } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
+import { error, json } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
-import { db } from '$lib/server/db/client';
-import { users } from '$lib/server/db/schema';
+import { z } from 'zod';
+import { getApiConfigWithSources } from '$lib/server/admin/settings.service';
+import { requireServerMembership, verifyServerOwnership } from '$lib/server/auth/membership';
 import { getPlexUserInfo } from '$lib/server/auth/plex-oauth';
-import {
-	requireServerMembership,
-	verifyServerOwnership,
-	verifyServerMembership
-} from '$lib/server/auth/membership';
 import { createSession } from '$lib/server/auth/session';
 import {
-	PlexAuthApiError,
 	NotServerMemberError,
+	PlexAuthApiError,
 	SESSION_DURATION_MS
 } from '$lib/server/auth/types';
-import { getApiConfigWithSources } from '$lib/server/admin/settings.service';
+import { db } from '$lib/server/db/client';
+import { users } from '$lib/server/db/schema';
 import { requiresOnboarding } from '$lib/server/onboarding';
-import { z } from 'zod';
+import type { RequestHandler } from './$types';
 
 const CallbackRequestSchema = z.object({
 	authToken: z.string().min(1, 'Auth token is required')

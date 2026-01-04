@@ -1,53 +1,53 @@
 import { fail } from '@sveltejs/kit';
 import { z } from 'zod';
-import type { PageServerLoad, Actions } from './$types';
 import {
-	setAppSetting,
-	deleteAppSetting,
-	getUITheme,
-	setUITheme,
-	getWrappedTheme,
-	setWrappedTheme,
-	getAnonymizationMode,
-	setAnonymizationMode,
-	getWrappedLogoMode,
-	setWrappedLogoMode,
-	countStatsCache,
+	AnonymizationMode,
+	type AnonymizationModeType,
+	AppSettingsKey,
+	type ConfigSource,
+	clearPlayHistory,
 	clearStatsCache,
 	countPlayHistory,
-	clearPlayHistory,
+	countStatsCache,
+	deleteAppSetting,
+	getAnonymizationMode,
 	getApiConfigWithSources,
 	getCsrfConfigWithSource,
-	setCachedServerName,
+	getUITheme,
+	getWrappedLogoMode,
+	getWrappedTheme,
 	isCsrfWarningDismissed,
 	resetCsrfWarningDismissal,
-	AppSettingsKey,
+	setAnonymizationMode,
+	setAppSetting,
+	setCachedServerName,
+	setUITheme,
+	setWrappedLogoMode,
+	setWrappedTheme,
 	ThemePresets,
-	AnonymizationMode,
-	WrappedLogoMode,
 	type ThemePresetType,
-	type AnonymizationModeType,
-	type WrappedLogoModeType,
-	type ConfigSource
+	WrappedLogoMode,
+	type WrappedLogoModeType
 } from '$lib/server/admin/settings.service';
 import { getAvailableYears } from '$lib/server/admin/users.service';
 import {
-	getLogRetentionDays,
 	getLogMaxCount,
+	getLogRetentionDays,
 	isDebugEnabled,
-	setLogRetentionDays,
-	setLogMaxCount,
+	logger,
 	setDebugEnabled,
-	logger
+	setLogMaxCount,
+	setLogRetentionDays
 } from '$lib/server/logging';
 import {
-	getGlobalDefaultShareMode,
 	getGlobalAllowUserControl,
-	setGlobalShareDefaults,
+	getGlobalDefaultShareMode,
 	getServerWrappedShareMode,
+	setGlobalShareDefaults,
 	setServerWrappedShareMode
 } from '$lib/server/sharing/service';
 import type { ShareModeType } from '$lib/server/sharing/types';
+import type { Actions, PageServerLoad } from './$types';
 
 const ThemeSchema = z.enum([
 	'modern-minimal',
@@ -354,7 +354,7 @@ export const actions: Actions = {
 		let year: number | undefined;
 		if (yearStr) {
 			year = parseInt(yearStr, 10);
-			if (isNaN(year)) {
+			if (Number.isNaN(year)) {
 				return fail(400, { error: 'Invalid year' });
 			}
 		}
@@ -375,7 +375,7 @@ export const actions: Actions = {
 		let year: number | undefined;
 		if (yearStr) {
 			year = parseInt(yearStr, 10);
-			if (isNaN(year)) {
+			if (Number.isNaN(year)) {
 				return fail(400, { error: 'Invalid year' });
 			}
 		}
@@ -400,7 +400,7 @@ export const actions: Actions = {
 		let year: number | undefined;
 		if (yearStr) {
 			year = parseInt(yearStr, 10);
-			if (isNaN(year)) {
+			if (Number.isNaN(year)) {
 				return fail(400, { error: 'Invalid year' });
 			}
 		}
@@ -421,7 +421,7 @@ export const actions: Actions = {
 		let year: number | undefined;
 		if (yearStr) {
 			year = parseInt(yearStr, 10);
-			if (isNaN(year)) {
+			if (Number.isNaN(year)) {
 				return fail(400, { error: 'Invalid year' });
 			}
 		}

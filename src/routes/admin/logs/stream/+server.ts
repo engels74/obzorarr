@@ -1,5 +1,5 @@
+import { getLatestLogId, getLogsAfterId, type LogEntry } from '$lib/server/logging';
 import type { RequestHandler } from './$types';
-import { getLogsAfterId, getLatestLogId, type LogEntry } from '$lib/server/logging';
 
 const POLL_INTERVAL_BASE_MS = 1000;
 const POLL_INTERVAL_MAX_MS = 5000;
@@ -47,7 +47,7 @@ export const GET: RequestHandler = async ({ request }) => {
 							intervalId = setInterval(poll, currentInterval);
 						}
 					}
-				} catch (error) {
+				} catch (_error) {
 					controller.enqueue(
 						formatSSE({
 							type: 'error',

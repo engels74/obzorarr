@@ -1,20 +1,19 @@
-import { getAppSetting, AppSettingsKey } from '$lib/server/admin/settings.service';
-import type { UserStats, ServerStats, Stats } from '$lib/server/stats/types';
+import { AppSettingsKey, getAppSetting } from '$lib/server/admin/settings.service';
+import type { ServerStats, Stats, UserStats } from '$lib/server/stats/types';
 import { isUserStats } from '$lib/server/stats/types';
-import { ALL_TEMPLATES } from './templates';
-import { EQUIVALENCY_FACTORS, MONTH_NAMES, ENTERTAINMENT_FACTORS, formatHour } from './constants';
-import { selectWeightedTemplates, getAllTemplates } from './registry';
-import { enrichContext, buildEnhancedPrompt } from './ai';
+import { buildEnhancedPrompt, enrichContext } from './ai';
+import { EQUIVALENCY_FACTORS, formatHour, MONTH_NAMES } from './constants';
+import { getAllTemplates, selectWeightedTemplates } from './registry';
 import type {
-	FunFact,
-	FactTemplate,
-	FactGenerationContext,
-	GenerateFunFactsOptions,
-	FunFactsConfig,
+	AIPersona,
 	FactCategory,
-	AIPersona
+	FactGenerationContext,
+	FactTemplate,
+	FunFact,
+	FunFactsConfig,
+	GenerateFunFactsOptions
 } from './types';
-import { AIGenerationError, InsufficientStatsError } from './types';
+import { AIGenerationError } from './types';
 
 export async function getFunFactsConfig(): Promise<FunFactsConfig> {
 	const [apiKey, baseUrl, model, persona] = await Promise.all([
@@ -148,7 +147,7 @@ function getPronounReplacements(scope: 'user' | 'server'): Record<string, string
 	};
 }
 
-function pluralize(count: number, singular: string, plural: string): string {
+function _pluralize(count: number, singular: string, plural: string): string {
 	return count === 1 ? singular : plural;
 }
 
@@ -394,7 +393,6 @@ export async function generateWithAI(
 
 			// Network error - retryable
 			lastError = new AIGenerationError(`AI generation failed: ${(error as Error).message}`, error);
-			continue;
 		} finally {
 			clearTimeout(timeoutId);
 		}

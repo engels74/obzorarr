@@ -1,25 +1,25 @@
 import { error } from '@sveltejs/kit';
-import type { PageServerLoad } from './$types';
-import { getServerStatsWithAnonymization } from '$lib/server/stats/engine';
-import {
-	initializeDefaultSlideConfig,
-	getEnabledSlides,
-	getEnabledCustomSlides,
-	buildSlideRenderConfigs,
-	customSlidesToMap,
-	intersperseFunFacts
-} from '$lib/server/slides';
+import { getFunFactFrequency } from '$lib/server/admin/settings.service';
 import { generateFunFacts } from '$lib/server/funfacts';
 import { getLogoVisibility } from '$lib/server/logo';
 import { getServerName } from '$lib/server/plex/server-name.service';
-import { getFunFactFrequency } from '$lib/server/admin/settings.service';
-import { triggerLiveSyncIfNeeded } from '$lib/server/sync/live-sync';
 import { checkServerWrappedAccess } from '$lib/server/sharing/access-control';
 import { ShareAccessDeniedError } from '$lib/server/sharing/types';
+import {
+	buildSlideRenderConfigs,
+	customSlidesToMap,
+	getEnabledCustomSlides,
+	getEnabledSlides,
+	initializeDefaultSlideConfig,
+	intersperseFunFacts
+} from '$lib/server/slides';
+import { getServerStatsWithAnonymization } from '$lib/server/stats/engine';
+import { triggerLiveSyncIfNeeded } from '$lib/server/sync/live-sync';
+import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const year = parseInt(params.year, 10);
-	if (isNaN(year) || year < 2000 || year > 2100) {
+	if (Number.isNaN(year) || year < 2000 || year > 2100) {
 		error(404, 'Invalid year');
 	}
 

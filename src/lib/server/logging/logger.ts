@@ -1,5 +1,5 @@
 import { insertLogsBatch, isDebugEnabled } from './service';
-import { LogLevel, type LogLevelType, type NewLogEntry } from './types';
+import { LogLevel, type NewLogEntry } from './types';
 
 const BATCH_SIZE = 50;
 const FLUSH_INTERVAL_MS = 100;

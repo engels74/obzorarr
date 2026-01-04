@@ -1,17 +1,17 @@
 import { env } from '$env/dynamic/private';
+import { getPlexConfig } from '$lib/server/admin/settings.service';
 import {
+	type FetchHistoryOptions,
+	type HistoryPageResult,
+	type HistoryPageWithStats,
+	hasRequiredFields,
+	PlexApiError,
 	PlexHistoryResponseSchema,
 	PlexLibraryMetadataResponseSchema,
 	PlexShowMetadataResponseSchema,
-	PlexApiError,
 	PlexValidationError,
-	hasRequiredFields,
-	type ValidPlexHistoryMetadata,
-	type FetchHistoryOptions,
-	type HistoryPageResult,
-	type HistoryPageWithStats
+	type ValidPlexHistoryMetadata
 } from './types';
-import { getPlexConfig, type PlexConfig } from '$lib/server/admin/settings.service';
 
 function getPlexHeaders(token: string) {
 	return {
