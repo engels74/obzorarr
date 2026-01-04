@@ -5,8 +5,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	return {
 		adminUser: {
-			id: locals.user?.id,
-			username: locals.user?.username
+			id: locals.user!.id,
+			username: locals.user!.username
 		},
 		currentYear
 	};
