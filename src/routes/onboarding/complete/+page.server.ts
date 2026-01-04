@@ -5,18 +5,18 @@
  * Provides summary of configuration and link to dashboard.
  */
 
-import type { PageServerLoad, Actions } from './$types';
 import { redirect } from '@sveltejs/kit';
-import { completeOnboarding } from '$lib/server/onboarding';
-import { isSyncRunning, getSyncProgress, getPlayHistoryCount } from '$lib/server/sync';
 import {
+	getAnonymizationMode,
+	getCachedServerName,
 	getUITheme,
-	getWrappedTheme,
-	getAnonymizationMode
+	getWrappedTheme
 } from '$lib/server/admin/settings.service';
-import { getGlobalDefaultShareMode } from '$lib/server/sharing/service';
-import { getCachedServerName } from '$lib/server/admin/settings.service';
 import { logger } from '$lib/server/logging';
+import { completeOnboarding } from '$lib/server/onboarding';
+import { getGlobalDefaultShareMode } from '$lib/server/sharing/service';
+import { getPlayHistoryCount, getSyncProgress, isSyncRunning } from '$lib/server/sync';
+import type { Actions, PageServerLoad } from './$types';
 
 /**
  * Load function - marks onboarding complete and provides summary

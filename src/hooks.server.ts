@@ -1,15 +1,15 @@
 import type { Handle, HandleServerError } from '@sveltejs/kit';
-import { redirect, isRedirect } from '@sveltejs/kit';
+import { isRedirect, redirect } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { dev } from '$app/environment';
+import { env } from '$env/dynamic/private';
+import { clearConflictingDbSettings } from '$lib/server/admin/settings.service';
+import { getOrCreateDevSession, isDevBypassEnabled } from '$lib/server/auth/dev-bypass';
 import { validateSession } from '$lib/server/auth/session';
-import { isDevBypassEnabled, getOrCreateDevSession } from '$lib/server/auth/dev-bypass';
 import { SESSION_DURATION_MS } from '$lib/server/auth/types';
 import { logger } from '$lib/server/logging';
-import { requiresOnboarding, getOnboardingStep } from '$lib/server/onboarding';
-import { env } from '$env/dynamic/private';
-import { requestFilterHandle, rateLimitHandle, csrfHandle } from '$lib/server/security';
-import { clearConflictingDbSettings } from '$lib/server/admin/settings.service';
+import { getOnboardingStep, requiresOnboarding } from '$lib/server/onboarding';
+import { csrfHandle, rateLimitHandle, requestFilterHandle } from '$lib/server/security';
 
 const securityHeadersHandle: Handle = async ({ event, resolve }) => {
 	const response = await resolve(event);

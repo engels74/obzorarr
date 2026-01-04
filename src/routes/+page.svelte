@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
 	import { animate } from 'motion';
 	import { prefersReducedMotion } from 'svelte/motion';
 	import { browser } from '$app/environment';
-	import Logo from '$lib/components/Logo.svelte';
+	import { enhance } from '$app/forms';
 	import PopupBlockedModal from '$lib/components/auth/PopupBlockedModal.svelte';
-	import type { PageData, ActionData } from './$types';
+	import Logo from '$lib/components/Logo.svelte';
+	import type { ActionData, PageData } from './$types';
 
 	/**
 	 * Public Landing Page

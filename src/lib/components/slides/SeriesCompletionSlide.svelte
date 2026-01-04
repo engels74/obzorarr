@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { animate, stagger } from 'motion';
 	import { prefersReducedMotion } from 'svelte/motion';
-	import BaseSlide from './BaseSlide.svelte';
-	import type { SeriesCompletionSlideProps } from './types';
-	import type { SlideMessagingContext } from './messaging-context';
-	import { getPossessive, createPersonalContext } from './messaging-context';
-	import { SPRING_PRESETS, DELAY_PRESETS, getAdaptiveStagger } from '$lib/utils/animation-presets';
+	import { DELAY_PRESETS, getAdaptiveStagger, SPRING_PRESETS } from '$lib/utils/animation-presets';
 	import { getThumbUrl } from '$lib/utils/plex-thumb';
+	import BaseSlide from './BaseSlide.svelte';
+	import type { SlideMessagingContext } from './messaging-context';
+	import { createPersonalContext, getPossessive } from './messaging-context';
+	import type { SeriesCompletionSlideProps } from './types';
 
 	interface Props extends SeriesCompletionSlideProps {
 		messagingContext?: SlideMessagingContext;

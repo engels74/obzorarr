@@ -29,7 +29,7 @@
 		const stepElements = containerRef.querySelectorAll('.step-item');
 		if (stepElements.length === 0) return;
 
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		// biome-ignore lint/suspicious/noExplicitAny: Motion's animate function has complex overloads
 		(animate as any)(
 			stepElements,
 			{ opacity: [0, 1], transform: ['translateY(20px)', 'translateY(0)'] },

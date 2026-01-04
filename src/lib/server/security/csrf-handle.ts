@@ -1,7 +1,7 @@
 import type { Handle } from '@sveltejs/kit';
 import { dev } from '$app/environment';
-import { logger } from '$lib/server/logging';
 import { getCsrfConfigWithSource } from '$lib/server/admin/settings.service';
+import { logger } from '$lib/server/logging';
 
 const STATE_CHANGING_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
 

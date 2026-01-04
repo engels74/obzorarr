@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { animate } from 'motion';
 	import { prefersReducedMotion } from 'svelte/motion';
-	import BaseSlide from './BaseSlide.svelte';
-	import type { FirstLastSlideProps } from './types';
+	import { DELAY_PRESETS, KEYFRAMES, SPRING_PRESETS } from '$lib/utils/animation-presets';
 	import { getThumbUrl } from '$lib/utils/plex-thumb';
+	import BaseSlide from './BaseSlide.svelte';
 	import type { SlideMessagingContext } from './messaging-context';
-	import { getPossessive, createPersonalContext } from './messaging-context';
-	import { SPRING_PRESETS, DELAY_PRESETS, KEYFRAMES } from '$lib/utils/animation-presets';
+	import { createPersonalContext, getPossessive } from './messaging-context';
+	import type { FirstLastSlideProps } from './types';
 
 	interface Props extends FirstLastSlideProps {
 		messagingContext?: SlideMessagingContext;

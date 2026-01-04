@@ -1,8 +1,8 @@
 <script lang="ts">
-	import * as AlertDialog from '$lib/components/ui/alert-dialog';
+	import Settings from '@lucide/svelte/icons/settings';
 	import ShieldAlert from '@lucide/svelte/icons/shield-alert';
 	import X from '@lucide/svelte/icons/x';
-	import Settings from '@lucide/svelte/icons/settings';
+	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 
 	interface Props {
 		onDismiss: () => void;

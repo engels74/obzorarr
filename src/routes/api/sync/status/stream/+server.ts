@@ -1,5 +1,5 @@
-import type { RequestHandler } from './$types';
 import { getSyncProgress, type LiveSyncProgress } from '$lib/server/sync/progress';
+import type { RequestHandler } from './$types';
 
 const POLL_INTERVAL_ACTIVE_MS = 500;
 const POLL_INTERVAL_IDLE_MS = 2000;

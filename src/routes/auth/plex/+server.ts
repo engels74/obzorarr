@@ -1,8 +1,8 @@
-import { json, error } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { getPinInfo, checkPinStatus } from '$lib/server/auth/plex-oauth';
-import { PlexAuthApiError, PinExpiredError } from '$lib/server/auth/types';
+import { error, json } from '@sveltejs/kit';
 import { z } from 'zod';
+import { checkPinStatus, getPinInfo } from '$lib/server/auth/plex-oauth';
+import { PinExpiredError, PlexAuthApiError } from '$lib/server/auth/types';
+import type { RequestHandler } from './$types';
 
 const PollRequestSchema = z.object({
 	pinId: z.number().int().positive()

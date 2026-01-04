@@ -1,4 +1,4 @@
-export type { LiveSyncStatus, SyncPhase, LiveSyncProgress } from '$lib/sync/types';
+export type { LiveSyncProgress, LiveSyncStatus, SyncPhase } from '$lib/sync/types';
 
 import type { LiveSyncProgress } from '$lib/sync/types';
 

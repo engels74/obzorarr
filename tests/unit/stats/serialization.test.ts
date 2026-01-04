@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'bun:test';
 import {
-	serializeStats,
-	parseUserStats,
 	parseServerStats,
 	parseStats,
+	parseUserStats,
 	roundTripStats,
-	StatsParseError
+	StatsParseError,
+	serializeStats
 } from '$lib/server/stats/serialization';
-import type { UserStats, ServerStats } from '$lib/server/stats/types';
+import type { ServerStats, UserStats } from '$lib/server/stats/types';
 
 /**
  * Unit tests for Stats Serialization

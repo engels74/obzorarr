@@ -1,6 +1,6 @@
+import { and, between, eq, sql } from 'drizzle-orm';
 import { db } from '$lib/server/db/client';
-import { users, playHistory, shareSettings } from '$lib/server/db/schema';
-import { eq, sql, and, between } from 'drizzle-orm';
+import { playHistory, shareSettings, users } from '$lib/server/db/schema';
 import type { ShareModeType } from '$lib/server/sharing/types';
 
 export interface UserWithStats {

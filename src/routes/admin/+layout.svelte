@@ -1,22 +1,22 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import FileText from '@lucide/svelte/icons/file-text';
+	import Gift from '@lucide/svelte/icons/gift';
+	import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
+	import LogOut from '@lucide/svelte/icons/log-out';
+	import Menu from '@lucide/svelte/icons/menu';
+	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
+	import Settings from '@lucide/svelte/icons/settings';
+	import User from '@lucide/svelte/icons/user';
+	import Users from '@lucide/svelte/icons/users';
+	import X from '@lucide/svelte/icons/x';
+	import type { Component, Snippet } from 'svelte';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
-	import type { LayoutData } from './$types';
-	import type { Snippet, Component } from 'svelte';
+	import { page } from '$app/stores';
 	import Logo from '$lib/components/Logo.svelte';
 	import CsrfWarningBanner from '$lib/components/security/CsrfWarningBanner.svelte';
-	import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
-	import Gift from '@lucide/svelte/icons/gift';
-	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
-	import Users from '@lucide/svelte/icons/users';
-	import FileText from '@lucide/svelte/icons/file-text';
-	import Settings from '@lucide/svelte/icons/settings';
-	import Menu from '@lucide/svelte/icons/menu';
-	import X from '@lucide/svelte/icons/x';
-	import LogOut from '@lucide/svelte/icons/log-out';
-	import User from '@lucide/svelte/icons/user';
-	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import type { LayoutData } from './$types';
 
 	/**
 	 * Admin Layout

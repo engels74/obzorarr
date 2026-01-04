@@ -1,5 +1,8 @@
-import { getCachedServerName, setCachedServerName } from '$lib/server/admin/settings.service';
-import { getApiConfigWithSources } from '$lib/server/admin/settings.service';
+import {
+	getApiConfigWithSources,
+	getCachedServerName,
+	setCachedServerName
+} from '$lib/server/admin/settings.service';
 import { logger } from '$lib/server/logging';
 
 const ROOT_ENDPOINT = '/';

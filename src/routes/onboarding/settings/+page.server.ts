@@ -5,40 +5,40 @@
  * Uses simplified settings focused on initial setup.
  */
 
-import type { PageServerLoad, Actions } from './$types';
 import { fail, redirect } from '@sveltejs/kit';
 import { z } from 'zod';
-import { setOnboardingStep, OnboardingSteps } from '$lib/server/onboarding';
+import { DEFAULT_SLIDE_ORDER, type SlideType } from '$lib/components/slides/types';
 import {
-	getUITheme,
-	setUITheme,
-	getWrappedTheme,
-	setWrappedTheme,
-	getAnonymizationMode,
-	setAnonymizationMode,
-	getFunFactFrequency,
-	setFunFactFrequency,
-	hasOpenAIEnvConfig,
-	ThemePresets,
 	AnonymizationMode,
-	FunFactFrequency,
-	type ThemePresetType,
 	type AnonymizationModeType,
-	type FunFactFrequencyType
+	FunFactFrequency,
+	type FunFactFrequencyType,
+	getAnonymizationMode,
+	getFunFactFrequency,
+	getUITheme,
+	getWrappedTheme,
+	hasOpenAIEnvConfig,
+	setAnonymizationMode,
+	setFunFactFrequency,
+	setUITheme,
+	setWrappedTheme,
+	ThemePresets,
+	type ThemePresetType
 } from '$lib/server/admin/settings.service';
+import { logger } from '$lib/server/logging';
+import { OnboardingSteps, setOnboardingStep } from '$lib/server/onboarding';
 import {
-	getGlobalDefaultShareMode,
 	getGlobalAllowUserControl,
+	getGlobalDefaultShareMode,
 	setGlobalShareDefaults
 } from '$lib/server/sharing/service';
-import { ShareMode, type ShareModeType } from '$lib/sharing/types';
 import {
 	getAllSlideConfigs,
-	updateSlideConfig,
-	initializeDefaultSlideConfig
+	initializeDefaultSlideConfig,
+	updateSlideConfig
 } from '$lib/server/slides/config.service';
-import { DEFAULT_SLIDE_ORDER, type SlideType } from '$lib/components/slides/types';
-import { logger } from '$lib/server/logging';
+import { ShareMode, type ShareModeType } from '$lib/sharing/types';
+import type { Actions, PageServerLoad } from './$types';
 
 /**
  * Validation schema for settings form

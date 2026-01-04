@@ -1,6 +1,6 @@
-import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
 import { getOnboardingStep } from '$lib/server/onboarding';
+import type { PageServerLoad } from './$types';
 
 /**
  * Root onboarding page redirects to current step

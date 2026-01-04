@@ -1,26 +1,26 @@
 import { describe, expect, it } from 'bun:test';
 import * as fc from 'fast-check';
+import {
+	parseServerStats,
+	parseUserStats,
+	roundTripStats,
+	serializeStats
+} from '$lib/server/stats/serialization';
 import type {
-	UserStats,
-	ServerStats,
-	RankedItem,
 	BingeSession,
-	WatchRecord,
-	WeekdayDistribution,
 	ContentTypeBreakdown,
 	DecadeDistributionItem,
-	SeriesCompletionItem,
-	RewatchItem,
 	MarathonDay,
+	RankedItem,
+	RewatchItem,
+	SeriesCompletionItem,
+	ServerStats,
+	UserStats,
+	WatchRecord,
 	WatchStreak,
+	WeekdayDistribution,
 	YearComparison
 } from '$lib/server/stats/types';
-import {
-	serializeStats,
-	parseUserStats,
-	parseServerStats,
-	roundTripStats
-} from '$lib/server/stats/serialization';
 
 /**
  * Property-based tests for statistics serialization round-trip

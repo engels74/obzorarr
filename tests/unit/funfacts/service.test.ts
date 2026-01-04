@@ -5,35 +5,29 @@
  * and random selection functions.
  */
 
-import { describe, expect, it, beforeEach, afterEach, spyOn } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
+import { AppSettingsKey } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
 import { appSettings } from '$lib/server/db/schema';
-import { AppSettingsKey } from '$lib/server/admin/settings.service';
-
+import type { FactGenerationContext, FactTemplate } from '$lib/server/funfacts';
 import {
-	buildGenerationContext,
-	isTemplateApplicable,
-	interpolateTemplate,
-	generateFromTemplate,
-	selectRandomTemplates,
-	generateFromTemplates,
-	getFunFactsConfig,
-	isAIAvailable,
-	generateWithAI,
-	generateFunFacts
-} from '$lib/server/funfacts';
-
-import { AIGenerationError } from '$lib/server/funfacts';
-
-import {
+	AIGenerationError,
 	ALL_TEMPLATES,
-	TIME_EQUIVALENCY_TEMPLATES,
+	buildGenerationContext,
 	EQUIVALENCY_FACTORS,
-	MONTH_NAMES
+	generateFromTemplate,
+	generateFromTemplates,
+	generateFunFacts,
+	generateWithAI,
+	getFunFactsConfig,
+	interpolateTemplate,
+	isAIAvailable,
+	isTemplateApplicable,
+	MONTH_NAMES,
+	selectRandomTemplates,
+	TIME_EQUIVALENCY_TEMPLATES
 } from '$lib/server/funfacts';
-
-import type { UserStats, ServerStats } from '$lib/server/stats/types';
-import type { FactTemplate, FactGenerationContext } from '$lib/server/funfacts';
+import type { ServerStats, UserStats } from '$lib/server/stats/types';
 
 // =============================================================================
 // Test Helpers

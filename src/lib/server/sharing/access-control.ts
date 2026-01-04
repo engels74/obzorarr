@@ -1,19 +1,19 @@
 import {
-	ShareMode,
-	ShareAccessDeniedError,
-	InvalidShareTokenError,
-	getMoreRestrictiveMode,
+	getGlobalDefaultShareMode,
+	getOrCreateShareSettings,
+	getServerWrappedShareMode,
+	getShareSettingsByToken
+} from './service';
+import {
 	type AccessCheckContext,
 	type AccessCheckResult,
-	type ShareSettings,
-	type ShareModeType
+	getMoreRestrictiveMode,
+	InvalidShareTokenError,
+	ShareAccessDeniedError,
+	ShareMode,
+	type ShareModeType,
+	type ShareSettings
 } from './types';
-import {
-	getShareSettingsByToken,
-	getOrCreateShareSettings,
-	getGlobalDefaultShareMode,
-	getServerWrappedShareMode
-} from './service';
 
 export function checkAccess(context: AccessCheckContext): AccessCheckResult {
 	if (context.isOwner) {

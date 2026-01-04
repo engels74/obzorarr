@@ -1,7 +1,7 @@
 <script lang="ts">
-	import type { LiveSyncProgress } from '$lib/sync/types';
 	import { prefersReducedMotion } from 'svelte/motion';
 	import { fade } from 'svelte/transition';
+	import type { LiveSyncProgress } from '$lib/sync/types';
 
 	interface Props {
 		/** Whether the overlay should be visible */

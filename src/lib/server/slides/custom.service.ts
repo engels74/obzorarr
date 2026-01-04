@@ -1,15 +1,15 @@
+import { and, asc, eq, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db/client';
 import { customSlides } from '$lib/server/db/schema';
-import { eq, and, isNull, asc } from 'drizzle-orm';
+import { containsUnsafeHtml, validateMarkdownSyntax } from './renderer';
 import {
-	SlideError,
-	CreateCustomSlideSchema,
-	UpdateCustomSlideSchema,
-	type CustomSlide,
 	type CreateCustomSlide,
-	type UpdateCustomSlide
+	CreateCustomSlideSchema,
+	type CustomSlide,
+	SlideError,
+	type UpdateCustomSlide,
+	UpdateCustomSlideSchema
 } from './types';
-import { validateMarkdownSyntax, containsUnsafeHtml } from './renderer';
 
 export async function createCustomSlide(data: CreateCustomSlide): Promise<CustomSlide> {
 	const parsed = CreateCustomSlideSchema.safeParse(data);
@@ -60,18 +60,14 @@ export async function createCustomSlide(data: CreateCustomSlide): Promise<Custom
 }
 
 export async function getAllCustomSlides(year?: number): Promise<CustomSlide[]> {
-	let results;
-
-	if (year !== undefined) {
-		// Filter by specific year or null (all years)
-		results = await db
-			.select()
-			.from(customSlides)
-			.where(eq(customSlides.year, year))
-			.orderBy(asc(customSlides.sortOrder));
-	} else {
-		results = await db.select().from(customSlides).orderBy(asc(customSlides.sortOrder));
-	}
+	const results =
+		year !== undefined
+			? await db
+					.select()
+					.from(customSlides)
+					.where(eq(customSlides.year, year))
+					.orderBy(asc(customSlides.sortOrder))
+			: await db.select().from(customSlides).orderBy(asc(customSlides.sortOrder));
 
 	return results.map((record) => ({
 		id: record.id,

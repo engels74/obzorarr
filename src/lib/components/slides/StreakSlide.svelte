@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { animate } from 'motion';
 	import { prefersReducedMotion } from 'svelte/motion';
+	import { DELAY_PRESETS, SPRING_PRESETS } from '$lib/utils/animation-presets';
 	import BaseSlide from './BaseSlide.svelte';
-	import type { StreakSlideProps } from './types';
 	import type { SlideMessagingContext } from './messaging-context';
-	import { getPossessive, createPersonalContext } from './messaging-context';
-	import { SPRING_PRESETS, DELAY_PRESETS } from '$lib/utils/animation-presets';
+	import { createPersonalContext, getPossessive } from './messaging-context';
+	import type { StreakSlideProps } from './types';
 
 	interface Props extends StreakSlideProps {
 		messagingContext?: SlideMessagingContext;

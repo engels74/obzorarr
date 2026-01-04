@@ -1,4 +1,4 @@
-import type { FactTemplate, FactCategory } from './types';
+import type { FactCategory, FactTemplate } from './types';
 import { FactTemplateSchema } from './types';
 
 export interface RegisterOptions {

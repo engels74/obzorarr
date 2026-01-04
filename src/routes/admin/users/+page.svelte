@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { handleFormToast } from '$lib/utils/form-toast';
-	import type { PageData, ActionData } from './$types';
+	import type { ActionData, PageData } from './$types';
 
 	/**
 	 * Admin Users Page

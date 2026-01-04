@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { page } from '$app/stores';
-	import * as Tabs from '$lib/components/ui/tabs';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
+	import * as Tabs from '$lib/components/ui/tabs';
 	import { handleFormToast } from '$lib/utils/form-toast';
-	import type { PageData, ActionData } from './$types';
+	import type { ActionData, PageData } from './$types';
 
 	/**
 	 * User Settings Page

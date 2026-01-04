@@ -334,7 +334,7 @@ describe('Property 4: Pagination Completeness', () => {
 			const totalRecords = 5000;
 			const pageSize = 100;
 			const allItems = generateTestItems(totalRecords);
-			const { fetcher, getPagesFetched } = createMockPageFetcher(allItems, pageSize);
+			const { fetcher } = createMockPageFetcher(allItems, pageSize);
 
 			const result = await fetchAllPaginatedWithStats(fetcher, pageSize);
 

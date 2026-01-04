@@ -1,7 +1,7 @@
 import { and, gte, lte, sql } from 'drizzle-orm';
 import type { BunSQLiteDatabase } from 'drizzle-orm/bun-sqlite';
-import { playHistory } from '$lib/server/db/schema';
 import type * as schema from '$lib/server/db/schema';
+import { playHistory } from '$lib/server/db/schema';
 import type { YearFilter } from '../utils';
 
 export function calculatePercentileRank(

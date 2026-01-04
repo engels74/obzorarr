@@ -1,12 +1,12 @@
-import type { PageServerLoad } from './$types';
 import { getUserCount } from '$lib/server/admin/users.service';
+import { calculateServerStats } from '$lib/server/stats/engine';
+import { getSchedulerStatus } from '$lib/server/sync/scheduler';
 import {
-	getPlayHistoryCount,
 	getLastSuccessfulSync,
+	getPlayHistoryCount,
 	isSyncRunning
 } from '$lib/server/sync/service';
-import { getSchedulerStatus } from '$lib/server/sync/scheduler';
-import { calculateServerStats } from '$lib/server/stats/engine';
+import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
 	const year = new Date().getFullYear();

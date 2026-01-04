@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'bun:test';
 import {
 	enrichContext,
-	isContextEnriched,
-	ensureEnrichedContext
+	ensureEnrichedContext,
+	isContextEnriched
 } from '$lib/server/funfacts/ai/context-enricher';
 import type { FactGenerationContext } from '$lib/server/funfacts/types';
 

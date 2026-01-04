@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
 import { getPlexConfig } from '$lib/server/admin/settings.service';
+import type { RequestHandler } from './$types';
 
 const CACHE_MAX_AGE = 7 * 24 * 60 * 60;
 

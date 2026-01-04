@@ -1,30 +1,30 @@
 <script lang="ts">
-	import type { SlideRenderConfig, SlideType } from '$lib/components/slides/types';
-	import type { UserStats, ServerStats } from '$lib/stats/types';
-	import type { CustomSlide } from '$lib/slides/types';
-	import type { SlideMessagingContext } from '$lib/components/slides/messaging-context';
-	import { createPersonalContext } from '$lib/components/slides/messaging-context';
 	import {
-		TotalTimeSlide,
-		TopMoviesSlide,
-		TopShowsSlide,
-		GenresSlide,
-		DistributionSlide,
-		PercentileSlide,
-		TopViewersSlide,
 		BingeSlide,
+		ContentTypeSlide,
+		CustomSlide as CustomSlideComponent,
+		DecadeSlide,
+		DistributionSlide,
 		FirstLastSlide,
 		FunFactSlide,
-		CustomSlide as CustomSlideComponent,
-		WeekdayPatternsSlide,
-		ContentTypeSlide,
-		DecadeSlide,
-		SeriesCompletionSlide,
-		RewatchSlide,
+		GenresSlide,
 		MarathonSlide,
+		PercentileSlide,
+		RewatchSlide,
+		SeriesCompletionSlide,
 		StreakSlide,
+		TopMoviesSlide,
+		TopShowsSlide,
+		TopViewersSlide,
+		TotalTimeSlide,
+		WeekdayPatternsSlide,
 		YearComparisonSlide
 	} from '$lib/components/slides';
+	import type { SlideMessagingContext } from '$lib/components/slides/messaging-context';
+	import { createPersonalContext } from '$lib/components/slides/messaging-context';
+	import type { SlideRenderConfig, SlideType } from '$lib/components/slides/types';
+	import type { CustomSlide } from '$lib/slides/types';
+	import type { ServerStats, UserStats } from '$lib/stats/types';
 
 	interface Props {
 		slide: SlideRenderConfig;

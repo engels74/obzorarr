@@ -1,9 +1,9 @@
-import { redirect, fail } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import { z } from 'zod';
-import type { PageServerLoad, Actions } from './$types';
 import { checkRateLimit } from '$lib/server/ratelimit';
-import { findUserByUsername } from '$lib/server/sync/plex-accounts.service';
 import { triggerLiveSyncIfNeeded } from '$lib/server/sync/live-sync';
+import { findUserByUsername } from '$lib/server/sync/plex-accounts.service';
+import type { Actions, PageServerLoad } from './$types';
 
 const UsernameSchema = z.object({
 	username: z

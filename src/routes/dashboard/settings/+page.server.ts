@@ -1,24 +1,20 @@
 import { fail } from '@sveltejs/kit';
+import { eq } from 'drizzle-orm';
 import { z } from 'zod';
-import type { PageServerLoad, Actions } from './$types';
+import { getWrappedLogoMode, WrappedLogoMode } from '$lib/server/admin/settings.service';
 import { getUserFullProfile } from '$lib/server/admin/users.service';
-import {
-	getOrCreateShareSettings,
-	updateShareSettings,
-	regenerateShareToken,
-	updateUserLogoPreference,
-	getUserLogoPreference,
-	getGlobalDefaultShareMode
-} from '$lib/server/sharing/service';
-import {
-	getWrappedLogoMode,
-	WrappedLogoMode,
-	type WrappedLogoModeType
-} from '$lib/server/admin/settings.service';
-import { meetsPrivacyFloor, type ShareModeType } from '$lib/server/sharing/types';
 import { db } from '$lib/server/db/client';
 import { sessions } from '$lib/server/db/schema';
-import { eq } from 'drizzle-orm';
+import {
+	getGlobalDefaultShareMode,
+	getOrCreateShareSettings,
+	getUserLogoPreference,
+	regenerateShareToken,
+	updateShareSettings,
+	updateUserLogoPreference
+} from '$lib/server/sharing/service';
+import { meetsPrivacyFloor } from '$lib/server/sharing/types';
+import type { Actions, PageServerLoad } from './$types';
 
 const ShareModeSchema = z.enum(['public', 'private-oauth', 'private-link']);
 const LogoPreferenceSchema = z.enum(['show', 'hide']);
@@ -33,7 +29,7 @@ async function getSessionExpiration(userId: number): Promise<Date | null> {
 	return result[0]?.expiresAt ?? null;
 }
 
-export const load: PageServerLoad = async ({ locals, cookies }) => {
+export const load: PageServerLoad = async ({ locals }) => {
 	const userId = locals.user!.id;
 	const currentYear = new Date().getFullYear();
 

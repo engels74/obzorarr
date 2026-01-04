@@ -1,4 +1,4 @@
-import type { FactTemplate, FactCategory } from '../types';
+import type { FactCategory, FactTemplate } from '../types';
 
 export interface ExtendedTemplateDefinition extends Omit<FactTemplate, 'category'> {
 	tags?: string[];

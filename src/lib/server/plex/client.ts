@@ -145,7 +145,6 @@ async function fetchHistoryPage(
 export async function* fetchAllHistory(
 	options: FetchHistoryOptions = {}
 ): AsyncGenerator<HistoryPageWithStats, void, unknown> {
-	const { pageSize = DEFAULT_PAGE_SIZE } = options;
 	let offset = 0;
 	let totalSize: number | undefined;
 

@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
-	import { untrack } from 'svelte';
 	import { animate } from 'motion';
+	import { untrack } from 'svelte';
+	import { enhance } from '$app/forms';
 	import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
 	import { loadThemeFont } from '$lib/utils/theme-fonts';
-	import type { PageData, ActionData } from './$types';
+	import type { ActionData, PageData } from './$types';
 
 	/**
 	 * Onboarding Step 3: Settings Configuration
@@ -123,7 +123,7 @@
 
 		const xOffset = animationDirection === 'forward' ? 30 : -30;
 
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		// biome-ignore lint/suspicious/noExplicitAny: Motion's animate function has complex overloads
 		(animate as any)(
 			contentRef,
 			{

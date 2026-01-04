@@ -6,13 +6,12 @@
  * @module server/funfacts/ai
  */
 
+export { enrichContext, ensureEnrichedContext, isContextEnriched } from './context-enricher';
 export {
 	AI_PERSONAS,
-	getRandomPersona,
-	resolvePersona,
+	buildEnhancedPrompt,
 	buildSystemPrompt,
 	buildUserPrompt,
-	buildEnhancedPrompt
+	getRandomPersona,
+	resolvePersona
 } from './prompts';
-
-export { enrichContext, isContextEnriched, ensureEnrichedContext } from './context-enricher';

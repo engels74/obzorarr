@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { animate, stagger } from 'motion';
 	import { prefersReducedMotion } from 'svelte/motion';
-	import type { UserStats, ServerStats } from '$lib/stats/types';
-	import { isUserStats, isServerStats } from '$lib/stats/types';
-	import { SPRING_PRESETS, STAGGER_PRESETS, DELAY_PRESETS } from '$lib/utils/animation-presets';
+	import type { ServerStats, UserStats } from '$lib/stats/types';
+	import { isServerStats, isUserStats } from '$lib/stats/types';
+	import { DELAY_PRESETS, SPRING_PRESETS, STAGGER_PRESETS } from '$lib/utils/animation-presets';
 
 	interface Props {
 		stats: UserStats | ServerStats;

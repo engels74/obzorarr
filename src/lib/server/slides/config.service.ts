@@ -1,13 +1,13 @@
-import { db } from '$lib/server/db/client';
-import { slideConfig, appSettings } from '$lib/server/db/schema';
-import { eq, asc } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import { DEFAULT_SLIDE_ORDER, type SlideType } from '$lib/components/slides/types';
+import { db } from '$lib/server/db/client';
+import { appSettings, slideConfig } from '$lib/server/db/schema';
 import {
-	SlideTypeSchema,
-	SlideError,
 	type SlideConfig,
-	type UpdateSlideConfig,
-	type SlideTypeValue
+	SlideError,
+	SlideTypeSchema,
+	type SlideTypeValue,
+	type UpdateSlideConfig
 } from './types';
 
 const SLIDES_ENABLED_MIGRATION_KEY = 'slides_enabled_migration_v1';

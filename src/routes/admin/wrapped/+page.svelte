@@ -1,13 +1,13 @@
 <script lang="ts">
-	import type { PageData } from './$types';
-	import Star from '@lucide/svelte/icons/star';
-	import Server from '@lucide/svelte/icons/server';
-	import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
-	import Shield from '@lucide/svelte/icons/shield';
-	import Palette from '@lucide/svelte/icons/palette';
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
-	import Sparkles from '@lucide/svelte/icons/sparkles';
+	import Palette from '@lucide/svelte/icons/palette';
 	import Play from '@lucide/svelte/icons/play';
+	import Server from '@lucide/svelte/icons/server';
+	import Shield from '@lucide/svelte/icons/shield';
+	import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
+	import Sparkles from '@lucide/svelte/icons/sparkles';
+	import Star from '@lucide/svelte/icons/star';
+	import type { PageData } from './$types';
 
 	/**
 	 * Admin Wrapped Hub Page

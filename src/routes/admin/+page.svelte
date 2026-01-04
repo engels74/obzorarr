@@ -1,21 +1,21 @@
 <script lang="ts">
-	import type { PageData } from './$types';
-	import Users from '@lucide/svelte/icons/users';
-	import Clock from '@lucide/svelte/icons/clock';
-	import Play from '@lucide/svelte/icons/play';
-	import Database from '@lucide/svelte/icons/database';
-	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
-	import Star from '@lucide/svelte/icons/star';
-	import Server from '@lucide/svelte/icons/server';
-	import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
-	import Settings from '@lucide/svelte/icons/settings';
-	import ArrowRight from '@lucide/svelte/icons/arrow-right';
 	import Activity from '@lucide/svelte/icons/activity';
-	import CheckCircle from '@lucide/svelte/icons/check-circle';
 	import AlertCircle from '@lucide/svelte/icons/alert-circle';
-	import PauseCircle from '@lucide/svelte/icons/pause-circle';
+	import ArrowRight from '@lucide/svelte/icons/arrow-right';
+	import CheckCircle from '@lucide/svelte/icons/check-circle';
 	import Circle from '@lucide/svelte/icons/circle';
+	import Clock from '@lucide/svelte/icons/clock';
+	import Database from '@lucide/svelte/icons/database';
 	import Loader from '@lucide/svelte/icons/loader';
+	import PauseCircle from '@lucide/svelte/icons/pause-circle';
+	import Play from '@lucide/svelte/icons/play';
+	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
+	import Server from '@lucide/svelte/icons/server';
+	import Settings from '@lucide/svelte/icons/settings';
+	import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
+	import Star from '@lucide/svelte/icons/star';
+	import Users from '@lucide/svelte/icons/users';
+	import type { PageData } from './$types';
 
 	/**
 	 * Admin Dashboard

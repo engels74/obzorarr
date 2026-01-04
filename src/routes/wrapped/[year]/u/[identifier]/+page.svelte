@@ -1,16 +1,16 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
-	import {
-		StoryMode,
-		ScrollMode,
-		ModeToggle,
-		SummaryPage,
-		ShareModal,
-		YearNavigation
-	} from '$lib/components/wrapped';
 	import Logo from '$lib/components/Logo.svelte';
 	import { createPersonalContext } from '$lib/components/slides/messaging-context';
+	import {
+		ModeToggle,
+		ScrollMode,
+		ShareModal,
+		StoryMode,
+		SummaryPage,
+		YearNavigation
+	} from '$lib/components/wrapped';
 	import type { PageProps } from './$types';
 
 	/**

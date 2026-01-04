@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { animate, stagger } from 'motion';
 	import { prefersReducedMotion } from 'svelte/motion';
+	import { DELAY_PRESETS, getAdaptiveStagger, SPRING_PRESETS } from '$lib/utils/animation-presets';
 	import BaseSlide from './BaseSlide.svelte';
-	import type { WeekdayPatternsSlideProps } from './types';
 	import type { SlideMessagingContext } from './messaging-context';
-	import { getPossessive, createPersonalContext } from './messaging-context';
-	import { SPRING_PRESETS, DELAY_PRESETS, getAdaptiveStagger } from '$lib/utils/animation-presets';
+	import { createPersonalContext, getPossessive } from './messaging-context';
+	import type { WeekdayPatternsSlideProps } from './types';
 
 	interface Props extends WeekdayPatternsSlideProps {
 		messagingContext?: SlideMessagingContext;

@@ -1,17 +1,17 @@
 <script lang="ts">
 	import { animate, stagger } from 'motion';
 	import { prefersReducedMotion } from 'svelte/motion';
-	import BaseSlide from './BaseSlide.svelte';
-	import type { GenresSlideProps } from './types';
-	import type { SlideMessagingContext } from './messaging-context';
-	import { getPossessive, createPersonalContext } from './messaging-context';
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import {
-		SPRING_PRESETS,
 		DELAY_PRESETS,
+		getAdaptiveStagger,
 		KEYFRAMES,
-		getAdaptiveStagger
+		SPRING_PRESETS
 	} from '$lib/utils/animation-presets';
+	import BaseSlide from './BaseSlide.svelte';
+	import type { SlideMessagingContext } from './messaging-context';
+	import { createPersonalContext, getPossessive } from './messaging-context';
+	import type { GenresSlideProps } from './types';
 
 	interface Props extends GenresSlideProps {
 		messagingContext?: SlideMessagingContext;

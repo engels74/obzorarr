@@ -1,14 +1,14 @@
 import { Cron, type CronOptions } from 'croner';
-import { startSync, isSyncRunning } from './service';
-import type { SchedulerOptions, SchedulerStatus, SyncResult } from './types';
 import { logger } from '$lib/server/logging';
 import {
-	startSyncProgress,
-	updateSyncProgress as updateProgressStore,
+	clearSyncProgress,
 	completeSyncProgress,
 	failSyncProgress,
-	clearSyncProgress
+	startSyncProgress,
+	updateSyncProgress as updateProgressStore
 } from './progress';
+import { isSyncRunning, startSync } from './service';
+import type { SchedulerOptions, SchedulerStatus, SyncResult } from './types';
 
 const DEFAULT_CRON_EXPRESSION = '0 0 * * *';
 const DEFAULT_TIMEZONE = 'UTC';
