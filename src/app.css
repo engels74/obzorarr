@@ -8,7 +8,7 @@
 :root {
 	/* Font family (overridden per theme) */
 	--font-sans:
-		'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+		"Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
 	/* Base colors - Modern Minimal dark mode */
 	--background: 0 0% 8%;
@@ -100,7 +100,7 @@
 
 /* Theme: Modern Minimal (Default) - Clean blue aesthetic */
 .theme-modern-minimal {
-	--font-sans: 'Inter', system-ui, sans-serif;
+	--font-sans: "Inter", system-ui, sans-serif;
 	--background: 0 0% 8%;
 	--foreground: 0 0% 92%;
 	--card: 0 0% 11%;
@@ -126,7 +126,7 @@
 
 /* Theme: Supabase - Teal/green brand colors */
 .theme-supabase {
-	--font-sans: 'Outfit', system-ui, sans-serif;
+	--font-sans: "Outfit", system-ui, sans-serif;
 	--background: 0 0% 6%;
 	--foreground: 0 0% 93%;
 	--card: 160 10% 10%;
@@ -152,7 +152,7 @@
 
 /* Theme: Doom 64 - Retro orange/brown gaming aesthetic */
 .theme-doom-64 {
-	--font-sans: 'Oxanium', system-ui, sans-serif;
+	--font-sans: "Oxanium", system-ui, sans-serif;
 	--background: 0 0% 9%;
 	--foreground: 0 0% 90%;
 	--card: 27 15% 12%;
@@ -178,7 +178,7 @@
 
 /* Theme: Amber Minimal - Warm amber/yellow tones */
 .theme-amber-minimal {
-	--font-sans: 'Inter', system-ui, sans-serif;
+	--font-sans: "Inter", system-ui, sans-serif;
 	--background: 0 0% 8%;
 	--foreground: 0 0% 92%;
 	--card: 45 10% 11%;
@@ -204,7 +204,7 @@
 
 /* Theme: Soviet Red - Classic red aesthetic */
 .theme-soviet-red {
-	--font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+	--font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 	--background: 0 0% 6%;
 	--foreground: 0 0% 92%;
 	--card: 0 15% 10%;
@@ -235,7 +235,7 @@
 
 /* Theme: Obsidian Premium - Deep blacks with purple/platinum accents */
 .theme-obsidian-premium {
-	--font-sans: 'Inter', system-ui, sans-serif;
+	--font-sans: "Inter", system-ui, sans-serif;
 	--background: 260 15% 4%;
 	--foreground: 0 0% 95%;
 	--card: 260 20% 8%;
@@ -289,7 +289,7 @@
 
 /* Theme: Aurora Premium - Teal to cyan/magenta iridescent */
 .theme-aurora-premium {
-	--font-sans: 'Outfit', system-ui, sans-serif;
+	--font-sans: "Outfit", system-ui, sans-serif;
 	--background: 200 30% 4%;
 	--foreground: 0 0% 95%;
 	--card: 195 25% 8%;
@@ -343,7 +343,7 @@
 
 /* Theme: Champagne Premium - Warm golds with rose gold accents */
 .theme-champagne-premium {
-	--font-sans: 'Inter', system-ui, sans-serif;
+	--font-sans: "Inter", system-ui, sans-serif;
 	--background: 35 15% 5%;
 	--foreground: 40 10% 92%;
 	--card: 35 20% 9%;
@@ -641,25 +641,25 @@ body.wrapped-route {
 	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
-[data-sonner-toast][data-type='success'] {
+[data-sonner-toast][data-type="success"] {
 	background: var(--success-bg);
 	color: var(--success-text);
 	border: 1px solid var(--success-border);
 }
 
-[data-sonner-toast][data-type='error'] {
+[data-sonner-toast][data-type="error"] {
 	background: var(--error-bg);
 	color: var(--error-text);
 	border: 1px solid var(--error-border);
 }
 
-[data-sonner-toast][data-type='warning'] {
+[data-sonner-toast][data-type="warning"] {
 	background: var(--warning-bg);
 	color: var(--warning-text);
 	border: 1px solid var(--warning-border);
 }
 
-[data-sonner-toast][data-type='info'] {
+[data-sonner-toast][data-type="info"] {
 	background: var(--info-bg);
 	color: var(--info-text);
 	border: 1px solid var(--info-border);

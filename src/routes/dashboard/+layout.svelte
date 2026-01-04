@@ -1,16 +1,16 @@
 <script lang="ts">
-	import { page } from '$app/stores';
-	import { enhance } from '$app/forms';
-	import type { LayoutData } from './$types';
-	import type { Snippet, Component } from 'svelte';
-	import Logo from '$lib/components/Logo.svelte';
-	import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
-	import Settings from '@lucide/svelte/icons/settings';
-	import Menu from '@lucide/svelte/icons/menu';
-	import X from '@lucide/svelte/icons/x';
-	import LogOut from '@lucide/svelte/icons/log-out';
-	import User from '@lucide/svelte/icons/user';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
+	import LogOut from '@lucide/svelte/icons/log-out';
+	import Menu from '@lucide/svelte/icons/menu';
+	import Settings from '@lucide/svelte/icons/settings';
+	import User from '@lucide/svelte/icons/user';
+	import X from '@lucide/svelte/icons/x';
+	import type { Component, Snippet } from 'svelte';
+	import { enhance } from '$app/forms';
+	import { page } from '$app/stores';
+	import Logo from '$lib/components/Logo.svelte';
+	import type { LayoutData } from './$types';
 
 	/**
 	 * User Dashboard Layout

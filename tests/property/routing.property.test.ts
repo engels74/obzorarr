@@ -63,7 +63,7 @@ const uuidV4Arbitrary = fc
  */
 function isValidYear(year: string): boolean {
 	const parsed = parseInt(year, 10);
-	return !isNaN(parsed) && parsed >= 2000 && parsed <= 2100;
+	return !Number.isNaN(parsed) && parsed >= 2000 && parsed <= 2100;
 }
 
 /**
@@ -74,7 +74,7 @@ function isValidYear(year: string): boolean {
  */
 function parseYear(year: string): number | null {
 	const parsed = parseInt(year, 10);
-	if (isNaN(parsed) || parsed < 2000 || parsed > 2100) {
+	if (Number.isNaN(parsed) || parsed < 2000 || parsed > 2100) {
 		return null;
 	}
 	return parsed;
@@ -98,7 +98,7 @@ function parseIdentifier(
 
 	// Try to parse as a user ID (positive integer)
 	const parsed = parseInt(identifier, 10);
-	if (!isNaN(parsed) && parsed > 0 && String(parsed) === identifier) {
+	if (!Number.isNaN(parsed) && parsed > 0 && String(parsed) === identifier) {
 		return { type: 'userId', value: parsed };
 	}
 
@@ -146,7 +146,7 @@ describe('Property 22: URL Route Parsing', () => {
 		it('rejects non-numeric year strings', () => {
 			fc.assert(
 				fc.property(
-					fc.string().filter((s) => isNaN(parseInt(s, 10))),
+					fc.string().filter((s) => Number.isNaN(parseInt(s, 10))),
 					(invalidYear) => {
 						return isValidYear(invalidYear) === false;
 					}
@@ -225,7 +225,7 @@ describe('Property 22: URL Route Parsing', () => {
 						if (isValidTokenFormat(s)) return false;
 						// Not a valid positive integer
 						const parsed = parseInt(s, 10);
-						if (!isNaN(parsed) && parsed > 0 && String(parsed) === s) return false;
+						if (!Number.isNaN(parsed) && parsed > 0 && String(parsed) === s) return false;
 						return true;
 					}),
 					(invalidId) => {

@@ -1,21 +1,20 @@
-import type { FactTemplate, FactCategory } from '../types';
 import {
-	registerTemplates,
+	clearRegistry,
 	getAllTemplates,
 	getTemplatesByCategory,
 	isRegistryInitialized,
 	markRegistryInitialized,
-	clearRegistry
+	registerTemplates
 } from '../registry';
-
-import { TIME_EQUIVALENCY_TEMPLATES } from './time-equivalency';
-import { CONTENT_COMPARISON_TEMPLATES } from './content-comparison';
+import type { FactCategory, FactTemplate } from '../types';
+import { ACHIEVEMENT_TEMPLATES } from './achievement';
 import { BEHAVIORAL_TEMPLATES } from './behavioral-insight';
 import { BINGE_TEMPLATES } from './binge-related';
-import { TEMPORAL_TEMPLATES } from './temporal-pattern';
-import { ACHIEVEMENT_TEMPLATES } from './achievement';
-import { SOCIAL_COMPARISON_TEMPLATES } from './social-comparison';
+import { CONTENT_COMPARISON_TEMPLATES } from './content-comparison';
 import { ENTERTAINMENT_TRIVIA_TEMPLATES } from './entertainment-trivia';
+import { SOCIAL_COMPARISON_TEMPLATES } from './social-comparison';
+import { TEMPORAL_TEMPLATES } from './temporal-pattern';
+import { TIME_EQUIVALENCY_TEMPLATES } from './time-equivalency';
 
 export function initializeTemplates(): void {
 	if (isRegistryInitialized()) return;
@@ -39,14 +38,14 @@ export function resetTemplates(): void {
 
 initializeTemplates();
 
-export { TIME_EQUIVALENCY_TEMPLATES } from './time-equivalency';
-export { CONTENT_COMPARISON_TEMPLATES } from './content-comparison';
+export { ACHIEVEMENT_TEMPLATES } from './achievement';
 export { BEHAVIORAL_TEMPLATES } from './behavioral-insight';
 export { BINGE_TEMPLATES } from './binge-related';
-export { TEMPORAL_TEMPLATES } from './temporal-pattern';
-export { ACHIEVEMENT_TEMPLATES } from './achievement';
-export { SOCIAL_COMPARISON_TEMPLATES } from './social-comparison';
+export { CONTENT_COMPARISON_TEMPLATES } from './content-comparison';
 export { ENTERTAINMENT_TRIVIA_TEMPLATES } from './entertainment-trivia';
+export { SOCIAL_COMPARISON_TEMPLATES } from './social-comparison';
+export { TEMPORAL_TEMPLATES } from './temporal-pattern';
+export { TIME_EQUIVALENCY_TEMPLATES } from './time-equivalency';
 
 export function getALL_TEMPLATES(): FactTemplate[] {
 	initializeTemplates();

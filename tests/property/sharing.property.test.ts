@@ -4,7 +4,7 @@ import * as fc from 'fast-check';
 // Import the pure functions for testing
 import { checkAccess } from '$lib/server/sharing/access-control';
 import { generateShareToken, isValidTokenFormat } from '$lib/server/sharing/service';
-import { ShareMode, type AccessCheckContext, type ShareModeType } from '$lib/server/sharing/types';
+import { type AccessCheckContext, ShareMode, type ShareModeType } from '$lib/server/sharing/types';
 
 /**
  * Property-based tests for Sharing System
@@ -171,7 +171,9 @@ describe('Property 15: Share Mode Access Control', () => {
 		fc.assert(
 			fc.property(
 				fc.uuid(), // validToken
-				fc.uuid().filter((t) => t !== ''), // wrongToken
+				fc
+					.uuid()
+					.filter((t) => t !== ''), // wrongToken
 				(validToken, wrongToken) => {
 					// Skip if tokens happen to match
 					if (validToken === wrongToken) return true;

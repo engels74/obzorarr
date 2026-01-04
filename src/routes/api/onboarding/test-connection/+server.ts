@@ -1,5 +1,4 @@
-import { json, error } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
+import { error, json } from '@sveltejs/kit';
 import { z } from 'zod';
 import {
 	PLEX_CLIENT_ID,
@@ -9,6 +8,7 @@ import {
 } from '$lib/server/auth/types';
 import { logger } from '$lib/server/logging';
 import { classifyConnectionError } from '$lib/server/security';
+import type { RequestHandler } from './$types';
 
 const PLEX_SERVER_HEADERS = {
 	Accept: 'application/json',

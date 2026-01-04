@@ -1,33 +1,27 @@
-export { calculateWatchTime, type WatchTimeResult } from './watch-time';
-
 export {
-	calculateTopMovies,
-	calculateTopShows,
-	calculateTopGenres,
-	type RankingOptions
-} from './ranking';
-
-export { calculateMonthlyDistribution, calculateHourlyDistribution } from './distributions';
-
-export { calculatePercentileRank, getAllUsersWatchTime } from './percentile';
-
-export {
-	detectLongestBinge,
+	BINGE_GAP_THRESHOLD_SECONDS,
 	detectAllBingeSessions,
-	BINGE_GAP_THRESHOLD_SECONDS
+	detectLongestBinge
 } from './binge-detector';
-
+export { calculateHourlyDistribution, calculateMonthlyDistribution } from './distributions';
 export { findFirstWatch, findLastWatch } from './first-last';
-
 export {
-	calculateWeekdayDistribution,
 	calculateContentTypeBreakdown,
 	calculateDecadeDistribution,
-	calculateTopRewatches,
 	calculateMarathonDay,
-	calculateWatchStreak,
-	calculateYearComparison,
 	calculateSeriesProgress,
-	seriesProgressToCompletion,
-	type SeriesProgress
+	calculateTopRewatches,
+	calculateWatchStreak,
+	calculateWeekdayDistribution,
+	calculateYearComparison,
+	type SeriesProgress,
+	seriesProgressToCompletion
 } from './new-slides';
+export { calculatePercentileRank, getAllUsersWatchTime } from './percentile';
+export {
+	calculateTopGenres,
+	calculateTopMovies,
+	calculateTopShows,
+	type RankingOptions
+} from './ranking';
+export { calculateWatchTime, type WatchTimeResult } from './watch-time';

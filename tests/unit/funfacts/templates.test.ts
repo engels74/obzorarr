@@ -1,18 +1,18 @@
-import { describe, expect, it, beforeEach, afterAll } from 'bun:test';
+import { afterAll, beforeEach, describe, expect, it } from 'bun:test';
 import {
 	clearRegistry,
-	isRegistryInitialized,
-	getAllTemplates
+	getAllTemplates,
+	isRegistryInitialized
 } from '$lib/server/funfacts/registry';
 import {
-	initializeTemplates,
-	resetTemplates,
+	ALL_TEMPLATES,
+	BEHAVIORAL_TEMPLATES,
 	getALL_TEMPLATES,
 	getTemplatesForCategory,
-	ALL_TEMPLATES,
+	initializeTemplates,
+	resetTemplates,
 	TEMPLATES_BY_CATEGORY,
-	TIME_EQUIVALENCY_TEMPLATES,
-	BEHAVIORAL_TEMPLATES
+	TIME_EQUIVALENCY_TEMPLATES
 } from '$lib/server/funfacts/templates';
 
 describe('Fun Facts Templates Index', () => {
@@ -131,7 +131,7 @@ describe('Fun Facts Templates Index', () => {
 			clearRegistry();
 
 			const templates = getTemplatesForCategory('achievement');
-			expect(templates.length).toBe(TEMPLATES_BY_CATEGORY['achievement'].length);
+			expect(templates.length).toBe(TEMPLATES_BY_CATEGORY.achievement.length);
 		});
 	});
 

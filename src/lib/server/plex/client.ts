@@ -1,17 +1,17 @@
 import { env } from '$env/dynamic/private';
+import { getPlexConfig } from '$lib/server/admin/settings.service';
 import {
+	type FetchHistoryOptions,
+	type HistoryPageResult,
+	type HistoryPageWithStats,
+	hasRequiredFields,
+	PlexApiError,
 	PlexHistoryResponseSchema,
 	PlexLibraryMetadataResponseSchema,
 	PlexShowMetadataResponseSchema,
-	PlexApiError,
 	PlexValidationError,
-	hasRequiredFields,
-	type ValidPlexHistoryMetadata,
-	type FetchHistoryOptions,
-	type HistoryPageResult,
-	type HistoryPageWithStats
+	type ValidPlexHistoryMetadata
 } from './types';
-import { getPlexConfig, type PlexConfig } from '$lib/server/admin/settings.service';
 
 function getPlexHeaders(token: string) {
 	return {
@@ -145,7 +145,6 @@ async function fetchHistoryPage(
 export async function* fetchAllHistory(
 	options: FetchHistoryOptions = {}
 ): AsyncGenerator<HistoryPageWithStats, void, unknown> {
-	const { pageSize = DEFAULT_PAGE_SIZE } = options;
 	let offset = 0;
 	let totalSize: number | undefined;
 

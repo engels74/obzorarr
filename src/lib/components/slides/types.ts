@@ -1,17 +1,17 @@
 import type { Snippet } from 'svelte';
 import type {
-	RankedItem,
 	BingeSession,
-	WatchRecord,
-	MonthlyDistribution,
-	HourlyDistribution,
-	WeekdayDistribution,
 	ContentTypeBreakdown,
 	DecadeDistributionItem,
-	SeriesCompletionItem,
-	RewatchItem,
+	HourlyDistribution,
 	MarathonDay,
+	MonthlyDistribution,
+	RankedItem,
+	RewatchItem,
+	SeriesCompletionItem,
+	WatchRecord,
 	WatchStreak,
+	WeekdayDistribution,
 	YearComparison
 } from '$lib/stats/types';
 

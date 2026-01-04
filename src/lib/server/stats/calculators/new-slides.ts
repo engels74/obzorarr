@@ -1,15 +1,15 @@
-import { getDayOfWeekFromTimestamp, getDateStringFromTimestamp } from '../utils';
-import type { PlayHistoryRecord } from '../utils';
 import type {
-	WeekdayDistribution,
 	ContentTypeBreakdown,
 	DecadeDistributionItem,
-	RewatchItem,
 	MarathonDay,
+	RewatchItem,
+	SeriesCompletionItem,
 	WatchStreak,
-	YearComparison,
-	SeriesCompletionItem
+	WeekdayDistribution,
+	YearComparison
 } from '$lib/stats/types';
+import type { PlayHistoryRecord } from '../utils';
+import { getDateStringFromTimestamp, getDayOfWeekFromTimestamp } from '../utils';
 
 export function calculateWeekdayDistribution(records: PlayHistoryRecord[]): WeekdayDistribution {
 	const minutes: number[] = Array.from({ length: 7 }, () => 0);
@@ -77,8 +77,8 @@ export function calculateDecadeDistribution(
 			minutes: data.minutes
 		}))
 		.sort((a, b) => {
-			const aYear = parseInt(a.decade);
-			const bYear = parseInt(b.decade);
+			const aYear = parseInt(a.decade, 10);
+			const bYear = parseInt(b.decade, 10);
 			return aYear - bYear;
 		});
 }

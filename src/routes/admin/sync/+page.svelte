@@ -3,7 +3,7 @@
 	import { enhance } from '$app/forms';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { handleFormToast } from '$lib/utils/form-toast';
-	import type { PageData, ActionData } from './$types';
+	import type { ActionData, PageData } from './$types';
 
 	interface SyncProgress {
 		syncId: number;

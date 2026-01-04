@@ -1,6 +1,6 @@
 import { Cron, type CronOptions } from 'croner';
-import { runRetentionCleanup, getLogRetentionDays, getLogMaxCount } from './service';
 import { logger } from './logger';
+import { runRetentionCleanup } from './service';
 
 const DEFAULT_CRON_EXPRESSION = '0 3 * * *';
 const DEFAULT_TIMEZONE = 'UTC';

@@ -1,16 +1,16 @@
 export {
-	OnboardingSteps,
-	type OnboardingStep,
-	type OnboardingStatus,
-	requiresOnboarding,
-	isOnboardingComplete,
-	getOnboardingStep,
-	setOnboardingStep,
 	completeOnboarding,
-	resetOnboarding,
-	isPlexConfigured,
-	getOnboardingStatus,
-	getStepNumber,
 	getNextStep,
-	getPreviousStep
+	getOnboardingStatus,
+	getOnboardingStep,
+	getPreviousStep,
+	getStepNumber,
+	isOnboardingComplete,
+	isPlexConfigured,
+	type OnboardingStatus,
+	type OnboardingStep,
+	OnboardingSteps,
+	requiresOnboarding,
+	resetOnboarding,
+	setOnboardingStep
 } from './status';

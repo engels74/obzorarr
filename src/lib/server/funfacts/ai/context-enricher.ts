@@ -1,5 +1,5 @@
-import type { FactGenerationContext } from '../types';
 import { ENTERTAINMENT_FACTORS } from '../constants';
+import type { FactGenerationContext } from '../types';
 
 function round1(value: number): number {
 	return Math.round(value * 10) / 10;

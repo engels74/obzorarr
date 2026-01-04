@@ -10,26 +10,22 @@
 
 import { describe, expect, it } from 'bun:test';
 import * as fc from 'fast-check';
-
+import type { PlayHistoryRecord } from '$lib/server/db/schema';
 import {
-	calculateWatchTime,
+	calculateHourlyDistribution,
+	calculateMonthlyDistribution,
+	calculatePercentileRank,
 	calculateTopMovies,
 	calculateTopShows,
-	calculateMonthlyDistribution,
-	calculateHourlyDistribution,
-	calculatePercentileRank,
-	detectLongestBinge,
+	calculateWatchTime,
 	detectAllBingeSessions,
-	BINGE_GAP_THRESHOLD_SECONDS
+	detectLongestBinge
 } from '$lib/server/stats/calculators';
-
 import {
-	getYearStartTimestamp,
+	createYearFilter,
 	getYearEndTimestamp,
-	createYearFilter
+	getYearStartTimestamp
 } from '$lib/server/stats/utils';
-
-import type { PlayHistoryRecord } from '$lib/server/db/schema';
 
 // =============================================================================
 // Arbitraries

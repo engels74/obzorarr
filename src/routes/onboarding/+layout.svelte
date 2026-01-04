@@ -1,10 +1,11 @@
 <script lang="ts">
-	import type { LayoutData } from './$types';
-	import StepIndicator from '$lib/components/onboarding/StepIndicator.svelte';
-	import Logo from '$lib/components/Logo.svelte';
 	import { animate } from 'motion';
+	import Logo from '$lib/components/Logo.svelte';
+	import StepIndicator from '$lib/components/onboarding/StepIndicator.svelte';
 	import { loadThemeFont } from '$lib/utils/theme-fonts';
+	import type { LayoutData } from './$types';
 
+	// biome-ignore lint/suspicious/noExplicitAny: Svelte's children snippet type is complex
 	let { data, children }: { data: LayoutData; children: any } = $props();
 
 	let logoRef: HTMLElement | undefined = $state();
@@ -48,7 +49,7 @@
 	$effect(() => {
 		if (!logoRef) return;
 
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		// biome-ignore lint/suspicious/noExplicitAny: Motion's animate function has complex overloads
 		(animate as any)(
 			logoRef,
 			{ opacity: [0, 1], transform: ['translateY(-20px)', 'translateY(0)'] },

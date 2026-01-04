@@ -1,27 +1,27 @@
-import { describe, expect, it, beforeEach } from 'bun:test';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { db } from '$lib/server/db/client';
-import { shareSettings, appSettings } from '$lib/server/db/schema';
+import { appSettings, shareSettings } from '$lib/server/db/schema';
 import {
-	generateShareToken,
-	isValidTokenFormat,
-	getGlobalDefaultShareMode,
-	getGlobalAllowUserControl,
-	setGlobalShareDefaults,
-	getShareSettings,
-	getOrCreateShareSettings,
-	updateShareSettings,
-	regenerateShareToken,
-	getShareSettingsByToken,
 	deleteShareSettings,
+	generateShareToken,
 	getAllUserShareSettings,
-	updateUserLogoPreference,
-	getUserLogoPreference
+	getGlobalAllowUserControl,
+	getGlobalDefaultShareMode,
+	getOrCreateShareSettings,
+	getShareSettings,
+	getShareSettingsByToken,
+	getUserLogoPreference,
+	isValidTokenFormat,
+	regenerateShareToken,
+	setGlobalShareDefaults,
+	updateShareSettings,
+	updateUserLogoPreference
 } from '$lib/server/sharing/service';
 import {
+	PermissionExceededError,
 	ShareMode,
 	ShareSettingsKey,
-	ShareSettingsNotFoundError,
-	PermissionExceededError
+	ShareSettingsNotFoundError
 } from '$lib/server/sharing/types';
 
 /**
@@ -818,7 +818,8 @@ describe('Sharing Service', () => {
 					const settings = await getShareSettings(userId, year);
 					expect(settings?.mode).toBe(ShareMode.PRIVATE_LINK);
 					expect(settings?.shareToken).not.toBeNull();
-					expect(isValidTokenFormat(settings?.shareToken!)).toBe(true);
+					expect(settings?.shareToken).toBeDefined();
+					expect(isValidTokenFormat(settings!.shareToken!)).toBe(true);
 				});
 
 				it('creates without token when default mode is PUBLIC', async () => {

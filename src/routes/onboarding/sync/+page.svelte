@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
-	import { browser } from '$app/environment';
-	import { untrack } from 'svelte';
 	import { animate, stagger } from 'motion';
+	import { untrack } from 'svelte';
+	import { browser } from '$app/environment';
+	import { enhance } from '$app/forms';
 	import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
-	import type { PageData, ActionData } from './$types';
+	import type { ActionData, PageData } from './$types';
 
 	/**
 	 * Onboarding Step 2: Initial Data Sync
@@ -62,7 +62,7 @@
 		const items = contentRef.querySelectorAll('.animate-item');
 		if (items.length === 0) return;
 
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		// biome-ignore lint/suspicious/noExplicitAny: Motion's animate function has complex overloads that TypeScript cannot infer correctly
 		const animation = (animate as any)(
 			items,
 			{ opacity: [0, 1], transform: ['translateY(16px)', 'translateY(0)'] },
@@ -75,7 +75,7 @@
 	$effect(() => {
 		if (!progressRef || !isComplete) return;
 
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		// biome-ignore lint/suspicious/noExplicitAny: Motion's animate function has complex overloads that TypeScript cannot infer correctly
 		(animate as any)(
 			progressRef,
 			{ transform: ['scale(1)', 'scale(1.05)', 'scale(1)'] },

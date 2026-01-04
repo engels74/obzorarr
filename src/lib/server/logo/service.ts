@@ -1,11 +1,11 @@
-import { db } from '$lib/server/db/client';
-import { shareSettings } from '$lib/server/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import {
 	getWrappedLogoMode,
 	WrappedLogoMode,
 	type WrappedLogoModeType
 } from '$lib/server/admin/settings.service';
+import { db } from '$lib/server/db/client';
+import { shareSettings } from '$lib/server/db/schema';
 
 export interface LogoVisibilityResult {
 	showLogo: boolean;

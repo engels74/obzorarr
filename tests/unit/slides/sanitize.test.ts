@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { sanitizeMarkdownHtml, SANITIZE_OPTIONS } from '$lib/server/slides/sanitize';
+import { SANITIZE_OPTIONS, sanitizeMarkdownHtml } from '$lib/server/slides/sanitize';
 
 describe('sanitizeMarkdownHtml', () => {
 	describe('XSS prevention', () => {

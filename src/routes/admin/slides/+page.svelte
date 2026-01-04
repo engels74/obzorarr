@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { enhance, deserialize } from '$app/forms';
-	import { handleFormToast } from '$lib/utils/form-toast';
-	import type { PageData, ActionData } from './$types';
+	import type { ActionResult } from '@sveltejs/kit';
+	import { deserialize, enhance } from '$app/forms';
 	import type { SlideType } from '$lib/components/slides/types';
 	import { DEFAULT_SLIDE_ORDER } from '$lib/components/slides/types';
-	import type { ActionResult } from '@sveltejs/kit';
+	import { handleFormToast } from '$lib/utils/form-toast';
+	import type { ActionData, PageData } from './$types';
 
 	/**
 	 * Admin Slides Page

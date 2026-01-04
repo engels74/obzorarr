@@ -1,12 +1,12 @@
+import { count, desc, eq, inArray, isNull, or } from 'drizzle-orm';
 import { db } from '$lib/server/db/client';
-import { playHistory, syncStatus, metadataCache } from '$lib/server/db/schema';
+import { metadataCache, playHistory, syncStatus } from '$lib/server/db/schema';
+import { logger } from '$lib/server/logging';
 import { fetchAllHistory, fetchMetadataBatch } from '$lib/server/plex/client';
 import type { ValidPlexHistoryMetadata } from '$lib/server/plex/types';
-import { eq, desc, isNull, or, inArray, count } from 'drizzle-orm';
-import type { StartSyncOptions, SyncResult, SyncProgress, SyncStatusRecord } from './types';
-import { logger } from '$lib/server/logging';
 import { invalidateCache } from '$lib/server/stats/engine';
 import { syncPlexAccounts } from './plex-accounts.service';
+import type { StartSyncOptions, SyncResult, SyncStatusRecord } from './types';
 
 const DEFAULT_PAGE_SIZE = 100;
 const PROGRESS_UPDATE_INTERVAL = 5;

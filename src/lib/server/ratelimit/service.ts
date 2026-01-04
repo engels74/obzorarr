@@ -1,9 +1,9 @@
 import {
 	FALLBACK_RATE_LIMIT,
-	STALE_THRESHOLD_MS,
 	type RateLimitConfig,
+	type RateLimitRecord,
 	type RateLimitResult,
-	type RateLimitRecord
+	STALE_THRESHOLD_MS
 } from './types';
 
 const rateLimitStore = new Map<string, RateLimitRecord>();

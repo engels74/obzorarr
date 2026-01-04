@@ -7,4 +7,4 @@
  * @module logo
  */
 
-export { getLogoVisibility, setUserLogoPreference, type LogoVisibilityResult } from './service';
+export { getLogoVisibility, type LogoVisibilityResult, setUserLogoPreference } from './service';

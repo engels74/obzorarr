@@ -1,26 +1,26 @@
-import { describe, expect, it, beforeEach } from 'bun:test';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { db } from '$lib/server/db/client';
-import { logs, appSettings } from '$lib/server/db/schema';
+import { appSettings, logs } from '$lib/server/db/schema';
 import {
-	insertLog,
-	insertLogsBatch,
-	queryLogs,
-	getLogsAfterId,
-	getLatestLogId,
-	getDistinctSources,
-	getLogCountsByLevel,
 	deleteAllLogs,
 	deleteLogsOlderThan,
-	trimLogsToCount,
-	runRetentionCleanup,
-	getLogRetentionDays,
+	getDistinctSources,
+	getLatestLogId,
+	getLogCountsByLevel,
 	getLogMaxCount,
+	getLogRetentionDays,
+	getLogsAfterId,
+	insertLog,
+	insertLogsBatch,
 	isDebugEnabled,
-	setLogRetentionDays,
+	queryLogs,
+	runRetentionCleanup,
+	setDebugEnabled,
 	setLogMaxCount,
-	setDebugEnabled
+	setLogRetentionDays,
+	trimLogsToCount
 } from '$lib/server/logging/service';
-import { LogLevel, LogSettingsKey, LogSettingsDefaults } from '$lib/server/logging/types';
+import { LogLevel, LogSettingsDefaults, LogSettingsKey } from '$lib/server/logging/types';
 
 /**
  * Unit tests for Logging Service

@@ -9,12 +9,12 @@ import {
 	AuthError,
 	NotServerMemberError,
 	PinExpiredError,
-	SessionExpiredError,
-	PlexAuthApiError,
-	SESSION_DURATION_MS,
 	PLEX_CLIENT_ID,
 	PLEX_PRODUCT,
-	PLEX_VERSION
+	PLEX_VERSION,
+	PlexAuthApiError,
+	SESSION_DURATION_MS,
+	SessionExpiredError
 } from '$lib/server/auth/types';
 
 describe('Auth Constants', () => {

@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { animate } from 'motion';
 	import { prefersReducedMotion } from 'svelte/motion';
-	import { createSlideState } from '$lib/stores/slide-state.svelte';
-	import { EASING_PRESETS } from '$lib/utils/animation-presets';
-	import type { SlideRenderConfig } from '$lib/components/slides/types';
-	import type { UserStats, ServerStats } from '$lib/stats/types';
-	import type { CustomSlide } from '$lib/slides/types';
 	import type { SlideMessagingContext } from '$lib/components/slides/messaging-context';
 	import { createPersonalContext } from '$lib/components/slides/messaging-context';
+	import type { SlideRenderConfig } from '$lib/components/slides/types';
+	import type { CustomSlide } from '$lib/slides/types';
+	import type { ServerStats, UserStats } from '$lib/stats/types';
+	import { createSlideState } from '$lib/stores/slide-state.svelte';
+	import { EASING_PRESETS } from '$lib/utils/animation-presets';
 	import ProgressBar from './ProgressBar.svelte';
 	import SlideRenderer from './SlideRenderer.svelte';
 

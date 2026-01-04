@@ -1,9 +1,9 @@
 import {
-	getAppSetting,
-	setAppSetting,
-	deleteAppSetting,
 	AppSettingsKey,
-	getApiConfigWithSources
+	deleteAppSetting,
+	getApiConfigWithSources,
+	getAppSetting,
+	setAppSetting
 } from '$lib/server/admin/settings.service';
 
 export const OnboardingSteps = {

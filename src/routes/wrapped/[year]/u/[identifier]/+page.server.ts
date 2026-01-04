@@ -1,38 +1,38 @@
 import { error, fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
-import type { PageServerLoad, Actions } from './$types';
+import { getFunFactFrequency } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
 import { users } from '$lib/server/db/schema';
-import { calculateUserStats } from '$lib/server/stats/engine';
+import { generateFunFacts } from '$lib/server/funfacts';
+import { getLogoVisibility, setUserLogoPreference } from '$lib/server/logo';
 import { checkTokenAccess, checkWrappedAccess } from '$lib/server/sharing/access-control';
 import {
-	isValidTokenFormat,
 	getOrCreateShareSettings,
-	updateShareSettings,
-	regenerateShareToken
+	isValidTokenFormat,
+	regenerateShareToken,
+	updateShareSettings
 } from '$lib/server/sharing/service';
 import {
 	InvalidShareTokenError,
-	ShareAccessDeniedError,
 	PermissionExceededError,
+	ShareAccessDeniedError,
 	ShareModeSchema
 } from '$lib/server/sharing/types';
 import {
-	initializeDefaultSlideConfig,
-	getEnabledSlides,
-	getEnabledCustomSlides,
 	buildSlideRenderConfigs,
 	customSlidesToMap,
+	getEnabledCustomSlides,
+	getEnabledSlides,
+	initializeDefaultSlideConfig,
 	intersperseFunFacts
 } from '$lib/server/slides';
-import { generateFunFacts } from '$lib/server/funfacts';
-import { getLogoVisibility, setUserLogoPreference } from '$lib/server/logo';
-import { getFunFactFrequency } from '$lib/server/admin/settings.service';
+import { calculateUserStats } from '$lib/server/stats/engine';
 import { triggerLiveSyncIfNeeded } from '$lib/server/sync/live-sync';
+import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
 	const year = parseInt(params.year, 10);
-	if (isNaN(year) || year < 2000 || year > 2100) {
+	if (Number.isNaN(year) || year < 2000 || year > 2100) {
 		error(404, 'Invalid year');
 	}
 
@@ -58,7 +58,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		}
 	} else {
 		const parsedId = parseInt(identifier, 10);
-		if (isNaN(parsedId) || parsedId <= 0) {
+		if (Number.isNaN(parsedId) || parsedId <= 0) {
 			error(404, 'Invalid identifier');
 		}
 		userId = parsedId;
@@ -144,7 +144,7 @@ export const actions: Actions = {
 		}
 
 		const year = parseInt(params.year, 10);
-		if (isNaN(year)) {
+		if (Number.isNaN(year)) {
 			return fail(400, { error: 'Invalid year' });
 		}
 
@@ -167,12 +167,12 @@ export const actions: Actions = {
 		}
 
 		const year = parseInt(params.year, 10);
-		if (isNaN(year)) {
+		if (Number.isNaN(year)) {
 			return fail(400, { error: 'Invalid year' });
 		}
 
 		const userId = parseInt(params.identifier, 10);
-		if (isNaN(userId) || userId <= 0) {
+		if (Number.isNaN(userId) || userId <= 0) {
 			return fail(400, { error: 'Invalid user identifier' });
 		}
 
@@ -218,12 +218,12 @@ export const actions: Actions = {
 		}
 
 		const year = parseInt(params.year, 10);
-		if (isNaN(year)) {
+		if (Number.isNaN(year)) {
 			return fail(400, { error: 'Invalid year' });
 		}
 
 		const userId = parseInt(params.identifier, 10);
-		if (isNaN(userId) || userId <= 0) {
+		if (Number.isNaN(userId) || userId <= 0) {
 			return fail(400, { error: 'Invalid user identifier' });
 		}
 

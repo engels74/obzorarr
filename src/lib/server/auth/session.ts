@@ -1,7 +1,7 @@
-import { eq, lt, and } from 'drizzle-orm';
+import { eq, lt } from 'drizzle-orm';
 import { db } from '$lib/server/db/client';
 import { sessions, users } from '$lib/server/db/schema';
-import { SESSION_DURATION_MS, type SessionData, type CreateSessionOptions } from './types';
+import { type CreateSessionOptions, SESSION_DURATION_MS, type SessionData } from './types';
 
 export async function createSession(options: CreateSessionOptions): Promise<string> {
 	const { userId, plexToken, isAdmin, durationMs = SESSION_DURATION_MS } = options;

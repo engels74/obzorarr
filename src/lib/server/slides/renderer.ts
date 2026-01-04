@@ -1,6 +1,6 @@
 import { marked } from 'marked';
-import type { MarkdownValidationResult } from './types';
 import { sanitizeMarkdownHtml } from './sanitize';
+import type { MarkdownValidationResult } from './types';
 
 export interface MarkdownOptions {
 	breaks?: boolean;
@@ -93,10 +93,10 @@ export function markdownToPlainText(content: string, maxLength: number = 200): s
 	const lastSpace = truncated.lastIndexOf(' ');
 
 	if (lastSpace > maxLength * 0.8) {
-		return truncated.slice(0, lastSpace) + '...';
+		return `${truncated.slice(0, lastSpace)}...`;
 	}
 
-	return truncated + '...';
+	return `${truncated}...`;
 }
 
 export function containsUnsafeHtml(content: string): boolean {

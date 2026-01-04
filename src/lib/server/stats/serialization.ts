@@ -1,10 +1,10 @@
 import {
-	UserStatsSchema,
-	ServerStatsSchema,
-	type UserStats,
+	isUserStats,
 	type ServerStats,
+	ServerStatsSchema,
 	type Stats,
-	isUserStats
+	type UserStats,
+	UserStatsSchema
 } from './types';
 
 export class StatsParseError extends Error {

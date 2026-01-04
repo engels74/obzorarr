@@ -1,27 +1,26 @@
-import { describe, expect, it, beforeEach } from 'bun:test';
+import { beforeEach, describe, expect, it } from 'bun:test';
+import { and, eq } from 'drizzle-orm';
 import { db } from '$lib/server/db/client';
-import { shareSettings, appSettings } from '$lib/server/db/schema';
-import { eq, and } from 'drizzle-orm';
-import {
-	ShareMode,
-	ShareAccessDeniedError,
-	InvalidShareTokenError,
-	ShareModePrivacyLevel,
-	getMoreRestrictiveMode,
-	meetsPrivacyFloor
-} from '$lib/server/sharing/types';
+import { appSettings, shareSettings } from '$lib/server/db/schema';
 import {
 	checkAccess,
-	checkWrappedAccess,
-	checkTokenAccess,
 	checkServerWrappedAccess,
-	type CheckWrappedAccessOptions
+	checkTokenAccess,
+	checkWrappedAccess
 } from '$lib/server/sharing/access-control';
 import {
 	generateShareToken,
 	setGlobalShareDefaults,
 	setServerWrappedShareMode
 } from '$lib/server/sharing/service';
+import {
+	getMoreRestrictiveMode,
+	InvalidShareTokenError,
+	meetsPrivacyFloor,
+	ShareAccessDeniedError,
+	ShareMode,
+	ShareModePrivacyLevel
+} from '$lib/server/sharing/types';
 
 /**
  * Unit tests for Sharing Access Control

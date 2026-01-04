@@ -1,6 +1,6 @@
-import type { SlideRenderConfig, FunFactData } from '$lib/components/slides/types';
-import type { SlideConfig, CustomSlide } from './types';
+import type { FunFactData, SlideRenderConfig } from '$lib/components/slides/types';
 import type { FunFact } from '$lib/server/funfacts';
+import type { CustomSlide, SlideConfig } from './types';
 
 export function buildSlideRenderConfigs(
 	slideConfigs: SlideConfig[],

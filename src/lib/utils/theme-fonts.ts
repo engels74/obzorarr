@@ -46,7 +46,6 @@ export function getThemeFontFamily(theme: string): string {
 			return "'Outfit', system-ui, sans-serif";
 		case 'doom-64':
 			return "'Oxanium', system-ui, sans-serif";
-		case 'soviet-red':
 		default:
 			return "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
 	}

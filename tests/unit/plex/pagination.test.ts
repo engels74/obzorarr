@@ -6,12 +6,12 @@
 
 import { describe, expect, it } from 'bun:test';
 import {
-	paginateAll,
+	calculateExpectedPages,
 	fetchAllPaginated,
 	fetchAllPaginatedWithStats,
-	calculateExpectedPages,
+	type PageFetcher,
 	type PageResult,
-	type PageFetcher
+	paginateAll
 } from '$lib/server/plex/pagination';
 
 // =============================================================================

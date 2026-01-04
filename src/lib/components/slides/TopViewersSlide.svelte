@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { animate, stagger } from 'motion';
 	import { prefersReducedMotion } from 'svelte/motion';
+	import {
+		DELAY_PRESETS,
+		getAdaptiveStagger,
+		KEYFRAMES,
+		SPRING_PRESETS
+	} from '$lib/utils/animation-presets';
 	import BaseSlide from './BaseSlide.svelte';
 	import type { TopViewersSlideProps } from './types';
-	import {
-		SPRING_PRESETS,
-		DELAY_PRESETS,
-		KEYFRAMES,
-		getAdaptiveStagger
-	} from '$lib/utils/animation-presets';
 
 	let {
 		topViewers,

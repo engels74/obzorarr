@@ -1,5 +1,5 @@
-import type { FactGenerationContext, AIPersona } from '../types';
-import { MONTH_NAMES, formatHour } from '../constants';
+import { formatHour, MONTH_NAMES } from '../constants';
+import type { AIPersona, FactGenerationContext } from '../types';
 
 export const AI_PERSONAS: Record<Exclude<AIPersona, 'random'>, string> = {
 	witty: 'a witty entertainment columnist who loves clever pop culture references and wordplay',

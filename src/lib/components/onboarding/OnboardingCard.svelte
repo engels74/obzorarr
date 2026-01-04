@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { Snippet } from 'svelte';
 	import { animate } from 'motion';
+	import type { Snippet } from 'svelte';
 
 	interface Props {
 		title: string;
@@ -18,7 +18,7 @@
 	$effect(() => {
 		if (!cardRef) return;
 
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		// biome-ignore lint/suspicious/noExplicitAny: Motion's animate function has complex overloads
 		(animate as any)(
 			cardRef,
 			{

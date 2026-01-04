@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import {
-	FunFactsError,
 	AIGenerationError,
+	FunFactsError,
 	InsufficientStatsError
 } from '$lib/server/funfacts/types';
 

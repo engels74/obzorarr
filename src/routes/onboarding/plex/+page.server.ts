@@ -1,11 +1,11 @@
-import type { PageServerLoad, Actions } from './$types';
 import { fail, redirect } from '@sveltejs/kit';
-import { setOnboardingStep, OnboardingSteps } from '$lib/server/onboarding';
 import { verifyServerMembership } from '$lib/server/auth/membership';
 import { getSessionPlexToken } from '$lib/server/auth/session';
 import { logger } from '$lib/server/logging';
+import { OnboardingSteps, setOnboardingStep } from '$lib/server/onboarding';
+import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ parent, locals }) => {
+export const load: PageServerLoad = async ({ parent }) => {
 	const parentData = await parent();
 
 	const canProceed = parentData.hasEnvConfig && parentData.isAuthenticated && parentData.isAdmin;

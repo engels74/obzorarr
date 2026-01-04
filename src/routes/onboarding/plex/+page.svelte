@@ -1,13 +1,13 @@
 <script lang="ts">
+	import { animate, stagger } from 'motion';
 	import { browser } from '$app/environment';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
-	import { animate, stagger } from 'motion';
-	import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
 	import PopupBlockedModal from '$lib/components/auth/PopupBlockedModal.svelte';
+	import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import { toast } from '$lib/services/toast';
-	import type { PageData, ActionData } from './$types';
+	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -62,7 +62,7 @@
 
 	$effect(() => {
 		if (!iconRef) return;
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		// biome-ignore lint/suspicious/noExplicitAny: Motion's animate function has complex overloads that TypeScript cannot infer correctly
 		const animation = (animate as any)(
 			iconRef,
 			{
@@ -102,7 +102,7 @@
 			// Mark these elements as animated before starting animation
 			newItems.forEach((item) => animatedElements.add(item));
 
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			// biome-ignore lint/suspicious/noExplicitAny: Motion's animate function has complex overloads that TypeScript cannot infer correctly
 			(animate as any)(
 				newItems,
 				{ opacity: [0, 1], transform: ['translateY(12px)', 'translateY(0)'] },

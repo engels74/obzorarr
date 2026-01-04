@@ -1,7 +1,7 @@
-import { json, error } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
+import { error, json } from '@sveltejs/kit';
 import { dismissCsrfWarning } from '$lib/server/admin/settings.service';
 import { logger } from '$lib/server/logging';
+import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ locals }) => {
 	if (!locals.user) {

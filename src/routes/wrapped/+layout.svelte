@@ -2,9 +2,9 @@
 	import type { Snippet } from 'svelte';
 	import { browser } from '$app/environment';
 	import { invalidateAll } from '$app/navigation';
-	import type { LayoutData } from './$types';
 	import SyncLoadingOverlay from '$lib/components/SyncLoadingOverlay.svelte';
 	import { createSyncStatusStore, type SyncStatusStore } from '$lib/stores/sync-status.svelte';
+	import type { LayoutData } from './$types';
 
 	/**
 	 * Wrapped Layout

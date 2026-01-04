@@ -4,22 +4,22 @@
  * Tests slide config initialization, updates, and error handling.
  */
 
-import { describe, expect, it, beforeEach } from 'bun:test';
-import { db } from '$lib/server/db/client';
-import { slideConfig, appSettings } from '$lib/server/db/schema';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
-import { SlideError } from '$lib/server/slides/types';
-import {
-	initializeDefaultSlideConfig,
-	getAllSlideConfigs,
-	getSlideConfigByType,
-	getEnabledSlides,
-	updateSlideConfig,
-	reorderSlides,
-	toggleSlide,
-	resetToDefaultConfig
-} from '$lib/server/slides/config.service';
 import { DEFAULT_SLIDE_ORDER } from '$lib/components/slides/types';
+import { db } from '$lib/server/db/client';
+import { appSettings, slideConfig } from '$lib/server/db/schema';
+import {
+	getAllSlideConfigs,
+	getEnabledSlides,
+	getSlideConfigByType,
+	initializeDefaultSlideConfig,
+	reorderSlides,
+	resetToDefaultConfig,
+	toggleSlide,
+	updateSlideConfig
+} from '$lib/server/slides/config.service';
+import { SlideError } from '$lib/server/slides/types';
 
 describe('Slide Config Service', () => {
 	beforeEach(async () => {
@@ -209,6 +209,7 @@ describe('Slide Config Service', () => {
 			let error: SlideError | null = null;
 
 			try {
+				// biome-ignore lint/suspicious/noExplicitAny: Testing invalid type handling
 				await updateSlideConfig('invalid-type' as any, { enabled: false });
 			} catch (e) {
 				if (e instanceof SlideError) {
@@ -272,6 +273,7 @@ describe('Slide Config Service', () => {
 			let error: SlideError | null = null;
 
 			try {
+				// biome-ignore lint/suspicious/noExplicitAny: Testing invalid type handling
 				await reorderSlides(['total-time', 'invalid-type' as any, 'genres']);
 			} catch (e) {
 				if (e instanceof SlideError) {

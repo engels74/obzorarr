@@ -1,18 +1,18 @@
-import { env } from '$env/dynamic/private';
-import { dev } from '$app/environment';
 import { eq } from 'drizzle-orm';
+import { dev } from '$app/environment';
+import { env } from '$env/dynamic/private';
+import { getPlexConfig } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
-import { users, sessions, playHistory } from '$lib/server/db/schema';
-import { SESSION_DURATION_MS, type NormalizedServerUser } from './types';
+import { playHistory, sessions, users } from '$lib/server/db/schema';
 import { logger } from '$lib/server/logging';
 import {
-	getServerOwner,
 	getRandomNonOwnerUser,
-	resolveUserIdentifier,
-	getServerUsers
+	getServerOwner,
+	getServerUsers,
+	resolveUserIdentifier
 } from './dev-users';
-import { getPlexConfig } from '$lib/server/admin/settings.service';
 import { getPlexUserInfo } from './plex-oauth';
+import { type NormalizedServerUser, SESSION_DURATION_MS } from './types';
 
 const FALLBACK_PLEX_ID = 999999999;
 const FALLBACK_USERNAME = 'dev-admin';
@@ -201,7 +201,9 @@ async function resolveTargetUser(): Promise<NormalizedServerUser> {
 		// Check if user exists in local database by plexId or username
 		const plexIdNum = parseInt(bypassUserSetting, 10);
 		const dbUser = await db.query.users.findFirst({
-			where: isNaN(plexIdNum) ? eq(users.username, bypassUserSetting) : eq(users.plexId, plexIdNum)
+			where: Number.isNaN(plexIdNum)
+				? eq(users.username, bypassUserSetting)
+				: eq(users.plexId, plexIdNum)
 		});
 
 		if (dbUser) {

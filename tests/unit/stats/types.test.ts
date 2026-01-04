@@ -5,9 +5,8 @@
  */
 
 import { describe, expect, it } from 'bun:test';
-
-import { isUserStats, isServerStats } from '$lib/server/stats/types';
-import type { UserStats, ServerStats } from '$lib/server/stats/types';
+import type { ServerStats, UserStats } from '$lib/server/stats/types';
+import { isServerStats, isUserStats } from '$lib/server/stats/types';
 
 // =============================================================================
 // Test Helpers

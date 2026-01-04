@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { enhance, deserialize } from '$app/forms';
-	import { animate, stagger } from 'motion';
-	import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
-	import type { PageData, ActionData } from './$types';
 	import type { ActionResult } from '@sveltejs/kit';
+	import { animate, stagger } from 'motion';
+	import { deserialize, enhance } from '$app/forms';
+	import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
+	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -74,7 +74,7 @@
 
 	$effect(() => {
 		if (!iconRef) return;
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		// biome-ignore lint/suspicious/noExplicitAny: Motion's animate function has complex overloads that TypeScript cannot infer correctly
 		const animation = (animate as any)(
 			iconRef,
 			{
@@ -98,7 +98,7 @@
 
 			newItems.forEach((item) => animatedElements.add(item));
 
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			// biome-ignore lint/suspicious/noExplicitAny: Motion's animate function has complex overloads that TypeScript cannot infer correctly
 			(animate as any)(
 				newItems,
 				{ opacity: [0, 1], transform: ['translateY(12px)', 'translateY(0)'] },

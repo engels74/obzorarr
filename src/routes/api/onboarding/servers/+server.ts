@@ -1,13 +1,13 @@
-import { json, error } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { getSessionPlexToken } from '$lib/server/auth/session';
+import { error, json } from '@sveltejs/kit';
 import {
-	getPlexResources,
 	filterServerResources,
-	selectBestConnection,
-	generatePlexDirectUrl
+	generatePlexDirectUrl,
+	getPlexResources,
+	selectBestConnection
 } from '$lib/server/auth/membership';
+import { getSessionPlexToken } from '$lib/server/auth/session';
 import { logger } from '$lib/server/logging';
+import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ cookies, locals }) => {
 	if (!locals.user) {

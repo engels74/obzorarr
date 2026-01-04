@@ -1,8 +1,8 @@
 <script lang="ts">
 	import '../app.css';
-	import obzorarrIcon from '$lib/assets/obzorarr-icon.svg';
-	import { page } from '$app/stores';
 	import { Toaster } from 'svelte-sonner';
+	import { page } from '$app/stores';
+	import obzorarrIcon from '$lib/assets/obzorarr-icon.svg';
 	import { loadThemeFont } from '$lib/utils/theme-fonts';
 
 	let { children } = $props();

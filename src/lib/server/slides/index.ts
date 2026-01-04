@@ -1,32 +1,32 @@
-export * from './types';
 export {
-	initializeDefaultSlideConfig,
 	getAllSlideConfigs,
-	getSlideConfigByType,
 	getEnabledSlides,
-	updateSlideConfig,
+	getSlideConfigByType,
+	initializeDefaultSlideConfig,
 	reorderSlides,
+	resetToDefaultConfig,
 	toggleSlide,
-	resetToDefaultConfig
+	updateSlideConfig
 } from './config.service';
 export {
 	createCustomSlide,
-	getAllCustomSlides,
-	getEnabledCustomSlides,
-	getCustomSlideById,
-	updateCustomSlide,
-	toggleCustomSlide,
 	deleteCustomSlide,
-	validateMarkdown,
-	getNextSortOrder
+	getAllCustomSlides,
+	getCustomSlideById,
+	getEnabledCustomSlides,
+	getNextSortOrder,
+	toggleCustomSlide,
+	updateCustomSlide,
+	validateMarkdown
 } from './custom.service';
 export {
+	containsUnsafeHtml,
+	getReadingTime,
+	getWordCount,
+	markdownToPlainText,
 	renderMarkdown,
 	renderMarkdownSync,
-	validateMarkdownSyntax,
-	markdownToPlainText,
-	containsUnsafeHtml,
-	getWordCount,
-	getReadingTime
+	validateMarkdownSyntax
 } from './renderer';
+export * from './types';
 export { buildSlideRenderConfigs, customSlidesToMap, intersperseFunFacts } from './utils';

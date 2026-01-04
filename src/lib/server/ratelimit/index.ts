@@ -1,16 +1,16 @@
 // Types
-export type { RateLimitConfig, RateLimitResult, RateLimitRecord } from './types';
-export {
-	RateLimitConfigSchema,
-	FALLBACK_RATE_LIMIT,
-	RATE_LIMIT_CONFIGS,
-	STALE_THRESHOLD_MS
-} from './types';
 
 // Service
 export {
 	checkRateLimit,
 	cleanupRateLimitStore,
-	getRateLimitStoreSize,
-	clearRateLimitStore
+	clearRateLimitStore,
+	getRateLimitStoreSize
 } from './service';
+export type { RateLimitConfig, RateLimitRecord, RateLimitResult } from './types';
+export {
+	FALLBACK_RATE_LIMIT,
+	RATE_LIMIT_CONFIGS,
+	RateLimitConfigSchema,
+	STALE_THRESHOLD_MS
+} from './types';

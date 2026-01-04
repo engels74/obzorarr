@@ -1,13 +1,13 @@
-import type { PageServerLoad, Actions } from './$types';
 import { fail, redirect } from '@sveltejs/kit';
-import { setOnboardingStep, OnboardingSteps } from '$lib/server/onboarding';
-import {
-	startBackgroundSync,
-	isSyncRunning,
-	getSyncProgress,
-	getPlayHistoryCount
-} from '$lib/server/sync';
 import { logger } from '$lib/server/logging';
+import { OnboardingSteps, setOnboardingStep } from '$lib/server/onboarding';
+import {
+	getPlayHistoryCount,
+	getSyncProgress,
+	isSyncRunning,
+	startBackgroundSync
+} from '$lib/server/sync';
+import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ parent }) => {
 	const parentData = await parent();

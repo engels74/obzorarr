@@ -1,14 +1,14 @@
 import {
-	PlexPinResponseSchema,
-	PlexUserSchema,
-	PlexAuthApiError,
 	PinExpiredError,
+	type PinInfo,
 	PLEX_CLIENT_ID,
 	PLEX_PRODUCT,
 	PLEX_VERSION,
+	PlexAuthApiError,
 	type PlexPinResponse,
+	PlexPinResponseSchema,
 	type PlexUser,
-	type PinInfo,
+	PlexUserSchema,
 	type PollPinOptions
 } from './types';
 

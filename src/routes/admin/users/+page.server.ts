@@ -1,11 +1,11 @@
 import { fail } from '@sveltejs/kit';
 import { z } from 'zod';
-import type { PageServerLoad, Actions } from './$types';
 import {
 	getAllUsersWithStats,
-	updateUserSharePermission,
-	getAvailableYears
+	getAvailableYears,
+	updateUserSharePermission
 } from '$lib/server/admin/users.service';
+import type { Actions, PageServerLoad } from './$types';
 
 const UpdateUserPermissionSchema = z.object({
 	userId: z.coerce.number().int().positive(),

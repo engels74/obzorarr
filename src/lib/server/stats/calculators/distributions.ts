@@ -1,6 +1,6 @@
-import { getMonthFromTimestamp, getHourFromTimestamp } from '../utils';
+import type { HourlyDistribution, MonthlyDistribution } from '../types';
 import type { PlayHistoryRecord } from '../utils';
-import type { MonthlyDistribution, HourlyDistribution } from '../types';
+import { getHourFromTimestamp, getMonthFromTimestamp } from '../utils';
 
 export function calculateMonthlyDistribution(records: PlayHistoryRecord[]): MonthlyDistribution {
 	const minutes: number[] = Array.from({ length: 12 }, () => 0);

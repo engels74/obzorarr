@@ -1,18 +1,18 @@
-import { db } from '$lib/server/db/client';
-import { plexAccounts, users } from '$lib/server/db/schema';
-import { sql, or, eq } from 'drizzle-orm';
-import { logger } from '$lib/server/logging';
+import { eq, or, sql } from 'drizzle-orm';
+import { getPlexConfig, type PlexConfig } from '$lib/server/admin/settings.service';
+import { getPlexUserInfo } from '$lib/server/auth/plex-oauth';
 import {
-	PlexFriendsResponseSchema,
-	PlexServerIdentitySchema,
-	PlexAuthApiError,
 	PLEX_CLIENT_ID,
 	PLEX_PRODUCT,
 	PLEX_VERSION,
+	PlexAuthApiError,
+	PlexFriendsResponseSchema,
+	PlexServerIdentitySchema,
 	type PlexSharedServerUser
 } from '$lib/server/auth/types';
-import { getPlexUserInfo } from '$lib/server/auth/plex-oauth';
-import { getPlexConfig, type PlexConfig } from '$lib/server/admin/settings.service';
+import { db } from '$lib/server/db/client';
+import { plexAccounts, users } from '$lib/server/db/schema';
+import { logger } from '$lib/server/logging';
 
 const PLEX_TV_URL = 'https://plex.tv';
 

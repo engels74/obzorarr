@@ -1,14 +1,14 @@
+import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db/client';
 import { appSettings } from '$lib/server/db/schema';
-import { eq } from 'drizzle-orm';
 import {
+	type AnonymizableUser,
 	AnonymizationMode,
-	AnonymizationSettingsKey,
 	AnonymizationModeSchema,
-	PerStatAnonymizationSettingsSchema,
 	type AnonymizationModeType,
+	AnonymizationSettingsKey,
 	type PerStatAnonymizationSettings,
-	type AnonymizableUser
+	PerStatAnonymizationSettingsSchema
 } from './types';
 
 export function applyAnonymization<T extends AnonymizableUser>(

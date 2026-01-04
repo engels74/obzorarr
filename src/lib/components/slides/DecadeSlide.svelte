@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { animate, stagger } from 'motion';
 	import { prefersReducedMotion } from 'svelte/motion';
+	import { DELAY_PRESETS, getAdaptiveStagger, SPRING_PRESETS } from '$lib/utils/animation-presets';
 	import BaseSlide from './BaseSlide.svelte';
-	import type { DecadeSlideProps } from './types';
 	import type { SlideMessagingContext } from './messaging-context';
-	import { getPossessive, createPersonalContext } from './messaging-context';
-	import { SPRING_PRESETS, DELAY_PRESETS, getAdaptiveStagger } from '$lib/utils/animation-presets';
+	import { createPersonalContext, getPossessive } from './messaging-context';
+	import type { DecadeSlideProps } from './types';
 
 	interface Props extends DecadeSlideProps {
 		messagingContext?: SlideMessagingContext;
@@ -32,7 +32,7 @@
 
 	const eraMessage = $derived.by(() => {
 		if (!topDecade) return '';
-		const decadeNum = parseInt(topDecade.decade);
+		const decadeNum = parseInt(topDecade.decade, 10);
 		if (decadeNum >= 2020) return 'Living in the now';
 		if (decadeNum >= 2010) return 'Fresh content lover';
 		if (decadeNum >= 2000) return 'Y2K vibes';

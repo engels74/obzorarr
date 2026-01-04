@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { animate } from 'motion';
 	import { prefersReducedMotion } from 'svelte/motion';
+	import { DELAY_PRESETS, SPRING_PRESETS } from '$lib/utils/animation-presets';
 	import BaseSlide from './BaseSlide.svelte';
 	import type { CustomSlideProps } from './types';
-	import { SPRING_PRESETS, DELAY_PRESETS } from '$lib/utils/animation-presets';
 
 	interface Props extends CustomSlideProps {
 		renderedHtml?: string;

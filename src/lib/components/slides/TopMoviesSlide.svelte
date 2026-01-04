@@ -1,17 +1,17 @@
 <script lang="ts">
 	import { animate, stagger } from 'motion';
 	import { prefersReducedMotion } from 'svelte/motion';
-	import BaseSlide from './BaseSlide.svelte';
-	import type { TopMoviesSlideProps } from './types';
-	import { getThumbUrl } from '$lib/utils/plex-thumb';
-	import type { SlideMessagingContext } from './messaging-context';
-	import { getPossessive, createPersonalContext } from './messaging-context';
 	import {
-		SPRING_PRESETS,
 		DELAY_PRESETS,
+		getAdaptiveStagger,
 		KEYFRAMES,
-		getAdaptiveStagger
+		SPRING_PRESETS
 	} from '$lib/utils/animation-presets';
+	import { getThumbUrl } from '$lib/utils/plex-thumb';
+	import BaseSlide from './BaseSlide.svelte';
+	import type { SlideMessagingContext } from './messaging-context';
+	import { createPersonalContext, getPossessive } from './messaging-context';
+	import type { TopMoviesSlideProps } from './types';
 
 	interface Props extends TopMoviesSlideProps {
 		messagingContext?: SlideMessagingContext;

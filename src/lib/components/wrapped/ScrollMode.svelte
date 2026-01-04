@@ -2,11 +2,11 @@
 	import { gsap } from 'gsap';
 	import { ScrollTrigger } from 'gsap/ScrollTrigger';
 	import { tick } from 'svelte';
-	import type { SlideRenderConfig } from '$lib/components/slides/types';
-	import type { UserStats, ServerStats } from '$lib/stats/types';
-	import type { CustomSlide } from '$lib/slides/types';
 	import type { SlideMessagingContext } from '$lib/components/slides/messaging-context';
 	import { createPersonalContext } from '$lib/components/slides/messaging-context';
+	import type { SlideRenderConfig } from '$lib/components/slides/types';
+	import type { CustomSlide } from '$lib/slides/types';
+	import type { ServerStats, UserStats } from '$lib/stats/types';
 	import SlideRenderer from './SlideRenderer.svelte';
 
 	gsap.registerPlugin(ScrollTrigger);

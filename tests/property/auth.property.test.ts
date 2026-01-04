@@ -1,10 +1,10 @@
-import { describe, expect, it, beforeEach, afterEach } from 'bun:test';
-import * as fc from 'fast-check';
 import { Database } from 'bun:sqlite';
-import { drizzle } from 'drizzle-orm/bun-sqlite';
-import * as schema from '$lib/server/db/schema';
-import { users, sessions } from '$lib/server/db/schema';
+import { describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/bun-sqlite';
+import * as fc from 'fast-check';
+import * as schema from '$lib/server/db/schema';
+import { sessions, users } from '$lib/server/db/schema';
 
 // Note: We can't import from membership.ts directly because it uses $env/static/private
 // Instead, we test the pure function logic here
@@ -264,7 +264,7 @@ describe('Property 2: Non-Member Access Denial', () => {
 
 	it('non-members are always denied access', () => {
 		fc.assert(
-			fc.property(fc.boolean(), (isOwner) => {
+			fc.property(fc.boolean(), (_isOwner) => {
 				// Non-member scenario
 				const membership: MembershipResult = {
 					isMember: false,

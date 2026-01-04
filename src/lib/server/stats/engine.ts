@@ -1,36 +1,35 @@
-import { and, asc, eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, isNull, lte } from 'drizzle-orm';
 import { db } from '$lib/server/db/client';
-import { cachedStats, playHistory, users, plexAccounts } from '$lib/server/db/schema';
-import type { UserStats, ServerStats, Stats } from './types';
-import { UserStatsSchema, ServerStatsSchema } from './types';
-import { serializeStats, parseStats, StatsParseError } from './serialization';
-import { createYearFilter } from './utils';
+import type { PlayHistoryRecord } from '$lib/server/db/schema';
+import { cachedStats, playHistory, plexAccounts, users } from '$lib/server/db/schema';
+import { fetchShowsMetadataBatch } from '$lib/server/plex/client';
+import type { SeriesCompletionItem } from '$lib/stats/types';
 import {
-	calculateWatchTime,
-	calculateTopMovies,
-	calculateTopShows,
-	calculateTopGenres,
-	calculateMonthlyDistribution,
+	calculateContentTypeBreakdown,
+	calculateDecadeDistribution,
 	calculateHourlyDistribution,
+	calculateMarathonDay,
+	calculateMonthlyDistribution,
 	calculatePercentileRank,
-	getAllUsersWatchTime,
+	calculateSeriesProgress,
+	calculateTopGenres,
+	calculateTopMovies,
+	calculateTopRewatches,
+	calculateTopShows,
+	calculateWatchStreak,
+	calculateWatchTime,
+	calculateWeekdayDistribution,
+	calculateYearComparison,
 	detectLongestBinge,
 	findFirstWatch,
 	findLastWatch,
-	calculateWeekdayDistribution,
-	calculateContentTypeBreakdown,
-	calculateDecadeDistribution,
-	calculateTopRewatches,
-	calculateMarathonDay,
-	calculateWatchStreak,
-	calculateYearComparison,
-	calculateSeriesProgress,
+	getAllUsersWatchTime,
 	seriesProgressToCompletion
 } from './calculators';
-import { fetchShowsMetadataBatch } from '$lib/server/plex/client';
-
-import type { SeriesCompletionItem } from '$lib/stats/types';
-import type { PlayHistoryRecord } from '$lib/server/db/schema';
+import { parseStats, serializeStats } from './serialization';
+import type { ServerStats, Stats, UserStats } from './types';
+import { ServerStatsSchema, UserStatsSchema } from './types';
+import { createYearFilter } from './utils';
 
 export interface CalculateStatsOptions {
 	forceRecalculate?: boolean;
@@ -426,8 +425,9 @@ export async function getServerStatsWithAnonymization(
 	viewingUserId: number | null,
 	options: CalculateStatsOptions = {}
 ): Promise<ServerStats> {
-	const { applyAnonymization, getAnonymizationModeForStat } =
-		await import('$lib/server/anonymization/service');
+	const { applyAnonymization, getAnonymizationModeForStat } = await import(
+		'$lib/server/anonymization/service'
+	);
 
 	const stats = await calculateServerStats(year, options);
 	const topViewersMode = await getAnonymizationModeForStat('topViewers');

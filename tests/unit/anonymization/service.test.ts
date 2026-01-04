@@ -1,18 +1,18 @@
-import { describe, expect, it, beforeEach } from 'bun:test';
-import { db } from '$lib/server/db/client';
-import { appSettings } from '$lib/server/db/schema';
+import { beforeEach, describe, expect, it } from 'bun:test';
+import {
+	getAnonymizationModeForStat,
+	getGlobalAnonymizationMode,
+	getPerStatAnonymization,
+	setGlobalAnonymizationMode,
+	setPerStatAnonymization
+} from '$lib/server/anonymization/service';
 import {
 	AnonymizationMode,
-	AnonymizationSettingsKey,
-	type AnonymizationModeType
+	type AnonymizationModeType,
+	AnonymizationSettingsKey
 } from '$lib/server/anonymization/types';
-import {
-	getGlobalAnonymizationMode,
-	setGlobalAnonymizationMode,
-	getPerStatAnonymization,
-	setPerStatAnonymization,
-	getAnonymizationModeForStat
-} from '$lib/server/anonymization/service';
+import { db } from '$lib/server/db/client';
+import { appSettings } from '$lib/server/db/schema';
 
 /**
  * Unit tests for Anonymization Service Database Functions

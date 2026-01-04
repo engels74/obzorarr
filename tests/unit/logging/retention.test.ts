@@ -4,7 +4,7 @@
  * Tests the Croner-based scheduling for automatic log cleanup.
  */
 
-import { describe, expect, it, beforeEach, afterEach, mock, spyOn } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 
 // Import service for spying (we don't mock.module it to preserve real functions for service.test.ts)
 import * as serviceModule from '$lib/server/logging/service';
@@ -98,11 +98,11 @@ let mockLoggerError: ReturnType<typeof spyOn>;
 
 // Import after mocking
 import {
+	getRetentionSchedulerStatus,
+	isRetentionSchedulerConfigured,
 	setupLogRetentionScheduler,
 	stopLogRetentionScheduler,
-	triggerRetentionCleanup,
-	getRetentionSchedulerStatus,
-	isRetentionSchedulerConfigured
+	triggerRetentionCleanup
 } from '$lib/server/logging/retention';
 
 describe('Log Retention Scheduler', () => {

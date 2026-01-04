@@ -1,18 +1,18 @@
-import type { LayoutServerLoad } from './$types';
-import {
-	getOnboardingStep,
-	isOnboardingComplete,
-	getStepNumber,
-	OnboardingSteps,
-	type OnboardingStep
-} from '$lib/server/onboarding';
+import { redirect } from '@sveltejs/kit';
 import {
 	getApiConfigWithSources,
-	hasPlexEnvConfig,
-	getUITheme
+	getUITheme,
+	hasPlexEnvConfig
 } from '$lib/server/admin/settings.service';
+import {
+	getOnboardingStep,
+	getStepNumber,
+	isOnboardingComplete,
+	type OnboardingStep,
+	OnboardingSteps
+} from '$lib/server/onboarding';
 import { getServerName } from '$lib/server/plex/server-name.service';
-import { redirect } from '@sveltejs/kit';
+import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = async ({ locals }) => {
 	const isComplete = await isOnboardingComplete();

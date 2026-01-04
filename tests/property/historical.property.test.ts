@@ -11,11 +11,11 @@
  * - The getAllUsersWatchTime function includes all accountIds
  */
 
-import { describe, expect, it } from 'bun:test';
-import * as fc from 'fast-check';
 import { Database } from 'bun:sqlite';
-import { drizzle } from 'drizzle-orm/bun-sqlite';
+import { describe, expect, it } from 'bun:test';
 import { and, gte, lte, sql } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/bun-sqlite';
+import * as fc from 'fast-check';
 import * as schema from '$lib/server/db/schema';
 
 // =============================================================================
@@ -322,18 +322,18 @@ describe('Property 23: Historical Data Preservation', () => {
 			fc.asyncProperty(
 				uniquePlayHistoryArrayArbitrary,
 				fc.array(userArbitrary, { minLength: 1, maxLength: 5 }),
-				async (historyRecords, userRecords) => {
+				async (historyRecords, _userRecords) => {
 					const db = createTestDatabase();
 
 					// Split history records: some with matching users, some without
 					const halfIndex = Math.floor(historyRecords.length / 2);
 					const recordsWithUsers = historyRecords.slice(0, halfIndex);
-					const recordsWithoutUsers = historyRecords.slice(halfIndex);
+					const _recordsWithoutUsers = historyRecords.slice(halfIndex);
 
 					// Create users with specific plexIds matching some accountIds
 					const usersToInsert = recordsWithUsers
 						.slice(0, Math.min(3, recordsWithUsers.length))
-						.map((record, index) => ({
+						.map((record, _index) => ({
 							plexId: record.accountId,
 							username: `User_${record.accountId}`,
 							email: null,
@@ -488,7 +488,7 @@ describe('Historical User Data Edge Cases', () => {
 		});
 
 		// Verify no user exists
-		let users = await db.select().from(schema.users);
+		const users = await db.select().from(schema.users);
 		expect(users.length).toBe(0);
 
 		// Simulate re-authentication (user rejoins Plex server)

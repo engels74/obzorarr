@@ -1,9 +1,9 @@
 <script lang="ts">
-	import type { PageData } from './$types';
-	import Star from '@lucide/svelte/icons/star';
-	import Server from '@lucide/svelte/icons/server';
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
+	import Server from '@lucide/svelte/icons/server';
 	import Sparkles from '@lucide/svelte/icons/sparkles';
+	import Star from '@lucide/svelte/icons/star';
+	import type { PageData } from './$types';
 
 	/**
 	 * User Dashboard Page

@@ -1,21 +1,20 @@
 import { describe, expect, it } from 'bun:test';
 import {
-	calculateWeekdayDistribution,
 	calculateContentTypeBreakdown,
 	calculateDecadeDistribution,
-	calculateTopRewatches,
 	calculateMarathonDay,
-	calculateWatchStreak,
-	calculateYearComparison,
 	calculateSeriesProgress,
+	calculateTopRewatches,
+	calculateWatchStreak,
+	calculateWeekdayDistribution,
+	calculateYearComparison,
 	seriesProgressToCompletion
 } from '$lib/server/stats/calculators/new-slides';
 import {
-	createPlayHistoryRecord,
-	createMultipleRecords,
-	createTimestamp,
 	createConsecutiveDayRecords,
-	createEpisodeRecord
+	createEpisodeRecord,
+	createPlayHistoryRecord,
+	createTimestamp
 } from '../../helpers/factories';
 
 describe('new-slides calculators', () => {

@@ -1,13 +1,13 @@
-import type { PageServerLoad, Actions } from './$types';
 import { fail, redirect } from '@sveltejs/kit';
 import { z } from 'zod';
 import {
+	AppSettingsKey,
 	getCsrfConfigWithSource,
-	setAppSetting,
-	AppSettingsKey
+	setAppSetting
 } from '$lib/server/admin/settings.service';
-import { setOnboardingStep, OnboardingSteps } from '$lib/server/onboarding';
 import { logger } from '$lib/server/logging';
+import { OnboardingSteps, setOnboardingStep } from '$lib/server/onboarding';
+import type { Actions, PageServerLoad } from './$types';
 
 const CsrfOriginSchema = z.object({
 	csrfOrigin: z
