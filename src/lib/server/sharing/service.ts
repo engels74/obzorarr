@@ -262,6 +262,27 @@ export async function regenerateShareToken(userId: number, year: number): Promis
 	return newToken;
 }
 
+export async function ensureShareToken(userId: number, year: number): Promise<string> {
+	const settings = await getShareSettings(userId, year);
+
+	if (!settings) {
+		throw new ShareSettingsNotFoundError();
+	}
+
+	if (settings.shareToken) {
+		return settings.shareToken;
+	}
+
+	const newToken = generateShareToken();
+
+	await db
+		.update(shareSettings)
+		.set({ shareToken: newToken })
+		.where(and(eq(shareSettings.userId, userId), eq(shareSettings.year, year)));
+
+	return newToken;
+}
+
 export async function getShareSettingsByToken(token: string): Promise<ShareSettings | null> {
 	if (!isValidTokenFormat(token)) {
 		return null;
