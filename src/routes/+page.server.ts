@@ -1,6 +1,8 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { z } from 'zod';
 import { checkRateLimit } from '$lib/server/ratelimit';
+import { getGlobalDefaultShareMode, getOrCreateShareSettings } from '$lib/server/sharing/service';
+import { getMoreRestrictiveMode, ShareMode } from '$lib/server/sharing/types';
 import { triggerLiveSyncIfNeeded } from '$lib/server/sync/live-sync';
 import { findUserByUsername } from '$lib/server/sync/plex-accounts.service';
 import type { Actions, PageServerLoad } from './$types';
@@ -64,6 +66,17 @@ export const actions: Actions = {
 		const currentYear = new Date().getFullYear();
 
 		triggerLiveSyncIfNeeded('landing-page-lookup').catch(() => {});
+
+		const shareSettings = await getOrCreateShareSettings({
+			userId: userResult.userId,
+			year: currentYear
+		});
+		const globalFloor = await getGlobalDefaultShareMode();
+		const effectiveMode = getMoreRestrictiveMode(shareSettings.mode, globalFloor);
+
+		if (effectiveMode === ShareMode.PRIVATE_LINK && shareSettings.shareToken) {
+			redirect(303, `/wrapped/${currentYear}/u/${shareSettings.shareToken}`);
+		}
 
 		redirect(303, `/wrapped/${currentYear}/u/${userResult.userId}`);
 	}
