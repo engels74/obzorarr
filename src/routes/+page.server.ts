@@ -1,7 +1,11 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { z } from 'zod';
 import { checkRateLimit } from '$lib/server/ratelimit';
-import { getGlobalDefaultShareMode, getOrCreateShareSettings } from '$lib/server/sharing/service';
+import {
+	ensureShareToken,
+	getGlobalDefaultShareMode,
+	getOrCreateShareSettings
+} from '$lib/server/sharing/service';
 import { getMoreRestrictiveMode, ShareMode } from '$lib/server/sharing/types';
 import { triggerLiveSyncIfNeeded } from '$lib/server/sync/live-sync';
 import { findUserByUsername } from '$lib/server/sync/plex-accounts.service';
@@ -74,8 +78,10 @@ export const actions: Actions = {
 		const globalFloor = await getGlobalDefaultShareMode();
 		const effectiveMode = getMoreRestrictiveMode(shareSettings.mode, globalFloor);
 
-		if (effectiveMode === ShareMode.PRIVATE_LINK && shareSettings.shareToken) {
-			redirect(303, `/wrapped/${currentYear}/u/${shareSettings.shareToken}`);
+		if (effectiveMode === ShareMode.PRIVATE_LINK) {
+			const token =
+				shareSettings.shareToken ?? (await ensureShareToken(userResult.userId, currentYear));
+			redirect(303, `/wrapped/${currentYear}/u/${token}`);
 		}
 
 		redirect(303, `/wrapped/${currentYear}/u/${userResult.userId}`);
