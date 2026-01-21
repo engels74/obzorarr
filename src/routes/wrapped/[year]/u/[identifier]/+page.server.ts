@@ -1,21 +1,26 @@
 import { error, fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import { getFunFactFrequency } from '$lib/server/admin/settings.service';
+import { getAvailableYears } from '$lib/server/admin/users.service';
 import { db } from '$lib/server/db/client';
 import { users } from '$lib/server/db/schema';
 import { generateFunFacts } from '$lib/server/funfacts';
 import { getLogoVisibility, setUserLogoPreference } from '$lib/server/logo';
 import { checkTokenAccess, checkWrappedAccess } from '$lib/server/sharing/access-control';
 import {
+	ensureShareToken,
+	getGlobalDefaultShareMode,
 	getOrCreateShareSettings,
 	isValidTokenFormat,
 	regenerateShareToken,
 	updateShareSettings
 } from '$lib/server/sharing/service';
 import {
+	getMoreRestrictiveMode,
 	InvalidShareTokenError,
 	PermissionExceededError,
 	ShareAccessDeniedError,
+	ShareMode,
 	ShareModeSchema
 } from '$lib/server/sharing/types';
 import {
@@ -40,8 +45,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 	const { identifier } = params;
 	let userId: number;
+	let accessedViaToken = false;
 
 	if (isValidTokenFormat(identifier)) {
+		accessedViaToken = true;
 		try {
 			const tokenResult = await checkTokenAccess(identifier);
 			userId = tokenResult.userId;
@@ -90,6 +97,26 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const statsAccountId = user.accountId ?? user.plexId;
 	const stats = await calculateUserStats(statsAccountId, year);
 
+	let yearIdentifiers: Record<number, string | number> | undefined;
+
+	if (accessedViaToken) {
+		const availableYears = await getAvailableYears();
+		const globalFloor = await getGlobalDefaultShareMode();
+		yearIdentifiers = {};
+
+		for (const availYear of availableYears) {
+			const yearSettings = await getOrCreateShareSettings({ userId, year: availYear });
+			const effectiveMode = getMoreRestrictiveMode(yearSettings.mode, globalFloor);
+
+			if (effectiveMode === ShareMode.PRIVATE_LINK) {
+				const token = yearSettings.shareToken ?? (await ensureShareToken(userId, availYear));
+				yearIdentifiers[availYear] = token;
+			} else {
+				yearIdentifiers[availYear] = userId;
+			}
+		}
+	}
+
 	await initializeDefaultSlideConfig();
 	const [slideConfigs, customSlides] = await Promise.all([
 		getEnabledSlides(),
@@ -133,7 +160,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		},
 		isOwner,
 		isAdmin,
-		currentUrl: `/wrapped/${year}/u/${userId}`
+		currentUrl: `/wrapped/${year}/u/${userId}`,
+		yearIdentifiers
 	};
 };
 
