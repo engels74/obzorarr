@@ -1,7 +1,6 @@
 import { error, fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import { getFunFactFrequency } from '$lib/server/admin/settings.service';
-import { getAvailableYears } from '$lib/server/admin/users.service';
 import { db } from '$lib/server/db/client';
 import { users } from '$lib/server/db/schema';
 import { generateFunFacts } from '$lib/server/funfacts';
@@ -35,7 +34,7 @@ import { calculateUserStats } from '$lib/server/stats/engine';
 import { triggerLiveSyncIfNeeded } from '$lib/server/sync/live-sync';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params, locals }) => {
+export const load: PageServerLoad = async ({ params, locals, parent }) => {
 	const year = parseInt(params.year, 10);
 	if (Number.isNaN(year) || year < 2000 || year > 2100) {
 		error(404, 'Invalid year');
@@ -100,7 +99,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	let yearIdentifiers: Record<number, string | number> | undefined;
 
 	if (accessedViaToken) {
-		const availableYears = await getAvailableYears();
+		const parentData = await parent();
+		const availableYears = parentData.availableYears;
 		const globalFloor = await getGlobalDefaultShareMode();
 		yearIdentifiers = {};
 
@@ -142,6 +142,13 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const isOwner = locals.user?.id === userId;
 	const isAdmin = locals.user?.isAdmin ?? false;
 
+	const globalFloorForUrl = await getGlobalDefaultShareMode();
+	const effectiveModeForUrl = getMoreRestrictiveMode(shareSettings.mode, globalFloorForUrl);
+	const urlIdentifier =
+		effectiveModeForUrl === ShareMode.PRIVATE_LINK && shareSettings.shareToken
+			? shareSettings.shareToken
+			: userId;
+
 	return {
 		stats,
 		slides,
@@ -160,7 +167,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		},
 		isOwner,
 		isAdmin,
-		currentUrl: `/wrapped/${year}/u/${userId}`,
+		currentUrl: `/wrapped/${year}/u/${urlIdentifier}`,
 		yearIdentifiers
 	};
 };
