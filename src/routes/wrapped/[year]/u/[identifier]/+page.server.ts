@@ -145,8 +145,8 @@ export const load: PageServerLoad = async ({ params, locals, parent }) => {
 	const globalFloorForUrl = await getGlobalDefaultShareMode();
 	const effectiveModeForUrl = getMoreRestrictiveMode(shareSettings.mode, globalFloorForUrl);
 	const urlIdentifier =
-		effectiveModeForUrl === ShareMode.PRIVATE_LINK && shareSettings.shareToken
-			? shareSettings.shareToken
+		effectiveModeForUrl === ShareMode.PRIVATE_LINK
+			? (shareSettings.shareToken ?? (await ensureShareToken(userId, year)))
 			: userId;
 
 	return {
