@@ -7,15 +7,19 @@ import { generateFunFacts } from '$lib/server/funfacts';
 import { getLogoVisibility, setUserLogoPreference } from '$lib/server/logo';
 import { checkTokenAccess, checkWrappedAccess } from '$lib/server/sharing/access-control';
 import {
+	ensureShareToken,
+	getGlobalDefaultShareMode,
 	getOrCreateShareSettings,
 	isValidTokenFormat,
 	regenerateShareToken,
 	updateShareSettings
 } from '$lib/server/sharing/service';
 import {
+	getMoreRestrictiveMode,
 	InvalidShareTokenError,
 	PermissionExceededError,
 	ShareAccessDeniedError,
+	ShareMode,
 	ShareModeSchema
 } from '$lib/server/sharing/types';
 import {
@@ -30,7 +34,7 @@ import { calculateUserStats } from '$lib/server/stats/engine';
 import { triggerLiveSyncIfNeeded } from '$lib/server/sync/live-sync';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params, locals }) => {
+export const load: PageServerLoad = async ({ params, locals, parent }) => {
 	const year = parseInt(params.year, 10);
 	if (Number.isNaN(year) || year < 2000 || year > 2100) {
 		error(404, 'Invalid year');
@@ -40,8 +44,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 	const { identifier } = params;
 	let userId: number;
+	let accessedViaToken = false;
 
 	if (isValidTokenFormat(identifier)) {
+		accessedViaToken = true;
 		try {
 			const tokenResult = await checkTokenAccess(identifier);
 			userId = tokenResult.userId;
@@ -90,6 +96,27 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const statsAccountId = user.accountId ?? user.plexId;
 	const stats = await calculateUserStats(statsAccountId, year);
 
+	let yearIdentifiers: Record<number, string | number> | undefined;
+
+	if (accessedViaToken) {
+		const parentData = await parent();
+		const availableYears = parentData.availableYears;
+		const globalFloor = await getGlobalDefaultShareMode();
+		yearIdentifiers = {};
+
+		for (const availYear of availableYears) {
+			const yearSettings = await getOrCreateShareSettings({ userId, year: availYear });
+			const effectiveMode = getMoreRestrictiveMode(yearSettings.mode, globalFloor);
+
+			if (effectiveMode === ShareMode.PRIVATE_LINK) {
+				const token = yearSettings.shareToken ?? (await ensureShareToken(userId, availYear));
+				yearIdentifiers[availYear] = token;
+			} else {
+				yearIdentifiers[availYear] = userId;
+			}
+		}
+	}
+
 	await initializeDefaultSlideConfig();
 	const [slideConfigs, customSlides] = await Promise.all([
 		getEnabledSlides(),
@@ -115,6 +142,13 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const isOwner = locals.user?.id === userId;
 	const isAdmin = locals.user?.isAdmin ?? false;
 
+	const globalFloorForUrl = await getGlobalDefaultShareMode();
+	const effectiveModeForUrl = getMoreRestrictiveMode(shareSettings.mode, globalFloorForUrl);
+	const urlIdentifier =
+		effectiveModeForUrl === ShareMode.PRIVATE_LINK
+			? (shareSettings.shareToken ?? (await ensureShareToken(userId, year)))
+			: userId;
+
 	return {
 		stats,
 		slides,
@@ -133,7 +167,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		},
 		isOwner,
 		isAdmin,
-		currentUrl: `/wrapped/${year}/u/${userId}`
+		currentUrl: `/wrapped/${year}/u/${urlIdentifier}`,
+		yearIdentifiers
 	};
 };
 

@@ -199,6 +199,7 @@
 			currentYear={data.year}
 			availableYears={data.availableYears}
 			userIdentifier={data.userId}
+			yearIdentifiers={data.yearIdentifiers}
 		/>
 	{/if}
 

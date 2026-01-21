@@ -5,10 +5,17 @@
 		currentYear: number;
 		availableYears: number[];
 		userIdentifier?: number | string | null;
+		yearIdentifiers?: Record<number, string | number>;
 		class?: string;
 	}
 
-	let { currentYear, availableYears, userIdentifier = null, class: klass = '' }: Props = $props();
+	let {
+		currentYear,
+		availableYears,
+		userIdentifier = null,
+		yearIdentifiers,
+		class: klass = ''
+	}: Props = $props();
 
 	const sortedYears = $derived([...availableYears].sort((a, b) => b - a));
 	const currentIndex = $derived(sortedYears.indexOf(currentYear));
@@ -22,6 +29,9 @@
 	);
 
 	function buildUrl(year: number): string {
+		if (yearIdentifiers?.[year] != null) {
+			return `/wrapped/${year}/u/${yearIdentifiers[year]}`;
+		}
 		if (userIdentifier != null) {
 			return `/wrapped/${year}/u/${userIdentifier}`;
 		}
