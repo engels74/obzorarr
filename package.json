@@ -47,7 +47,7 @@
 		"@lucide/svelte": "^0.563.0",
 		"bits-ui": "^2.14.4",
 		"clsx": "^2.1.1",
-		"croner": "^9.1.0",
+		"croner": "^10.0.0",
 		"drizzle-orm": "^0.45.1",
 		"gsap": "^3.14.2",
 		"marked": "^17.0.1",
