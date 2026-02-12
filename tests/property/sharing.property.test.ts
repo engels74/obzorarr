@@ -171,9 +171,7 @@ describe('Property 15: Share Mode Access Control', () => {
 		fc.assert(
 			fc.property(
 				fc.uuid(), // validToken
-				fc
-					.uuid()
-					.filter((t) => t !== ''), // wrongToken
+				fc.uuid().filter((t) => t !== ''), // wrongToken
 				(validToken, wrongToken) => {
 					// Skip if tokens happen to match
 					if (validToken === wrongToken) return true;
