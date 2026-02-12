@@ -23,7 +23,7 @@
 		"postinstall": "prek install || true"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.3.13",
+		"@biomejs/biome": "2.3.14",
 		"@internationalized/date": "^3.10.1",
 		"@j178/prek": "^0.3.0",
 		"@sveltejs/kit": "^2.49.2",
