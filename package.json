@@ -44,7 +44,7 @@
 		"vite": "^7.3.0"
 	},
 	"dependencies": {
-		"@lucide/svelte": "^0.564.0",
+		"@lucide/svelte": "^0.575.0",
 		"bits-ui": "^2.14.4",
 		"clsx": "^2.1.1",
 		"croner": "^10.0.0",
