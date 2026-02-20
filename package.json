@@ -33,7 +33,7 @@
 		"@unocss/reset": "^66.5.12",
 		"drizzle-kit": "^0.31.8",
 		"fast-check": "^4.5.2",
-		"rollup-plugin-visualizer": "^6.0.5",
+		"rollup-plugin-visualizer": "^7.0.0",
 		"svelte": "^5.46.1",
 		"svelte-adapter-bun": "^1.0.1",
 		"svelte-check": "^4.3.5",
