@@ -376,6 +376,7 @@
 				{#if hasBothData}
 					<div class="view-toggle" role="tablist" aria-label="Chart view selection">
 						<button
+							type="button"
 							role="tab"
 							aria-selected={mobileView === 'monthly'}
 							class:active={mobileView === 'monthly'}
@@ -386,6 +387,7 @@
 							Months
 						</button>
 						<button
+							type="button"
 							role="tab"
 							aria-selected={mobileView === 'hourly'}
 							class:active={mobileView === 'hourly'}

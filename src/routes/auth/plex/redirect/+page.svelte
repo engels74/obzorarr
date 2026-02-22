@@ -171,7 +171,7 @@
 			</svg>
 			<h1>Authentication Cancelled</h1>
 			<p>You cancelled the Plex authentication.</p>
-			<button onclick={handleRetry} class="retry-button">Try Again</button>
+			<button type="button" onclick={handleRetry} class="retry-button">Try Again</button>
 		</div>
 	{:else if status === 'error'}
 		<div class="status-box error">
@@ -192,7 +192,7 @@
 			</svg>
 			<h1>Authentication Error</h1>
 			<p>{errorMessage}</p>
-			<button onclick={handleRetry} class="retry-button">Try Again</button>
+			<button type="button" onclick={handleRetry} class="retry-button">Try Again</button>
 		</div>
 	{/if}
 </div>

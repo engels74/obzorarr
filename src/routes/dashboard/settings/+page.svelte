@@ -187,7 +187,7 @@
 								/>
 								<span class="card-icon">{getShareIcon('public')}</span>
 								<span class="card-title">Public</span>
-								<span class="card-desc">{shareModeDescriptions['public']}</span>
+								<span class="card-desc">{shareModeDescriptions.public}</span>
 							</label>
 
 							<label class="privacy-card" class:selected={selectedShareMode === 'private-link'}>
