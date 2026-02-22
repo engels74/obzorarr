@@ -146,7 +146,7 @@
 <div bind:this={container} class="scroll-mode {klass}" role="main" aria-label="Wrapped statistics">
 	<!-- Scrollable content -->
 	<div class="scroll-content">
-		{#each enabledSlides as slide, index (slide.type + '-' + index)}
+		{#each enabledSlides as slide, index (`${slide.type}-${index}`)}
 			<section
 				bind:this={sectionRefs[index]}
 				class="scroll-section"

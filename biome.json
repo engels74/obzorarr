@@ -49,6 +49,9 @@
 			"style": {
 				"noNonNullAssertion": "off",
 				"noDescendingSpecificity": "off"
+			},
+			"a11y": {
+				"noSvgWithoutTitle": "off"
 			}
 		}
 	},
