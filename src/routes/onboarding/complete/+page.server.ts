@@ -5,7 +5,7 @@
  * Provides summary of configuration and link to dashboard.
  */
 
-import { redirect } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import {
 	getAnonymizationMode,
 	getCachedServerName,
@@ -22,9 +22,12 @@ import type { Actions, PageServerLoad } from './$types';
  * Load function - marks onboarding complete and provides summary
  */
 export const load: PageServerLoad = async ({ parent, locals }) => {
+	if (!locals.user?.isAdmin) {
+		redirect(303, '/onboarding/csrf');
+	}
+
 	const parentData = await parent();
 
-	// Complete onboarding
 	await completeOnboarding();
 
 	logger.info(`Onboarding completed by ${locals.user?.username || 'unknown'}`, 'Onboarding');
@@ -101,7 +104,10 @@ export const actions: Actions = {
 	/**
 	 * Go to dashboard
 	 */
-	goToDashboard: async () => {
+	goToDashboard: async ({ locals }) => {
+		if (!locals.user?.isAdmin) {
+			return fail(403, { error: 'Admin access required' });
+		}
 		redirect(303, '/admin');
 	}
 };
