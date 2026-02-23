@@ -14,17 +14,27 @@ import {
 import { getServerName } from '$lib/server/plex/server-name.service';
 import type { LayoutServerLoad } from './$types';
 
-export const load: LayoutServerLoad = async ({ locals }) => {
+export const load: LayoutServerLoad = async ({ locals, url }) => {
 	const isComplete = await isOnboardingComplete();
 	if (isComplete) {
 		redirect(303, locals.user?.isAdmin ? '/admin' : '/');
 	}
 
-	const [currentStep, apiConfig, uiTheme] = await Promise.all([
-		getOnboardingStep(),
-		getApiConfigWithSources(),
-		getUITheme()
-	]);
+	const currentStep = await getOnboardingStep();
+	const requestedPath = url.pathname;
+
+	const isOnCompleteWithoutAdmin =
+		currentStep === OnboardingSteps.COMPLETE && !locals.user?.isAdmin;
+
+	if (
+		!isOnCompleteWithoutAdmin &&
+		requestedPath !== '/onboarding' &&
+		!requestedPath.startsWith(`/onboarding/${currentStep}`)
+	) {
+		redirect(303, `/onboarding/${currentStep}`);
+	}
+
+	const [apiConfig, uiTheme] = await Promise.all([getApiConfigWithSources(), getUITheme()]);
 	const hasEnvConfigValue = hasPlexEnvConfig();
 	const serverName = hasEnvConfigValue ? await getServerName() : null;
 
