@@ -23,7 +23,14 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 	const currentStep = await getOnboardingStep();
 	const requestedPath = url.pathname;
 
-	if (requestedPath !== '/onboarding' && !requestedPath.startsWith(`/onboarding/${currentStep}`)) {
+	const isOnCompleteWithoutAdmin =
+		currentStep === OnboardingSteps.COMPLETE && !locals.user?.isAdmin;
+
+	if (
+		!isOnCompleteWithoutAdmin &&
+		requestedPath !== '/onboarding' &&
+		!requestedPath.startsWith(`/onboarding/${currentStep}`)
+	) {
 		redirect(303, `/onboarding/${currentStep}`);
 	}
 
