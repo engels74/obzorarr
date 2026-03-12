@@ -185,6 +185,7 @@ export interface SessionData {
 	plexId: number;
 	username: string;
 	isAdmin: boolean;
+	plexToken: string;
 	expiresAt: Date;
 }
 

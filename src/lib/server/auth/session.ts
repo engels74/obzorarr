@@ -1,6 +1,7 @@
 import { eq, lt } from 'drizzle-orm';
 import { db } from '$lib/server/db/client';
 import { sessions, users } from '$lib/server/db/schema';
+import { clearRevalidationEntry } from './revalidation';
 import { type CreateSessionOptions, SESSION_DURATION_MS, type SessionData } from './types';
 
 export async function createSession(options: CreateSessionOptions): Promise<string> {
@@ -27,6 +28,7 @@ export async function validateSession(sessionId: string): Promise<SessionData | 
 				sessionId: sessions.id,
 				userId: sessions.userId,
 				isAdmin: sessions.isAdmin,
+				plexToken: sessions.plexToken,
 				expiresAt: sessions.expiresAt,
 				plexId: users.plexId,
 				username: users.username
@@ -52,6 +54,7 @@ export async function validateSession(sessionId: string): Promise<SessionData | 
 			plexId: session.plexId,
 			username: session.username,
 			isAdmin: session.isAdmin ?? false,
+			plexToken: session.plexToken,
 			expiresAt: session.expiresAt
 		};
 	} catch (error) {
@@ -62,10 +65,20 @@ export async function validateSession(sessionId: string): Promise<SessionData | 
 }
 
 export async function invalidateSession(sessionId: string): Promise<void> {
+	clearRevalidationEntry(sessionId);
 	await db.delete(sessions).where(eq(sessions.id, sessionId));
 }
 
 export async function invalidateUserSessions(userId: number): Promise<void> {
+	const userSessions = await db
+		.select({ id: sessions.id })
+		.from(sessions)
+		.where(eq(sessions.userId, userId));
+
+	for (const s of userSessions) {
+		clearRevalidationEntry(s.id);
+	}
+
 	await db.delete(sessions).where(eq(sessions.userId, userId));
 }
 
@@ -90,6 +103,15 @@ export async function getSessionPlexToken(sessionId: string): Promise<string | n
 	}
 
 	return session.plexToken;
+}
+
+export async function updateUserAndSessionAdmin(
+	sessionId: string,
+	userId: number,
+	isAdmin: boolean
+): Promise<void> {
+	await db.update(sessions).set({ isAdmin }).where(eq(sessions.id, sessionId));
+	await db.update(users).set({ isAdmin }).where(eq(users.id, userId));
 }
 
 export async function extendSession(
