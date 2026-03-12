@@ -5,7 +5,13 @@ import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
 import { clearConflictingDbSettings } from '$lib/server/admin/settings.service';
 import { getOrCreateDevSession, isDevBypassEnabled } from '$lib/server/auth/dev-bypass';
-import { validateSession } from '$lib/server/auth/session';
+import { needsRevalidation, revalidateMembership } from '$lib/server/auth/revalidation';
+import {
+	invalidateSession,
+	invalidateUserSessions,
+	updateUserAndSessionAdmin,
+	validateSession
+} from '$lib/server/auth/session';
 import { SESSION_DURATION_MS } from '$lib/server/auth/types';
 import { logger } from '$lib/server/logging';
 import { getOnboardingStep, requiresOnboarding } from '$lib/server/onboarding';
@@ -122,11 +128,42 @@ const authHandle: Handle = async ({ event, resolve }) => {
 	const sessionId = event.cookies.get('session');
 
 	if (sessionId) {
-		// Validate session
 		const session = await validateSession(sessionId);
 
 		if (session) {
-			// Populate locals with user info
+			if (needsRevalidation(sessionId)) {
+				const result = await revalidateMembership(sessionId, session.plexToken);
+
+				switch (result.status) {
+					case 'valid': {
+						const newIsAdmin = result.membership.isOwner;
+						if (newIsAdmin !== session.isAdmin) {
+							await updateUserAndSessionAdmin(sessionId, session.userId, newIsAdmin);
+							session.isAdmin = newIsAdmin;
+						}
+						break;
+					}
+					case 'revoked':
+						logger.info(
+							`Session revoked for user ${session.username}: ${result.reason}`,
+							'Revalidation'
+						);
+						await invalidateUserSessions(session.userId);
+						event.cookies.delete('session', COOKIE_DELETE_OPTIONS);
+						return resolve(event);
+					case 'error_grace_expired':
+						logger.warn(
+							`Grace period expired for user ${session.username}, invalidating session`,
+							'Revalidation'
+						);
+						await invalidateSession(sessionId);
+						event.cookies.delete('session', COOKIE_DELETE_OPTIONS);
+						return resolve(event);
+					case 'error_within_grace':
+						break;
+				}
+			}
+
 			event.locals.user = {
 				id: session.userId,
 				plexId: session.plexId,
@@ -134,7 +171,6 @@ const authHandle: Handle = async ({ event, resolve }) => {
 				isAdmin: session.isAdmin
 			};
 		} else {
-			// Clear invalid/expired session cookie
 			event.cookies.delete('session', COOKIE_DELETE_OPTIONS);
 		}
 	}
