@@ -100,7 +100,7 @@ async function doRevalidation(sessionId: string, plexToken: string): Promise<Rev
 		});
 
 		logger.warn(
-			`Revalidation failed for session ${sessionId} (attempt ${consecutiveFailures}): ${error instanceof Error ? error.message : String(error)}`,
+			`Revalidation failed for session ${sessionId.slice(0, 8)}… (attempt ${consecutiveFailures}): ${error instanceof Error ? error.message : String(error)}`,
 			'Revalidation'
 		);
 

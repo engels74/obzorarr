@@ -110,8 +110,10 @@ export async function updateUserAndSessionAdmin(
 	userId: number,
 	isAdmin: boolean
 ): Promise<void> {
-	await db.update(sessions).set({ isAdmin }).where(eq(sessions.id, sessionId));
-	await db.update(users).set({ isAdmin }).where(eq(users.id, userId));
+	await db.transaction(async (tx) => {
+		await tx.update(sessions).set({ isAdmin }).where(eq(sessions.id, sessionId));
+		await tx.update(users).set({ isAdmin }).where(eq(users.id, userId));
+	});
 }
 
 export async function extendSession(
