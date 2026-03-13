@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { ShareMode, type ShareModeType } from '$lib/sharing/types';
+
 export { ShareMode, type ShareModeType };
 
 export const ShareSettingsKey = {
