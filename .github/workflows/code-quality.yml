@@ -46,7 +46,7 @@ jobs:
           fi
 
       - name: Run prek checks
-        uses: j178/prek-action@v1
+        uses: j178/prek-action@v2
         with:
           extra-args: --all-files --hook-stage manual
         env:
