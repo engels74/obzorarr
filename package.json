@@ -50,7 +50,7 @@
 		"croner": "^10.0.0",
 		"drizzle-orm": "^0.45.1",
 		"gsap": "^3.14.2",
-		"marked": "^17.0.1",
+		"marked": "^18.0.0",
 		"motion": "^12.23.26",
 		"sanitize-html": "^2.17.0",
 		"svelte-sonner": "^1.0.7",
