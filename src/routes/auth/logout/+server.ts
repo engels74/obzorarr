@@ -1,4 +1,4 @@
-import { redirect } from '@sveltejs/kit';
+import { json } from '@sveltejs/kit';
 import { invalidateSession } from '$lib/server/auth/session';
 import { logger } from '$lib/server/logging';
 import type { RequestHandler } from './$types';
@@ -20,5 +20,5 @@ export const POST: RequestHandler = async ({ cookies }) => {
 
 	cookies.delete('session', COOKIE_OPTIONS);
 
-	redirect(303, '/');
+	return json({ success: true });
 };
