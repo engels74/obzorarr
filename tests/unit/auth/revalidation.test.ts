@@ -284,6 +284,11 @@ describe('revalidation module', () => {
 			mockRequiresOnboarding.mockImplementation(() => Promise.resolve(false));
 			expect(await shouldRevalidateSession()).toBe(true);
 		});
+
+		it('returns false (and does not throw) when requiresOnboarding rejects', async () => {
+			mockRequiresOnboarding.mockImplementation(() => Promise.reject(new Error('db failure')));
+			expect(await shouldRevalidateSession()).toBe(false);
+		});
 	});
 
 	describe('clearRevalidationEntry', () => {
