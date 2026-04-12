@@ -460,14 +460,14 @@ async function goToPage(page: number) {
 					class="scheduler-status-badge"
 					class:active={data.schedulerStatus.isRunning && !data.schedulerStatus.isPaused}
 					class:paused={data.schedulerStatus.isPaused}
-					class:inactive={!data.schedulerStatus.isRunning}
+					class:inactive={!data.schedulerStatus.isRunning && !data.schedulerStatus.isPaused}
 				>
-					{#if !data.schedulerStatus.isRunning}
-						Inactive
-					{:else if data.schedulerStatus.isPaused}
+					{#if data.schedulerStatus.isPaused}
 						Paused
-					{:else}
+					{:else if data.schedulerStatus.isRunning}
 						Active
+					{:else}
+						Inactive
 					{/if}
 				</div>
 			</div>
@@ -493,27 +493,25 @@ async function goToPage(page: number) {
 				{/if}
 
 				<div class="scheduler-controls">
-					{#if data.schedulerStatus.isRunning}
-						{#if data.schedulerStatus.isPaused}
-							<form method="POST" action="?/resumeScheduler" use:enhance>
-								<button type="submit" class="control-btn resume">
-									<svg viewBox="0 0 24 24" fill="currentColor">
-										<polygon points="5 3 19 12 5 21 5 3" />
-									</svg>
-									Resume
-								</button>
-							</form>
-						{:else}
-							<form method="POST" action="?/pauseScheduler" use:enhance>
-								<button type="submit" class="control-btn pause">
-									<svg viewBox="0 0 24 24" fill="currentColor">
-										<rect x="6" y="4" width="4" height="16" />
-										<rect x="14" y="4" width="4" height="16" />
-									</svg>
-									Pause
-								</button>
-							</form>
-						{/if}
+					{#if data.schedulerStatus.isPaused}
+						<form method="POST" action="?/resumeScheduler" use:enhance>
+							<button type="submit" class="control-btn resume">
+								<svg viewBox="0 0 24 24" fill="currentColor">
+									<polygon points="5 3 19 12 5 21 5 3" />
+								</svg>
+								Resume
+							</button>
+						</form>
+					{:else if data.schedulerStatus.isRunning}
+						<form method="POST" action="?/pauseScheduler" use:enhance>
+							<button type="submit" class="control-btn pause">
+								<svg viewBox="0 0 24 24" fill="currentColor">
+									<rect x="6" y="4" width="4" height="16" />
+									<rect x="14" y="4" width="4" height="16" />
+								</svg>
+								Pause
+							</button>
+						</form>
 					{:else}
 						<form method="POST" action="?/initScheduler" use:enhance>
 							<input type="hidden" name="cronExpression" value={cronExpression} />

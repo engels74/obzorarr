@@ -97,9 +97,9 @@ const statsConfig = $derived([
 // Sync status derived state
 const syncStatus = $derived.by(() => {
 	if (!data.schedulerStatus) return 'unknown';
-	if (!data.schedulerStatus.isRunning) return 'inactive';
 	if (data.schedulerStatus.isPaused) return 'paused';
-	return 'active';
+	if (data.schedulerStatus.isRunning) return 'active';
+	return 'inactive';
 });
 
 const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
