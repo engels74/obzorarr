@@ -30,6 +30,7 @@ let isCancelling = $state(false);
 function validateCron(expr: string): string {
 	const trimmed = expr.trim();
 	if (!trimmed) return 'Cron expression is required';
+	if (!/^[\d\s*/\-,]+$/.test(trimmed)) return 'Only digits, spaces, and * / - , are allowed';
 	const fields = trimmed.split(/\s+/);
 	if (fields.length !== 5)
 		return `Expected 5 fields (minute hour day month weekday), got ${fields.length}`;

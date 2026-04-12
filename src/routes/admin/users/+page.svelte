@@ -1,6 +1,5 @@
 <script lang="ts">
 import { enhance } from '$app/forms';
-import { goto } from '$app/navigation';
 import { handleFormToast } from '$lib/utils/form-toast';
 import type { ActionData, PageData } from './$types';
 
@@ -54,14 +53,18 @@ function getShareModeLabel(mode: string | null): string {
 				<p class="subtitle">Manage server users for {data.year}</p>
 			</div>
 			{#if data.availableYears.length > 1}
-				<select
-					class="year-selector"
-					onchange={(e) => goto(`?year=${e.currentTarget.value}`)}
-				>
-					{#each data.availableYears as yr}
-						<option value={yr} selected={yr === data.year}>{yr}</option>
-					{/each}
-				</select>
+				<form method="GET" class="year-form">
+					<select
+						name="year"
+						class="year-selector"
+						onchange={(e) => e.currentTarget.form?.requestSubmit()}
+					>
+						{#each data.availableYears as yr}
+							<option value={yr} selected={yr === data.year}>{yr}</option>
+						{/each}
+					</select>
+					<noscript><button type="submit" class="year-submit">Go</button></noscript>
+				</form>
 			{/if}
 		</div>
 	</header>
@@ -219,6 +222,10 @@ function getShareModeLabel(mode: string | null): string {
 			justify-content: space-between;
 			align-items: flex-start;
 			gap: 1rem;
+		}
+
+		.year-form {
+			display: contents;
 		}
 
 		.year-selector {

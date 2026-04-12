@@ -141,7 +141,8 @@ export const actions: Actions = {
 
 		const parsed = CronExpressionSchema.safeParse(cronExpression);
 		if (!parsed.success) {
-			return fail(400, { error: 'Invalid cron expression format' });
+			const message = parsed.error.issues[0]?.message ?? 'Invalid cron expression format';
+			return fail(400, { error: message });
 		}
 
 		try {
@@ -182,7 +183,8 @@ export const actions: Actions = {
 
 		const parsed = CronExpressionSchema.safeParse(expression);
 		if (!parsed.success) {
-			return fail(400, { error: 'Invalid cron expression format' });
+			const message = parsed.error.issues[0]?.message ?? 'Invalid cron expression format';
+			return fail(400, { error: message });
 		}
 
 		try {
