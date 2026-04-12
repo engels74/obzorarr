@@ -24,7 +24,15 @@ const revalidationCache = new Map<string, RevalidationEntry>();
 const inFlightRevalidations = new Map<string, Promise<RevalidationResult>>();
 
 export async function shouldRevalidateSession(): Promise<boolean> {
-	return !(await requiresOnboarding());
+	try {
+		return !(await requiresOnboarding());
+	} catch (error) {
+		logger.warn(
+			`Failed to check onboarding status for revalidation; skipping revalidation: ${error instanceof Error ? error.message : String(error)}`,
+			'Revalidation'
+		);
+		return false;
+	}
 }
 
 export function needsRevalidation(sessionId: string): boolean {
