@@ -62,7 +62,10 @@ export const csrfHandle: Handle = async ({ event, resolve }) => {
 			method,
 			path: event.url.pathname
 		});
-		return new Response('CSRF check failed', { status: 403 });
+		return new Response(JSON.stringify({ error: 'CSRF check failed: missing origin header' }), {
+			status: 403,
+			headers: { 'Content-Type': 'application/json' }
+		});
 	}
 
 	// Compare origins (case-insensitive per URL spec)
@@ -73,7 +76,10 @@ export const csrfHandle: Handle = async ({ event, resolve }) => {
 			expected: expectedOrigin,
 			received: requestOrigin
 		});
-		return new Response('CSRF check failed', { status: 403 });
+		return new Response(JSON.stringify({ error: 'CSRF check failed: origin mismatch' }), {
+			status: 403,
+			headers: { 'Content-Type': 'application/json' }
+		});
 	}
 
 	return resolve(event);

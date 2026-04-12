@@ -9,11 +9,17 @@ import type { Actions, PageServerLoad } from './$types';
 
 const UpdateUserPermissionSchema = z.object({
 	userId: z.coerce.number().int().positive(),
+	year: z.coerce.number().int().min(2000).max(2100),
 	canUserControl: z.coerce.boolean()
 });
 
-export const load: PageServerLoad = async () => {
-	const year = new Date().getFullYear();
+export const load: PageServerLoad = async ({ url }) => {
+	const yearParam = url.searchParams.get('year');
+	const parsedYear = yearParam ? parseInt(yearParam, 10) : Number.NaN;
+	const year =
+		Number.isInteger(parsedYear) && parsedYear >= 2000 && parsedYear <= 2100
+			? parsedYear
+			: new Date().getFullYear();
 
 	const [users, availableYears] = await Promise.all([
 		getAllUsersWithStats(year),
@@ -40,10 +46,10 @@ export const load: PageServerLoad = async () => {
 export const actions: Actions = {
 	updateUserPermission: async ({ request }) => {
 		const formData = await request.formData();
-		const year = new Date().getFullYear();
 
 		const data = {
 			userId: formData.get('userId'),
+			year: formData.get('year'),
 			canUserControl: formData.get('canUserControl') === 'true'
 		};
 
@@ -53,7 +59,11 @@ export const actions: Actions = {
 		}
 
 		try {
-			await updateUserSharePermission(parsed.data.userId, year, parsed.data.canUserControl);
+			await updateUserSharePermission(
+				parsed.data.userId,
+				parsed.data.year,
+				parsed.data.canUserControl
+			);
 
 			return { success: true, message: 'User permission updated' };
 		} catch (error) {

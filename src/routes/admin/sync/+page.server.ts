@@ -17,7 +17,13 @@ import {
 } from '$lib/server/sync/service';
 import type { Actions, PageServerLoad } from './$types';
 
-const CronExpressionSchema = z.string().regex(/^[\d\s*/\-,]+$/, 'Invalid cron expression format');
+const CronExpressionSchema = z
+	.string()
+	.regex(/^[\d\s*/\-,]+$/, 'Invalid cron expression format')
+	.refine(
+		(val) => val.trim().split(/\s+/).filter(Boolean).length === 5,
+		'Cron expression must have exactly 5 fields'
+	);
 
 const BackfillYearSchema = z
 	.string()
@@ -135,7 +141,8 @@ export const actions: Actions = {
 
 		const parsed = CronExpressionSchema.safeParse(cronExpression);
 		if (!parsed.success) {
-			return fail(400, { error: 'Invalid cron expression format' });
+			const message = parsed.error.issues[0]?.message ?? 'Invalid cron expression format';
+			return fail(400, { error: message });
 		}
 
 		try {
@@ -176,7 +183,8 @@ export const actions: Actions = {
 
 		const parsed = CronExpressionSchema.safeParse(expression);
 		if (!parsed.success) {
-			return fail(400, { error: 'Invalid cron expression format' });
+			const message = parsed.error.issues[0]?.message ?? 'Invalid cron expression format';
+			return fail(400, { error: message });
 		}
 
 		try {

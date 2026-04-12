@@ -4,7 +4,7 @@ import { prefersReducedMotion } from 'svelte/motion';
 import { DELAY_PRESETS, SPRING_PRESETS } from '$lib/utils/animation-presets';
 import BaseSlide from './BaseSlide.svelte';
 import type { SlideMessagingContext } from './messaging-context';
-import { createPersonalContext, getSubject } from './messaging-context';
+import { createPersonalContext, getPossessive, getSubject } from './messaging-context';
 import type { ContentTypeSlideProps } from './types';
 
 interface Props extends ContentTypeSlideProps {
@@ -21,6 +21,7 @@ let {
 }: Props = $props();
 
 const subject = $derived(getSubject(messagingContext));
+const possessive = $derived(getPossessive(messagingContext));
 
 const total = $derived(
 	contentTypes.movies.count + contentTypes.episodes.count + contentTypes.tracks.count
@@ -142,7 +143,7 @@ $effect(() => {
 
 <BaseSlide {active} class="content-type-slide {klass}">
 	<div bind:this={container} class="content">
-		<h2 class="title">{subject}'s Content Mix</h2>
+		<h2 class="title">{possessive} Content Mix</h2>
 
 		<div class="chart-container">
 			<svg viewBox="0 0 200 200" class="donut-chart">
