@@ -5,7 +5,11 @@ import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
 import { clearConflictingDbSettings } from '$lib/server/admin/settings.service';
 import { getOrCreateDevSession, isDevBypassEnabled } from '$lib/server/auth/dev-bypass';
-import { needsRevalidation, revalidateMembership } from '$lib/server/auth/revalidation';
+import {
+	needsRevalidation,
+	revalidateMembership,
+	shouldRevalidateSession
+} from '$lib/server/auth/revalidation';
 import {
 	invalidateSession,
 	invalidateUserSessions,
@@ -131,7 +135,7 @@ const authHandle: Handle = async ({ event, resolve }) => {
 		const session = await validateSession(sessionId);
 
 		if (session) {
-			if (needsRevalidation(sessionId)) {
+			if (needsRevalidation(sessionId) && (await shouldRevalidateSession())) {
 				const result = await revalidateMembership(sessionId, session.plexToken);
 
 				switch (result.status) {
