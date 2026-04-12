@@ -328,28 +328,39 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 									</button>
 								</div>
 							{:else}
-								<button
-									type="button"
-									class="action-button delete-action"
-									onclick={() => (deletingSlideId = item.id)}
-									aria-label="Delete custom slide"
+								<form
+									method="POST"
+									action="?/deleteCustom"
+									use:enhance
+									class="delete-trigger-form"
+									onsubmit={(e) => {
+										e.preventDefault();
+										deletingSlideId = item.id;
+									}}
 								>
-									<svg
-										xmlns="http://www.w3.org/2000/svg"
-										width="14"
-										height="14"
-										viewBox="0 0 24 24"
-										fill="none"
-										stroke="currentColor"
-										stroke-width="2"
-										stroke-linecap="round"
-										stroke-linejoin="round"
+									<input type="hidden" name="id" value={item.id} />
+									<button
+										type="submit"
+										class="action-button delete-action"
+										aria-label="Delete custom slide"
 									>
-										<path d="M3 6h18" />
-										<path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-										<path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-									</svg>
-								</button>
+										<svg
+											xmlns="http://www.w3.org/2000/svg"
+											width="14"
+											height="14"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="2"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+										>
+											<path d="M3 6h18" />
+											<path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+											<path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+										</svg>
+									</button>
+								</form>
 							{/if}
 						</div>
 					{/if}
@@ -744,6 +755,10 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 		}
 
 		.delete-form {
+			display: contents;
+		}
+
+		.delete-trigger-form {
 			display: contents;
 		}
 
