@@ -151,7 +151,11 @@ async function fetchServers() {
 		const response = await fetch('/api/onboarding/servers');
 		if (!response.ok) {
 			if (response.status === 401) {
-				await fetch('/auth/logout', { method: 'POST' });
+				await fetch('/auth/logout', {
+					method: 'POST',
+					headers: { 'x-sveltekit-action': 'true' },
+					body: new FormData()
+				});
 				await invalidateAll();
 				throw new Error('Session expired. Please sign in again.');
 			}

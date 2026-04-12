@@ -15,7 +15,11 @@ const UpdateUserPermissionSchema = z.object({
 
 export const load: PageServerLoad = async ({ url }) => {
 	const yearParam = url.searchParams.get('year');
-	const year = yearParam ? parseInt(yearParam, 10) : new Date().getFullYear();
+	const parsedYear = yearParam ? parseInt(yearParam, 10) : Number.NaN;
+	const year =
+		Number.isInteger(parsedYear) && parsedYear >= 2000 && parsedYear <= 2100
+			? parsedYear
+			: new Date().getFullYear();
 
 	const [users, availableYears] = await Promise.all([
 		getAllUsersWithStats(year),

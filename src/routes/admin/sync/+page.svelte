@@ -23,7 +23,7 @@ let { data, form }: { data: PageData; form: ActionData } = $props();
 
 let selectedBackfillYear = $state<string>('');
 let cronExpression = $state('0 0 * * *');
-let cronError = $state('');
+const cronError = $derived(validateCron(cronExpression));
 let isSyncing = $state(false);
 let isCancelling = $state(false);
 
@@ -536,7 +536,6 @@ async function goToPage(page: number) {
 							id="cronExpression"
 							name="cronExpression"
 							bind:value={cronExpression}
-							oninput={() => (cronError = validateCron(cronExpression))}
 							placeholder="0 0 * * *"
 							class="cron-input"
 							class:cron-input-error={cronError}

@@ -129,13 +129,7 @@ function closeSidebar() {
 					<span class="user-role">Member</span>
 				</div>
 			</div>
-			<form method="POST" action="/auth/logout" use:enhance={() => {
-				return async ({ result }) => {
-					if (result.type === 'success') {
-						window.location.href = '/';
-					}
-				};
-			}}>
+			<form method="POST" action="/auth/logout" use:enhance>
 				<button type="submit" class="logout-button">
 					<LogOut class="logout-icon" />
 					<span>Logout</span>
