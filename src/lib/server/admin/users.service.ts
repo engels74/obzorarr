@@ -1,6 +1,7 @@
 import { and, between, eq, sql } from 'drizzle-orm';
 import { db } from '$lib/server/db/client';
 import { playHistory, shareSettings, users } from '$lib/server/db/schema';
+import { getGlobalDefaultShareMode } from '$lib/server/sharing/service';
 import type { ShareModeType } from '$lib/server/sharing/types';
 
 export interface UserWithStats {
@@ -143,10 +144,11 @@ export async function updateUserSharePermission(
 			.set({ canUserControl })
 			.where(and(eq(shareSettings.userId, userId), eq(shareSettings.year, year)));
 	} else {
+		const defaultMode = await getGlobalDefaultShareMode();
 		await db.insert(shareSettings).values({
 			userId,
 			year,
-			mode: 'public',
+			mode: defaultMode,
 			canUserControl
 		});
 	}

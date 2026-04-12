@@ -116,7 +116,7 @@ export function getSchedulerStatus(): SchedulerStatus {
 	return {
 		isRunning: schedulerInstance.isRunning(),
 		isPaused: schedulerInstance.isStopped(),
-		nextRun: schedulerInstance.nextRun() ?? null,
+		nextRun: schedulerInstance.isStopped() ? null : (schedulerInstance.nextRun() ?? null),
 		previousRun: schedulerInstance.previousRun() ?? null,
 		cronExpression: schedulerInstance.getPattern() ?? null
 	};

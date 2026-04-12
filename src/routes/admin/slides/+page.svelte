@@ -60,6 +60,9 @@ let editorYear = $state<number | null>(null);
 let editorEnabled = $state(true);
 let previewHtml = $state('');
 
+// Delete confirmation state
+let deletingSlideId = $state<number | null>(null);
+
 // Drag and drop state
 let draggedIndex = $state<number | null>(null);
 let dragOverIndex = $state<number | null>(null);
@@ -310,16 +313,25 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 								</button>
 							</form>
 
-							<form method="POST" action="?/deleteCustom" use:enhance class="delete-form">
-								<input type="hidden" name="id" value={item.id} />
+							{#if deletingSlideId === item.id}
+								<div class="confirm-delete">
+									<form method="POST" action="?/deleteCustom" use:enhance class="delete-form">
+										<input type="hidden" name="id" value={item.id} />
+										<button type="submit" class="confirm-button">Confirm?</button>
+									</form>
+									<button
+										type="button"
+										class="cancel-delete-button"
+										onclick={() => (deletingSlideId = null)}
+									>
+										Cancel
+									</button>
+								</div>
+							{:else}
 								<button
-									type="submit"
+									type="button"
 									class="action-button delete-action"
-									onclick={(e) => {
-										if (!confirm('Delete this custom slide?')) {
-											e.preventDefault();
-										}
-									}}
+									onclick={() => (deletingSlideId = item.id)}
 									aria-label="Delete custom slide"
 								>
 									<svg
@@ -338,7 +350,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 										<path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
 									</svg>
 								</button>
-							</form>
+							{/if}
 						</div>
 					{/if}
 				</li>
@@ -735,6 +747,41 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			display: contents;
 		}
 
+		.confirm-delete {
+			display: flex;
+			align-items: center;
+			gap: 0.375rem;
+		}
+
+		.confirm-button {
+			padding: 0.25rem 0.5rem;
+			background: hsl(var(--destructive));
+			color: hsl(var(--destructive-foreground));
+			border: none;
+			border-radius: var(--radius);
+			font-size: 0.75rem;
+			font-weight: 500;
+			cursor: pointer;
+		}
+
+		.confirm-button:hover {
+			opacity: 0.9;
+		}
+
+		.cancel-delete-button {
+			padding: 0.25rem 0.5rem;
+			background: hsl(var(--muted));
+			color: hsl(var(--muted-foreground));
+			border: 1px solid hsl(var(--border));
+			border-radius: var(--radius);
+			font-size: 0.75rem;
+			cursor: pointer;
+		}
+
+		.cancel-delete-button:hover {
+			background: hsl(var(--secondary));
+		}
+
 		.toggle-form {
 			margin: 0;
 		}
@@ -998,6 +1045,8 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			border-radius: var(--radius);
 			padding: 1rem;
 			min-height: 100px;
+			max-height: 200px;
+			overflow-y: auto;
 			font-size: 0.875rem;
 			line-height: 1.6;
 		}
@@ -1015,6 +1064,8 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			margin-top: 1.5rem;
 			padding-top: 1rem;
 			border-top: 1px solid hsl(var(--border));
+			position: relative;
+			z-index: 1;
 		}
 
 		.cancel-button {
@@ -1038,6 +1089,8 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			border-radius: var(--radius);
 			font-weight: 500;
 			cursor: pointer;
+			position: relative;
+			z-index: 2;
 		}
 
 		.save-button:hover {

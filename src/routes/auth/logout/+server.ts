@@ -1,4 +1,4 @@
-import { json } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import { invalidateSession } from '$lib/server/auth/session';
 import { logger } from '$lib/server/logging';
 import type { RequestHandler } from './$types';
@@ -20,8 +20,5 @@ export const POST: RequestHandler = async ({ cookies }) => {
 
 	cookies.delete('session', COOKIE_OPTIONS);
 
-	return json({
-		success: true,
-		message: 'Logged out successfully'
-	});
+	redirect(303, '/');
 };

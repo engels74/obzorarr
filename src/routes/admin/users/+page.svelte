@@ -1,5 +1,6 @@
 <script lang="ts">
 import { enhance } from '$app/forms';
+import { goto } from '$app/navigation';
 import { handleFormToast } from '$lib/utils/form-toast';
 import type { ActionData, PageData } from './$types';
 
@@ -47,8 +48,22 @@ function getShareModeLabel(mode: string | null): string {
 
 <div class="users-page">
 	<header class="page-header">
-		<h1>User Management</h1>
-		<p class="subtitle">Manage server users for {data.year}</p>
+		<div class="page-header-row">
+			<div>
+				<h1>User Management</h1>
+				<p class="subtitle">Manage server users for {data.year}</p>
+			</div>
+			{#if data.availableYears.length > 1}
+				<select
+					class="year-selector"
+					onchange={(e) => goto(`?year=${e.currentTarget.value}`)}
+				>
+					{#each data.availableYears as yr}
+						<option value={yr} selected={yr === data.year}>{yr}</option>
+					{/each}
+				</select>
+			{/if}
+		</div>
 	</header>
 
 	<!-- Users List Section -->
@@ -116,6 +131,7 @@ function getShareModeLabel(mode: string | null): string {
 										class="permission-form"
 									>
 										<input type="hidden" name="userId" value={user.id} />
+										<input type="hidden" name="year" value={data.year} />
 										<input
 											type="hidden"
 											name="canUserControl"
@@ -196,6 +212,29 @@ function getShareModeLabel(mode: string | null): string {
 		.subtitle {
 			color: hsl(var(--muted-foreground));
 			margin: 0;
+		}
+
+		.page-header-row {
+			display: flex;
+			justify-content: space-between;
+			align-items: flex-start;
+			gap: 1rem;
+		}
+
+		.year-selector {
+			padding: 0.5rem 0.75rem;
+			background: hsl(var(--input));
+			border: 1px solid hsl(var(--border));
+			border-radius: var(--radius);
+			color: hsl(var(--foreground));
+			font-size: 0.875rem;
+			cursor: pointer;
+		}
+
+		.year-selector:focus {
+			outline: none;
+			border-color: hsl(var(--ring));
+			box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
 		}
 
 		.section {

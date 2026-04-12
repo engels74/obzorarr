@@ -23,8 +23,18 @@ let { data, form }: { data: PageData; form: ActionData } = $props();
 
 let selectedBackfillYear = $state<string>('');
 let cronExpression = $state('0 0 * * *');
+let cronError = $state('');
 let isSyncing = $state(false);
 let isCancelling = $state(false);
+
+function validateCron(expr: string): string {
+	const trimmed = expr.trim();
+	if (!trimmed) return 'Cron expression is required';
+	const fields = trimmed.split(/\s+/);
+	if (fields.length !== 5)
+		return `Expected 5 fields (minute hour day month weekday), got ${fields.length}`;
+	return '';
+}
 
 $effect(() => {
 	handleFormToast(form);
@@ -507,7 +517,7 @@ async function goToPage(page: number) {
 					{:else}
 						<form method="POST" action="?/initScheduler" use:enhance>
 							<input type="hidden" name="cronExpression" value={cronExpression} />
-							<button type="submit" class="control-btn init">
+							<button type="submit" class="control-btn init" disabled={!!cronError}>
 								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 									<circle cx="12" cy="12" r="10" />
 									<polyline points="12 6 12 12 16 14" />
@@ -526,10 +536,12 @@ async function goToPage(page: number) {
 							id="cronExpression"
 							name="cronExpression"
 							bind:value={cronExpression}
+							oninput={() => (cronError = validateCron(cronExpression))}
 							placeholder="0 0 * * *"
 							class="cron-input"
+							class:cron-input-error={cronError}
 						/>
-						<button type="submit" class="cron-update-btn" aria-label="Update schedule">
+						<button type="submit" class="cron-update-btn" disabled={!!cronError} aria-label="Update schedule">
 							<svg
 								viewBox="0 0 24 24"
 								fill="none"
@@ -541,6 +553,10 @@ async function goToPage(page: number) {
 							</svg>
 						</button>
 					</div>
+
+					{#if cronError}
+						<span class="cron-error">{cronError}</span>
+					{/if}
 
 					<div class="cron-presets">
 						{#each cronPresets as preset}
@@ -1430,6 +1446,20 @@ async function goToPage(page: number) {
 			outline: none;
 			border-color: hsl(var(--primary));
 			box-shadow: 0 0 0 3px hsl(var(--primary) / 0.15);
+		}
+
+		.cron-input-error {
+			border-color: hsl(var(--destructive));
+		}
+
+		.cron-input-error:focus {
+			border-color: hsl(var(--destructive));
+			box-shadow: 0 0 0 3px hsl(var(--destructive) / 0.15);
+		}
+
+		.cron-error {
+			font-size: 0.75rem;
+			color: hsl(var(--destructive));
 		}
 
 		.cron-update-btn {

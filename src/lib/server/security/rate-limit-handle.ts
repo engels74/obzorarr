@@ -2,6 +2,10 @@ import type { Handle } from '@sveltejs/kit';
 import { checkRateLimit, RATE_LIMIT_CONFIGS, type RateLimitConfig } from '$lib/server/ratelimit';
 
 function getConfigForPath(path: string): RateLimitConfig {
+	if (path.startsWith('/auth/plex')) {
+		return RATE_LIMIT_CONFIGS.authPoll;
+	}
+
 	if (path.startsWith('/auth/')) {
 		return RATE_LIMIT_CONFIGS.auth;
 	}

@@ -603,7 +603,17 @@ export const actions: Actions = {
 
 			try {
 				const normalizedOrigin = csrfOrigin.replace(/\/$/, '');
+				const requestOrigin = new URL(request.url).origin;
 				await setAppSetting(AppSettingsKey.CSRF_ORIGIN, normalizedOrigin);
+
+				if (normalizedOrigin.toLowerCase() !== requestOrigin.toLowerCase()) {
+					return {
+						success: true,
+						warning: true,
+						message: `CSRF origin saved, but it does not match your current origin (${requestOrigin}). You may get locked out of the admin panel.`
+					};
+				}
+
 				return { success: true, message: 'CSRF origin updated' };
 			} catch (error) {
 				const message = error instanceof Error ? error.message : 'Failed to update CSRF origin';
