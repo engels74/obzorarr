@@ -5,17 +5,6 @@
 		"clientKind": "git",
 		"useIgnoreFile": true
 	},
-	"html": {
-		"experimentalFullSupportEnabled": true
-	},
-	"css": {
-		"parser": {
-			"cssModules": true
-		},
-		"linter": {
-			"enabled": true
-		}
-	},
 	"formatter": {
 		"enabled": true,
 		"indentStyle": "tab",
@@ -27,31 +16,31 @@
 			"trailingCommas": "none"
 		}
 	},
+	"css": {
+		"parser": {
+			"cssModules": true
+		},
+		"linter": {
+			"enabled": true
+		}
+	},
 	"linter": {
 		"enabled": true,
 		"rules": {
 			"recommended": true,
 			"suspicious": {
-				"noUnknownAtRules": "off",
 				"noExplicitAny": "warn",
-				"useIterableCallbackReturn": "off",
-				"noDuplicateProperties": "off",
-				"noImplicitAnyLet": "warn",
-				"noNonNullAssertedOptionalChain": "warn"
+				"noUnknownAtRules": "off",
+				"useIterableCallbackReturn": "off"
 			},
 			"complexity": {
-				"noImportantStyles": "off",
 				"useOptionalChain": "off"
 			},
 			"correctness": {
 				"noUnusedPrivateClassMembers": "off"
 			},
 			"style": {
-				"noNonNullAssertion": "off",
-				"noDescendingSpecificity": "off"
-			},
-			"a11y": {
-				"noSvgWithoutTitle": "off"
+				"noNonNullAssertion": "off"
 			}
 		}
 	},
@@ -63,10 +52,6 @@
 					"correctness": {
 						"noUnusedVariables": "off",
 						"noUnusedImports": "off"
-					},
-					"suspicious": {
-						"noAssignInExpressions": "off",
-						"noGlobalAssign": "off"
 					},
 					"style": {
 						"useImportType": "off",

@@ -1,539 +1,537 @@
 <script lang="ts">
-	import { animate, stagger } from 'motion';
-	import { browser } from '$app/environment';
-	import { enhance } from '$app/forms';
-	import { invalidateAll } from '$app/navigation';
-	import PopupBlockedModal from '$lib/components/auth/PopupBlockedModal.svelte';
-	import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
-	import * as Tooltip from '$lib/components/ui/tooltip';
-	import { toast } from '$lib/services/toast';
-	import type { ActionData, PageData } from './$types';
+import { animate, stagger } from 'motion';
+import { browser } from '$app/environment';
+import { enhance } from '$app/forms';
+import { invalidateAll } from '$app/navigation';
+import PopupBlockedModal from '$lib/components/auth/PopupBlockedModal.svelte';
+import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
+import * as Tooltip from '$lib/components/ui/tooltip';
+import { toast } from '$lib/services/toast';
+import type { ActionData, PageData } from './$types';
 
-	let { data, form }: { data: PageData; form: ActionData } = $props();
+let { data, form }: { data: PageData; form: ActionData } = $props();
 
-	let isOAuthLoading = $state(false);
-	let oauthError = $state<string | null>(null);
-	let pollIntervalId: ReturnType<typeof setInterval> | null = null;
-	let timeoutId: ReturnType<typeof setTimeout> | null = null;
+let isOAuthLoading = $state(false);
+let oauthError = $state<string | null>(null);
+let pollIntervalId: ReturnType<typeof setInterval> | null = null;
+let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
-	// Popup fallback state
-	let showPopupBlockedModal = $state(false);
-	let pendingPinId = $state<number | null>(null);
-	let pendingAuthUrl = $state<string | null>(null);
-	const PIN_STORAGE_KEY = 'obzorarr_plex_pin';
+// Popup fallback state
+let showPopupBlockedModal = $state(false);
+let pendingPinId = $state<number | null>(null);
+let pendingAuthUrl = $state<string | null>(null);
+const PIN_STORAGE_KEY = 'obzorarr_plex_pin';
 
-	// Bypasses SvelteKit data prop reactivity timing issues
-	let localAuthState = $state<{
-		isAuthenticated: boolean;
-		isAdmin: boolean;
-		username: string | null;
-	} | null>(null);
+// Bypasses SvelteKit data prop reactivity timing issues
+let localAuthState = $state<{
+	isAuthenticated: boolean;
+	isAdmin: boolean;
+	username: string | null;
+} | null>(null);
 
-	let servers = $state<
-		Array<{
-			name: string;
-			clientIdentifier: string;
-			owned: boolean;
-			accessToken: string | null;
-			bestConnectionUrl?: string;
-			publicAddress?: string;
-			connections?: Array<{ uri: string; local: boolean; relay: boolean }>;
-		}>
-	>([]);
-	let isLoadingServers = $state(false);
-	let expandedServer = $state<string | null>(null);
-	let selectedServer = $state<string | null>(null);
-	let selectedConnection = $state<string | null>(null);
-	let isSavingServer = $state(false);
-	let serverSaved = $state(false);
+let servers = $state<
+	Array<{
+		name: string;
+		clientIdentifier: string;
+		owned: boolean;
+		accessToken: string | null;
+		bestConnectionUrl?: string;
+		publicAddress?: string;
+		connections?: Array<{ uri: string; local: boolean; relay: boolean }>;
+	}>
+>([]);
+let isLoadingServers = $state(false);
+let expandedServer = $state<string | null>(null);
+let selectedServer = $state<string | null>(null);
+let selectedConnection = $state<string | null>(null);
+let isSavingServer = $state(false);
+let serverSaved = $state(false);
 
-	let showCustomUrl = $state(false);
-	let customUrl = $state('');
-	let isTestingCustomUrl = $state(false);
-	let customUrlTestResult = $state<{
-		success: boolean;
-		serverName?: string;
-		error?: string;
-	} | null>(null);
+let showCustomUrl = $state(false);
+let customUrl = $state('');
+let isTestingCustomUrl = $state(false);
+let customUrlTestResult = $state<{
+	success: boolean;
+	serverName?: string;
+	error?: string;
+} | null>(null);
 
-	let iconRef: HTMLElement | undefined = $state();
-	let contentRef: HTMLElement | undefined = $state();
-	let animatedElements = new WeakSet<Element>();
+let iconRef: HTMLElement | undefined = $state();
+let contentRef: HTMLElement | undefined = $state();
+let animatedElements = new WeakSet<Element>();
 
-	$effect(() => {
-		if (!iconRef) return;
-		// biome-ignore lint/suspicious/noExplicitAny: Motion's animate function has complex overloads that TypeScript cannot infer correctly
-		const animation = (animate as any)(
-			iconRef,
-			{
-				opacity: [0, 1],
-				transform: ['scale(0.8)', 'scale(1)']
-			},
-			{ duration: 0.5, easing: [0.22, 1, 0.36, 1] }
-		);
-		return () => animation.stop?.();
-	});
+$effect(() => {
+	if (!iconRef) return;
+	// biome-ignore lint/suspicious/noExplicitAny: Motion's animate function has complex overloads that TypeScript cannot infer correctly
+	const animation = (animate as any)(
+		iconRef,
+		{
+			opacity: [0, 1],
+			transform: ['scale(0.8)', 'scale(1)']
+		},
+		{ duration: 0.5, easing: [0.22, 1, 0.36, 1] }
+	);
+	return () => animation.stop?.();
+});
 
-	$effect(() => {
+$effect(() => {
+	if (!contentRef) return;
+
+	// Track underlying state variables that affect DOM structure
+	// When these change, new .animate-item elements may be added to the DOM
+	// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+	localAuthState?.isAuthenticated;
+	// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+	localAuthState?.isAdmin;
+	// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+	data.isAuthenticated;
+	// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+	isLoadingServers;
+	// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+	servers.length;
+
+	// Use requestAnimationFrame to ensure DOM has updated after state change
+	const rafId = requestAnimationFrame(() => {
 		if (!contentRef) return;
+		const items = contentRef.querySelectorAll('.animate-item');
+		// Filter to only animate elements that haven't been animated yet
+		const newItems = Array.from(items).filter((item) => !animatedElements.has(item));
 
-		// Track underlying state variables that affect DOM structure
-		// When these change, new .animate-item elements may be added to the DOM
-		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
-		localAuthState?.isAuthenticated;
-		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
-		localAuthState?.isAdmin;
-		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
-		data.isAuthenticated;
-		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
-		isLoadingServers;
-		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
-		servers.length;
+		if (newItems.length === 0) return;
 
-		// Use requestAnimationFrame to ensure DOM has updated after state change
-		const rafId = requestAnimationFrame(() => {
-			if (!contentRef) return;
-			const items = contentRef.querySelectorAll('.animate-item');
-			// Filter to only animate elements that haven't been animated yet
-			const newItems = Array.from(items).filter((item) => !animatedElements.has(item));
+		// Mark these elements as animated before starting animation
+		newItems.forEach((item) => animatedElements.add(item));
 
-			if (newItems.length === 0) return;
-
-			// Mark these elements as animated before starting animation
-			newItems.forEach((item) => animatedElements.add(item));
-
-			// biome-ignore lint/suspicious/noExplicitAny: Motion's animate function has complex overloads that TypeScript cannot infer correctly
-			(animate as any)(
-				newItems,
-				{ opacity: [0, 1], transform: ['translateY(12px)', 'translateY(0)'] },
-				{ duration: 0.4, delay: stagger(0.08), easing: [0.22, 1, 0.36, 1] }
-			);
-		});
-
-		return () => cancelAnimationFrame(rafId);
+		// biome-ignore lint/suspicious/noExplicitAny: Motion's animate function has complex overloads that TypeScript cannot infer correctly
+		(animate as any)(
+			newItems,
+			{ opacity: [0, 1], transform: ['translateY(12px)', 'translateY(0)'] },
+			{ duration: 0.4, delay: stagger(0.08), easing: [0.22, 1, 0.36, 1] }
+		);
 	});
 
-	$effect(() => {
-		return () => {
-			if (pollIntervalId) clearInterval(pollIntervalId);
-			if (timeoutId) clearTimeout(timeoutId);
+	return () => cancelAnimationFrame(rafId);
+});
+
+$effect(() => {
+	return () => {
+		if (pollIntervalId) clearInterval(pollIntervalId);
+		if (timeoutId) clearTimeout(timeoutId);
+	};
+});
+
+$effect(() => {
+	if (browser && localAuthState === null && data.isAuthenticated) {
+		localAuthState = {
+			isAuthenticated: data.isAuthenticated,
+			isAdmin: data.isAdmin,
+			username: data.username ?? null
 		};
-	});
-
-	$effect(() => {
-		if (browser && localAuthState === null && data.isAuthenticated) {
-			localAuthState = {
-				isAuthenticated: data.isAuthenticated,
-				isAdmin: data.isAdmin,
-				username: data.username ?? null
-			};
-		}
-	});
-
-	$effect(() => {
-		if (!browser) return;
-
-		const isAuth = localAuthState?.isAuthenticated ?? data.isAuthenticated;
-		const isAdm = localAuthState?.isAdmin ?? data.isAdmin;
-
-		const shouldFetch =
-			!data.hasEnvConfig && isAuth && isAdm && servers.length === 0 && !isLoadingServers;
-
-		if (shouldFetch) {
-			fetchServers();
-		}
-	});
-
-	async function fetchServers() {
-		isLoadingServers = true;
-		oauthError = null;
-		try {
-			const response = await fetch('/api/onboarding/servers');
-			if (!response.ok) {
-				if (response.status === 401) {
-					await fetch('/auth/logout', { method: 'POST' });
-					await invalidateAll();
-					throw new Error('Session expired. Please sign in again.');
-				}
-				const errorData = await response.json().catch(() => ({}));
-				throw new Error((errorData as { message?: string }).message || 'Failed to fetch servers');
-			}
-			const result = await response.json();
-			servers = result.servers;
-		} catch (err) {
-			oauthError = err instanceof Error ? err.message : 'Failed to load servers';
-		} finally {
-			isLoadingServers = false;
-		}
 	}
+});
 
-	async function handlePlexLogin() {
-		isOAuthLoading = true;
-		oauthError = null;
+$effect(() => {
+	if (!browser) return;
 
-		try {
-			const response = await fetch('/auth/plex');
-			if (!response.ok) {
-				const errData = await response.json().catch(() => ({}));
-				throw new Error(errData.message || 'Failed to initiate login');
+	const isAuth = localAuthState?.isAuthenticated ?? data.isAuthenticated;
+	const isAdm = localAuthState?.isAdmin ?? data.isAdmin;
+
+	const shouldFetch =
+		!data.hasEnvConfig && isAuth && isAdm && servers.length === 0 && !isLoadingServers;
+
+	if (shouldFetch) {
+		fetchServers();
+	}
+});
+
+async function fetchServers() {
+	isLoadingServers = true;
+	oauthError = null;
+	try {
+		const response = await fetch('/api/onboarding/servers');
+		if (!response.ok) {
+			if (response.status === 401) {
+				await fetch('/auth/logout', { method: 'POST' });
+				await invalidateAll();
+				throw new Error('Session expired. Please sign in again.');
 			}
-			const { pinId, authUrl } = (await response.json()) as { pinId: number; authUrl: string };
+			const errorData = await response.json().catch(() => ({}));
+			throw new Error((errorData as { message?: string }).message || 'Failed to fetch servers');
+		}
+		const result = await response.json();
+		servers = result.servers;
+	} catch (err) {
+		oauthError = err instanceof Error ? err.message : 'Failed to load servers';
+	} finally {
+		isLoadingServers = false;
+	}
+}
 
-			const authWindow = window.open(authUrl, 'plex-auth', 'width=600,height=700');
+async function handlePlexLogin() {
+	isOAuthLoading = true;
+	oauthError = null;
 
-			if (!authWindow) {
-				await handlePopupBlocked(pinId);
-				return;
-			}
+	try {
+		const response = await fetch('/auth/plex');
+		if (!response.ok) {
+			const errData = await response.json().catch(() => ({}));
+			throw new Error(errData.message || 'Failed to initiate login');
+		}
+		const { pinId, authUrl } = (await response.json()) as { pinId: number; authUrl: string };
 
-			await new Promise((r) => setTimeout(r, 100));
-			if (authWindow.closed) {
-				await handlePopupBlocked(pinId);
-				return;
-			}
+		const authWindow = window.open(authUrl, 'plex-auth', 'width=600,height=700');
 
-			pollIntervalId = setInterval(async () => {
-				try {
-					const pollResponse = await fetch('/auth/plex', {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({ pinId })
-					});
+		if (!authWindow) {
+			await handlePopupBlocked(pinId);
+			return;
+		}
 
-					if (!pollResponse.ok) {
-						const status = pollResponse.status;
-						if (status === 401) {
-							if (pollIntervalId) clearInterval(pollIntervalId);
-							pollIntervalId = null;
-							isOAuthLoading = false;
-							oauthError = 'Authentication expired. Please try again.';
-							return;
-						}
-						return;
-					}
+		await new Promise((r) => setTimeout(r, 100));
+		if (authWindow.closed) {
+			await handlePopupBlocked(pinId);
+			return;
+		}
 
-					const result = (await pollResponse.json()) as { pending: true } | { authToken: string };
+		pollIntervalId = setInterval(async () => {
+			try {
+				const pollResponse = await fetch('/auth/plex', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ pinId })
+				});
 
-					if ('authToken' in result && result.authToken) {
+				if (!pollResponse.ok) {
+					const status = pollResponse.status;
+					if (status === 401) {
 						if (pollIntervalId) clearInterval(pollIntervalId);
 						pollIntervalId = null;
-						authWindow?.close();
-
-						const callbackResponse = await fetch('/auth/plex/callback', {
-							method: 'POST',
-							headers: { 'Content-Type': 'application/json' },
-							body: JSON.stringify({ authToken: result.authToken })
-						});
-
-						if (!callbackResponse.ok) {
-							const errData = await callbackResponse.json().catch(() => ({}));
-							throw new Error((errData as { message?: string }).message || 'Login failed');
-						}
-
-						const callbackData = (await callbackResponse.json()) as {
-							user: { id: number; plexId: number; username: string; isAdmin: boolean };
-						};
-
-						localAuthState = {
-							isAuthenticated: true,
-							isAdmin: callbackData.user.isAdmin,
-							username: callbackData.user.username
-						};
-
-						invalidateAll();
-
 						isOAuthLoading = false;
+						oauthError = 'Authentication expired. Please try again.';
+						return;
 					}
-				} catch (err) {
+					return;
+				}
+
+				const result = (await pollResponse.json()) as { pending: true } | { authToken: string };
+
+				if ('authToken' in result && result.authToken) {
 					if (pollIntervalId) clearInterval(pollIntervalId);
 					pollIntervalId = null;
+					authWindow?.close();
+
+					const callbackResponse = await fetch('/auth/plex/callback', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ authToken: result.authToken })
+					});
+
+					if (!callbackResponse.ok) {
+						const errData = await callbackResponse.json().catch(() => ({}));
+						throw new Error((errData as { message?: string }).message || 'Login failed');
+					}
+
+					const callbackData = (await callbackResponse.json()) as {
+						user: { id: number; plexId: number; username: string; isAdmin: boolean };
+					};
+
+					localAuthState = {
+						isAuthenticated: true,
+						isAdmin: callbackData.user.isAdmin,
+						username: callbackData.user.username
+					};
+
+					invalidateAll();
+
 					isOAuthLoading = false;
-					oauthError = err instanceof Error ? err.message : 'Login failed';
 				}
-			}, 2000);
-
-			timeoutId = setTimeout(
-				() => {
-					if (pollIntervalId) {
-						clearInterval(pollIntervalId);
-						pollIntervalId = null;
-					}
-					if (isOAuthLoading) {
-						isOAuthLoading = false;
-						oauthError = 'Authentication timed out. Please try again.';
-					}
-				},
-				5 * 60 * 1000
-			);
-		} catch (err) {
-			isOAuthLoading = false;
-			oauthError = err instanceof Error ? err.message : 'Login failed';
-		}
-	}
-
-	async function handlePopupBlocked(_originalPinId: number): Promise<void> {
-		try {
-			const redirectUrl = browser ? `${window.location.origin}/auth/plex/redirect` : '';
-			const response = await fetch(`/auth/plex?redirectUrl=${encodeURIComponent(redirectUrl)}`);
-			if (!response.ok) {
-				throw new Error('Failed to prepare redirect');
+			} catch (err) {
+				if (pollIntervalId) clearInterval(pollIntervalId);
+				pollIntervalId = null;
+				isOAuthLoading = false;
+				oauthError = err instanceof Error ? err.message : 'Login failed';
 			}
-			const { pinId, authUrl } = (await response.json()) as { pinId: number; authUrl: string };
-			pendingPinId = pinId;
-			pendingAuthUrl = authUrl;
-		} catch {
-			pendingPinId = null;
-			pendingAuthUrl = null;
-			isOAuthLoading = false;
-			oauthError = 'Unable to prepare redirect. Please try again.';
-			return;
-		}
+		}, 2000);
 
-		isOAuthLoading = false;
-		showPopupBlockedModal = true;
-	}
-
-	function handleContinueWithRedirect(): void {
-		if (!pendingPinId || !pendingAuthUrl || !browser) return;
-
-		sessionStorage.setItem(
-			PIN_STORAGE_KEY,
-			JSON.stringify({
-				pinId: pendingPinId,
-				createdAt: Date.now(),
-				context: 'onboarding'
-			})
+		timeoutId = setTimeout(
+			() => {
+				if (pollIntervalId) {
+					clearInterval(pollIntervalId);
+					pollIntervalId = null;
+				}
+				if (isOAuthLoading) {
+					isOAuthLoading = false;
+					oauthError = 'Authentication timed out. Please try again.';
+				}
+			},
+			5 * 60 * 1000
 		);
-
-		showPopupBlockedModal = false;
-		window.location.href = pendingAuthUrl;
+	} catch (err) {
+		isOAuthLoading = false;
+		oauthError = err instanceof Error ? err.message : 'Login failed';
 	}
+}
 
-	function handleCancelRedirect(): void {
+async function handlePopupBlocked(_originalPinId: number): Promise<void> {
+	try {
+		const redirectUrl = browser ? `${window.location.origin}/auth/plex/redirect` : '';
+		const response = await fetch(`/auth/plex?redirectUrl=${encodeURIComponent(redirectUrl)}`);
+		if (!response.ok) {
+			throw new Error('Failed to prepare redirect');
+		}
+		const { pinId, authUrl } = (await response.json()) as { pinId: number; authUrl: string };
+		pendingPinId = pinId;
+		pendingAuthUrl = authUrl;
+	} catch {
 		pendingPinId = null;
 		pendingAuthUrl = null;
-		showPopupBlockedModal = false;
-		oauthError = 'Login cancelled. Try enabling popups for this site.';
+		isOAuthLoading = false;
+		oauthError = 'Unable to prepare redirect. Please try again.';
+		return;
 	}
 
-	function handleServerExpand(server: (typeof servers)[0]) {
-		if (!server.owned) return;
+	isOAuthLoading = false;
+	showPopupBlockedModal = true;
+}
 
-		// Toggle expansion - collapse if clicking the same server
-		if (expandedServer === server.clientIdentifier) {
-			expandedServer = null;
-		} else {
-			expandedServer = server.clientIdentifier;
-			selectedConnection = null;
-		}
+function handleContinueWithRedirect(): void {
+	if (!pendingPinId || !pendingAuthUrl || !browser) return;
+
+	sessionStorage.setItem(
+		PIN_STORAGE_KEY,
+		JSON.stringify({
+			pinId: pendingPinId,
+			createdAt: Date.now(),
+			context: 'onboarding'
+		})
+	);
+
+	showPopupBlockedModal = false;
+	window.location.href = pendingAuthUrl;
+}
+
+function handleCancelRedirect(): void {
+	pendingPinId = null;
+	pendingAuthUrl = null;
+	showPopupBlockedModal = false;
+	oauthError = 'Login cancelled. Try enabling popups for this site.';
+}
+
+function handleServerExpand(server: (typeof servers)[0]) {
+	if (!server.owned) return;
+
+	// Toggle expansion - collapse if clicking the same server
+	if (expandedServer === server.clientIdentifier) {
+		expandedServer = null;
+	} else {
+		expandedServer = server.clientIdentifier;
+		selectedConnection = null;
+	}
+}
+
+async function handleConnectionSelect(
+	server: (typeof servers)[0],
+	connection: { uri: string; local: boolean; relay: boolean }
+) {
+	if (!server.owned) {
+		oauthError = 'Cannot configure a server you do not own.';
+		return;
 	}
 
-	async function handleConnectionSelect(
-		server: (typeof servers)[0],
-		connection: { uri: string; local: boolean; relay: boolean }
-	) {
-		if (!server.owned) {
-			oauthError = 'Cannot configure a server you do not own.';
-			return;
+	selectedServer = server.clientIdentifier;
+	selectedConnection = connection.uri;
+	isSavingServer = true;
+	oauthError = null;
+
+	try {
+		const response = await fetch('/api/onboarding/select-server', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				serverUrl: connection.uri,
+				accessToken: server.accessToken,
+				serverName: server.name
+			})
+		});
+
+		if (!response.ok) {
+			const errData = await response.json().catch(() => ({}));
+			throw new Error((errData as { message?: string }).message || 'Failed to save server');
 		}
 
-		selectedServer = server.clientIdentifier;
-		selectedConnection = connection.uri;
-		isSavingServer = true;
-		oauthError = null;
+		const result = (await response.json()) as { success: boolean; error?: string };
 
-		try {
-			const response = await fetch('/api/onboarding/select-server', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					serverUrl: connection.uri,
-					accessToken: server.accessToken,
-					serverName: server.name
-				})
-			});
-
-			if (!response.ok) {
-				const errData = await response.json().catch(() => ({}));
-				throw new Error((errData as { message?: string }).message || 'Failed to save server');
-			}
-
-			const result = (await response.json()) as { success: boolean; error?: string };
-
-			if (!result.success) {
-				throw new Error(result.error || 'Connection test failed');
-			}
-
-			serverSaved = true;
-		} catch (err) {
-			const errorMessage = err instanceof Error ? err.message : 'Failed to save server';
-			toast.error(errorMessage);
-			oauthError = errorMessage;
-			selectedServer = null;
-			selectedConnection = null;
-		} finally {
-			isSavingServer = false;
+		if (!result.success) {
+			throw new Error(result.error || 'Connection test failed');
 		}
+
+		serverSaved = true;
+	} catch (err) {
+		const errorMessage = err instanceof Error ? err.message : 'Failed to save server';
+		toast.error(errorMessage);
+		oauthError = errorMessage;
+		selectedServer = null;
+		selectedConnection = null;
+	} finally {
+		isSavingServer = false;
 	}
+}
 
-	function getConnectionInfo(connection: { uri: string; local: boolean; relay: boolean }): {
-		label: string;
-		type: 'secure' | 'local' | 'remote' | 'relay';
-		description: string;
-		tooltip?: string;
-		isSSL: boolean;
-	} {
-		if (connection.uri.includes('.plex.direct')) {
-			return {
-				label: 'SSL',
-				type: 'secure',
-				description: 'Encrypted connection',
-				tooltip:
-					'This connection uses plex.direct with TLS/SSL encryption. Your data is securely encrypted in transit, providing protection against eavesdropping and tampering.',
-				isSSL: true
-			};
-		}
-		if (connection.relay) {
-			return {
-				label: 'Relay',
-				type: 'relay',
-				description: 'Routed through Plex servers',
-				tooltip:
-					'Traffic is routed through Plex relay servers. May have higher latency but works when direct connections are unavailable.',
-				isSSL: false
-			};
-		}
-		if (connection.local) {
-			return {
-				label: 'Local',
-				type: 'local',
-				description: 'Internal network connection',
-				tooltip:
-					'Connects directly over your local network. Fast and reliable but only works when on the same network as your server.',
-				isSSL: false
-			};
-		}
+function getConnectionInfo(connection: { uri: string; local: boolean; relay: boolean }): {
+	label: string;
+	type: 'secure' | 'local' | 'remote' | 'relay';
+	description: string;
+	tooltip?: string;
+	isSSL: boolean;
+} {
+	if (connection.uri.includes('.plex.direct')) {
 		return {
-			label: 'Remote',
-			type: 'remote',
-			description: 'Direct external connection',
-			tooltip: 'Connects directly to your server over the internet using your public IP address.',
+			label: 'SSL',
+			type: 'secure',
+			description: 'Encrypted connection',
+			tooltip:
+				'This connection uses plex.direct with TLS/SSL encryption. Your data is securely encrypted in transit, providing protection against eavesdropping and tampering.',
+			isSSL: true
+		};
+	}
+	if (connection.relay) {
+		return {
+			label: 'Relay',
+			type: 'relay',
+			description: 'Routed through Plex servers',
+			tooltip:
+				'Traffic is routed through Plex relay servers. May have higher latency but works when direct connections are unavailable.',
 			isSSL: false
 		};
 	}
+	if (connection.local) {
+		return {
+			label: 'Local',
+			type: 'local',
+			description: 'Internal network connection',
+			tooltip:
+				'Connects directly over your local network. Fast and reliable but only works when on the same network as your server.',
+			isSSL: false
+		};
+	}
+	return {
+		label: 'Remote',
+		type: 'remote',
+		description: 'Direct external connection',
+		tooltip: 'Connects directly to your server over the internet using your public IP address.',
+		isSSL: false
+	};
+}
 
-	function sortConnections(
-		connections: Array<{ uri: string; local: boolean; relay: boolean }>
-	): Array<{ uri: string; local: boolean; relay: boolean }> {
-		return [...connections].sort((a, b) => {
-			const priority = (c: { uri: string; local: boolean; relay: boolean }) => {
-				if (c.uri.includes('.plex.direct')) return 0;
-				if (!c.local && !c.relay) return 1;
-				if (c.local && !c.relay) return 2;
-				return 3; // relay
-			};
-			return priority(a) - priority(b);
+function sortConnections(
+	connections: Array<{ uri: string; local: boolean; relay: boolean }>
+): Array<{ uri: string; local: boolean; relay: boolean }> {
+	return [...connections].sort((a, b) => {
+		const priority = (c: { uri: string; local: boolean; relay: boolean }) => {
+			if (c.uri.includes('.plex.direct')) return 0;
+			if (!c.local && !c.relay) return 1;
+			if (c.local && !c.relay) return 2;
+			return 3; // relay
+		};
+		return priority(a) - priority(b);
+	});
+}
+
+async function testCustomConnection(server: (typeof servers)[0]) {
+	if (!customUrl.trim()) {
+		customUrlTestResult = { success: false, error: 'Please enter a URL' };
+		return;
+	}
+
+	try {
+		new URL(customUrl);
+	} catch {
+		customUrlTestResult = { success: false, error: 'Please enter a valid URL' };
+		return;
+	}
+
+	isTestingCustomUrl = true;
+	customUrlTestResult = null;
+	oauthError = null;
+
+	try {
+		const response = await fetch('/api/onboarding/test-connection', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				url: customUrl,
+				accessToken: server.accessToken
+			})
 		});
+
+		const result = (await response.json()) as {
+			success: boolean;
+			serverName?: string;
+			error?: string;
+		};
+
+		customUrlTestResult = result;
+
+		if (result.success) {
+			setTimeout(async () => {
+				await handleConnectionSelect(server, {
+					uri: customUrl,
+					local: false,
+					relay: false
+				});
+			}, 500);
+		}
+	} catch (err) {
+		customUrlTestResult = {
+			success: false,
+			error: err instanceof Error ? err.message : 'Connection test failed'
+		};
+	} finally {
+		isTestingCustomUrl = false;
 	}
+}
 
-	async function testCustomConnection(server: (typeof servers)[0]) {
-		if (!customUrl.trim()) {
-			customUrlTestResult = { success: false, error: 'Please enter a URL' };
-			return;
-		}
-
-		try {
-			new URL(customUrl);
-		} catch {
-			customUrlTestResult = { success: false, error: 'Please enter a valid URL' };
-			return;
-		}
-
-		isTestingCustomUrl = true;
+function toggleCustomUrl() {
+	showCustomUrl = !showCustomUrl;
+	if (!showCustomUrl) {
+		customUrl = '';
 		customUrlTestResult = null;
-		oauthError = null;
-
-		try {
-			const response = await fetch('/api/onboarding/test-connection', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					url: customUrl,
-					accessToken: server.accessToken
-				})
-			});
-
-			const result = (await response.json()) as {
-				success: boolean;
-				serverName?: string;
-				error?: string;
-			};
-
-			customUrlTestResult = result;
-
-			if (result.success) {
-				setTimeout(async () => {
-					await handleConnectionSelect(server, {
-						uri: customUrl,
-						local: false,
-						relay: false
-					});
-				}, 500);
-			}
-		} catch (err) {
-			customUrlTestResult = {
-				success: false,
-				error: err instanceof Error ? err.message : 'Connection test failed'
-			};
-		} finally {
-			isTestingCustomUrl = false;
-		}
 	}
+}
 
-	function toggleCustomUrl() {
-		showCustomUrl = !showCustomUrl;
-		if (!showCustomUrl) {
-			customUrl = '';
-			customUrlTestResult = null;
-		}
+function isValidUrl(url: string): boolean {
+	if (!url.trim()) return false;
+	try {
+		new URL(url);
+		return true;
+	} catch {
+		return false;
 	}
+}
 
-	function isValidUrl(url: string): boolean {
-		if (!url.trim()) return false;
-		try {
-			new URL(url);
-			return true;
-		} catch {
-			return false;
-		}
+const effectiveIsAuthenticated = $derived(localAuthState?.isAuthenticated ?? data.isAuthenticated);
+const effectiveIsAdmin = $derived(localAuthState?.isAdmin ?? data.isAdmin);
+const effectiveUsername = $derived(localAuthState?.username ?? data.username);
+
+const showLoginButton = $derived(!effectiveIsAuthenticated);
+const showVerifyButton = $derived(data.hasEnvConfig && effectiveIsAuthenticated);
+const showServerSelector = $derived(
+	!data.hasEnvConfig && effectiveIsAuthenticated && effectiveIsAdmin
+);
+const isNonAdminUser = $derived(effectiveIsAuthenticated && !effectiveIsAdmin);
+const ownedServers = $derived(servers.filter((s) => s.owned));
+const canContinue = $derived(
+	(data.hasEnvConfig && data.canProceed) || (!data.hasEnvConfig && serverSaved)
+);
+
+function formatServerUrl(url: string | null): string {
+	if (!url) return '';
+	try {
+		const parsed = new URL(url);
+		return `${parsed.hostname}:${parsed.port || '32400'}`;
+	} catch {
+		return url;
 	}
-
-	const effectiveIsAuthenticated = $derived(
-		localAuthState?.isAuthenticated ?? data.isAuthenticated
-	);
-	const effectiveIsAdmin = $derived(localAuthState?.isAdmin ?? data.isAdmin);
-	const effectiveUsername = $derived(localAuthState?.username ?? data.username);
-
-	const showLoginButton = $derived(!effectiveIsAuthenticated);
-	const showVerifyButton = $derived(data.hasEnvConfig && effectiveIsAuthenticated);
-	const showServerSelector = $derived(
-		!data.hasEnvConfig && effectiveIsAuthenticated && effectiveIsAdmin
-	);
-	const isNonAdminUser = $derived(effectiveIsAuthenticated && !effectiveIsAdmin);
-	const ownedServers = $derived(servers.filter((s) => s.owned));
-	const canContinue = $derived(
-		(data.hasEnvConfig && data.canProceed) || (!data.hasEnvConfig && serverSaved)
-	);
-
-	function formatServerUrl(url: string | null): string {
-		if (!url) return '';
-		try {
-			const parsed = new URL(url);
-			return `${parsed.hostname}:${parsed.port || '32400'}`;
-		} catch {
-			return url;
-		}
-	}
+}
 </script>
 
 <OnboardingCard
@@ -1074,1094 +1072,1094 @@
 
 <style>
 	.plex-content {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 1.5rem;
-	}
-
-	.animate-item {
-		opacity: 0;
-	}
-
-	/* Plex Icon */
-	.plex-icon-wrapper {
-		position: relative;
-		width: 72px;
-		height: 72px;
-	}
-
-	.plex-icon-glow {
-		position: absolute;
-		inset: -8px;
-		background: radial-gradient(circle, hsl(var(--primary) / 0.4) 0%, transparent 70%);
-		border-radius: 50%;
-		animation: icon-pulse 3s ease-in-out infinite;
-	}
-
-	@keyframes icon-pulse {
-		0%,
-		100% {
-			opacity: 0.6;
-			transform: scale(1);
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 1.5rem;
 		}
-		50% {
-			opacity: 0.8;
-			transform: scale(1.05);
-		}
-	}
 
-	.plex-icon {
-		position: relative;
-		width: 100%;
-		height: 100%;
-	}
-
-	.plex-icon svg {
-		width: 100%;
-		height: 100%;
-	}
-
-	/* Pre-configured Server Card */
-	.preconfigured-card {
-		display: flex;
-		align-items: center;
-		gap: 1rem;
-		padding: 1.125rem 1.25rem;
-		background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(34, 197, 94, 0.02) 100%);
-		border: 1px solid rgba(34, 197, 94, 0.25);
-		border-radius: 14px;
-		width: 100%;
-		position: relative;
-		overflow: hidden;
-	}
-
-	.preconfigured-card::before {
-		content: '';
-		position: absolute;
-		inset: 0;
-		background: radial-gradient(ellipse at top left, rgba(34, 197, 94, 0.1) 0%, transparent 50%);
-		pointer-events: none;
-	}
-
-	.preconfigured-icon {
-		flex-shrink: 0;
-		width: 44px;
-		height: 44px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background: rgba(34, 197, 94, 0.12);
-		border-radius: 11px;
-		color: hsl(142, 71%, 55%);
-		position: relative;
-	}
-
-	.preconfigured-icon svg {
-		width: 24px;
-		height: 24px;
-	}
-
-	.preconfigured-info {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		gap: 0.375rem;
-		min-width: 0;
-	}
-
-	.preconfigured-header {
-		display: flex;
-		align-items: center;
-		gap: 0.625rem;
-		flex-wrap: wrap;
-	}
-
-	.preconfigured-title {
-		font-size: 0.95rem;
-		font-weight: 600;
-		color: rgba(255, 255, 255, 0.95);
-	}
-
-	.preconfigured-server-name {
-		font-size: 0.875rem;
-		font-weight: 500;
-		color: rgba(255, 255, 255, 0.7);
-	}
-
-	.preconfigured-badge {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.3rem;
-		padding: 0.2rem 0.5rem;
-		font-size: 0.65rem;
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		background: rgba(34, 197, 94, 0.2);
-		color: hsl(142, 71%, 60%);
-		border-radius: 5px;
-		border: 1px solid rgba(34, 197, 94, 0.3);
-	}
-
-	.preconfigured-badge .lock-icon {
-		width: 10px;
-		height: 10px;
-	}
-
-	.preconfigured-url {
-		font-size: 0.8rem;
-		color: rgba(255, 255, 255, 0.45);
-		font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
-		letter-spacing: -0.01em;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.preconfigured-check {
-		flex-shrink: 0;
-		width: 28px;
-		height: 28px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background: rgba(34, 197, 94, 0.15);
-		border-radius: 50%;
-		color: hsl(142, 71%, 55%);
-	}
-
-	.preconfigured-check svg {
-		width: 15px;
-		height: 15px;
-	}
-
-	/* Action Section */
-	.action-section {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 1rem;
-		width: 100%;
-	}
-
-	.instruction {
-		margin: 0;
-		font-size: 0.95rem;
-		color: rgba(255, 255, 255, 0.6);
-		text-align: center;
-	}
-
-	/* Plex Login Button */
-	.plex-button {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		gap: 0.75rem;
-		padding: 0.875rem 2rem;
-		min-width: 220px;
-		font-size: 1rem;
-		font-weight: 600;
-		color: hsl(30, 20%, 10%);
-		background: linear-gradient(135deg, #e5a00d 0%, #cc8400 100%);
-		border: none;
-		border-radius: 12px;
-		cursor: pointer;
-		transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
-		box-shadow:
-			0 4px 16px rgba(229, 160, 13, 0.35),
-			0 2px 4px rgba(0, 0, 0, 0.2),
-			inset 0 1px 0 rgba(255, 255, 255, 0.25);
-	}
-
-	.plex-button:hover:not(:disabled) {
-		transform: translateY(-2px);
-		box-shadow:
-			0 6px 24px rgba(229, 160, 13, 0.45),
-			0 4px 8px rgba(0, 0, 0, 0.25),
-			inset 0 1px 0 rgba(255, 255, 255, 0.3);
-	}
-
-	.plex-button:active:not(:disabled) {
-		transform: translateY(0);
-	}
-
-	.plex-button:disabled {
-		opacity: 0.85;
-		cursor: not-allowed;
-	}
-
-	.plex-logo {
-		width: 18px;
-		height: 18px;
-	}
-
-	.button-spinner {
-		width: 18px;
-		height: 18px;
-		border: 2px solid rgba(0, 0, 0, 0.2);
-		border-top-color: rgba(0, 0, 0, 0.7);
-		border-radius: 50%;
-		animation: spin 0.8s linear infinite;
-	}
-
-	/* Success Card */
-	.success-card {
-		display: flex;
-		align-items: flex-start;
-		gap: 1rem;
-		padding: 1rem 1.25rem;
-		background: rgba(34, 197, 94, 0.1);
-		border: 1px solid rgba(34, 197, 94, 0.25);
-		border-radius: 12px;
-		width: 100%;
-	}
-
-	.success-icon {
-		flex-shrink: 0;
-		width: 24px;
-		height: 24px;
-		color: hsl(142, 71%, 55%);
-	}
-
-	.success-icon svg {
-		width: 100%;
-		height: 100%;
-	}
-
-	.success-content {
-		flex: 1;
-	}
-
-	.success-title {
-		margin: 0;
-		font-size: 0.95rem;
-		font-weight: 600;
-		color: rgba(255, 255, 255, 0.95);
-	}
-
-	.success-message {
-		margin: 0.25rem 0 0;
-		font-size: 0.85rem;
-		color: rgba(255, 255, 255, 0.55);
-	}
-
-	/* Error Card */
-	.error-card {
-		display: flex;
-		align-items: flex-start;
-		gap: 1rem;
-		padding: 1rem 1.25rem;
-		background: rgba(239, 68, 68, 0.1);
-		border: 1px solid rgba(239, 68, 68, 0.25);
-		border-radius: 12px;
-		width: 100%;
-	}
-
-	.error-icon {
-		flex-shrink: 0;
-		width: 24px;
-		height: 24px;
-		color: hsl(0, 84%, 60%);
-	}
-
-	.error-icon svg {
-		width: 100%;
-		height: 100%;
-	}
-
-	.error-content {
-		flex: 1;
-	}
-
-	.error-title {
-		margin: 0;
-		font-size: 0.95rem;
-		font-weight: 600;
-		color: rgba(255, 255, 255, 0.95);
-	}
-
-	.error-message {
-		margin: 0.25rem 0 0;
-		font-size: 0.85rem;
-		color: rgba(255, 255, 255, 0.55);
-		line-height: 1.5;
-	}
-
-	/* Server Section */
-	.server-section {
-		width: 100%;
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-	}
-
-	.servers-loading {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 0.75rem;
-		padding: 2rem;
-		color: rgba(255, 255, 255, 0.6);
-		font-size: 0.9rem;
-	}
-
-	.loading-spinner {
-		width: 20px;
-		height: 20px;
-		border: 2px solid rgba(255, 255, 255, 0.2);
-		border-top-color: hsl(var(--primary));
-		border-radius: 50%;
-		animation: spin 0.8s linear infinite;
-	}
-
-	.no-servers {
-		text-align: center;
-		padding: 1.5rem;
-		color: rgba(255, 255, 255, 0.6);
-	}
-
-	.no-servers p {
-		margin: 0;
-	}
-
-	.no-servers-hint {
-		margin-top: 0.5rem !important;
-		font-size: 0.85rem;
-		opacity: 0.7;
-	}
-
-	.server-list {
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-	}
-
-	.server-item {
-		display: flex;
-		flex-direction: column;
-	}
-
-	.server-card {
-		display: flex;
-		align-items: center;
-		gap: 1rem;
-		padding: 1rem 1.25rem;
-		background: rgba(255, 255, 255, 0.03);
-		border: 1px solid rgba(255, 255, 255, 0.08);
-		border-radius: 12px;
-		cursor: pointer;
-		transition: all 0.2s ease;
-		text-align: left;
-		width: 100%;
-	}
-
-	.server-card.expanded {
-		border-radius: 12px 12px 0 0;
-		border-bottom-color: transparent;
-	}
-
-	.server-card:hover:not(:disabled) {
-		background: rgba(255, 255, 255, 0.06);
-		border-color: rgba(255, 255, 255, 0.12);
-	}
-
-	.server-card.expanded:hover:not(:disabled) {
-		border-bottom-color: transparent;
-	}
-
-	.server-card.selected {
-		background: hsl(var(--primary) / 0.1);
-		border-color: hsl(var(--primary) / 0.4);
-		box-shadow: 0 0 0 1px hsl(var(--primary) / 0.2);
-	}
-
-	.server-card:disabled {
-		opacity: 0.7;
-		cursor: not-allowed;
-	}
-
-	.server-icon {
-		flex-shrink: 0;
-		width: 40px;
-		height: 40px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background: rgba(255, 255, 255, 0.05);
-		border-radius: 10px;
-		color: rgba(255, 255, 255, 0.7);
-	}
-
-	.server-icon svg {
-		width: 22px;
-		height: 22px;
-	}
-
-	.server-info {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-	}
-
-	.server-name {
-		font-size: 0.95rem;
-		font-weight: 600;
-		color: rgba(255, 255, 255, 0.95);
-	}
-
-	.server-badge {
-		display: inline-flex;
-		align-items: center;
-		width: fit-content;
-		padding: 0.2rem 0.5rem;
-		font-size: 0.7rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
-		border-radius: 4px;
-	}
-
-	.server-badge.owner {
-		background: hsl(var(--primary) / 0.15);
-		color: hsl(var(--primary));
-	}
-
-	.server-check {
-		flex-shrink: 0;
-		width: 24px;
-		height: 24px;
-		color: hsl(var(--primary));
-	}
-
-	.server-check svg {
-		width: 100%;
-		height: 100%;
-	}
-
-	.server-expand {
-		flex-shrink: 0;
-		width: 24px;
-		height: 24px;
-		color: rgba(255, 255, 255, 0.4);
-		transition: transform 0.2s ease;
-	}
-
-	.server-expand.rotated {
-		transform: rotate(180deg);
-	}
-
-	.server-expand svg {
-		width: 100%;
-		height: 100%;
-	}
-
-	.check-spinner {
-		display: block;
-		width: 20px;
-		height: 20px;
-		border: 2px solid hsl(var(--primary) / 0.3);
-		border-top-color: hsl(var(--primary));
-		border-radius: 50%;
-		animation: spin 0.8s linear infinite;
-	}
-
-	/* Connections Panel */
-	.connections-panel {
-		background: rgba(255, 255, 255, 0.02);
-		border: 1px solid rgba(255, 255, 255, 0.08);
-		border-top: none;
-		border-radius: 0 0 12px 12px;
-		padding: 1rem;
-	}
-
-	.connections-label {
-		margin: 0 0 0.75rem;
-		font-size: 0.8rem;
-		font-weight: 500;
-		color: rgba(255, 255, 255, 0.5);
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-	}
-
-	.connections-list {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-	}
-
-	.connection-card {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		padding: 0.75rem 1rem;
-		background: rgba(255, 255, 255, 0.03);
-		border: 1px solid rgba(255, 255, 255, 0.06);
-		border-radius: 8px;
-		cursor: pointer;
-		transition: all 0.15s ease;
-		text-align: left;
-		width: 100%;
-	}
-
-	.connection-card:hover:not(:disabled) {
-		background: rgba(255, 255, 255, 0.06);
-		border-color: rgba(255, 255, 255, 0.1);
-	}
-
-	.connection-card.selected {
-		background: rgba(34, 197, 94, 0.1);
-		border-color: rgba(34, 197, 94, 0.4);
-	}
-
-	.connection-card:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
-
-	.connection-info {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		gap: 0.375rem;
-		min-width: 0;
-	}
-
-	.connection-header {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.connection-badge {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.25rem;
-		padding: 0.15rem 0.4rem;
-		font-size: 0.65rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
-		border-radius: 4px;
-		cursor: help;
-		transition: all 0.15s ease;
-	}
-
-	.connection-badge:hover {
-		filter: brightness(1.15);
-	}
-
-	.connection-badge.secure {
-		background: linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(16, 185, 129, 0.15) 100%);
-		color: hsl(142, 71%, 55%);
-		border: 1px solid rgba(34, 197, 94, 0.3);
-		box-shadow:
-			0 0 8px rgba(34, 197, 94, 0.15),
-			inset 0 1px 0 rgba(255, 255, 255, 0.1);
-	}
-
-	.connection-badge.secure:hover {
-		box-shadow:
-			0 0 12px rgba(34, 197, 94, 0.25),
-			inset 0 1px 0 rgba(255, 255, 255, 0.15);
-	}
-
-	.ssl-lock-icon {
-		width: 10px;
-		height: 10px;
-		flex-shrink: 0;
-	}
-
-	.connection-badge.local {
-		background: rgba(59, 130, 246, 0.15);
-		color: hsl(217, 91%, 60%);
-	}
-
-	.connection-badge.remote {
-		background: rgba(168, 85, 247, 0.15);
-		color: hsl(271, 91%, 65%);
-	}
-
-	.connection-badge.relay {
-		background: rgba(251, 191, 36, 0.15);
-		color: hsl(43, 96%, 56%);
-	}
-
-	.connection-desc {
-		font-size: 0.75rem;
-		color: rgba(255, 255, 255, 0.45);
-	}
-
-	.connection-uri {
-		font-size: 0.8rem;
-		font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
-		color: rgba(255, 255, 255, 0.6);
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.connection-check {
-		flex-shrink: 0;
-		width: 20px;
-		height: 20px;
-		color: hsl(142, 71%, 55%);
-	}
-
-	.connection-check svg {
-		width: 100%;
-		height: 100%;
-	}
-
-	.no-connections {
-		margin: 0;
-		padding: 0.5rem;
-		font-size: 0.85rem;
-		color: rgba(255, 255, 255, 0.5);
-		text-align: center;
-	}
-
-	/* Error Banner */
-	.error-banner {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		padding: 0.875rem 1rem;
-		background: rgba(239, 68, 68, 0.15);
-		border: 1px solid rgba(239, 68, 68, 0.3);
-		border-radius: 10px;
-		width: 100%;
-		font-size: 0.875rem;
-		color: hsl(0, 84%, 70%);
-	}
-
-	.error-banner svg {
-		flex-shrink: 0;
-		width: 18px;
-		height: 18px;
-	}
-
-	/* Continue Button */
-	.continue-button {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		gap: 0.5rem;
-		padding: 0.75rem 1.5rem;
-		font-size: 0.95rem;
-		font-weight: 600;
-		color: hsl(var(--primary-foreground));
-		background: hsl(var(--primary));
-		border: none;
-		border-radius: 10px;
-		cursor: pointer;
-		transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
-		box-shadow:
-			0 2px 12px hsl(var(--primary) / 0.3),
-			inset 0 1px 0 rgba(255, 255, 255, 0.2);
-	}
-
-	.continue-button:hover:not(:disabled) {
-		transform: translateY(-1px);
-		box-shadow:
-			0 4px 16px hsl(var(--primary) / 0.4),
-			inset 0 1px 0 rgba(255, 255, 255, 0.25);
-	}
-
-	.continue-button:disabled {
-		opacity: 0.4;
-		cursor: not-allowed;
-		transform: none;
-		box-shadow: none;
-	}
-
-	.continue-button svg {
-		width: 18px;
-		height: 18px;
-	}
-
-	/* SSL Connection Card Enhancement */
-	.connection-card.ssl {
-		background: linear-gradient(135deg, rgba(34, 197, 94, 0.06) 0%, rgba(255, 255, 255, 0.03) 100%);
-		border-color: rgba(34, 197, 94, 0.15);
-	}
-
-	.connection-card.ssl:hover:not(:disabled) {
-		background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(255, 255, 255, 0.06) 100%);
-		border-color: rgba(34, 197, 94, 0.25);
-	}
-
-	.connection-card.ssl.selected {
-		background: rgba(34, 197, 94, 0.12);
-		border-color: rgba(34, 197, 94, 0.5);
-		box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.2);
-	}
-
-	/*
-	 * Tooltip portal z-index override
-	 * bits-ui sets inline `z-index: auto` on portal elements, which can only be
-	 * overridden with !important. This ensures tooltips appear above the card
-	 * (which has z-index: 10 from .onboarding-container).
-	 */
-	:global([id^='bits-']:has(.connection-tooltip)) {
-		z-index: 100 !important;
-	}
-
-	:global(.connection-tooltip) {
-		background: rgba(15, 23, 42, 0.95);
-		backdrop-filter: blur(12px);
-		-webkit-backdrop-filter: blur(12px);
-		border: 1px solid rgba(255, 255, 255, 0.1);
-		border-radius: 10px;
-		padding: 0;
-		max-width: 280px;
-		box-shadow:
-			0 8px 32px rgba(0, 0, 0, 0.4),
-			0 2px 8px rgba(0, 0, 0, 0.2);
-	}
-
-	.tooltip-inner {
-		padding: 0.75rem 1rem;
-	}
-
-	.tooltip-header {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		margin-bottom: 0.5rem;
-	}
-
-	.tooltip-header.ssl {
-		color: hsl(142, 71%, 55%);
-	}
-
-	.tooltip-header strong {
-		font-size: 0.85rem;
-		font-weight: 600;
-	}
-
-	.tooltip-icon {
-		width: 16px;
-		height: 16px;
-		flex-shrink: 0;
-	}
-
-	.tooltip-title {
-		display: block;
-		font-size: 0.85rem;
-		font-weight: 600;
-		color: rgba(255, 255, 255, 0.95);
-		margin-bottom: 0.375rem;
-	}
-
-	.tooltip-text {
-		margin: 0;
-		font-size: 0.8rem;
-		line-height: 1.5;
-		color: rgba(255, 255, 255, 0.7);
-	}
-
-	/* Custom URL Section */
-	.custom-url-section {
-		padding: 0 1rem 1rem;
-		margin-top: -0.5rem;
-	}
-
-	.custom-url-divider {
-		display: flex;
-		align-items: center;
-		gap: 1rem;
-		margin: 0.75rem 0;
-		color: rgba(255, 255, 255, 0.35);
-		font-size: 0.75rem;
-		text-transform: uppercase;
-		letter-spacing: 0.1em;
-	}
-
-	.custom-url-divider::before,
-	.custom-url-divider::after {
-		content: '';
-		flex: 1;
-		height: 1px;
-		background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-	}
-
-	.custom-url-toggle {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 0.5rem;
-		width: 100%;
-		padding: 0.625rem 1rem;
-		background: transparent;
-		border: none;
-		color: rgba(255, 255, 255, 0.5);
-		font-size: 0.85rem;
-		cursor: pointer;
-		transition: color 0.2s ease;
-	}
-
-	.custom-url-toggle:hover:not(:disabled) {
-		color: rgba(255, 255, 255, 0.7);
-	}
-
-	.custom-url-toggle:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	.toggle-chevron {
-		width: 16px;
-		height: 16px;
-		transition: transform 0.2s ease;
-	}
-
-	.toggle-chevron.rotated {
-		transform: rotate(180deg);
-	}
-
-	.custom-url-form {
-		margin-top: 0.75rem;
-		padding: 1rem;
-		background: rgba(255, 255, 255, 0.02);
-		border: 1px solid rgba(255, 255, 255, 0.06);
-		border-radius: 10px;
-		animation: slideDown 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-	}
-
-	@keyframes slideDown {
-		from {
+		.animate-item {
 			opacity: 0;
-			transform: translateY(-8px);
 		}
-		to {
-			opacity: 1;
-			transform: translateY(0);
+
+		/* Plex Icon */
+		.plex-icon-wrapper {
+			position: relative;
+			width: 72px;
+			height: 72px;
 		}
-	}
 
-	.custom-url-help {
-		margin: 0 0 0.75rem;
-		font-size: 0.8rem;
-		color: rgba(255, 255, 255, 0.5);
-	}
-
-	.custom-url-input-row {
-		display: flex;
-		gap: 0.5rem;
-	}
-
-	.custom-url-input {
-		flex: 1;
-		min-width: 0;
-		padding: 0.75rem 1rem;
-		background: rgba(255, 255, 255, 0.03);
-		border: 1px solid rgba(255, 255, 255, 0.1);
-		border-radius: 8px;
-		color: rgba(255, 255, 255, 0.9);
-		font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
-		font-size: 0.875rem;
-		transition: all 0.2s ease;
-	}
-
-	.custom-url-input:focus {
-		outline: none;
-		border-color: hsl(var(--primary) / 0.5);
-		box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
-	}
-
-	.custom-url-input::placeholder {
-		color: rgba(255, 255, 255, 0.3);
-	}
-
-	.custom-url-input:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
-
-	.custom-url-input.error {
-		border-color: rgba(239, 68, 68, 0.5);
-	}
-
-	.custom-url-input.error:focus {
-		box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
-	}
-
-	.custom-url-test-btn {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 0.75rem 1rem;
-		background: hsl(var(--primary) / 0.15);
-		border: 1px solid hsl(var(--primary) / 0.3);
-		border-radius: 8px;
-		color: hsl(var(--primary));
-		font-size: 0.85rem;
-		font-weight: 500;
-		white-space: nowrap;
-		cursor: pointer;
-		transition: all 0.2s ease;
-	}
-
-	.custom-url-test-btn:hover:not(:disabled) {
-		background: hsl(var(--primary) / 0.25);
-		border-color: hsl(var(--primary) / 0.5);
-	}
-
-	.custom-url-test-btn:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	.custom-url-test-btn svg {
-		width: 16px;
-		height: 16px;
-	}
-
-	.test-spinner {
-		width: 16px;
-		height: 16px;
-		border: 2px solid hsl(var(--primary) / 0.3);
-		border-top-color: hsl(var(--primary));
-		border-radius: 50%;
-		animation: spin 0.8s linear infinite;
-	}
-
-	.custom-url-status {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		margin-top: 0.75rem;
-		padding: 0.75rem 1rem;
-		border-radius: 8px;
-		font-size: 0.85rem;
-		animation: fadeIn 0.2s ease;
-	}
-
-	@keyframes fadeIn {
-		from {
-			opacity: 0;
-			transform: scale(0.98);
+		.plex-icon-glow {
+			position: absolute;
+			inset: -8px;
+			background: radial-gradient(circle, hsl(var(--primary) / 0.4) 0%, transparent 70%);
+			border-radius: 50%;
+			animation: icon-pulse 3s ease-in-out infinite;
 		}
-		to {
-			opacity: 1;
-			transform: scale(1);
+
+		@keyframes icon-pulse {
+			0%,
+			100% {
+				opacity: 0.6;
+				transform: scale(1);
+			}
+			50% {
+				opacity: 0.8;
+				transform: scale(1.05);
+			}
 		}
-	}
 
-	.custom-url-status.success {
-		background: rgba(34, 197, 94, 0.1);
-		border: 1px solid rgba(34, 197, 94, 0.25);
-		color: hsl(142, 71%, 55%);
-	}
-
-	.custom-url-status.error {
-		background: rgba(239, 68, 68, 0.1);
-		border: 1px solid rgba(239, 68, 68, 0.25);
-		color: hsl(0, 84%, 70%);
-	}
-
-	.custom-url-status .status-icon {
-		flex-shrink: 0;
-		width: 18px;
-		height: 18px;
-	}
-
-	@keyframes spin {
-		to {
-			transform: rotate(360deg);
-		}
-	}
-
-	/* Responsive */
-	@media (max-width: 480px) {
-		.plex-button {
+		.plex-icon {
+			position: relative;
 			width: 100%;
-			min-width: unset;
+			height: 100%;
 		}
 
+		.plex-icon svg {
+			width: 100%;
+			height: 100%;
+		}
+
+		/* Pre-configured Server Card */
 		.preconfigured-card {
-			padding: 1rem;
-			gap: 0.875rem;
+			display: flex;
+			align-items: center;
+			gap: 1rem;
+			padding: 1.125rem 1.25rem;
+			background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(34, 197, 94, 0.02) 100%);
+			border: 1px solid rgba(34, 197, 94, 0.25);
+			border-radius: 14px;
+			width: 100%;
+			position: relative;
+			overflow: hidden;
+		}
+
+		.preconfigured-card::before {
+			content: '';
+			position: absolute;
+			inset: 0;
+			background: radial-gradient(ellipse at top left, rgba(34, 197, 94, 0.1) 0%, transparent 50%);
+			pointer-events: none;
 		}
 
 		.preconfigured-icon {
-			width: 38px;
-			height: 38px;
+			flex-shrink: 0;
+			width: 44px;
+			height: 44px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			background: rgba(34, 197, 94, 0.12);
+			border-radius: 11px;
+			color: hsl(142, 71%, 55%);
+			position: relative;
 		}
 
 		.preconfigured-icon svg {
-			width: 20px;
-			height: 20px;
+			width: 24px;
+			height: 24px;
+		}
+
+		.preconfigured-info {
+			flex: 1;
+			display: flex;
+			flex-direction: column;
+			gap: 0.375rem;
+			min-width: 0;
+		}
+
+		.preconfigured-header {
+			display: flex;
+			align-items: center;
+			gap: 0.625rem;
+			flex-wrap: wrap;
 		}
 
 		.preconfigured-title {
-			font-size: 0.875rem;
+			font-size: 0.95rem;
+			font-weight: 600;
+			color: rgba(255, 255, 255, 0.95);
 		}
 
 		.preconfigured-server-name {
-			font-size: 0.8rem;
+			font-size: 0.875rem;
+			font-weight: 500;
+			color: rgba(255, 255, 255, 0.7);
+		}
+
+		.preconfigured-badge {
+			display: inline-flex;
+			align-items: center;
+			gap: 0.3rem;
+			padding: 0.2rem 0.5rem;
+			font-size: 0.65rem;
+			font-weight: 700;
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+			background: rgba(34, 197, 94, 0.2);
+			color: hsl(142, 71%, 60%);
+			border-radius: 5px;
+			border: 1px solid rgba(34, 197, 94, 0.3);
+		}
+
+		.preconfigured-badge .lock-icon {
+			width: 10px;
+			height: 10px;
 		}
 
 		.preconfigured-url {
-			font-size: 0.75rem;
+			font-size: 0.8rem;
+			color: rgba(255, 255, 255, 0.45);
+			font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+			letter-spacing: -0.01em;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
 		}
 
-		.server-card {
-			padding: 0.875rem 1rem;
+		.preconfigured-check {
+			flex-shrink: 0;
+			width: 28px;
+			height: 28px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			background: rgba(34, 197, 94, 0.15);
+			border-radius: 50%;
+			color: hsl(142, 71%, 55%);
 		}
 
-		.server-icon {
-			width: 36px;
-			height: 36px;
+		.preconfigured-check svg {
+			width: 15px;
+			height: 15px;
 		}
 
-		.server-icon svg {
+		/* Action Section */
+		.action-section {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 1rem;
+			width: 100%;
+		}
+
+		.instruction {
+			margin: 0;
+			font-size: 0.95rem;
+			color: rgba(255, 255, 255, 0.6);
+			text-align: center;
+		}
+
+		/* Plex Login Button */
+		.plex-button {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			gap: 0.75rem;
+			padding: 0.875rem 2rem;
+			min-width: 220px;
+			font-size: 1rem;
+			font-weight: 600;
+			color: hsl(30, 20%, 10%);
+			background: linear-gradient(135deg, #e5a00d 0%, #cc8400 100%);
+			border: none;
+			border-radius: 12px;
+			cursor: pointer;
+			transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+			box-shadow:
+				0 4px 16px rgba(229, 160, 13, 0.35),
+				0 2px 4px rgba(0, 0, 0, 0.2),
+				inset 0 1px 0 rgba(255, 255, 255, 0.25);
+		}
+
+		.plex-button:hover:not(:disabled) {
+			transform: translateY(-2px);
+			box-shadow:
+				0 6px 24px rgba(229, 160, 13, 0.45),
+				0 4px 8px rgba(0, 0, 0, 0.25),
+				inset 0 1px 0 rgba(255, 255, 255, 0.3);
+		}
+
+		.plex-button:active:not(:disabled) {
+			transform: translateY(0);
+		}
+
+		.plex-button:disabled {
+			opacity: 0.85;
+			cursor: not-allowed;
+		}
+
+		.plex-logo {
 			width: 18px;
 			height: 18px;
 		}
 
-		.connections-panel {
-			padding: 0.75rem;
+		.button-spinner {
+			width: 18px;
+			height: 18px;
+			border: 2px solid rgba(0, 0, 0, 0.2);
+			border-top-color: rgba(0, 0, 0, 0.7);
+			border-radius: 50%;
+			animation: spin 0.8s linear infinite;
 		}
 
-		.connection-card {
-			padding: 0.625rem 0.75rem;
+		/* Success Card */
+		.success-card {
+			display: flex;
+			align-items: flex-start;
+			gap: 1rem;
+			padding: 1rem 1.25rem;
+			background: rgba(34, 197, 94, 0.1);
+			border: 1px solid rgba(34, 197, 94, 0.25);
+			border-radius: 12px;
+			width: 100%;
 		}
 
-		.connection-badge {
-			font-size: 0.6rem;
+		.success-icon {
+			flex-shrink: 0;
+			width: 24px;
+			height: 24px;
+			color: hsl(142, 71%, 55%);
 		}
 
-		.connection-desc {
-			font-size: 0.7rem;
+		.success-icon svg {
+			width: 100%;
+			height: 100%;
 		}
 
-		.connection-uri {
-			font-size: 0.75rem;
+		.success-content {
+			flex: 1;
 		}
 
-		.custom-url-section {
-			padding: 0 0.75rem 0.75rem;
+		.success-title {
+			margin: 0;
+			font-size: 0.95rem;
+			font-weight: 600;
+			color: rgba(255, 255, 255, 0.95);
 		}
 
-		.custom-url-input-row {
+		.success-message {
+			margin: 0.25rem 0 0;
+			font-size: 0.85rem;
+			color: rgba(255, 255, 255, 0.55);
+		}
+
+		/* Error Card */
+		.error-card {
+			display: flex;
+			align-items: flex-start;
+			gap: 1rem;
+			padding: 1rem 1.25rem;
+			background: rgba(239, 68, 68, 0.1);
+			border: 1px solid rgba(239, 68, 68, 0.25);
+			border-radius: 12px;
+			width: 100%;
+		}
+
+		.error-icon {
+			flex-shrink: 0;
+			width: 24px;
+			height: 24px;
+			color: hsl(0, 84%, 60%);
+		}
+
+		.error-icon svg {
+			width: 100%;
+			height: 100%;
+		}
+
+		.error-content {
+			flex: 1;
+		}
+
+		.error-title {
+			margin: 0;
+			font-size: 0.95rem;
+			font-weight: 600;
+			color: rgba(255, 255, 255, 0.95);
+		}
+
+		.error-message {
+			margin: 0.25rem 0 0;
+			font-size: 0.85rem;
+			color: rgba(255, 255, 255, 0.55);
+			line-height: 1.5;
+		}
+
+		/* Server Section */
+		.server-section {
+			width: 100%;
+			display: flex;
+			flex-direction: column;
+			gap: 1rem;
+		}
+
+		.servers-loading {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: 0.75rem;
+			padding: 2rem;
+			color: rgba(255, 255, 255, 0.6);
+			font-size: 0.9rem;
+		}
+
+		.loading-spinner {
+			width: 20px;
+			height: 20px;
+			border: 2px solid rgba(255, 255, 255, 0.2);
+			border-top-color: hsl(var(--primary));
+			border-radius: 50%;
+			animation: spin 0.8s linear infinite;
+		}
+
+		.no-servers {
+			text-align: center;
+			padding: 1.5rem;
+			color: rgba(255, 255, 255, 0.6);
+		}
+
+		.no-servers p {
+			margin: 0;
+		}
+
+		.no-servers-hint {
+			margin-top: 0.5rem !important;
+			font-size: 0.85rem;
+			opacity: 0.7;
+		}
+
+		.server-list {
+			display: flex;
+			flex-direction: column;
+			gap: 0.75rem;
+		}
+
+		.server-item {
+			display: flex;
 			flex-direction: column;
 		}
 
-		.custom-url-test-btn {
+		.server-card {
+			display: flex;
+			align-items: center;
+			gap: 1rem;
+			padding: 1rem 1.25rem;
+			background: rgba(255, 255, 255, 0.03);
+			border: 1px solid rgba(255, 255, 255, 0.08);
+			border-radius: 12px;
+			cursor: pointer;
+			transition: all 0.2s ease;
+			text-align: left;
 			width: 100%;
-			justify-content: center;
 		}
 
-		.custom-url-input {
+		.server-card.expanded {
+			border-radius: 12px 12px 0 0;
+			border-bottom-color: transparent;
+		}
+
+		.server-card:hover:not(:disabled) {
+			background: rgba(255, 255, 255, 0.06);
+			border-color: rgba(255, 255, 255, 0.12);
+		}
+
+		.server-card.expanded:hover:not(:disabled) {
+			border-bottom-color: transparent;
+		}
+
+		.server-card.selected {
+			background: hsl(var(--primary) / 0.1);
+			border-color: hsl(var(--primary) / 0.4);
+			box-shadow: 0 0 0 1px hsl(var(--primary) / 0.2);
+		}
+
+		.server-card:disabled {
+			opacity: 0.7;
+			cursor: not-allowed;
+		}
+
+		.server-icon {
+			flex-shrink: 0;
+			width: 40px;
+			height: 40px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			background: rgba(255, 255, 255, 0.05);
+			border-radius: 10px;
+			color: rgba(255, 255, 255, 0.7);
+		}
+
+		.server-icon svg {
+			width: 22px;
+			height: 22px;
+		}
+
+		.server-info {
+			flex: 1;
+			display: flex;
+			flex-direction: column;
+			gap: 0.25rem;
+		}
+
+		.server-name {
+			font-size: 0.95rem;
+			font-weight: 600;
+			color: rgba(255, 255, 255, 0.95);
+		}
+
+		.server-badge {
+			display: inline-flex;
+			align-items: center;
+			width: fit-content;
+			padding: 0.2rem 0.5rem;
+			font-size: 0.7rem;
+			font-weight: 600;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+			border-radius: 4px;
+		}
+
+		.server-badge.owner {
+			background: hsl(var(--primary) / 0.15);
+			color: hsl(var(--primary));
+		}
+
+		.server-check {
+			flex-shrink: 0;
+			width: 24px;
+			height: 24px;
+			color: hsl(var(--primary));
+		}
+
+		.server-check svg {
+			width: 100%;
+			height: 100%;
+		}
+
+		.server-expand {
+			flex-shrink: 0;
+			width: 24px;
+			height: 24px;
+			color: rgba(255, 255, 255, 0.4);
+			transition: transform 0.2s ease;
+		}
+
+		.server-expand.rotated {
+			transform: rotate(180deg);
+		}
+
+		.server-expand svg {
+			width: 100%;
+			height: 100%;
+		}
+
+		.check-spinner {
+			display: block;
+			width: 20px;
+			height: 20px;
+			border: 2px solid hsl(var(--primary) / 0.3);
+			border-top-color: hsl(var(--primary));
+			border-radius: 50%;
+			animation: spin 0.8s linear infinite;
+		}
+
+		/* Connections Panel */
+		.connections-panel {
+			background: rgba(255, 255, 255, 0.02);
+			border: 1px solid rgba(255, 255, 255, 0.08);
+			border-top: none;
+			border-radius: 0 0 12px 12px;
+			padding: 1rem;
+		}
+
+		.connections-label {
+			margin: 0 0 0.75rem;
 			font-size: 0.8rem;
-			padding: 0.625rem 0.75rem;
+			font-weight: 500;
+			color: rgba(255, 255, 255, 0.5);
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+		}
+
+		.connections-list {
+			display: flex;
+			flex-direction: column;
+			gap: 0.5rem;
+		}
+
+		.connection-card {
+			display: flex;
+			align-items: center;
+			gap: 0.75rem;
+			padding: 0.75rem 1rem;
+			background: rgba(255, 255, 255, 0.03);
+			border: 1px solid rgba(255, 255, 255, 0.06);
+			border-radius: 8px;
+			cursor: pointer;
+			transition: all 0.15s ease;
+			text-align: left;
+			width: 100%;
+		}
+
+		.connection-card:hover:not(:disabled) {
+			background: rgba(255, 255, 255, 0.06);
+			border-color: rgba(255, 255, 255, 0.1);
+		}
+
+		.connection-card.selected {
+			background: rgba(34, 197, 94, 0.1);
+			border-color: rgba(34, 197, 94, 0.4);
+		}
+
+		.connection-card:disabled {
+			opacity: 0.6;
+			cursor: not-allowed;
+		}
+
+		.connection-info {
+			flex: 1;
+			display: flex;
+			flex-direction: column;
+			gap: 0.375rem;
+			min-width: 0;
+		}
+
+		.connection-header {
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+		}
+
+		.connection-badge {
+			display: inline-flex;
+			align-items: center;
+			gap: 0.25rem;
+			padding: 0.15rem 0.4rem;
+			font-size: 0.65rem;
+			font-weight: 600;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+			border-radius: 4px;
+			cursor: help;
+			transition: all 0.15s ease;
+		}
+
+		.connection-badge:hover {
+			filter: brightness(1.15);
+		}
+
+		.connection-badge.secure {
+			background: linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(16, 185, 129, 0.15) 100%);
+			color: hsl(142, 71%, 55%);
+			border: 1px solid rgba(34, 197, 94, 0.3);
+			box-shadow:
+				0 0 8px rgba(34, 197, 94, 0.15),
+				inset 0 1px 0 rgba(255, 255, 255, 0.1);
+		}
+
+		.connection-badge.secure:hover {
+			box-shadow:
+				0 0 12px rgba(34, 197, 94, 0.25),
+				inset 0 1px 0 rgba(255, 255, 255, 0.15);
+		}
+
+		.ssl-lock-icon {
+			width: 10px;
+			height: 10px;
+			flex-shrink: 0;
+		}
+
+		.connection-badge.local {
+			background: rgba(59, 130, 246, 0.15);
+			color: hsl(217, 91%, 60%);
+		}
+
+		.connection-badge.remote {
+			background: rgba(168, 85, 247, 0.15);
+			color: hsl(271, 91%, 65%);
+		}
+
+		.connection-badge.relay {
+			background: rgba(251, 191, 36, 0.15);
+			color: hsl(43, 96%, 56%);
+		}
+
+		.connection-desc {
+			font-size: 0.75rem;
+			color: rgba(255, 255, 255, 0.45);
+		}
+
+		.connection-uri {
+			font-size: 0.8rem;
+			font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+			color: rgba(255, 255, 255, 0.6);
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+
+		.connection-check {
+			flex-shrink: 0;
+			width: 20px;
+			height: 20px;
+			color: hsl(142, 71%, 55%);
+		}
+
+		.connection-check svg {
+			width: 100%;
+			height: 100%;
+		}
+
+		.no-connections {
+			margin: 0;
+			padding: 0.5rem;
+			font-size: 0.85rem;
+			color: rgba(255, 255, 255, 0.5);
+			text-align: center;
+		}
+
+		/* Error Banner */
+		.error-banner {
+			display: flex;
+			align-items: center;
+			gap: 0.75rem;
+			padding: 0.875rem 1rem;
+			background: rgba(239, 68, 68, 0.15);
+			border: 1px solid rgba(239, 68, 68, 0.3);
+			border-radius: 10px;
+			width: 100%;
+			font-size: 0.875rem;
+			color: hsl(0, 84%, 70%);
+		}
+
+		.error-banner svg {
+			flex-shrink: 0;
+			width: 18px;
+			height: 18px;
+		}
+
+		/* Continue Button */
+		.continue-button {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			gap: 0.5rem;
+			padding: 0.75rem 1.5rem;
+			font-size: 0.95rem;
+			font-weight: 600;
+			color: hsl(var(--primary-foreground));
+			background: hsl(var(--primary));
+			border: none;
+			border-radius: 10px;
+			cursor: pointer;
+			transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+			box-shadow:
+				0 2px 12px hsl(var(--primary) / 0.3),
+				inset 0 1px 0 rgba(255, 255, 255, 0.2);
+		}
+
+		.continue-button:hover:not(:disabled) {
+			transform: translateY(-1px);
+			box-shadow:
+				0 4px 16px hsl(var(--primary) / 0.4),
+				inset 0 1px 0 rgba(255, 255, 255, 0.25);
+		}
+
+		.continue-button:disabled {
+			opacity: 0.4;
+			cursor: not-allowed;
+			transform: none;
+			box-shadow: none;
+		}
+
+		.continue-button svg {
+			width: 18px;
+			height: 18px;
+		}
+
+		/* SSL Connection Card Enhancement */
+		.connection-card.ssl {
+			background: linear-gradient(135deg, rgba(34, 197, 94, 0.06) 0%, rgba(255, 255, 255, 0.03) 100%);
+			border-color: rgba(34, 197, 94, 0.15);
+		}
+
+		.connection-card.ssl:hover:not(:disabled) {
+			background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(255, 255, 255, 0.06) 100%);
+			border-color: rgba(34, 197, 94, 0.25);
+		}
+
+		.connection-card.ssl.selected {
+			background: rgba(34, 197, 94, 0.12);
+			border-color: rgba(34, 197, 94, 0.5);
+			box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.2);
+		}
+
+		/*
+		 * Tooltip portal z-index override
+		 * bits-ui sets inline `z-index: auto` on portal elements, which can only be
+		 * overridden with !important. This ensures tooltips appear above the card
+		 * (which has z-index: 10 from .onboarding-container).
+		 */
+		:global([id^='bits-']:has(.connection-tooltip)) {
+			z-index: 100 !important;
+		}
+
+		:global(.connection-tooltip) {
+			background: rgba(15, 23, 42, 0.95);
+			backdrop-filter: blur(12px);
+			-webkit-backdrop-filter: blur(12px);
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			border-radius: 10px;
+			padding: 0;
+			max-width: 280px;
+			box-shadow:
+				0 8px 32px rgba(0, 0, 0, 0.4),
+				0 2px 8px rgba(0, 0, 0, 0.2);
+		}
+
+		.tooltip-inner {
+			padding: 0.75rem 1rem;
+		}
+
+		.tooltip-header {
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+			margin-bottom: 0.5rem;
+		}
+
+		.tooltip-header.ssl {
+			color: hsl(142, 71%, 55%);
+		}
+
+		.tooltip-header strong {
+			font-size: 0.85rem;
+			font-weight: 600;
+		}
+
+		.tooltip-icon {
+			width: 16px;
+			height: 16px;
+			flex-shrink: 0;
+		}
+
+		.tooltip-title {
+			display: block;
+			font-size: 0.85rem;
+			font-weight: 600;
+			color: rgba(255, 255, 255, 0.95);
+			margin-bottom: 0.375rem;
+		}
+
+		.tooltip-text {
+			margin: 0;
+			font-size: 0.8rem;
+			line-height: 1.5;
+			color: rgba(255, 255, 255, 0.7);
+		}
+
+		/* Custom URL Section */
+		.custom-url-section {
+			padding: 0 1rem 1rem;
+			margin-top: -0.5rem;
+		}
+
+		.custom-url-divider {
+			display: flex;
+			align-items: center;
+			gap: 1rem;
+			margin: 0.75rem 0;
+			color: rgba(255, 255, 255, 0.35);
+			font-size: 0.75rem;
+			text-transform: uppercase;
+			letter-spacing: 0.1em;
+		}
+
+		.custom-url-divider::before,
+		.custom-url-divider::after {
+			content: '';
+			flex: 1;
+			height: 1px;
+			background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+		}
+
+		.custom-url-toggle {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: 0.5rem;
+			width: 100%;
+			padding: 0.625rem 1rem;
+			background: transparent;
+			border: none;
+			color: rgba(255, 255, 255, 0.5);
+			font-size: 0.85rem;
+			cursor: pointer;
+			transition: color 0.2s ease;
+		}
+
+		.custom-url-toggle:hover:not(:disabled) {
+			color: rgba(255, 255, 255, 0.7);
+		}
+
+		.custom-url-toggle:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+		}
+
+		.toggle-chevron {
+			width: 16px;
+			height: 16px;
+			transition: transform 0.2s ease;
+		}
+
+		.toggle-chevron.rotated {
+			transform: rotate(180deg);
+		}
+
+		.custom-url-form {
+			margin-top: 0.75rem;
+			padding: 1rem;
+			background: rgba(255, 255, 255, 0.02);
+			border: 1px solid rgba(255, 255, 255, 0.06);
+			border-radius: 10px;
+			animation: slideDown 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+		}
+
+		@keyframes slideDown {
+			from {
+				opacity: 0;
+				transform: translateY(-8px);
+			}
+			to {
+				opacity: 1;
+				transform: translateY(0);
+			}
 		}
 
 		.custom-url-help {
-			font-size: 0.75rem;
+			margin: 0 0 0.75rem;
+			font-size: 0.8rem;
+			color: rgba(255, 255, 255, 0.5);
 		}
-	}
+
+		.custom-url-input-row {
+			display: flex;
+			gap: 0.5rem;
+		}
+
+		.custom-url-input {
+			flex: 1;
+			min-width: 0;
+			padding: 0.75rem 1rem;
+			background: rgba(255, 255, 255, 0.03);
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			border-radius: 8px;
+			color: rgba(255, 255, 255, 0.9);
+			font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+			font-size: 0.875rem;
+			transition: all 0.2s ease;
+		}
+
+		.custom-url-input:focus {
+			outline: none;
+			border-color: hsl(var(--primary) / 0.5);
+			box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
+		}
+
+		.custom-url-input::placeholder {
+			color: rgba(255, 255, 255, 0.3);
+		}
+
+		.custom-url-input:disabled {
+			opacity: 0.6;
+			cursor: not-allowed;
+		}
+
+		.custom-url-input.error {
+			border-color: rgba(239, 68, 68, 0.5);
+		}
+
+		.custom-url-input.error:focus {
+			box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+		}
+
+		.custom-url-test-btn {
+			display: inline-flex;
+			align-items: center;
+			gap: 0.5rem;
+			padding: 0.75rem 1rem;
+			background: hsl(var(--primary) / 0.15);
+			border: 1px solid hsl(var(--primary) / 0.3);
+			border-radius: 8px;
+			color: hsl(var(--primary));
+			font-size: 0.85rem;
+			font-weight: 500;
+			white-space: nowrap;
+			cursor: pointer;
+			transition: all 0.2s ease;
+		}
+
+		.custom-url-test-btn:hover:not(:disabled) {
+			background: hsl(var(--primary) / 0.25);
+			border-color: hsl(var(--primary) / 0.5);
+		}
+
+		.custom-url-test-btn:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+		}
+
+		.custom-url-test-btn svg {
+			width: 16px;
+			height: 16px;
+		}
+
+		.test-spinner {
+			width: 16px;
+			height: 16px;
+			border: 2px solid hsl(var(--primary) / 0.3);
+			border-top-color: hsl(var(--primary));
+			border-radius: 50%;
+			animation: spin 0.8s linear infinite;
+		}
+
+		.custom-url-status {
+			display: flex;
+			align-items: center;
+			gap: 0.75rem;
+			margin-top: 0.75rem;
+			padding: 0.75rem 1rem;
+			border-radius: 8px;
+			font-size: 0.85rem;
+			animation: fadeIn 0.2s ease;
+		}
+
+		@keyframes fadeIn {
+			from {
+				opacity: 0;
+				transform: scale(0.98);
+			}
+			to {
+				opacity: 1;
+				transform: scale(1);
+			}
+		}
+
+		.custom-url-status.success {
+			background: rgba(34, 197, 94, 0.1);
+			border: 1px solid rgba(34, 197, 94, 0.25);
+			color: hsl(142, 71%, 55%);
+		}
+
+		.custom-url-status.error {
+			background: rgba(239, 68, 68, 0.1);
+			border: 1px solid rgba(239, 68, 68, 0.25);
+			color: hsl(0, 84%, 70%);
+		}
+
+		.custom-url-status .status-icon {
+			flex-shrink: 0;
+			width: 18px;
+			height: 18px;
+		}
+
+		@keyframes spin {
+			to {
+				transform: rotate(360deg);
+			}
+		}
+
+		/* Responsive */
+		@media (max-width: 480px) {
+			.plex-button {
+				width: 100%;
+				min-width: unset;
+			}
+
+			.preconfigured-card {
+				padding: 1rem;
+				gap: 0.875rem;
+			}
+
+			.preconfigured-icon {
+				width: 38px;
+				height: 38px;
+			}
+
+			.preconfigured-icon svg {
+				width: 20px;
+				height: 20px;
+			}
+
+			.preconfigured-title {
+				font-size: 0.875rem;
+			}
+
+			.preconfigured-server-name {
+				font-size: 0.8rem;
+			}
+
+			.preconfigured-url {
+				font-size: 0.75rem;
+			}
+
+			.server-card {
+				padding: 0.875rem 1rem;
+			}
+
+			.server-icon {
+				width: 36px;
+				height: 36px;
+			}
+
+			.server-icon svg {
+				width: 18px;
+				height: 18px;
+			}
+
+			.connections-panel {
+				padding: 0.75rem;
+			}
+
+			.connection-card {
+				padding: 0.625rem 0.75rem;
+			}
+
+			.connection-badge {
+				font-size: 0.6rem;
+			}
+
+			.connection-desc {
+				font-size: 0.7rem;
+			}
+
+			.connection-uri {
+				font-size: 0.75rem;
+			}
+
+			.custom-url-section {
+				padding: 0 0.75rem 0.75rem;
+			}
+
+			.custom-url-input-row {
+				flex-direction: column;
+			}
+
+			.custom-url-test-btn {
+				width: 100%;
+				justify-content: center;
+			}
+
+			.custom-url-input {
+				font-size: 0.8rem;
+				padding: 0.625rem 0.75rem;
+			}
+
+			.custom-url-help {
+				font-size: 0.75rem;
+			}
+		}
 </style>

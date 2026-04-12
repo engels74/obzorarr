@@ -1,248 +1,248 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
-	import { enhance } from '$app/forms';
-	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
-	import type { LogEntry, LogLevelType } from '$lib/server/logging';
-	import { handleFormToast } from '$lib/utils/form-toast';
-	import type { ActionData, PageData } from './$types';
+import { browser } from '$app/environment';
+import { enhance } from '$app/forms';
+import { goto } from '$app/navigation';
+import { page } from '$app/stores';
+import type { LogEntry, LogLevelType } from '$lib/server/logging';
+import { handleFormToast } from '$lib/utils/form-toast';
+import type { ActionData, PageData } from './$types';
 
-	/**
-	 * Admin Logs Page
-	 *
-	 * Real-time log viewer with filtering and SSE streaming.
-	 *
-	 * Features:
-	 * - Log level filtering (multi-select)
-	 * - Text search with debounce
-	 * - Source filter dropdown
-	 * - Date range filtering
-	 * - Auto-scroll with SSE streaming
-	 * - Export and clear functionality
-	 */
+/**
+ * Admin Logs Page
+ *
+ * Real-time log viewer with filtering and SSE streaming.
+ *
+ * Features:
+ * - Log level filtering (multi-select)
+ * - Text search with debounce
+ * - Source filter dropdown
+ * - Date range filtering
+ * - Auto-scroll with SSE streaming
+ * - Export and clear functionality
+ */
 
-	let { data, form }: { data: PageData; form: ActionData } = $props();
+let { data, form }: { data: PageData; form: ActionData } = $props();
 
-	// Filter state (reactive to URL params via data)
-	let selectedLevels = $derived<LogLevelType[]>(data.filters?.levels ?? []);
-	let selectedSource = $derived(data.filters?.source ?? '');
+// Filter state (reactive to URL params via data)
+let selectedLevels = $derived<LogLevelType[]>(data.filters?.levels ?? []);
+let selectedSource = $derived(data.filters?.source ?? '');
 
-	// Search needs local state for debounce pattern, synced from data
-	let searchText = $state('');
-	$effect.pre(() => {
-		searchText = data.filters?.search ?? '';
-	});
-	let autoScroll = $state(true);
+// Search needs local state for debounce pattern, synced from data
+let searchText = $state('');
+$effect.pre(() => {
+	searchText = data.filters?.search ?? '';
+});
+let autoScroll = $state(true);
 
-	// SSE connection state
-	let eventSource: EventSource | null = $state(null);
-	let streamedLogs = $state<LogEntry[]>([]);
-	let isConnected = $state(false);
+// SSE connection state
+let eventSource: EventSource | null = $state(null);
+let streamedLogs = $state<LogEntry[]>([]);
+let isConnected = $state(false);
 
-	// Debounce timer for search
-	let searchDebounce: ReturnType<typeof setTimeout> | null = null;
+// Debounce timer for search
+let searchDebounce: ReturnType<typeof setTimeout> | null = null;
 
-	// Combined logs (initial + streamed)
-	const allLogs = $derived([...streamedLogs, ...data.logs]);
+// Combined logs (initial + streamed)
+const allLogs = $derived([...streamedLogs, ...data.logs]);
 
-	// Available log levels
-	const logLevels: LogLevelType[] = ['DEBUG', 'INFO', 'WARN', 'ERROR'];
+// Available log levels
+const logLevels: LogLevelType[] = ['DEBUG', 'INFO', 'WARN', 'ERROR'];
 
-	// Format timestamp
-	function formatTimestamp(timestamp: number): string {
-		return new Date(timestamp).toLocaleString();
+// Format timestamp
+function formatTimestamp(timestamp: number): string {
+	return new Date(timestamp).toLocaleString();
+}
+
+// Format relative time
+function formatRelativeTime(timestamp: number): string {
+	const now = Date.now();
+	const diffMs = now - timestamp;
+	const diffSecs = Math.floor(diffMs / 1000);
+	const diffMins = Math.floor(diffSecs / 60);
+	const diffHours = Math.floor(diffMins / 60);
+
+	if (diffSecs < 60) return `${diffSecs}s ago`;
+	if (diffMins < 60) return `${diffMins}m ago`;
+	if (diffHours < 24) return `${diffHours}h ago`;
+
+	return new Date(timestamp).toLocaleDateString();
+}
+
+// Get level badge class
+function getLevelClass(level: LogLevelType): string {
+	switch (level) {
+		case 'ERROR':
+			return 'level-error';
+		case 'WARN':
+			return 'level-warn';
+		case 'INFO':
+			return 'level-info';
+		case 'DEBUG':
+			return 'level-debug';
+		default:
+			return '';
+	}
+}
+
+// Apply filters to URL (accepts overrides for derived values)
+function applyFilters(overrides?: { levels?: LogLevelType[]; search?: string; source?: string }) {
+	const params = new URLSearchParams();
+	const levels = overrides?.levels ?? selectedLevels;
+	const search = overrides?.search ?? searchText;
+	const source = overrides?.source ?? selectedSource;
+
+	if (levels.length > 0) {
+		params.set('levels', levels.join(','));
+	}
+	if (search) {
+		params.set('search', search);
+	}
+	if (source) {
+		params.set('source', source);
 	}
 
-	// Format relative time
-	function formatRelativeTime(timestamp: number): string {
-		const now = Date.now();
-		const diffMs = now - timestamp;
-		const diffSecs = Math.floor(diffMs / 1000);
-		const diffMins = Math.floor(diffSecs / 60);
-		const diffHours = Math.floor(diffMins / 60);
+	const queryString = params.toString();
+	goto(`/admin/logs${queryString ? `?${queryString}` : ''}`, { replaceState: true });
+}
 
-		if (diffSecs < 60) return `${diffSecs}s ago`;
-		if (diffMins < 60) return `${diffMins}m ago`;
-		if (diffHours < 24) return `${diffHours}h ago`;
+// Toggle level filter
+function toggleLevel(level: LogLevelType) {
+	const newLevels = selectedLevels.includes(level)
+		? selectedLevels.filter((l) => l !== level)
+		: [...selectedLevels, level];
+	applyFilters({ levels: newLevels });
+}
 
-		return new Date(timestamp).toLocaleDateString();
+// Handle search input with debounce
+function handleSearchInput(event: Event) {
+	const target = event.target as HTMLInputElement;
+	searchText = target.value;
+
+	if (searchDebounce) {
+		clearTimeout(searchDebounce);
 	}
 
-	// Get level badge class
-	function getLevelClass(level: LogLevelType): string {
-		switch (level) {
-			case 'ERROR':
-				return 'level-error';
-			case 'WARN':
-				return 'level-warn';
-			case 'INFO':
-				return 'level-info';
-			case 'DEBUG':
-				return 'level-debug';
-			default:
-				return '';
+	searchDebounce = setTimeout(() => {
+		applyFilters({ search: searchText });
+	}, 300);
+}
+
+// Handle source change
+function handleSourceChange(event: Event) {
+	const target = event.target as HTMLSelectElement;
+	applyFilters({ source: target.value });
+}
+
+// Clear all filters
+function clearFilters() {
+	goto('/admin/logs', { replaceState: true });
+}
+
+// Connect to SSE stream
+function connectSSE() {
+	if (eventSource) {
+		eventSource.close();
+	}
+
+	// Get the latest log ID as cursor
+	const latestId = allLogs.length > 0 ? Math.max(...allLogs.map((l) => l.id)) : 0;
+
+	eventSource = new EventSource(`/admin/logs/stream?cursor=${latestId}`);
+
+	eventSource.onopen = () => {
+		isConnected = true;
+	};
+
+	eventSource.onmessage = (event) => {
+		try {
+			const data = JSON.parse(event.data);
+
+			if (data.type === 'log') {
+				// Add new log to streamed logs
+				streamedLogs = [data.log, ...streamedLogs];
+
+				// Scroll to top if auto-scroll is enabled
+				if (autoScroll) {
+					const container = document.querySelector('.logs-table-wrapper');
+					if (container) {
+						container.scrollTop = 0;
+					}
+				}
+			}
+		} catch (e) {
+			console.error('Failed to parse SSE event:', e);
 		}
+	};
+
+	eventSource.onerror = () => {
+		isConnected = false;
+		// Attempt to reconnect after 5 seconds
+		setTimeout(() => {
+			if (autoScroll) {
+				connectSSE();
+			}
+		}, 5000);
+	};
+}
+
+// Disconnect from SSE stream
+function disconnectSSE() {
+	if (eventSource) {
+		eventSource.close();
+		eventSource = null;
 	}
+	isConnected = false;
+}
 
-	// Apply filters to URL (accepts overrides for derived values)
-	function applyFilters(overrides?: { levels?: LogLevelType[]; search?: string; source?: string }) {
-		const params = new URLSearchParams();
-		const levels = overrides?.levels ?? selectedLevels;
-		const search = overrides?.search ?? searchText;
-		const source = overrides?.source ?? selectedSource;
+// Toggle auto-scroll (and SSE connection)
+function toggleAutoScroll() {
+	autoScroll = !autoScroll;
 
-		if (levels.length > 0) {
-			params.set('levels', levels.join(','));
-		}
-		if (search) {
-			params.set('search', search);
-		}
-		if (source) {
-			params.set('source', source);
-		}
-
-		const queryString = params.toString();
-		goto(`/admin/logs${queryString ? `?${queryString}` : ''}`, { replaceState: true });
+	if (autoScroll) {
+		streamedLogs = []; // Clear old streamed logs
+		connectSSE();
+	} else {
+		disconnectSSE();
 	}
+}
 
-	// Toggle level filter
-	function toggleLevel(level: LogLevelType) {
-		const newLevels = selectedLevels.includes(level)
-			? selectedLevels.filter((l) => l !== level)
-			: [...selectedLevels, level];
-		applyFilters({ levels: newLevels });
+// Copy log entry to clipboard
+function copyLog(log: LogEntry) {
+	const text = `[${new Date(log.timestamp).toISOString()}] [${log.level}] [${log.source ?? 'App'}] ${log.message}`;
+	navigator.clipboard.writeText(text);
+}
+
+// Parse metadata JSON
+function parseMetadata(metadata: string | null): Record<string, unknown> | null {
+	if (!metadata) return null;
+	try {
+		return JSON.parse(metadata);
+	} catch {
+		return null;
 	}
+}
 
-	// Handle search input with debounce
-	function handleSearchInput(event: Event) {
-		const target = event.target as HTMLInputElement;
-		searchText = target.value;
-
+// Cleanup on unmount
+$effect(() => {
+	return () => {
+		disconnectSSE();
 		if (searchDebounce) {
 			clearTimeout(searchDebounce);
 		}
+	};
+});
 
-		searchDebounce = setTimeout(() => {
-			applyFilters({ search: searchText });
-		}, 300);
+// Connect to SSE on mount if autoScroll is enabled (browser-only)
+$effect(() => {
+	if (browser && autoScroll && !eventSource) {
+		connectSSE();
 	}
+});
 
-	// Handle source change
-	function handleSourceChange(event: Event) {
-		const target = event.target as HTMLSelectElement;
-		applyFilters({ source: target.value });
-	}
-
-	// Clear all filters
-	function clearFilters() {
-		goto('/admin/logs', { replaceState: true });
-	}
-
-	// Connect to SSE stream
-	function connectSSE() {
-		if (eventSource) {
-			eventSource.close();
-		}
-
-		// Get the latest log ID as cursor
-		const latestId = allLogs.length > 0 ? Math.max(...allLogs.map((l) => l.id)) : 0;
-
-		eventSource = new EventSource(`/admin/logs/stream?cursor=${latestId}`);
-
-		eventSource.onopen = () => {
-			isConnected = true;
-		};
-
-		eventSource.onmessage = (event) => {
-			try {
-				const data = JSON.parse(event.data);
-
-				if (data.type === 'log') {
-					// Add new log to streamed logs
-					streamedLogs = [data.log, ...streamedLogs];
-
-					// Scroll to top if auto-scroll is enabled
-					if (autoScroll) {
-						const container = document.querySelector('.logs-table-wrapper');
-						if (container) {
-							container.scrollTop = 0;
-						}
-					}
-				}
-			} catch (e) {
-				console.error('Failed to parse SSE event:', e);
-			}
-		};
-
-		eventSource.onerror = () => {
-			isConnected = false;
-			// Attempt to reconnect after 5 seconds
-			setTimeout(() => {
-				if (autoScroll) {
-					connectSSE();
-				}
-			}, 5000);
-		};
-	}
-
-	// Disconnect from SSE stream
-	function disconnectSSE() {
-		if (eventSource) {
-			eventSource.close();
-			eventSource = null;
-		}
-		isConnected = false;
-	}
-
-	// Toggle auto-scroll (and SSE connection)
-	function toggleAutoScroll() {
-		autoScroll = !autoScroll;
-
-		if (autoScroll) {
-			streamedLogs = []; // Clear old streamed logs
-			connectSSE();
-		} else {
-			disconnectSSE();
-		}
-	}
-
-	// Copy log entry to clipboard
-	function copyLog(log: LogEntry) {
-		const text = `[${new Date(log.timestamp).toISOString()}] [${log.level}] [${log.source ?? 'App'}] ${log.message}`;
-		navigator.clipboard.writeText(text);
-	}
-
-	// Parse metadata JSON
-	function parseMetadata(metadata: string | null): Record<string, unknown> | null {
-		if (!metadata) return null;
-		try {
-			return JSON.parse(metadata);
-		} catch {
-			return null;
-		}
-	}
-
-	// Cleanup on unmount
-	$effect(() => {
-		return () => {
-			disconnectSSE();
-			if (searchDebounce) {
-				clearTimeout(searchDebounce);
-			}
-		};
-	});
-
-	// Connect to SSE on mount if autoScroll is enabled (browser-only)
-	$effect(() => {
-		if (browser && autoScroll && !eventSource) {
-			connectSSE();
-		}
-	});
-
-	// Show toast notifications for form responses
-	$effect(() => {
-		handleFormToast(form);
-	});
+// Show toast notifications for form responses
+$effect(() => {
+	handleFormToast(form);
+});
 </script>
 
 <div class="logs-page">
@@ -480,524 +480,524 @@
 
 <style>
 	.logs-page {
-		max-width: 1200px;
-		margin: 0 auto;
-		padding: 2rem;
-	}
-
-	.page-header {
-		margin-bottom: 1.5rem;
-	}
-
-	.page-header h1 {
-		font-size: 2rem;
-		font-weight: 700;
-		color: hsl(var(--primary));
-		margin: 0 0 0.5rem;
-	}
-
-	.subtitle {
-		color: hsl(var(--muted-foreground));
-		margin: 0;
-	}
-
-	/* Stats Section */
-	.stats-section {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-		gap: 1rem;
-		margin-bottom: 1.5rem;
-	}
-
-	.stat-card {
-		background: hsl(var(--card));
-		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius);
-		padding: 1rem;
-		text-align: center;
-	}
-
-	.stat-card.level-info {
-		border-left: 3px solid hsl(200 60% 50%);
-	}
-
-	.stat-card.level-warn {
-		border-left: 3px solid hsl(45 80% 50%);
-	}
-
-	.stat-card.level-error {
-		border-left: 3px solid hsl(var(--destructive));
-	}
-
-	.stat-value {
-		display: block;
-		font-size: 1.5rem;
-		font-weight: 700;
-		color: hsl(var(--foreground));
-	}
-
-	.stat-label {
-		display: block;
-		font-size: 0.75rem;
-		color: hsl(var(--muted-foreground));
-		margin-top: 0.25rem;
-	}
-
-	/* Section */
-	.section {
-		background: hsl(var(--card));
-		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius);
-		padding: 1.5rem;
-		margin-bottom: 1.5rem;
-	}
-
-	.section h2 {
-		font-size: 1.125rem;
-		font-weight: 600;
-		color: hsl(var(--foreground));
-		margin: 0;
-	}
-
-	/* Filters */
-	.filters-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		margin-bottom: 1rem;
-	}
-
-	.clear-filters-button {
-		padding: 0.25rem 0.5rem;
-		font-size: 0.75rem;
-		background: transparent;
-		color: hsl(var(--muted-foreground));
-		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius);
-		cursor: pointer;
-	}
-
-	.clear-filters-button:hover {
-		color: hsl(var(--foreground));
-		border-color: hsl(var(--foreground));
-	}
-
-	.filters-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-		gap: 1rem;
-	}
-
-	.filter-group {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-	}
-
-	.filter-label {
-		font-size: 0.875rem;
-		font-weight: 500;
-		color: hsl(var(--foreground));
-	}
-
-	.filter-group input,
-	.filter-group select {
-		padding: 0.5rem 0.75rem;
-		background: hsl(var(--input));
-		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius);
-		color: hsl(var(--foreground));
-		font-size: 0.875rem;
-	}
-
-	.level-checkboxes {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.5rem;
-	}
-
-	.level-toggle {
-		padding: 0.375rem 0.75rem;
-		font-size: 0.75rem;
-		font-weight: 500;
-		background: hsl(var(--muted));
-		color: hsl(var(--muted-foreground));
-		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius);
-		cursor: pointer;
-		transition: all 0.15s ease;
-	}
-
-	.level-toggle:hover {
-		background: hsl(var(--muted) / 0.8);
-	}
-
-	.level-toggle.active.level-error {
-		background: hsl(var(--destructive));
-		color: hsl(var(--destructive-foreground));
-		border-color: hsl(var(--destructive));
-	}
-
-	.level-toggle.active.level-warn {
-		background: hsl(45 80% 40%);
-		color: white;
-		border-color: hsl(45 80% 40%);
-	}
-
-	.level-toggle.active.level-info {
-		background: hsl(200 60% 45%);
-		color: white;
-		border-color: hsl(200 60% 45%);
-	}
-
-	.level-toggle.active.level-debug {
-		background: hsl(var(--muted-foreground));
-		color: hsl(var(--background));
-		border-color: hsl(var(--muted-foreground));
-	}
-
-	.level-count {
-		opacity: 0.7;
-		margin-left: 0.25rem;
-	}
-
-	/* Controls */
-	.controls-section {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		flex-wrap: wrap;
-		gap: 1rem;
-	}
-
-	.controls-left,
-	.controls-right {
-		display: flex;
-		gap: 0.5rem;
-		flex-wrap: wrap;
-	}
-
-	.inline-form {
-		display: inline;
-	}
-
-	.control-button {
-		padding: 0.5rem 1rem;
-		font-size: 0.875rem;
-		font-weight: 500;
-		background: hsl(var(--primary));
-		color: hsl(var(--primary-foreground));
-		border: none;
-		border-radius: var(--radius);
-		cursor: pointer;
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		transition: opacity 0.15s ease;
-	}
-
-	.control-button:hover {
-		opacity: 0.9;
-	}
-
-	.control-button.secondary {
-		background: hsl(var(--secondary));
-		color: hsl(var(--secondary-foreground));
-		border: 1px solid hsl(var(--border));
-	}
-
-	.control-button.danger {
-		background: hsl(var(--destructive));
-		color: hsl(var(--destructive-foreground));
-	}
-
-	.control-button.active {
-		background: hsl(120 40% 35%);
-	}
-
-	.pulse-dot {
-		width: 8px;
-		height: 8px;
-		background: white;
-		border-radius: 50%;
-		animation: pulse 1.5s infinite;
-	}
-
-	@keyframes pulse {
-		0%,
-		100% {
-			opacity: 1;
+			max-width: 1200px;
+			margin: 0 auto;
+			padding: 2rem;
 		}
-		50% {
-			opacity: 0.5;
+
+		.page-header {
+			margin-bottom: 1.5rem;
 		}
-	}
 
-	/* Logs Table */
-	.logs-section {
-		padding: 1rem;
-	}
+		.page-header h1 {
+			font-size: 2rem;
+			font-weight: 700;
+			color: hsl(var(--primary));
+			margin: 0 0 0.5rem;
+		}
 
-	.logs-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		margin-bottom: 1rem;
-		padding: 0 0.5rem;
-	}
+		.subtitle {
+			color: hsl(var(--muted-foreground));
+			margin: 0;
+		}
 
-	.logs-count {
-		font-size: 0.75rem;
-		color: hsl(var(--muted-foreground));
-	}
+		/* Stats Section */
+		.stats-section {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+			gap: 1rem;
+			margin-bottom: 1.5rem;
+		}
 
-	.logs-table-wrapper {
-		overflow-x: auto;
-		max-height: 600px;
-		overflow-y: auto;
-	}
-
-	.logs-table {
-		width: 100%;
-		border-collapse: collapse;
-		font-size: 0.8125rem;
-	}
-
-	.logs-table th,
-	.logs-table td {
-		padding: 0.625rem 0.75rem;
-		text-align: left;
-		border-bottom: 1px solid hsl(var(--border));
-		vertical-align: top;
-	}
-
-	.logs-table th {
-		position: sticky;
-		top: 0;
-		background: hsl(var(--card));
-		font-weight: 600;
-		font-size: 0.75rem;
-		color: hsl(var(--muted-foreground));
-		text-transform: uppercase;
-		z-index: 1;
-	}
-
-	.logs-table tbody tr:hover {
-		background: hsl(var(--muted) / 0.3);
-	}
-
-	.col-time {
-		width: 140px;
-		white-space: nowrap;
-	}
-
-	.col-level {
-		width: 70px;
-	}
-
-	.col-source {
-		width: 100px;
-	}
-
-	.col-message {
-		min-width: 300px;
-	}
-
-	.col-actions {
-		width: 60px;
-	}
-
-	.time-relative {
-		display: block;
-		color: hsl(var(--foreground));
-	}
-
-	.time-full {
-		display: block;
-		font-size: 0.6875rem;
-		color: hsl(var(--muted-foreground));
-	}
-
-	.level-badge {
-		display: inline-block;
-		padding: 0.125rem 0.5rem;
-		border-radius: 9999px;
-		font-size: 0.625rem;
-		font-weight: 600;
-		text-transform: uppercase;
-	}
-
-	.level-badge.level-error {
-		background: hsl(var(--destructive));
-		color: hsl(var(--destructive-foreground));
-	}
-
-	.level-badge.level-warn {
-		background: hsl(45 80% 35%);
-		color: hsl(45 100% 95%);
-	}
-
-	.level-badge.level-info {
-		background: hsl(200 60% 40%);
-		color: hsl(200 100% 95%);
-	}
-
-	.level-badge.level-debug {
-		background: hsl(var(--muted));
-		color: hsl(var(--muted-foreground));
-	}
-
-	.source-tag {
-		display: inline-block;
-		padding: 0.125rem 0.375rem;
-		background: hsl(var(--muted));
-		border-radius: var(--radius);
-		font-size: 0.75rem;
-		color: hsl(var(--foreground));
-	}
-
-	.message-text {
-		font-family: ui-monospace, 'SF Mono', 'Monaco', 'Consolas', monospace;
-		font-size: 0.8125rem;
-		word-break: break-word;
-	}
-
-	.metadata-details {
-		margin-top: 0.5rem;
-	}
-
-	.metadata-details summary {
-		cursor: pointer;
-		font-size: 0.75rem;
-		color: hsl(var(--muted-foreground));
-	}
-
-	.metadata-json {
-		margin: 0.5rem 0 0;
-		padding: 0.5rem;
-		background: hsl(var(--muted));
-		border-radius: var(--radius);
-		font-size: 0.75rem;
-		overflow-x: auto;
-	}
-
-	.copy-button {
-		padding: 0.25rem 0.5rem;
-		font-size: 0.6875rem;
-		background: hsl(var(--muted));
-		color: hsl(var(--muted-foreground));
-		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius);
-		cursor: pointer;
-	}
-
-	.copy-button:hover {
-		background: hsl(var(--primary));
-		color: hsl(var(--primary-foreground));
-		border-color: hsl(var(--primary));
-	}
-
-	.empty-message {
-		color: hsl(var(--muted-foreground));
-		text-align: center;
-		padding: 2rem;
-	}
-
-	.load-more {
-		text-align: center;
-		padding: 1rem;
-	}
-
-	.load-more-button {
-		display: inline-block;
-		padding: 0.5rem 1.5rem;
-		background: hsl(var(--secondary));
-		color: hsl(var(--foreground));
-		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius);
-		text-decoration: none;
-		font-size: 0.875rem;
-	}
-
-	.load-more-button:hover {
-		background: hsl(var(--muted));
-	}
-
-	/* Settings Info */
-	.settings-info h2 {
-		margin-bottom: 1rem;
-	}
-
-	.settings-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-		gap: 0.75rem;
-	}
-
-	.setting-item {
-		display: flex;
-		justify-content: space-between;
-		padding: 0.5rem;
-		background: hsl(var(--muted) / 0.5);
-		border-radius: var(--radius);
-	}
-
-	.setting-label {
-		font-size: 0.8125rem;
-		color: hsl(var(--muted-foreground));
-	}
-
-	.setting-value {
-		font-size: 0.8125rem;
-		font-weight: 500;
-		color: hsl(var(--foreground));
-	}
-
-	.settings-note {
-		margin-top: 1rem;
-		font-size: 0.8125rem;
-		color: hsl(var(--muted-foreground));
-	}
-
-	.settings-note a {
-		color: hsl(var(--primary));
-	}
-
-	/* Responsive */
-	@media (max-width: 768px) {
-		.logs-page {
+		.stat-card {
+			background: hsl(var(--card));
+			border: 1px solid hsl(var(--border));
+			border-radius: var(--radius);
 			padding: 1rem;
+			text-align: center;
 		}
 
-		.controls-section {
+		.stat-card.level-info {
+			border-left: 3px solid hsl(200 60% 50%);
+		}
+
+		.stat-card.level-warn {
+			border-left: 3px solid hsl(45 80% 50%);
+		}
+
+		.stat-card.level-error {
+			border-left: 3px solid hsl(var(--destructive));
+		}
+
+		.stat-value {
+			display: block;
+			font-size: 1.5rem;
+			font-weight: 700;
+			color: hsl(var(--foreground));
+		}
+
+		.stat-label {
+			display: block;
+			font-size: 0.75rem;
+			color: hsl(var(--muted-foreground));
+			margin-top: 0.25rem;
+		}
+
+		/* Section */
+		.section {
+			background: hsl(var(--card));
+			border: 1px solid hsl(var(--border));
+			border-radius: var(--radius);
+			padding: 1.5rem;
+			margin-bottom: 1.5rem;
+		}
+
+		.section h2 {
+			font-size: 1.125rem;
+			font-weight: 600;
+			color: hsl(var(--foreground));
+			margin: 0;
+		}
+
+		/* Filters */
+		.filters-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			margin-bottom: 1rem;
+		}
+
+		.clear-filters-button {
+			padding: 0.25rem 0.5rem;
+			font-size: 0.75rem;
+			background: transparent;
+			color: hsl(var(--muted-foreground));
+			border: 1px solid hsl(var(--border));
+			border-radius: var(--radius);
+			cursor: pointer;
+		}
+
+		.clear-filters-button:hover {
+			color: hsl(var(--foreground));
+			border-color: hsl(var(--foreground));
+		}
+
+		.filters-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+			gap: 1rem;
+		}
+
+		.filter-group {
+			display: flex;
 			flex-direction: column;
-			align-items: stretch;
+			gap: 0.5rem;
+		}
+
+		.filter-label {
+			font-size: 0.875rem;
+			font-weight: 500;
+			color: hsl(var(--foreground));
+		}
+
+		.filter-group input,
+		.filter-group select {
+			padding: 0.5rem 0.75rem;
+			background: hsl(var(--input));
+			border: 1px solid hsl(var(--border));
+			border-radius: var(--radius);
+			color: hsl(var(--foreground));
+			font-size: 0.875rem;
+		}
+
+		.level-checkboxes {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0.5rem;
+		}
+
+		.level-toggle {
+			padding: 0.375rem 0.75rem;
+			font-size: 0.75rem;
+			font-weight: 500;
+			background: hsl(var(--muted));
+			color: hsl(var(--muted-foreground));
+			border: 1px solid hsl(var(--border));
+			border-radius: var(--radius);
+			cursor: pointer;
+			transition: all 0.15s ease;
+		}
+
+		.level-toggle:hover {
+			background: hsl(var(--muted) / 0.8);
+		}
+
+		.level-toggle.active.level-error {
+			background: hsl(var(--destructive));
+			color: hsl(var(--destructive-foreground));
+			border-color: hsl(var(--destructive));
+		}
+
+		.level-toggle.active.level-warn {
+			background: hsl(45 80% 40%);
+			color: white;
+			border-color: hsl(45 80% 40%);
+		}
+
+		.level-toggle.active.level-info {
+			background: hsl(200 60% 45%);
+			color: white;
+			border-color: hsl(200 60% 45%);
+		}
+
+		.level-toggle.active.level-debug {
+			background: hsl(var(--muted-foreground));
+			color: hsl(var(--background));
+			border-color: hsl(var(--muted-foreground));
+		}
+
+		.level-count {
+			opacity: 0.7;
+			margin-left: 0.25rem;
+		}
+
+		/* Controls */
+		.controls-section {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			flex-wrap: wrap;
+			gap: 1rem;
 		}
 
 		.controls-left,
 		.controls-right {
-			justify-content: center;
+			display: flex;
+			gap: 0.5rem;
+			flex-wrap: wrap;
+		}
+
+		.inline-form {
+			display: inline;
+		}
+
+		.control-button {
+			padding: 0.5rem 1rem;
+			font-size: 0.875rem;
+			font-weight: 500;
+			background: hsl(var(--primary));
+			color: hsl(var(--primary-foreground));
+			border: none;
+			border-radius: var(--radius);
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+			transition: opacity 0.15s ease;
+		}
+
+		.control-button:hover {
+			opacity: 0.9;
+		}
+
+		.control-button.secondary {
+			background: hsl(var(--secondary));
+			color: hsl(var(--secondary-foreground));
+			border: 1px solid hsl(var(--border));
+		}
+
+		.control-button.danger {
+			background: hsl(var(--destructive));
+			color: hsl(var(--destructive-foreground));
+		}
+
+		.control-button.active {
+			background: hsl(120 40% 35%);
+		}
+
+		.pulse-dot {
+			width: 8px;
+			height: 8px;
+			background: white;
+			border-radius: 50%;
+			animation: pulse 1.5s infinite;
+		}
+
+		@keyframes pulse {
+			0%,
+			100% {
+				opacity: 1;
+			}
+			50% {
+				opacity: 0.5;
+			}
+		}
+
+		/* Logs Table */
+		.logs-section {
+			padding: 1rem;
+		}
+
+		.logs-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			margin-bottom: 1rem;
+			padding: 0 0.5rem;
+		}
+
+		.logs-count {
+			font-size: 0.75rem;
+			color: hsl(var(--muted-foreground));
+		}
+
+		.logs-table-wrapper {
+			overflow-x: auto;
+			max-height: 600px;
+			overflow-y: auto;
 		}
 
 		.logs-table {
-			font-size: 0.75rem;
+			width: 100%;
+			border-collapse: collapse;
+			font-size: 0.8125rem;
 		}
 
 		.logs-table th,
 		.logs-table td {
-			padding: 0.5rem;
+			padding: 0.625rem 0.75rem;
+			text-align: left;
+			border-bottom: 1px solid hsl(var(--border));
+			vertical-align: top;
+		}
+
+		.logs-table th {
+			position: sticky;
+			top: 0;
+			background: hsl(var(--card));
+			font-weight: 600;
+			font-size: 0.75rem;
+			color: hsl(var(--muted-foreground));
+			text-transform: uppercase;
+			z-index: 1;
+		}
+
+		.logs-table tbody tr:hover {
+			background: hsl(var(--muted) / 0.3);
 		}
 
 		.col-time {
-			width: 100px;
+			width: 140px;
+			white-space: nowrap;
+		}
+
+		.col-level {
+			width: 70px;
 		}
 
 		.col-source {
-			display: none;
+			width: 100px;
+		}
+
+		.col-message {
+			min-width: 300px;
 		}
 
 		.col-actions {
-			display: none;
+			width: 60px;
 		}
-	}
+
+		.time-relative {
+			display: block;
+			color: hsl(var(--foreground));
+		}
+
+		.time-full {
+			display: block;
+			font-size: 0.6875rem;
+			color: hsl(var(--muted-foreground));
+		}
+
+		.level-badge {
+			display: inline-block;
+			padding: 0.125rem 0.5rem;
+			border-radius: 9999px;
+			font-size: 0.625rem;
+			font-weight: 600;
+			text-transform: uppercase;
+		}
+
+		.level-badge.level-error {
+			background: hsl(var(--destructive));
+			color: hsl(var(--destructive-foreground));
+		}
+
+		.level-badge.level-warn {
+			background: hsl(45 80% 35%);
+			color: hsl(45 100% 95%);
+		}
+
+		.level-badge.level-info {
+			background: hsl(200 60% 40%);
+			color: hsl(200 100% 95%);
+		}
+
+		.level-badge.level-debug {
+			background: hsl(var(--muted));
+			color: hsl(var(--muted-foreground));
+		}
+
+		.source-tag {
+			display: inline-block;
+			padding: 0.125rem 0.375rem;
+			background: hsl(var(--muted));
+			border-radius: var(--radius);
+			font-size: 0.75rem;
+			color: hsl(var(--foreground));
+		}
+
+		.message-text {
+			font-family: ui-monospace, 'SF Mono', 'Monaco', 'Consolas', monospace;
+			font-size: 0.8125rem;
+			word-break: break-word;
+		}
+
+		.metadata-details {
+			margin-top: 0.5rem;
+		}
+
+		.metadata-details summary {
+			cursor: pointer;
+			font-size: 0.75rem;
+			color: hsl(var(--muted-foreground));
+		}
+
+		.metadata-json {
+			margin: 0.5rem 0 0;
+			padding: 0.5rem;
+			background: hsl(var(--muted));
+			border-radius: var(--radius);
+			font-size: 0.75rem;
+			overflow-x: auto;
+		}
+
+		.copy-button {
+			padding: 0.25rem 0.5rem;
+			font-size: 0.6875rem;
+			background: hsl(var(--muted));
+			color: hsl(var(--muted-foreground));
+			border: 1px solid hsl(var(--border));
+			border-radius: var(--radius);
+			cursor: pointer;
+		}
+
+		.copy-button:hover {
+			background: hsl(var(--primary));
+			color: hsl(var(--primary-foreground));
+			border-color: hsl(var(--primary));
+		}
+
+		.empty-message {
+			color: hsl(var(--muted-foreground));
+			text-align: center;
+			padding: 2rem;
+		}
+
+		.load-more {
+			text-align: center;
+			padding: 1rem;
+		}
+
+		.load-more-button {
+			display: inline-block;
+			padding: 0.5rem 1.5rem;
+			background: hsl(var(--secondary));
+			color: hsl(var(--foreground));
+			border: 1px solid hsl(var(--border));
+			border-radius: var(--radius);
+			text-decoration: none;
+			font-size: 0.875rem;
+		}
+
+		.load-more-button:hover {
+			background: hsl(var(--muted));
+		}
+
+		/* Settings Info */
+		.settings-info h2 {
+			margin-bottom: 1rem;
+		}
+
+		.settings-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+			gap: 0.75rem;
+		}
+
+		.setting-item {
+			display: flex;
+			justify-content: space-between;
+			padding: 0.5rem;
+			background: hsl(var(--muted) / 0.5);
+			border-radius: var(--radius);
+		}
+
+		.setting-label {
+			font-size: 0.8125rem;
+			color: hsl(var(--muted-foreground));
+		}
+
+		.setting-value {
+			font-size: 0.8125rem;
+			font-weight: 500;
+			color: hsl(var(--foreground));
+		}
+
+		.settings-note {
+			margin-top: 1rem;
+			font-size: 0.8125rem;
+			color: hsl(var(--muted-foreground));
+		}
+
+		.settings-note a {
+			color: hsl(var(--primary));
+		}
+
+		/* Responsive */
+		@media (max-width: 768px) {
+			.logs-page {
+				padding: 1rem;
+			}
+
+			.controls-section {
+				flex-direction: column;
+				align-items: stretch;
+			}
+
+			.controls-left,
+			.controls-right {
+				justify-content: center;
+			}
+
+			.logs-table {
+				font-size: 0.75rem;
+			}
+
+			.logs-table th,
+			.logs-table td {
+				padding: 0.5rem;
+			}
+
+			.col-time {
+				width: 100px;
+			}
+
+			.col-source {
+				display: none;
+			}
+
+			.col-actions {
+				display: none;
+			}
+		}
 </style>
