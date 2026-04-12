@@ -1,4 +1,5 @@
 import { logger } from '$lib/server/logging';
+import { requiresOnboarding } from '$lib/server/onboarding';
 import { verifyServerMembership } from './membership';
 import { type MembershipResult, PlexAuthApiError } from './types';
 
@@ -21,6 +22,10 @@ export type RevalidationResult =
 
 const revalidationCache = new Map<string, RevalidationEntry>();
 const inFlightRevalidations = new Map<string, Promise<RevalidationResult>>();
+
+export async function shouldRevalidateSession(): Promise<boolean> {
+	return !(await requiresOnboarding());
+}
 
 export function needsRevalidation(sessionId: string): boolean {
 	const entry = revalidationCache.get(sessionId);

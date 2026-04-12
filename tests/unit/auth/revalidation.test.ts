@@ -8,11 +8,18 @@ mock.module('$lib/server/auth/membership', () => ({
 	verifyServerMembership: mockVerifyServerMembership
 }));
 
+const mockRequiresOnboarding = mock(() => Promise.resolve(false));
+
+mock.module('$lib/server/onboarding', () => ({
+	requiresOnboarding: mockRequiresOnboarding
+}));
+
 import {
 	clearRevalidationEntry,
 	needsRevalidation,
 	type RevalidationResult,
-	revalidateMembership
+	revalidateMembership,
+	shouldRevalidateSession
 } from '$lib/server/auth/revalidation';
 import { PlexAuthApiError } from '$lib/server/auth/types';
 
@@ -260,6 +267,22 @@ describe('revalidation module', () => {
 
 			clearRevalidationEntry('session-a');
 			clearRevalidationEntry('session-b');
+		});
+	});
+
+	describe('shouldRevalidateSession', () => {
+		beforeEach(() => {
+			mockRequiresOnboarding.mockClear();
+		});
+
+		it('returns false when onboarding is still required', async () => {
+			mockRequiresOnboarding.mockImplementation(() => Promise.resolve(true));
+			expect(await shouldRevalidateSession()).toBe(false);
+		});
+
+		it('returns true when onboarding is complete', async () => {
+			mockRequiresOnboarding.mockImplementation(() => Promise.resolve(false));
+			expect(await shouldRevalidateSession()).toBe(true);
 		});
 	});
 
