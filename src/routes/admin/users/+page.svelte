@@ -1,48 +1,48 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
-	import { handleFormToast } from '$lib/utils/form-toast';
-	import type { ActionData, PageData } from './$types';
+import { enhance } from '$app/forms';
+import { handleFormToast } from '$lib/utils/form-toast';
+import type { ActionData, PageData } from './$types';
 
-	/**
-	 * Admin Users Page
-	 *
-	 * Manages Plex server users:
-	 * - View all users with watch time stats
-	 * - Configure per-user permissions
-	 * - Preview user wrapped pages
-	 */
+/**
+ * Admin Users Page
+ *
+ * Manages Plex server users:
+ * - View all users with watch time stats
+ * - Configure per-user permissions
+ * - Preview user wrapped pages
+ */
 
-	let { data, form }: { data: PageData; form: ActionData } = $props();
+let { data, form }: { data: PageData; form: ActionData } = $props();
 
-	// Show toast notifications for form responses
-	$effect(() => {
-		handleFormToast(form);
-	});
+// Show toast notifications for form responses
+$effect(() => {
+	handleFormToast(form);
+});
 
-	// Format watch time as hours
-	function formatWatchTime(minutes: number): string {
-		const hours = Math.round(minutes / 60);
-		if (hours < 1) return '<1h';
-		if (hours >= 24) {
-			const days = (hours / 24).toFixed(1);
-			return `${days}d`;
-		}
-		return `${hours}h`;
+// Format watch time as hours
+function formatWatchTime(minutes: number): string {
+	const hours = Math.round(minutes / 60);
+	if (hours < 1) return '<1h';
+	if (hours >= 24) {
+		const days = (hours / 24).toFixed(1);
+		return `${days}d`;
 	}
+	return `${hours}h`;
+}
 
-	// Get share mode display label
-	function getShareModeLabel(mode: string | null): string {
-		switch (mode) {
-			case 'public':
-				return 'Public';
-			case 'private-oauth':
-				return 'OAuth';
-			case 'private-link':
-				return 'Link';
-			default:
-				return 'Default';
-		}
+// Get share mode display label
+function getShareModeLabel(mode: string | null): string {
+	switch (mode) {
+		case 'public':
+			return 'Public';
+		case 'private-oauth':
+			return 'OAuth';
+		case 'private-link':
+			return 'Link';
+		default:
+			return 'Default';
 	}
+}
 </script>
 
 <div class="users-page">
@@ -177,257 +177,257 @@
 
 <style>
 	.users-page {
-		max-width: 1000px;
-		margin: 0 auto;
-		padding: 2rem;
-	}
+			max-width: 1000px;
+			margin: 0 auto;
+			padding: 2rem;
+		}
 
-	.page-header {
-		margin-bottom: 2rem;
-	}
+		.page-header {
+			margin-bottom: 2rem;
+		}
 
-	.page-header h1 {
-		font-size: 2rem;
-		font-weight: 700;
-		color: hsl(var(--primary));
-		margin: 0 0 0.5rem;
-	}
+		.page-header h1 {
+			font-size: 2rem;
+			font-weight: 700;
+			color: hsl(var(--primary));
+			margin: 0 0 0.5rem;
+		}
 
-	.subtitle {
-		color: hsl(var(--muted-foreground));
-		margin: 0;
-	}
+		.subtitle {
+			color: hsl(var(--muted-foreground));
+			margin: 0;
+		}
 
-	.section {
-		background: hsl(var(--card));
-		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius);
-		padding: 1.5rem;
-		margin-bottom: 1.5rem;
-	}
+		.section {
+			background: hsl(var(--card));
+			border: 1px solid hsl(var(--border));
+			border-radius: var(--radius);
+			padding: 1.5rem;
+			margin-bottom: 1.5rem;
+		}
 
-	.section h2 {
-		font-size: 1.125rem;
-		font-weight: 600;
-		color: hsl(var(--foreground));
-		margin: 0 0 0.5rem;
-	}
+		.section h2 {
+			font-size: 1.125rem;
+			font-weight: 600;
+			color: hsl(var(--foreground));
+			margin: 0 0 0.5rem;
+		}
 
-	.section h3 {
-		font-size: 1rem;
-		font-weight: 600;
-		color: hsl(var(--foreground));
-		margin: 0 0 0.75rem;
-	}
+		.section h3 {
+			font-size: 1rem;
+			font-weight: 600;
+			color: hsl(var(--foreground));
+			margin: 0 0 0.75rem;
+		}
 
-	.section-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		margin-bottom: 1rem;
-	}
+		.section-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			margin-bottom: 1rem;
+		}
 
-	.section-header h2 {
-		margin: 0;
-	}
+		.section-header h2 {
+			margin: 0;
+		}
 
-	.user-count {
-		font-size: 0.75rem;
-		color: hsl(var(--muted-foreground));
-	}
+		.user-count {
+			font-size: 0.75rem;
+			color: hsl(var(--muted-foreground));
+		}
 
-	/* Users Table */
-	.users-table-wrapper {
-		overflow-x: auto;
-	}
-
-	.users-table {
-		width: 100%;
-		border-collapse: collapse;
-		font-size: 0.875rem;
-	}
-
-	.users-table th,
-	.users-table td {
-		padding: 0.75rem;
-		text-align: left;
-		border-bottom: 1px solid hsl(var(--border));
-	}
-
-	.users-table th {
-		font-weight: 600;
-		color: hsl(var(--muted-foreground));
-		font-size: 0.75rem;
-		text-transform: uppercase;
-	}
-
-	.users-table tbody tr:hover {
-		background: hsl(var(--muted) / 0.5);
-	}
-
-	.user-cell {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-	}
-
-	.user-avatar {
-		width: 36px;
-		height: 36px;
-		border-radius: 50%;
-		object-fit: cover;
-	}
-
-	.user-avatar.placeholder {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background: hsl(var(--muted));
-		color: hsl(var(--muted-foreground));
-		font-size: 1.25rem;
-	}
-
-	.user-info {
-		display: flex;
-		flex-direction: column;
-	}
-
-	.user-name {
-		font-weight: 500;
-		color: hsl(var(--foreground));
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.user-email {
-		font-size: 0.75rem;
-		color: hsl(var(--muted-foreground));
-	}
-
-	.admin-badge {
-		display: inline-block;
-		padding: 0.125rem 0.375rem;
-		background: hsl(var(--primary));
-		color: hsl(var(--primary-foreground));
-		font-size: 0.625rem;
-		font-weight: 600;
-		border-radius: 9999px;
-		text-transform: uppercase;
-	}
-
-	.watch-time {
-		font-weight: 600;
-		color: hsl(var(--foreground));
-	}
-
-	.share-mode {
-		display: inline-block;
-		padding: 0.25rem 0.5rem;
-		border-radius: var(--radius);
-		font-size: 0.75rem;
-		font-weight: 500;
-		background: hsl(var(--muted));
-		color: hsl(var(--muted-foreground));
-	}
-
-	.share-mode.public {
-		background: hsl(120 40% 25%);
-		color: hsl(120 60% 90%);
-	}
-
-	.share-mode.oauth {
-		background: hsl(220 60% 30%);
-		color: hsl(220 80% 90%);
-	}
-
-	.share-mode.link {
-		background: hsl(270 50% 30%);
-		color: hsl(270 70% 90%);
-	}
-
-	.permission-form {
-		margin: 0;
-	}
-
-	.toggle-button {
-		padding: 0.25rem 0.5rem;
-		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius);
-		font-size: 0.75rem;
-		font-weight: 500;
-		cursor: pointer;
-		background: hsl(var(--muted));
-		color: hsl(var(--muted-foreground));
-		transition: all 0.15s ease;
-	}
-
-	.toggle-button.enabled {
-		background: hsl(120 40% 25%);
-		color: hsl(120 60% 90%);
-		border-color: hsl(120 40% 25%);
-	}
-
-	.toggle-button:hover {
-		opacity: 0.8;
-	}
-
-	.preview-link {
-		font-size: 0.75rem;
-		color: hsl(var(--primary));
-		text-decoration: none;
-	}
-
-	.preview-link:hover {
-		text-decoration: underline;
-	}
-
-	.empty-message {
-		color: hsl(var(--muted-foreground));
-		text-align: center;
-		padding: 2rem;
-	}
-
-	/* Legend */
-	.legend-section {
-		background: hsl(var(--muted) / 0.3);
-	}
-
-	.legend-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-		gap: 0.75rem;
-	}
-
-	.legend-item {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.legend-desc {
-		font-size: 0.75rem;
-		color: hsl(var(--muted-foreground));
-	}
-
-	/* Responsive */
-	@media (max-width: 768px) {
-		.users-page {
-			padding: 1rem;
+		/* Users Table */
+		.users-table-wrapper {
+			overflow-x: auto;
 		}
 
 		.users-table {
-			font-size: 0.75rem;
+			width: 100%;
+			border-collapse: collapse;
+			font-size: 0.875rem;
 		}
 
 		.users-table th,
 		.users-table td {
-			padding: 0.5rem;
+			padding: 0.75rem;
+			text-align: left;
+			border-bottom: 1px solid hsl(var(--border));
+		}
+
+		.users-table th {
+			font-weight: 600;
+			color: hsl(var(--muted-foreground));
+			font-size: 0.75rem;
+			text-transform: uppercase;
+		}
+
+		.users-table tbody tr:hover {
+			background: hsl(var(--muted) / 0.5);
+		}
+
+		.user-cell {
+			display: flex;
+			align-items: center;
+			gap: 0.75rem;
 		}
 
 		.user-avatar {
-			width: 28px;
-			height: 28px;
+			width: 36px;
+			height: 36px;
+			border-radius: 50%;
+			object-fit: cover;
 		}
-	}
+
+		.user-avatar.placeholder {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			background: hsl(var(--muted));
+			color: hsl(var(--muted-foreground));
+			font-size: 1.25rem;
+		}
+
+		.user-info {
+			display: flex;
+			flex-direction: column;
+		}
+
+		.user-name {
+			font-weight: 500;
+			color: hsl(var(--foreground));
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+		}
+
+		.user-email {
+			font-size: 0.75rem;
+			color: hsl(var(--muted-foreground));
+		}
+
+		.admin-badge {
+			display: inline-block;
+			padding: 0.125rem 0.375rem;
+			background: hsl(var(--primary));
+			color: hsl(var(--primary-foreground));
+			font-size: 0.625rem;
+			font-weight: 600;
+			border-radius: 9999px;
+			text-transform: uppercase;
+		}
+
+		.watch-time {
+			font-weight: 600;
+			color: hsl(var(--foreground));
+		}
+
+		.share-mode {
+			display: inline-block;
+			padding: 0.25rem 0.5rem;
+			border-radius: var(--radius);
+			font-size: 0.75rem;
+			font-weight: 500;
+			background: hsl(var(--muted));
+			color: hsl(var(--muted-foreground));
+		}
+
+		.share-mode.public {
+			background: hsl(120 40% 25%);
+			color: hsl(120 60% 90%);
+		}
+
+		.share-mode.oauth {
+			background: hsl(220 60% 30%);
+			color: hsl(220 80% 90%);
+		}
+
+		.share-mode.link {
+			background: hsl(270 50% 30%);
+			color: hsl(270 70% 90%);
+		}
+
+		.permission-form {
+			margin: 0;
+		}
+
+		.toggle-button {
+			padding: 0.25rem 0.5rem;
+			border: 1px solid hsl(var(--border));
+			border-radius: var(--radius);
+			font-size: 0.75rem;
+			font-weight: 500;
+			cursor: pointer;
+			background: hsl(var(--muted));
+			color: hsl(var(--muted-foreground));
+			transition: all 0.15s ease;
+		}
+
+		.toggle-button.enabled {
+			background: hsl(120 40% 25%);
+			color: hsl(120 60% 90%);
+			border-color: hsl(120 40% 25%);
+		}
+
+		.toggle-button:hover {
+			opacity: 0.8;
+		}
+
+		.preview-link {
+			font-size: 0.75rem;
+			color: hsl(var(--primary));
+			text-decoration: none;
+		}
+
+		.preview-link:hover {
+			text-decoration: underline;
+		}
+
+		.empty-message {
+			color: hsl(var(--muted-foreground));
+			text-align: center;
+			padding: 2rem;
+		}
+
+		/* Legend */
+		.legend-section {
+			background: hsl(var(--muted) / 0.3);
+		}
+
+		.legend-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+			gap: 0.75rem;
+		}
+
+		.legend-item {
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+		}
+
+		.legend-desc {
+			font-size: 0.75rem;
+			color: hsl(var(--muted-foreground));
+		}
+
+		/* Responsive */
+		@media (max-width: 768px) {
+			.users-page {
+				padding: 1rem;
+			}
+
+			.users-table {
+				font-size: 0.75rem;
+			}
+
+			.users-table th,
+			.users-table td {
+				padding: 0.5rem;
+			}
+
+			.user-avatar {
+				width: 28px;
+				height: 28px;
+			}
+		}
 </style>

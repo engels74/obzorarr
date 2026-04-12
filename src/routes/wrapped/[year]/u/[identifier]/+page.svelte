@@ -1,121 +1,121 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
-	import { goto } from '$app/navigation';
-	import Logo from '$lib/components/Logo.svelte';
-	import { createPersonalContext } from '$lib/components/slides/messaging-context';
-	import {
-		ModeToggle,
-		ScrollMode,
-		ShareModal,
-		StoryMode,
-		SummaryPage,
-		YearNavigation
-	} from '$lib/components/wrapped';
-	import type { PageProps } from './$types';
+import { enhance } from '$app/forms';
+import { goto } from '$app/navigation';
+import Logo from '$lib/components/Logo.svelte';
+import { createPersonalContext } from '$lib/components/slides/messaging-context';
+import {
+	ModeToggle,
+	ScrollMode,
+	ShareModal,
+	StoryMode,
+	SummaryPage,
+	YearNavigation
+} from '$lib/components/wrapped';
+import type { PageProps } from './$types';
 
-	/**
-	 * Per-user Wrapped Page
-	 *
-	 * Displays the user-specific Year in Review statistics.
-	 * Supports both Story Mode (full-screen slides) and Scroll Mode.
-	 *
-	 * @module routes/wrapped/[year]/u/[identifier]
-	 */
+/**
+ * Per-user Wrapped Page
+ *
+ * Displays the user-specific Year in Review statistics.
+ * Supports both Story Mode (full-screen slides) and Scroll Mode.
+ *
+ * @module routes/wrapped/[year]/u/[identifier]
+ */
 
-	let { data }: PageProps = $props();
+let { data }: PageProps = $props();
 
-	// Create messaging context for personal wrapped
-	const messagingContext = createPersonalContext();
+// Create messaging context for personal wrapped
+const messagingContext = createPersonalContext();
 
-	/** Override for optimistic updates (null means use server value) */
-	let showLogoOverride = $state<boolean | null>(null);
-	/** Effective logo visibility - uses override if pending, otherwise server value */
-	let showLogo = $derived(showLogoOverride ?? data.showLogo);
+/** Override for optimistic updates (null means use server value) */
+let showLogoOverride = $state<boolean | null>(null);
+/** Effective logo visibility - uses override if pending, otherwise server value */
+let showLogo = $derived(showLogoOverride ?? data.showLogo);
 
-	// ==========================================================================
-	// State
-	// ==========================================================================
+// ==========================================================================
+// State
+// ==========================================================================
 
-	/** Current viewing mode */
-	type ViewMode = 'story' | 'scroll';
-	let viewMode = $state<ViewMode>('story');
+/** Current viewing mode */
+type ViewMode = 'story' | 'scroll';
+let viewMode = $state<ViewMode>('story');
 
-	/** Current slide index for mode switching (preserves position) */
-	let currentSlideIndex = $state(0);
+/** Current slide index for mode switching (preserves position) */
+let currentSlideIndex = $state(0);
 
-	/** Whether to show the summary page */
-	let showSummary = $state(false);
+/** Whether to show the summary page */
+let showSummary = $state(false);
 
-	/** Whether to show the share modal */
-	let showShareModal = $state(false);
+/** Whether to show the share modal */
+let showShareModal = $state(false);
 
-	/** Key for forcing StoryMode remount on restart */
-	let storyKey = $state(0);
+/** Key for forcing StoryMode remount on restart */
+let storyKey = $state(0);
 
-	// ==========================================================================
-	// Event Handlers
-	// ==========================================================================
+// ==========================================================================
+// Event Handlers
+// ==========================================================================
 
-	/**
-	 * Handle mode change from ModeToggle
-	 */
-	function handleModeChange(newMode: ViewMode): void {
-		viewMode = newMode;
-	}
+/**
+ * Handle mode change from ModeToggle
+ */
+function handleModeChange(newMode: ViewMode): void {
+	viewMode = newMode;
+}
 
-	/**
-	 * Handle scroll mode requesting switch (preserves position)
-	 */
-	function handleScrollModeSwitch(slideIndex: number): void {
-		currentSlideIndex = slideIndex;
-		viewMode = 'story';
-	}
+/**
+ * Handle scroll mode requesting switch (preserves position)
+ */
+function handleScrollModeSwitch(slideIndex: number): void {
+	currentSlideIndex = slideIndex;
+	viewMode = 'story';
+}
 
-	/**
-	 * Handle story mode completion - show summary page
-	 */
-	function handleComplete(): void {
-		showSummary = true;
-	}
+/**
+ * Handle story mode completion - show summary page
+ */
+function handleComplete(): void {
+	showSummary = true;
+}
 
-	/**
-	 * Handle close/exit action
-	 */
-	function handleClose(): void {
-		// Navigate back to home or previous page
-		window.history.back();
-	}
+/**
+ * Handle close/exit action
+ */
+function handleClose(): void {
+	// Navigate back to home or previous page
+	window.history.back();
+}
 
-	/**
-	 * Handle restart - return to slideshow from summary
-	 */
-	function handleRestart(): void {
-		showSummary = false;
-		viewMode = 'story';
-		currentSlideIndex = 0;
-		storyKey++; // Force StoryMode remount
-	}
+/**
+ * Handle restart - return to slideshow from summary
+ */
+function handleRestart(): void {
+	showSummary = false;
+	viewMode = 'story';
+	currentSlideIndex = 0;
+	storyKey++; // Force StoryMode remount
+}
 
-	/**
-	 * Handle return home from summary
-	 */
-	function handleHome(): void {
-		goto('/');
-	}
+/**
+ * Handle return home from summary
+ */
+function handleHome(): void {
+	goto('/');
+}
 
-	/**
-	 * Handle share button click from summary
-	 */
-	function handleShare(): void {
-		showShareModal = true;
-	}
+/**
+ * Handle share button click from summary
+ */
+function handleShare(): void {
+	showShareModal = true;
+}
 
-	/**
-	 * Handle logo toggle (optimistic update)
-	 */
-	function handleLogoToggle(): void {
-		showLogoOverride = !showLogo;
-	}
+/**
+ * Handle logo toggle (optimistic update)
+ */
+function handleLogoToggle(): void {
+	showLogoOverride = !showLogo;
+}
 </script>
 
 <svelte:head>
@@ -249,79 +249,79 @@
 
 <style>
 	.wrapped-page {
-		position: relative;
-		width: 100%;
-		min-height: 100vh;
-		min-height: 100dvh;
-		background: var(
-			--slide-bg-gradient,
-			linear-gradient(
-				135deg,
-				hsl(var(--primary-hue, 217) 30% 12%) 0%,
-				hsl(var(--primary-hue, 217) 20% 8%) 100%
-			)
-		);
-	}
+			position: relative;
+			width: 100%;
+			min-height: 100vh;
+			min-height: 100dvh;
+			background: var(
+				--slide-bg-gradient,
+				linear-gradient(
+					135deg,
+					hsl(var(--primary-hue, 217) 30% 12%) 0%,
+					hsl(var(--primary-hue, 217) 20% 8%) 100%
+				)
+			);
+		}
 
-	.logo-watermark {
-		position: fixed;
-		top: 1rem;
-		left: 1rem;
-		z-index: 99;
-		opacity: 0.8;
-		pointer-events: none;
-	}
+		.logo-watermark {
+			position: fixed;
+			top: 1rem;
+			left: 1rem;
+			z-index: 99;
+			opacity: 0.8;
+			pointer-events: none;
+		}
 
-	.controls-container {
-		position: fixed;
-		top: 1rem;
-		right: 1rem;
-		z-index: 100;
-		display: flex;
-		gap: 0.5rem;
-		align-items: center;
-	}
+		.controls-container {
+			position: fixed;
+			top: 1rem;
+			right: 1rem;
+			z-index: 100;
+			display: flex;
+			gap: 0.5rem;
+			align-items: center;
+		}
 
-	.logo-toggle {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 2rem;
-		height: 2rem;
-		padding: 0;
-		border: none;
-		border-radius: 0.375rem;
-		background: var(--card);
-		color: var(--foreground);
-		cursor: pointer;
-		opacity: 0.8;
-		transition:
-			opacity 0.2s,
-			background 0.2s;
-	}
+		.logo-toggle {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 2rem;
+			height: 2rem;
+			padding: 0;
+			border: none;
+			border-radius: 0.375rem;
+			background: var(--card);
+			color: var(--foreground);
+			cursor: pointer;
+			opacity: 0.8;
+			transition:
+				opacity 0.2s,
+				background 0.2s;
+		}
 
-	.logo-toggle:hover {
-		opacity: 1;
-		background: var(--muted);
-	}
+		.logo-toggle:hover {
+			opacity: 1;
+			background: var(--muted);
+		}
 
-	.user-header {
-		position: fixed;
-		top: 1rem;
-		left: 1rem;
-		z-index: 100;
-		pointer-events: none;
-	}
+		.user-header {
+			position: fixed;
+			top: 1rem;
+			left: 1rem;
+			z-index: 100;
+			pointer-events: none;
+		}
 
-	.user-header.with-logo {
-		left: 3.5rem;
-	}
+		.user-header.with-logo {
+			left: 3.5rem;
+		}
 
-	.user-title {
-		font-size: 1rem;
-		font-weight: 600;
-		color: var(--foreground);
-		opacity: 0.8;
-		margin: 0;
-	}
+		.user-title {
+			font-size: 1rem;
+			font-weight: 600;
+			color: var(--foreground);
+			opacity: 0.8;
+			margin: 0;
+		}
 </style>

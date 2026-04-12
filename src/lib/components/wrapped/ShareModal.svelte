@@ -1,118 +1,118 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
-	import * as AlertDialog from '$lib/components/ui/alert-dialog';
-	import type { ShareModeType } from '$lib/sharing/types';
+import { enhance } from '$app/forms';
+import * as AlertDialog from '$lib/components/ui/alert-dialog';
+import type { ShareModeType } from '$lib/sharing/types';
 
-	interface ShareSettings {
-		mode: ShareModeType;
-		shareToken: string | null | undefined;
-		canUserControl: boolean;
-	}
+interface ShareSettings {
+	mode: ShareModeType;
+	shareToken: string | null | undefined;
+	canUserControl: boolean;
+}
 
-	interface Props {
-		open?: boolean;
-		onOpenChange?: (open: boolean) => void;
-		currentUrl: string;
-		shareSettings?: ShareSettings;
-		isOwner?: boolean;
-		isAdmin?: boolean;
-		isServerWrapped?: boolean;
-	}
+interface Props {
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
+	currentUrl: string;
+	shareSettings?: ShareSettings;
+	isOwner?: boolean;
+	isAdmin?: boolean;
+	isServerWrapped?: boolean;
+}
 
-	let {
-		open = $bindable(false),
-		onOpenChange,
-		currentUrl,
-		shareSettings,
-		isOwner = false,
-		isAdmin = false,
-		isServerWrapped = false
-	}: Props = $props();
+let {
+	open = $bindable(false),
+	onOpenChange,
+	currentUrl,
+	shareSettings,
+	isOwner = false,
+	isAdmin = false,
+	isServerWrapped = false
+}: Props = $props();
 
-	// State
-	let copied = $state(false);
-	let copyTimeout: ReturnType<typeof setTimeout> | undefined;
-	let isUpdating = $state(false);
+// State
+let copied = $state(false);
+let copyTimeout: ReturnType<typeof setTimeout> | undefined;
+let isUpdating = $state(false);
 
-	// Computed URL based on mode
-	const shareUrl = $derived.by(() => {
-		const origin = typeof window !== 'undefined' ? window.location.origin : '';
+// Computed URL based on mode
+const shareUrl = $derived.by(() => {
+	const origin = typeof window !== 'undefined' ? window.location.origin : '';
 
-		if (!shareSettings) return `${origin}${currentUrl}`;
+	if (!shareSettings) return `${origin}${currentUrl}`;
 
-		if (shareSettings.mode === 'private-link' && shareSettings.shareToken) {
-			// Replace user ID with token in URL for private-link mode
-			const parts = currentUrl.split('/u/');
-			if (parts.length === 2) {
-				return `${origin}${parts[0]}/u/${shareSettings.shareToken}`;
-			}
+	if (shareSettings.mode === 'private-link' && shareSettings.shareToken) {
+		// Replace user ID with token in URL for private-link mode
+		const parts = currentUrl.split('/u/');
+		if (parts.length === 2) {
+			return `${origin}${parts[0]}/u/${shareSettings.shareToken}`;
 		}
-		return `${origin}${currentUrl}`;
-	});
+	}
+	return `${origin}${currentUrl}`;
+});
 
-	// Can show share mode controls
-	const canControlShare = $derived(
-		isOwner && (shareSettings?.canUserControl || isAdmin) && !isServerWrapped
-	);
+// Can show share mode controls
+const canControlShare = $derived(
+	isOwner && (shareSettings?.canUserControl || isAdmin) && !isServerWrapped
+);
 
-	// Available modes based on permissions
-	const availableModes = $derived.by(() => {
-		if (isAdmin) return ['public', 'private-link', 'private-oauth'] as const;
-		if (shareSettings?.canUserControl) return ['public', 'private-link', 'private-oauth'] as const;
-		return [] as const;
-	});
+// Available modes based on permissions
+const availableModes = $derived.by(() => {
+	if (isAdmin) return ['public', 'private-link', 'private-oauth'] as const;
+	if (shareSettings?.canUserControl) return ['public', 'private-link', 'private-oauth'] as const;
+	return [] as const;
+});
 
-	// Mode display labels
-	const modeLabels: Record<ShareModeType, { label: string; description: string }> = {
-		public: {
-			label: 'Public',
-			description: 'Anyone can view'
-		},
-		'private-oauth': {
-			label: 'Server Members',
-			description: 'Only Plex server members'
-		},
-		'private-link': {
-			label: 'Private Link',
-			description: 'Anyone with the link'
-		}
+// Mode display labels
+const modeLabels: Record<ShareModeType, { label: string; description: string }> = {
+	public: {
+		label: 'Public',
+		description: 'Anyone can view'
+	},
+	'private-oauth': {
+		label: 'Server Members',
+		description: 'Only Plex server members'
+	},
+	'private-link': {
+		label: 'Private Link',
+		description: 'Anyone with the link'
+	}
+};
+
+async function copyUrl(): Promise<void> {
+	try {
+		await navigator.clipboard.writeText(shareUrl);
+		copied = true;
+		clearTimeout(copyTimeout);
+		copyTimeout = setTimeout(() => {
+			copied = false;
+		}, 2000);
+	} catch {
+		// Fallback for older browsers
+		const input = document.createElement('input');
+		input.value = shareUrl;
+		document.body.appendChild(input);
+		input.select();
+		document.execCommand('copy');
+		document.body.removeChild(input);
+		copied = true;
+		clearTimeout(copyTimeout);
+		copyTimeout = setTimeout(() => {
+			copied = false;
+		}, 2000);
+	}
+}
+
+function handleOpenChange(value: boolean): void {
+	open = value;
+	onOpenChange?.(value);
+}
+
+// Cleanup on unmount
+$effect(() => {
+	return () => {
+		clearTimeout(copyTimeout);
 	};
-
-	async function copyUrl(): Promise<void> {
-		try {
-			await navigator.clipboard.writeText(shareUrl);
-			copied = true;
-			clearTimeout(copyTimeout);
-			copyTimeout = setTimeout(() => {
-				copied = false;
-			}, 2000);
-		} catch {
-			// Fallback for older browsers
-			const input = document.createElement('input');
-			input.value = shareUrl;
-			document.body.appendChild(input);
-			input.select();
-			document.execCommand('copy');
-			document.body.removeChild(input);
-			copied = true;
-			clearTimeout(copyTimeout);
-			copyTimeout = setTimeout(() => {
-				copied = false;
-			}, 2000);
-		}
-	}
-
-	function handleOpenChange(value: boolean): void {
-		open = value;
-		onOpenChange?.(value);
-	}
-
-	// Cleanup on unmount
-	$effect(() => {
-		return () => {
-			clearTimeout(copyTimeout);
-		};
-	});
+});
 </script>
 
 <AlertDialog.Root bind:open onOpenChange={handleOpenChange}>
@@ -306,179 +306,179 @@
 
 <style>
 	:global(.share-modal) {
-		max-width: 28rem !important;
-	}
+			max-width: 28rem !important;
+		}
 
-	.url-section {
-		margin-top: 0.5rem;
-		margin-bottom: 1.25rem;
-	}
+		.url-section {
+			margin-top: 0.5rem;
+			margin-bottom: 1.25rem;
+		}
 
-	.label {
-		display: block;
-		font-size: 0.875rem;
-		font-weight: 500;
-		color: hsl(var(--foreground));
-		margin-bottom: 0.5rem;
-	}
+		.label {
+			display: block;
+			font-size: 0.875rem;
+			font-weight: 500;
+			color: hsl(var(--foreground));
+			margin-bottom: 0.5rem;
+		}
 
-	.url-row {
-		display: flex;
-		gap: 0.5rem;
-	}
+		.url-row {
+			display: flex;
+			gap: 0.5rem;
+		}
 
-	.url-input {
-		flex: 1;
-		padding: 0.625rem 0.75rem;
-		font-size: 0.875rem;
-		border: 1px solid hsl(var(--border));
-		border-radius: 6px;
-		background-color: hsl(var(--background));
-		color: hsl(var(--foreground));
-		font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Monaco, Consolas, monospace;
-	}
+		.url-input {
+			flex: 1;
+			padding: 0.625rem 0.75rem;
+			font-size: 0.875rem;
+			border: 1px solid hsl(var(--border));
+			border-radius: 6px;
+			background-color: hsl(var(--background));
+			color: hsl(var(--foreground));
+			font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Monaco, Consolas, monospace;
+		}
 
-	.url-input:focus {
-		outline: none;
-		border-color: hsl(var(--primary));
-		box-shadow: 0 0 0 2px hsl(var(--primary) / 0.1);
-	}
+		.url-input:focus {
+			outline: none;
+			border-color: hsl(var(--primary));
+			box-shadow: 0 0 0 2px hsl(var(--primary) / 0.1);
+		}
 
-	.copy-btn {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 2.5rem;
-		height: 2.5rem;
-		border: 1px solid hsl(var(--border));
-		border-radius: 6px;
-		background-color: hsl(var(--background));
-		color: hsl(var(--foreground));
-		cursor: pointer;
-		transition:
-			background-color 0.15s ease,
-			border-color 0.15s ease;
-	}
+		.copy-btn {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 2.5rem;
+			height: 2.5rem;
+			border: 1px solid hsl(var(--border));
+			border-radius: 6px;
+			background-color: hsl(var(--background));
+			color: hsl(var(--foreground));
+			cursor: pointer;
+			transition:
+				background-color 0.15s ease,
+				border-color 0.15s ease;
+		}
 
-	.copy-btn:hover {
-		background-color: rgba(255, 255, 255, 0.1);
-		border-color: hsl(var(--primary));
-	}
+		.copy-btn:hover {
+			background-color: rgba(255, 255, 255, 0.1);
+			border-color: hsl(var(--primary));
+		}
 
-	.copy-btn .icon.check {
-		color: #22c55e;
-	}
+		.copy-btn .icon.check {
+			color: #22c55e;
+		}
 
-	.copied-feedback {
-		display: block;
-		margin-top: 0.375rem;
-		font-size: 0.75rem;
-		color: #22c55e;
-	}
+		.copied-feedback {
+			display: block;
+			margin-top: 0.375rem;
+			font-size: 0.75rem;
+			color: #22c55e;
+		}
 
-	.share-modes {
-		margin-bottom: 1.25rem;
-		padding-top: 1rem;
-		border-top: 1px solid hsl(var(--border));
-	}
+		.share-modes {
+			margin-bottom: 1.25rem;
+			padding-top: 1rem;
+			border-top: 1px solid hsl(var(--border));
+		}
 
-	.mode-options {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-	}
+		.mode-options {
+			display: flex;
+			flex-direction: column;
+			gap: 0.5rem;
+		}
 
-	.mode-option {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		padding: 0.75rem 1rem;
-		border: 1px solid hsl(var(--border));
-		border-radius: 8px;
-		cursor: pointer;
-		transition:
-			background-color 0.15s ease,
-			border-color 0.15s ease;
-	}
+		.mode-option {
+			display: flex;
+			align-items: center;
+			gap: 0.75rem;
+			padding: 0.75rem 1rem;
+			border: 1px solid hsl(var(--border));
+			border-radius: 8px;
+			cursor: pointer;
+			transition:
+				background-color 0.15s ease,
+				border-color 0.15s ease;
+		}
 
-	.mode-option:hover {
-		background-color: rgba(255, 255, 255, 0.05);
-	}
+		.mode-option:hover {
+			background-color: rgba(255, 255, 255, 0.05);
+		}
 
-	.mode-option.active {
-		border-color: hsl(var(--primary));
-		background-color: hsl(var(--primary) / 0.08);
-	}
+		.mode-option.active {
+			border-color: hsl(var(--primary));
+			background-color: hsl(var(--primary) / 0.08);
+		}
 
-	.mode-option input[type='radio'] {
-		display: none;
-	}
+		.mode-option input[type='radio'] {
+			display: none;
+		}
 
-	.mode-content {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		gap: 0.125rem;
-	}
+		.mode-content {
+			flex: 1;
+			display: flex;
+			flex-direction: column;
+			gap: 0.125rem;
+		}
 
-	.mode-label {
-		font-size: 0.875rem;
-		font-weight: 500;
-		color: hsl(var(--foreground));
-	}
+		.mode-label {
+			font-size: 0.875rem;
+			font-weight: 500;
+			color: hsl(var(--foreground));
+		}
 
-	.mode-desc {
-		font-size: 0.75rem;
-		color: hsl(var(--muted-foreground));
-	}
+		.mode-desc {
+			font-size: 0.75rem;
+			color: hsl(var(--muted-foreground));
+		}
 
-	.check-icon {
-		color: hsl(var(--primary));
-	}
+		.check-icon {
+			color: hsl(var(--primary));
+		}
 
-	.regenerate-form {
-		margin-top: 0.75rem;
-	}
+		.regenerate-form {
+			margin-top: 0.75rem;
+		}
 
-	.btn-link {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.375rem;
-		padding: 0.375rem 0;
-		font-size: 0.8125rem;
-		color: hsl(var(--muted-foreground));
-		background: none;
-		border: none;
-		cursor: pointer;
-		transition: color 0.15s ease;
-	}
+		.btn-link {
+			display: inline-flex;
+			align-items: center;
+			gap: 0.375rem;
+			padding: 0.375rem 0;
+			font-size: 0.8125rem;
+			color: hsl(var(--muted-foreground));
+			background: none;
+			border: none;
+			cursor: pointer;
+			transition: color 0.15s ease;
+		}
 
-	.btn-link:hover {
-		color: hsl(var(--foreground));
-	}
+		.btn-link:hover {
+			color: hsl(var(--foreground));
+		}
 
-	.btn-link:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
+		.btn-link:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+		}
 
-	.advanced-section {
-		padding-top: 1rem;
-		border-top: 1px solid hsl(var(--border));
-		margin-bottom: 0.5rem;
-	}
+		.advanced-section {
+			padding-top: 1rem;
+			border-top: 1px solid hsl(var(--border));
+			margin-bottom: 0.5rem;
+		}
 
-	.advanced-link {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.375rem;
-		font-size: 0.8125rem;
-		color: hsl(var(--muted-foreground));
-		text-decoration: none;
-		transition: color 0.15s ease;
-	}
+		.advanced-link {
+			display: inline-flex;
+			align-items: center;
+			gap: 0.375rem;
+			font-size: 0.8125rem;
+			color: hsl(var(--muted-foreground));
+			text-decoration: none;
+			transition: color 0.15s ease;
+		}
 
-	.advanced-link:hover {
-		color: hsl(var(--foreground));
-	}
+		.advanced-link:hover {
+			color: hsl(var(--foreground));
+		}
 </style>

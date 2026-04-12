@@ -1,31 +1,31 @@
 <script lang="ts">
-	type ViewMode = 'story' | 'scroll';
+type ViewMode = 'story' | 'scroll';
 
-	interface Props {
-		/** Current view mode */
-		mode: ViewMode;
-		/** Callback when mode changes */
-		onModeChange: (newMode: ViewMode) => void;
-		/** Additional CSS classes */
-		class?: string;
+interface Props {
+	/** Current view mode */
+	mode: ViewMode;
+	/** Callback when mode changes */
+	onModeChange: (newMode: ViewMode) => void;
+	/** Additional CSS classes */
+	class?: string;
+}
+
+let { mode, onModeChange, class: klass = '' }: Props = $props();
+
+const targetMode = $derived<ViewMode>(mode === 'story' ? 'scroll' : 'story');
+const label = $derived(mode === 'story' ? 'Switch to Scroll Mode' : 'Switch to Story Mode');
+const displayText = $derived(mode === 'story' ? 'Scroll' : 'Story');
+
+function handleClick(): void {
+	onModeChange(targetMode);
+}
+
+function handleKeyDown(event: KeyboardEvent): void {
+	if (event.key === 'Enter' || event.key === ' ') {
+		event.preventDefault();
+		handleClick();
 	}
-
-	let { mode, onModeChange, class: klass = '' }: Props = $props();
-
-	const targetMode = $derived<ViewMode>(mode === 'story' ? 'scroll' : 'story');
-	const label = $derived(mode === 'story' ? 'Switch to Scroll Mode' : 'Switch to Story Mode');
-	const displayText = $derived(mode === 'story' ? 'Scroll' : 'Story');
-
-	function handleClick(): void {
-		onModeChange(targetMode);
-	}
-
-	function handleKeyDown(event: KeyboardEvent): void {
-		if (event.key === 'Enter' || event.key === ' ') {
-			event.preventDefault();
-			handleClick();
-		}
-	}
+}
 </script>
 
 <button
@@ -70,89 +70,89 @@
 
 <style>
 	.mode-toggle {
-		position: fixed;
-		top: 1rem;
-		right: 4rem;
-		z-index: 100;
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 0.5rem 1rem;
-		background: rgba(0, 0, 0, 0.7);
-		backdrop-filter: blur(8px);
-		border: 1px solid rgba(255, 255, 255, 0.1);
-		border-radius: 2rem;
-		color: var(--foreground, white);
-		cursor: pointer;
-		font-family: inherit;
-		transition:
-			background-color 0.2s,
-			transform 0.2s,
-			border-color 0.2s;
-	}
+			position: fixed;
+			top: 1rem;
+			right: 4rem;
+			z-index: 100;
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+			padding: 0.5rem 1rem;
+			background: rgba(0, 0, 0, 0.7);
+			backdrop-filter: blur(8px);
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			border-radius: 2rem;
+			color: var(--foreground, white);
+			cursor: pointer;
+			font-family: inherit;
+			transition:
+				background-color 0.2s,
+				transform 0.2s,
+				border-color 0.2s;
+		}
 
-	.mode-toggle:hover {
-		background: rgba(0, 0, 0, 0.9);
-		border-color: rgba(255, 255, 255, 0.2);
-		transform: scale(1.05);
-	}
+		.mode-toggle:hover {
+			background: rgba(0, 0, 0, 0.9);
+			border-color: rgba(255, 255, 255, 0.2);
+			transform: scale(1.05);
+		}
 
-	.mode-toggle:focus-visible {
-		outline: 2px solid var(--primary, #dc2626);
-		outline-offset: 2px;
-	}
+		.mode-toggle:focus-visible {
+			outline: 2px solid var(--primary, #dc2626);
+			outline-offset: 2px;
+		}
 
-	.mode-toggle:active {
-		transform: scale(0.98);
-	}
+		.mode-toggle:active {
+			transform: scale(0.98);
+		}
 
-	.mode-toggle svg {
-		width: 1.25rem;
-		height: 1.25rem;
-		flex-shrink: 0;
-	}
-
-	.toggle-label {
-		font-size: 0.875rem;
-		font-weight: 500;
-		white-space: nowrap;
-	}
-
-	@media (max-width: 768px) {
-		.mode-toggle {
-			top: 0.75rem;
-			right: 3rem;
-			padding: 0.5rem;
-			border-radius: 50%;
+		.mode-toggle svg {
+			width: 1.25rem;
+			height: 1.25rem;
+			flex-shrink: 0;
 		}
 
 		.toggle-label {
-			position: absolute;
-			width: 1px;
-			height: 1px;
-			padding: 0;
-			margin: -1px;
-			overflow: hidden;
-			clip: rect(0, 0, 0, 0);
+			font-size: 0.875rem;
+			font-weight: 500;
 			white-space: nowrap;
-			border: 0;
-		}
-	}
-
-	@media (min-width: 1024px) {
-		.mode-toggle {
-			right: 4.5rem;
-		}
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.mode-toggle {
-			transition: none;
 		}
 
-		.mode-toggle:hover,
-		.mode-toggle:active {
-			transform: none;
+		@media (max-width: 768px) {
+			.mode-toggle {
+				top: 0.75rem;
+				right: 3rem;
+				padding: 0.5rem;
+				border-radius: 50%;
+			}
+
+			.toggle-label {
+				position: absolute;
+				width: 1px;
+				height: 1px;
+				padding: 0;
+				margin: -1px;
+				overflow: hidden;
+				clip: rect(0, 0, 0, 0);
+				white-space: nowrap;
+				border: 0;
+			}
 		}
-	}
+
+		@media (min-width: 1024px) {
+			.mode-toggle {
+				right: 4.5rem;
+			}
+		}
+
+		@media (prefers-reduced-motion: reduce) {
+			.mode-toggle {
+				transition: none;
+			}
+
+			.mode-toggle:hover,
+			.mode-toggle:active {
+				transform: none;
+			}
+		}
 </style>

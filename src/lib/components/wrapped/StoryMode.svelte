@@ -1,303 +1,305 @@
 <script lang="ts">
-	import { animate } from 'motion';
-	import { prefersReducedMotion } from 'svelte/motion';
-	import type { SlideMessagingContext } from '$lib/components/slides/messaging-context';
-	import { createPersonalContext } from '$lib/components/slides/messaging-context';
-	import type { SlideRenderConfig } from '$lib/components/slides/types';
-	import type { CustomSlide } from '$lib/slides/types';
-	import type { ServerStats, UserStats } from '$lib/stats/types';
-	import { createSlideState } from '$lib/stores/slide-state.svelte';
-	import { EASING_PRESETS } from '$lib/utils/animation-presets';
-	import ProgressBar from './ProgressBar.svelte';
-	import SlideRenderer from './SlideRenderer.svelte';
+import { animate } from 'motion';
+import { prefersReducedMotion } from 'svelte/motion';
+import type { SlideMessagingContext } from '$lib/components/slides/messaging-context';
+import { createPersonalContext } from '$lib/components/slides/messaging-context';
+import type { SlideRenderConfig } from '$lib/components/slides/types';
+import type { CustomSlide } from '$lib/slides/types';
+import type { ServerStats, UserStats } from '$lib/stats/types';
+import { createSlideState } from '$lib/stores/slide-state.svelte';
+import { EASING_PRESETS } from '$lib/utils/animation-presets';
+import ProgressBar from './ProgressBar.svelte';
+import SlideRenderer from './SlideRenderer.svelte';
 
-	interface Props {
-		stats: UserStats | ServerStats;
-		slides: SlideRenderConfig[];
-		customSlides?: Map<number, CustomSlide>;
-		onComplete?: () => void;
-		onClose?: () => void;
-		class?: string;
-		messagingContext?: SlideMessagingContext;
-	}
+interface Props {
+	stats: UserStats | ServerStats;
+	slides: SlideRenderConfig[];
+	customSlides?: Map<number, CustomSlide>;
+	onComplete?: () => void;
+	onClose?: () => void;
+	class?: string;
+	messagingContext?: SlideMessagingContext;
+}
 
-	let {
-		stats,
-		slides,
-		customSlides,
-		onComplete,
-		onClose,
-		class: klass = '',
-		messagingContext = createPersonalContext()
-	}: Props = $props();
+let {
+	stats,
+	slides,
+	customSlides,
+	onComplete,
+	onClose,
+	class: klass = '',
+	messagingContext = createPersonalContext()
+}: Props = $props();
 
-	const EDGE_ZONE_PERCENT = 0.15;
-	const SWIPE_THRESHOLD = 50;
-	const ANIMATION_DURATION = 450;
+const EDGE_ZONE_PERCENT = 0.15;
+const SWIPE_THRESHOLD = 50;
+const ANIMATION_DURATION = 450;
 
-	const navigation = createSlideState();
+const navigation = createSlideState();
 
-	$effect(() => {
-		navigation.initialize(slides.length);
-	});
+$effect(() => {
+	navigation.initialize(slides.length);
+});
 
-	let touchStartX = $state(0);
-	let touchStartY = $state(0);
-	let isTouching = $state(false);
+let touchStartX = $state(0);
+let touchStartY = $state(0);
+let isTouching = $state(false);
 
-	let container: HTMLElement | undefined = $state();
-	let currentSlideEl: HTMLElement | undefined = $state();
-	let previousSlideEl: HTMLElement | undefined = $state();
+let container: HTMLElement | undefined = $state();
+let currentSlideEl: HTMLElement | undefined = $state();
+let previousSlideEl: HTMLElement | undefined = $state();
 
-	let isTransitioning = $state(false);
-	let showPreviousSlide = $state(false);
-	let previousSlideIndex = $state(-1);
+let isTransitioning = $state(false);
+let showPreviousSlide = $state(false);
+let previousSlideIndex = $state(-1);
 
-	let mounted = $state(true);
-	let activeEnterAnim: { stop: () => void; finished: Promise<void> } | null = $state(null);
-	let transitionTimeout: ReturnType<typeof setTimeout> | null = $state(null);
+let mounted = $state(true);
+let activeEnterAnim: { stop: () => void; finished: Promise<void> } | null = $state(null);
+let transitionTimeout: ReturnType<typeof setTimeout> | null = $state(null);
 
-	$effect(() => {
-		return () => {
-			mounted = false;
-			if (activeEnterAnim) {
-				activeEnterAnim.stop();
-			}
-			if (transitionTimeout) {
-				clearTimeout(transitionTimeout);
-			}
-		};
-	});
-
-	const currentSlide = $derived(slides[navigation.currentSlide]);
-	const previousSlide = $derived(previousSlideIndex >= 0 ? slides[previousSlideIndex] : null);
-
-	function goToNext(): void {
-		if (isTransitioning || !navigation.canGoNext) {
-			// If on last slide and trying to go next, call onComplete
-			if (navigation.isLast && !isTransitioning) {
-				onComplete?.();
-			}
-			return;
-		}
-
-		previousSlideIndex = navigation.currentSlide;
-		showPreviousSlide = true;
-		isTransitioning = true;
-
-		navigation.goToNext();
-		animateTransition('forward');
-	}
-
-	function goToPrevious(): void {
-		if (isTransitioning || !navigation.canGoPrevious) return;
-
-		previousSlideIndex = navigation.currentSlide;
-		showPreviousSlide = true;
-		isTransitioning = true;
-
-		navigation.goToPrevious();
-		animateTransition('backward');
-	}
-
-	function animateTransition(direction: 'forward' | 'backward'): void {
-		const shouldAnimate = !prefersReducedMotion.current;
-
-		if (!shouldAnimate || !currentSlideEl) {
-			finishTransition();
-			return;
-		}
-
-		navigation.startAnimation();
-
-		const enterFrom =
-			direction === 'forward' ? 'translateX(80%) scale(0.98)' : 'translateX(-80%) scale(0.98)';
-		const exitTo =
-			direction === 'forward' ? 'translateX(-100%) scale(0.95)' : 'translateX(100%) scale(0.95)';
-
-		const slideEl = currentSlideEl;
-		if (!slideEl) {
-			finishTransition();
-			return;
-		}
-
+$effect(() => {
+	return () => {
+		mounted = false;
 		if (activeEnterAnim) {
 			activeEnterAnim.stop();
-			activeEnterAnim = null;
 		}
 		if (transitionTimeout) {
 			clearTimeout(transitionTimeout);
-			transitionTimeout = null;
 		}
+	};
+});
 
-		const enterKeyframes = {
-			opacity: [0, 1],
-			transform: [enterFrom, 'translateX(0) scale(1)']
+const currentSlide = $derived(slides[navigation.currentSlide]);
+const previousSlide = $derived(previousSlideIndex >= 0 ? slides[previousSlideIndex] : null);
+
+function goToNext(): void {
+	if (isTransitioning || !navigation.canGoNext) {
+		// If on last slide and trying to go next, call onComplete
+		if (navigation.isLast && !isTransitioning) {
+			onComplete?.();
+		}
+		return;
+	}
+
+	previousSlideIndex = navigation.currentSlide;
+	showPreviousSlide = true;
+	isTransitioning = true;
+
+	navigation.goToNext();
+	animateTransition('forward');
+}
+
+function goToPrevious(): void {
+	if (isTransitioning || !navigation.canGoPrevious) return;
+
+	previousSlideIndex = navigation.currentSlide;
+	showPreviousSlide = true;
+	isTransitioning = true;
+
+	navigation.goToPrevious();
+	animateTransition('backward');
+}
+
+function animateTransition(direction: 'forward' | 'backward'): void {
+	const shouldAnimate = !prefersReducedMotion.current;
+
+	if (!shouldAnimate || !currentSlideEl) {
+		finishTransition();
+		return;
+	}
+
+	navigation.startAnimation();
+
+	const enterFrom =
+		direction === 'forward' ? 'translateX(80%) scale(0.98)' : 'translateX(-80%) scale(0.98)';
+	const exitTo =
+		direction === 'forward' ? 'translateX(-100%) scale(0.95)' : 'translateX(100%) scale(0.95)';
+
+	const slideEl = currentSlideEl;
+	if (!slideEl) {
+		finishTransition();
+		return;
+	}
+
+	if (activeEnterAnim) {
+		activeEnterAnim.stop();
+		activeEnterAnim = null;
+	}
+	if (transitionTimeout) {
+		clearTimeout(transitionTimeout);
+		transitionTimeout = null;
+	}
+
+	const enterKeyframes = {
+		opacity: [0, 1],
+		transform: [enterFrom, 'translateX(0) scale(1)']
+	} as Record<string, unknown>;
+	const enterAnim = (
+		animate as (
+			el: Element,
+			kf: Record<string, unknown>,
+			opts: Record<string, unknown>
+		) => { finished: Promise<void>; stop: () => void }
+	)(slideEl, enterKeyframes, {
+		duration: ANIMATION_DURATION / 1000,
+		easing: EASING_PRESETS.organic
+	});
+
+	activeEnterAnim = enterAnim;
+
+	const prevEl = previousSlideEl;
+	if (prevEl && showPreviousSlide) {
+		const exitKeyframes = {
+			opacity: [1, 0],
+			transform: ['translateX(0) scale(1)', exitTo]
 		} as Record<string, unknown>;
-		const enterAnim = (
-			animate as (
-				el: Element,
-				kf: Record<string, unknown>,
-				opts: Record<string, unknown>
-			) => { finished: Promise<void>; stop: () => void }
-		)(slideEl, enterKeyframes, {
-			duration: ANIMATION_DURATION / 1000,
-			easing: EASING_PRESETS.organic
-		});
-
-		activeEnterAnim = enterAnim;
-
-		const prevEl = previousSlideEl;
-		if (prevEl && showPreviousSlide) {
-			const exitKeyframes = {
-				opacity: [1, 0],
-				transform: ['translateX(0) scale(1)', exitTo]
-			} as Record<string, unknown>;
-			(
-				animate as (el: Element, kf: Record<string, unknown>, opts: Record<string, unknown>) => void
-			)(prevEl, exitKeyframes, {
+		(animate as (el: Element, kf: Record<string, unknown>, opts: Record<string, unknown>) => void)(
+			prevEl,
+			exitKeyframes,
+			{
 				duration: ANIMATION_DURATION / 1000,
 				easing: EASING_PRESETS.organic
-			});
-		}
+			}
+		);
+	}
 
-		transitionTimeout = setTimeout(() => {
+	transitionTimeout = setTimeout(() => {
+		if (mounted && isTransitioning) {
+			finishTransition();
+		}
+	}, ANIMATION_DURATION + 100);
+
+	enterAnim.finished
+		.then(() => {
+			if (transitionTimeout) {
+				clearTimeout(transitionTimeout);
+				transitionTimeout = null;
+			}
 			if (mounted && isTransitioning) {
 				finishTransition();
 			}
-		}, ANIMATION_DURATION + 100);
-
-		enterAnim.finished
-			.then(() => {
-				if (transitionTimeout) {
-					clearTimeout(transitionTimeout);
-					transitionTimeout = null;
-				}
-				if (mounted && isTransitioning) {
-					finishTransition();
-				}
-			})
-			.catch(() => {
-				if (transitionTimeout) {
-					clearTimeout(transitionTimeout);
-					transitionTimeout = null;
-				}
-				if (mounted && isTransitioning) {
-					finishTransition();
-				}
-			});
-	}
-
-	function finishTransition(): void {
-		if (!isTransitioning) return;
-
-		showPreviousSlide = false;
-		previousSlideIndex = -1;
-		isTransitioning = false;
-		activeEnterAnim = null;
-		navigation.endAnimation();
-	}
-
-	function handleClick(event: MouseEvent): void {
-		if (isTransitioning) return;
-
-		const target = event.target as HTMLElement;
-
-		if (target.closest('a, button, input, select, textarea')) {
-			return;
-		}
-
-		const rect = container?.getBoundingClientRect();
-		if (!rect) return;
-
-		const clickX = event.clientX - rect.left;
-		const relativeX = clickX / rect.width;
-
-		if (relativeX < EDGE_ZONE_PERCENT) {
-			goToPrevious();
-		} else {
-			goToNext();
-		}
-	}
-
-	function handleTouchStart(event: TouchEvent): void {
-		if (event.touches.length !== 1) return;
-
-		const touch = event.touches[0];
-		if (!touch) return;
-
-		touchStartX = touch.clientX;
-		touchStartY = touch.clientY;
-		isTouching = true;
-	}
-
-	function handleTouchEnd(event: TouchEvent): void {
-		if (!isTouching) return;
-
-		const touch = event.changedTouches[0];
-		if (!touch) {
-			isTouching = false;
-			return;
-		}
-
-		const deltaX = touch.clientX - touchStartX;
-		const deltaY = touch.clientY - touchStartY;
-
-		if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > SWIPE_THRESHOLD) {
-			if (deltaX < 0) {
-				goToNext();
-			} else {
-				goToPrevious();
+		})
+		.catch(() => {
+			if (transitionTimeout) {
+				clearTimeout(transitionTimeout);
+				transitionTimeout = null;
 			}
-		}
+			if (mounted && isTransitioning) {
+				finishTransition();
+			}
+		});
+}
 
+function finishTransition(): void {
+	if (!isTransitioning) return;
+
+	showPreviousSlide = false;
+	previousSlideIndex = -1;
+	isTransitioning = false;
+	activeEnterAnim = null;
+	navigation.endAnimation();
+}
+
+function handleClick(event: MouseEvent): void {
+	if (isTransitioning) return;
+
+	const target = event.target as HTMLElement;
+
+	if (target.closest('a, button, input, select, textarea')) {
+		return;
+	}
+
+	const rect = container?.getBoundingClientRect();
+	if (!rect) return;
+
+	const clickX = event.clientX - rect.left;
+	const relativeX = clickX / rect.width;
+
+	if (relativeX < EDGE_ZONE_PERCENT) {
+		goToPrevious();
+	} else {
+		goToNext();
+	}
+}
+
+function handleTouchStart(event: TouchEvent): void {
+	if (event.touches.length !== 1) return;
+
+	const touch = event.touches[0];
+	if (!touch) return;
+
+	touchStartX = touch.clientX;
+	touchStartY = touch.clientY;
+	isTouching = true;
+}
+
+function handleTouchEnd(event: TouchEvent): void {
+	if (!isTouching) return;
+
+	const touch = event.changedTouches[0];
+	if (!touch) {
 		isTouching = false;
+		return;
 	}
 
-	function handleKeyDown(event: KeyboardEvent): void {
-		if (isTransitioning) return;
+	const deltaX = touch.clientX - touchStartX;
+	const deltaY = touch.clientY - touchStartY;
 
-		switch (event.key) {
-			case 'ArrowRight':
-			case 'ArrowDown':
-			case ' ':
-			case 'Enter':
-				event.preventDefault();
-				goToNext();
-				break;
-			case 'ArrowLeft':
-			case 'ArrowUp':
-				event.preventDefault();
-				goToPrevious();
-				break;
-			case 'Escape':
-				event.preventDefault();
-				onClose?.();
-				break;
-			case 'Home':
-				event.preventDefault();
-				if (navigation.currentSlide !== 0) {
-					previousSlideIndex = navigation.currentSlide;
-					showPreviousSlide = true;
-					isTransitioning = true;
-					navigation.goToFirst();
-					animateTransition('backward');
-				}
-				break;
-			case 'End':
-				event.preventDefault();
-				if (!navigation.isLast) {
-					previousSlideIndex = navigation.currentSlide;
-					showPreviousSlide = true;
-					isTransitioning = true;
-					navigation.goToLast();
-					animateTransition('forward');
-				}
-				break;
+	if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > SWIPE_THRESHOLD) {
+		if (deltaX < 0) {
+			goToNext();
+		} else {
+			goToPrevious();
 		}
 	}
 
-	function handleSlideAnimationComplete(): void {}
+	isTouching = false;
+}
+
+function handleKeyDown(event: KeyboardEvent): void {
+	if (isTransitioning) return;
+
+	switch (event.key) {
+		case 'ArrowRight':
+		case 'ArrowDown':
+		case ' ':
+		case 'Enter':
+			event.preventDefault();
+			goToNext();
+			break;
+		case 'ArrowLeft':
+		case 'ArrowUp':
+			event.preventDefault();
+			goToPrevious();
+			break;
+		case 'Escape':
+			event.preventDefault();
+			onClose?.();
+			break;
+		case 'Home':
+			event.preventDefault();
+			if (navigation.currentSlide !== 0) {
+				previousSlideIndex = navigation.currentSlide;
+				showPreviousSlide = true;
+				isTransitioning = true;
+				navigation.goToFirst();
+				animateTransition('backward');
+			}
+			break;
+		case 'End':
+			event.preventDefault();
+			if (!navigation.isLast) {
+				previousSlideIndex = navigation.currentSlide;
+				showPreviousSlide = true;
+				isTransitioning = true;
+				navigation.goToLast();
+				animateTransition('forward');
+			}
+			break;
+	}
+}
+
+function handleSlideAnimationComplete(): void {}
 </script>
 
 <svelte:window onkeydown={handleKeyDown} />
@@ -377,194 +379,194 @@
 
 <style>
 	.story-mode {
-		position: fixed;
-		inset: 0;
-		width: 100%;
-		height: 100dvh;
-		background: var(
-			--slide-bg-gradient,
-			linear-gradient(
-				135deg,
-				hsl(var(--primary-hue) 30% 12%) 0%,
-				hsl(var(--primary-hue) 20% 8%) 100%
-			)
-		);
-		overflow: hidden;
-		outline: none;
-		touch-action: pan-y pinch-zoom;
-		user-select: none;
-		-webkit-user-select: none;
-	}
-
-	/* Noise texture layer - covers entire viewport */
-	.story-mode::before {
-		content: '';
-		position: absolute;
-		inset: 0;
-		background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
-		opacity: var(--slide-noise-opacity, 0.03);
-		pointer-events: none;
-		mix-blend-mode: overlay;
-		z-index: 1;
-	}
-
-	/* Vignette overlay - covers entire viewport */
-	.story-mode::after {
-		content: '';
-		position: absolute;
-		inset: 0;
-		background: radial-gradient(
-			ellipse 80% 80% at 50% 50%,
-			transparent 0%,
-			hsl(0 0% 0% / var(--slide-vignette-opacity, 0.4)) 100%
-		);
-		pointer-events: none;
-		z-index: 2;
-	}
-
-	.slides-container {
-		position: absolute;
-		inset: 0;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		z-index: 3; /* Above noise and vignette layers */
-	}
-
-	.slide {
-		position: absolute;
-		inset: 0;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: 3rem 1.5rem;
-		padding-top: 4rem; /* Space for progress bar */
-	}
-
-	.previous-slide {
-		z-index: 1;
-	}
-
-	.current-slide {
-		z-index: 2;
-	}
-
-	.navigation-hint {
-		position: absolute;
-		bottom: 2rem;
-		left: 50%;
-		transform: translateX(-50%);
-		z-index: 10;
-		padding: 0.5rem 1rem;
-		background: rgba(255, 255, 255, 0.1);
-		border-radius: 2rem;
-		font-size: 0.875rem;
-		color: var(--muted-foreground, rgba(255, 255, 255, 0.6));
-		animation: fadeInOut 3s ease-in-out infinite;
-		pointer-events: none;
-	}
-
-	@keyframes fadeInOut {
-		0%,
-		100% {
-			opacity: 0.6;
+			position: fixed;
+			inset: 0;
+			width: 100%;
+			height: 100dvh;
+			background: var(
+				--slide-bg-gradient,
+				linear-gradient(
+					135deg,
+					hsl(var(--primary-hue) 30% 12%) 0%,
+					hsl(var(--primary-hue) 20% 8%) 100%
+				)
+			);
+			overflow: hidden;
+			outline: none;
+			touch-action: pan-y pinch-zoom;
+			user-select: none;
+			-webkit-user-select: none;
 		}
-		50% {
-			opacity: 1;
+
+		/* Noise texture layer - covers entire viewport */
+		.story-mode::before {
+			content: '';
+			position: absolute;
+			inset: 0;
+			background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+			opacity: var(--slide-noise-opacity, 0.03);
+			pointer-events: none;
+			mix-blend-mode: overlay;
+			z-index: 1;
 		}
-	}
 
-	.close-button {
-		position: absolute;
-		top: 1rem;
-		right: 1rem;
-		z-index: 101;
-		width: 2.5rem;
-		height: 2.5rem;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background: rgba(0, 0, 0, 0.5);
-		border: none;
-		border-radius: 50%;
-		color: var(--foreground, white);
-		cursor: pointer;
-		transition:
-			background-color 0.2s,
-			transform 0.2s;
-	}
+		/* Vignette overlay - covers entire viewport */
+		.story-mode::after {
+			content: '';
+			position: absolute;
+			inset: 0;
+			background: radial-gradient(
+				ellipse 80% 80% at 50% 50%,
+				transparent 0%,
+				hsl(0 0% 0% / var(--slide-vignette-opacity, 0.4)) 100%
+			);
+			pointer-events: none;
+			z-index: 2;
+		}
 
-	.close-button:hover {
-		background: rgba(0, 0, 0, 0.7);
-		transform: scale(1.1);
-	}
+		.slides-container {
+			position: absolute;
+			inset: 0;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			z-index: 3; /* Above noise and vignette layers */
+		}
 
-	.close-button:focus-visible {
-		outline: 2px solid var(--primary, #dc2626);
-		outline-offset: 2px;
-	}
-
-	.close-button svg {
-		width: 1.25rem;
-		height: 1.25rem;
-	}
-
-	/* Mobile: compact layout */
-	@media (max-width: 767px) {
 		.slide {
-			padding: 2rem 1rem;
-			padding-top: 3rem;
+			position: absolute;
+			inset: 0;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			padding: 3rem 1.5rem;
+			padding-top: 4rem; /* Space for progress bar */
+		}
+
+		.previous-slide {
+			z-index: 1;
+		}
+
+		.current-slide {
+			z-index: 2;
 		}
 
 		.navigation-hint {
-			bottom: 1.5rem;
-			font-size: 0.75rem;
+			position: absolute;
+			bottom: 2rem;
+			left: 50%;
+			transform: translateX(-50%);
+			z-index: 10;
+			padding: 0.5rem 1rem;
+			background: rgba(255, 255, 255, 0.1);
+			border-radius: 2rem;
+			font-size: 0.875rem;
+			color: var(--muted-foreground, rgba(255, 255, 255, 0.6));
+			animation: fadeInOut 3s ease-in-out infinite;
+			pointer-events: none;
+		}
+
+		@keyframes fadeInOut {
+			0%,
+			100% {
+				opacity: 0.6;
+			}
+			50% {
+				opacity: 1;
+			}
 		}
 
 		.close-button {
-			top: 0.75rem;
-			right: 0.75rem;
-			width: 2rem;
-			height: 2rem;
+			position: absolute;
+			top: 1rem;
+			right: 1rem;
+			z-index: 101;
+			width: 2.5rem;
+			height: 2.5rem;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			background: rgba(0, 0, 0, 0.5);
+			border: none;
+			border-radius: 50%;
+			color: var(--foreground, white);
+			cursor: pointer;
+			transition:
+				background-color 0.2s,
+				transform 0.2s;
+		}
+
+		.close-button:hover {
+			background: rgba(0, 0, 0, 0.7);
+			transform: scale(1.1);
+		}
+
+		.close-button:focus-visible {
+			outline: 2px solid var(--primary, #dc2626);
+			outline-offset: 2px;
 		}
 
 		.close-button svg {
-			width: 1rem;
-			height: 1rem;
-		}
-	}
-
-	/* Tablet: medium layout */
-	@media (min-width: 768px) {
-		.slide {
-			padding: 3rem 2rem;
-			padding-top: 4rem;
-		}
-	}
-
-	/* Desktop: generous layout */
-	@media (min-width: 1024px) {
-		.slide {
-			padding: 4rem 3rem;
-			padding-top: 4.5rem;
+			width: 1.25rem;
+			height: 1.25rem;
 		}
 
-		.close-button {
-			width: 2.75rem;
-			height: 2.75rem;
+		/* Mobile: compact layout */
+		@media (max-width: 767px) {
+			.slide {
+				padding: 2rem 1rem;
+				padding-top: 3rem;
+			}
+
+			.navigation-hint {
+				bottom: 1.5rem;
+				font-size: 0.75rem;
+			}
+
+			.close-button {
+				top: 0.75rem;
+				right: 0.75rem;
+				width: 2rem;
+				height: 2rem;
+			}
+
+			.close-button svg {
+				width: 1rem;
+				height: 1rem;
+			}
 		}
 
-		.close-button svg {
-			width: 1.5rem;
-			height: 1.5rem;
+		/* Tablet: medium layout */
+		@media (min-width: 768px) {
+			.slide {
+				padding: 3rem 2rem;
+				padding-top: 4rem;
+			}
 		}
-	}
 
-	/* Reduced motion */
-	@media (prefers-reduced-motion: reduce) {
-		.navigation-hint {
-			animation: none;
-			opacity: 0.8;
+		/* Desktop: generous layout */
+		@media (min-width: 1024px) {
+			.slide {
+				padding: 4rem 3rem;
+				padding-top: 4.5rem;
+			}
+
+			.close-button {
+				width: 2.75rem;
+				height: 2.75rem;
+			}
+
+			.close-button svg {
+				width: 1.5rem;
+				height: 1.5rem;
+			}
 		}
-	}
+
+		/* Reduced motion */
+		@media (prefers-reduced-motion: reduce) {
+			.navigation-hint {
+				animation: none;
+				opacity: 0.8;
+			}
+		}
 </style>

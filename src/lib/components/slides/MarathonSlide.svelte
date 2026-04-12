@@ -1,128 +1,128 @@
 <script lang="ts">
-	import { animate, stagger } from 'motion';
-	import { prefersReducedMotion } from 'svelte/motion';
-	import { DELAY_PRESETS, getAdaptiveStagger, SPRING_PRESETS } from '$lib/utils/animation-presets';
-	import { getThumbUrl } from '$lib/utils/plex-thumb';
-	import BaseSlide from './BaseSlide.svelte';
-	import type { SlideMessagingContext } from './messaging-context';
-	import { createPersonalContext, getPossessive } from './messaging-context';
-	import type { MarathonSlideProps } from './types';
+import { animate, stagger } from 'motion';
+import { prefersReducedMotion } from 'svelte/motion';
+import { DELAY_PRESETS, getAdaptiveStagger, SPRING_PRESETS } from '$lib/utils/animation-presets';
+import { getThumbUrl } from '$lib/utils/plex-thumb';
+import BaseSlide from './BaseSlide.svelte';
+import type { SlideMessagingContext } from './messaging-context';
+import { createPersonalContext, getPossessive } from './messaging-context';
+import type { MarathonSlideProps } from './types';
 
-	interface Props extends MarathonSlideProps {
-		messagingContext?: SlideMessagingContext;
-	}
+interface Props extends MarathonSlideProps {
+	messagingContext?: SlideMessagingContext;
+}
 
-	let {
-		marathonDay,
-		active = true,
-		onAnimationComplete,
-		class: klass = '',
-		children,
-		messagingContext = createPersonalContext()
-	}: Props = $props();
+let {
+	marathonDay,
+	active = true,
+	onAnimationComplete,
+	class: klass = '',
+	children,
+	messagingContext = createPersonalContext()
+}: Props = $props();
 
-	const possessive = $derived(getPossessive(messagingContext));
-	const hasData = $derived(marathonDay !== null);
+const possessive = $derived(getPossessive(messagingContext));
+const hasData = $derived(marathonDay !== null);
 
-	const formattedDate = $derived.by(() => {
-		if (!marathonDay) return '';
-		const date = new Date(marathonDay.date);
-		return date.toLocaleDateString('en-US', {
-			weekday: 'long',
-			month: 'long',
-			day: 'numeric'
-		});
+const formattedDate = $derived.by(() => {
+	if (!marathonDay) return '';
+	const date = new Date(marathonDay.date);
+	return date.toLocaleDateString('en-US', {
+		weekday: 'long',
+		month: 'long',
+		day: 'numeric'
 	});
+});
 
-	function formatDuration(minutes: number): string {
-		const hours = Math.floor(minutes / 60);
-		const mins = Math.round(minutes % 60);
-		if (hours === 0) return `${mins} min`;
-		if (mins === 0) return `${hours} hr`;
-		return `${hours} hr ${mins} min`;
+function formatDuration(minutes: number): string {
+	const hours = Math.floor(minutes / 60);
+	const mins = Math.round(minutes % 60);
+	if (hours === 0) return `${mins} min`;
+	if (mins === 0) return `${hours} hr`;
+	return `${hours} hr ${mins} min`;
+}
+
+let container: HTMLElement | undefined = $state();
+let dateCard: HTMLElement | undefined = $state();
+let items: HTMLElement[] = $state([]);
+
+$effect(() => {
+	if (!container || !active || !hasData) return;
+
+	const shouldAnimate = !prefersReducedMotion.current;
+
+	if (!shouldAnimate) {
+		container.style.opacity = '1';
+		container.style.transform = 'none';
+		if (dateCard) {
+			dateCard.style.opacity = '1';
+			dateCard.style.transform = 'none';
+		}
+		items.forEach((el) => {
+			if (el) {
+				el.style.opacity = '1';
+				el.style.transform = 'none';
+			}
+		});
+		onAnimationComplete?.();
+		return;
 	}
 
-	let container: HTMLElement | undefined = $state();
-	let dateCard: HTMLElement | undefined = $state();
-	let items: HTMLElement[] = $state([]);
+	const containerAnim = animate(
+		container,
+		{ opacity: [0, 1], transform: ['translateY(25px) scale(0.98)', 'translateY(0) scale(1)'] },
+		{ type: 'spring', ...SPRING_PRESETS.snappy }
+	);
 
-	$effect(() => {
-		if (!container || !active || !hasData) return;
-
-		const shouldAnimate = !prefersReducedMotion.current;
-
-		if (!shouldAnimate) {
-			container.style.opacity = '1';
-			container.style.transform = 'none';
-			if (dateCard) {
-				dateCard.style.opacity = '1';
-				dateCard.style.transform = 'none';
+	if (dateCard) {
+		const dateAnim = animate(
+			dateCard,
+			{ opacity: [0, 1], transform: ['scale(0.9)', 'scale(1)'] },
+			{
+				type: 'spring',
+				...SPRING_PRESETS.bouncy,
+				delay: DELAY_PRESETS.short
 			}
-			items.forEach((el) => {
-				if (el) {
-					el.style.opacity = '1';
-					el.style.transform = 'none';
-				}
-			});
-			onAnimationComplete?.();
-			return;
-		}
-
-		const containerAnim = animate(
-			container,
-			{ opacity: [0, 1], transform: ['translateY(25px) scale(0.98)', 'translateY(0) scale(1)'] },
-			{ type: 'spring', ...SPRING_PRESETS.snappy }
 		);
 
-		if (dateCard) {
-			const dateAnim = animate(
-				dateCard,
-				{ opacity: [0, 1], transform: ['scale(0.9)', 'scale(1)'] },
+		const validItems = items.filter(Boolean);
+		if (validItems.length > 0) {
+			const adaptiveStagger = getAdaptiveStagger(validItems.length);
+			const itemsAnim = animate(
+				validItems,
+				{ opacity: [0, 1], transform: ['translateY(10px)', 'translateY(0)'] },
 				{
 					type: 'spring',
-					...SPRING_PRESETS.bouncy,
-					delay: DELAY_PRESETS.short
+					...SPRING_PRESETS.gentle,
+					delay: stagger(adaptiveStagger, { startDelay: DELAY_PRESETS.medium })
 				}
 			);
 
-			const validItems = items.filter(Boolean);
-			if (validItems.length > 0) {
-				const adaptiveStagger = getAdaptiveStagger(validItems.length);
-				const itemsAnim = animate(
-					validItems,
-					{ opacity: [0, 1], transform: ['translateY(10px)', 'translateY(0)'] },
-					{
-						type: 'spring',
-						...SPRING_PRESETS.gentle,
-						delay: stagger(adaptiveStagger, { startDelay: DELAY_PRESETS.medium })
-					}
-				);
-
-				itemsAnim.finished.then(() => {
-					onAnimationComplete?.();
-				});
-
-				return () => {
-					containerAnim.stop();
-					dateAnim.stop();
-					itemsAnim.stop();
-				};
-			}
-
-			dateAnim.finished.then(() => {
+			itemsAnim.finished.then(() => {
 				onAnimationComplete?.();
 			});
 
 			return () => {
 				containerAnim.stop();
 				dateAnim.stop();
+				itemsAnim.stop();
 			};
 		}
 
+		dateAnim.finished.then(() => {
+			onAnimationComplete?.();
+		});
+
 		return () => {
 			containerAnim.stop();
+			dateAnim.stop();
 		};
-	});
+	}
+
+	return () => {
+		containerAnim.stop();
+	};
+});
 </script>
 
 <BaseSlide {active} class="marathon-slide {klass}">
@@ -184,181 +184,181 @@
 
 <style>
 	.content {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 1.5rem;
-		z-index: 1;
-		width: 100%;
-		max-width: var(--content-max-md, 600px);
-	}
-
-	.title {
-		font-size: 1.75rem;
-		font-weight: 700;
-		color: hsl(var(--primary));
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		text-shadow: 0 0 30px var(--slide-glow-color, hsl(var(--primary) / 0.3));
-	}
-
-	.date-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 0.75rem;
-		padding: 1.5rem 2rem;
-		background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
-		backdrop-filter: blur(var(--slide-glass-blur, 20px));
-		-webkit-backdrop-filter: blur(var(--slide-glass-blur, 20px));
-		border: 1px solid hsl(var(--primary) / 0.3);
-		border-radius: calc(var(--radius) * 2);
-		box-shadow: 0 0 30px hsl(var(--primary) / 0.2);
-	}
-
-	.date-icon {
-		font-size: 2.5rem;
-	}
-
-	.date-text {
-		font-size: 1.375rem;
-		font-weight: 700;
-		color: hsl(var(--primary));
-	}
-
-	.stats-row {
-		display: flex;
-		gap: 2rem;
-	}
-
-	.stat {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 0.125rem;
-	}
-
-	.stat-value {
-		font-size: 1.25rem;
-		font-weight: 700;
-		color: hsl(var(--foreground));
-	}
-
-	.stat-label {
-		font-size: 0.6875rem;
-		color: hsl(var(--muted-foreground));
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-	}
-
-	.items-list {
-		width: 100%;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 0.75rem;
-	}
-
-	.list-label {
-		font-size: 0.75rem;
-		color: hsl(var(--muted-foreground));
-		text-transform: uppercase;
-		letter-spacing: 0.1em;
-	}
-
-	.items-grid {
-		display: grid;
-		grid-template-columns: repeat(3, 1fr);
-		gap: 0.5rem;
-		width: 100%;
-		max-width: 400px;
-	}
-
-	.item {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 0.375rem;
-		padding: 0.5rem;
-		background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.3));
-		border-radius: var(--radius);
-		transition: transform 0.2s ease;
-	}
-
-	.item:hover {
-		transform: scale(1.02);
-	}
-
-	.item-thumb {
-		width: 60px;
-		height: 60px;
-		object-fit: cover;
-		border-radius: calc(var(--radius) * 0.5);
-	}
-
-	.item-placeholder {
-		width: 60px;
-		height: 60px;
-		background: hsl(var(--muted) / 0.3);
-		border-radius: calc(var(--radius) * 0.5);
-	}
-
-	.item-title {
-		font-size: 0.6875rem;
-		color: hsl(var(--foreground));
-		text-align: center;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		max-width: 100%;
-	}
-
-	.more-items {
-		font-size: 0.75rem;
-		color: hsl(var(--muted-foreground));
-		font-style: italic;
-	}
-
-	.empty-message {
-		color: hsl(var(--muted-foreground));
-		font-style: italic;
-		font-size: 1.125rem;
-	}
-
-	.extra {
-		margin-top: 1rem;
-	}
-
-	@media (max-width: 767px) {
-		.content {
-			gap: 1rem;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 1.5rem;
+			z-index: 1;
+			width: 100%;
+			max-width: var(--content-max-md, 600px);
 		}
 
 		.title {
-			font-size: 1.5rem;
+			font-size: 1.75rem;
+			font-weight: 700;
+			color: hsl(var(--primary));
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+			text-shadow: 0 0 30px var(--slide-glow-color, hsl(var(--primary) / 0.3));
 		}
 
 		.date-card {
-			padding: 1rem 1.5rem;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 0.75rem;
+			padding: 1.5rem 2rem;
+			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
+			backdrop-filter: blur(var(--slide-glass-blur, 20px));
+			-webkit-backdrop-filter: blur(var(--slide-glass-blur, 20px));
+			border: 1px solid hsl(var(--primary) / 0.3);
+			border-radius: calc(var(--radius) * 2);
+			box-shadow: 0 0 30px hsl(var(--primary) / 0.2);
 		}
 
 		.date-icon {
-			font-size: 2rem;
+			font-size: 2.5rem;
 		}
 
 		.date-text {
-			font-size: 1.125rem;
+			font-size: 1.375rem;
+			font-weight: 700;
+			color: hsl(var(--primary));
+		}
+
+		.stats-row {
+			display: flex;
+			gap: 2rem;
+		}
+
+		.stat {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 0.125rem;
+		}
+
+		.stat-value {
+			font-size: 1.25rem;
+			font-weight: 700;
+			color: hsl(var(--foreground));
+		}
+
+		.stat-label {
+			font-size: 0.6875rem;
+			color: hsl(var(--muted-foreground));
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+		}
+
+		.items-list {
+			width: 100%;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 0.75rem;
+		}
+
+		.list-label {
+			font-size: 0.75rem;
+			color: hsl(var(--muted-foreground));
+			text-transform: uppercase;
+			letter-spacing: 0.1em;
 		}
 
 		.items-grid {
-			grid-template-columns: repeat(2, 1fr);
-			max-width: 280px;
+			display: grid;
+			grid-template-columns: repeat(3, 1fr);
+			gap: 0.5rem;
+			width: 100%;
+			max-width: 400px;
 		}
 
-		.item-thumb,
-		.item-placeholder {
-			width: 50px;
-			height: 50px;
+		.item {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 0.375rem;
+			padding: 0.5rem;
+			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.3));
+			border-radius: var(--radius);
+			transition: transform 0.2s ease;
 		}
-	}
+
+		.item:hover {
+			transform: scale(1.02);
+		}
+
+		.item-thumb {
+			width: 60px;
+			height: 60px;
+			object-fit: cover;
+			border-radius: calc(var(--radius) * 0.5);
+		}
+
+		.item-placeholder {
+			width: 60px;
+			height: 60px;
+			background: hsl(var(--muted) / 0.3);
+			border-radius: calc(var(--radius) * 0.5);
+		}
+
+		.item-title {
+			font-size: 0.6875rem;
+			color: hsl(var(--foreground));
+			text-align: center;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+			max-width: 100%;
+		}
+
+		.more-items {
+			font-size: 0.75rem;
+			color: hsl(var(--muted-foreground));
+			font-style: italic;
+		}
+
+		.empty-message {
+			color: hsl(var(--muted-foreground));
+			font-style: italic;
+			font-size: 1.125rem;
+		}
+
+		.extra {
+			margin-top: 1rem;
+		}
+
+		@media (max-width: 767px) {
+			.content {
+				gap: 1rem;
+			}
+
+			.title {
+				font-size: 1.5rem;
+			}
+
+			.date-card {
+				padding: 1rem 1.5rem;
+			}
+
+			.date-icon {
+				font-size: 2rem;
+			}
+
+			.date-text {
+				font-size: 1.125rem;
+			}
+
+			.items-grid {
+				grid-template-columns: repeat(2, 1fr);
+				max-width: 280px;
+			}
+
+			.item-thumb,
+			.item-placeholder {
+				width: 50px;
+				height: 50px;
+			}
+		}
 </style>

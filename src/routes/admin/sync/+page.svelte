@@ -1,223 +1,221 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
-	import { enhance } from '$app/forms';
-	import { goto, invalidateAll } from '$app/navigation';
-	import { handleFormToast } from '$lib/utils/form-toast';
-	import type { ActionData, PageData } from './$types';
+import { browser } from '$app/environment';
+import { enhance } from '$app/forms';
+import { goto, invalidateAll } from '$app/navigation';
+import { handleFormToast } from '$lib/utils/form-toast';
+import type { ActionData, PageData } from './$types';
 
-	interface SyncProgress {
-		syncId: number;
-		status: 'running' | 'completed' | 'failed' | 'cancelled';
-		recordsProcessed: number;
-		recordsInserted: number;
-		recordsSkipped: number;
-		currentPage: number;
-		startedAt: string;
-		error?: string;
-		phase?: 'fetching' | 'enriching';
-		enrichmentTotal?: number;
-		enrichmentProcessed?: number;
+interface SyncProgress {
+	syncId: number;
+	status: 'running' | 'completed' | 'failed' | 'cancelled';
+	recordsProcessed: number;
+	recordsInserted: number;
+	recordsSkipped: number;
+	currentPage: number;
+	startedAt: string;
+	error?: string;
+	phase?: 'fetching' | 'enriching';
+	enrichmentTotal?: number;
+	enrichmentProcessed?: number;
+}
+
+let { data, form }: { data: PageData; form: ActionData } = $props();
+
+let selectedBackfillYear = $state<string>('');
+let cronExpression = $state('0 0 * * *');
+let isSyncing = $state(false);
+let isCancelling = $state(false);
+
+$effect(() => {
+	handleFormToast(form);
+});
+
+let eventSource = $state<EventSource | null>(null);
+let progress = $state<SyncProgress | null>(null);
+let isConnected = $state(false);
+let syncCompleted = $state(false);
+
+const syncActive = $derived(
+	(data.isRunning && !syncCompleted) || (progress !== null && progress.status === 'running')
+);
+
+const enrichmentPercent = $derived(() => {
+	if (!progress?.enrichmentTotal || progress.enrichmentTotal === 0) return 0;
+	return Math.round(((progress.enrichmentProcessed ?? 0) / progress.enrichmentTotal) * 100);
+});
+
+const statusText = $derived(() => {
+	if (!progress) return 'Ready';
+	switch (progress.status) {
+		case 'running':
+			if (progress.phase === 'enriching') {
+				return `Enriching ${enrichmentPercent()}%`;
+			}
+			return 'Syncing';
+		case 'completed':
+			return 'Complete';
+		case 'failed':
+			return 'Failed';
+		case 'cancelled':
+			return 'Cancelled';
+		default:
+			return 'Ready';
 	}
+});
 
-	let { data, form }: { data: PageData; form: ActionData } = $props();
+function connectSSE() {
+	if (eventSource) eventSource.close();
 
-	let selectedBackfillYear = $state<string>('');
-	let cronExpression = $state('0 0 * * *');
-	let isSyncing = $state(false);
-	let isCancelling = $state(false);
+	eventSource = new EventSource('/admin/sync/stream');
 
-	$effect(() => {
-		handleFormToast(form);
-	});
+	eventSource.onopen = () => {
+		isConnected = true;
+	};
 
-	let eventSource = $state<EventSource | null>(null);
-	let progress = $state<SyncProgress | null>(null);
-	let isConnected = $state(false);
-	let syncCompleted = $state(false);
+	eventSource.onmessage = (event) => {
+		try {
+			const eventData = JSON.parse(event.data);
 
-	const syncActive = $derived(
-		(data.isRunning && !syncCompleted) || (progress !== null && progress.status === 'running')
-	);
-
-	const enrichmentPercent = $derived(() => {
-		if (!progress?.enrichmentTotal || progress.enrichmentTotal === 0) return 0;
-		return Math.round(((progress.enrichmentProcessed ?? 0) / progress.enrichmentTotal) * 100);
-	});
-
-	const statusText = $derived(() => {
-		if (!progress) return 'Ready';
-		switch (progress.status) {
-			case 'running':
-				if (progress.phase === 'enriching') {
-					return `Enriching ${enrichmentPercent()}%`;
-				}
-				return 'Syncing';
-			case 'completed':
-				return 'Complete';
-			case 'failed':
-				return 'Failed';
-			case 'cancelled':
-				return 'Cancelled';
-			default:
-				return 'Ready';
-		}
-	});
-
-	function connectSSE() {
-		if (eventSource) eventSource.close();
-
-		eventSource = new EventSource('/admin/sync/stream');
-
-		eventSource.onopen = () => {
-			isConnected = true;
-		};
-
-		eventSource.onmessage = (event) => {
-			try {
-				const eventData = JSON.parse(event.data);
-
-				if (eventData.type === 'connected' || eventData.type === 'progress') {
-					if (eventData.progress) progress = eventData.progress;
-				} else if (['completed', 'failed', 'cancelled'].includes(eventData.type)) {
-					if (eventData.progress) progress = eventData.progress;
-					syncCompleted = true;
-					setTimeout(() => {
-						disconnectSSE();
-						isSyncing = false;
-						isCancelling = false;
-						invalidateAll();
-						setTimeout(() => {
-							progress = null;
-						}, 3000);
-					}, 500);
-				} else if (eventData.type === 'idle') {
-					progress = null;
+			if (eventData.type === 'connected' || eventData.type === 'progress') {
+				if (eventData.progress) progress = eventData.progress;
+			} else if (['completed', 'failed', 'cancelled'].includes(eventData.type)) {
+				if (eventData.progress) progress = eventData.progress;
+				syncCompleted = true;
+				setTimeout(() => {
+					disconnectSSE();
 					isSyncing = false;
-				}
-			} catch (e) {
-				console.error('Failed to parse SSE event:', e);
+					isCancelling = false;
+					invalidateAll();
+					setTimeout(() => {
+						progress = null;
+					}, 3000);
+				}, 500);
+			} else if (eventData.type === 'idle') {
+				progress = null;
+				isSyncing = false;
 			}
-		};
-
-		eventSource.onerror = () => {
-			isConnected = false;
-			setTimeout(() => {
-				if (isSyncing && !eventSource) connectSSE();
-			}, 2000);
-		};
-	}
-
-	function disconnectSSE() {
-		if (eventSource) {
-			eventSource.close();
-			eventSource = null;
+		} catch (e) {
+			console.error('Failed to parse SSE event:', e);
 		}
+	};
+
+	eventSource.onerror = () => {
 		isConnected = false;
+		setTimeout(() => {
+			if (isSyncing && !eventSource) connectSSE();
+		}, 2000);
+	};
+}
+
+function disconnectSSE() {
+	if (eventSource) {
+		eventSource.close();
+		eventSource = null;
 	}
+	isConnected = false;
+}
 
-	$effect(() => {
-		cronExpression = data.schedulerStatus.cronExpression ?? '0 0 * * *';
-	});
+$effect(() => {
+	cronExpression = data.schedulerStatus.cronExpression ?? '0 0 * * *';
+});
 
-	$effect(() => {
-		if (browser && data.isRunning && !eventSource && !syncCompleted) {
-			isSyncing = true;
-			connectSSE();
+$effect(() => {
+	if (browser && data.isRunning && !eventSource && !syncCompleted) {
+		isSyncing = true;
+		connectSSE();
+	}
+});
+
+$effect(() => {
+	return () => disconnectSSE();
+});
+
+function formatDate(isoDate: string | null): string {
+	if (!isoDate) return 'N/A';
+	return new Date(isoDate).toLocaleString();
+}
+
+function formatRelativeTime(isoDate: string | null): string {
+	if (!isoDate) return 'Never';
+	const date = new Date(isoDate);
+	const now = new Date();
+	const diffMs = now.getTime() - date.getTime();
+	const diffMins = Math.floor(diffMs / 60000);
+	const diffHours = Math.floor(diffMins / 60);
+	const diffDays = Math.floor(diffHours / 24);
+
+	if (diffMins < 1) return 'Just now';
+	if (diffMins < 60) return `${diffMins}m ago`;
+	if (diffHours < 24) return `${diffHours}h ago`;
+	if (diffDays < 7) return `${diffDays}d ago`;
+	return date.toLocaleDateString();
+}
+
+function formatDuration(start: string, end: string | null): string {
+	if (!end) return '—';
+	const diffMs = new Date(end).getTime() - new Date(start).getTime();
+	if (diffMs < 1000) return '<1s';
+	if (diffMs < 60000) return `${Math.round(diffMs / 1000)}s`;
+	if (diffMs < 3600000) return `${Math.round(diffMs / 60000)}m`;
+	return `${Math.round(diffMs / 3600000)}h`;
+}
+
+const cronPresets = [
+	{ label: 'Hourly', value: '0 * * * *' },
+	{ label: 'Every 6h', value: '0 */6 * * *' },
+	{ label: 'Midnight', value: '0 0 * * *' },
+	{ label: '3 AM', value: '0 3 * * *' },
+	{ label: 'Weekly', value: '0 0 * * 0' }
+];
+
+let isNavigating = $state(false);
+
+const canGoPrevious = $derived(data.pagination.page > 1);
+const canGoNext = $derived(data.pagination.page < data.pagination.totalPages);
+
+const visiblePages = $derived.by(() => {
+	const { page, totalPages } = data.pagination;
+	const pages: number[] = [];
+
+	if (totalPages <= 5) {
+		// Show all pages if 5 or fewer
+		for (let i = 1; i <= totalPages; i++) pages.push(i);
+	} else {
+		// Calculate range around current page
+		let start = Math.max(1, page - 2);
+		let end = Math.min(totalPages, page + 2);
+
+		// Adjust if at boundaries
+		if (page <= 3) {
+			end = 5;
+		} else if (page >= totalPages - 2) {
+			start = totalPages - 4;
 		}
-	});
 
-	$effect(() => {
-		return () => disconnectSSE();
-	});
-
-	function formatDate(isoDate: string | null): string {
-		if (!isoDate) return 'N/A';
-		return new Date(isoDate).toLocaleString();
+		for (let i = start; i <= end; i++) pages.push(i);
 	}
 
-	function formatRelativeTime(isoDate: string | null): string {
-		if (!isoDate) return 'Never';
-		const date = new Date(isoDate);
-		const now = new Date();
-		const diffMs = now.getTime() - date.getTime();
-		const diffMins = Math.floor(diffMs / 60000);
-		const diffHours = Math.floor(diffMins / 60);
-		const diffDays = Math.floor(diffHours / 24);
+	return pages;
+});
 
-		if (diffMins < 1) return 'Just now';
-		if (diffMins < 60) return `${diffMins}m ago`;
-		if (diffHours < 24) return `${diffHours}h ago`;
-		if (diffDays < 7) return `${diffDays}d ago`;
-		return date.toLocaleDateString();
+const firstVisiblePage = $derived(visiblePages.at(0));
+const lastVisiblePage = $derived(visiblePages.at(-1));
+
+async function goToPage(page: number) {
+	if (page < 1 || page > data.pagination.totalPages || isNavigating) return;
+
+	isNavigating = true;
+	const url = new URL(window.location.href);
+	if (page === 1) {
+		url.searchParams.delete('page');
+	} else {
+		url.searchParams.set('page', page.toString());
 	}
+	await goto(url.toString(), { keepFocus: true, noScroll: true });
+	isNavigating = false;
 
-	function formatDuration(start: string, end: string | null): string {
-		if (!end) return '—';
-		const diffMs = new Date(end).getTime() - new Date(start).getTime();
-		if (diffMs < 1000) return '<1s';
-		if (diffMs < 60000) return `${Math.round(diffMs / 1000)}s`;
-		if (diffMs < 3600000) return `${Math.round(diffMs / 60000)}m`;
-		return `${Math.round(diffMs / 3600000)}h`;
-	}
-
-	const cronPresets = [
-		{ label: 'Hourly', value: '0 * * * *' },
-		{ label: 'Every 6h', value: '0 */6 * * *' },
-		{ label: 'Midnight', value: '0 0 * * *' },
-		{ label: '3 AM', value: '0 3 * * *' },
-		{ label: 'Weekly', value: '0 0 * * 0' }
-	];
-
-	let isNavigating = $state(false);
-
-	const canGoPrevious = $derived(data.pagination.page > 1);
-	const canGoNext = $derived(data.pagination.page < data.pagination.totalPages);
-
-	const visiblePages = $derived.by(() => {
-		const { page, totalPages } = data.pagination;
-		const pages: number[] = [];
-
-		if (totalPages <= 5) {
-			// Show all pages if 5 or fewer
-			for (let i = 1; i <= totalPages; i++) pages.push(i);
-		} else {
-			// Calculate range around current page
-			let start = Math.max(1, page - 2);
-			let end = Math.min(totalPages, page + 2);
-
-			// Adjust if at boundaries
-			if (page <= 3) {
-				end = 5;
-			} else if (page >= totalPages - 2) {
-				start = totalPages - 4;
-			}
-
-			for (let i = start; i <= end; i++) pages.push(i);
-		}
-
-		return pages;
-	});
-
-	const firstVisiblePage = $derived(visiblePages.at(0));
-	const lastVisiblePage = $derived(visiblePages.at(-1));
-
-	async function goToPage(page: number) {
-		if (page < 1 || page > data.pagination.totalPages || isNavigating) return;
-
-		isNavigating = true;
-		const url = new URL(window.location.href);
-		if (page === 1) {
-			url.searchParams.delete('page');
-		} else {
-			url.searchParams.set('page', page.toString());
-		}
-		await goto(url.toString(), { keepFocus: true, noScroll: true });
-		isNavigating = false;
-
-		document
-			.querySelector('.history-panel')
-			?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-	}
+	document.querySelector('.history-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 </script>
 
 <div class="sync-command-center">
@@ -757,1092 +755,1092 @@
 
 <style>
 	/* ===== Base Layout ===== */
-	.sync-command-center {
-		max-width: 1100px;
-		margin: 0 auto;
-		padding: 1.5rem 2rem 3rem;
-	}
-
-	/* ===== Page Header ===== */
-	.page-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		margin-bottom: 2rem;
-		padding-bottom: 1.5rem;
-		border-bottom: 1px solid hsl(var(--border));
-	}
-
-	.header-content {
-		display: flex;
-		align-items: center;
-		gap: 1rem;
-	}
-
-	.header-icon {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 56px;
-		height: 56px;
-		background: linear-gradient(135deg, hsl(var(--primary) / 0.15), hsl(var(--primary) / 0.05));
-		border: 1px solid hsl(var(--primary) / 0.3);
-		border-radius: 16px;
-		color: hsl(var(--primary));
-	}
-
-	.header-icon svg {
-		width: 28px;
-		height: 28px;
-	}
-
-	.header-text h1 {
-		font-size: 1.75rem;
-		font-weight: 700;
-		color: hsl(var(--foreground));
-		margin: 0;
-		letter-spacing: -0.02em;
-	}
-
-	.header-subtitle {
-		font-size: 0.875rem;
-		color: hsl(var(--muted-foreground));
-		margin: 0.25rem 0 0;
-	}
-
-	.header-stats {
-		display: flex;
-		gap: 2rem;
-	}
-
-	.header-stat {
-		display: flex;
-		flex-direction: column;
-		align-items: flex-end;
-	}
-
-	.header-stat-value {
-		font-size: 1.5rem;
-		font-weight: 700;
-		color: hsl(var(--foreground));
-		font-variant-numeric: tabular-nums;
-	}
-
-	.header-stat-label {
-		font-size: 0.75rem;
-		color: hsl(var(--muted-foreground));
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-	}
-
-	/* ===== Content Grid ===== */
-	.content-grid {
-		display: grid;
-		grid-template-columns: 1fr 380px;
-		gap: 1.5rem;
-		margin-bottom: 1.5rem;
-	}
-
-	/* ===== Panel Base ===== */
-	.panel {
-		background: hsl(var(--card));
-		border: 1px solid hsl(var(--border));
-		border-radius: 16px;
-		overflow: hidden;
-	}
-
-	.panel-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: 1rem 1.25rem;
-		border-bottom: 1px solid hsl(var(--border));
-		background: hsl(var(--muted) / 0.3);
-	}
-
-	.panel-header h2 {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		font-size: 0.9375rem;
-		font-weight: 600;
-		color: hsl(var(--foreground));
-		margin: 0;
-	}
-
-	.panel-icon {
-		font-size: 1rem;
-	}
-
-	/* ===== Sync Panel ===== */
-	.sync-panel {
-		transition: border-color 0.3s ease;
-	}
-
-	.sync-panel.active {
-		border-color: hsl(var(--primary) / 0.5);
-		box-shadow: 0 0 30px hsl(var(--primary) / 0.1);
-	}
-
-	.connection-indicator {
-		display: flex;
-		align-items: center;
-		gap: 0.375rem;
-		padding: 0.25rem 0.625rem;
-		background: hsl(var(--muted));
-		border-radius: 9999px;
-		font-size: 0.6875rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
-		color: hsl(var(--muted-foreground));
-	}
-
-	.indicator-dot {
-		width: 6px;
-		height: 6px;
-		border-radius: 50%;
-		background: hsl(var(--muted-foreground));
-		transition: background 0.3s ease;
-	}
-
-	.connection-indicator.connected .indicator-dot {
-		background: hsl(145 70% 50%);
-		box-shadow: 0 0 8px hsl(145 70% 50% / 0.5);
-	}
-
-	.connection-indicator.syncing .indicator-dot {
-		animation: pulse-glow 1.5s ease-in-out infinite;
-	}
-
-	@keyframes pulse-glow {
-		0%,
-		100% {
-			opacity: 1;
-			box-shadow: 0 0 8px hsl(145 70% 50% / 0.5);
-		}
-		50% {
-			opacity: 0.5;
-			box-shadow: 0 0 16px hsl(145 70% 50% / 0.8);
-		}
-	}
-
-	/* ===== Active Sync Display ===== */
-	.sync-active-display {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		padding: 2rem 1.5rem;
-		gap: 1.5rem;
-	}
-
-	.sync-status-ring {
-		position: relative;
-		width: 120px;
-		height: 120px;
-	}
-
-	.ring-outer {
-		position: absolute;
-		inset: 0;
-		border-radius: 50%;
-		background: linear-gradient(135deg, hsl(var(--muted)), hsl(var(--background)));
-		padding: 4px;
-	}
-
-	.ring-inner {
-		width: 100%;
-		height: 100%;
-		border-radius: 50%;
-		background: hsl(var(--card));
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	.status-icon {
-		width: 48px;
-		height: 48px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		color: hsl(var(--muted-foreground));
-	}
-
-	.status-icon.running {
-		color: hsl(var(--primary));
-	}
-
-	.status-icon.completed {
-		color: hsl(145 70% 50%);
-	}
-
-	.status-icon.failed,
-	.status-icon.cancelled {
-		color: hsl(var(--destructive));
-	}
-
-	.status-icon svg {
-		width: 100%;
-		height: 100%;
-	}
-
-	.spinner-path {
-		transform-origin: center;
-		animation: spin 1s linear infinite;
-	}
-
-	@keyframes spin {
-		to {
-			transform: rotate(360deg);
-		}
-	}
-
-	.progress-ring {
-		position: absolute;
-		inset: 0;
-		transform: rotate(-90deg);
-	}
-
-	.progress-track {
-		fill: none;
-		stroke: hsl(var(--muted));
-		stroke-width: 4;
-	}
-
-	.progress-fill {
-		fill: none;
-		stroke: hsl(var(--primary));
-		stroke-width: 4;
-		stroke-linecap: round;
-		transition: stroke-dashoffset 0.5s ease;
-	}
-
-	.sync-details {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 1rem;
-		width: 100%;
-	}
-
-	.sync-status-text {
-		font-size: 1.25rem;
-		font-weight: 700;
-		color: hsl(var(--foreground));
-	}
-
-	.sync-metrics {
-		display: flex;
-		align-items: center;
-		gap: 1rem;
-		padding: 0.75rem 1.25rem;
-		background: hsl(var(--muted) / 0.5);
-		border-radius: 12px;
-	}
-
-	.metric {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		min-width: 64px;
-	}
-
-	.metric-value {
-		font-size: 1.25rem;
-		font-weight: 700;
-		font-variant-numeric: tabular-nums;
-		color: hsl(var(--foreground));
-	}
-
-	.metric-value.accent {
-		color: hsl(145 70% 50%);
-	}
-
-	.metric-value.muted {
-		color: hsl(var(--muted-foreground));
-	}
-
-	.metric-label {
-		font-size: 0.6875rem;
-		color: hsl(var(--muted-foreground));
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
-	}
-
-	.metric-divider {
-		width: 1px;
-		height: 28px;
-		background: hsl(var(--border));
-	}
-
-	.enrichment-bar {
-		position: relative;
-		width: 100%;
-		height: 32px;
-		background: hsl(var(--muted));
-		border-radius: 8px;
-		overflow: hidden;
-	}
-
-	.enrichment-progress {
-		position: absolute;
-		inset: 0;
-		background: linear-gradient(90deg, hsl(var(--primary) / 0.3), hsl(var(--primary) / 0.5));
-		transition: width 0.5s ease;
-	}
-
-	.enrichment-text {
-		position: relative;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		height: 100%;
-		font-size: 0.75rem;
-		font-weight: 500;
-		color: hsl(var(--foreground));
-	}
-
-	.sync-error {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 0.75rem 1rem;
-		background: hsl(var(--destructive) / 0.15);
-		border: 1px solid hsl(var(--destructive) / 0.3);
-		border-radius: 8px;
-		font-size: 0.8125rem;
-		color: hsl(var(--destructive));
-		width: 100%;
-	}
-
-	.error-icon {
-		width: 18px;
-		height: 18px;
-		flex-shrink: 0;
-	}
-
-	.cancel-btn {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 0.625rem 1.25rem;
-		background: hsl(var(--muted));
-		border: 1px solid hsl(var(--border));
-		border-radius: 10px;
-		color: hsl(var(--foreground));
-		font-size: 0.8125rem;
-		font-weight: 600;
-		cursor: pointer;
-		transition: all 0.15s ease;
-	}
-
-	.cancel-btn:hover:not(:disabled) {
-		background: hsl(var(--destructive) / 0.15);
-		border-color: hsl(var(--destructive) / 0.5);
-		color: hsl(var(--destructive));
-	}
-
-	.cancel-btn:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	.cancel-btn svg {
-		width: 16px;
-		height: 16px;
-	}
-
-	/* ===== Sync Form (Idle State) ===== */
-	.sync-form {
-		padding: 1.5rem;
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-	}
-
-	.form-group label {
-		display: block;
-		font-size: 0.8125rem;
-		font-weight: 500;
-		color: hsl(var(--muted-foreground));
-		margin-bottom: 0.5rem;
-	}
-
-	.select-wrapper {
-		position: relative;
-	}
-
-	.select-wrapper select {
-		width: 100%;
-		padding: 0.75rem 2.5rem 0.75rem 1rem;
-		background: hsl(var(--muted));
-		border: 1px solid hsl(var(--border));
-		border-radius: 10px;
-		color: hsl(var(--foreground));
-		font-size: 0.9375rem;
-		appearance: none;
-		cursor: pointer;
-	}
-
-	.select-wrapper select:focus {
-		outline: none;
-		border-color: hsl(var(--primary));
-		box-shadow: 0 0 0 3px hsl(var(--primary) / 0.15);
-	}
-
-	.select-arrow {
-		position: absolute;
-		right: 1rem;
-		top: 50%;
-		transform: translateY(-50%);
-		width: 20px;
-		height: 20px;
-		color: hsl(var(--muted-foreground));
-		pointer-events: none;
-	}
-
-	.sync-btn {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 0.625rem;
-		padding: 0.875rem 1.5rem;
-		background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.85));
-		border: none;
-		border-radius: 12px;
-		color: hsl(var(--primary-foreground));
-		font-size: 0.9375rem;
-		font-weight: 600;
-		cursor: pointer;
-		transition: all 0.2s ease;
-	}
-
-	.sync-btn:hover:not(:disabled) {
-		transform: translateY(-1px);
-		box-shadow: 0 8px 24px hsl(var(--primary) / 0.3);
-	}
-
-	.sync-btn:active:not(:disabled) {
-		transform: translateY(0);
-	}
-
-	.sync-btn:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
-
-	.sync-btn svg {
-		width: 18px;
-		height: 18px;
-	}
-
-	.btn-spinner {
-		width: 18px;
-		height: 18px;
-		border: 2px solid hsl(var(--primary-foreground) / 0.3);
-		border-top-color: hsl(var(--primary-foreground));
-		border-radius: 50%;
-		animation: spin 0.8s linear infinite;
-	}
-
-	.last-sync-info {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 0.5rem;
-		padding: 0.75rem;
-		margin: 0 1.5rem 1.5rem;
-		background: hsl(var(--muted) / 0.5);
-		border-radius: 8px;
-		font-size: 0.8125rem;
-		color: hsl(var(--muted-foreground));
-	}
-
-	.last-sync-time {
-		font-weight: 500;
-	}
-
-	.last-sync-dot {
-		opacity: 0.5;
-	}
-
-	.last-sync-status {
-		padding: 0.125rem 0.5rem;
-		border-radius: 9999px;
-		font-size: 0.625rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		background: hsl(var(--muted));
-	}
-
-	.last-sync-status.success {
-		background: hsl(145 40% 25%);
-		color: hsl(145 60% 85%);
-	}
-
-	.last-sync-status.error {
-		background: hsl(var(--destructive) / 0.2);
-		color: hsl(var(--destructive));
-	}
-
-	/* ===== Scheduler Panel ===== */
-	.scheduler-content {
-		padding: 1.25rem;
-		display: flex;
-		flex-direction: column;
-		gap: 1.25rem;
-	}
-
-	.scheduler-status-badge {
-		padding: 0.25rem 0.75rem;
-		border-radius: 9999px;
-		font-size: 0.6875rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
-	}
-
-	.scheduler-status-badge.active {
-		background: hsl(145 40% 25%);
-		color: hsl(145 60% 85%);
-	}
-
-	.scheduler-status-badge.paused {
-		background: hsl(45 60% 30%);
-		color: hsl(45 80% 90%);
-	}
-
-	.scheduler-status-badge.inactive {
-		background: hsl(var(--muted));
-		color: hsl(var(--muted-foreground));
-	}
-
-	.scheduler-times {
-		display: flex;
-		flex-direction: column;
-		gap: 0.625rem;
-		padding: 0.875rem 1rem;
-		background: hsl(var(--muted) / 0.5);
-		border-radius: 10px;
-	}
-
-	.time-row {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-	}
-
-	.time-label {
-		font-size: 0.8125rem;
-		color: hsl(var(--muted-foreground));
-	}
-
-	.time-value {
-		font-size: 0.8125rem;
-		font-weight: 500;
-		color: hsl(var(--foreground));
-	}
-
-	.scheduler-controls {
-		display: flex;
-		gap: 0.5rem;
-	}
-
-	.control-btn {
-		flex: 1;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		gap: 0.5rem;
-		padding: 0.75rem 1rem;
-		border-radius: 10px;
-		font-size: 0.8125rem;
-		font-weight: 600;
-		cursor: pointer;
-		transition: all 0.15s ease;
-	}
-
-	.control-btn svg {
-		width: 16px;
-		height: 16px;
-	}
-
-	.control-btn.resume {
-		background: hsl(145 45% 30%);
-		border: 1px solid hsl(145 45% 40%);
-		color: hsl(145 60% 90%);
-	}
-
-	.control-btn.resume:hover {
-		background: hsl(145 50% 35%);
-	}
-
-	.control-btn.pause {
-		background: hsl(45 50% 30%);
-		border: 1px solid hsl(45 50% 40%);
-		color: hsl(45 70% 90%);
-	}
-
-	.control-btn.pause:hover {
-		background: hsl(45 55% 35%);
-	}
-
-	.control-btn.init {
-		background: hsl(var(--primary));
-		border: 1px solid hsl(var(--primary));
-		color: hsl(var(--primary-foreground));
-	}
-
-	.control-btn.init:hover {
-		opacity: 0.9;
-	}
-
-	.cron-config {
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-	}
-
-	.cron-label {
-		font-size: 0.75rem;
-		font-weight: 500;
-		color: hsl(var(--muted-foreground));
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
-	}
-
-	.cron-input-group {
-		display: flex;
-		gap: 0.5rem;
-	}
-
-	.cron-input {
-		flex: 1;
-		padding: 0.625rem 0.875rem;
-		background: hsl(var(--muted));
-		border: 1px solid hsl(var(--border));
-		border-radius: 8px;
-		color: hsl(var(--foreground));
-		font-size: 0.875rem;
-		font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
-	}
-
-	.cron-input:focus {
-		outline: none;
-		border-color: hsl(var(--primary));
-		box-shadow: 0 0 0 3px hsl(var(--primary) / 0.15);
-	}
-
-	.cron-update-btn {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 40px;
-		background: hsl(var(--muted));
-		border: 1px solid hsl(var(--border));
-		border-radius: 8px;
-		color: hsl(var(--muted-foreground));
-		cursor: pointer;
-		transition: all 0.15s ease;
-	}
-
-	.cron-update-btn:hover {
-		background: hsl(var(--primary));
-		border-color: hsl(var(--primary));
-		color: hsl(var(--primary-foreground));
-	}
-
-	.cron-update-btn svg {
-		width: 18px;
-		height: 18px;
-	}
-
-	.cron-presets {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.375rem;
-	}
-
-	.preset-chip {
-		padding: 0.375rem 0.75rem;
-		background: hsl(var(--muted));
-		border: 1px solid transparent;
-		border-radius: 9999px;
-		color: hsl(var(--muted-foreground));
-		font-size: 0.75rem;
-		font-weight: 500;
-		cursor: pointer;
-		transition: all 0.15s ease;
-	}
-
-	.preset-chip:hover {
-		background: hsl(var(--primary) / 0.1);
-		color: hsl(var(--primary));
-	}
-
-	.preset-chip.active {
-		background: hsl(var(--primary));
-		color: hsl(var(--primary-foreground));
-	}
-
-	/* ===== History Panel ===== */
-	.history-panel {
-		margin-top: 0;
-	}
-
-	.history-count {
-		font-size: 0.75rem;
-		color: hsl(var(--muted-foreground));
-	}
-
-	.history-list.loading {
-		opacity: 0.5;
-		pointer-events: none;
-		transition: opacity 0.15s ease;
-	}
-
-	.empty-state {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		padding: 3rem 2rem;
-		text-align: center;
-	}
-
-	.empty-icon {
-		width: 64px;
-		height: 64px;
-		color: hsl(var(--muted-foreground) / 0.5);
-		margin-bottom: 1rem;
-	}
-
-	.empty-icon svg {
-		width: 100%;
-		height: 100%;
-	}
-
-	.empty-state p {
-		font-size: 1rem;
-		font-weight: 500;
-		color: hsl(var(--foreground));
-		margin: 0 0 0.25rem;
-	}
-
-	.empty-state span {
-		font-size: 0.8125rem;
-		color: hsl(var(--muted-foreground));
-	}
-
-	.history-list {
-		display: flex;
-		flex-direction: column;
-	}
-
-	.history-item {
-		display: grid;
-		grid-template-columns: auto 1fr auto auto;
-		align-items: center;
-		gap: 1rem;
-		padding: 1rem 1.25rem;
-		border-bottom: 1px solid hsl(var(--border) / 0.5);
-		transition: background 0.15s ease;
-	}
-
-	.history-item:last-child {
-		border-bottom: none;
-	}
-
-	.history-item:hover {
-		background: hsl(var(--muted) / 0.3);
-	}
-
-	.history-status-indicator {
-		width: 28px;
-		height: 28px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	.history-status-indicator svg {
-		width: 20px;
-		height: 20px;
-	}
-
-	.history-item.completed .history-status-indicator {
-		color: hsl(145 60% 50%);
-	}
-
-	.history-item.failed .history-status-indicator {
-		color: hsl(var(--destructive));
-	}
-
-	.history-item.running .history-status-indicator {
-		color: hsl(var(--primary));
-	}
-
-	.running-indicator {
-		animation: spin 1s linear infinite;
-	}
-
-	.history-main {
-		display: flex;
-		flex-direction: column;
-		gap: 0.125rem;
-		min-width: 0;
-	}
-
-	.history-time {
-		display: flex;
-		flex-direction: column;
-	}
-
-	.time-relative {
-		font-size: 0.875rem;
-		font-weight: 500;
-		color: hsl(var(--foreground));
-	}
-
-	.time-absolute {
-		font-size: 0.75rem;
-		color: hsl(var(--muted-foreground));
-	}
-
-	.history-stats {
-		display: flex;
-		flex-direction: column;
-		align-items: flex-end;
-		gap: 0.125rem;
-	}
-
-	.stat-duration {
-		font-size: 0.8125rem;
-		font-weight: 600;
-		font-variant-numeric: tabular-nums;
-		color: hsl(var(--foreground));
-	}
-
-	.stat-records {
-		font-size: 0.75rem;
-		font-variant-numeric: tabular-nums;
-		color: hsl(var(--muted-foreground));
-	}
-
-	.stat-records small {
-		font-size: 0.6875rem;
-		opacity: 0.8;
-	}
-
-	.history-error {
-		grid-column: 2 / -1;
-		display: flex;
-		align-items: center;
-		gap: 0.375rem;
-		padding: 0.5rem 0.75rem;
-		background: hsl(var(--destructive) / 0.1);
-		border-radius: 6px;
-		font-size: 0.75rem;
-		color: hsl(var(--destructive));
-	}
-
-	.history-error svg {
-		width: 14px;
-		height: 14px;
-		flex-shrink: 0;
-	}
-
-	/* ===== Pagination ===== */
-	.pagination {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 1rem;
-		padding: 1.25rem;
-		border-top: 1px solid hsl(var(--border) / 0.5);
-		background: hsl(var(--muted) / 0.2);
-	}
-
-	.pagination.loading {
-		opacity: 0.6;
-		pointer-events: none;
-	}
-
-	.pagination-info {
-		text-align: center;
-	}
-
-	.pagination-range {
-		font-size: 0.8125rem;
-		color: hsl(var(--muted-foreground));
-		font-variant-numeric: tabular-nums;
-	}
-
-	.pagination-controls {
-		display: flex;
-		align-items: center;
-		gap: 0.375rem;
-	}
-
-	.pagination-btn {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 36px;
-		height: 36px;
-		background: hsl(var(--muted));
-		border: 1px solid hsl(var(--border));
-		border-radius: 8px;
-		color: hsl(var(--foreground));
-		cursor: pointer;
-		transition: all 0.15s ease;
-	}
-
-	.pagination-btn:hover:not(:disabled) {
-		background: hsl(var(--primary) / 0.15);
-		border-color: hsl(var(--primary) / 0.5);
-		color: hsl(var(--primary));
-	}
-
-	.pagination-btn:disabled {
-		opacity: 0.4;
-		cursor: not-allowed;
-	}
-
-	.pagination-btn svg {
-		width: 18px;
-		height: 18px;
-	}
-
-	.pagination-pages {
-		display: flex;
-		align-items: center;
-		gap: 0.25rem;
-		margin: 0 0.25rem;
-	}
-
-	.pagination-page {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		min-width: 36px;
-		height: 36px;
-		padding: 0 0.5rem;
-		background: transparent;
-		border: 1px solid transparent;
-		border-radius: 8px;
-		color: hsl(var(--muted-foreground));
-		font-size: 0.875rem;
-		font-weight: 500;
-		font-variant-numeric: tabular-nums;
-		cursor: pointer;
-		transition: all 0.15s ease;
-	}
-
-	.pagination-page:hover:not(:disabled):not(.active) {
-		background: hsl(var(--muted));
-		color: hsl(var(--foreground));
-	}
-
-	.pagination-page.active {
-		background: hsl(var(--primary));
-		border-color: hsl(var(--primary));
-		color: hsl(var(--primary-foreground));
-		font-weight: 600;
-	}
-
-	.pagination-page:disabled {
-		cursor: not-allowed;
-	}
-
-	.pagination-ellipsis {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 28px;
-		color: hsl(var(--muted-foreground));
-		font-size: 0.875rem;
-	}
-
-	/* ===== Responsive Design ===== */
-	@media (max-width: 900px) {
-		.content-grid {
-			grid-template-columns: 1fr;
-		}
-
-		.scheduler-panel {
-			order: 2;
-		}
-	}
-
-	@media (max-width: 640px) {
 		.sync-command-center {
-			padding: 1rem 1rem 2rem;
+			max-width: 1100px;
+			margin: 0 auto;
+			padding: 1.5rem 2rem 3rem;
 		}
 
+		/* ===== Page Header ===== */
 		.page-header {
-			flex-direction: column;
-			align-items: flex-start;
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			margin-bottom: 2rem;
+			padding-bottom: 1.5rem;
+			border-bottom: 1px solid hsl(var(--border));
+		}
+
+		.header-content {
+			display: flex;
+			align-items: center;
 			gap: 1rem;
+		}
+
+		.header-icon {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 56px;
+			height: 56px;
+			background: linear-gradient(135deg, hsl(var(--primary) / 0.15), hsl(var(--primary) / 0.05));
+			border: 1px solid hsl(var(--primary) / 0.3);
+			border-radius: 16px;
+			color: hsl(var(--primary));
+		}
+
+		.header-icon svg {
+			width: 28px;
+			height: 28px;
+		}
+
+		.header-text h1 {
+			font-size: 1.75rem;
+			font-weight: 700;
+			color: hsl(var(--foreground));
+			margin: 0;
+			letter-spacing: -0.02em;
+		}
+
+		.header-subtitle {
+			font-size: 0.875rem;
+			color: hsl(var(--muted-foreground));
+			margin: 0.25rem 0 0;
 		}
 
 		.header-stats {
-			width: 100%;
-			justify-content: flex-start;
+			display: flex;
+			gap: 2rem;
 		}
 
 		.header-stat {
-			align-items: flex-start;
+			display: flex;
+			flex-direction: column;
+			align-items: flex-end;
 		}
 
-		.sync-metrics {
-			flex-wrap: wrap;
+		.header-stat-value {
+			font-size: 1.5rem;
+			font-weight: 700;
+			color: hsl(var(--foreground));
+			font-variant-numeric: tabular-nums;
+		}
+
+		.header-stat-label {
+			font-size: 0.75rem;
+			color: hsl(var(--muted-foreground));
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+		}
+
+		/* ===== Content Grid ===== */
+		.content-grid {
+			display: grid;
+			grid-template-columns: 1fr 380px;
+			gap: 1.5rem;
+			margin-bottom: 1.5rem;
+		}
+
+		/* ===== Panel Base ===== */
+		.panel {
+			background: hsl(var(--card));
+			border: 1px solid hsl(var(--border));
+			border-radius: 16px;
+			overflow: hidden;
+		}
+
+		.panel-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			padding: 1rem 1.25rem;
+			border-bottom: 1px solid hsl(var(--border));
+			background: hsl(var(--muted) / 0.3);
+		}
+
+		.panel-header h2 {
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+			font-size: 0.9375rem;
+			font-weight: 600;
+			color: hsl(var(--foreground));
+			margin: 0;
+		}
+
+		.panel-icon {
+			font-size: 1rem;
+		}
+
+		/* ===== Sync Panel ===== */
+		.sync-panel {
+			transition: border-color 0.3s ease;
+		}
+
+		.sync-panel.active {
+			border-color: hsl(var(--primary) / 0.5);
+			box-shadow: 0 0 30px hsl(var(--primary) / 0.1);
+		}
+
+		.connection-indicator {
+			display: flex;
+			align-items: center;
+			gap: 0.375rem;
+			padding: 0.25rem 0.625rem;
+			background: hsl(var(--muted));
+			border-radius: 9999px;
+			font-size: 0.6875rem;
+			font-weight: 600;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+			color: hsl(var(--muted-foreground));
+		}
+
+		.indicator-dot {
+			width: 6px;
+			height: 6px;
+			border-radius: 50%;
+			background: hsl(var(--muted-foreground));
+			transition: background 0.3s ease;
+		}
+
+		.connection-indicator.connected .indicator-dot {
+			background: hsl(145 70% 50%);
+			box-shadow: 0 0 8px hsl(145 70% 50% / 0.5);
+		}
+
+		.connection-indicator.syncing .indicator-dot {
+			animation: pulse-glow 1.5s ease-in-out infinite;
+		}
+
+		@keyframes pulse-glow {
+			0%,
+			100% {
+				opacity: 1;
+				box-shadow: 0 0 8px hsl(145 70% 50% / 0.5);
+			}
+			50% {
+				opacity: 0.5;
+				box-shadow: 0 0 16px hsl(145 70% 50% / 0.8);
+			}
+		}
+
+		/* ===== Active Sync Display ===== */
+		.sync-active-display {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			padding: 2rem 1.5rem;
+			gap: 1.5rem;
+		}
+
+		.sync-status-ring {
+			position: relative;
+			width: 120px;
+			height: 120px;
+		}
+
+		.ring-outer {
+			position: absolute;
+			inset: 0;
+			border-radius: 50%;
+			background: linear-gradient(135deg, hsl(var(--muted)), hsl(var(--background)));
+			padding: 4px;
+		}
+
+		.ring-inner {
+			width: 100%;
+			height: 100%;
+			border-radius: 50%;
+			background: hsl(var(--card));
+			display: flex;
+			align-items: center;
 			justify-content: center;
 		}
 
-		.history-item {
-			grid-template-columns: auto 1fr;
-			gap: 0.75rem;
-		}
-
-		.history-stats {
-			grid-column: 2;
-			flex-direction: row;
-			gap: 1rem;
+		.status-icon {
+			width: 48px;
+			height: 48px;
+			display: flex;
 			align-items: center;
+			justify-content: center;
+			color: hsl(var(--muted-foreground));
 		}
 
-		.history-error {
-			grid-column: 1 / -1;
+		.status-icon.running {
+			color: hsl(var(--primary));
 		}
 
-		/* Pagination responsive */
-		.pagination {
-			padding: 1rem;
+		.status-icon.completed {
+			color: hsl(145 70% 50%);
 		}
 
-		.pagination-btn {
-			width: 32px;
+		.status-icon.failed,
+		.status-icon.cancelled {
+			color: hsl(var(--destructive));
+		}
+
+		.status-icon svg {
+			width: 100%;
+			height: 100%;
+		}
+
+		.spinner-path {
+			transform-origin: center;
+			animation: spin 1s linear infinite;
+		}
+
+		@keyframes spin {
+			to {
+				transform: rotate(360deg);
+			}
+		}
+
+		.progress-ring {
+			position: absolute;
+			inset: 0;
+			transform: rotate(-90deg);
+		}
+
+		.progress-track {
+			fill: none;
+			stroke: hsl(var(--muted));
+			stroke-width: 4;
+		}
+
+		.progress-fill {
+			fill: none;
+			stroke: hsl(var(--primary));
+			stroke-width: 4;
+			stroke-linecap: round;
+			transition: stroke-dashoffset 0.5s ease;
+		}
+
+		.sync-details {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 1rem;
+			width: 100%;
+		}
+
+		.sync-status-text {
+			font-size: 1.25rem;
+			font-weight: 700;
+			color: hsl(var(--foreground));
+		}
+
+		.sync-metrics {
+			display: flex;
+			align-items: center;
+			gap: 1rem;
+			padding: 0.75rem 1.25rem;
+			background: hsl(var(--muted) / 0.5);
+			border-radius: 12px;
+		}
+
+		.metric {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			min-width: 64px;
+		}
+
+		.metric-value {
+			font-size: 1.25rem;
+			font-weight: 700;
+			font-variant-numeric: tabular-nums;
+			color: hsl(var(--foreground));
+		}
+
+		.metric-value.accent {
+			color: hsl(145 70% 50%);
+		}
+
+		.metric-value.muted {
+			color: hsl(var(--muted-foreground));
+		}
+
+		.metric-label {
+			font-size: 0.6875rem;
+			color: hsl(var(--muted-foreground));
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+		}
+
+		.metric-divider {
+			width: 1px;
+			height: 28px;
+			background: hsl(var(--border));
+		}
+
+		.enrichment-bar {
+			position: relative;
+			width: 100%;
 			height: 32px;
+			background: hsl(var(--muted));
+			border-radius: 8px;
+			overflow: hidden;
 		}
 
-		.pagination-btn svg {
+		.enrichment-progress {
+			position: absolute;
+			inset: 0;
+			background: linear-gradient(90deg, hsl(var(--primary) / 0.3), hsl(var(--primary) / 0.5));
+			transition: width 0.5s ease;
+		}
+
+		.enrichment-text {
+			position: relative;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			height: 100%;
+			font-size: 0.75rem;
+			font-weight: 500;
+			color: hsl(var(--foreground));
+		}
+
+		.sync-error {
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+			padding: 0.75rem 1rem;
+			background: hsl(var(--destructive) / 0.15);
+			border: 1px solid hsl(var(--destructive) / 0.3);
+			border-radius: 8px;
+			font-size: 0.8125rem;
+			color: hsl(var(--destructive));
+			width: 100%;
+		}
+
+		.error-icon {
+			width: 18px;
+			height: 18px;
+			flex-shrink: 0;
+		}
+
+		.cancel-btn {
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+			padding: 0.625rem 1.25rem;
+			background: hsl(var(--muted));
+			border: 1px solid hsl(var(--border));
+			border-radius: 10px;
+			color: hsl(var(--foreground));
+			font-size: 0.8125rem;
+			font-weight: 600;
+			cursor: pointer;
+			transition: all 0.15s ease;
+		}
+
+		.cancel-btn:hover:not(:disabled) {
+			background: hsl(var(--destructive) / 0.15);
+			border-color: hsl(var(--destructive) / 0.5);
+			color: hsl(var(--destructive));
+		}
+
+		.cancel-btn:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+		}
+
+		.cancel-btn svg {
 			width: 16px;
 			height: 16px;
 		}
 
-		.pagination-page {
-			min-width: 32px;
-			height: 32px;
-			font-size: 0.8125rem;
+		/* ===== Sync Form (Idle State) ===== */
+		.sync-form {
+			padding: 1.5rem;
+			display: flex;
+			flex-direction: column;
+			gap: 1rem;
 		}
 
-		.pagination-pages {
+		.form-group label {
+			display: block;
+			font-size: 0.8125rem;
+			font-weight: 500;
+			color: hsl(var(--muted-foreground));
+			margin-bottom: 0.5rem;
+		}
+
+		.select-wrapper {
+			position: relative;
+		}
+
+		.select-wrapper select {
+			width: 100%;
+			padding: 0.75rem 2.5rem 0.75rem 1rem;
+			background: hsl(var(--muted));
+			border: 1px solid hsl(var(--border));
+			border-radius: 10px;
+			color: hsl(var(--foreground));
+			font-size: 0.9375rem;
+			appearance: none;
+			cursor: pointer;
+		}
+
+		.select-wrapper select:focus {
+			outline: none;
+			border-color: hsl(var(--primary));
+			box-shadow: 0 0 0 3px hsl(var(--primary) / 0.15);
+		}
+
+		.select-arrow {
+			position: absolute;
+			right: 1rem;
+			top: 50%;
+			transform: translateY(-50%);
+			width: 20px;
+			height: 20px;
+			color: hsl(var(--muted-foreground));
+			pointer-events: none;
+		}
+
+		.sync-btn {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: 0.625rem;
+			padding: 0.875rem 1.5rem;
+			background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.85));
+			border: none;
+			border-radius: 12px;
+			color: hsl(var(--primary-foreground));
+			font-size: 0.9375rem;
+			font-weight: 600;
+			cursor: pointer;
+			transition: all 0.2s ease;
+		}
+
+		.sync-btn:hover:not(:disabled) {
+			transform: translateY(-1px);
+			box-shadow: 0 8px 24px hsl(var(--primary) / 0.3);
+		}
+
+		.sync-btn:active:not(:disabled) {
+			transform: translateY(0);
+		}
+
+		.sync-btn:disabled {
+			opacity: 0.6;
+			cursor: not-allowed;
+		}
+
+		.sync-btn svg {
+			width: 18px;
+			height: 18px;
+		}
+
+		.btn-spinner {
+			width: 18px;
+			height: 18px;
+			border: 2px solid hsl(var(--primary-foreground) / 0.3);
+			border-top-color: hsl(var(--primary-foreground));
+			border-radius: 50%;
+			animation: spin 0.8s linear infinite;
+		}
+
+		.last-sync-info {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: 0.5rem;
+			padding: 0.75rem;
+			margin: 0 1.5rem 1.5rem;
+			background: hsl(var(--muted) / 0.5);
+			border-radius: 8px;
+			font-size: 0.8125rem;
+			color: hsl(var(--muted-foreground));
+		}
+
+		.last-sync-time {
+			font-weight: 500;
+		}
+
+		.last-sync-dot {
+			opacity: 0.5;
+		}
+
+		.last-sync-status {
+			padding: 0.125rem 0.5rem;
+			border-radius: 9999px;
+			font-size: 0.625rem;
+			font-weight: 600;
+			text-transform: uppercase;
+			background: hsl(var(--muted));
+		}
+
+		.last-sync-status.success {
+			background: hsl(145 40% 25%);
+			color: hsl(145 60% 85%);
+		}
+
+		.last-sync-status.error {
+			background: hsl(var(--destructive) / 0.2);
+			color: hsl(var(--destructive));
+		}
+
+		/* ===== Scheduler Panel ===== */
+		.scheduler-content {
+			padding: 1.25rem;
+			display: flex;
+			flex-direction: column;
+			gap: 1.25rem;
+		}
+
+		.scheduler-status-badge {
+			padding: 0.25rem 0.75rem;
+			border-radius: 9999px;
+			font-size: 0.6875rem;
+			font-weight: 600;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+		}
+
+		.scheduler-status-badge.active {
+			background: hsl(145 40% 25%);
+			color: hsl(145 60% 85%);
+		}
+
+		.scheduler-status-badge.paused {
+			background: hsl(45 60% 30%);
+			color: hsl(45 80% 90%);
+		}
+
+		.scheduler-status-badge.inactive {
+			background: hsl(var(--muted));
+			color: hsl(var(--muted-foreground));
+		}
+
+		.scheduler-times {
+			display: flex;
+			flex-direction: column;
+			gap: 0.625rem;
+			padding: 0.875rem 1rem;
+			background: hsl(var(--muted) / 0.5);
+			border-radius: 10px;
+		}
+
+		.time-row {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+		}
+
+		.time-label {
+			font-size: 0.8125rem;
+			color: hsl(var(--muted-foreground));
+		}
+
+		.time-value {
+			font-size: 0.8125rem;
+			font-weight: 500;
+			color: hsl(var(--foreground));
+		}
+
+		.scheduler-controls {
+			display: flex;
+			gap: 0.5rem;
+		}
+
+		.control-btn {
+			flex: 1;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: 0.5rem;
+			padding: 0.75rem 1rem;
+			border-radius: 10px;
+			font-size: 0.8125rem;
+			font-weight: 600;
+			cursor: pointer;
+			transition: all 0.15s ease;
+		}
+
+		.control-btn svg {
+			width: 16px;
+			height: 16px;
+		}
+
+		.control-btn.resume {
+			background: hsl(145 45% 30%);
+			border: 1px solid hsl(145 45% 40%);
+			color: hsl(145 60% 90%);
+		}
+
+		.control-btn.resume:hover {
+			background: hsl(145 50% 35%);
+		}
+
+		.control-btn.pause {
+			background: hsl(45 50% 30%);
+			border: 1px solid hsl(45 50% 40%);
+			color: hsl(45 70% 90%);
+		}
+
+		.control-btn.pause:hover {
+			background: hsl(45 55% 35%);
+		}
+
+		.control-btn.init {
+			background: hsl(var(--primary));
+			border: 1px solid hsl(var(--primary));
+			color: hsl(var(--primary-foreground));
+		}
+
+		.control-btn.init:hover {
+			opacity: 0.9;
+		}
+
+		.cron-config {
+			display: flex;
+			flex-direction: column;
+			gap: 0.75rem;
+		}
+
+		.cron-label {
+			font-size: 0.75rem;
+			font-weight: 500;
+			color: hsl(var(--muted-foreground));
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+		}
+
+		.cron-input-group {
+			display: flex;
+			gap: 0.5rem;
+		}
+
+		.cron-input {
+			flex: 1;
+			padding: 0.625rem 0.875rem;
+			background: hsl(var(--muted));
+			border: 1px solid hsl(var(--border));
+			border-radius: 8px;
+			color: hsl(var(--foreground));
+			font-size: 0.875rem;
+			font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+		}
+
+		.cron-input:focus {
+			outline: none;
+			border-color: hsl(var(--primary));
+			box-shadow: 0 0 0 3px hsl(var(--primary) / 0.15);
+		}
+
+		.cron-update-btn {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 40px;
+			background: hsl(var(--muted));
+			border: 1px solid hsl(var(--border));
+			border-radius: 8px;
+			color: hsl(var(--muted-foreground));
+			cursor: pointer;
+			transition: all 0.15s ease;
+		}
+
+		.cron-update-btn:hover {
+			background: hsl(var(--primary));
+			border-color: hsl(var(--primary));
+			color: hsl(var(--primary-foreground));
+		}
+
+		.cron-update-btn svg {
+			width: 18px;
+			height: 18px;
+		}
+
+		.cron-presets {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0.375rem;
+		}
+
+		.preset-chip {
+			padding: 0.375rem 0.75rem;
+			background: hsl(var(--muted));
+			border: 1px solid transparent;
+			border-radius: 9999px;
+			color: hsl(var(--muted-foreground));
+			font-size: 0.75rem;
+			font-weight: 500;
+			cursor: pointer;
+			transition: all 0.15s ease;
+		}
+
+		.preset-chip:hover {
+			background: hsl(var(--primary) / 0.1);
+			color: hsl(var(--primary));
+		}
+
+		.preset-chip.active {
+			background: hsl(var(--primary));
+			color: hsl(var(--primary-foreground));
+		}
+
+		/* ===== History Panel ===== */
+		.history-panel {
+			margin-top: 0;
+		}
+
+		.history-count {
+			font-size: 0.75rem;
+			color: hsl(var(--muted-foreground));
+		}
+
+		.history-list.loading {
+			opacity: 0.5;
+			pointer-events: none;
+			transition: opacity 0.15s ease;
+		}
+
+		.empty-state {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			padding: 3rem 2rem;
+			text-align: center;
+		}
+
+		.empty-icon {
+			width: 64px;
+			height: 64px;
+			color: hsl(var(--muted-foreground) / 0.5);
+			margin-bottom: 1rem;
+		}
+
+		.empty-icon svg {
+			width: 100%;
+			height: 100%;
+		}
+
+		.empty-state p {
+			font-size: 1rem;
+			font-weight: 500;
+			color: hsl(var(--foreground));
+			margin: 0 0 0.25rem;
+		}
+
+		.empty-state span {
+			font-size: 0.8125rem;
+			color: hsl(var(--muted-foreground));
+		}
+
+		.history-list {
+			display: flex;
+			flex-direction: column;
+		}
+
+		.history-item {
+			display: grid;
+			grid-template-columns: auto 1fr auto auto;
+			align-items: center;
+			gap: 1rem;
+			padding: 1rem 1.25rem;
+			border-bottom: 1px solid hsl(var(--border) / 0.5);
+			transition: background 0.15s ease;
+		}
+
+		.history-item:last-child {
+			border-bottom: none;
+		}
+
+		.history-item:hover {
+			background: hsl(var(--muted) / 0.3);
+		}
+
+		.history-status-indicator {
+			width: 28px;
+			height: 28px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		.history-status-indicator svg {
+			width: 20px;
+			height: 20px;
+		}
+
+		.history-item.completed .history-status-indicator {
+			color: hsl(145 60% 50%);
+		}
+
+		.history-item.failed .history-status-indicator {
+			color: hsl(var(--destructive));
+		}
+
+		.history-item.running .history-status-indicator {
+			color: hsl(var(--primary));
+		}
+
+		.running-indicator {
+			animation: spin 1s linear infinite;
+		}
+
+		.history-main {
+			display: flex;
+			flex-direction: column;
+			gap: 0.125rem;
+			min-width: 0;
+		}
+
+		.history-time {
+			display: flex;
+			flex-direction: column;
+		}
+
+		.time-relative {
+			font-size: 0.875rem;
+			font-weight: 500;
+			color: hsl(var(--foreground));
+		}
+
+		.time-absolute {
+			font-size: 0.75rem;
+			color: hsl(var(--muted-foreground));
+		}
+
+		.history-stats {
+			display: flex;
+			flex-direction: column;
+			align-items: flex-end;
 			gap: 0.125rem;
 		}
 
-		.pagination-range {
-			font-size: 0.75rem;
+		.stat-duration {
+			font-size: 0.8125rem;
+			font-weight: 600;
+			font-variant-numeric: tabular-nums;
+			color: hsl(var(--foreground));
 		}
-	}
+
+		.stat-records {
+			font-size: 0.75rem;
+			font-variant-numeric: tabular-nums;
+			color: hsl(var(--muted-foreground));
+		}
+
+		.stat-records small {
+			font-size: 0.6875rem;
+			opacity: 0.8;
+		}
+
+		.history-error {
+			grid-column: 2 / -1;
+			display: flex;
+			align-items: center;
+			gap: 0.375rem;
+			padding: 0.5rem 0.75rem;
+			background: hsl(var(--destructive) / 0.1);
+			border-radius: 6px;
+			font-size: 0.75rem;
+			color: hsl(var(--destructive));
+		}
+
+		.history-error svg {
+			width: 14px;
+			height: 14px;
+			flex-shrink: 0;
+		}
+
+		/* ===== Pagination ===== */
+		.pagination {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 1rem;
+			padding: 1.25rem;
+			border-top: 1px solid hsl(var(--border) / 0.5);
+			background: hsl(var(--muted) / 0.2);
+		}
+
+		.pagination.loading {
+			opacity: 0.6;
+			pointer-events: none;
+		}
+
+		.pagination-info {
+			text-align: center;
+		}
+
+		.pagination-range {
+			font-size: 0.8125rem;
+			color: hsl(var(--muted-foreground));
+			font-variant-numeric: tabular-nums;
+		}
+
+		.pagination-controls {
+			display: flex;
+			align-items: center;
+			gap: 0.375rem;
+		}
+
+		.pagination-btn {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 36px;
+			height: 36px;
+			background: hsl(var(--muted));
+			border: 1px solid hsl(var(--border));
+			border-radius: 8px;
+			color: hsl(var(--foreground));
+			cursor: pointer;
+			transition: all 0.15s ease;
+		}
+
+		.pagination-btn:hover:not(:disabled) {
+			background: hsl(var(--primary) / 0.15);
+			border-color: hsl(var(--primary) / 0.5);
+			color: hsl(var(--primary));
+		}
+
+		.pagination-btn:disabled {
+			opacity: 0.4;
+			cursor: not-allowed;
+		}
+
+		.pagination-btn svg {
+			width: 18px;
+			height: 18px;
+		}
+
+		.pagination-pages {
+			display: flex;
+			align-items: center;
+			gap: 0.25rem;
+			margin: 0 0.25rem;
+		}
+
+		.pagination-page {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			min-width: 36px;
+			height: 36px;
+			padding: 0 0.5rem;
+			background: transparent;
+			border: 1px solid transparent;
+			border-radius: 8px;
+			color: hsl(var(--muted-foreground));
+			font-size: 0.875rem;
+			font-weight: 500;
+			font-variant-numeric: tabular-nums;
+			cursor: pointer;
+			transition: all 0.15s ease;
+		}
+
+		.pagination-page:hover:not(:disabled):not(.active) {
+			background: hsl(var(--muted));
+			color: hsl(var(--foreground));
+		}
+
+		.pagination-page.active {
+			background: hsl(var(--primary));
+			border-color: hsl(var(--primary));
+			color: hsl(var(--primary-foreground));
+			font-weight: 600;
+		}
+
+		.pagination-page:disabled {
+			cursor: not-allowed;
+		}
+
+		.pagination-ellipsis {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 28px;
+			color: hsl(var(--muted-foreground));
+			font-size: 0.875rem;
+		}
+
+		/* ===== Responsive Design ===== */
+		@media (max-width: 900px) {
+			.content-grid {
+				grid-template-columns: 1fr;
+			}
+
+			.scheduler-panel {
+				order: 2;
+			}
+		}
+
+		@media (max-width: 640px) {
+			.sync-command-center {
+				padding: 1rem 1rem 2rem;
+			}
+
+			.page-header {
+				flex-direction: column;
+				align-items: flex-start;
+				gap: 1rem;
+			}
+
+			.header-stats {
+				width: 100%;
+				justify-content: flex-start;
+			}
+
+			.header-stat {
+				align-items: flex-start;
+			}
+
+			.sync-metrics {
+				flex-wrap: wrap;
+				justify-content: center;
+			}
+
+			.history-item {
+				grid-template-columns: auto 1fr;
+				gap: 0.75rem;
+			}
+
+			.history-stats {
+				grid-column: 2;
+				flex-direction: row;
+				gap: 1rem;
+				align-items: center;
+			}
+
+			.history-error {
+				grid-column: 1 / -1;
+			}
+
+			/* Pagination responsive */
+			.pagination {
+				padding: 1rem;
+			}
+
+			.pagination-btn {
+				width: 32px;
+				height: 32px;
+			}
+
+			.pagination-btn svg {
+				width: 16px;
+				height: 16px;
+			}
+
+			.pagination-page {
+				min-width: 32px;
+				height: 32px;
+				font-size: 0.8125rem;
+			}
+
+			.pagination-pages {
+				gap: 0.125rem;
+			}
+
+			.pagination-range {
+				font-size: 0.75rem;
+			}
+		}
 </style>

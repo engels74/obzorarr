@@ -1,196 +1,196 @@
 <script lang="ts">
-	import type { ActionResult } from '@sveltejs/kit';
-	import { deserialize, enhance } from '$app/forms';
-	import type { SlideType } from '$lib/components/slides/types';
-	import { DEFAULT_SLIDE_ORDER } from '$lib/components/slides/types';
-	import { handleFormToast } from '$lib/utils/form-toast';
-	import type { ActionData, PageData } from './$types';
+import type { ActionResult } from '@sveltejs/kit';
+import { deserialize, enhance } from '$app/forms';
+import type { SlideType } from '$lib/components/slides/types';
+import { DEFAULT_SLIDE_ORDER } from '$lib/components/slides/types';
+import { handleFormToast } from '$lib/utils/form-toast';
+import type { ActionData, PageData } from './$types';
 
-	/**
-	 * Admin Slides Page
-	 *
-	 * Manages slide configuration (enable/disable, reordering)
-	 * and custom slides (create, edit, delete with Markdown).
-	 */
+/**
+ * Admin Slides Page
+ *
+ * Manages slide configuration (enable/disable, reordering)
+ * and custom slides (create, edit, delete with Markdown).
+ */
 
-	let { data, form }: { data: PageData; form: ActionData } = $props();
+let { data, form }: { data: PageData; form: ActionData } = $props();
 
-	// Show toast notifications for form responses
-	$effect(() => {
-		handleFormToast(form);
-	});
+// Show toast notifications for form responses
+$effect(() => {
+	handleFormToast(form);
+});
 
-	// Slide display names
-	const SLIDE_NAMES: Record<SlideType, string> = {
-		'total-time': 'Total Watch Time',
-		'top-movies': 'Top Movies',
-		'top-shows': 'Top Shows',
-		genres: 'Genre Breakdown',
-		distribution: 'Viewing Distribution',
-		percentile: 'Percentile Ranking',
-		binge: 'Longest Binge',
-		'first-last': 'First & Last Watch',
-		'weekday-patterns': 'Weekday Patterns',
-		'content-type': 'Content Type',
-		decade: 'Content Era',
-		'series-completion': 'Series Progress',
-		rewatch: 'Rewatched Content',
-		marathon: 'Marathon Day',
-		streak: 'Watching Streak',
-		'year-comparison': 'Year Comparison',
-		custom: 'Custom Slide'
-	};
+// Slide display names
+const SLIDE_NAMES: Record<SlideType, string> = {
+	'total-time': 'Total Watch Time',
+	'top-movies': 'Top Movies',
+	'top-shows': 'Top Shows',
+	genres: 'Genre Breakdown',
+	distribution: 'Viewing Distribution',
+	percentile: 'Percentile Ranking',
+	binge: 'Longest Binge',
+	'first-last': 'First & Last Watch',
+	'weekday-patterns': 'Weekday Patterns',
+	'content-type': 'Content Type',
+	decade: 'Content Era',
+	'series-completion': 'Series Progress',
+	rewatch: 'Rewatched Content',
+	marathon: 'Marathon Day',
+	streak: 'Watching Streak',
+	'year-comparison': 'Year Comparison',
+	custom: 'Custom Slide'
+};
 
-	// Fun Fact frequency state (synced from server data)
-	let selectedFrequencyMode = $state<typeof data.funFactFrequency.mode>('normal');
-	let customCount = $state(0);
+// Fun Fact frequency state (synced from server data)
+let selectedFrequencyMode = $state<typeof data.funFactFrequency.mode>('normal');
+let customCount = $state(0);
 
-	// Sync state from data before DOM updates
-	$effect.pre(() => {
-		selectedFrequencyMode = data.funFactFrequency.mode;
-		customCount = data.funFactFrequency.count;
-	});
+// Sync state from data before DOM updates
+$effect.pre(() => {
+	selectedFrequencyMode = data.funFactFrequency.mode;
+	customCount = data.funFactFrequency.count;
+});
 
-	// State for custom slide editor
-	let showEditor = $state(false);
-	let editingSlide = $state<(typeof data.customSlides)[0] | null>(null);
-	let editorTitle = $state('');
-	let editorContent = $state('');
-	let editorYear = $state<number | null>(null);
-	let editorEnabled = $state(true);
-	let previewHtml = $state('');
+// State for custom slide editor
+let showEditor = $state(false);
+let editingSlide = $state<(typeof data.customSlides)[0] | null>(null);
+let editorTitle = $state('');
+let editorContent = $state('');
+let editorYear = $state<number | null>(null);
+let editorEnabled = $state(true);
+let previewHtml = $state('');
 
-	// Drag and drop state
-	let draggedIndex = $state<number | null>(null);
-	let dragOverIndex = $state<number | null>(null);
+// Drag and drop state
+let draggedIndex = $state<number | null>(null);
+let dragOverIndex = $state<number | null>(null);
 
-	// Unified slide item type for the combined list
-	type UnifiedSlideItem =
-		| { kind: 'builtin'; slideType: string; enabled: boolean; sortOrder: number }
-		| {
-				kind: 'custom';
-				id: number;
-				title: string;
-				enabled: boolean;
-				sortOrder: number;
-				year: number | null;
-				content: string;
-				renderedHtml?: string;
-		  };
+// Unified slide item type for the combined list
+type UnifiedSlideItem =
+	| { kind: 'builtin'; slideType: string; enabled: boolean; sortOrder: number }
+	| {
+			kind: 'custom';
+			id: number;
+			title: string;
+			enabled: boolean;
+			sortOrder: number;
+			year: number | null;
+			content: string;
+			renderedHtml?: string;
+	  };
 
-	// Combine built-in slides and custom slides into a unified sorted list
-	const unifiedSlides = $derived.by(() => {
-		const items: UnifiedSlideItem[] = [];
+// Combine built-in slides and custom slides into a unified sorted list
+const unifiedSlides = $derived.by(() => {
+	const items: UnifiedSlideItem[] = [];
 
-		// Add built-in slides (only those in DEFAULT_SLIDE_ORDER)
-		for (const config of data.configs) {
-			if (DEFAULT_SLIDE_ORDER.includes(config.slideType as SlideType)) {
-				items.push({
-					kind: 'builtin',
-					slideType: config.slideType,
-					enabled: config.enabled,
-					sortOrder: config.sortOrder
-				});
-			}
-		}
-
-		// Add custom slides
-		for (const custom of data.customSlides) {
+	// Add built-in slides (only those in DEFAULT_SLIDE_ORDER)
+	for (const config of data.configs) {
+		if (DEFAULT_SLIDE_ORDER.includes(config.slideType as SlideType)) {
 			items.push({
-				kind: 'custom',
-				id: custom.id,
-				title: custom.title,
-				enabled: custom.enabled,
-				sortOrder: custom.sortOrder,
-				year: custom.year,
-				content: custom.content,
-				renderedHtml: custom.renderedHtml
+				kind: 'builtin',
+				slideType: config.slideType,
+				enabled: config.enabled,
+				sortOrder: config.sortOrder
 			});
 		}
+	}
 
-		// Sort by sortOrder
-		return items.sort((a, b) => a.sortOrder - b.sortOrder);
+	// Add custom slides
+	for (const custom of data.customSlides) {
+		items.push({
+			kind: 'custom',
+			id: custom.id,
+			title: custom.title,
+			enabled: custom.enabled,
+			sortOrder: custom.sortOrder,
+			year: custom.year,
+			content: custom.content,
+			renderedHtml: custom.renderedHtml
+		});
+	}
+
+	// Sort by sortOrder
+	return items.sort((a, b) => a.sortOrder - b.sortOrder);
+});
+
+// Open editor for new slide
+function openNewEditor() {
+	editingSlide = null;
+	editorTitle = '';
+	editorContent = '';
+	editorYear = null; // Default to "All years"
+	editorEnabled = true;
+	previewHtml = '';
+	showEditor = true;
+}
+
+// Open editor for existing slide
+function openEditEditor(slide: (typeof data.customSlides)[0]) {
+	editingSlide = slide;
+	editorTitle = slide.title;
+	editorContent = slide.content;
+	editorYear = slide.year;
+	editorEnabled = slide.enabled;
+	previewHtml = slide.renderedHtml ?? '';
+	showEditor = true;
+}
+
+// Close editor
+function closeEditor() {
+	showEditor = false;
+	editingSlide = null;
+}
+
+// Handle drag start
+function handleDragStart(index: number) {
+	draggedIndex = index;
+}
+
+// Handle drag over
+function handleDragOver(event: DragEvent, index: number) {
+	event.preventDefault();
+	dragOverIndex = index;
+}
+
+// Handle drag end
+function handleDragEnd() {
+	draggedIndex = null;
+	dragOverIndex = null;
+}
+
+// Handle drop - reorder unified slides
+function handleDrop(event: DragEvent, dropIndex: number) {
+	event.preventDefault();
+	if (draggedIndex === null || draggedIndex === dropIndex) return;
+
+	// Create new order from unified slides
+	const newOrder = unifiedSlides.map((item) => {
+		if (item.kind === 'builtin') {
+			return { type: 'builtin' as const, id: item.slideType };
+		} else {
+			return { type: 'custom' as const, id: item.id };
+		}
 	});
 
-	// Open editor for new slide
-	function openNewEditor() {
-		editingSlide = null;
-		editorTitle = '';
-		editorContent = '';
-		editorYear = null; // Default to "All years"
-		editorEnabled = true;
-		previewHtml = '';
-		showEditor = true;
+	// Move the dragged item to the new position
+	const [moved] = newOrder.splice(draggedIndex, 1);
+	if (moved) {
+		newOrder.splice(dropIndex, 0, moved);
 	}
 
-	// Open editor for existing slide
-	function openEditEditor(slide: (typeof data.customSlides)[0]) {
-		editingSlide = slide;
-		editorTitle = slide.title;
-		editorContent = slide.content;
-		editorYear = slide.year;
-		editorEnabled = slide.enabled;
-		previewHtml = slide.renderedHtml ?? '';
-		showEditor = true;
-	}
+	// Submit the reorder form
+	const form = document.getElementById('reorder-form') as HTMLFormElement;
+	const orderInput = form.querySelector('input[name="order"]') as HTMLInputElement;
+	orderInput.value = JSON.stringify(newOrder);
+	form.requestSubmit();
 
-	// Close editor
-	function closeEditor() {
-		showEditor = false;
-		editingSlide = null;
-	}
+	handleDragEnd();
+}
 
-	// Handle drag start
-	function handleDragStart(index: number) {
-		draggedIndex = index;
-	}
-
-	// Handle drag over
-	function handleDragOver(event: DragEvent, index: number) {
-		event.preventDefault();
-		dragOverIndex = index;
-	}
-
-	// Handle drag end
-	function handleDragEnd() {
-		draggedIndex = null;
-		dragOverIndex = null;
-	}
-
-	// Handle drop - reorder unified slides
-	function handleDrop(event: DragEvent, dropIndex: number) {
-		event.preventDefault();
-		if (draggedIndex === null || draggedIndex === dropIndex) return;
-
-		// Create new order from unified slides
-		const newOrder = unifiedSlides.map((item) => {
-			if (item.kind === 'builtin') {
-				return { type: 'builtin' as const, id: item.slideType };
-			} else {
-				return { type: 'custom' as const, id: item.id };
-			}
-		});
-
-		// Move the dragged item to the new position
-		const [moved] = newOrder.splice(draggedIndex, 1);
-		if (moved) {
-			newOrder.splice(dropIndex, 0, moved);
-		}
-
-		// Submit the reorder form
-		const form = document.getElementById('reorder-form') as HTMLFormElement;
-		const orderInput = form.querySelector('input[name="order"]') as HTMLInputElement;
-		orderInput.value = JSON.stringify(newOrder);
-		form.requestSubmit();
-
-		handleDragEnd();
-	}
-
-	// Get custom slide data for editing
-	function getCustomSlideForEdit(item: UnifiedSlideItem) {
-		if (item.kind !== 'custom') return null;
-		return data.customSlides.find((s) => s.id === item.id) ?? null;
-	}
+// Get custom slide data for editing
+function getCustomSlideForEdit(item: UnifiedSlideItem) {
+	if (item.kind !== 'custom') return null;
+	return data.customSlides.find((s) => s.id === item.id) ?? null;
+}
 </script>
 
 <div class="admin-container">
@@ -545,653 +545,653 @@
 
 <style>
 	.admin-container {
-		max-width: 800px;
-		margin: 0 auto;
-		padding: 2rem;
-	}
-
-	.admin-header {
-		margin-bottom: 2rem;
-	}
-
-	.admin-header h1 {
-		font-size: 2rem;
-		font-weight: 700;
-		color: hsl(var(--primary));
-		margin: 0 0 0.5rem;
-	}
-
-	.subtitle {
-		color: hsl(var(--muted-foreground));
-		margin: 0;
-	}
-
-	.section {
-		background: hsl(var(--card));
-		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius);
-		padding: 1.5rem;
-		margin-bottom: 2rem;
-	}
-
-	.section h2 {
-		font-size: 1.25rem;
-		font-weight: 600;
-		color: hsl(var(--foreground));
-		margin: 0 0 0.5rem;
-	}
-
-	.section-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: flex-start;
-		gap: 1rem;
-		margin-bottom: 1rem;
-	}
-
-	.section-header h2 {
-		margin: 0 0 0.25rem;
-	}
-
-	.section-header .section-description {
-		margin: 0;
-	}
-
-	.section-description {
-		color: hsl(var(--muted-foreground));
-		font-size: 0.875rem;
-		margin: 0 0 1rem;
-	}
-
-	.slide-list {
-		list-style: none;
-		padding: 0;
-		margin: 0;
-	}
-
-	.slide-item {
-		display: flex;
-		align-items: center;
-		gap: 1rem;
-		padding: 0.75rem 1rem;
-		background: hsl(var(--secondary));
-		border-radius: var(--radius);
-		margin-bottom: 0.5rem;
-		cursor: grab;
-		transition:
-			background 0.15s ease,
-			border-color 0.15s ease,
-			box-shadow 0.15s ease;
-		border-left: 3px solid transparent;
-	}
-
-	.slide-item:hover {
-		background: hsl(var(--muted));
-	}
-
-	.slide-item.dragging {
-		opacity: 0.5;
-	}
-
-	.slide-item.drag-over {
-		border: 2px dashed hsl(var(--primary));
-		border-left: 3px solid hsl(var(--primary));
-	}
-
-	/* Custom slide styling with distinct visual indicator */
-	.slide-item.is-custom {
-		border-left: 3px solid hsl(280 65% 60%);
-		background: linear-gradient(90deg, hsl(280 65% 60% / 0.08) 0%, hsl(var(--secondary)) 100%);
-	}
-
-	.slide-item.is-custom:hover {
-		background: linear-gradient(90deg, hsl(280 65% 60% / 0.12) 0%, hsl(var(--muted)) 100%);
-	}
-
-	.drag-handle {
-		color: hsl(var(--muted-foreground));
-		font-size: 1.25rem;
-		cursor: grab;
-		user-select: none;
-		flex-shrink: 0;
-	}
-
-	.slide-name {
-		flex: 1;
-		font-weight: 500;
-	}
-
-	.slide-name-group {
-		flex: 1;
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		flex-wrap: wrap;
-	}
-
-	.custom-badge {
-		display: inline-flex;
-		align-items: center;
-		padding: 0.125rem 0.5rem;
-		background: hsl(280 65% 60% / 0.2);
-		color: hsl(280 65% 75%);
-		border-radius: 9999px;
-		font-size: 0.625rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-	}
-
-	.year-badge {
-		display: inline-flex;
-		align-items: center;
-		padding: 0.125rem 0.375rem;
-		background: hsl(var(--muted));
-		color: hsl(var(--muted-foreground));
-		border-radius: var(--radius);
-		font-size: 0.625rem;
-		font-weight: 500;
-	}
-
-	.slide-actions {
-		display: flex;
-		align-items: center;
-		gap: 0.375rem;
-	}
-
-	.action-button {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 28px;
-		height: 28px;
-		padding: 0;
-		background: hsl(var(--muted));
-		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius);
-		color: hsl(var(--muted-foreground));
-		cursor: pointer;
-		transition: all 0.15s ease;
-	}
-
-	.action-button:hover {
-		background: hsl(var(--secondary));
-		color: hsl(var(--foreground));
-	}
-
-	.action-button.edit-action:hover {
-		background: hsl(var(--primary));
-		color: hsl(var(--primary-foreground));
-		border-color: hsl(var(--primary));
-	}
-
-	.action-button.delete-action:hover {
-		background: hsl(var(--destructive));
-		color: hsl(var(--destructive-foreground));
-		border-color: hsl(var(--destructive));
-	}
-
-	.delete-form {
-		display: contents;
-	}
-
-	.toggle-form {
-		margin: 0;
-	}
-
-	.toggle-button {
-		padding: 0.375rem 0.75rem;
-		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius);
-		background: hsl(var(--muted));
-		color: hsl(var(--muted-foreground));
-		font-size: 0.75rem;
-		font-weight: 500;
-		cursor: pointer;
-		transition: all 0.15s ease;
-	}
-
-	.toggle-button.enabled {
-		background: hsl(var(--primary));
-		color: hsl(var(--primary-foreground));
-		border-color: hsl(var(--primary));
-	}
-
-	.toggle-button:hover {
-		opacity: 0.9;
-	}
-
-	.add-button {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 0.5rem 1rem;
-		background: hsl(var(--primary));
-		color: hsl(var(--primary-foreground));
-		border: none;
-		border-radius: var(--radius);
-		font-weight: 500;
-		font-size: 0.875rem;
-		cursor: pointer;
-		transition: all 0.15s ease;
-		white-space: nowrap;
-		flex-shrink: 0;
-	}
-
-	.add-button:hover {
-		opacity: 0.9;
-		transform: translateY(-1px);
-	}
-
-	.add-button svg {
-		flex-shrink: 0;
-	}
-
-	.empty-message {
-		color: hsl(var(--muted-foreground));
-		text-align: center;
-		padding: 2rem;
-	}
-
-	/* Modal Styles */
-	.modal-overlay {
-		position: fixed;
-		inset: 0;
-		background: rgba(0, 0, 0, 0.75);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		z-index: 100;
-		padding: 1rem;
-	}
-
-	.modal {
-		background: hsl(var(--card));
-		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius);
-		width: 100%;
-		max-width: 600px;
-		max-height: 90vh;
-		overflow-y: auto;
-	}
-
-	.modal-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: 1rem 1.5rem;
-		border-bottom: 1px solid hsl(var(--border));
-	}
-
-	.modal-header h2 {
-		font-size: 1.25rem;
-		font-weight: 600;
-		margin: 0;
-	}
-
-	.close-button {
-		background: none;
-		border: none;
-		font-size: 1.5rem;
-		color: hsl(var(--muted-foreground));
-		cursor: pointer;
-		padding: 0;
-		line-height: 1;
-	}
-
-	.close-button:hover {
-		color: hsl(var(--foreground));
-	}
-
-	.modal form {
-		padding: 1.5rem;
-	}
-
-	.form-group {
-		margin-bottom: 1rem;
-	}
-
-	.form-group label {
-		display: block;
-		font-size: 0.875rem;
-		font-weight: 500;
-		margin-bottom: 0.375rem;
-		color: hsl(var(--foreground));
-	}
-
-	.form-group input[type='text'],
-	.form-group textarea {
-		width: 100%;
-		padding: 0.5rem 0.75rem;
-		background: hsl(var(--input));
-		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius);
-		color: hsl(var(--foreground));
-		font-size: 0.875rem;
-		font-family: inherit;
-	}
-
-	.form-group input:focus,
-	.form-group textarea:focus {
-		outline: none;
-		border-color: hsl(var(--ring));
-		box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
-	}
-
-	.form-group textarea {
-		resize: vertical;
-		min-height: 150px;
-		font-family: monospace;
-	}
-
-	.form-row {
-		display: flex;
-		gap: 1rem;
-	}
-
-	.form-row .form-group {
-		flex: 1;
-	}
-
-	.form-row-aligned {
-		align-items: flex-start;
-	}
-
-	.form-group-year {
-		flex: 2;
-	}
-
-	.form-group-enabled {
-		flex: 1;
-		min-width: 120px;
-	}
-
-	.year-select {
-		width: 100%;
-		padding: 0.5rem 0.75rem;
-		background: hsl(var(--input));
-		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius);
-		color: hsl(var(--foreground));
-		font-size: 0.875rem;
-		font-family: inherit;
-		cursor: pointer;
-	}
-
-	.year-select:focus {
-		outline: none;
-		border-color: hsl(var(--ring));
-		box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
-	}
-
-	.field-hint {
-		display: block;
-		font-size: 0.75rem;
-		color: hsl(var(--muted-foreground));
-		margin-top: 0.375rem;
-	}
-
-	.checkbox-toggle {
-		display: flex;
-		align-items: center;
-		gap: 0.625rem;
-		cursor: pointer;
-		padding: 0.5rem 0.75rem;
-		background: hsl(var(--input));
-		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius);
-		transition: all 0.15s ease;
-	}
-
-	.checkbox-toggle:hover {
-		background: hsl(var(--muted));
-	}
-
-	.checkbox-toggle:has(input:checked) {
-		background: hsl(var(--primary) / 0.15);
-		border-color: hsl(var(--primary) / 0.5);
-	}
-
-	.checkbox-toggle input {
-		width: 1rem;
-		height: 1rem;
-		accent-color: hsl(var(--primary));
-		margin: 0;
-	}
-
-	.toggle-label {
-		font-size: 0.875rem;
-		font-weight: 500;
-		color: hsl(var(--foreground));
-	}
-
-	.preview-section {
-		margin-top: 1.5rem;
-		padding-top: 1rem;
-		border-top: 1px solid hsl(var(--border));
-	}
-
-	.preview-section h3 {
-		font-size: 0.875rem;
-		font-weight: 600;
-		margin: 0 0 0.75rem;
-	}
-
-	.preview-button {
-		padding: 0.375rem 0.75rem;
-		background: hsl(var(--secondary));
-		color: hsl(var(--foreground));
-		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius);
-		font-size: 0.75rem;
-		cursor: pointer;
-		margin-bottom: 0.75rem;
-	}
-
-	.preview-button:hover {
-		background: hsl(var(--muted));
-	}
-
-	.preview-content {
-		background: hsl(var(--background));
-		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius);
-		padding: 1rem;
-		min-height: 100px;
-		font-size: 0.875rem;
-		line-height: 1.6;
-	}
-
-	.preview-placeholder {
-		color: hsl(var(--muted-foreground));
-		font-style: italic;
-		margin: 0;
-	}
-
-	.modal-actions {
-		display: flex;
-		justify-content: flex-end;
-		gap: 0.75rem;
-		margin-top: 1.5rem;
-		padding-top: 1rem;
-		border-top: 1px solid hsl(var(--border));
-	}
-
-	.cancel-button {
-		padding: 0.5rem 1rem;
-		background: hsl(var(--secondary));
-		color: hsl(var(--foreground));
-		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius);
-		cursor: pointer;
-	}
-
-	.cancel-button:hover {
-		background: hsl(var(--muted));
-	}
-
-	.save-button {
-		padding: 0.5rem 1rem;
-		background: hsl(var(--primary));
-		color: hsl(var(--primary-foreground));
-		border: none;
-		border-radius: var(--radius);
-		font-weight: 500;
-		cursor: pointer;
-	}
-
-	.save-button:hover {
-		opacity: 0.9;
-	}
-
-	/* Markdown preview styling */
-	.preview-content :global(h1),
-	.preview-content :global(h2),
-	.preview-content :global(h3) {
-		color: hsl(var(--primary));
-		margin-top: 1rem;
-		margin-bottom: 0.5rem;
-	}
-
-	.preview-content :global(h1) {
-		font-size: 1.5rem;
-	}
-
-	.preview-content :global(h2) {
-		font-size: 1.25rem;
-	}
-
-	.preview-content :global(h3) {
-		font-size: 1.125rem;
-	}
-
-	.preview-content :global(p) {
-		margin-bottom: 0.75rem;
-	}
-
-	.preview-content :global(ul),
-	.preview-content :global(ol) {
-		margin-bottom: 0.75rem;
-		padding-left: 1.5rem;
-	}
-
-	.preview-content :global(strong) {
-		color: hsl(var(--primary));
-		font-weight: 700;
-	}
-
-	.preview-content :global(code) {
-		background: hsl(var(--muted));
-		padding: 0.125rem 0.25rem;
-		border-radius: 0.25rem;
-		font-family: monospace;
-		font-size: 0.85em;
-	}
-
-	.preview-content :global(blockquote) {
-		border-left: 3px solid hsl(var(--primary));
-		padding-left: 1rem;
-		margin: 0.75rem 0;
-		color: hsl(var(--muted-foreground));
-		font-style: italic;
-	}
-
-	/* Fun Fact Frequency Styles */
-	.frequency-options {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-		gap: 0.75rem;
-		margin-bottom: 1rem;
-	}
-
-	.frequency-option {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		padding: 0.75rem 1rem;
-		background: hsl(var(--secondary));
-		border-radius: var(--radius);
-		cursor: pointer;
-		transition: background 0.15s ease;
-	}
-
-	.frequency-option:hover {
-		background: hsl(var(--muted));
-	}
-
-	.frequency-option:has(input:checked) {
-		background: hsl(var(--primary) / 0.15);
-		outline: 2px solid hsl(var(--primary));
-	}
-
-	.frequency-option input[type='radio'] {
-		width: 1rem;
-		height: 1rem;
-		accent-color: hsl(var(--primary));
-		margin: 0;
-	}
-
-	.frequency-label {
-		display: flex;
-		flex-direction: column;
-		gap: 0.125rem;
-	}
-
-	.frequency-name {
-		font-weight: 600;
-		font-size: 0.875rem;
-		color: hsl(var(--foreground));
-	}
-
-	.frequency-desc {
-		font-size: 0.75rem;
-		color: hsl(var(--muted-foreground));
-	}
-
-	.custom-count-input {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		margin-bottom: 1rem;
-		padding: 0.75rem 1rem;
-		background: hsl(var(--secondary));
-		border-radius: var(--radius);
-	}
-
-	.custom-count-input label {
-		font-size: 0.875rem;
-		font-weight: 500;
-		color: hsl(var(--foreground));
-	}
-
-	.custom-count-input input[type='number'] {
-		width: 80px;
-		padding: 0.375rem 0.5rem;
-		background: hsl(var(--input));
-		border: 1px solid hsl(var(--border));
-		border-radius: var(--radius);
-		color: hsl(var(--foreground));
-		font-size: 0.875rem;
-	}
-
-	.custom-count-input input[type='number']:focus {
-		outline: none;
-		border-color: hsl(var(--ring));
-		box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
-	}
-
-	.save-frequency-button {
-		padding: 0.5rem 1rem;
-		background: hsl(var(--primary));
-		color: hsl(var(--primary-foreground));
-		border: none;
-		border-radius: var(--radius);
-		font-weight: 500;
-		cursor: pointer;
-		transition: opacity 0.15s ease;
-	}
-
-	.save-frequency-button:hover {
-		opacity: 0.9;
-	}
+			max-width: 800px;
+			margin: 0 auto;
+			padding: 2rem;
+		}
+
+		.admin-header {
+			margin-bottom: 2rem;
+		}
+
+		.admin-header h1 {
+			font-size: 2rem;
+			font-weight: 700;
+			color: hsl(var(--primary));
+			margin: 0 0 0.5rem;
+		}
+
+		.subtitle {
+			color: hsl(var(--muted-foreground));
+			margin: 0;
+		}
+
+		.section {
+			background: hsl(var(--card));
+			border: 1px solid hsl(var(--border));
+			border-radius: var(--radius);
+			padding: 1.5rem;
+			margin-bottom: 2rem;
+		}
+
+		.section h2 {
+			font-size: 1.25rem;
+			font-weight: 600;
+			color: hsl(var(--foreground));
+			margin: 0 0 0.5rem;
+		}
+
+		.section-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: flex-start;
+			gap: 1rem;
+			margin-bottom: 1rem;
+		}
+
+		.section-header h2 {
+			margin: 0 0 0.25rem;
+		}
+
+		.section-header .section-description {
+			margin: 0;
+		}
+
+		.section-description {
+			color: hsl(var(--muted-foreground));
+			font-size: 0.875rem;
+			margin: 0 0 1rem;
+		}
+
+		.slide-list {
+			list-style: none;
+			padding: 0;
+			margin: 0;
+		}
+
+		.slide-item {
+			display: flex;
+			align-items: center;
+			gap: 1rem;
+			padding: 0.75rem 1rem;
+			background: hsl(var(--secondary));
+			border-radius: var(--radius);
+			margin-bottom: 0.5rem;
+			cursor: grab;
+			transition:
+				background 0.15s ease,
+				border-color 0.15s ease,
+				box-shadow 0.15s ease;
+			border-left: 3px solid transparent;
+		}
+
+		.slide-item:hover {
+			background: hsl(var(--muted));
+		}
+
+		.slide-item.dragging {
+			opacity: 0.5;
+		}
+
+		.slide-item.drag-over {
+			border: 2px dashed hsl(var(--primary));
+			border-left: 3px solid hsl(var(--primary));
+		}
+
+		/* Custom slide styling with distinct visual indicator */
+		.slide-item.is-custom {
+			border-left: 3px solid hsl(280 65% 60%);
+			background: linear-gradient(90deg, hsl(280 65% 60% / 0.08) 0%, hsl(var(--secondary)) 100%);
+		}
+
+		.slide-item.is-custom:hover {
+			background: linear-gradient(90deg, hsl(280 65% 60% / 0.12) 0%, hsl(var(--muted)) 100%);
+		}
+
+		.drag-handle {
+			color: hsl(var(--muted-foreground));
+			font-size: 1.25rem;
+			cursor: grab;
+			user-select: none;
+			flex-shrink: 0;
+		}
+
+		.slide-name {
+			flex: 1;
+			font-weight: 500;
+		}
+
+		.slide-name-group {
+			flex: 1;
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+			flex-wrap: wrap;
+		}
+
+		.custom-badge {
+			display: inline-flex;
+			align-items: center;
+			padding: 0.125rem 0.5rem;
+			background: hsl(280 65% 60% / 0.2);
+			color: hsl(280 65% 75%);
+			border-radius: 9999px;
+			font-size: 0.625rem;
+			font-weight: 600;
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+		}
+
+		.year-badge {
+			display: inline-flex;
+			align-items: center;
+			padding: 0.125rem 0.375rem;
+			background: hsl(var(--muted));
+			color: hsl(var(--muted-foreground));
+			border-radius: var(--radius);
+			font-size: 0.625rem;
+			font-weight: 500;
+		}
+
+		.slide-actions {
+			display: flex;
+			align-items: center;
+			gap: 0.375rem;
+		}
+
+		.action-button {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			width: 28px;
+			height: 28px;
+			padding: 0;
+			background: hsl(var(--muted));
+			border: 1px solid hsl(var(--border));
+			border-radius: var(--radius);
+			color: hsl(var(--muted-foreground));
+			cursor: pointer;
+			transition: all 0.15s ease;
+		}
+
+		.action-button:hover {
+			background: hsl(var(--secondary));
+			color: hsl(var(--foreground));
+		}
+
+		.action-button.edit-action:hover {
+			background: hsl(var(--primary));
+			color: hsl(var(--primary-foreground));
+			border-color: hsl(var(--primary));
+		}
+
+		.action-button.delete-action:hover {
+			background: hsl(var(--destructive));
+			color: hsl(var(--destructive-foreground));
+			border-color: hsl(var(--destructive));
+		}
+
+		.delete-form {
+			display: contents;
+		}
+
+		.toggle-form {
+			margin: 0;
+		}
+
+		.toggle-button {
+			padding: 0.375rem 0.75rem;
+			border: 1px solid hsl(var(--border));
+			border-radius: var(--radius);
+			background: hsl(var(--muted));
+			color: hsl(var(--muted-foreground));
+			font-size: 0.75rem;
+			font-weight: 500;
+			cursor: pointer;
+			transition: all 0.15s ease;
+		}
+
+		.toggle-button.enabled {
+			background: hsl(var(--primary));
+			color: hsl(var(--primary-foreground));
+			border-color: hsl(var(--primary));
+		}
+
+		.toggle-button:hover {
+			opacity: 0.9;
+		}
+
+		.add-button {
+			display: inline-flex;
+			align-items: center;
+			gap: 0.5rem;
+			padding: 0.5rem 1rem;
+			background: hsl(var(--primary));
+			color: hsl(var(--primary-foreground));
+			border: none;
+			border-radius: var(--radius);
+			font-weight: 500;
+			font-size: 0.875rem;
+			cursor: pointer;
+			transition: all 0.15s ease;
+			white-space: nowrap;
+			flex-shrink: 0;
+		}
+
+		.add-button:hover {
+			opacity: 0.9;
+			transform: translateY(-1px);
+		}
+
+		.add-button svg {
+			flex-shrink: 0;
+		}
+
+		.empty-message {
+			color: hsl(var(--muted-foreground));
+			text-align: center;
+			padding: 2rem;
+		}
+
+		/* Modal Styles */
+		.modal-overlay {
+			position: fixed;
+			inset: 0;
+			background: rgba(0, 0, 0, 0.75);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			z-index: 100;
+			padding: 1rem;
+		}
+
+		.modal {
+			background: hsl(var(--card));
+			border: 1px solid hsl(var(--border));
+			border-radius: var(--radius);
+			width: 100%;
+			max-width: 600px;
+			max-height: 90vh;
+			overflow-y: auto;
+		}
+
+		.modal-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			padding: 1rem 1.5rem;
+			border-bottom: 1px solid hsl(var(--border));
+		}
+
+		.modal-header h2 {
+			font-size: 1.25rem;
+			font-weight: 600;
+			margin: 0;
+		}
+
+		.close-button {
+			background: none;
+			border: none;
+			font-size: 1.5rem;
+			color: hsl(var(--muted-foreground));
+			cursor: pointer;
+			padding: 0;
+			line-height: 1;
+		}
+
+		.close-button:hover {
+			color: hsl(var(--foreground));
+		}
+
+		.modal form {
+			padding: 1.5rem;
+		}
+
+		.form-group {
+			margin-bottom: 1rem;
+		}
+
+		.form-group label {
+			display: block;
+			font-size: 0.875rem;
+			font-weight: 500;
+			margin-bottom: 0.375rem;
+			color: hsl(var(--foreground));
+		}
+
+		.form-group input[type='text'],
+		.form-group textarea {
+			width: 100%;
+			padding: 0.5rem 0.75rem;
+			background: hsl(var(--input));
+			border: 1px solid hsl(var(--border));
+			border-radius: var(--radius);
+			color: hsl(var(--foreground));
+			font-size: 0.875rem;
+			font-family: inherit;
+		}
+
+		.form-group input:focus,
+		.form-group textarea:focus {
+			outline: none;
+			border-color: hsl(var(--ring));
+			box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+		}
+
+		.form-group textarea {
+			resize: vertical;
+			min-height: 150px;
+			font-family: monospace;
+		}
+
+		.form-row {
+			display: flex;
+			gap: 1rem;
+		}
+
+		.form-row .form-group {
+			flex: 1;
+		}
+
+		.form-row-aligned {
+			align-items: flex-start;
+		}
+
+		.form-group-year {
+			flex: 2;
+		}
+
+		.form-group-enabled {
+			flex: 1;
+			min-width: 120px;
+		}
+
+		.year-select {
+			width: 100%;
+			padding: 0.5rem 0.75rem;
+			background: hsl(var(--input));
+			border: 1px solid hsl(var(--border));
+			border-radius: var(--radius);
+			color: hsl(var(--foreground));
+			font-size: 0.875rem;
+			font-family: inherit;
+			cursor: pointer;
+		}
+
+		.year-select:focus {
+			outline: none;
+			border-color: hsl(var(--ring));
+			box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+		}
+
+		.field-hint {
+			display: block;
+			font-size: 0.75rem;
+			color: hsl(var(--muted-foreground));
+			margin-top: 0.375rem;
+		}
+
+		.checkbox-toggle {
+			display: flex;
+			align-items: center;
+			gap: 0.625rem;
+			cursor: pointer;
+			padding: 0.5rem 0.75rem;
+			background: hsl(var(--input));
+			border: 1px solid hsl(var(--border));
+			border-radius: var(--radius);
+			transition: all 0.15s ease;
+		}
+
+		.checkbox-toggle:hover {
+			background: hsl(var(--muted));
+		}
+
+		.checkbox-toggle:has(input:checked) {
+			background: hsl(var(--primary) / 0.15);
+			border-color: hsl(var(--primary) / 0.5);
+		}
+
+		.checkbox-toggle input {
+			width: 1rem;
+			height: 1rem;
+			accent-color: hsl(var(--primary));
+			margin: 0;
+		}
+
+		.toggle-label {
+			font-size: 0.875rem;
+			font-weight: 500;
+			color: hsl(var(--foreground));
+		}
+
+		.preview-section {
+			margin-top: 1.5rem;
+			padding-top: 1rem;
+			border-top: 1px solid hsl(var(--border));
+		}
+
+		.preview-section h3 {
+			font-size: 0.875rem;
+			font-weight: 600;
+			margin: 0 0 0.75rem;
+		}
+
+		.preview-button {
+			padding: 0.375rem 0.75rem;
+			background: hsl(var(--secondary));
+			color: hsl(var(--foreground));
+			border: 1px solid hsl(var(--border));
+			border-radius: var(--radius);
+			font-size: 0.75rem;
+			cursor: pointer;
+			margin-bottom: 0.75rem;
+		}
+
+		.preview-button:hover {
+			background: hsl(var(--muted));
+		}
+
+		.preview-content {
+			background: hsl(var(--background));
+			border: 1px solid hsl(var(--border));
+			border-radius: var(--radius);
+			padding: 1rem;
+			min-height: 100px;
+			font-size: 0.875rem;
+			line-height: 1.6;
+		}
+
+		.preview-placeholder {
+			color: hsl(var(--muted-foreground));
+			font-style: italic;
+			margin: 0;
+		}
+
+		.modal-actions {
+			display: flex;
+			justify-content: flex-end;
+			gap: 0.75rem;
+			margin-top: 1.5rem;
+			padding-top: 1rem;
+			border-top: 1px solid hsl(var(--border));
+		}
+
+		.cancel-button {
+			padding: 0.5rem 1rem;
+			background: hsl(var(--secondary));
+			color: hsl(var(--foreground));
+			border: 1px solid hsl(var(--border));
+			border-radius: var(--radius);
+			cursor: pointer;
+		}
+
+		.cancel-button:hover {
+			background: hsl(var(--muted));
+		}
+
+		.save-button {
+			padding: 0.5rem 1rem;
+			background: hsl(var(--primary));
+			color: hsl(var(--primary-foreground));
+			border: none;
+			border-radius: var(--radius);
+			font-weight: 500;
+			cursor: pointer;
+		}
+
+		.save-button:hover {
+			opacity: 0.9;
+		}
+
+		/* Markdown preview styling */
+		.preview-content :global(h1),
+		.preview-content :global(h2),
+		.preview-content :global(h3) {
+			color: hsl(var(--primary));
+			margin-top: 1rem;
+			margin-bottom: 0.5rem;
+		}
+
+		.preview-content :global(h1) {
+			font-size: 1.5rem;
+		}
+
+		.preview-content :global(h2) {
+			font-size: 1.25rem;
+		}
+
+		.preview-content :global(h3) {
+			font-size: 1.125rem;
+		}
+
+		.preview-content :global(p) {
+			margin-bottom: 0.75rem;
+		}
+
+		.preview-content :global(ul),
+		.preview-content :global(ol) {
+			margin-bottom: 0.75rem;
+			padding-left: 1.5rem;
+		}
+
+		.preview-content :global(strong) {
+			color: hsl(var(--primary));
+			font-weight: 700;
+		}
+
+		.preview-content :global(code) {
+			background: hsl(var(--muted));
+			padding: 0.125rem 0.25rem;
+			border-radius: 0.25rem;
+			font-family: monospace;
+			font-size: 0.85em;
+		}
+
+		.preview-content :global(blockquote) {
+			border-left: 3px solid hsl(var(--primary));
+			padding-left: 1rem;
+			margin: 0.75rem 0;
+			color: hsl(var(--muted-foreground));
+			font-style: italic;
+		}
+
+		/* Fun Fact Frequency Styles */
+		.frequency-options {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+			gap: 0.75rem;
+			margin-bottom: 1rem;
+		}
+
+		.frequency-option {
+			display: flex;
+			align-items: center;
+			gap: 0.75rem;
+			padding: 0.75rem 1rem;
+			background: hsl(var(--secondary));
+			border-radius: var(--radius);
+			cursor: pointer;
+			transition: background 0.15s ease;
+		}
+
+		.frequency-option:hover {
+			background: hsl(var(--muted));
+		}
+
+		.frequency-option:has(input:checked) {
+			background: hsl(var(--primary) / 0.15);
+			outline: 2px solid hsl(var(--primary));
+		}
+
+		.frequency-option input[type='radio'] {
+			width: 1rem;
+			height: 1rem;
+			accent-color: hsl(var(--primary));
+			margin: 0;
+		}
+
+		.frequency-label {
+			display: flex;
+			flex-direction: column;
+			gap: 0.125rem;
+		}
+
+		.frequency-name {
+			font-weight: 600;
+			font-size: 0.875rem;
+			color: hsl(var(--foreground));
+		}
+
+		.frequency-desc {
+			font-size: 0.75rem;
+			color: hsl(var(--muted-foreground));
+		}
+
+		.custom-count-input {
+			display: flex;
+			align-items: center;
+			gap: 0.75rem;
+			margin-bottom: 1rem;
+			padding: 0.75rem 1rem;
+			background: hsl(var(--secondary));
+			border-radius: var(--radius);
+		}
+
+		.custom-count-input label {
+			font-size: 0.875rem;
+			font-weight: 500;
+			color: hsl(var(--foreground));
+		}
+
+		.custom-count-input input[type='number'] {
+			width: 80px;
+			padding: 0.375rem 0.5rem;
+			background: hsl(var(--input));
+			border: 1px solid hsl(var(--border));
+			border-radius: var(--radius);
+			color: hsl(var(--foreground));
+			font-size: 0.875rem;
+		}
+
+		.custom-count-input input[type='number']:focus {
+			outline: none;
+			border-color: hsl(var(--ring));
+			box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+		}
+
+		.save-frequency-button {
+			padding: 0.5rem 1rem;
+			background: hsl(var(--primary));
+			color: hsl(var(--primary-foreground));
+			border: none;
+			border-radius: var(--radius);
+			font-weight: 500;
+			cursor: pointer;
+			transition: opacity 0.15s ease;
+		}
+
+		.save-frequency-button:hover {
+			opacity: 0.9;
+		}
 </style>

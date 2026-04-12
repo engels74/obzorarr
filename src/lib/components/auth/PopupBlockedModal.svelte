@@ -1,29 +1,29 @@
 <script lang="ts">
-	import * as AlertDialog from '$lib/components/ui/alert-dialog';
+import * as AlertDialog from '$lib/components/ui/alert-dialog';
 
-	interface Props {
-		open?: boolean;
-		onOpenChange?: (open: boolean) => void;
-		onContinue: () => void;
-		onCancel: () => void;
-	}
+interface Props {
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
+	onContinue: () => void;
+	onCancel: () => void;
+}
 
-	let { open = $bindable(false), onOpenChange, onContinue, onCancel }: Props = $props();
+let { open = $bindable(false), onOpenChange, onContinue, onCancel }: Props = $props();
 
-	function handleOpenChange(value: boolean): void {
-		open = value;
-		onOpenChange?.(value);
-	}
+function handleOpenChange(value: boolean): void {
+	open = value;
+	onOpenChange?.(value);
+}
 
-	function handleContinue(): void {
-		open = false;
-		onContinue();
-	}
+function handleContinue(): void {
+	open = false;
+	onContinue();
+}
 
-	function handleCancel(): void {
-		open = false;
-		onCancel();
-	}
+function handleCancel(): void {
+	open = false;
+	onCancel();
+}
 </script>
 
 <AlertDialog.Root bind:open onOpenChange={handleOpenChange}>
@@ -100,99 +100,99 @@
 
 <style>
 	:global(.popup-blocked-modal) {
-		max-width: 26rem !important;
-	}
+			max-width: 26rem !important;
+		}
 
-	:global(.popup-blocked-modal [data-slot='alert-dialog-header']) {
-		text-align: center;
-	}
+		:global(.popup-blocked-modal [data-slot='alert-dialog-header']) {
+			text-align: center;
+		}
 
-	:global(.popup-blocked-modal [data-slot='alert-dialog-title']) {
-		text-align: center;
-	}
+		:global(.popup-blocked-modal [data-slot='alert-dialog-title']) {
+			text-align: center;
+		}
 
-	:global(.popup-blocked-modal [data-slot='alert-dialog-description']) {
-		text-align: center;
-	}
+		:global(.popup-blocked-modal [data-slot='alert-dialog-description']) {
+			text-align: center;
+		}
 
-	.header-icon {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 3rem;
-		height: 3rem;
-		margin: 0 auto 0.75rem;
-		border-radius: 12px;
-		background: hsl(var(--primary) / 0.1);
-		color: hsl(var(--primary));
-	}
+		.header-icon {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 3rem;
+			height: 3rem;
+			margin: 0 auto 0.75rem;
+			border-radius: 12px;
+			background: hsl(var(--primary) / 0.1);
+			color: hsl(var(--primary));
+		}
 
-	.info-card {
-		display: flex;
-		align-items: flex-start;
-		gap: 0.75rem;
-		padding: 0.875rem 1rem;
-		margin: 0.5rem 0 0.25rem;
-		background: hsl(var(--muted) / 0.5);
-		border: 1px solid hsl(var(--border));
-		border-radius: 8px;
-	}
+		.info-card {
+			display: flex;
+			align-items: flex-start;
+			gap: 0.75rem;
+			padding: 0.875rem 1rem;
+			margin: 0.5rem 0 0.25rem;
+			background: hsl(var(--muted) / 0.5);
+			border: 1px solid hsl(var(--border));
+			border-radius: 8px;
+		}
 
-	.info-icon {
-		flex-shrink: 0;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 1.5rem;
-		height: 1.5rem;
-		margin-top: 0.0625rem;
-		color: hsl(var(--muted-foreground));
-	}
+		.info-icon {
+			flex-shrink: 0;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 1.5rem;
+			height: 1.5rem;
+			margin-top: 0.0625rem;
+			color: hsl(var(--muted-foreground));
+		}
 
-	.info-card p {
-		margin: 0;
-		font-size: 0.8125rem;
-		line-height: 1.5;
-		color: hsl(var(--muted-foreground));
-	}
+		.info-card p {
+			margin: 0;
+			font-size: 0.8125rem;
+			line-height: 1.5;
+			color: hsl(var(--muted-foreground));
+		}
 
-	.continue-btn {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		gap: 0.5rem;
-		height: 2.5rem;
-		padding: 0 1rem;
-		font-size: 0.875rem;
-		font-weight: 600;
-		color: hsl(var(--primary-foreground));
-		background: hsl(var(--primary));
-		border: none;
-		border-radius: calc(var(--radius) + 2px);
-		cursor: pointer;
-		transition:
-			background-color 0.15s ease,
-			transform 0.1s ease,
-			box-shadow 0.15s ease;
-	}
+		.continue-btn {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			gap: 0.5rem;
+			height: 2.5rem;
+			padding: 0 1rem;
+			font-size: 0.875rem;
+			font-weight: 600;
+			color: hsl(var(--primary-foreground));
+			background: hsl(var(--primary));
+			border: none;
+			border-radius: calc(var(--radius) + 2px);
+			cursor: pointer;
+			transition:
+				background-color 0.15s ease,
+				transform 0.1s ease,
+				box-shadow 0.15s ease;
+		}
 
-	.continue-btn:hover {
-		background: hsl(var(--primary) / 0.9);
-		box-shadow: 0 0 0 3px hsl(var(--primary) / 0.15);
-	}
+		.continue-btn:hover {
+			background: hsl(var(--primary) / 0.9);
+			box-shadow: 0 0 0 3px hsl(var(--primary) / 0.15);
+		}
 
-	.continue-btn:active {
-		transform: scale(0.98);
-	}
+		.continue-btn:active {
+			transform: scale(0.98);
+		}
 
-	.continue-btn:focus-visible {
-		outline: none;
-		box-shadow:
-			0 0 0 2px hsl(var(--background)),
-			0 0 0 4px hsl(var(--ring));
-	}
+		.continue-btn:focus-visible {
+			outline: none;
+			box-shadow:
+				0 0 0 2px hsl(var(--background)),
+				0 0 0 4px hsl(var(--ring));
+		}
 
-	.continue-btn svg {
-		flex-shrink: 0;
-	}
+		.continue-btn svg {
+			flex-shrink: 0;
+		}
 </style>

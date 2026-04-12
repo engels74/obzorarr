@@ -1,146 +1,146 @@
 <script lang="ts">
-	import { animate } from 'motion';
-	import { prefersReducedMotion } from 'svelte/motion';
-	import { DELAY_PRESETS, KEYFRAMES, SPRING_PRESETS } from '$lib/utils/animation-presets';
-	import { getThumbUrl } from '$lib/utils/plex-thumb';
-	import BaseSlide from './BaseSlide.svelte';
-	import type { SlideMessagingContext } from './messaging-context';
-	import { createPersonalContext, getPossessive } from './messaging-context';
-	import type { FirstLastSlideProps } from './types';
+import { animate } from 'motion';
+import { prefersReducedMotion } from 'svelte/motion';
+import { DELAY_PRESETS, KEYFRAMES, SPRING_PRESETS } from '$lib/utils/animation-presets';
+import { getThumbUrl } from '$lib/utils/plex-thumb';
+import BaseSlide from './BaseSlide.svelte';
+import type { SlideMessagingContext } from './messaging-context';
+import { createPersonalContext, getPossessive } from './messaging-context';
+import type { FirstLastSlideProps } from './types';
 
-	interface Props extends FirstLastSlideProps {
-		messagingContext?: SlideMessagingContext;
+interface Props extends FirstLastSlideProps {
+	messagingContext?: SlideMessagingContext;
+}
+
+let {
+	firstWatch,
+	lastWatch,
+	active = true,
+	onAnimationComplete,
+	class: klass = '',
+	children,
+	messagingContext = createPersonalContext()
+}: Props = $props();
+
+const possessive = $derived(getPossessive(messagingContext));
+
+const hasFirst = $derived(firstWatch !== null);
+const hasLast = $derived(lastWatch !== null);
+const hasAny = $derived(hasFirst || hasLast);
+
+// Format dates
+const firstDate = $derived.by(() => {
+	if (!firstWatch) return '';
+	return new Date(firstWatch.viewedAt * 1000).toLocaleDateString('en-US', {
+		month: 'long',
+		day: 'numeric'
+	});
+});
+
+const lastDate = $derived.by(() => {
+	if (!lastWatch) return '';
+	return new Date(lastWatch.viewedAt * 1000).toLocaleDateString('en-US', {
+		month: 'long',
+		day: 'numeric'
+	});
+});
+
+// Format type labels
+const firstTypeLabel = $derived.by(() => {
+	if (!firstWatch) return '';
+	switch (firstWatch.type) {
+		case 'movie':
+			return 'Movie';
+		case 'episode':
+			return 'Episode';
+		case 'track':
+			return 'Track';
+		default:
+			return '';
+	}
+});
+
+const lastTypeLabel = $derived.by(() => {
+	if (!lastWatch) return '';
+	switch (lastWatch.type) {
+		case 'movie':
+			return 'Movie';
+		case 'episode':
+			return 'Episode';
+		case 'track':
+			return 'Track';
+		default:
+			return '';
+	}
+});
+
+// Element references
+let container: HTMLElement | undefined = $state();
+let firstCard: HTMLElement | undefined = $state();
+let lastCard: HTMLElement | undefined = $state();
+
+// Animation effect with cleanup
+$effect(() => {
+	if (!container || !active) return;
+
+	const shouldAnimate = !prefersReducedMotion.current;
+
+	if (!shouldAnimate) {
+		container.style.opacity = '1';
+		if (firstCard) {
+			firstCard.style.opacity = '1';
+			firstCard.style.transform = 'none';
+		}
+		if (lastCard) {
+			lastCard.style.opacity = '1';
+			lastCard.style.transform = 'none';
+		}
+		onAnimationComplete?.();
+		return;
 	}
 
-	let {
-		firstWatch,
-		lastWatch,
-		active = true,
-		onAnimationComplete,
-		class: klass = '',
-		children,
-		messagingContext = createPersonalContext()
-	}: Props = $props();
+	const animations: ReturnType<typeof animate>[] = [];
 
-	const possessive = $derived(getPossessive(messagingContext));
+	// Container: opacity fade only (cards provide motion)
+	const containerAnim = animate(
+		container,
+		{ opacity: [0, 1] },
+		{ type: 'spring', ...SPRING_PRESETS.gentle }
+	);
+	animations.push(containerAnim);
 
-	const hasFirst = $derived(firstWatch !== null);
-	const hasLast = $derived(lastWatch !== null);
-	const hasAny = $derived(hasFirst || hasLast);
-
-	// Format dates
-	const firstDate = $derived.by(() => {
-		if (!firstWatch) return '';
-		return new Date(firstWatch.viewedAt * 1000).toLocaleDateString('en-US', {
-			month: 'long',
-			day: 'numeric'
+	// Animate first card from left
+	if (firstCard) {
+		const firstAnim = animate(firstCard, KEYFRAMES.cardFromLeft, {
+			type: 'spring',
+			...SPRING_PRESETS.snappy,
+			delay: DELAY_PRESETS.short
 		});
-	});
+		animations.push(firstAnim);
+	}
 
-	const lastDate = $derived.by(() => {
-		if (!lastWatch) return '';
-		return new Date(lastWatch.viewedAt * 1000).toLocaleDateString('en-US', {
-			month: 'long',
-			day: 'numeric'
+	// Animate last card from right
+	if (lastCard) {
+		const lastAnim = animate(lastCard, KEYFRAMES.cardFromRight, {
+			type: 'spring',
+			...SPRING_PRESETS.snappy,
+			delay: DELAY_PRESETS.medium
 		});
-	});
+		animations.push(lastAnim);
 
-	// Format type labels
-	const firstTypeLabel = $derived.by(() => {
-		if (!firstWatch) return '';
-		switch (firstWatch.type) {
-			case 'movie':
-				return 'Movie';
-			case 'episode':
-				return 'Episode';
-			case 'track':
-				return 'Track';
-			default:
-				return '';
-		}
-	});
-
-	const lastTypeLabel = $derived.by(() => {
-		if (!lastWatch) return '';
-		switch (lastWatch.type) {
-			case 'movie':
-				return 'Movie';
-			case 'episode':
-				return 'Episode';
-			case 'track':
-				return 'Track';
-			default:
-				return '';
-		}
-	});
-
-	// Element references
-	let container: HTMLElement | undefined = $state();
-	let firstCard: HTMLElement | undefined = $state();
-	let lastCard: HTMLElement | undefined = $state();
-
-	// Animation effect with cleanup
-	$effect(() => {
-		if (!container || !active) return;
-
-		const shouldAnimate = !prefersReducedMotion.current;
-
-		if (!shouldAnimate) {
-			container.style.opacity = '1';
-			if (firstCard) {
-				firstCard.style.opacity = '1';
-				firstCard.style.transform = 'none';
-			}
-			if (lastCard) {
-				lastCard.style.opacity = '1';
-				lastCard.style.transform = 'none';
-			}
+		lastAnim.finished.then(() => {
 			onAnimationComplete?.();
-			return;
-		}
+		});
+	} else if (animations.length > 0) {
+		animations[animations.length - 1]?.finished.then(() => {
+			onAnimationComplete?.();
+		});
+	}
 
-		const animations: ReturnType<typeof animate>[] = [];
-
-		// Container: opacity fade only (cards provide motion)
-		const containerAnim = animate(
-			container,
-			{ opacity: [0, 1] },
-			{ type: 'spring', ...SPRING_PRESETS.gentle }
-		);
-		animations.push(containerAnim);
-
-		// Animate first card from left
-		if (firstCard) {
-			const firstAnim = animate(firstCard, KEYFRAMES.cardFromLeft, {
-				type: 'spring',
-				...SPRING_PRESETS.snappy,
-				delay: DELAY_PRESETS.short
-			});
-			animations.push(firstAnim);
-		}
-
-		// Animate last card from right
-		if (lastCard) {
-			const lastAnim = animate(lastCard, KEYFRAMES.cardFromRight, {
-				type: 'spring',
-				...SPRING_PRESETS.snappy,
-				delay: DELAY_PRESETS.medium
-			});
-			animations.push(lastAnim);
-
-			lastAnim.finished.then(() => {
-				onAnimationComplete?.();
-			});
-		} else if (animations.length > 0) {
-			animations[animations.length - 1]?.finished.then(() => {
-				onAnimationComplete?.();
-			});
-		}
-
-		return () => {
-			animations.forEach((a) => a.stop());
-		};
-	});
+	return () => {
+		animations.forEach((a) => a.stop());
+	};
+});
 </script>
 
 <BaseSlide {active} class="first-last-slide {klass}">
@@ -193,258 +193,258 @@
 
 <style>
 	.content {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 2rem;
-		z-index: 1;
-		width: 100%;
-		max-width: 700px;
-	}
-
-	.title {
-		font-size: 1.75rem;
-		font-weight: 700;
-		color: hsl(var(--primary));
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		text-shadow: 0 0 30px hsl(var(--primary) / 0.3);
-	}
-
-	.cards {
-		display: flex;
-		gap: 2.5rem;
-		width: 100%;
-		justify-content: center;
-		flex-wrap: wrap;
-	}
-
-	.card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		padding: 2rem;
-		background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
-		backdrop-filter: blur(var(--slide-glass-blur, 20px));
-		-webkit-backdrop-filter: blur(var(--slide-glass-blur, 20px));
-		border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
-		border-radius: calc(var(--radius) * 2);
-		min-width: 240px;
-		max-width: 320px;
-		flex: 1;
-		box-shadow:
-			var(--shadow-elevation-high, 0 8px 24px hsl(0 0% 0% / 0.4)),
-			inset 0 1px 0 hsl(0 0% 100% / 0.05);
-		position: relative;
-		transition:
-			transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
-			box-shadow 0.3s ease,
-			border-color 0.3s ease;
-	}
-
-	/* Top highlight line */
-	.card::before {
-		content: '';
-		position: absolute;
-		top: 0;
-		left: 0;
-		right: 0;
-		height: 1px;
-		background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.4), transparent);
-		border-radius: inherit;
-	}
-
-	.card:hover {
-		transform: translateY(-6px) scale(1.02);
-		box-shadow:
-			var(--shadow-elevation-high, 0 8px 24px hsl(0 0% 0% / 0.5)),
-			0 0 40px var(--slide-accent-glow, hsl(var(--primary) / 0.2));
-		border-color: hsl(var(--primary) / 0.4);
-	}
-
-	.card-label {
-		font-size: 0.8125rem;
-		text-transform: uppercase;
-		letter-spacing: 0.1em;
-		color: hsl(var(--primary));
-		margin-bottom: 1.25rem;
-		font-weight: 600;
-		padding: 0.375rem 0.875rem;
-		background: hsl(var(--primary) / 0.12);
-		border-radius: var(--radius);
-		text-shadow: 0 0 10px hsl(var(--primary) / 0.3);
-	}
-
-	.thumb {
-		width: 140px;
-		height: 210px;
-		object-fit: cover;
-		border-radius: calc(var(--radius) * 1.25);
-		margin-bottom: 1.25rem;
-		box-shadow:
-			var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.4)),
-			0 0 20px hsl(var(--primary) / 0.1);
-		transition:
-			transform 0.3s ease,
-			box-shadow 0.3s ease;
-	}
-
-	.card:hover .thumb {
-		transform: scale(1.05);
-		box-shadow:
-			var(--shadow-elevation-high, 0 8px 24px hsl(0 0% 0% / 0.5)),
-			0 0 35px var(--slide-glow-color, hsl(var(--primary) / 0.2));
-	}
-
-	.thumb-placeholder {
-		width: 140px;
-		height: 210px;
-		background: linear-gradient(135deg, hsl(var(--muted)) 0%, hsl(var(--secondary)) 100%);
-		border-radius: calc(var(--radius) * 1.25);
-		margin-bottom: 1.25rem;
-	}
-
-	.card-info {
-		text-align: center;
-	}
-
-	.card-title {
-		display: block;
-		font-size: 1rem;
-		font-weight: 600;
-		color: hsl(var(--foreground));
-		margin-bottom: 0.375rem;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		display: -webkit-box;
-		-webkit-line-clamp: 2;
-		line-clamp: 2;
-		-webkit-box-orient: vertical;
-		line-height: 1.3;
-	}
-
-	.card-meta {
-		font-size: 0.8125rem;
-		color: hsl(var(--muted-foreground));
-	}
-
-	.no-data {
-		color: hsl(var(--muted-foreground));
-		font-style: italic;
-		padding: 2rem;
-		background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.3));
-		border-radius: calc(var(--radius) * 1.5);
-		border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
-	}
-
-	.extra {
-		margin-top: 1rem;
-	}
-
-	/* Mobile: stacked cards */
-	@media (max-width: 767px) {
-		.content {
-			gap: 1.5rem;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 2rem;
+			z-index: 1;
+			width: 100%;
+			max-width: 700px;
 		}
 
 		.title {
-			font-size: 1.5rem;
+			font-size: 1.75rem;
+			font-weight: 700;
+			color: hsl(var(--primary));
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+			text-shadow: 0 0 30px hsl(var(--primary) / 0.3);
 		}
 
 		.cards {
+			display: flex;
+			gap: 2.5rem;
+			width: 100%;
+			justify-content: center;
+			flex-wrap: wrap;
+		}
+
+		.card {
+			display: flex;
 			flex-direction: column;
 			align-items: center;
-			gap: 1.25rem;
-		}
-
-		.card {
-			width: 100%;
-			max-width: 260px;
-			padding: 1.25rem;
-		}
-
-		.thumb,
-		.thumb-placeholder {
-			width: 100px;
-			height: 150px;
-		}
-
-		.card-title {
-			font-size: 0.9375rem;
-		}
-	}
-
-	/* Tablet: side-by-side with medium sizing */
-	@media (min-width: 768px) and (max-width: 1023px) {
-		.content {
-			max-width: var(--content-max-md, 750px);
-		}
-
-		.title {
-			font-size: 2rem;
-		}
-
-		.card {
+			padding: 2rem;
+			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
+			backdrop-filter: blur(var(--slide-glass-blur, 20px));
+			-webkit-backdrop-filter: blur(var(--slide-glass-blur, 20px));
+			border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
+			border-radius: calc(var(--radius) * 2);
+			min-width: 240px;
 			max-width: 320px;
-			padding: 1.75rem;
+			flex: 1;
+			box-shadow:
+				var(--shadow-elevation-high, 0 8px 24px hsl(0 0% 0% / 0.4)),
+				inset 0 1px 0 hsl(0 0% 100% / 0.05);
+			position: relative;
+			transition:
+				transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+				box-shadow 0.3s ease,
+				border-color 0.3s ease;
+		}
+
+		/* Top highlight line */
+		.card::before {
+			content: '';
+			position: absolute;
+			top: 0;
+			left: 0;
+			right: 0;
+			height: 1px;
+			background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.4), transparent);
+			border-radius: inherit;
+		}
+
+		.card:hover {
+			transform: translateY(-6px) scale(1.02);
+			box-shadow:
+				var(--shadow-elevation-high, 0 8px 24px hsl(0 0% 0% / 0.5)),
+				0 0 40px var(--slide-accent-glow, hsl(var(--primary) / 0.2));
+			border-color: hsl(var(--primary) / 0.4);
 		}
 
 		.card-label {
 			font-size: 0.8125rem;
+			text-transform: uppercase;
+			letter-spacing: 0.1em;
+			color: hsl(var(--primary));
+			margin-bottom: 1.25rem;
+			font-weight: 600;
+			padding: 0.375rem 0.875rem;
+			background: hsl(var(--primary) / 0.12);
+			border-radius: var(--radius);
+			text-shadow: 0 0 10px hsl(var(--primary) / 0.3);
 		}
 
-		.thumb,
+		.thumb {
+			width: 140px;
+			height: 210px;
+			object-fit: cover;
+			border-radius: calc(var(--radius) * 1.25);
+			margin-bottom: 1.25rem;
+			box-shadow:
+				var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.4)),
+				0 0 20px hsl(var(--primary) / 0.1);
+			transition:
+				transform 0.3s ease,
+				box-shadow 0.3s ease;
+		}
+
+		.card:hover .thumb {
+			transform: scale(1.05);
+			box-shadow:
+				var(--shadow-elevation-high, 0 8px 24px hsl(0 0% 0% / 0.5)),
+				0 0 35px var(--slide-glow-color, hsl(var(--primary) / 0.2));
+		}
+
 		.thumb-placeholder {
 			width: 140px;
 			height: 210px;
+			background: linear-gradient(135deg, hsl(var(--muted)) 0%, hsl(var(--secondary)) 100%);
+			border-radius: calc(var(--radius) * 1.25);
+			margin-bottom: 1.25rem;
+		}
+
+		.card-info {
+			text-align: center;
 		}
 
 		.card-title {
-			font-size: 1.0625rem;
+			display: block;
+			font-size: 1rem;
+			font-weight: 600;
+			color: hsl(var(--foreground));
+			margin-bottom: 0.375rem;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			display: -webkit-box;
+			-webkit-line-clamp: 2;
+			line-clamp: 2;
+			-webkit-box-orient: vertical;
+			line-height: 1.3;
 		}
 
 		.card-meta {
 			font-size: 0.8125rem;
-		}
-	}
-
-	/* Desktop: large cards with prominent thumbnails */
-	@media (min-width: 1024px) {
-		.content {
-			max-width: var(--content-max-lg, 900px);
+			color: hsl(var(--muted-foreground));
 		}
 
-		.title {
-			font-size: 2rem;
+		.no-data {
+			color: hsl(var(--muted-foreground));
+			font-style: italic;
+			padding: 2rem;
+			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.3));
+			border-radius: calc(var(--radius) * 1.5);
+			border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
 		}
 
-		.cards {
-			gap: 3rem;
+		.extra {
+			margin-top: 1rem;
 		}
 
-		.card {
-			max-width: 400px;
-			padding: 2.5rem;
+		/* Mobile: stacked cards */
+		@media (max-width: 767px) {
+			.content {
+				gap: 1.5rem;
+			}
+
+			.title {
+				font-size: 1.5rem;
+			}
+
+			.cards {
+				flex-direction: column;
+				align-items: center;
+				gap: 1.25rem;
+			}
+
+			.card {
+				width: 100%;
+				max-width: 260px;
+				padding: 1.25rem;
+			}
+
+			.thumb,
+			.thumb-placeholder {
+				width: 100px;
+				height: 150px;
+			}
+
+			.card-title {
+				font-size: 0.9375rem;
+			}
 		}
 
-		.card-label {
-			font-size: 0.9375rem;
-			margin-bottom: 1.5rem;
+		/* Tablet: side-by-side with medium sizing */
+		@media (min-width: 768px) and (max-width: 1023px) {
+			.content {
+				max-width: var(--content-max-md, 750px);
+			}
+
+			.title {
+				font-size: 2rem;
+			}
+
+			.card {
+				max-width: 320px;
+				padding: 1.75rem;
+			}
+
+			.card-label {
+				font-size: 0.8125rem;
+			}
+
+			.thumb,
+			.thumb-placeholder {
+				width: 140px;
+				height: 210px;
+			}
+
+			.card-title {
+				font-size: 1.0625rem;
+			}
+
+			.card-meta {
+				font-size: 0.8125rem;
+			}
 		}
 
-		.thumb,
-		.thumb-placeholder {
-			width: 180px;
-			height: 270px;
-			margin-bottom: 1.5rem;
-		}
+		/* Desktop: large cards with prominent thumbnails */
+		@media (min-width: 1024px) {
+			.content {
+				max-width: var(--content-max-lg, 900px);
+			}
 
-		.card-title {
-			font-size: 1.125rem;
-		}
+			.title {
+				font-size: 2rem;
+			}
 
-		.card-meta {
-			font-size: 0.9375rem;
+			.cards {
+				gap: 3rem;
+			}
+
+			.card {
+				max-width: 400px;
+				padding: 2.5rem;
+			}
+
+			.card-label {
+				font-size: 0.9375rem;
+				margin-bottom: 1.5rem;
+			}
+
+			.thumb,
+			.thumb-placeholder {
+				width: 180px;
+				height: 270px;
+				margin-bottom: 1.5rem;
+			}
+
+			.card-title {
+				font-size: 1.125rem;
+			}
+
+			.card-meta {
+				font-size: 0.9375rem;
+			}
 		}
-	}
 </style>
