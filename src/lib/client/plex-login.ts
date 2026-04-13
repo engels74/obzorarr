@@ -70,6 +70,7 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 	let cancelled = false;
 	let finished = false;
 	let succeeded = false;
+	let pinExpired = false;
 	let timedOut = false;
 	let authWindow: Window | null = null;
 
@@ -125,6 +126,7 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 
 					if (!pollResponse.ok) {
 						if (pollResponse.status === 401) {
+							pinExpired = true;
 							cleanup();
 							opts.onError('Authentication expired. Please try again.');
 						}
@@ -151,11 +153,11 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 						}
 
 						const userData = (await callbackResponse.json()) as { user: PlexLoginUser };
-						succeeded = true;
 						await opts.onSuccess(userData.user);
+						succeeded = true;
 					}
 				} catch (err) {
-					if (cancelled || succeeded || timedOut) return;
+					if (cancelled || succeeded || timedOut || pinExpired) return;
 					cleanup();
 					opts.onError(err instanceof Error ? err.message : 'Login failed');
 				}

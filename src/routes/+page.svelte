@@ -113,7 +113,11 @@ function handleContinueWithRedirect(): void {
 	if (!pendingPinId || !pendingAuthUrl || !browser) return;
 
 	showPopupBlockedModal = false;
-	commitRedirectFromPopupBlocked(pendingPinId, pendingAuthUrl, 'landing');
+	try {
+		commitRedirectFromPopupBlocked(pendingPinId, pendingAuthUrl, 'landing');
+	} catch (err) {
+		oauthError = err instanceof Error ? err.message : 'Failed to initiate redirect login';
+	}
 }
 
 function handleCancelRedirect(): void {
