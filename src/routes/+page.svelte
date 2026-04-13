@@ -3,6 +3,13 @@ import { animate } from 'motion';
 import { prefersReducedMotion } from 'svelte/motion';
 import { browser } from '$app/environment';
 import { enhance } from '$app/forms';
+import { shouldUseRedirectAuth } from '$lib/client/auth-mode';
+import {
+	commitRedirectFromPopupBlocked,
+	type PlexLoginController,
+	startPlexLoginPopup,
+	startPlexLoginRedirect
+} from '$lib/client/plex-login';
 import PopupBlockedModal from '$lib/components/auth/PopupBlockedModal.svelte';
 import Logo from '$lib/components/Logo.svelte';
 import type { ActionData, PageData } from './$types';
@@ -30,15 +37,14 @@ $effect(() => {
 
 // Plex OAuth state
 let isOAuthLoading = $state(false);
+let isRedirecting = $state(false);
 let oauthError = $state<string | null>(null);
-let pollIntervalId: ReturnType<typeof setInterval> | null = null;
-let timeoutId: ReturnType<typeof setTimeout> | null = null;
+let loginController: PlexLoginController | null = null;
 
 // Popup fallback state
 let showPopupBlockedModal = $state(false);
 let pendingPinId = $state<number | null>(null);
 let pendingAuthUrl = $state<string | null>(null);
-const PIN_STORAGE_KEY = 'obzorarr_plex_pin';
 
 // Element refs for animation
 let heroContainer: HTMLElement | undefined = $state();
@@ -57,144 +63,61 @@ $effect(() => {
 // Cleanup polling on unmount
 $effect(() => {
 	return () => {
-		if (pollIntervalId) clearInterval(pollIntervalId);
-		if (timeoutId) clearTimeout(timeoutId);
+		loginController?.cancel();
+		loginController = null;
 	};
 });
 
-// Plex OAuth handler
 async function handlePlexLogin() {
-	isOAuthLoading = true;
+	if (!browser) return;
+
 	oauthError = null;
 
-	try {
-		const response = await fetch('/auth/plex');
-		if (!response.ok) {
-			const errData = await response.json().catch(() => ({}));
-			throw new Error(errData.message || 'Failed to initiate login');
-		}
-		const { pinId, authUrl } = (await response.json()) as { pinId: number; authUrl: string };
+	const useRedirect = shouldUseRedirectAuth(new URL(window.location.href).searchParams);
 
-		const authWindow = window.open(authUrl, 'plex-auth', 'width=600,height=700');
-
-		if (!authWindow) {
-			await handlePopupBlocked(pinId);
-			return;
-		}
-
-		await new Promise((r) => setTimeout(r, 100));
-		if (authWindow.closed) {
-			await handlePopupBlocked(pinId);
-			return;
-		}
-
-		pollIntervalId = setInterval(async () => {
-			try {
-				const pollResponse = await fetch('/auth/plex', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ pinId })
-				});
-
-				if (!pollResponse.ok) {
-					const status = pollResponse.status;
-					if (status === 401) {
-						if (pollIntervalId) clearInterval(pollIntervalId);
-						pollIntervalId = null;
-						isOAuthLoading = false;
-						oauthError = 'Authentication expired. Please try again.';
-						return;
-					}
-					return;
-				}
-
-				const result = (await pollResponse.json()) as { pending: true } | { authToken: string };
-
-				if ('authToken' in result && result.authToken) {
-					if (pollIntervalId) clearInterval(pollIntervalId);
-					pollIntervalId = null;
-					authWindow?.close();
-
-					const callbackResponse = await fetch('/auth/plex/callback', {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({ authToken: result.authToken })
-					});
-
-					if (!callbackResponse.ok) {
-						const errData = await callbackResponse.json().catch(() => ({}));
-						throw new Error((errData as { message?: string }).message || 'Login failed');
-					}
-
-					const userData = (await callbackResponse.json()) as {
-						user: { isAdmin: boolean };
-					};
-
-					window.location.href = userData.user.isAdmin ? '/admin' : '/dashboard';
-				}
-			} catch (err) {
-				if (pollIntervalId) clearInterval(pollIntervalId);
-				pollIntervalId = null;
-				isOAuthLoading = false;
-				oauthError = err instanceof Error ? err.message : 'Login failed';
+	if (useRedirect) {
+		loginController?.cancel();
+		loginController = null;
+		isRedirecting = true;
+		await startPlexLoginRedirect({
+			context: 'landing',
+			onError: (message) => {
+				isRedirecting = false;
+				oauthError = message;
 			}
-		}, 2000);
-
-		timeoutId = setTimeout(
-			() => {
-				if (pollIntervalId) {
-					clearInterval(pollIntervalId);
-					pollIntervalId = null;
-				}
-				if (isOAuthLoading) {
-					isOAuthLoading = false;
-					oauthError = 'Authentication timed out. Please try again.';
-				}
-			},
-			5 * 60 * 1000
-		);
-	} catch (err) {
-		isOAuthLoading = false;
-		oauthError = err instanceof Error ? err.message : 'Login failed';
-	}
-}
-
-async function handlePopupBlocked(_originalPinId: number): Promise<void> {
-	try {
-		const redirectUrl = browser ? `${window.location.origin}/auth/plex/redirect` : '';
-		const response = await fetch(`/auth/plex?redirectUrl=${encodeURIComponent(redirectUrl)}`);
-		if (!response.ok) {
-			throw new Error('Failed to prepare redirect');
-		}
-		const { pinId, authUrl } = (await response.json()) as { pinId: number; authUrl: string };
-		pendingPinId = pinId;
-		pendingAuthUrl = authUrl;
-	} catch {
-		pendingPinId = null;
-		pendingAuthUrl = null;
-		isOAuthLoading = false;
-		oauthError = 'Unable to prepare redirect. Please try again.';
+		});
 		return;
 	}
 
-	isOAuthLoading = false;
-	showPopupBlockedModal = true;
+	isOAuthLoading = true;
+	loginController?.cancel();
+	loginController = startPlexLoginPopup({
+		context: 'landing',
+		onSuccess: (user) => {
+			window.location.href = user.isAdmin ? '/admin' : '/dashboard';
+		},
+		onError: (message) => {
+			isOAuthLoading = false;
+			oauthError = message;
+		},
+		onPopupBlocked: (pinId, authUrl) => {
+			isOAuthLoading = false;
+			pendingPinId = pinId;
+			pendingAuthUrl = authUrl;
+			showPopupBlockedModal = true;
+		}
+	});
 }
 
 function handleContinueWithRedirect(): void {
 	if (!pendingPinId || !pendingAuthUrl || !browser) return;
 
-	sessionStorage.setItem(
-		PIN_STORAGE_KEY,
-		JSON.stringify({
-			pinId: pendingPinId,
-			createdAt: Date.now(),
-			context: 'landing'
-		})
-	);
-
 	showPopupBlockedModal = false;
-	window.location.href = pendingAuthUrl;
+	try {
+		commitRedirectFromPopupBlocked(pendingPinId, pendingAuthUrl, 'landing');
+	} catch (err) {
+		oauthError = err instanceof Error ? err.message : 'Failed to initiate redirect login';
+	}
 }
 
 function handleCancelRedirect(): void {
@@ -280,9 +203,14 @@ function handleCancelRedirect(): void {
 					type="button"
 					class="login-button secondary"
 					onclick={handlePlexLogin}
-					disabled={isOAuthLoading}
+					disabled={isOAuthLoading || isRedirecting}
 				>
-					{#if isOAuthLoading}
+					{#if isRedirecting}
+						<span class="button-loading">
+							<span class="spinner" aria-hidden="true"></span>
+							Redirecting to Plex...
+						</span>
+					{:else if isOAuthLoading}
 						<span class="button-loading">
 							<span class="spinner" aria-hidden="true"></span>
 							Connecting to Plex...
