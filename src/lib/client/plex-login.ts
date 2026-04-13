@@ -68,6 +68,7 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 	let pollIntervalId: ReturnType<typeof setInterval> | null = null;
 	let timeoutId: ReturnType<typeof setTimeout> | null = null;
 	let cancelled = false;
+	let finished = false;
 	let authWindow: Window | null = null;
 
 	const cleanup = () => {
@@ -75,6 +76,7 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 		if (timeoutId) clearTimeout(timeoutId);
 		pollIntervalId = null;
 		timeoutId = null;
+		finished = true;
 	};
 
 	const handlePopupBlocked = async () => {
@@ -109,11 +111,13 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 
 			pollIntervalId = setInterval(async () => {
 				try {
+					if (finished) return;
 					const pollResponse = await fetch('/auth/plex', {
 						method: 'POST',
 						headers: { 'Content-Type': 'application/json' },
 						body: JSON.stringify({ pinId })
 					});
+					if (finished) return;
 
 					if (!pollResponse.ok) {
 						if (pollResponse.status === 401) {
@@ -124,6 +128,7 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 					}
 
 					const result = (await pollResponse.json()) as { pending: true } | { authToken: string };
+					if (finished) return;
 
 					if ('authToken' in result && result.authToken) {
 						cleanup();
@@ -146,12 +151,14 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 						await opts.onSuccess(userData.user);
 					}
 				} catch (err) {
+					if (cancelled) return;
 					cleanup();
 					opts.onError(err instanceof Error ? err.message : 'Login failed');
 				}
 			}, POLL_INTERVAL_MS);
 
 			timeoutId = setTimeout(() => {
+				if (finished) return;
 				cleanup();
 				opts.onError('Authentication timed out. Please try again.');
 			}, LOGIN_TIMEOUT_MS);
@@ -163,6 +170,7 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 	return {
 		cancel() {
 			cancelled = true;
+			authWindow?.close();
 			cleanup();
 		}
 	};
