@@ -1,15 +1,14 @@
 <script lang="ts">
 import { onMount } from 'svelte';
 import { browser } from '$app/environment';
+import { LOGIN_TIMEOUT_MS, PIN_STORAGE_KEY, POLL_INTERVAL_MS } from '$lib/client/plex-login';
 
 type Status = 'loading' | 'success' | 'error' | 'cancelled';
 
 let status = $state<Status>('loading');
 let errorMessage = $state<string | null>(null);
 
-const PIN_STORAGE_KEY = 'obzorarr_plex_pin';
-const MAX_POLL_ATTEMPTS = 30;
-const POLL_INTERVAL_MS = 2000;
+const MAX_POLL_ATTEMPTS = Math.floor(LOGIN_TIMEOUT_MS / POLL_INTERVAL_MS);
 const PIN_MAX_AGE_MS = 15 * 60 * 1000;
 
 interface StoredPinData {

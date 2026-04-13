@@ -12,8 +12,8 @@
 
 export const PIN_STORAGE_KEY = 'obzorarr_plex_pin';
 
-const POLL_INTERVAL_MS = 2000;
-const LOGIN_TIMEOUT_MS = 5 * 60 * 1000;
+export const POLL_INTERVAL_MS = 2000;
+export const LOGIN_TIMEOUT_MS = 5 * 60 * 1000;
 
 export type PlexLoginContext = 'landing' | 'onboarding';
 
@@ -86,6 +86,7 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 			if (cancelled) return;
 			opts.onPopupBlocked(pinId, authUrl);
 		} catch {
+			if (cancelled) return;
 			opts.onError('Unable to prepare redirect. Please try again.');
 		}
 	};
@@ -151,7 +152,7 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 						await opts.onSuccess(userData.user);
 					}
 				} catch (err) {
-					if (cancelled) return;
+					if (cancelled || finished) return;
 					cleanup();
 					opts.onError(err instanceof Error ? err.message : 'Login failed');
 				}
@@ -163,6 +164,7 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 				opts.onError('Authentication timed out. Please try again.');
 			}, LOGIN_TIMEOUT_MS);
 		} catch (err) {
+			if (cancelled) return;
 			opts.onError(err instanceof Error ? err.message : 'Login failed');
 		}
 	})();
