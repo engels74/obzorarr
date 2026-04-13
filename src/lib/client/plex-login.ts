@@ -69,6 +69,7 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 	let timeoutId: ReturnType<typeof setTimeout> | null = null;
 	let cancelled = false;
 	let finished = false;
+	let succeeded = false;
 	let authWindow: Window | null = null;
 
 	const cleanup = () => {
@@ -76,6 +77,7 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 		if (timeoutId) clearTimeout(timeoutId);
 		pollIntervalId = null;
 		timeoutId = null;
+		authWindow?.close();
 		finished = true;
 	};
 
@@ -133,7 +135,6 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 
 					if ('authToken' in result && result.authToken) {
 						cleanup();
-						authWindow?.close();
 
 						const callbackResponse = await fetch('/auth/plex/callback', {
 							method: 'POST',
@@ -149,10 +150,11 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 						}
 
 						const userData = (await callbackResponse.json()) as { user: PlexLoginUser };
+						succeeded = true;
 						await opts.onSuccess(userData.user);
 					}
 				} catch (err) {
-					if (cancelled || finished) return;
+					if (cancelled || succeeded) return;
 					cleanup();
 					opts.onError(err instanceof Error ? err.message : 'Login failed');
 				}

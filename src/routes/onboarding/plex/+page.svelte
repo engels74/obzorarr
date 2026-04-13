@@ -197,6 +197,7 @@ async function handlePlexLogin() {
 	}
 
 	isOAuthLoading = true;
+	loginController?.cancel();
 	loginController = startPlexLoginPopup({
 		context: 'onboarding',
 		onSuccess: (user) => {
