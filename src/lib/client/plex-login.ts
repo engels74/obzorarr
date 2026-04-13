@@ -70,6 +70,7 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 	let cancelled = false;
 	let finished = false;
 	let succeeded = false;
+	let timedOut = false;
 	let authWindow: Window | null = null;
 
 	const cleanup = () => {
@@ -154,7 +155,7 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 						await opts.onSuccess(userData.user);
 					}
 				} catch (err) {
-					if (cancelled || succeeded) return;
+					if (cancelled || succeeded || timedOut) return;
 					cleanup();
 					opts.onError(err instanceof Error ? err.message : 'Login failed');
 				}
@@ -162,6 +163,7 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 
 			timeoutId = setTimeout(() => {
 				if (finished) return;
+				timedOut = true;
 				cleanup();
 				opts.onError('Authentication timed out. Please try again.');
 			}, LOGIN_TIMEOUT_MS);
@@ -196,6 +198,12 @@ export function commitRedirectFromPopupBlocked(
 	authUrl: string,
 	context: PlexLoginContext
 ): void {
-	storePinForRedirect(pinId, context);
+	try {
+		storePinForRedirect(pinId, context);
+	} catch {
+		throw new Error(
+			'Unable to save login state. Storage may be blocked. Please enable cookies/storage for this site.'
+		);
+	}
 	window.location.href = authUrl;
 }

@@ -91,6 +91,8 @@ onMount(async () => {
 
 async function pollForToken(pinId: number): Promise<string | null> {
 	for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
+		if (attempt > 0) await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+
 		const response = await fetch('/auth/plex', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
@@ -109,8 +111,6 @@ async function pollForToken(pinId: number): Promise<string | null> {
 		if ('authToken' in result && result.authToken) {
 			return result.authToken;
 		}
-
-		await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
 	}
 
 	return null;

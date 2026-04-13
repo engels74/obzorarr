@@ -185,6 +185,8 @@ async function handlePlexLogin() {
 	const useRedirect = shouldUseRedirectAuth(new URL(window.location.href).searchParams);
 
 	if (useRedirect) {
+		loginController?.cancel();
+		loginController = null;
 		isRedirecting = true;
 		await startPlexLoginRedirect({
 			context: 'onboarding',
