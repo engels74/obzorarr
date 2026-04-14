@@ -208,6 +208,7 @@ $effect(() => {
 						return async ({ update }) => {
 							await update();
 							isUpdating = false;
+							optimisticMode = null;
 						};
 					}}
 				>

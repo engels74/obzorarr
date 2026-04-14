@@ -36,13 +36,19 @@ $effect.pre(() => {
 // Date range filter state
 let fromDate = $state('');
 let toDate = $state('');
+
+function toLocalDateTimeInput(ts: number): string {
+	const d = new Date(ts);
+	const pad = (n: number) => String(n).padStart(2, '0');
+	return (
+		`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+		`T${pad(d.getHours())}:${pad(d.getMinutes())}`
+	);
+}
+
 $effect.pre(() => {
-	fromDate = data.filters?.fromTimestamp
-		? new Date(data.filters.fromTimestamp).toISOString().slice(0, 16)
-		: '';
-	toDate = data.filters?.toTimestamp
-		? new Date(data.filters.toTimestamp).toISOString().slice(0, 16)
-		: '';
+	fromDate = data.filters?.fromTimestamp ? toLocalDateTimeInput(data.filters.fromTimestamp) : '';
+	toDate = data.filters?.toTimestamp ? toLocalDateTimeInput(data.filters.toTimestamp) : '';
 });
 let autoScroll = $state(true);
 
@@ -60,6 +66,8 @@ const filteredStreamedLogs = $derived(
 		if (selectedLevels.length > 0 && !selectedLevels.includes(log.level)) return false;
 		if (selectedSource && log.source !== selectedSource) return false;
 		if (searchText && !log.message.toLowerCase().includes(searchText.toLowerCase())) return false;
+		if (data.filters?.fromTimestamp && log.timestamp < data.filters.fromTimestamp) return false;
+		if (data.filters?.toTimestamp && log.timestamp > data.filters.toTimestamp) return false;
 		return true;
 	})
 );
@@ -403,7 +411,7 @@ $effect(() => {
 							a.href = url;
 							a.download = (result.data.exportFilename as string) || 'logs-export.json';
 							a.click();
-							URL.revokeObjectURL(url);
+							setTimeout(() => URL.revokeObjectURL(url), 100);
 						}
 					};
 				}}
@@ -441,7 +449,7 @@ $effect(() => {
 		<div class="logs-header">
 			<h2>Log Entries</h2>
 			<span class="logs-count">
-				Showing {allLogs.length} of {(data.totalCount + streamedLogs.length).toLocaleString()}
+				Showing {allLogs.length} of {(data.totalCount + filteredStreamedLogs.length).toLocaleString()}
 			</span>
 		</div>
 

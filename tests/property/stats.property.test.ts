@@ -550,10 +550,11 @@ describe('Property 14: Binge Session Detection', () => {
 
 				if (!result) return false;
 
+				const duration = record.duration ?? 0;
 				return (
 					result.plays === 1 &&
 					result.startTime === record.viewedAt &&
-					result.endTime === record.viewedAt
+					result.endTime === record.viewedAt + duration
 				);
 			}),
 			{ numRuns: 100 }
@@ -628,7 +629,7 @@ describe('Property 14: Binge Session Detection', () => {
 				ratingKey: 'rating-2',
 				title: 'Title 2',
 				type: 'movie',
-				viewedAt: 1704067200 + 3600, // 1 hour gap (exceeds 30 min threshold)
+				viewedAt: 1704067200 + 3600 + 3600, // 1 hour gap after end of previous play (exceeds 30 min threshold)
 				accountId: 1,
 				librarySectionId: 1,
 				thumb: null,
