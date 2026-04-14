@@ -33,6 +33,16 @@ let {
 let copied = $state(false);
 let copyTimeout: ReturnType<typeof setTimeout> | undefined;
 let isUpdating = $state(false);
+let optimisticMode = $state<ShareModeType | null>(null);
+
+// Reset optimistic state when server data updates
+$effect.pre(() => {
+	if (shareSettings?.mode) {
+		optimisticMode = null;
+	}
+});
+
+const displayMode = $derived(optimisticMode ?? shareSettings?.mode);
 
 // Computed URL based on mode
 const shareUrl = $derived.by(() => {
@@ -196,27 +206,34 @@ $effect(() => {
 					use:enhance={() => {
 						isUpdating = true;
 						return async ({ update }) => {
-							await update();
-							isUpdating = false;
+							try {
+								await update();
+							} finally {
+								isUpdating = false;
+								optimisticMode = null;
+							}
 						};
 					}}
 				>
 					<div class="mode-options">
 						{#each availableModes as mode}
-							<label class="mode-option" class:active={shareSettings?.mode === mode}>
+							<label class="mode-option" class:active={displayMode === mode}>
 								<input
 									type="radio"
 									name="mode"
 									value={mode}
-									checked={shareSettings?.mode === mode}
+									checked={displayMode === mode}
 									disabled={isUpdating}
-									onchange={(e) => e.currentTarget.form?.requestSubmit()}
+									onchange={(e) => {
+										optimisticMode = mode as ShareModeType;
+										e.currentTarget.form?.requestSubmit();
+									}}
 								/>
 								<div class="mode-content">
 									<span class="mode-label">{modeLabels[mode as ShareModeType].label}</span>
 									<span class="mode-desc">{modeLabels[mode as ShareModeType].description}</span>
 								</div>
-								{#if shareSettings?.mode === mode}
+								{#if displayMode === mode}
 									<svg
 										xmlns="http://www.w3.org/2000/svg"
 										width="16"
@@ -238,15 +255,18 @@ $effect(() => {
 				</form>
 
 				<!-- Regenerate Token (admin only, private-link mode) -->
-				{#if isAdmin && shareSettings?.mode === 'private-link'}
+				{#if isAdmin && displayMode === 'private-link'}
 					<form
 						method="POST"
 						action="?/regenerateToken"
 						use:enhance={() => {
 							isUpdating = true;
 							return async ({ update }) => {
-								await update();
-								isUpdating = false;
+								try {
+									await update();
+								} finally {
+									isUpdating = false;
+								}
 							};
 						}}
 						class="regenerate-form"

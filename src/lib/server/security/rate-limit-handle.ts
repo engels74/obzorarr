@@ -1,9 +1,13 @@
-import type { Handle } from '@sveltejs/kit';
+import { error, type Handle } from '@sveltejs/kit';
 import { checkRateLimit, RATE_LIMIT_CONFIGS, type RateLimitConfig } from '$lib/server/ratelimit';
 
 function getConfigForPath(path: string): RateLimitConfig {
 	if (path === '/auth/plex') {
 		return RATE_LIMIT_CONFIGS.authPoll;
+	}
+
+	if (path === '/auth/logout' || path === '/auth/plex/callback') {
+		return RATE_LIMIT_CONFIGS.default;
 	}
 
 	if (path.startsWith('/auth/')) {
@@ -29,15 +33,25 @@ export const rateLimitHandle: Handle = async ({ event, resolve }) => {
 	const result = checkRateLimit(ip, config);
 
 	if (!result.allowed) {
-		return new Response(JSON.stringify({ error: 'Too many requests' }), {
-			status: 429,
-			headers: {
-				'Content-Type': 'application/json',
-				'Retry-After': String(result.retryAfter ?? 60),
-				'X-RateLimit-Remaining': '0',
-				'X-RateLimit-Reset': String(result.resetTime)
-			}
-		});
+		const isApiRequest =
+			path.startsWith('/api/') ||
+			path.startsWith('/auth/') ||
+			event.request.headers.get('accept')?.includes('application/json') ||
+			event.request.headers.get('content-type')?.includes('application/json');
+
+		if (isApiRequest) {
+			return new Response(JSON.stringify({ error: 'Too many requests' }), {
+				status: 429,
+				headers: {
+					'Content-Type': 'application/json',
+					'Retry-After': String(result.retryAfter ?? 60),
+					'X-RateLimit-Remaining': '0',
+					'X-RateLimit-Reset': String(result.resetTime)
+				}
+			});
+		}
+
+		error(429, 'Too many requests');
 	}
 
 	const response = await resolve(event);

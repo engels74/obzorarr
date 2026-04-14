@@ -52,8 +52,12 @@ function formatWatchTimeDetailed(minutes: number): string {
 	if (minutes < 60) {
 		return `${Math.round(minutes)} minutes`;
 	}
-	const hours = Math.floor(minutes / 60);
-	const mins = Math.round(minutes % 60);
+	let hours = Math.floor(minutes / 60);
+	let mins = Math.round(minutes % 60);
+	if (mins >= 60) {
+		hours++;
+		mins -= 60;
+	}
 	if (hours < 24) {
 		if (mins === 0) return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
 		return `${hours}h ${mins}m`;

@@ -135,7 +135,7 @@ let { data }: Props = $props();
 				<ArrowRight class="config-arrow" />
 			</a>
 
-			<a href="/admin/settings" class="config-card">
+			<a href="/admin/settings?tab=appearance" class="config-card">
 				<div class="config-icon-wrap">
 					<Palette class="config-icon" />
 				</div>

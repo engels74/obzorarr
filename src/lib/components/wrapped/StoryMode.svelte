@@ -164,7 +164,7 @@ function animateTransition(direction: 'forward' | 'backward'): void {
 	}
 
 	transitionTimeout = setTimeout(() => {
-		if (mounted && isTransitioning) {
+		if (isTransitioning) {
 			finishTransition();
 		}
 	}, ANIMATION_DURATION + 100);
@@ -193,10 +193,18 @@ function animateTransition(direction: 'forward' | 'backward'): void {
 function finishTransition(): void {
 	if (!isTransitioning) return;
 
+	if (transitionTimeout) {
+		clearTimeout(transitionTimeout);
+		transitionTimeout = null;
+	}
+	if (activeEnterAnim) {
+		activeEnterAnim.stop();
+		activeEnterAnim = null;
+	}
+
 	showPreviousSlide = false;
 	previousSlideIndex = -1;
 	isTransitioning = false;
-	activeEnterAnim = null;
 	navigation.endAnimation();
 }
 

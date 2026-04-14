@@ -22,14 +22,29 @@ let {
 
 const hasBinge = $derived(longestBinge !== null);
 
-// Format duration
-const duration = $derived.by(() => {
-	if (!longestBinge) return '';
-	const hours = Math.floor(longestBinge.totalMinutes / 60);
-	const minutes = Math.round(longestBinge.totalMinutes % 60);
-	if (hours === 0) return `${minutes} minutes`;
+function formatDuration(totalMinutes: number): string {
+	let hours = Math.floor(totalMinutes / 60);
+	let minutes = Math.round(totalMinutes % 60);
+	if (minutes >= 60) {
+		hours++;
+		minutes -= 60;
+	}
+	if (hours === 0) return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`;
 	if (minutes === 0) return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
 	return `${hours}h ${minutes}m`;
+}
+
+// Wall-clock session duration (endTime - startTime)
+const sessionDuration = $derived.by(() => {
+	if (!longestBinge) return '';
+	const sessionMinutes = (longestBinge.endTime - longestBinge.startTime) / 60;
+	return formatDuration(sessionMinutes);
+});
+
+// Total content runtime (sum of episode durations)
+const contentDuration = $derived.by(() => {
+	if (!longestBinge) return '';
+	return formatDuration(longestBinge.totalMinutes);
 });
 
 // Format date
@@ -119,7 +134,9 @@ $effect(() => {
 
 		{#if hasBinge && longestBinge}
 			<div bind:this={statEl} class="stat-container">
-				<span class="duration">{duration}</span>
+				<span class="duration">{sessionDuration}</span>
+				<span class="duration-label">session</span>
+				<span class="content-duration">{contentDuration} of content</span>
 				<span class="plays"
 					>{longestBinge.plays} {longestBinge.plays === 1 ? 'episode' : 'episodes'}</span
 				>
@@ -218,6 +235,20 @@ $effect(() => {
 			filter: drop-shadow(0 0 20px hsl(var(--primary) / 0.4));
 		}
 
+		.duration-label {
+			font-size: 1rem;
+			color: hsl(var(--muted-foreground));
+			text-transform: uppercase;
+			letter-spacing: 0.15em;
+			margin-top: -0.25rem;
+		}
+
+		.content-duration {
+			font-size: 1rem;
+			color: hsl(var(--muted-foreground));
+			margin-top: 0.5rem;
+		}
+
 		.plays {
 			font-size: 1.25rem;
 			color: hsl(var(--foreground));
@@ -287,6 +318,14 @@ $effect(() => {
 				max-width: 320px;
 			}
 
+			.duration-label {
+				font-size: 0.875rem;
+			}
+
+			.content-duration {
+				font-size: 0.875rem;
+			}
+
 			.plays {
 				font-size: 1.0625rem;
 			}
@@ -312,6 +351,14 @@ $effect(() => {
 
 			.duration {
 				font-size: clamp(2.75rem, 9vw, 4.5rem);
+			}
+
+			.duration-label {
+				font-size: 1.125rem;
+			}
+
+			.content-duration {
+				font-size: 1.125rem;
 			}
 
 			.plays {
@@ -342,6 +389,14 @@ $effect(() => {
 			.duration {
 				font-size: clamp(3rem, 10vw, 5rem);
 				filter: drop-shadow(0 0 30px hsl(var(--primary) / 0.5));
+			}
+
+			.duration-label {
+				font-size: 1.25rem;
+			}
+
+			.content-duration {
+				font-size: 1.25rem;
 			}
 
 			.plays {

@@ -27,7 +27,7 @@ export function detectAllBingeSessions(records: PlayHistoryRecord[]): BingeSessi
 		if (!currentSession) {
 			currentSession = {
 				startTime: record.viewedAt,
-				endTime: record.viewedAt,
+				endTime: record.viewedAt + duration,
 				plays: 1,
 				totalSeconds: duration
 			};
@@ -35,7 +35,7 @@ export function detectAllBingeSessions(records: PlayHistoryRecord[]): BingeSessi
 			const gap = record.viewedAt - currentSession.endTime;
 
 			if (gap <= BINGE_GAP_THRESHOLD_SECONDS) {
-				currentSession.endTime = record.viewedAt;
+				currentSession.endTime = record.viewedAt + duration;
 				currentSession.plays += 1;
 				currentSession.totalSeconds += duration;
 			} else {
@@ -48,7 +48,7 @@ export function detectAllBingeSessions(records: PlayHistoryRecord[]): BingeSessi
 
 				currentSession = {
 					startTime: record.viewedAt,
-					endTime: record.viewedAt,
+					endTime: record.viewedAt + duration,
 					plays: 1,
 					totalSeconds: duration
 				};

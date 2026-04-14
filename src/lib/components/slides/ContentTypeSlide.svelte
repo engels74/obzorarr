@@ -53,12 +53,17 @@ function formatCount(count: number): string {
 }
 
 function formatMinutes(minutes: number): string {
-	const hours = Math.floor(minutes / 60);
+	let hours = Math.floor(minutes / 60);
+	let mins = Math.round(minutes % 60);
+	if (mins >= 60) {
+		hours++;
+		mins -= 60;
+	}
 	if (hours >= 24) {
 		const days = Math.floor(hours / 24);
 		return `${days}d ${hours % 24}h`;
 	}
-	return `${hours}h ${Math.round(minutes % 60)}m`;
+	return `${hours}h ${mins}m`;
 }
 
 let container: HTMLElement | undefined = $state();

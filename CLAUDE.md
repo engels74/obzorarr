@@ -70,7 +70,7 @@ Requests flow through sequential hooks in `src/hooks.server.ts`:
 
 - **`src/lib/server/`** - Backend services (auth, sync, stats, plex client, etc.)
 - **`src/lib/components/`** - Svelte components
-  - `slides/` - Animated presentation slides (19 types)
+  - `slides/` - Animated presentation slides (16 built-in types + custom slides)
   - `ui/` - shadcn/bits-ui primitives
 - **`src/lib/stores/`** - Svelte runes stores (`*.svelte.ts`)
 - **`src/routes/`** - SvelteKit routes with SSR data loading

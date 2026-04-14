@@ -60,6 +60,7 @@ export interface CustomSlide {
 	id: number;
 	title: string;
 	content: string;
+	renderedHtml?: string;
 	enabled: boolean;
 	sortOrder: number;
 	year: number | null;

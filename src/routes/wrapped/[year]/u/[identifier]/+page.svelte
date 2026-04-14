@@ -82,8 +82,13 @@ function handleComplete(): void {
  * Handle close/exit action
  */
 function handleClose(): void {
-	// Navigate back to home or previous page
-	window.history.back();
+	const isSameOrigin =
+		document.referrer !== '' && document.referrer.startsWith(window.location.origin);
+	if (isSameOrigin && window.history.length > 1) {
+		window.history.back();
+	} else {
+		goto('/');
+	}
 }
 
 /**
