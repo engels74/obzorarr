@@ -1,4 +1,5 @@
 <script lang="ts">
+import 'virtual:uno.css';
 import '../app.css';
 import { Toaster } from 'svelte-sonner';
 import { page } from '$app/stores';

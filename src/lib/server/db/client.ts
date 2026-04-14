@@ -1,4 +1,4 @@
-import { Database } from 'bun:sqlite';
+import type { Database as BunDatabase } from 'bun:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
@@ -23,7 +23,10 @@ if (databasePath !== ':memory:') {
 	mkdirSync(dirname(databasePath), { recursive: true });
 }
 
-const sqlite = new Database(databasePath, {
+// Keep adapter-bun/Rolldown from resolving Bun's builtin at build time.
+const sqliteModuleName = ['bun', 'sqlite'].join(':');
+const { Database } = (await import(sqliteModuleName)) as typeof import('bun:sqlite');
+const sqlite: BunDatabase = new Database(databasePath, {
 	strict: true,
 	create: true
 });

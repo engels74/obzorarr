@@ -160,7 +160,7 @@ describe('startPlexLoginRedirect', () => {
 		) as unknown as typeof fetch;
 
 		const originalHref = location.href;
-		let receivedError: string | null = null;
+		let receivedError = '';
 
 		await startPlexLoginRedirect({
 			context: 'landing',
