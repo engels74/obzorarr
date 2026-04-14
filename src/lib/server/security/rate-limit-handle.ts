@@ -34,7 +34,10 @@ export const rateLimitHandle: Handle = async ({ event, resolve }) => {
 
 	if (!result.allowed) {
 		const isApiRequest =
-			path.startsWith('/api/') || event.request.headers.get('accept')?.includes('application/json');
+			path.startsWith('/api/') ||
+			path.startsWith('/auth/') ||
+			event.request.headers.get('accept')?.includes('application/json') ||
+			event.request.headers.get('content-type')?.includes('application/json');
 
 		if (isApiRequest) {
 			return new Response(JSON.stringify({ error: 'Too many requests' }), {

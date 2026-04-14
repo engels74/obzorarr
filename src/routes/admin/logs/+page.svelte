@@ -131,10 +131,16 @@ function applyFilters(overrides?: { levels?: LogLevelType[]; search?: string; so
 		params.set('source', source);
 	}
 	if (fromDate) {
-		params.set('from', String(new Date(fromDate).getTime()));
+		const fromTs = new Date(fromDate).getTime();
+		if (Number.isFinite(fromTs)) {
+			params.set('from', String(fromTs));
+		}
 	}
 	if (toDate) {
-		params.set('to', String(new Date(toDate).getTime()));
+		const toTs = new Date(toDate).getTime();
+		if (Number.isFinite(toTs)) {
+			params.set('to', String(toTs));
+		}
 	}
 
 	const queryString = params.toString();
