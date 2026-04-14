@@ -29,7 +29,7 @@ function formatDuration(totalMinutes: number): string {
 		hours++;
 		minutes -= 60;
 	}
-	if (hours === 0) return `${minutes} minutes`;
+	if (hours === 0) return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`;
 	if (minutes === 0) return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
 	return `${hours}h ${minutes}m`;
 }

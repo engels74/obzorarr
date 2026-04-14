@@ -55,6 +55,7 @@ let autoScroll = $state(true);
 // SSE connection state
 let eventSource: EventSource | null = $state(null);
 let streamedLogs = $state<LogEntry[]>([]);
+let lastSeenStreamId = $state(0);
 let isConnected = $state(false);
 
 // Debounce timer for search
@@ -188,8 +189,7 @@ function connectSSE() {
 		eventSource.close();
 	}
 
-	// Get the latest log ID as cursor
-	const latestId = allLogs.length > 0 ? Math.max(...allLogs.map((l) => l.id)) : 0;
+	const latestId = lastSeenStreamId > 0 ? lastSeenStreamId : (data.logs[0]?.id ?? 0);
 
 	eventSource = new EventSource(`/admin/logs/stream?cursor=${latestId}`);
 
@@ -204,6 +204,9 @@ function connectSSE() {
 			if (data.type === 'log') {
 				// Add new log to streamed logs
 				streamedLogs = [data.log, ...streamedLogs];
+				if (data.log.id > lastSeenStreamId) {
+					lastSeenStreamId = data.log.id;
+				}
 
 				// Scroll to top if auto-scroll is enabled
 				if (autoScroll) {
@@ -244,6 +247,7 @@ function toggleAutoScroll() {
 
 	if (autoScroll) {
 		streamedLogs = []; // Clear old streamed logs
+		lastSeenStreamId = 0;
 		connectSSE();
 	} else {
 		disconnectSSE();
