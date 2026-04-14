@@ -2,7 +2,7 @@
 import ExternalLink from '@lucide/svelte/icons/external-link';
 import type { ActionResult } from '@sveltejs/kit';
 import { animate, stagger } from 'motion';
-import { deserialize, enhance } from '$app/forms';
+import { deserialize } from '$app/forms';
 import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
 import type { ActionData, PageData } from './$types';
 
@@ -251,7 +251,6 @@ function useDetectedOrigin() {
 						placeholder="https://your-domain.com"
 						class="origin-input"
 						class:error={form?.error}
-						form="csrf-form"
 					/>
 					{#if csrfOriginInput !== data.detection.detectedOrigin}
 						<button type="button" class="use-detected-btn" onclick={useDetectedOrigin}>
@@ -384,54 +383,31 @@ function useDetectedOrigin() {
 	</div>
 
 	{#snippet footer()}
-		<div class="button-group">
-			<form
-				method="POST"
-				action="?/skipCsrf"
-				use:enhance={() => {
-					isSubmitting = true;
-					return async ({ update }) => {
-						await update();
-						isSubmitting = false;
-					};
-				}}
+		<form method="POST" action="?/saveOrigin" class="button-group" onsubmit={() => (isSubmitting = true)}>
+			<input type="hidden" name="csrfOrigin" value={csrfOriginInput ?? ''} />
+			<input type="hidden" name="validated" value={testResult === 'success' ? 'true' : 'false'} />
+			<button
+				type="submit"
+				class="skip-btn"
+				disabled={isSubmitting}
+				formaction="?/skipCsrf"
+				formnovalidate
 			>
-				<button type="submit" class="skip-btn" disabled={isSubmitting}>
-					{data.csrfConfig.isLocked ? 'Continue' : 'Skip'}
-				</button>
-			</form>
-
+				{data.csrfConfig.isLocked ? 'Continue' : 'Skip'}
+			</button>
 			{#if !data.csrfConfig.isLocked}
-				<form
-					id="csrf-form"
-					method="POST"
-					action="?/saveOrigin"
-					use:enhance={() => {
-						isSubmitting = true;
-						return async ({ update }) => {
-							await update();
-							isSubmitting = false;
-						};
-					}}
+				<button
+					type="submit"
+					class="save-btn"
+					disabled={isSubmitting || !csrfOriginInput || testResult !== 'success'}
 				>
-					<input
-						type="hidden"
-						name="validated"
-						value={testResult === 'success' ? 'true' : 'false'}
-					/>
-					<button
-						type="submit"
-						class="save-btn"
-						disabled={isSubmitting || !csrfOriginInput || testResult !== 'success'}
-					>
-						{#if isSubmitting}
-							<span class="spinner"></span>
-						{/if}
-						Save & Continue
-					</button>
-				</form>
+					{#if isSubmitting}
+						<span class="spinner"></span>
+					{/if}
+					Save & Continue
+				</button>
 			{/if}
-		</div>
+		</form>
 	{/snippet}
 </OnboardingCard>
 
