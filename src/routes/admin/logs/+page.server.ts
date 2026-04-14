@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
 	deleteAllLogs,
 	getDistinctSources,
+	getLatestLogId,
 	getLogCountsByLevel,
 	getLogMaxCount,
 	getLogRetentionDays,
@@ -73,21 +74,31 @@ export const load: PageServerLoad = async ({ url }) => {
 	const limit = LimitSchema.parse(limitParam);
 	const cursor = CursorSchema.parse(cursorParam);
 
-	const [logsResult, sources, levelCounts, retentionDays, maxCount, debugEnabled, retentionStatus] =
-		await Promise.all([
-			queryLogs({ levels, search, source, fromTimestamp, toTimestamp, cursor, limit }),
-			getDistinctSources(),
-			getLogCountsByLevel(),
-			getLogRetentionDays(),
-			getLogMaxCount(),
-			isDebugEnabled(),
-			getRetentionSchedulerStatus()
-		]);
+	const [
+		logsResult,
+		sources,
+		levelCounts,
+		retentionDays,
+		maxCount,
+		debugEnabled,
+		retentionStatus,
+		latestLogId
+	] = await Promise.all([
+		queryLogs({ levels, search, source, fromTimestamp, toTimestamp, cursor, limit }),
+		getDistinctSources(),
+		getLogCountsByLevel(),
+		getLogRetentionDays(),
+		getLogMaxCount(),
+		isDebugEnabled(),
+		getRetentionSchedulerStatus(),
+		getLatestLogId()
+	]);
 
 	return {
 		logs: logsResult.logs,
 		hasMore: logsResult.hasMore,
 		totalCount: logsResult.totalCount,
+		latestLogId,
 		sources,
 		levelCounts,
 		settings: {

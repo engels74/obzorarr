@@ -76,7 +76,9 @@ function handleComplete(): void {
  * Handle close/exit action
  */
 function handleClose(): void {
-	if (window.history.length > 1) {
+	const isSameOrigin =
+		document.referrer !== '' && document.referrer.startsWith(window.location.origin);
+	if (isSameOrigin && window.history.length > 1) {
 		window.history.back();
 	} else {
 		goto('/');

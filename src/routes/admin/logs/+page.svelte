@@ -189,7 +189,7 @@ function connectSSE() {
 		eventSource.close();
 	}
 
-	const latestId = lastSeenStreamId > 0 ? lastSeenStreamId : (data.logs[0]?.id ?? 0);
+	const latestId = lastSeenStreamId > 0 ? lastSeenStreamId : (data.latestLogId ?? 0);
 
 	eventSource = new EventSource(`/admin/logs/stream?cursor=${latestId}`);
 
