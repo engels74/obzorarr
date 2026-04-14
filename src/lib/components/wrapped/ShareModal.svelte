@@ -206,9 +206,12 @@ $effect(() => {
 					use:enhance={() => {
 						isUpdating = true;
 						return async ({ update }) => {
-							await update();
-							isUpdating = false;
-							optimisticMode = null;
+							try {
+								await update();
+							} finally {
+								isUpdating = false;
+								optimisticMode = null;
+							}
 						};
 					}}
 				>
@@ -259,8 +262,11 @@ $effect(() => {
 						use:enhance={() => {
 							isUpdating = true;
 							return async ({ update }) => {
-								await update();
-								isUpdating = false;
+								try {
+									await update();
+								} finally {
+									isUpdating = false;
+								}
 							};
 						}}
 						class="regenerate-form"
