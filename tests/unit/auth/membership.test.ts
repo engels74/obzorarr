@@ -1,32 +1,4 @@
-import { afterEach, describe, expect, it, mock, spyOn } from 'bun:test';
-
-// Stub the settings service so the "no match" precondition is not sensitive to
-// whatever .env.test / DB defaults resolve to at runtime. We pin the configured
-// Plex server URL to a value that clearly does not match the mocked resource's
-// machine id ('unrelated-machine-id') or address, forcing findConfiguredServer
-// to return undefined.
-mock.module('$lib/server/admin/settings.service', () => ({
-	getApiConfigWithSources: () =>
-		Promise.resolve({
-			plex: {
-				serverUrl: {
-					value: 'https://plex.example.com:32400',
-					source: 'db',
-					isLocked: false
-				},
-				token: { value: '', source: 'default', isLocked: false }
-			},
-			openai: {
-				apiKey: { value: '', source: 'default', isLocked: false },
-				baseUrl: {
-					value: 'https://api.openai.com/v1',
-					source: 'default',
-					isLocked: false
-				},
-				model: { value: 'gpt-5-mini', source: 'default', isLocked: false }
-			}
-		})
-}));
+import { afterEach, describe, expect, it, spyOn } from 'bun:test';
 
 import { verifyServerMembership } from '$lib/server/auth/membership';
 
