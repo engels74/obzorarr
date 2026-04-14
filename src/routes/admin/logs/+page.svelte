@@ -115,6 +115,12 @@ function getLevelClass(level: LogLevelType): string {
 	}
 }
 
+// Preserve current filter query string on the export form so the server action sees them.
+const exportAction = $derived.by(() => {
+	const search = $page.url.searchParams.toString();
+	return search ? `?${search}&/exportLogs` : '?/exportLogs';
+});
+
 // Apply filters to URL (accepts overrides for derived values)
 function applyFilters(overrides?: { levels?: LogLevelType[]; search?: string; source?: string }) {
 	const params = new URLSearchParams();
@@ -411,7 +417,7 @@ $effect(() => {
 
 			<form
 				method="POST"
-				action="?/exportLogs"
+				action={exportAction}
 				use:enhance={() => {
 					return async ({ result }) => {
 						if (result.type === 'success' && result.data?.exportData) {
