@@ -1,19 +1,6 @@
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 
-const mockVerifyServerMembership = mock(() =>
-	Promise.resolve({ isMember: true, isOwner: false, serverName: 'TestServer' })
-);
-
-mock.module('$lib/server/auth/membership', () => ({
-	verifyServerMembership: mockVerifyServerMembership
-}));
-
-const mockRequiresOnboarding = mock(() => Promise.resolve(false));
-
-mock.module('$lib/server/onboarding', () => ({
-	requiresOnboarding: mockRequiresOnboarding
-}));
-
+import * as membership from '$lib/server/auth/membership';
 import {
 	clearRevalidationEntry,
 	needsRevalidation,
@@ -22,17 +9,28 @@ import {
 	shouldRevalidateSession
 } from '$lib/server/auth/revalidation';
 import { PlexAuthApiError } from '$lib/server/auth/types';
+import * as onboarding from '$lib/server/onboarding';
 
 const SESSION_ID = 'test-session';
 const PLEX_TOKEN = 'test-token';
 
 describe('revalidation module', () => {
+	let mockVerifyServerMembership: ReturnType<typeof spyOn>;
+	let mockRequiresOnboarding: ReturnType<typeof spyOn>;
+
 	beforeEach(() => {
-		mockVerifyServerMembership.mockClear();
-		mockVerifyServerMembership.mockImplementation(() =>
-			Promise.resolve({ isMember: true, isOwner: false, serverName: 'TestServer' })
+		mockVerifyServerMembership = spyOn(membership, 'verifyServerMembership').mockImplementation(
+			() => Promise.resolve({ isMember: true, isOwner: false, serverName: 'TestServer' })
+		);
+		mockRequiresOnboarding = spyOn(onboarding, 'requiresOnboarding').mockImplementation(() =>
+			Promise.resolve(false)
 		);
 		clearRevalidationEntry(SESSION_ID);
+	});
+
+	afterEach(() => {
+		mockVerifyServerMembership.mockRestore();
+		mockRequiresOnboarding.mockRestore();
 	});
 
 	describe('needsRevalidation', () => {
