@@ -8,26 +8,11 @@
  * and the plex-oauth module to test the pure logic (caching, user lookup, etc.)
  */
 
-import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 
 // =============================================================================
 // Mock Setup
 // =============================================================================
-
-// Mock the plex-oauth module's getPlexUserInfo function
-const mockGetPlexUserInfo = mock(() =>
-	Promise.resolve({
-		id: 12345,
-		uuid: 'owner-uuid',
-		username: 'ServerOwner',
-		email: 'owner@example.com',
-		thumb: 'https://plex.tv/users/owner/avatar'
-	})
-);
-
-mock.module('$lib/server/auth/plex-oauth', () => ({
-	getPlexUserInfo: mockGetPlexUserInfo
-}));
 
 // Note: We don't mock the logger to avoid contaminating the module cache
 // for other test files that test the actual logger implementation
@@ -82,7 +67,6 @@ function createMockFriendsResponse(
 	};
 }
 
-// Import after mocks are set up
 import {
 	clearUsersCache,
 	getRandomNonOwnerUser,
@@ -92,6 +76,7 @@ import {
 	getUserByUsername,
 	resolveUserIdentifier
 } from '$lib/server/auth/dev-users';
+import * as plexOAuth from '$lib/server/auth/plex-oauth';
 
 // =============================================================================
 // Test Suites
@@ -99,12 +84,20 @@ import {
 
 describe('dev-users module', () => {
 	let fetchMock: ReturnType<typeof spyOn>;
+	let mockGetPlexUserInfo: ReturnType<typeof spyOn>;
 
 	beforeEach(() => {
 		// Clear cache before each test
 		clearUsersCache();
-		// Reset mock calls
-		mockGetPlexUserInfo.mockClear();
+		mockGetPlexUserInfo = spyOn(plexOAuth, 'getPlexUserInfo').mockImplementation(() =>
+			Promise.resolve({
+				id: 12345,
+				uuid: 'owner-uuid',
+				username: 'ServerOwner',
+				email: 'owner@example.com',
+				thumb: 'https://plex.tv/users/owner/avatar'
+			})
+		);
 	});
 
 	afterEach(() => {
@@ -112,6 +105,7 @@ describe('dev-users module', () => {
 		if (fetchMock) {
 			fetchMock.mockRestore();
 		}
+		mockGetPlexUserInfo.mockRestore();
 	});
 
 	// Shared mock data
