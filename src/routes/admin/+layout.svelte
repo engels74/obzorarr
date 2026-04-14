@@ -1,6 +1,7 @@
 <script lang="ts">
 import ChevronRight from '@lucide/svelte/icons/chevron-right';
 import FileText from '@lucide/svelte/icons/file-text';
+import GalleryHorizontal from '@lucide/svelte/icons/gallery-horizontal';
 import Gift from '@lucide/svelte/icons/gift';
 import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
 import LogOut from '@lucide/svelte/icons/log-out';
@@ -38,6 +39,7 @@ let { data, children }: Props = $props();
 const navItems: Array<{ href: string; label: string; icon: Component }> = [
 	{ href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
 	{ href: '/admin/wrapped', label: 'Wrapped', icon: Gift },
+	{ href: '/admin/slides', label: 'Slides', icon: GalleryHorizontal },
 	{ href: '/admin/sync', label: 'Sync', icon: RefreshCw },
 	{ href: '/admin/users', label: 'Users', icon: Users },
 	{ href: '/admin/logs', label: 'Logs', icon: FileText },

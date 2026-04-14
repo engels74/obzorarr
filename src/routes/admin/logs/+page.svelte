@@ -32,6 +32,18 @@ let searchText = $state('');
 $effect.pre(() => {
 	searchText = data.filters?.search ?? '';
 });
+
+// Date range filter state
+let fromDate = $state('');
+let toDate = $state('');
+$effect.pre(() => {
+	fromDate = data.filters?.fromTimestamp
+		? new Date(data.filters.fromTimestamp).toISOString().slice(0, 16)
+		: '';
+	toDate = data.filters?.toTimestamp
+		? new Date(data.filters.toTimestamp).toISOString().slice(0, 16)
+		: '';
+});
 let autoScroll = $state(true);
 
 // SSE connection state
@@ -42,8 +54,18 @@ let isConnected = $state(false);
 // Debounce timer for search
 let searchDebounce: ReturnType<typeof setTimeout> | null = null;
 
-// Combined logs (initial + streamed)
-const allLogs = $derived([...streamedLogs, ...data.logs]);
+// Filter streamed logs to match active filters
+const filteredStreamedLogs = $derived(
+	streamedLogs.filter((log) => {
+		if (selectedLevels.length > 0 && !selectedLevels.includes(log.level)) return false;
+		if (selectedSource && log.source !== selectedSource) return false;
+		if (searchText && !log.message.toLowerCase().includes(searchText.toLowerCase())) return false;
+		return true;
+	})
+);
+
+// Combined logs (filtered streamed + server-filtered)
+const allLogs = $derived([...filteredStreamedLogs, ...data.logs]);
 
 // Available log levels
 const logLevels: LogLevelType[] = ['DEBUG', 'INFO', 'WARN', 'ERROR'];
@@ -100,6 +122,12 @@ function applyFilters(overrides?: { levels?: LogLevelType[]; search?: string; so
 	if (source) {
 		params.set('source', source);
 	}
+	if (fromDate) {
+		params.set('from', String(new Date(fromDate).getTime()));
+	}
+	if (toDate) {
+		params.set('to', String(new Date(toDate).getTime()));
+	}
 
 	const queryString = params.toString();
 	goto(`/admin/logs${queryString ? `?${queryString}` : ''}`, { replaceState: true });
@@ -135,6 +163,8 @@ function handleSourceChange(event: Event) {
 
 // Clear all filters
 function clearFilters() {
+	fromDate = '';
+	toDate = '';
 	goto('/admin/logs', { replaceState: true });
 }
 
@@ -319,6 +349,28 @@ $effect(() => {
 					{/each}
 				</select>
 			</div>
+
+			<!-- Date Range: After -->
+			<div class="filter-group">
+				<label class="filter-label" for="from-date">After</label>
+				<input
+					type="datetime-local"
+					id="from-date"
+					bind:value={fromDate}
+					onchange={() => applyFilters()}
+				/>
+			</div>
+
+			<!-- Date Range: Before -->
+			<div class="filter-group">
+				<label class="filter-label" for="to-date">Before</label>
+				<input
+					type="datetime-local"
+					id="to-date"
+					bind:value={toDate}
+					onchange={() => applyFilters()}
+				/>
+			</div>
 		</div>
 	</section>
 
@@ -339,7 +391,24 @@ $effect(() => {
 				{/if}
 			</button>
 
-			<form method="POST" action="?/exportLogs" use:enhance class="inline-form">
+			<form
+				method="POST"
+				action="?/exportLogs"
+				use:enhance={() => {
+					return async ({ result }) => {
+						if (result.type === 'success' && result.data?.exportData) {
+							const blob = new Blob([result.data.exportData as string], { type: 'application/json' });
+							const url = URL.createObjectURL(blob);
+							const a = document.createElement('a');
+							a.href = url;
+							a.download = (result.data.exportFilename as string) || 'logs-export.json';
+							a.click();
+							URL.revokeObjectURL(url);
+						}
+					};
+				}}
+				class="inline-form"
+			>
 				<button type="submit" class="control-button secondary"> Export JSON </button>
 			</form>
 		</div>
@@ -372,7 +441,7 @@ $effect(() => {
 		<div class="logs-header">
 			<h2>Log Entries</h2>
 			<span class="logs-count">
-				Showing {allLogs.length} of {data.totalCount.toLocaleString()}
+				Showing {allLogs.length} of {(data.totalCount + streamedLogs.length).toLocaleString()}
 			</span>
 		</div>
 
@@ -998,6 +1067,24 @@ $effect(() => {
 
 			.col-actions {
 				display: none;
+			}
+		}
+
+		@media (max-width: 480px) {
+			.controls-left,
+			.controls-right {
+				flex-direction: column;
+				width: 100%;
+			}
+
+			.control-button {
+				width: 100%;
+				justify-content: center;
+			}
+
+			.inline-form {
+				display: block;
+				width: 100%;
 			}
 		}
 </style>

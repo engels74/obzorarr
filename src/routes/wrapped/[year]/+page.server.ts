@@ -11,7 +11,8 @@ import {
 	getEnabledCustomSlides,
 	getEnabledSlides,
 	initializeDefaultSlideConfig,
-	intersperseFunFacts
+	intersperseFunFacts,
+	renderMarkdownSync
 } from '$lib/server/slides';
 import { getServerStatsWithAnonymization } from '$lib/server/stats/engine';
 import { triggerLiveSyncIfNeeded } from '$lib/server/sync/live-sync';
@@ -46,8 +47,12 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		getEnabledCustomSlides(year)
 	]);
 
-	const baseSlides = buildSlideRenderConfigs(slideConfigs, customSlides);
-	const customSlidesMap = customSlidesToMap(customSlides);
+	const customSlidesWithHtml = customSlides.map((slide) => ({
+		...slide,
+		renderedHtml: renderMarkdownSync(slide.content)
+	}));
+	const baseSlides = buildSlideRenderConfigs(slideConfigs, customSlidesWithHtml);
+	const customSlidesMap = customSlidesToMap(customSlidesWithHtml);
 
 	const frequencyConfig = await getFunFactFrequency();
 	let funFacts: Awaited<ReturnType<typeof generateFunFacts>> = [];

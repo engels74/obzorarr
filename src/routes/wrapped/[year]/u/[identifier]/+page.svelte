@@ -82,8 +82,11 @@ function handleComplete(): void {
  * Handle close/exit action
  */
 function handleClose(): void {
-	// Navigate back to home or previous page
-	window.history.back();
+	if (window.history.length > 1) {
+		window.history.back();
+	} else {
+		goto('/');
+	}
 }
 
 /**

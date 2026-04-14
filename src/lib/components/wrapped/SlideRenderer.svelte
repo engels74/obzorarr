@@ -128,6 +128,7 @@ const topViewers = $derived(!isUserStats(stats) ? stats.topViewers : []);
 		<CustomSlideComponent
 			title={customSlideData.title}
 			content={customSlideData.content}
+			renderedHtml={customSlideData.renderedHtml}
 			{active}
 			{onAnimationComplete}
 		/>

@@ -19,6 +19,9 @@ function isAllowedPath(path: string): boolean {
 	return ALLOWED_PATH_PATTERNS.some((pattern) => pattern.test(path));
 }
 
+// Intentionally unauthenticated: shared/public wrapped pages render thumbnails
+// via getThumbUrl() without a user session. Path validation (ALLOWED_PATH_PATTERNS)
+// restricts access to Plex library metadata thumbnails only.
 export const GET: RequestHandler = async ({ params }) => {
 	const { path } = params;
 

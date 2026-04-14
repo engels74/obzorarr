@@ -289,6 +289,7 @@ function getShareModeLabel(mode: string | null): string {
 
 		.users-table {
 			width: 100%;
+			min-width: 600px;
 			border-collapse: collapse;
 			font-size: 0.875rem;
 		}

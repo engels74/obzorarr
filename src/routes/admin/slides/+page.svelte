@@ -381,7 +381,9 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 		</p>
 
 		<form method="POST" action="?/setFunFactFrequency" use:enhance>
-			<div class="frequency-options">
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div class="frequency-options" onclick={(e) => e.stopPropagation()}>
 				<label class="frequency-option">
 					<input type="radio" name="mode" value="few" bind:group={selectedFrequencyMode} />
 					<span class="frequency-label">
