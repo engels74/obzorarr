@@ -385,7 +385,6 @@ function useDetectedOrigin() {
 	{#snippet footer()}
 		<form method="POST" action="?/saveOrigin" class="button-group" onsubmit={() => (isSubmitting = true)}>
 			<input type="hidden" name="csrfOrigin" value={csrfOriginInput ?? ''} />
-			<input type="hidden" name="validated" value={testResult === 'success' ? 'true' : 'false'} />
 			<button
 				type="submit"
 				class="skip-btn"
