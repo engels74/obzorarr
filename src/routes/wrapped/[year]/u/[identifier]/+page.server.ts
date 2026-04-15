@@ -33,7 +33,28 @@ import {
 } from '$lib/server/slides';
 import { calculateUserStats } from '$lib/server/stats/engine';
 import { triggerLiveSyncIfNeeded } from '$lib/server/sync/live-sync';
+import { hasWatchHistory } from '$lib/stats/types';
 import type { Actions, PageServerLoad } from './$types';
+
+async function resolveUserIdFromIdentifier(
+	identifier: string,
+	year: number
+): Promise<number | null> {
+	if (isValidTokenFormat(identifier)) {
+		try {
+			const tokenResult = await checkTokenAccess(identifier);
+			return tokenResult.year === year ? tokenResult.userId : null;
+		} catch (err) {
+			if (err instanceof InvalidShareTokenError) {
+				return null;
+			}
+			throw err;
+		}
+	}
+
+	const userId = parseInt(identifier, 10);
+	return Number.isNaN(userId) || userId <= 0 ? null : userId;
+}
 
 export const load: PageServerLoad = async ({ params, locals, parent }) => {
 	const year = parseInt(params.year, 10);
@@ -96,6 +117,7 @@ export const load: PageServerLoad = async ({ params, locals, parent }) => {
 
 	const statsAccountId = user.accountId ?? user.plexId;
 	const stats = await calculateUserStats(statsAccountId, year);
+	const userHasWatchHistory = hasWatchHistory(stats);
 
 	let yearIdentifiers: Record<number, string | number> | undefined;
 
@@ -133,10 +155,12 @@ export const load: PageServerLoad = async ({ params, locals, parent }) => {
 
 	const frequencyConfig = await getFunFactFrequency();
 	let funFacts: Awaited<ReturnType<typeof generateFunFacts>> = [];
-	try {
-		funFacts = await generateFunFacts(stats, { count: frequencyConfig.count });
-	} catch (err) {
-		console.warn('Failed to generate fun facts:', err);
+	if (userHasWatchHistory) {
+		try {
+			funFacts = await generateFunFacts(stats, { count: frequencyConfig.count });
+		} catch (err) {
+			console.warn('Failed to generate fun facts:', err);
+		}
 	}
 
 	const slides = intersperseFunFacts(baseSlides, funFacts);
@@ -165,8 +189,11 @@ export const load: PageServerLoad = async ({ params, locals, parent }) => {
 		serverName: null,
 		showLogo: logoVisibility.showLogo,
 		canUserControlLogo: logoVisibility.canUserControl,
+		hasWatchHistory: userHasWatchHistory,
 		shareSettings: {
 			mode: shareSettings.mode,
+			storedMode: shareSettings.storedMode,
+			modeSource: shareSettings.modeSource,
 			shareToken: shareSettings.shareToken,
 			canUserControl: shareSettings.canUserControl || isAdmin
 		},
@@ -211,8 +238,8 @@ export const actions: Actions = {
 			return fail(400, { error: 'Invalid year' });
 		}
 
-		const userId = parseInt(params.identifier, 10);
-		if (Number.isNaN(userId) || userId <= 0) {
+		const userId = await resolveUserIdFromIdentifier(params.identifier, year);
+		if (!userId) {
 			return fail(400, { error: 'Invalid user identifier' });
 		}
 
@@ -239,8 +266,10 @@ export const actions: Actions = {
 				success: true,
 				shareSettings: {
 					mode: updated.mode,
+					storedMode: updated.storedMode,
+					modeSource: updated.modeSource,
 					shareToken: updated.shareToken,
-					canUserControl: updated.canUserControl
+					canUserControl: updated.canUserControl || locals.user.isAdmin
 				}
 			};
 		} catch (err) {
@@ -253,8 +282,8 @@ export const actions: Actions = {
 	},
 
 	regenerateToken: async ({ params, locals }) => {
-		if (!locals.user?.isAdmin) {
-			return fail(403, { error: 'Admin access required' });
+		if (!locals.user) {
+			return fail(401, { error: 'Authentication required' });
 		}
 
 		const year = parseInt(params.year, 10);
@@ -262,14 +291,38 @@ export const actions: Actions = {
 			return fail(400, { error: 'Invalid year' });
 		}
 
-		const userId = parseInt(params.identifier, 10);
-		if (Number.isNaN(userId) || userId <= 0) {
+		const userId = await resolveUserIdFromIdentifier(params.identifier, year);
+		if (!userId) {
 			return fail(400, { error: 'Invalid user identifier' });
 		}
 
 		try {
+			if (locals.user.id !== userId && !locals.user.isAdmin) {
+				return fail(403, { error: 'Not authorized to change share settings' });
+			}
+
+			const settings = await getOrCreateShareSettings({ userId, year });
+			const canControl = settings.canUserControl || locals.user.isAdmin;
+			if (!canControl) {
+				return fail(403, { error: 'You do not have permission to change share settings.' });
+			}
+
+			if (settings.mode !== ShareMode.PRIVATE_LINK) {
+				return fail(400, { error: 'Can only regenerate token for private-link mode' });
+			}
+
 			const newToken = await regenerateShareToken(userId, year);
-			return { success: true, shareToken: newToken };
+			return {
+				success: true,
+				shareToken: newToken,
+				shareSettings: {
+					mode: settings.mode,
+					storedMode: settings.storedMode,
+					modeSource: settings.modeSource,
+					shareToken: newToken,
+					canUserControl: canControl
+				}
+			};
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to regenerate token';
 			return fail(500, { error: message });

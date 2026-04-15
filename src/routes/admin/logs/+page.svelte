@@ -1,7 +1,7 @@
 <script lang="ts">
 import { browser } from '$app/environment';
 import { enhance } from '$app/forms';
-import { goto } from '$app/navigation';
+import { goto, invalidateAll } from '$app/navigation';
 import { page } from '$app/stores';
 import type { LogEntry, LogLevelType } from '$lib/server/logging';
 import { handleFormToast } from '$lib/utils/form-toast';
@@ -75,6 +75,24 @@ const filteredStreamedLogs = $derived(
 
 // Combined logs (filtered streamed + server-filtered)
 const allLogs = $derived([...filteredStreamedLogs, ...data.logs]);
+
+const visibleLevelCounts = $derived.by(() => {
+	const counts: Record<LogLevelType, number> = { DEBUG: 0, INFO: 0, WARN: 0, ERROR: 0 };
+	for (const log of allLogs) {
+		counts[log.level] += 1;
+	}
+	return counts;
+});
+
+const visibleSources = $derived.by(() => {
+	const sources = new Set(data.sources);
+	for (const log of filteredStreamedLogs) {
+		if (log.source) sources.add(log.source);
+	}
+	return Array.from(sources).sort();
+});
+
+const visibleTotalCount = $derived(allLogs.length);
 
 // Available log levels
 const logLevels: LogLevelType[] = ['DEBUG', 'INFO', 'WARN', 'ERROR'];
@@ -260,6 +278,17 @@ function toggleAutoScroll() {
 	}
 }
 
+async function refreshAfterLogMutation(update: () => Promise<void>): Promise<void> {
+	streamedLogs = [];
+	lastSeenStreamId = 0;
+	await update();
+	await invalidateAll();
+	if (autoScroll) {
+		disconnectSSE();
+		connectSSE();
+	}
+}
+
 // Copy log entry to clipboard
 function copyLog(log: LogEntry) {
 	const text = `[${new Date(log.timestamp).toISOString()}] [${log.level}] [${log.source ?? 'App'}] ${log.message}`;
@@ -308,19 +337,19 @@ $effect(() => {
 	<!-- Stats Section -->
 	<section class="stats-section">
 		<div class="stat-card">
-			<span class="stat-value">{data.totalCount.toLocaleString()}</span>
+			<span class="stat-value">{visibleTotalCount.toLocaleString()}</span>
 			<span class="stat-label">Total Logs</span>
 		</div>
 		<div class="stat-card level-info">
-			<span class="stat-value">{data.levelCounts.INFO.toLocaleString()}</span>
+			<span class="stat-value">{visibleLevelCounts.INFO.toLocaleString()}</span>
 			<span class="stat-label">Info</span>
 		</div>
 		<div class="stat-card level-warn">
-			<span class="stat-value">{data.levelCounts.WARN.toLocaleString()}</span>
+			<span class="stat-value">{visibleLevelCounts.WARN.toLocaleString()}</span>
 			<span class="stat-label">Warnings</span>
 		</div>
 		<div class="stat-card level-error">
-			<span class="stat-value">{data.levelCounts.ERROR.toLocaleString()}</span>
+			<span class="stat-value">{visibleLevelCounts.ERROR.toLocaleString()}</span>
 			<span class="stat-label">Errors</span>
 		</div>
 	</section>
@@ -345,7 +374,7 @@ $effect(() => {
 							onclick={() => toggleLevel(level)}
 						>
 							{level}
-							<span class="level-count">({data.levelCounts[level]})</span>
+							<span class="level-count">({visibleLevelCounts[level]})</span>
 						</button>
 					{/each}
 				</div>
@@ -368,7 +397,7 @@ $effect(() => {
 				<label class="filter-label" for="source">Source</label>
 				<select id="source" value={selectedSource} onchange={handleSourceChange}>
 					<option value="">All sources</option>
-					{#each data.sources as source}
+					{#each visibleSources as source}
 						<option value={source}>{source}</option>
 					{/each}
 				</select>
@@ -438,7 +467,16 @@ $effect(() => {
 		</div>
 
 		<div class="controls-right">
-			<form method="POST" action="?/runCleanup" use:enhance class="inline-form">
+			<form
+				method="POST"
+				action="?/runCleanup"
+				use:enhance={() => {
+					return async ({ update }) => {
+						await refreshAfterLogMutation(update);
+					};
+				}}
+				class="inline-form"
+			>
 				<button type="submit" class="control-button secondary"> Run Cleanup </button>
 			</form>
 
@@ -450,7 +488,7 @@ $effect(() => {
 						return async () => {};
 					}
 					return async ({ update }) => {
-						await update();
+						await refreshAfterLogMutation(update);
 					};
 				}}
 				class="inline-form"
@@ -465,7 +503,7 @@ $effect(() => {
 		<div class="logs-header">
 			<h2>Log Entries</h2>
 			<span class="logs-count">
-				Showing {allLogs.length} of {(data.totalCount + filteredStreamedLogs.length).toLocaleString()}
+				Showing {allLogs.length} of {visibleTotalCount.toLocaleString()}
 			</span>
 		</div>
 

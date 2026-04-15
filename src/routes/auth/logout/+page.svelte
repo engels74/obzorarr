@@ -1,0 +1,1 @@
+<p>Signing out...</p>

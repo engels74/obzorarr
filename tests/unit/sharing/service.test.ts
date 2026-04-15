@@ -20,6 +20,7 @@ import {
 import {
 	PermissionExceededError,
 	ShareMode,
+	ShareModeSource,
 	ShareSettingsKey,
 	ShareSettingsNotFoundError
 } from '$lib/server/sharing/types';
@@ -212,6 +213,8 @@ describe('Sharing Service', () => {
 				expect(settings.userId).toBe(userId);
 				expect(settings.year).toBe(year);
 				expect(settings.mode).toBe(ShareMode.PRIVATE_OAUTH);
+				expect(settings.storedMode).toBe(ShareMode.PRIVATE_OAUTH);
+				expect(settings.modeSource).toBe(ShareModeSource.DEFAULT);
 				expect(settings.canUserControl).toBe(true);
 				expect(settings.shareToken).toBeNull();
 			});
@@ -225,6 +228,7 @@ describe('Sharing Service', () => {
 				const settings = await getOrCreateShareSettings({ userId, year });
 
 				expect(settings.mode).toBe(ShareMode.PRIVATE_LINK);
+				expect(settings.modeSource).toBe(ShareModeSource.DEFAULT);
 				expect(settings.shareToken).not.toBeNull();
 				expect(isValidTokenFormat(settings.shareToken!)).toBe(true);
 			});
@@ -243,11 +247,11 @@ describe('Sharing Service', () => {
 
 				// Mode and token should be preserved from database
 				expect(settings.mode).toBe(ShareMode.PRIVATE_LINK);
+				expect(settings.modeSource).toBe(ShareModeSource.EXPLICIT);
 				expect(settings.shareToken).toBe(existingToken);
 			});
 
-			it('uses current global allowUserControl for existing settings', async () => {
-				// Create settings with canUserControl: false in database
+			it('preserves stored canUserControl for existing settings', async () => {
 				await db.insert(shareSettings).values({
 					userId,
 					year,
@@ -256,25 +260,44 @@ describe('Sharing Service', () => {
 					canUserControl: false
 				});
 
-				// Set global allowUserControl to true
 				await setGlobalShareDefaults({
 					defaultShareMode: ShareMode.PUBLIC,
 					allowUserControl: true
 				});
 
-				// canUserControl should reflect global setting, not stored value
 				const settings = await getOrCreateShareSettings({ userId, year });
-				expect(settings.canUserControl).toBe(true);
+				expect(settings.canUserControl).toBe(false);
 
-				// Now disable global allowUserControl
 				await setGlobalShareDefaults({
 					defaultShareMode: ShareMode.PUBLIC,
 					allowUserControl: false
 				});
 
-				// canUserControl should now be false
 				const settings2 = await getOrCreateShareSettings({ userId, year });
 				expect(settings2.canUserControl).toBe(false);
+			});
+
+			it('keeps default-sourced mode effective from global defaults without changing control', async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PUBLIC,
+					allowUserControl: true
+				});
+
+				const settings = await getOrCreateShareSettings({ userId, year });
+				expect(settings.mode).toBe(ShareMode.PUBLIC);
+				expect(settings.modeSource).toBe(ShareModeSource.DEFAULT);
+				expect(settings.canUserControl).toBe(true);
+
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_OAUTH,
+					allowUserControl: false
+				});
+
+				const updated = await getOrCreateShareSettings({ userId, year });
+				expect(updated.mode).toBe(ShareMode.PRIVATE_OAUTH);
+				expect(updated.storedMode).toBe(ShareMode.PUBLIC);
+				expect(updated.modeSource).toBe(ShareModeSource.DEFAULT);
+				expect(updated.canUserControl).toBe(true);
 			});
 
 			it('throws when createIfMissing is false and settings do not exist', async () => {
@@ -311,6 +334,7 @@ describe('Sharing Service', () => {
 				);
 
 				expect(updated.mode).toBe(ShareMode.PRIVATE_OAUTH);
+				expect(updated.modeSource).toBe(ShareModeSource.EXPLICIT);
 			});
 
 			it('allows admin to set private-link mode', async () => {
@@ -352,11 +376,7 @@ describe('Sharing Service', () => {
 			});
 
 			it('denies user without canUserControl', async () => {
-				// Disable user control globally (canUserControl is derived from global setting)
-				await setGlobalShareDefaults({
-					defaultShareMode: ShareMode.PUBLIC,
-					allowUserControl: false
-				});
+				await updateShareSettings(userId, year, { canUserControl: false }, true);
 
 				await expect(
 					updateShareSettings(userId, year, { mode: ShareMode.PRIVATE_OAUTH }, false)

@@ -162,7 +162,8 @@ function formatRelativeTime(isoDate: string | null): string {
 	return date.toLocaleDateString();
 }
 
-function formatDuration(start: string, end: string | null): string {
+function formatDuration(start: string, end: string | null, status?: string): string {
+	if (status === 'running') return 'In progress';
 	if (!end) return '—';
 	const diffMs = new Date(end).getTime() - new Date(start).getTime();
 	if (diffMs < 1000) return '<1s';
@@ -525,6 +526,16 @@ async function goToPage(page: number) {
 							</button>
 						</form>
 					{/if}
+					{#if data.schedulerStatus.isRunning || data.schedulerStatus.isPaused}
+						<form method="POST" action="?/stopScheduler" use:enhance>
+							<button type="submit" class="control-btn stop">
+								<svg viewBox="0 0 24 24" fill="currentColor">
+									<rect x="6" y="6" width="12" height="12" rx="2" />
+								</svg>
+								Stop
+							</button>
+						</form>
+					{/if}
 				</div>
 
 				<form method="POST" action="?/updateSchedule" use:enhance class="cron-config">
@@ -630,9 +641,14 @@ async function goToPage(page: number) {
 						</div>
 
 						<div class="history-stats">
-							<span class="stat-duration">{formatDuration(sync.startedAt, sync.completedAt)}</span>
+							<span class="stat-duration"
+								>{formatDuration(sync.startedAt, sync.completedAt, sync.status)}</span
+							>
 							<span class="stat-records"
-								>{sync.recordsProcessed.toLocaleString()} <small>records</small></span
+								>{sync.status === 'running' && progress
+									? progress.recordsProcessed.toLocaleString()
+									: sync.recordsProcessed.toLocaleString()}
+								<small>records</small></span
 							>
 						</div>
 
@@ -1408,6 +1424,16 @@ async function goToPage(page: number) {
 
 		.control-btn.init:hover {
 			opacity: 0.9;
+		}
+
+		.control-btn.stop {
+			background: hsl(var(--muted));
+			border: 1px solid hsl(var(--border));
+			color: hsl(var(--foreground));
+		}
+
+		.control-btn.stop:hover {
+			background: hsl(var(--muted) / 0.8);
 		}
 
 		.cron-config {

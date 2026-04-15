@@ -46,30 +46,13 @@ onMount(async () => {
 	}
 
 	try {
-		const authToken = await pollForToken(pinData.pinId);
+		const loginResult = await pollForLogin(pinData.pinId);
 
-		if (!authToken) {
+		if (!loginResult) {
 			status = 'cancelled';
 			sessionStorage.removeItem(PIN_STORAGE_KEY);
 			return;
 		}
-
-		const callbackResponse = await fetch('/auth/plex/callback', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ authToken })
-		});
-
-		if (!callbackResponse.ok) {
-			const errData = await callbackResponse.json().catch(() => ({}));
-			throw new Error(
-				(errData as { message?: string }).message || 'Failed to complete authentication'
-			);
-		}
-
-		const userData = (await callbackResponse.json()) as {
-			user: { isAdmin: boolean };
-		};
 		sessionStorage.removeItem(PIN_STORAGE_KEY);
 
 		status = 'success';
@@ -77,9 +60,7 @@ onMount(async () => {
 		const targetUrl =
 			pinData.context === 'onboarding'
 				? '/onboarding/plex'
-				: userData.user.isAdmin
-					? '/admin'
-					: '/dashboard';
+				: (loginResult.redirectTo ?? (loginResult.user.isAdmin ? '/admin' : '/dashboard'));
 
 		window.location.href = targetUrl;
 	} catch (err) {
@@ -89,7 +70,9 @@ onMount(async () => {
 	}
 });
 
-async function pollForToken(pinId: number): Promise<string | null> {
+async function pollForLogin(
+	pinId: number
+): Promise<{ user: { isAdmin: boolean }; redirectTo?: string } | null> {
 	for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
 		if (attempt > 0) await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
 
@@ -106,10 +89,12 @@ async function pollForToken(pinId: number): Promise<string | null> {
 			throw new Error('Failed to check authentication status');
 		}
 
-		const result = (await response.json()) as { pending: true } | { authToken: string };
+		const result = (await response.json()) as
+			| { pending: true }
+			| { user: { isAdmin: boolean }; redirectTo?: string };
 
-		if ('authToken' in result && result.authToken) {
-			return result.authToken;
+		if ('user' in result && result.user) {
+			return result;
 		}
 	}
 

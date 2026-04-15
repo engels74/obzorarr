@@ -9,12 +9,16 @@ import {
 	ShareError,
 	ShareMode,
 	ShareModeSchema,
+	ShareModeSource,
+	type ShareModeSourceType,
 	type ShareModeType,
 	type ShareSettings,
 	ShareSettingsKey,
 	ShareSettingsNotFoundError,
 	type UpdateShareSettings
 } from './types';
+
+type ShareSettingsRecord = typeof shareSettings.$inferSelect;
 
 export function generateShareToken(): string {
 	return crypto.randomUUID();
@@ -124,10 +128,20 @@ export async function getShareSettings(
 		return null;
 	}
 
+	return toShareSettings(record, await getGlobalDefaultShareMode());
+}
+
+function toShareSettings(record: ShareSettingsRecord, globalDefault: ShareModeType): ShareSettings {
+	const storedMode = record.mode as ShareModeType;
+	const modeSource = (record.modeSource ?? ShareModeSource.EXPLICIT) as ShareModeSourceType;
+	const mode = modeSource === ShareModeSource.DEFAULT ? globalDefault : storedMode;
+
 	return {
 		userId: record.userId,
 		year: record.year,
-		mode: record.mode as ShareModeType,
+		mode,
+		storedMode,
+		modeSource,
 		shareToken: record.shareToken,
 		canUserControl: record.canUserControl ?? false
 	};
@@ -138,15 +152,9 @@ export async function getOrCreateShareSettings(
 ): Promise<ShareSettings> {
 	const { userId, year, createIfMissing = true } = options;
 
-	// Always get current global setting - ensures admin toggle has immediate effect
-	const allowUserControl = await getGlobalAllowUserControl();
-
 	const existing = await getShareSettings(userId, year);
 	if (existing) {
-		return {
-			...existing,
-			canUserControl: allowUserControl
-		};
+		return existing;
 	}
 
 	if (!createIfMissing) {
@@ -154,6 +162,7 @@ export async function getOrCreateShareSettings(
 	}
 
 	const defaultMode = await getGlobalDefaultShareMode();
+	const allowUserControl = await getGlobalAllowUserControl();
 	const shareToken = defaultMode === ShareMode.PRIVATE_LINK ? generateShareToken() : null;
 
 	const result = await db
@@ -162,6 +171,7 @@ export async function getOrCreateShareSettings(
 			userId,
 			year,
 			mode: defaultMode,
+			modeSource: ShareModeSource.DEFAULT,
 			shareToken,
 			canUserControl: allowUserControl
 		})
@@ -172,13 +182,7 @@ export async function getOrCreateShareSettings(
 		throw new ShareError('Failed to create share settings', 'CREATE_FAILED');
 	}
 
-	return {
-		userId: record.userId,
-		year: record.year,
-		mode: record.mode as ShareModeType,
-		shareToken: record.shareToken,
-		canUserControl: record.canUserControl ?? false
-	};
+	return toShareSettings(record, defaultMode);
 }
 
 export async function updateShareSettings(
@@ -212,6 +216,7 @@ export async function updateShareSettings(
 
 	if (updates.mode !== undefined) {
 		updateValues.mode = updates.mode;
+		updateValues.modeSource = ShareModeSource.EXPLICIT;
 
 		if (updates.mode === ShareMode.PRIVATE_LINK && !existing.shareToken) {
 			updateValues.shareToken = generateShareToken();
@@ -299,13 +304,7 @@ export async function getShareSettingsByToken(token: string): Promise<ShareSetti
 		return null;
 	}
 
-	return {
-		userId: record.userId,
-		year: record.year,
-		mode: record.mode as ShareModeType,
-		shareToken: record.shareToken,
-		canUserControl: record.canUserControl ?? false
-	};
+	return toShareSettings(record, await getGlobalDefaultShareMode());
 }
 
 export async function deleteShareSettings(userId: number, year: number): Promise<void> {
@@ -316,14 +315,9 @@ export async function deleteShareSettings(userId: number, year: number): Promise
 
 export async function getAllUserShareSettings(userId: number): Promise<ShareSettings[]> {
 	const results = await db.select().from(shareSettings).where(eq(shareSettings.userId, userId));
+	const globalDefault = await getGlobalDefaultShareMode();
 
-	return results.map((record) => ({
-		userId: record.userId,
-		year: record.year,
-		mode: record.mode as ShareModeType,
-		shareToken: record.shareToken,
-		canUserControl: record.canUserControl ?? false
-	}));
+	return results.map((record) => toShareSettings(record, globalDefault));
 }
 
 export async function updateUserLogoPreference(
@@ -347,6 +341,7 @@ export async function updateUserLogoPreference(
 			userId,
 			year,
 			mode: defaultMode,
+			modeSource: ShareModeSource.DEFAULT,
 			shareToken,
 			canUserControl: allowUserControl,
 			showLogo

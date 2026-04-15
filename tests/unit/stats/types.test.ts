@@ -6,7 +6,7 @@
 
 import { describe, expect, it } from 'bun:test';
 import type { ServerStats, UserStats } from '$lib/server/stats/types';
-import { isServerStats, isUserStats } from '$lib/server/stats/types';
+import { hasWatchHistory, isServerStats, isUserStats } from '$lib/server/stats/types';
 
 // =============================================================================
 // Test Helpers
@@ -130,5 +130,22 @@ describe('isServerStats', () => {
 		const userStats = createMockUserStats();
 		// UserStats has userId and percentileRank, not totalUsers and topViewers
 		expect(isServerStats(userStats)).toBe(false);
+	});
+});
+
+describe('hasWatchHistory', () => {
+	it('returns true when plays or watch time exist', () => {
+		expect(hasWatchHistory(createMockUserStats({ totalPlays: 1, totalWatchTimeMinutes: 0 }))).toBe(
+			true
+		);
+		expect(
+			hasWatchHistory(createMockServerStats({ totalPlays: 0, totalWatchTimeMinutes: 30 }))
+		).toBe(true);
+	});
+
+	it('returns false when both plays and watch time are empty', () => {
+		expect(hasWatchHistory(createMockUserStats({ totalPlays: 0, totalWatchTimeMinutes: 0 }))).toBe(
+			false
+		);
 	});
 });

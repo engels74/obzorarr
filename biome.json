@@ -68,6 +68,7 @@
 			"!**/.svelte-kit",
 			"!**/node_modules",
 			"!**/data",
+			"!**/dogfood-output",
 			"!**/drizzle",
 			"!**/*.db",
 			"!**/bun.lock"

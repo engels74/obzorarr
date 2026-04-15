@@ -69,6 +69,7 @@ export const shareSettings = sqliteTable('share_settings', {
 	userId: integer('user_id').notNull(),
 	year: integer('year').notNull(),
 	mode: text('mode').notNull().default('public'),
+	modeSource: text('mode_source').notNull().default('explicit'),
 	shareToken: text('share_token').unique(),
 	canUserControl: integer('can_user_control', { mode: 'boolean' }).default(false),
 	showLogo: integer('show_logo', { mode: 'boolean' })

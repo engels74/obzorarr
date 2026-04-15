@@ -97,6 +97,7 @@ sqlite.exec(`
 		user_id INTEGER NOT NULL,
 		year INTEGER NOT NULL,
 		mode TEXT NOT NULL DEFAULT 'public',
+		mode_source TEXT NOT NULL DEFAULT 'explicit',
 		share_token TEXT UNIQUE,
 		can_user_control INTEGER DEFAULT 0,
 		show_logo INTEGER

@@ -190,7 +190,12 @@ function handleLogoToggle(): void {
 				</button>
 			</form>
 		{/if}
-		<ModeToggle mode={viewMode} onModeChange={handleModeChange} />
+		{#if data.isOwner || data.isAdmin}
+			<button type="button" class="share-toggle" onclick={handleShare}>Share</button>
+		{/if}
+		{#if data.hasWatchHistory}
+			<ModeToggle mode={viewMode} onModeChange={handleModeChange} />
+		{/if}
 	</div>
 
 	<!-- User Header -->
@@ -218,12 +223,30 @@ function handleLogoToggle(): void {
 			onHome={handleHome}
 			onShare={handleShare}
 		/>
+	{:else if !data.hasWatchHistory}
+		<section class="empty-wrapped-state">
+			<div class="empty-content">
+				<p class="empty-eyebrow">{data.year} Wrapped</p>
+				<h2>No viewing history for {data.year} yet</h2>
+				<p>
+					Once {data.username} has Plex activity for the year, their Wrapped will appear here.
+				</p>
+				<div class="empty-actions">
+					<button type="button" class="empty-btn secondary" onclick={handleHome}>Home</button>
+					{#if data.isOwner || data.isAdmin}
+						<button type="button" class="empty-btn primary" onclick={handleShare}>Share</button>
+					{/if}
+				</div>
+			</div>
+		</section>
 	{:else if viewMode === 'story'}
 		{#key storyKey}
 			<StoryMode
 				stats={data.stats}
 				slides={data.slides}
 				customSlides={data.customSlidesMap}
+				initialSlideIndex={currentSlideIndex}
+				onSlideChange={(index) => (currentSlideIndex = index)}
 				onComplete={handleComplete}
 				onClose={handleClose}
 				{messagingContext}
@@ -246,6 +269,7 @@ function handleLogoToggle(): void {
 		bind:open={showShareModal}
 		onOpenChange={(v) => (showShareModal = v)}
 		currentUrl={data.currentUrl}
+		canonicalUrl={`/wrapped/${data.year}/u/${data.userId}`}
 		shareSettings={data.shareSettings}
 		isOwner={data.isOwner}
 		isAdmin={data.isAdmin}
@@ -287,13 +311,14 @@ function handleLogoToggle(): void {
 			align-items: center;
 		}
 
-		.logo-toggle {
+		.logo-toggle,
+		.share-toggle {
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			width: 2rem;
+			min-width: 2rem;
 			height: 2rem;
-			padding: 0;
+			padding: 0 0.65rem;
 			border: none;
 			border-radius: 0.375rem;
 			background: var(--card);
@@ -305,7 +330,18 @@ function handleLogoToggle(): void {
 				background 0.2s;
 		}
 
-		.logo-toggle:hover {
+		.logo-toggle {
+			width: 2rem;
+			padding: 0;
+		}
+
+		.share-toggle {
+			font-size: 0.8125rem;
+			font-weight: 600;
+		}
+
+		.logo-toggle:hover,
+		.share-toggle:hover {
 			opacity: 1;
 			background: var(--muted);
 		}
@@ -328,5 +364,75 @@ function handleLogoToggle(): void {
 			color: var(--foreground);
 			opacity: 0.8;
 			margin: 0;
+		}
+
+		.empty-wrapped-state {
+			min-height: 100vh;
+			min-height: 100dvh;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			padding: 6rem 1.5rem 3rem;
+			color: var(--foreground);
+		}
+
+		.empty-content {
+			width: min(100%, 36rem);
+			text-align: center;
+		}
+
+		.empty-eyebrow {
+			margin: 0 0 0.75rem;
+			font-size: 0.8125rem;
+			font-weight: 700;
+			letter-spacing: 0.12em;
+			text-transform: uppercase;
+			color: var(--muted-foreground);
+		}
+
+		.empty-content h2 {
+			margin: 0 0 1rem;
+			font-size: clamp(2rem, 8vw, 3.5rem);
+			line-height: 1;
+		}
+
+		.empty-content p {
+			margin: 0 auto;
+			max-width: 30rem;
+			color: var(--muted-foreground);
+			line-height: 1.6;
+		}
+
+		.empty-actions {
+			display: flex;
+			justify-content: center;
+			gap: 0.75rem;
+			margin-top: 1.75rem;
+			flex-wrap: wrap;
+		}
+
+		.empty-btn {
+			border: none;
+			border-radius: 8px;
+			padding: 0.75rem 1.1rem;
+			font-weight: 700;
+			cursor: pointer;
+		}
+
+		.empty-btn.primary {
+			background: hsl(var(--primary));
+			color: hsl(var(--primary-foreground));
+		}
+
+		.empty-btn.secondary {
+			background: var(--card);
+			color: var(--foreground);
+		}
+
+		@media (prefers-reduced-motion: reduce) {
+			.logo-toggle,
+			.share-toggle {
+				transition: none;
+			}
 		}
 </style>

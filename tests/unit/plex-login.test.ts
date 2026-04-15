@@ -182,7 +182,7 @@ describe('startPlexLoginPopup', () => {
 		globalThis.fetch = originalFetch;
 	});
 
-	it('ignores stale poll failures once callback exchange has started', async () => {
+	it('ignores stale poll failures once login completion has started', async () => {
 		const intervalCallbacks: Array<() => Promise<void>> = [];
 		let resolveIntervalRegistered: () => void = () => {};
 		const intervalRegistered = new Promise<void>((resolve) => {
@@ -207,30 +207,23 @@ describe('startPlexLoginPopup', () => {
 		const firstPoll = new Promise<Response>((_, reject) => {
 			rejectFirstPoll = reject;
 		});
-		let resolveCallbackRequested: () => void = () => {};
-		const callbackRequested = new Promise<void>((resolve) => {
-			resolveCallbackRequested = resolve;
-		});
-		let resolveCallback: (response: Response) => void = () => {};
-		const callbackExchange = new Promise<Response>((resolve) => {
-			resolveCallback = resolve;
-		});
-
 		globalThis.fetch = mock(async (input: string | URL | Request, init?: RequestInit) => {
 			const url = typeof input === 'string' ? input : input.toString();
 
 			if (url === '/auth/plex' && init?.method === 'POST') {
 				pollCalls += 1;
 				if (pollCalls === 1) return firstPoll;
-				return new Response(JSON.stringify({ authToken: 'plex-token' }), {
+				return new Response(JSON.stringify({ user: { id: 1, username: 'plex', isAdmin: true } }), {
 					status: 200,
 					headers: { 'Content-Type': 'application/json' }
 				});
 			}
 
 			if (url === '/auth/plex/callback') {
-				resolveCallbackRequested();
-				return callbackExchange;
+				return new Response(JSON.stringify({ error: 'callback should stay server-only' }), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				});
 			}
 
 			return new Response(
@@ -259,18 +252,11 @@ describe('startPlexLoginPopup', () => {
 		const poll = intervalCallbacks[0] as () => Promise<void>;
 		const staleTick = poll();
 		const successTick = poll();
-		await callbackRequested;
 
 		rejectFirstPoll(new Error('Network dropped'));
 		await staleTick;
 		expect(onError).not.toHaveBeenCalled();
 
-		resolveCallback(
-			new Response(JSON.stringify({ user: { id: 1, username: 'plex', isAdmin: true } }), {
-				status: 200,
-				headers: { 'Content-Type': 'application/json' }
-			})
-		);
 		await successTick;
 
 		expect(onSuccess).toHaveBeenCalledTimes(1);

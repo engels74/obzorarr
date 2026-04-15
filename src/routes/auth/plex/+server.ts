@@ -1,6 +1,7 @@
 import { error, json } from '@sveltejs/kit';
 import { z } from 'zod';
-import { checkPinStatus, getPinInfo } from '$lib/server/auth/plex-oauth';
+import { completePlexPinLogin } from '$lib/server/auth/login-completion';
+import { getPinInfo } from '$lib/server/auth/plex-oauth';
 import { PinExpiredError, PlexAuthApiError } from '$lib/server/auth/types';
 import type { RequestHandler } from './$types';
 
@@ -29,7 +30,7 @@ export const GET: RequestHandler = async ({ url }) => {
 	}
 };
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, cookies }) => {
 	let body: unknown;
 	try {
 		body = await request.json();
@@ -47,13 +48,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	const { pinId } = parseResult.data;
 
 	try {
-		const pinStatus = await checkPinStatus(pinId);
-
-		if (pinStatus.authToken) {
-			return json({ authToken: pinStatus.authToken });
-		}
-
-		return json({ pending: true });
+		return json(await completePlexPinLogin(pinId, cookies));
 	} catch (err) {
 		if (err instanceof PinExpiredError) {
 			error(401, {
@@ -62,13 +57,13 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		if (err instanceof PlexAuthApiError) {
-			console.error('Plex OAuth error:', err.message);
+			console.error('Plex OAuth error during PIN poll');
 			error(502, {
 				message: 'Unable to connect to Plex. Please try again.'
 			});
 		}
 
-		console.error('Unexpected error in PIN poll:', err);
+		console.error('Unexpected error in PIN poll');
 		error(500, {
 			message: 'An unexpected error occurred.'
 		});

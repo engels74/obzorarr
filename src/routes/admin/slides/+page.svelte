@@ -380,40 +380,53 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			Control how many fun facts appear interspersed throughout the wrapped presentation.
 		</p>
 
-		<form method="POST" action="?/setFunFactFrequency" use:enhance>
+		<form
+			method="POST"
+			action="?/setFunFactFrequency"
+			use:enhance={() => {
+				return async ({ result, update }) => {
+					if (result.type === 'success' && result.data?.funFactFrequency) {
+						const frequency = result.data.funFactFrequency as typeof data.funFactFrequency;
+						selectedFrequencyMode = frequency.mode;
+						customCount = frequency.count;
+					}
+					await update();
+				};
+			}}
+		>
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div class="frequency-options" onclick={(e) => e.stopPropagation()}>
 				<label class="frequency-option">
 					<input type="radio" name="mode" value="few" bind:group={selectedFrequencyMode} />
-					<span class="frequency-label">
-						<span class="frequency-name">Few</span>
-						<span class="frequency-desc">1-2 fun facts</span>
-					</span>
+						<span class="frequency-label">
+							<span class="frequency-name">Few</span>
+							<span class="frequency-desc">2 fun facts</span>
+						</span>
 				</label>
 
 				<label class="frequency-option">
 					<input type="radio" name="mode" value="normal" bind:group={selectedFrequencyMode} />
-					<span class="frequency-label">
-						<span class="frequency-name">Normal</span>
-						<span class="frequency-desc">3-5 fun facts</span>
-					</span>
+						<span class="frequency-label">
+							<span class="frequency-name">Normal</span>
+							<span class="frequency-desc">4 fun facts</span>
+						</span>
 				</label>
 
 				<label class="frequency-option">
 					<input type="radio" name="mode" value="many" bind:group={selectedFrequencyMode} />
-					<span class="frequency-label">
-						<span class="frequency-name">Many</span>
-						<span class="frequency-desc">6-10 fun facts</span>
-					</span>
+						<span class="frequency-label">
+							<span class="frequency-name">Many</span>
+							<span class="frequency-desc">8 fun facts</span>
+						</span>
 				</label>
 
 				<label class="frequency-option">
 					<input type="radio" name="mode" value="custom" bind:group={selectedFrequencyMode} />
-					<span class="frequency-label">
-						<span class="frequency-name">Custom</span>
-						<span class="frequency-desc">Specific number</span>
-					</span>
+						<span class="frequency-label">
+							<span class="frequency-name">Custom</span>
+							<span class="frequency-desc">1-15 fun facts</span>
+						</span>
 				</label>
 			</div>
 
