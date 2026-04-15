@@ -248,6 +248,10 @@ async function getCacheCount(year?: number) {
 				label: year !== undefined ? `${year} cache` : 'All cache',
 				count: data.count
 			};
+		} else if (result.type === 'failure') {
+			handleFormToast({
+				error: (result.data as { error?: string })?.error ?? 'Failed to get cache count.'
+			});
 		}
 	} catch (error) {
 		console.error('Failed to get cache count:', error);
@@ -321,6 +325,10 @@ async function getHistoryCount(year?: number) {
 				label: year !== undefined ? `${year} history` : 'All history',
 				count: data.count
 			};
+		} else if (result.type === 'failure') {
+			handleFormToast({
+				error: (result.data as { error?: string })?.error ?? 'Failed to get play history count.'
+			});
 		}
 	} catch (error) {
 		console.error('Failed to get history count:', error);
