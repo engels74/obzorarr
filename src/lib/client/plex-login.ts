@@ -183,7 +183,13 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 							pinExpired = true;
 							cleanup();
 							opts.onError('Authentication expired. Please try again.');
+							return;
 						}
+						const errData = (await pollResponse.json().catch(() => ({}))) as {
+							message?: string;
+						};
+						cleanup();
+						opts.onError(errData.message || 'Login failed. Please try again.');
 						return;
 					}
 
