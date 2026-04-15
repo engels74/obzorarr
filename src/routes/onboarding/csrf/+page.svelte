@@ -10,7 +10,6 @@ let { data, form }: { data: PageData; form: ActionData } = $props();
 
 const initialOrigin = $derived(data.csrfConfig.value || data.detection.detectedOrigin);
 let csrfOriginInput = $state<string | undefined>(undefined);
-let isSubmitting = $state(false);
 
 let testResult = $state<'idle' | 'testing' | 'success' | 'failure'>('idle');
 let testError = $state<string | null>(null);
@@ -111,6 +110,12 @@ $effect(() => {
 
 function useDetectedOrigin() {
 	csrfOriginInput = data.detection.detectedOrigin;
+}
+
+function submitButtonForm(event: MouseEvent) {
+	event.preventDefault();
+	const submitter = event.currentTarget as HTMLButtonElement;
+	submitter.form?.requestSubmit(submitter);
 }
 </script>
 
@@ -383,30 +388,26 @@ function useDetectedOrigin() {
 	</div>
 
 	{#snippet footer()}
-		<form method="POST" action="?/saveOrigin" class="button-group" onsubmit={() => (isSubmitting = true)}>
-			<input type="hidden" name="csrfOrigin" value={csrfOriginInput ?? ''} />
-			<button
-				type="submit"
-				class="skip-btn"
-				disabled={isSubmitting}
-				formaction="?/skipCsrf"
-				formnovalidate
-			>
-				{data.csrfConfig.isLocked ? 'Continue' : 'Skip'}
-			</button>
-			{#if !data.csrfConfig.isLocked}
-				<button
-					type="submit"
-					class="save-btn"
-					disabled={isSubmitting || !csrfOriginInput || testResult !== 'success'}
-				>
-					{#if isSubmitting}
-						<span class="spinner"></span>
-					{/if}
-					Save & Continue
+		<div class="button-group">
+			<form method="POST" action="?/skipCsrf" class="skip-form">
+				<button type="submit" class="skip-btn" formnovalidate onclick={submitButtonForm}>
+					{data.csrfConfig.isLocked ? 'Continue' : 'Skip'}
 				</button>
+			</form>
+			{#if !data.csrfConfig.isLocked}
+				<form method="POST" action="?/saveOrigin" class="save-form">
+					<input type="hidden" name="csrfOrigin" value={csrfOriginInput ?? ''} />
+					<button
+						type="submit"
+						class="save-btn"
+						disabled={!csrfOriginInput || testResult !== 'success'}
+						onclick={submitButtonForm}
+					>
+						Save & Continue
+					</button>
+				</form>
 			{/if}
-		</form>
+		</div>
 	{/snippet}
 </OnboardingCard>
 
@@ -1025,8 +1026,23 @@ function useDetectedOrigin() {
 			width: 100%;
 		}
 
-		.skip-btn {
+		.skip-form,
+		.save-form {
+			display: flex;
+			margin: 0;
+			min-width: 0;
+		}
+
+		.skip-form {
 			flex: 1;
+		}
+
+		.save-form {
+			flex: 2;
+		}
+
+		.skip-btn {
+			width: 100%;
 			padding: 0.875rem 1.5rem;
 			background: rgba(255, 255, 255, 0.06);
 			border: 1px solid rgba(255, 255, 255, 0.12);
@@ -1051,7 +1067,7 @@ function useDetectedOrigin() {
 		}
 
 		.save-btn {
-			flex: 2;
+			width: 100%;
 			display: flex;
 			align-items: center;
 			justify-content: center;
@@ -1128,6 +1144,11 @@ function useDetectedOrigin() {
 
 			.button-group {
 				flex-direction: column;
+			}
+
+			.skip-form,
+			.save-form {
+				flex: none;
 			}
 
 			.skip-btn,
