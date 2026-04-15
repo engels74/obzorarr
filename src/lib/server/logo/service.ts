@@ -6,6 +6,12 @@ import {
 } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
 import { shareSettings } from '$lib/server/db/schema';
+import {
+	generateShareToken,
+	getGlobalAllowUserControl,
+	getGlobalDefaultShareMode
+} from '$lib/server/sharing/service';
+import { ShareMode, ShareModeSource } from '$lib/server/sharing/types';
 
 export interface LogoVisibilityResult {
 	showLogo: boolean;
@@ -82,10 +88,16 @@ export async function setUserLogoPreference(
 			.set({ showLogo })
 			.where(and(eq(shareSettings.userId, userId), eq(shareSettings.year, year)));
 	} else {
+		const defaultMode = await getGlobalDefaultShareMode();
+		const allowUserControl = await getGlobalAllowUserControl();
+		const shareToken = defaultMode === ShareMode.PRIVATE_LINK ? generateShareToken() : null;
 		await db.insert(shareSettings).values({
 			userId,
 			year,
-			mode: 'public',
+			mode: defaultMode,
+			modeSource: ShareModeSource.DEFAULT,
+			shareToken,
+			canUserControl: allowUserControl,
 			showLogo
 		});
 	}
