@@ -199,6 +199,33 @@ describe('Sharing Service', () => {
 				const settings = await getShareSettings(userId, year);
 				expect(settings?.shareToken).toBe(token);
 			});
+
+			it('repairs missing token when default-sourced settings become private-link', async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PUBLIC,
+					allowUserControl: true
+				});
+
+				await db.insert(shareSettings).values({
+					userId,
+					year,
+					mode: ShareMode.PUBLIC,
+					modeSource: ShareModeSource.DEFAULT,
+					shareToken: null,
+					canUserControl: true
+				});
+
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_LINK,
+					allowUserControl: true
+				});
+
+				const settings = await getShareSettings(userId, year);
+				expect(settings?.mode).toBe(ShareMode.PRIVATE_LINK);
+				expect(settings?.shareToken).not.toBeNull();
+				expect(isValidTokenFormat(settings!.shareToken!)).toBe(true);
+				expect((await getShareSettings(userId, year))?.shareToken).toBe(settings?.shareToken);
+			});
 		});
 
 		describe('getOrCreateShareSettings', () => {

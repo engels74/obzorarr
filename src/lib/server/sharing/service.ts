@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db/client';
 import { appSettings, shareSettings } from '$lib/server/db/schema';
 import {
@@ -128,7 +128,33 @@ export async function getShareSettings(
 		return null;
 	}
 
-	return toShareSettings(record, await getGlobalDefaultShareMode());
+	const globalDefault = await getGlobalDefaultShareMode();
+	const settings = toShareSettings(record, globalDefault);
+
+	if (settings.mode !== ShareMode.PRIVATE_LINK || settings.shareToken) {
+		return settings;
+	}
+
+	const generatedToken = generateShareToken();
+
+	await db
+		.update(shareSettings)
+		.set({ shareToken: generatedToken })
+		.where(
+			and(
+				eq(shareSettings.userId, record.userId),
+				eq(shareSettings.year, record.year),
+				isNull(shareSettings.shareToken)
+			)
+		);
+
+	const refreshed = await db
+		.select({ shareToken: shareSettings.shareToken })
+		.from(shareSettings)
+		.where(and(eq(shareSettings.userId, record.userId), eq(shareSettings.year, record.year)))
+		.limit(1);
+
+	return { ...settings, shareToken: refreshed[0]?.shareToken ?? generatedToken };
 }
 
 function toShareSettings(record: ShareSettingsRecord, globalDefault: ShareModeType): ShareSettings {

@@ -203,6 +203,7 @@ describe('startPlexLoginPopup', () => {
 		};
 
 		let pollCalls = 0;
+		let callbackCalls = 0;
 		let rejectFirstPoll: (err: Error) => void = () => {};
 		const firstPoll = new Promise<Response>((_, reject) => {
 			rejectFirstPoll = reject;
@@ -220,6 +221,7 @@ describe('startPlexLoginPopup', () => {
 			}
 
 			if (url === '/auth/plex/callback') {
+				callbackCalls += 1;
 				return new Response(JSON.stringify({ error: 'callback should stay server-only' }), {
 					status: 200,
 					headers: { 'Content-Type': 'application/json' }
@@ -262,5 +264,6 @@ describe('startPlexLoginPopup', () => {
 		expect(onSuccess).toHaveBeenCalledTimes(1);
 		expect(onError).not.toHaveBeenCalled();
 		expect(onPopupBlocked).not.toHaveBeenCalled();
+		expect(callbackCalls).toBe(0);
 	});
 });

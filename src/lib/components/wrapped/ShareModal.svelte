@@ -47,7 +47,9 @@ $effect.pre(() => {
 });
 
 const displayMode = $derived(optimisticMode ?? shareSettings?.mode);
-const displayShareToken = $derived(optimisticShareToken ?? shareSettings?.shareToken);
+const displayShareToken = $derived(
+	optimisticShareToken === undefined ? shareSettings?.shareToken : optimisticShareToken
+);
 
 // Computed URL based on mode
 const shareUrl = $derived.by(() => {
