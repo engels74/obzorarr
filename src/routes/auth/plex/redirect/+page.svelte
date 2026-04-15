@@ -86,7 +86,8 @@ async function pollForLogin(
 			if (response.status === 401) {
 				return null;
 			}
-			throw new Error('Failed to check authentication status');
+			const errData = (await response.json().catch(() => ({}))) as { message?: string };
+			throw new Error(errData.message || 'Failed to check authentication status');
 		}
 
 		const result = (await response.json()) as
