@@ -249,6 +249,9 @@ async function getCacheCount(year?: number) {
 				count: data.count
 			};
 		}
+	} catch (error) {
+		console.error('Failed to get cache count:', error);
+		handleFormToast({ error: 'Failed to get cache count. Please try again.' });
 	} finally {
 		loadingCount = false;
 	}
@@ -319,6 +322,9 @@ async function getHistoryCount(year?: number) {
 				count: data.count
 			};
 		}
+	} catch (error) {
+		console.error('Failed to get history count:', error);
+		handleFormToast({ error: 'Failed to get play history count. Please try again.' });
 	} finally {
 		loadingHistoryCount = false;
 	}

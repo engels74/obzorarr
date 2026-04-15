@@ -14,7 +14,16 @@ function devRequestFilter(): PluginOption {
 		name: 'obzorarr-dev-request-filter',
 		configureServer(server) {
 			server.middlewares.use((req, res, next) => {
-				const path = new URL(req.url ?? '/', 'http://localhost').pathname;
+				let path: string;
+
+				try {
+					path = new URL(req.url ?? '/', 'http://localhost').pathname;
+				} catch {
+					res.statusCode = 400;
+					res.end('Bad Request');
+					return;
+				}
+
 				const userAgent = req.headers['user-agent'];
 				const userAgentValue = Array.isArray(userAgent) ? userAgent.join(' ') : (userAgent ?? '');
 

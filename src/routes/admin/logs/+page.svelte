@@ -338,19 +338,19 @@ $effect(() => {
 	<section class="stats-section">
 		<div class="stat-card">
 			<span class="stat-value">{visibleTotalCount.toLocaleString()}</span>
-			<span class="stat-label">Total Logs</span>
+			<span class="stat-label">Visible Logs</span>
 		</div>
 		<div class="stat-card level-info">
 			<span class="stat-value">{visibleLevelCounts.INFO.toLocaleString()}</span>
-			<span class="stat-label">Info</span>
+			<span class="stat-label">Visible Info</span>
 		</div>
 		<div class="stat-card level-warn">
 			<span class="stat-value">{visibleLevelCounts.WARN.toLocaleString()}</span>
-			<span class="stat-label">Warnings</span>
+			<span class="stat-label">Visible Warnings</span>
 		</div>
 		<div class="stat-card level-error">
 			<span class="stat-value">{visibleLevelCounts.ERROR.toLocaleString()}</span>
-			<span class="stat-label">Errors</span>
+			<span class="stat-label">Visible Errors</span>
 		</div>
 	</section>
 
@@ -503,7 +503,7 @@ $effect(() => {
 		<div class="logs-header">
 			<h2>Log Entries</h2>
 			<span class="logs-count">
-				Showing {allLogs.length} of {visibleTotalCount.toLocaleString()}
+				Showing {visibleTotalCount.toLocaleString()} visible log entries
 			</span>
 		</div>
 
