@@ -2,7 +2,7 @@ import { error, json } from '@sveltejs/kit';
 import { z } from 'zod';
 import { completePlexPinLogin } from '$lib/server/auth/login-completion';
 import { getPinInfo } from '$lib/server/auth/plex-oauth';
-import { PinExpiredError, PlexAuthApiError } from '$lib/server/auth/types';
+import { NotServerMemberError, PinExpiredError, PlexAuthApiError } from '$lib/server/auth/types';
 import type { RequestHandler } from './$types';
 
 const PollRequestSchema = z.object({
@@ -60,6 +60,12 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 			console.error('Plex OAuth error during PIN poll');
 			error(502, {
 				message: 'Unable to connect to Plex. Please try again.'
+			});
+		}
+
+		if (err instanceof NotServerMemberError) {
+			error(403, {
+				message: err.message
 			});
 		}
 
