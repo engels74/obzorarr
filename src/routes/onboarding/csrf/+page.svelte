@@ -111,13 +111,6 @@ $effect(() => {
 function useDetectedOrigin() {
 	csrfOriginInput = data.detection.detectedOrigin;
 }
-
-function submitButtonForm(event: MouseEvent) {
-	const submitter = event.currentTarget as HTMLButtonElement;
-	if (!submitter.form || typeof submitter.form.requestSubmit !== 'function') return;
-	event.preventDefault();
-	submitter.form.requestSubmit(submitter);
-}
 </script>
 
 <OnboardingCard title="Security Settings" subtitle="Configure CSRF protection for your application">
@@ -391,7 +384,7 @@ function submitButtonForm(event: MouseEvent) {
 	{#snippet footer()}
 		<div class="button-group">
 			<form method="POST" action="?/skipCsrf" class="skip-form">
-				<button type="submit" class="skip-btn" formnovalidate onclick={submitButtonForm}>
+				<button type="submit" class="skip-btn" formnovalidate>
 					{data.csrfConfig.isLocked ? 'Continue' : 'Skip'}
 				</button>
 			</form>
@@ -402,7 +395,6 @@ function submitButtonForm(event: MouseEvent) {
 						type="submit"
 						class="save-btn"
 						disabled={!csrfOriginInput || testResult !== 'success'}
-						onclick={submitButtonForm}
 					>
 						Save & Continue
 					</button>

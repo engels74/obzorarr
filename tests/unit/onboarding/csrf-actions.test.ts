@@ -13,6 +13,7 @@ import { actions } from '../../../src/routes/onboarding/csrf/+page.server';
 const ORIGIN = 'http://localhost:5173';
 type SaveOriginAction = NonNullable<typeof actions.saveOrigin>;
 type SkipCsrfAction = NonNullable<typeof actions.skipCsrf>;
+type TestOriginAction = NonNullable<typeof actions.testOrigin>;
 
 function createFormRequest(csrfOrigin: string, origin = ORIGIN): Request {
 	const formData = new FormData();
@@ -28,6 +29,11 @@ function createFormRequest(csrfOrigin: string, origin = ORIGIN): Request {
 async function runSaveOrigin(request: Request) {
 	const saveOrigin = actions.saveOrigin as SaveOriginAction;
 	return saveOrigin({ request } as Parameters<SaveOriginAction>[0]);
+}
+
+async function runTestOrigin(request: Request) {
+	const testOrigin = actions.testOrigin as TestOriginAction;
+	return testOrigin({ request } as Parameters<TestOriginAction>[0]);
 }
 
 async function runSkipCsrf(request: Request) {
@@ -50,6 +56,56 @@ async function expectRedirect(run: () => Promise<unknown>, location: string) {
 describe('onboarding CSRF actions', () => {
 	beforeEach(async () => {
 		await db.delete(appSettings);
+	});
+
+	it('test origin succeeds when the submitted origin matches the browser origin', async () => {
+		const result = await runTestOrigin(createFormRequest(ORIGIN));
+
+		expect(result).toEqual({ testSuccess: true, testedOrigin: ORIGIN });
+		expect(await getOnboardingStep()).toBe(OnboardingSteps.CSRF);
+	});
+
+	it('test origin rejects invalid URLs without advancing onboarding', async () => {
+		const result = await runTestOrigin(createFormRequest('not-a-url'));
+
+		expect(result).toEqual({
+			status: 400,
+			data: { testError: 'Invalid URL format' }
+		});
+		expect(await getOnboardingStep()).toBe(OnboardingSteps.CSRF);
+	});
+
+	it('test origin rejects requests without a browser origin', async () => {
+		const formData = new FormData();
+		formData.set('csrfOrigin', ORIGIN);
+
+		const request = new Request(`${ORIGIN}/onboarding/csrf`, {
+			method: 'POST',
+			body: formData
+		});
+
+		const result = await runTestOrigin(request);
+
+		expect(result).toEqual({
+			status: 400,
+			data: {
+				testError: 'Could not detect browser origin. Ensure you are accessing via HTTP/HTTPS.'
+			}
+		});
+		expect(await getOnboardingStep()).toBe(OnboardingSteps.CSRF);
+	});
+
+	it('test origin rejects mismatches without advancing onboarding', async () => {
+		const result = await runTestOrigin(createFormRequest('https://example.com'));
+
+		expect(result).toEqual({
+			status: 400,
+			data: {
+				testError:
+					'Origin mismatch: browser sends "http://localhost:5173" but you configured "https://example.com"'
+			}
+		});
+		expect(await getOnboardingStep()).toBe(OnboardingSteps.CSRF);
 	});
 
 	it('saves a matching CSRF origin, advances to Plex, and redirects', async () => {
