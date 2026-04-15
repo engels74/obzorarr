@@ -2,12 +2,12 @@
  * Shared client-side helpers for the Plex OAuth login flow.
  *
  * Two entry points share PIN-fetch and polling plumbing:
- *  - `startPlexLoginPopup`   — opens Plex.tv in a popup, polls for the auth token
- *    in the background, and finalises by exchanging the token at /auth/plex/callback.
+ *  - `startPlexLoginPopup`   — opens Plex.tv in a popup, polls until the server
+ *    creates an Obzorarr session, then returns the logged-in user.
  *  - `startPlexLoginRedirect` — same-tab navigation to Plex.tv with `forwardUrl`
  *    pointing back at /auth/plex/redirect; the redirect page then polls and
- *    completes the callback. Designed for headless / E2E automation that
- *    cannot reliably orchestrate popups.
+ *    receives the completed session. Designed for headless / E2E automation
+ *    that cannot reliably orchestrate popups.
  */
 
 export const PIN_STORAGE_KEY = 'obzorarr_plex_pin';
@@ -22,6 +22,11 @@ export interface PlexLoginUser {
 	plexId?: number;
 	username?: string;
 	isAdmin: boolean;
+}
+
+interface CompletedLoginResponse {
+	user: PlexLoginUser;
+	redirectTo?: string;
 }
 
 interface PopupWindowHandle {
@@ -178,35 +183,25 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 							pinExpired = true;
 							cleanup();
 							opts.onError('Authentication expired. Please try again.');
+							return;
 						}
+						const errData = (await pollResponse.json().catch(() => ({}))) as {
+							message?: string;
+						};
+						cleanup();
+						opts.onError(errData.message || 'Login failed. Please try again.');
 						return;
 					}
 
-					const result = (await pollResponse.json()) as { pending: true } | { authToken: string };
+					const result = (await pollResponse.json()) as { pending: true } | CompletedLoginResponse;
 					if (finished) return;
 
-					if ('authToken' in result && result.authToken) {
+					if ('user' in result && result.user) {
 						callbackInProgress = true;
 						cleanup();
 
 						try {
-							const callbackResponse = await fetch('/auth/plex/callback', {
-								method: 'POST',
-								headers: { 'Content-Type': 'application/json' },
-								body: JSON.stringify({ authToken: result.authToken })
-							});
-
-							if (!callbackResponse.ok) {
-								const errData = (await callbackResponse.json().catch(() => ({}))) as {
-									message?: string;
-								};
-								throw new Error(errData.message || 'Login failed');
-							}
-
-							const userData = (await callbackResponse.json()) as {
-								user: PlexLoginUser;
-							};
-							await opts.onSuccess(userData.user);
+							await opts.onSuccess(result.user);
 							succeeded = true;
 						} catch (err) {
 							if (cancelled || succeeded || timedOut || pinExpired) return;

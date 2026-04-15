@@ -84,6 +84,7 @@ let selectedWrappedTheme = $state('');
 let selectedAnonymization = $state('');
 let selectedWrappedLogoMode = $state('');
 let isTesting = $state(false);
+let testConnectionResult = $state<{ type: 'success' | 'error'; message: string } | null>(null);
 
 // Logging settings state
 let logRetentionDays = $state(7);
@@ -185,6 +186,7 @@ let pendingCacheYear = $state<number | undefined>(undefined);
 let pendingCacheCount = $state(0);
 let loadingCount = $state(false);
 let isClearing = $state(false);
+let cacheCountResult = $state<{ label: string; count: number } | null>(null);
 
 // Play history clearing dialog state
 let historyDialogOpen = $state(false);
@@ -192,6 +194,7 @@ let pendingHistoryYear = $state<number | undefined>(undefined);
 let pendingHistoryCount = $state(0);
 let loadingHistoryCount = $state(false);
 let isClearingHistory = $state(false);
+let historyCountResult = $state<{ label: string; count: number } | null>(null);
 
 // Open cache clearing confirmation dialog
 async function showCacheConfirmation(year?: number) {
@@ -217,6 +220,42 @@ async function showCacheConfirmation(year?: number) {
 		}
 	} catch (error) {
 		console.error('Failed to get cache count:', error);
+	} finally {
+		loadingCount = false;
+	}
+}
+
+async function getCacheCount(year?: number) {
+	loadingCount = true;
+	pendingCacheYear = year;
+	cacheCountResult = null;
+
+	const formData = new FormData();
+	if (year !== undefined) {
+		formData.append('year', year.toString());
+	}
+
+	try {
+		const response = await fetch('?/getCacheCount', {
+			method: 'POST',
+			body: formData
+		});
+		const result = deserialize(await response.text());
+
+		if (result.type === 'success' && result.data) {
+			const data = result.data as { success: boolean; count: number; year?: number };
+			cacheCountResult = {
+				label: year !== undefined ? `${year} cache` : 'All cache',
+				count: data.count
+			};
+		} else if (result.type === 'failure') {
+			handleFormToast({
+				error: (result.data as { error?: string })?.error ?? 'Failed to get cache count.'
+			});
+		}
+	} catch (error) {
+		console.error('Failed to get cache count:', error);
+		handleFormToast({ error: 'Failed to get cache count. Please try again.' });
 	} finally {
 		loadingCount = false;
 	}
@@ -263,6 +302,42 @@ async function showHistoryConfirmation(year?: number) {
 	}
 }
 
+async function getHistoryCount(year?: number) {
+	loadingHistoryCount = true;
+	pendingHistoryYear = year;
+	historyCountResult = null;
+
+	const formData = new FormData();
+	if (year !== undefined) {
+		formData.append('year', year.toString());
+	}
+
+	try {
+		const response = await fetch('?/getPlayHistoryCount', {
+			method: 'POST',
+			body: formData
+		});
+		const result = deserialize(await response.text());
+
+		if (result.type === 'success' && result.data) {
+			const data = result.data as { success: boolean; count: number; year?: number };
+			historyCountResult = {
+				label: year !== undefined ? `${year} history` : 'All history',
+				count: data.count
+			};
+		} else if (result.type === 'failure') {
+			handleFormToast({
+				error: (result.data as { error?: string })?.error ?? 'Failed to get play history count.'
+			});
+		}
+	} catch (error) {
+		console.error('Failed to get history count:', error);
+		handleFormToast({ error: 'Failed to get play history count. Please try again.' });
+	} finally {
+		loadingHistoryCount = false;
+	}
+}
+
 function handleHistoryCleared() {
 	historyDialogOpen = false;
 	pendingHistoryYear = undefined;
@@ -274,6 +349,10 @@ function getHistoryConfirmationMessage(): string {
 		return `This will permanently delete ${pendingHistoryCount} play history record${pendingHistoryCount !== 1 ? 's' : ''} for ${pendingHistoryYear}.`;
 	}
 	return `This will permanently delete ${pendingHistoryCount} play history record${pendingHistoryCount !== 1 ? 's' : ''} across all years.`;
+}
+
+function formatRecordCount(count: number): string {
+	return `${count.toLocaleString()} record${count === 1 ? '' : 's'}`;
 }
 
 // Tab configuration with icons
@@ -309,6 +388,12 @@ function detectCurrentUrl() {
 		csrfOriginValue = window.location.origin;
 	}
 }
+
+const logFieldErrors = $derived(
+	form && 'fieldErrors' in form
+		? (form.fieldErrors as Record<string, string[] | undefined>)
+		: undefined
+);
 </script>
 
 <div class="settings-command-center">
@@ -452,6 +537,7 @@ function detectCurrentUrl() {
 								disabled={isTesting || !plexServerUrl || !plexToken}
 								onclick={async () => {
 									isTesting = true;
+									testConnectionResult = null;
 									const formData = new FormData();
 									formData.set('plexServerUrl', plexServerUrl);
 									formData.set('plexToken', plexToken);
@@ -462,20 +548,28 @@ function detectCurrentUrl() {
 										});
 										const result = deserialize(await response.text());
 										if (result.type === 'success' || result.type === 'failure') {
-											handleFormToast(result.data);
+											const data = result.data as { success?: boolean; message?: string; error?: string };
+											handleFormToast(data);
+											testConnectionResult = data.error
+												? { type: 'error', message: data.error }
+												: {
+														type: 'success',
+														message: data.message ?? 'Plex connection succeeded'
+													};
 										} else if (result.type === 'error') {
-											handleFormToast({
-												error: result.error?.message ?? 'An error occurred while testing connection'
-											});
+											const message =
+												result.error?.message ?? 'An error occurred while testing connection';
+											handleFormToast({ error: message });
+											testConnectionResult = { type: 'error', message };
 										} else {
-											handleFormToast({
-												error: 'Unexpected response from server'
-											});
+											const message = 'Unexpected response from server';
+											handleFormToast({ error: message });
+											testConnectionResult = { type: 'error', message };
 										}
 									} catch {
-										handleFormToast({
-											error: 'Failed to test connection. Please check your network and try again.'
-										});
+										const message = 'Failed to test connection. Please check your network and try again.';
+										handleFormToast({ error: message });
+										testConnectionResult = { type: 'error', message };
 									} finally {
 										isTesting = false;
 									}
@@ -496,6 +590,11 @@ function detectCurrentUrl() {
 								<span class="info-text"
 									>All Plex settings are managed via environment variables</span
 								>
+							</div>
+						{/if}
+						{#if testConnectionResult}
+							<div class="inline-result" class:error={testConnectionResult.type === 'error'}>
+								{testConnectionResult.message}
 							</div>
 						{/if}
 					</form>
@@ -1318,6 +1417,19 @@ function detectCurrentUrl() {
 							<button
 								type="button"
 								class="btn-secondary"
+								onclick={() => getCacheCount(year)}
+								disabled={loadingCount}
+							>
+								{#if loadingCount && pendingCacheYear === year}
+									<Loader2 class="btn-icon spinning" />
+								{:else}
+									<Database class="btn-icon" />
+								{/if}
+								Get {year} Count
+							</button>
+							<button
+								type="button"
+								class="btn-secondary"
 								onclick={() => showCacheConfirmation(year)}
 								disabled={loadingCount}
 							>
@@ -1332,6 +1444,19 @@ function detectCurrentUrl() {
 						<button
 							type="button"
 							class="btn-secondary btn-all"
+							onclick={() => getCacheCount()}
+							disabled={loadingCount}
+						>
+							{#if loadingCount && pendingCacheYear === undefined}
+								<Loader2 class="btn-icon spinning" />
+							{:else}
+								<Database class="btn-icon" />
+							{/if}
+							Get All Cache Count
+						</button>
+						<button
+							type="button"
+							class="btn-secondary btn-all"
 							onclick={() => showCacheConfirmation()}
 							disabled={loadingCount}
 						>
@@ -1343,6 +1468,11 @@ function detectCurrentUrl() {
 							Clear All Cache
 						</button>
 					</div>
+					{#if cacheCountResult}
+						<p class="count-result">
+							{cacheCountResult.label}: {formatRecordCount(cacheCountResult.count)}
+						</p>
+					{/if}
 				</section>
 
 				<!-- Danger Zone -->
@@ -1377,6 +1507,19 @@ function detectCurrentUrl() {
 						{#each data.availableYears as year}
 							<button
 								type="button"
+								class="btn-secondary"
+								onclick={() => getHistoryCount(year)}
+								disabled={loadingHistoryCount}
+							>
+								{#if loadingHistoryCount && pendingHistoryYear === year}
+									<Loader2 class="btn-icon spinning" />
+								{:else}
+									<Database class="btn-icon" />
+								{/if}
+								Get {year} Count
+							</button>
+							<button
+								type="button"
 								class="btn-danger"
 								onclick={() => showHistoryConfirmation(year)}
 								disabled={loadingHistoryCount}
@@ -1391,6 +1534,19 @@ function detectCurrentUrl() {
 						{/each}
 						<button
 							type="button"
+							class="btn-secondary btn-all"
+							onclick={() => getHistoryCount()}
+							disabled={loadingHistoryCount}
+						>
+							{#if loadingHistoryCount && pendingHistoryYear === undefined}
+								<Loader2 class="btn-icon spinning" />
+							{:else}
+								<Database class="btn-icon" />
+							{/if}
+							Get All History Count
+						</button>
+						<button
+							type="button"
 							class="btn-danger btn-all"
 							onclick={() => showHistoryConfirmation()}
 							disabled={loadingHistoryCount}
@@ -1403,6 +1559,11 @@ function detectCurrentUrl() {
 							Delete All History
 						</button>
 					</div>
+					{#if historyCountResult}
+						<p class="count-result">
+							{historyCountResult.label}: {formatRecordCount(historyCountResult.count)}
+						</p>
+					{/if}
 				</section>
 			</div>
 		{/if}
@@ -1443,6 +1604,9 @@ function detectCurrentUrl() {
 									/>
 									<span class="input-suffix">days</span>
 								</div>
+								{#if logFieldErrors?.retentionDays?.[0]}
+									<span class="field-error">{logFieldErrors.retentionDays[0]}</span>
+								{/if}
 								<span class="field-hint">Auto-delete logs older than this (1-365)</span>
 							</div>
 
@@ -1461,10 +1625,13 @@ function detectCurrentUrl() {
 										bind:value={logMaxCount}
 										min="1000"
 										max="1000000"
-										step="1000"
+										step="1"
 									/>
 									<span class="input-suffix">logs</span>
 								</div>
+								{#if logFieldErrors?.maxCount?.[0]}
+									<span class="field-error">{logFieldErrors.maxCount[0]}</span>
+								{/if}
 								<span class="field-hint">Maximum logs to retain</span>
 							</div>
 						</div>
@@ -1923,6 +2090,13 @@ function detectCurrentUrl() {
 			margin-top: 0.375rem;
 		}
 
+		.field-error {
+			display: block;
+			font-size: 0.75rem;
+			color: hsl(var(--destructive));
+			margin-top: 0.375rem;
+		}
+
 		.source-badge {
 			font-size: 0.625rem;
 			font-weight: 600;
@@ -1988,6 +2162,23 @@ function detectCurrentUrl() {
 			font-size: 0.8125rem;
 			color: hsl(210 60% 60%);
 			font-style: italic;
+		}
+
+		.inline-result,
+		.count-result {
+			margin-top: 1rem;
+			padding: 0.75rem 1rem;
+			border: 1px solid hsl(140 50% 35% / 0.45);
+			border-radius: 8px;
+			background: hsl(140 50% 30% / 0.12);
+			color: hsl(140 50% 70%);
+			font-size: 0.875rem;
+		}
+
+		.inline-result.error {
+			border-color: hsl(var(--destructive) / 0.45);
+			background: hsl(var(--destructive) / 0.1);
+			color: hsl(var(--destructive));
 		}
 
 		.input-with-action {

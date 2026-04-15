@@ -148,6 +148,8 @@ function handleShare(): void {
 				stats={data.stats}
 				slides={data.slides}
 				customSlides={data.customSlidesMap}
+				initialSlideIndex={currentSlideIndex}
+				onSlideChange={(index) => (currentSlideIndex = index)}
 				onComplete={handleComplete}
 				onClose={handleClose}
 				{messagingContext}

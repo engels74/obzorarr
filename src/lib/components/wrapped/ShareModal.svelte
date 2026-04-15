@@ -13,6 +13,7 @@ interface Props {
 	open?: boolean;
 	onOpenChange?: (open: boolean) => void;
 	currentUrl: string;
+	canonicalUrl?: string;
 	shareSettings?: ShareSettings;
 	isOwner?: boolean;
 	isAdmin?: boolean;
@@ -23,6 +24,7 @@ let {
 	open = $bindable(false),
 	onOpenChange,
 	currentUrl,
+	canonicalUrl,
 	shareSettings,
 	isOwner = false,
 	isAdmin = false,
@@ -34,36 +36,42 @@ let copied = $state(false);
 let copyTimeout: ReturnType<typeof setTimeout> | undefined;
 let isUpdating = $state(false);
 let optimisticMode = $state<ShareModeType | null>(null);
+let optimisticShareToken = $state<string | null | undefined>(undefined);
 
 // Reset optimistic state when server data updates
 $effect.pre(() => {
 	if (shareSettings?.mode) {
 		optimisticMode = null;
+		optimisticShareToken = undefined;
 	}
 });
 
 const displayMode = $derived(optimisticMode ?? shareSettings?.mode);
+const displayShareToken = $derived(
+	optimisticShareToken === undefined ? shareSettings?.shareToken : optimisticShareToken
+);
 
 // Computed URL based on mode
 const shareUrl = $derived.by(() => {
 	const origin = typeof window !== 'undefined' ? window.location.origin : '';
+	const baseUrl = canonicalUrl ?? currentUrl;
 
-	if (!shareSettings) return `${origin}${currentUrl}`;
+	if (!shareSettings) return `${origin}${baseUrl}`;
 
-	if (shareSettings.mode === 'private-link' && shareSettings.shareToken) {
-		// Replace user ID with token in URL for private-link mode
-		const parts = currentUrl.split('/u/');
+	if (displayMode === 'private-link' && displayShareToken) {
+		const parts = baseUrl.split('/u/');
 		if (parts.length === 2) {
-			return `${origin}${parts[0]}/u/${shareSettings.shareToken}`;
+			return `${origin}${parts[0]}/u/${displayShareToken}`;
 		}
 	}
-	return `${origin}${currentUrl}`;
+	return `${origin}${baseUrl}`;
 });
 
 // Can show share mode controls
 const canControlShare = $derived(
-	isOwner && (shareSettings?.canUserControl || isAdmin) && !isServerWrapped
+	(isOwner || isAdmin) && (shareSettings?.canUserControl || isAdmin) && !isServerWrapped
 );
+const canRegenerateToken = $derived(canControlShare && displayMode === 'private-link');
 
 // Available modes based on permissions
 const availableModes = $derived.by(() => {
@@ -115,6 +123,27 @@ async function copyUrl(): Promise<void> {
 function handleOpenChange(value: boolean): void {
 	open = value;
 	onOpenChange?.(value);
+}
+
+function applyShareActionData(data: unknown): void {
+	const actionData = data as
+		| {
+				shareSettings?: Partial<ShareSettings>;
+				shareToken?: string | null;
+		  }
+		| undefined;
+
+	if (actionData?.shareSettings?.mode) {
+		optimisticMode = actionData.shareSettings.mode;
+	}
+
+	if (actionData?.shareSettings && 'shareToken' in actionData.shareSettings) {
+		optimisticShareToken = actionData.shareSettings.shareToken;
+	}
+
+	if (actionData && 'shareToken' in actionData) {
+		optimisticShareToken = actionData.shareToken;
+	}
 }
 
 // Cleanup on unmount
@@ -205,12 +234,17 @@ $effect(() => {
 					action="?/updateShareMode"
 					use:enhance={() => {
 						isUpdating = true;
-						return async ({ update }) => {
+						return async ({ result, update }) => {
 							try {
+								if (result.type === 'success') {
+									applyShareActionData(result.data);
+								} else {
+									optimisticMode = null;
+									optimisticShareToken = undefined;
+								}
 								await update();
 							} finally {
 								isUpdating = false;
-								optimisticMode = null;
 							}
 						};
 					}}
@@ -255,14 +289,17 @@ $effect(() => {
 				</form>
 
 				<!-- Regenerate Token (admin only, private-link mode) -->
-				{#if isAdmin && displayMode === 'private-link'}
+				{#if canRegenerateToken}
 					<form
 						method="POST"
 						action="?/regenerateToken"
 						use:enhance={() => {
 							isUpdating = true;
-							return async ({ update }) => {
+							return async ({ result, update }) => {
 								try {
+									if (result.type === 'success') {
+										applyShareActionData(result.data);
+									}
 									await update();
 								} finally {
 									isUpdating = false;

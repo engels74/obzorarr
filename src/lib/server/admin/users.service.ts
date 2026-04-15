@@ -2,7 +2,12 @@ import { and, between, eq, sql } from 'drizzle-orm';
 import { db } from '$lib/server/db/client';
 import { playHistory, shareSettings, users } from '$lib/server/db/schema';
 import { generateShareToken, getGlobalDefaultShareMode } from '$lib/server/sharing/service';
-import { ShareMode, type ShareModeType } from '$lib/server/sharing/types';
+import {
+	ShareMode,
+	ShareModeSource,
+	type ShareModeSourceType,
+	type ShareModeType
+} from '$lib/server/sharing/types';
 
 export interface UserWithStats {
 	id: number;
@@ -14,6 +19,7 @@ export interface UserWithStats {
 	createdAt: Date | null;
 	totalWatchTimeMinutes: number;
 	shareMode: ShareModeType | null;
+	shareModeSource: ShareModeSourceType | null;
 	canUserControl: boolean;
 }
 
@@ -64,10 +70,14 @@ export async function getAllUsersWithStats(year: number): Promise<UserWithStats[
 		watchTimeMap.set(wt.accountId, wt.totalDuration);
 	}
 
-	const shareSettingsMap = new Map<number, { mode: ShareModeType; canUserControl: boolean }>();
+	const shareSettingsMap = new Map<
+		number,
+		{ mode: ShareModeType; modeSource: ShareModeSourceType; canUserControl: boolean }
+	>();
 	for (const ss of shareSettingsByUser) {
 		shareSettingsMap.set(ss.userId, {
 			mode: ss.mode as ShareModeType,
+			modeSource: (ss.modeSource ?? ShareModeSource.EXPLICIT) as ShareModeSourceType,
 			canUserControl: ss.canUserControl ?? false
 		});
 	}
@@ -91,6 +101,7 @@ export async function getAllUsersWithStats(year: number): Promise<UserWithStats[
 			createdAt: user.createdAt,
 			totalWatchTimeMinutes: Math.round(watchTimeSeconds / 60),
 			shareMode: settings?.mode ?? null,
+			shareModeSource: settings?.modeSource ?? null,
 			canUserControl: settings?.canUserControl ?? false
 		};
 	});
@@ -150,6 +161,7 @@ export async function updateUserSharePermission(
 			userId,
 			year,
 			mode: defaultMode,
+			modeSource: ShareModeSource.DEFAULT,
 			shareToken,
 			canUserControl
 		});

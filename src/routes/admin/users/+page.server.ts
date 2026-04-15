@@ -36,6 +36,7 @@ export const load: PageServerLoad = async ({ url }) => {
 			isAdmin: u.isAdmin,
 			totalWatchTimeMinutes: u.totalWatchTimeMinutes,
 			shareMode: u.shareMode,
+			shareModeSource: u.shareModeSource,
 			canUserControl: u.canUserControl
 		})),
 		year,

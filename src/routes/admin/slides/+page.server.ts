@@ -341,7 +341,12 @@ export const actions: Actions = {
 
 		try {
 			await setFunFactFrequency(mode as FunFactFrequencyType, customCount);
-			return { success: true };
+			const funFactFrequency = await getFunFactFrequency();
+			return {
+				success: true,
+				message: 'Fun fact frequency updated',
+				funFactFrequency
+			};
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to update frequency';
 			return fail(500, { error: message });

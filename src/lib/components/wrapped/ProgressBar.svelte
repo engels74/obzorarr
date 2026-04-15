@@ -9,9 +9,6 @@ interface Props {
 }
 
 let { current, total, class: klass = '' }: Props = $props();
-
-// Calculate progress percentage for continuous bar fallback
-const progressPercent = $derived(total > 0 ? ((current + 1) / total) * 100 : 0);
 </script>
 
 <div
@@ -82,6 +79,16 @@ const progressPercent = $derived(total > 0 ? ((current + 1) / total) * 100 : 0);
 			}
 			50% {
 				opacity: 0.7;
+			}
+		}
+
+		@media (prefers-reduced-motion: reduce) {
+			.segment {
+				transition: none;
+			}
+
+			.segment.active {
+				animation: none;
 			}
 		}
 

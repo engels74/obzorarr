@@ -2,7 +2,7 @@
 import { animate, stagger } from 'motion';
 import { prefersReducedMotion } from 'svelte/motion';
 import type { ServerStats, UserStats } from '$lib/stats/types';
-import { isServerStats, isUserStats } from '$lib/stats/types';
+import { hasWatchHistory, isServerStats, isUserStats } from '$lib/stats/types';
 import { DELAY_PRESETS, SPRING_PRESETS, STAGGER_PRESETS } from '$lib/utils/animation-presets';
 
 interface Props {
@@ -18,7 +18,7 @@ interface Props {
 let { stats, year, username, onRestart, onHome, onShare, class: klass = '' }: Props = $props();
 
 // Computed stats
-const isPersonal = $derived(isUserStats(stats));
+const hasHistory = $derived(hasWatchHistory(stats));
 const hours = $derived(Math.floor(stats.totalWatchTimeMinutes / 60));
 const topMovie = $derived(stats.topMovies[0]?.title ?? null);
 const topShow = $derived(stats.topShows[0]?.title ?? null);
@@ -121,10 +121,17 @@ $effect(() => {
 				{year} Server Wrapped
 			{/if}
 		</h1>
-		<p class="subtitle">Your Year in Review</p>
+		<p class="subtitle">
+			{#if hasHistory}
+				Your Year in Review
+			{:else}
+				No viewing history for this year yet
+			{/if}
+		</p>
 	</div>
 
-	<div bind:this={statsGrid} class="stats-grid">
+	{#if hasHistory}
+		<div bind:this={statsGrid} class="stats-grid">
 		<!-- Total Watch Time -->
 		<div bind:this={statCards[0]} class="stat-card highlight">
 			<span class="stat-icon">&#128249;</span>
@@ -189,6 +196,11 @@ $effect(() => {
 			</div>
 		{/if}
 	</div>
+	{:else}
+		<div bind:this={statsGrid} class="empty-summary">
+			<p>No viewing history for this year yet.</p>
+		</div>
+	{/if}
 
 	<div bind:this={buttonsRow} class="actions">
 		<button type="button" class="btn btn-secondary" onclick={onRestart}>
@@ -329,6 +341,18 @@ $effect(() => {
 			width: 100%;
 			margin-bottom: 2.5rem;
 			z-index: 1;
+		}
+
+		.empty-summary {
+			z-index: 1;
+			margin-bottom: 2.5rem;
+			padding: 1.5rem;
+			color: hsl(var(--muted-foreground));
+			text-align: center;
+		}
+
+		.empty-summary p {
+			margin: 0;
 		}
 
 		.stat-card {

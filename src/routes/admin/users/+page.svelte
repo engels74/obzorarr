@@ -31,7 +31,9 @@ function formatWatchTime(minutes: number): string {
 }
 
 // Get share mode display label
-function getShareModeLabel(mode: string | null): string {
+function getShareModeLabel(mode: string | null, source: string | null): string {
+	if (source === 'default') return 'Default';
+
 	switch (mode) {
 		case 'public':
 			return 'Public';
@@ -52,11 +54,12 @@ function getShareModeLabel(mode: string | null): string {
 				<h1>User Management</h1>
 				<p class="subtitle">Manage server users for {data.year}</p>
 			</div>
-			{#if data.availableYears.length > 1}
+			{#if data.availableYears.length >= 1}
 				<form method="GET" class="year-form">
 					<select
 						name="year"
 						class="year-selector"
+						disabled={data.availableYears.length === 1}
 						onchange={(e) => e.currentTarget.form?.requestSubmit()}
 					>
 						{#each data.availableYears as yr}
@@ -95,18 +98,20 @@ function getShareModeLabel(mode: string | null): string {
 							<tr>
 								<td>
 									<div class="user-cell">
-										{#if user.thumb}
-											<img src={user.thumb} alt="" class="user-avatar" />
-										{:else}
-											<span class="user-avatar placeholder">&#9787;</span>
-										{/if}
+										<a href="/wrapped/{data.year}/u/{user.id}" class="user-avatar-link">
+											{#if user.thumb}
+												<img src={user.thumb} alt="" class="user-avatar" />
+											{:else}
+												<span class="user-avatar placeholder">&#9787;</span>
+											{/if}
+										</a>
 										<div class="user-info">
-											<span class="user-name">
+											<a href="/wrapped/{data.year}/u/{user.id}" class="user-name">
 												{user.username}
 												{#if user.isAdmin}
 													<span class="admin-badge">Admin</span>
 												{/if}
-											</span>
+											</a>
 											{#if user.email}
 												<span class="user-email">{user.email}</span>
 											{/if}
@@ -119,11 +124,13 @@ function getShareModeLabel(mode: string | null): string {
 								<td>
 									<span
 										class="share-mode"
-										class:public={user.shareMode === 'public'}
-										class:oauth={user.shareMode === 'private-oauth'}
-										class:link={user.shareMode === 'private-link'}
+										class:public={user.shareModeSource !== 'default' && user.shareMode === 'public'}
+										class:oauth={user.shareModeSource !== 'default' &&
+											user.shareMode === 'private-oauth'}
+										class:link={user.shareModeSource !== 'default' &&
+											user.shareMode === 'private-link'}
 									>
-										{getShareModeLabel(user.shareMode)}
+										{getShareModeLabel(user.shareMode, user.shareModeSource)}
 									</span>
 								</td>
 								<td>
@@ -244,6 +251,11 @@ function getShareModeLabel(mode: string | null): string {
 			box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
 		}
 
+		.year-selector:disabled {
+			cursor: default;
+			opacity: 0.75;
+		}
+
 		.section {
 			background: hsl(var(--card));
 			border: 1px solid hsl(var(--border));
@@ -318,6 +330,11 @@ function getShareModeLabel(mode: string | null): string {
 			gap: 0.75rem;
 		}
 
+		.user-avatar-link,
+		.user-name {
+			text-decoration: none;
+		}
+
 		.user-avatar {
 			width: 36px;
 			height: 36px;
@@ -345,6 +362,10 @@ function getShareModeLabel(mode: string | null): string {
 			display: flex;
 			align-items: center;
 			gap: 0.5rem;
+		}
+
+		.user-name:hover {
+			color: hsl(var(--primary));
 		}
 
 		.user-email {

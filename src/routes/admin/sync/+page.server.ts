@@ -1,5 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import { z } from 'zod';
+import { AppSettingsKey, getAppSetting, setAppSetting } from '$lib/server/admin/settings.service';
 import { cancelSync } from '$lib/server/sync/progress';
 import {
 	getSchedulerStatus,
@@ -7,6 +8,7 @@ import {
 	resumeSyncScheduler,
 	setupSyncScheduler,
 	startBackgroundSync,
+	stopSyncScheduler,
 	updateSchedulerCron
 } from '$lib/server/sync/scheduler';
 import {
@@ -37,13 +39,15 @@ export const load: PageServerLoad = async ({ url }) => {
 	const pageParam = url.searchParams.get('page');
 	const page = Math.max(1, parseInt(pageParam ?? '1', 10) || 1);
 
-	const [isRunning, lastSync, paginatedHistory, schedulerStatus, historyCount] = await Promise.all([
-		isSyncRunning(),
-		getLastSuccessfulSync(),
-		getSyncHistory({ page, pageSize: HISTORY_PAGE_SIZE }),
-		getSchedulerStatus(),
-		getPlayHistoryCount()
-	]);
+	const [isRunning, lastSync, paginatedHistory, schedulerStatus, historyCount, storedCron] =
+		await Promise.all([
+			isSyncRunning(),
+			getLastSuccessfulSync(),
+			getSyncHistory({ page, pageSize: HISTORY_PAGE_SIZE }),
+			getSchedulerStatus(),
+			getPlayHistoryCount(),
+			getAppSetting(AppSettingsKey.SYNC_CRON_EXPRESSION)
+		]);
 
 	const currentYear = new Date().getFullYear();
 	const availableYears = Array.from({ length: 6 }, (_, i) => currentYear - i);
@@ -79,7 +83,7 @@ export const load: PageServerLoad = async ({ url }) => {
 			isPaused: schedulerStatus.isPaused,
 			nextRun: schedulerStatus.nextRun?.toISOString() ?? null,
 			previousRun: schedulerStatus.previousRun?.toISOString() ?? null,
-			cronExpression: schedulerStatus.cronExpression
+			cronExpression: schedulerStatus.cronExpression ?? storedCron
 		},
 		historyCount,
 		availableYears
@@ -147,6 +151,7 @@ export const actions: Actions = {
 
 		try {
 			updateSchedulerCron(parsed.data);
+			await setAppSetting(AppSettingsKey.SYNC_CRON_EXPRESSION, parsed.data);
 			return { success: true, message: 'Schedule updated successfully' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to update schedule';
@@ -174,6 +179,16 @@ export const actions: Actions = {
 		}
 	},
 
+	stopScheduler: async () => {
+		try {
+			stopSyncScheduler();
+			return { success: true, message: 'Scheduler stopped' };
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to stop scheduler';
+			return fail(500, { error: message });
+		}
+	},
+
 	initScheduler: async ({ request }) => {
 		const formData = await request.formData();
 		const cronExpression = formData.get('cronExpression');
@@ -192,6 +207,7 @@ export const actions: Actions = {
 				cronExpression: parsed.data,
 				startImmediately: true
 			});
+			await setAppSetting(AppSettingsKey.SYNC_CRON_EXPRESSION, parsed.data);
 			return { success: true, message: 'Scheduler initialized' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to initialize scheduler';

@@ -170,3 +170,7 @@ export function isUserStats(stats: Stats): stats is UserStats {
 export function isServerStats(stats: Stats): stats is ServerStats {
 	return 'totalUsers' in stats && 'topViewers' in stats;
 }
+
+export function hasWatchHistory(stats: Stats): boolean {
+	return stats.totalPlays > 0 || stats.totalWatchTimeMinutes > 0;
+}

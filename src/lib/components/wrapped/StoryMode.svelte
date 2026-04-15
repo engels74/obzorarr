@@ -15,6 +15,8 @@ interface Props {
 	stats: UserStats | ServerStats;
 	slides: SlideRenderConfig[];
 	customSlides?: Map<number, CustomSlide>;
+	initialSlideIndex?: number;
+	onSlideChange?: (slideIndex: number) => void;
 	onComplete?: () => void;
 	onClose?: () => void;
 	class?: string;
@@ -25,6 +27,8 @@ let {
 	stats,
 	slides,
 	customSlides,
+	initialSlideIndex = 0,
+	onSlideChange,
 	onComplete,
 	onClose,
 	class: klass = '',
@@ -36,9 +40,16 @@ const SWIPE_THRESHOLD = 50;
 const ANIMATION_DURATION = 450;
 
 const navigation = createSlideState();
+let initialized = $state(false);
+let initializedSlideCount = $state(0);
 
 $effect(() => {
-	navigation.initialize(slides.length);
+	if (!initialized || initializedSlideCount !== slides.length) {
+		navigation.initialize(slides.length, initialSlideIndex);
+		initialized = true;
+		initializedSlideCount = slides.length;
+		onSlideChange?.(navigation.currentSlide);
+	}
 });
 
 let touchStartX = $state(0);
@@ -72,6 +83,10 @@ $effect(() => {
 const currentSlide = $derived(slides[navigation.currentSlide]);
 const previousSlide = $derived(previousSlideIndex >= 0 ? slides[previousSlideIndex] : null);
 
+function emitSlideChange(): void {
+	onSlideChange?.(navigation.currentSlide);
+}
+
 function goToNext(): void {
 	if (isTransitioning || !navigation.canGoNext) {
 		// If on last slide and trying to go next, call onComplete
@@ -86,6 +101,7 @@ function goToNext(): void {
 	isTransitioning = true;
 
 	navigation.goToNext();
+	emitSlideChange();
 	animateTransition('forward');
 }
 
@@ -97,6 +113,7 @@ function goToPrevious(): void {
 	isTransitioning = true;
 
 	navigation.goToPrevious();
+	emitSlideChange();
 	animateTransition('backward');
 }
 
@@ -291,6 +308,7 @@ function handleKeyDown(event: KeyboardEvent): void {
 				showPreviousSlide = true;
 				isTransitioning = true;
 				navigation.goToFirst();
+				emitSlideChange();
 				animateTransition('backward');
 			}
 			break;
@@ -301,6 +319,7 @@ function handleKeyDown(event: KeyboardEvent): void {
 				showPreviousSlide = true;
 				isTransitioning = true;
 				navigation.goToLast();
+				emitSlideChange();
 				animateTransition('forward');
 			}
 			break;
@@ -575,6 +594,14 @@ function handleSlideAnimationComplete(): void {}
 			.navigation-hint {
 				animation: none;
 				opacity: 0.8;
+			}
+
+			.close-button {
+				transition: none;
+			}
+
+			.close-button:hover {
+				transform: none;
 			}
 		}
 </style>

@@ -10,6 +10,13 @@ export const ShareSettingsKey = {
 	SERVER_WRAPPED_SHARE_MODE: 'server_wrapped_share_mode'
 } as const;
 
+export const ShareModeSource = {
+	DEFAULT: 'default',
+	EXPLICIT: 'explicit'
+} as const;
+
+export type ShareModeSourceType = (typeof ShareModeSource)[keyof typeof ShareModeSource];
+
 export const ShareModePrivacyLevel = {
 	[ShareMode.PUBLIC]: 0,
 	[ShareMode.PRIVATE_LINK]: 1,
@@ -68,11 +75,14 @@ export class ShareSettingsNotFoundError extends ShareError {
 }
 
 export const ShareModeSchema = z.enum(['public', 'private-oauth', 'private-link']);
+export const ShareModeSourceSchema = z.enum(['default', 'explicit']);
 
 export const ShareSettingsSchema = z.object({
 	userId: z.number().int().positive(),
 	year: z.number().int().min(2000).max(2100),
 	mode: ShareModeSchema.default('public'),
+	storedMode: ShareModeSchema.default('public'),
+	modeSource: ShareModeSourceSchema.default('explicit'),
 	shareToken: z.string().nullable().optional(),
 	canUserControl: z.boolean().default(false)
 });
