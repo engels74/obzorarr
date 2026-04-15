@@ -150,8 +150,8 @@ export const actions: Actions = {
 		}
 
 		try {
-			updateSchedulerCron(parsed.data);
 			await setAppSetting(AppSettingsKey.SYNC_CRON_EXPRESSION, parsed.data);
+			updateSchedulerCron(parsed.data);
 			return { success: true, message: 'Schedule updated successfully' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to update schedule';
@@ -203,11 +203,11 @@ export const actions: Actions = {
 		}
 
 		try {
+			await setAppSetting(AppSettingsKey.SYNC_CRON_EXPRESSION, parsed.data);
 			setupSyncScheduler({
 				cronExpression: parsed.data,
 				startImmediately: true
 			});
-			await setAppSetting(AppSettingsKey.SYNC_CRON_EXPRESSION, parsed.data);
 			return { success: true, message: 'Scheduler initialized' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to initialize scheduler';
