@@ -113,9 +113,10 @@ function useDetectedOrigin() {
 }
 
 function submitButtonForm(event: MouseEvent) {
-	event.preventDefault();
 	const submitter = event.currentTarget as HTMLButtonElement;
-	submitter.form?.requestSubmit(submitter);
+	if (!submitter.form || typeof submitter.form.requestSubmit !== 'function') return;
+	event.preventDefault();
+	submitter.form.requestSubmit(submitter);
 }
 </script>
 
