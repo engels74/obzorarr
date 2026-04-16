@@ -40,7 +40,7 @@ export const load: PageServerLoad = async ({ url }) => {
 			canUserControl: u.canUserControl
 		})),
 		year,
-		availableYears: availableYears.length > 0 ? availableYears : [year]
+		availableYears
 	};
 };
 

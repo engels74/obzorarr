@@ -18,6 +18,7 @@ let { data, form }: { data: PageData; form: ActionData } = $props();
 let uiTheme = $state(untrack(() => data.settings.uiTheme));
 let wrappedTheme = $state(untrack(() => data.settings.wrappedTheme));
 let anonymizationMode = $state(untrack(() => data.settings.anonymizationMode));
+let wrappedLogoMode = $state(untrack(() => data.settings.wrappedLogoMode));
 let defaultShareMode = $state(untrack(() => data.settings.defaultShareMode));
 let allowUserControl = $state(untrack(() => data.settings.allowUserControl));
 let enableFunFacts = $state(untrack(() => data.funFactConfig.count > 0));
@@ -220,6 +221,7 @@ function getThemeColors(themeValue: string) {
 				<input type="hidden" name="uiTheme" value={uiTheme} />
 				<input type="hidden" name="wrappedTheme" value={wrappedTheme} />
 				<input type="hidden" name="anonymizationMode" value={anonymizationMode} />
+				<input type="hidden" name="logoMode" value={wrappedLogoMode} />
 				<input type="hidden" name="defaultShareMode" value={defaultShareMode} />
 				<input type="hidden" name="allowUserControl" value={allowUserControl} />
 				<input type="hidden" name="enabledSlides" value={enabledSlidesString} />
@@ -324,6 +326,33 @@ function getThemeColors(themeValue: string) {
 												value={option.value}
 												checked={anonymizationMode === option.value}
 												onchange={() => (anonymizationMode = option.value)}
+											/>
+											<div class="radio-card-content">
+												<div class="radio-indicator">
+													<div class="radio-dot"></div>
+												</div>
+												<div class="radio-text">
+													<span class="radio-label">{option.label}</span>
+													<span class="radio-description">{option.description}</span>
+												</div>
+											</div>
+										</label>
+									{/each}
+								</div>
+							</div>
+
+							<div class="setting-group">
+								<span class="setting-label">Wrapped Page Logo</span>
+								<p class="setting-description">Control logo visibility on wrapped pages</p>
+								<div class="radio-cards">
+									{#each data.wrappedLogoOptions as option}
+										<label class="radio-card" class:selected={wrappedLogoMode === option.value}>
+											<input
+												type="radio"
+												name="wrappedLogoModeRadio"
+												value={option.value}
+												checked={wrappedLogoMode === option.value}
+												onchange={() => (wrappedLogoMode = option.value)}
 											/>
 											<div class="radio-card-content">
 												<div class="radio-indicator">

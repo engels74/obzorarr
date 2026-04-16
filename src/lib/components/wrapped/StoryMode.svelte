@@ -240,7 +240,7 @@ function handleClick(event: MouseEvent): void {
 	const clickX = event.clientX - rect.left;
 	const relativeX = clickX / rect.width;
 
-	if (relativeX < EDGE_ZONE_PERCENT) {
+	if (relativeX <= EDGE_ZONE_PERCENT) {
 		goToPrevious();
 	} else {
 		goToNext();

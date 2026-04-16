@@ -32,7 +32,10 @@ export const load: PageServerLoad = async () => {
 					startedAt: lastSync.startedAt.toISOString(),
 					completedAt: lastSync.completedAt?.toISOString() ?? null,
 					recordsProcessed: lastSync.recordsProcessed,
-					status: lastSync.status
+					status: lastSync.status,
+					durationMs: lastSync.completedAt
+						? lastSync.completedAt.getTime() - lastSync.startedAt.getTime()
+						: null
 				}
 			: null,
 		schedulerStatus: schedulerStatus

@@ -3,6 +3,7 @@ import { enhance } from '$app/forms';
 import { page } from '$app/stores';
 import * as AlertDialog from '$lib/components/ui/alert-dialog';
 import * as Tabs from '$lib/components/ui/tabs';
+import { toast } from '$lib/services/toast';
 import { handleFormToast } from '$lib/utils/form-toast';
 import type { ActionData, PageData } from './$types';
 
@@ -169,8 +170,17 @@ function getLogoModeDescription(): string {
 						action="?/updateShareMode"
 						use:enhance={() => {
 							isUpdating = true;
-							return async ({ update }) => {
-								await update();
+							return async ({ result, update }) => {
+								if (result.type === 'failure') {
+									const errMsg =
+										typeof result.data?.error === 'string'
+											? result.data.error
+											: 'Failed to update share settings';
+									toast.error(errMsg);
+									await update({ reset: false });
+								} else {
+									await update();
+								}
 								isUpdating = false;
 							};
 						}}

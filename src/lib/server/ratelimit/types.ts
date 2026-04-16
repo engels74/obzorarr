@@ -28,6 +28,7 @@ export const RATE_LIMIT_CONFIGS = {
 	default: { windowMs: 60_000, maxRequests: 60 },
 	auth: { windowMs: 300_000, maxRequests: 10 },
 	authPoll: { windowMs: 60_000, maxRequests: 60 },
+	authRedirect: { windowMs: 60_000, maxRequests: 30 },
 	api: { windowMs: 60_000, maxRequests: 30 }
 } as const satisfies Record<string, RateLimitConfig>;
 

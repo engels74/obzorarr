@@ -8,9 +8,8 @@ import type { Actions, PageServerLoad } from './$types';
 const UsernameSchema = z.object({
 	username: z
 		.string()
-		.min(1, 'Username is required')
-		.max(100, 'Username is too long')
 		.transform((val) => val.trim())
+		.pipe(z.string().min(1, 'Username is required').max(100, 'Username is too long'))
 });
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -24,11 +23,14 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 export const actions: Actions = {
-	lookupUser: async ({ request, getClientAddress }) => {
+	lookupUser: async ({ request, getClientAddress, setHeaders }) => {
 		const ip = getClientAddress();
 
 		const rateLimitResult = checkRateLimit(ip);
 		if (!rateLimitResult.allowed) {
+			if (rateLimitResult.retryAfter != null) {
+				setHeaders({ 'Retry-After': rateLimitResult.retryAfter.toString() });
+			}
 			return fail(429, {
 				error: 'Too many requests. Please try again later.',
 				retryAfter: rateLimitResult.retryAfter,

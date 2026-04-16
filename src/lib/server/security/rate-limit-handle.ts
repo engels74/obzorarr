@@ -6,6 +6,10 @@ function getConfigForPath(path: string): RateLimitConfig {
 		return RATE_LIMIT_CONFIGS.authPoll;
 	}
 
+	if (path === '/auth/plex/redirect') {
+		return RATE_LIMIT_CONFIGS.authRedirect;
+	}
+
 	if (path === '/auth/logout' || path === '/auth/plex/callback') {
 		return RATE_LIMIT_CONFIGS.default;
 	}
@@ -35,7 +39,7 @@ export const rateLimitHandle: Handle = async ({ event, resolve }) => {
 	if (!result.allowed) {
 		const isApiRequest =
 			path.startsWith('/api/') ||
-			path.startsWith('/auth/') ||
+			(path.startsWith('/auth/') && path !== '/auth/plex/redirect') ||
 			event.request.headers.get('accept')?.includes('application/json') ||
 			event.request.headers.get('content-type')?.includes('application/json');
 

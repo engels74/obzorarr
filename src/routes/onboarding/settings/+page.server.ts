@@ -16,14 +16,18 @@ import {
 	getAnonymizationMode,
 	getFunFactFrequency,
 	getUITheme,
+	getWrappedLogoMode,
 	getWrappedTheme,
 	hasOpenAIEnvConfig,
 	setAnonymizationMode,
 	setFunFactFrequency,
 	setUITheme,
+	setWrappedLogoMode,
 	setWrappedTheme,
 	ThemePresets,
-	type ThemePresetType
+	type ThemePresetType,
+	WrappedLogoMode,
+	type WrappedLogoModeType
 } from '$lib/server/admin/settings.service';
 import { logger } from '$lib/server/logging';
 import { OnboardingSteps, setOnboardingStep } from '$lib/server/onboarding';
@@ -66,6 +70,11 @@ const SettingsSchema = z.object({
 		AnonymizationMode.ANONYMOUS,
 		AnonymizationMode.HYBRID
 	]),
+	logoMode: z.enum([
+		WrappedLogoMode.ALWAYS_SHOW,
+		WrappedLogoMode.ALWAYS_HIDE,
+		WrappedLogoMode.USER_CHOICE
+	]),
 	defaultShareMode: z.enum([ShareMode.PUBLIC, ShareMode.PRIVATE_OAUTH, ShareMode.PRIVATE_LINK]),
 	allowUserControl: z.coerce.boolean(),
 
@@ -98,6 +107,7 @@ export const load: PageServerLoad = async ({ parent }) => {
 		uiTheme,
 		wrappedTheme,
 		anonymizationMode,
+		wrappedLogoMode,
 		defaultShareMode,
 		allowUserControl,
 		slideConfigs,
@@ -106,6 +116,7 @@ export const load: PageServerLoad = async ({ parent }) => {
 		getUITheme(),
 		getWrappedTheme(),
 		getAnonymizationMode(),
+		getWrappedLogoMode(),
 		getGlobalDefaultShareMode(),
 		getGlobalAllowUserControl(),
 		getAllSlideConfigs(),
@@ -178,12 +189,31 @@ export const load: PageServerLoad = async ({ parent }) => {
 		{ value: FunFactFrequency.MANY, label: 'Many', description: '6-10 facts' }
 	];
 
+	const wrappedLogoOptions = [
+		{
+			value: WrappedLogoMode.ALWAYS_SHOW,
+			label: 'Always Show',
+			description: 'Logo always visible on wrapped pages'
+		},
+		{
+			value: WrappedLogoMode.ALWAYS_HIDE,
+			label: 'Always Hide',
+			description: 'Logo hidden on all wrapped pages'
+		},
+		{
+			value: WrappedLogoMode.USER_CHOICE,
+			label: 'User Choice',
+			description: 'Users can toggle logo visibility'
+		}
+	];
+
 	return {
 		...parentData,
 		settings: {
 			uiTheme,
 			wrappedTheme,
 			anonymizationMode,
+			wrappedLogoMode,
 			defaultShareMode,
 			allowUserControl
 		},
@@ -191,6 +221,7 @@ export const load: PageServerLoad = async ({ parent }) => {
 		themeOptions,
 		anonymizationOptions,
 		shareModeOptions,
+		wrappedLogoOptions,
 		hasOpenAI,
 		funFactConfig,
 		funFactOptions
@@ -242,6 +273,7 @@ export const actions: Actions = {
 				uiTheme: formData.get('uiTheme'),
 				wrappedTheme: formData.get('wrappedTheme'),
 				anonymizationMode: formData.get('anonymizationMode'),
+				logoMode: formData.get('logoMode'),
 				defaultShareMode: formData.get('defaultShareMode'),
 				allowUserControl: formData.get('allowUserControl'),
 				enabledSlides: formData.get('enabledSlides'),
@@ -266,6 +298,7 @@ export const actions: Actions = {
 
 				// Privacy
 				setAnonymizationMode(data.anonymizationMode as AnonymizationModeType),
+				setWrappedLogoMode(data.logoMode as WrappedLogoModeType),
 				setGlobalShareDefaults({
 					defaultShareMode: data.defaultShareMode as ShareModeType,
 					allowUserControl: data.allowUserControl

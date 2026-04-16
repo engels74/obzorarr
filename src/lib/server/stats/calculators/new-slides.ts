@@ -150,9 +150,15 @@ export function calculateMarathonDay(records: PlayHistoryRecord[]): MarathonDay 
 
 	if (!maxDay) return null;
 
+	// Plex history records store item duration, not actual watched time.
+	// Overlapping sessions and partial watches can sum past 24h, so clamp to
+	// one day as an upper bound on wall-clock watch time.
+	const MAX_MINUTES_PER_DAY = 24 * 60;
+	const cappedMinutes = Math.min(maxDay.stats.minutes, MAX_MINUTES_PER_DAY);
+
 	return {
 		date: maxDay.date,
-		minutes: maxDay.stats.minutes,
+		minutes: cappedMinutes,
 		plays: maxDay.stats.plays,
 		items: maxDay.stats.items.slice(0, 10)
 	};

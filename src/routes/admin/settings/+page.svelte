@@ -40,10 +40,12 @@ import VenetianMask from '@lucide/svelte/icons/venetian-mask';
 import X from '@lucide/svelte/icons/x';
 import Zap from '@lucide/svelte/icons/zap';
 import { deserialize, enhance } from '$app/forms';
+import { goto } from '$app/navigation';
 import { page } from '$app/stores';
 import * as AlertDialog from '$lib/components/ui/alert-dialog';
 import * as Tabs from '$lib/components/ui/tabs';
 import * as Tooltip from '$lib/components/ui/tooltip';
+import { toast } from '$lib/services/toast';
 import { handleFormToast } from '$lib/utils/form-toast';
 import type { ActionData, PageData } from './$types';
 
@@ -61,6 +63,13 @@ $effect(() => {
 		activeTab = urlTab as TabValue;
 	}
 });
+
+function selectTab(value: TabValue) {
+	activeTab = value;
+	const url = new URL($page.url);
+	url.searchParams.set('tab', value);
+	goto(url, { replaceState: true, noScroll: true, keepFocus: true });
+}
 
 /**
  * Admin Settings Page - Command Center Design
@@ -95,6 +104,43 @@ let logDebugEnabled = $state(false);
 let selectedServerWrappedMode = $state('public');
 let selectedDefaultShareMode = $state('public');
 let allowUserControl = $state(true);
+let isBulkApplyingUserControl = $state(false);
+
+async function bulkApplyUserControlToExistingUsers() {
+	if (
+		!window.confirm(
+			"This will overwrite the per-user 'can control' setting for every user. Continue?"
+		)
+	) {
+		return;
+	}
+
+	isBulkApplyingUserControl = true;
+
+	const formData = new FormData();
+	formData.append('canUserControl', data.globalDefaults.allowUserControl.toString());
+
+	try {
+		const response = await fetch('?/bulkApplyUserControl', {
+			method: 'POST',
+			body: formData
+		});
+		const result = deserialize(await response.text());
+
+		if (result.type === 'success' && result.data) {
+			handleFormToast(result.data as { success: boolean; message: string });
+		} else if (result.type === 'failure') {
+			handleFormToast({
+				error: (result.data as { error?: string })?.error ?? 'Failed to apply default.'
+			});
+		}
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'Failed to apply default.';
+		handleFormToast({ error: message });
+	} finally {
+		isBulkApplyingUserControl = false;
+	}
+}
 
 // Track sources for display
 let plexServerUrlSource = $state<'env' | 'db' | 'default'>('default');
@@ -417,7 +463,7 @@ const logFieldErrors = $derived(
 				type="button"
 				class="tab-button"
 				class:active={activeTab === tab.value}
-				onclick={() => (activeTab = tab.value)}
+				onclick={() => selectTab(tab.value)}
 			>
 				<tab.icon class="tab-icon" />
 				<span class="tab-label">{tab.label}</span>
@@ -739,6 +785,17 @@ const logFieldErrors = $derived(
 							</div>
 						{/if}
 					</form>
+
+					{#if !openaiApiKeyLocked && openaiApiKeySource === 'db'}
+						<form method="POST" action="?/clearOpenaiKey" use:enhance class="panel-form">
+							<div class="panel-actions">
+								<button type="submit" class="btn-destructive">
+									<X class="btn-icon" />
+									Clear OpenAI API Key
+								</button>
+							</div>
+						</form>
+					{/if}
 				</section>
 			</div>
 		{/if}
@@ -1126,6 +1183,21 @@ const logFieldErrors = $derived(
 						</p>
 					</div>
 					<input type="hidden" name="allowUserControl" value={allowUserControl.toString()} />
+
+					<button
+						type="button"
+						class="btn-secondary"
+						disabled={isBulkApplyingUserControl}
+						onclick={bulkApplyUserControlToExistingUsers}
+					>
+						{#if isBulkApplyingUserControl}
+							<Loader2 class="btn-icon spinning" />
+							Applying...
+						{:else}
+							<Users class="btn-icon" />
+							Apply current default to all existing users
+						{/if}
+					</button>
 				</section>
 
 				<!-- Sticky Save Button -->
@@ -1239,9 +1311,15 @@ const logFieldErrors = $derived(
 										action="?/updateCsrfOrigin"
 										use:enhance={() => {
 											isSavingCsrf = true;
-											return async ({ update }) => {
+											return async ({ result, update }) => {
 												isSavingCsrf = false;
-												await update();
+												if (result.type === 'failure') {
+													const error = (result.data as { error?: string })?.error;
+													toast.error(error ?? 'Failed to update CSRF origin');
+													await update({ reset: false });
+												} else {
+													await update();
+												}
 											};
 										}}
 									>

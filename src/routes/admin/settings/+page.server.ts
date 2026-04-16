@@ -40,6 +40,7 @@ import {
 	setLogRetentionDays
 } from '$lib/server/logging';
 import {
+	bulkApplyUserControl,
 	getGlobalAllowUserControl,
 	getGlobalDefaultShareMode,
 	getServerWrappedShareMode,
@@ -169,7 +170,7 @@ export const load: PageServerLoad = async () => {
 				.toLowerCase()
 				.replace(/\b\w/g, (c) => c.toUpperCase())
 		})),
-		availableYears: availableYears.length > 0 ? availableYears : [currentYear],
+		availableYears,
 		currentYear,
 		logSettings: {
 			retentionDays: logRetentionDays,
@@ -505,6 +506,20 @@ export const actions: Actions = {
 		}
 	},
 
+	bulkApplyUserControl: async ({ request }) => {
+		const formData = await request.formData();
+		const canUserControl = formData.get('canUserControl') === 'true';
+
+		try {
+			const count = await bulkApplyUserControl(canUserControl);
+			return { success: true, message: `Updated ${count} user share records` };
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : 'Failed to apply default to existing users';
+			return fail(500, { error: message });
+		}
+	},
+
 	updateServerWrappedMode: async ({ request }) => {
 		const formData = await request.formData();
 		const mode = formData.get('serverWrappedShareMode');
@@ -643,6 +658,23 @@ export const actions: Actions = {
 			return { success: true, message: 'CSRF origin cleared (using environment variable)' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to clear CSRF origin';
+			return fail(500, { error: message });
+		}
+	},
+
+	clearOpenaiKey: async () => {
+		const apiConfig = await getApiConfigWithSources();
+		if (apiConfig.openai.apiKey.isLocked) {
+			return fail(400, {
+				error: 'OpenAI API key is set via environment variable and cannot be cleared here'
+			});
+		}
+
+		try {
+			await deleteAppSetting(AppSettingsKey.OPENAI_API_KEY);
+			return { success: true, message: 'OpenAI API key cleared' };
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to clear OpenAI API key';
 			return fail(500, { error: message });
 		}
 	},
