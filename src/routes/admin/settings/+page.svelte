@@ -45,7 +45,6 @@ import { page } from '$app/stores';
 import * as AlertDialog from '$lib/components/ui/alert-dialog';
 import * as Tabs from '$lib/components/ui/tabs';
 import * as Tooltip from '$lib/components/ui/tooltip';
-import { toast } from '$lib/services/toast';
 import { handleFormToast } from '$lib/utils/form-toast';
 import type { ActionData, PageData } from './$types';
 
@@ -1313,13 +1312,7 @@ const logFieldErrors = $derived(
 											isSavingCsrf = true;
 											return async ({ result, update }) => {
 												isSavingCsrf = false;
-												if (result.type === 'failure') {
-													const error = (result.data as { error?: string })?.error;
-													toast.error(error ?? 'Failed to update CSRF origin');
-													await update({ reset: false });
-												} else {
-													await update();
-												}
+												await update({ reset: result.type !== 'failure' });
 											};
 										}}
 									>
