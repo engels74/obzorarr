@@ -22,10 +22,6 @@ const description = $derived.by(() => {
 	return 'An unexpected error occurred.';
 });
 
-function goHome(): void {
-	goto('/');
-}
-
 function goBack(): void {
 	if (typeof window !== 'undefined' && window.history.length > 1) {
 		window.history.back();
@@ -46,7 +42,7 @@ function goBack(): void {
 		<p>{description}</p>
 		<div class="actions">
 			<button type="button" class="btn secondary" onclick={goBack}>Go back</button>
-			<button type="button" class="btn primary" onclick={goHome}>Home</button>
+			<a href="/" class="btn primary">Home</a>
 		</div>
 	</div>
 </div>
@@ -107,6 +103,11 @@ function goBack(): void {
 		cursor: pointer;
 		border: 1px solid hsl(var(--border));
 		transition: opacity 0.15s ease;
+		text-decoration: none;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		line-height: 1;
 	}
 
 	.btn:hover {

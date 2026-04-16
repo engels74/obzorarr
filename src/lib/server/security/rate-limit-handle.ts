@@ -1,4 +1,4 @@
-import { error, type Handle } from '@sveltejs/kit';
+import type { Handle } from '@sveltejs/kit';
 import { checkRateLimit, RATE_LIMIT_CONFIGS, type RateLimitConfig } from '$lib/server/ratelimit';
 
 function getConfigForPath(path: string): RateLimitConfig {
@@ -55,7 +55,15 @@ export const rateLimitHandle: Handle = async ({ event, resolve }) => {
 			});
 		}
 
-		error(429, 'Too many requests');
+		return new Response('Too many requests', {
+			status: 429,
+			headers: {
+				'Content-Type': 'text/plain',
+				'Retry-After': String(result.retryAfter ?? 60),
+				'X-RateLimit-Remaining': '0',
+				'X-RateLimit-Reset': String(result.resetTime)
+			}
+		});
 	}
 
 	const response = await resolve(event);

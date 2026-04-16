@@ -65,6 +65,10 @@ const GlobalDefaultsSchema = z.object({
 	defaultShareMode: ShareModeSchema,
 	allowUserControl: z.coerce.boolean()
 });
+const BulkUserControlSchema = z.object({
+	canUserControl: z.enum(['true', 'false']).transform((v) => v === 'true')
+});
+
 // Server-wide wrapped only supports public and private-oauth (not private-link)
 const ServerWrappedModeSchema = z.enum(['public', 'private-oauth']);
 
@@ -508,10 +512,18 @@ export const actions: Actions = {
 
 	bulkApplyUserControl: async ({ request }) => {
 		const formData = await request.formData();
-		const canUserControl = formData.get('canUserControl') === 'true';
+
+		const parsed = BulkUserControlSchema.safeParse({
+			canUserControl: formData.get('canUserControl')
+		});
+		if (!parsed.success) {
+			return fail(400, {
+				error: 'Invalid input: canUserControl must be "true" or "false"'
+			});
+		}
 
 		try {
-			const count = await bulkApplyUserControl(canUserControl);
+			const count = await bulkApplyUserControl(parsed.data.canUserControl);
 			return { success: true, message: `Updated ${count} user share records` };
 		} catch (error) {
 			const message =
