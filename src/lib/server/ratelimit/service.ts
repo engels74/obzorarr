@@ -13,10 +13,11 @@ export function checkRateLimit(
 	config: RateLimitConfig = FALLBACK_RATE_LIMIT
 ): RateLimitResult {
 	const now = Date.now();
-	const record = rateLimitStore.get(ip);
+	const key = `${config.name}:${ip}`;
+	const record = rateLimitStore.get(key);
 
 	if (!record || now - record.windowStart >= config.windowMs) {
-		rateLimitStore.set(ip, { count: 1, windowStart: now });
+		rateLimitStore.set(key, { count: 1, windowStart: now });
 		return {
 			allowed: true,
 			remaining: config.maxRequests - 1,

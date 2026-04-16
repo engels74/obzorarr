@@ -76,18 +76,18 @@ export const load: PageServerLoad = async ({ params, locals, parent }) => {
 
 			// Verify year matches the token's year
 			if (tokenResult.year !== year) {
-				error(404, 'Wrapped not found');
+				error(404, 'This share link is invalid, expired, or has been revoked.');
 			}
 		} catch (err) {
 			if (err instanceof InvalidShareTokenError) {
-				error(404, 'Wrapped not found');
+				error(404, 'This share link is invalid, expired, or has been revoked.');
 			}
 			throw err;
 		}
 	} else {
 		const parsedId = parseInt(identifier, 10);
 		if (Number.isNaN(parsedId) || parsedId <= 0) {
-			error(404, 'Invalid identifier');
+			error(404, "We couldn't find a Wrapped page for that link.");
 		}
 		userId = parsedId;
 
@@ -102,7 +102,7 @@ export const load: PageServerLoad = async ({ params, locals, parent }) => {
 				error(403, err.message);
 			}
 			if (err instanceof InvalidShareTokenError) {
-				error(404, 'Wrapped not found');
+				error(404, 'This share link is invalid, expired, or has been revoked.');
 			}
 			throw err;
 		}

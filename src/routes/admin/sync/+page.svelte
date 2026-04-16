@@ -3,6 +3,7 @@ import { browser } from '$app/environment';
 import { enhance } from '$app/forms';
 import { goto, invalidateAll } from '$app/navigation';
 import { handleFormToast } from '$lib/utils/form-toast';
+import { formatDuration as formatDurationMs } from '$lib/utils/format';
 import type { ActionData, PageData } from './$types';
 
 interface SyncProgress {
@@ -165,11 +166,7 @@ function formatRelativeTime(isoDate: string | null): string {
 function formatDuration(start: string, end: string | null, status?: string): string {
 	if (status === 'running') return 'In progress';
 	if (!end) return '—';
-	const diffMs = new Date(end).getTime() - new Date(start).getTime();
-	if (diffMs < 1000) return '<1s';
-	if (diffMs < 60000) return `${Math.round(diffMs / 1000)}s`;
-	if (diffMs < 3600000) return `${Math.round(diffMs / 60000)}m`;
-	return `${Math.round(diffMs / 3600000)}h`;
+	return formatDurationMs(new Date(end).getTime() - new Date(start).getTime());
 }
 
 const cronPresets = [

@@ -169,8 +169,8 @@ function getLogoModeDescription(): string {
 						action="?/updateShareMode"
 						use:enhance={() => {
 							isUpdating = true;
-							return async ({ update }) => {
-								await update();
+							return async ({ result, update }) => {
+								await update({ reset: result.type !== 'failure' });
 								isUpdating = false;
 							};
 						}}

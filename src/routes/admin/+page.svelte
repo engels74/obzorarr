@@ -15,6 +15,7 @@ import Settings from '@lucide/svelte/icons/settings';
 import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
 import Star from '@lucide/svelte/icons/star';
 import Users from '@lucide/svelte/icons/users';
+import { formatDuration } from '$lib/utils/format';
 import type { PageData } from './$types';
 
 /**
@@ -195,6 +196,13 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 						<span class="sync-value highlight"
 							>{data.lastSync.recordsProcessed.toLocaleString()}</span
 						>
+					</div>
+				{/if}
+
+				{#if data.lastSync?.durationMs !== null && data.lastSync?.durationMs !== undefined}
+					<div class="sync-row">
+						<span class="sync-label">Duration</span>
+						<span class="sync-value">{formatDuration(data.lastSync.durationMs)}</span>
 					</div>
 				{/if}
 

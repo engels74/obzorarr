@@ -53,8 +53,11 @@ function getShareModeLabel(mode: string | null, source: string | null): string {
 			<div>
 				<h1>User Management</h1>
 				<p class="subtitle">Manage server users for {data.year}</p>
+				{#if data.availableYears.length === 0}
+					<p class="empty-hint">No watch history yet. Run a sync to populate years.</p>
+				{/if}
 			</div>
-			{#if data.availableYears.length >= 1}
+			{#if data.availableYears.length > 0}
 				<form method="GET" class="year-form">
 					<select
 						name="year"
@@ -222,6 +225,12 @@ function getShareModeLabel(mode: string | null, source: string | null): string {
 		.subtitle {
 			color: hsl(var(--muted-foreground));
 			margin: 0;
+		}
+
+		.empty-hint {
+			color: hsl(var(--muted-foreground));
+			font-size: 0.875rem;
+			margin: 0.5rem 0 0;
 		}
 
 		.page-header-row {

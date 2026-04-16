@@ -126,7 +126,11 @@ export const actions: Actions = {
 	clearLogs: async () => {
 		try {
 			const count = await deleteAllLogs();
-			return { success: true, message: `Deleted ${count} log entries` };
+			const message =
+				count === 0
+					? 'No log entries to delete'
+					: `Deleted ${count} log ${count === 1 ? 'entry' : 'entries'}`;
+			return { success: true, message };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to clear logs';
 			return fail(500, { error: message });
@@ -136,10 +140,12 @@ export const actions: Actions = {
 	runCleanup: async () => {
 		try {
 			const result = await triggerRetentionCleanup();
-			return {
-				success: true,
-				message: `Cleanup completed: ${result.byAge} deleted by age, ${result.byCount} deleted by count`
-			};
+			const total = result.byAge + result.byCount;
+			const message =
+				total === 0
+					? 'Cleanup completed: no log entries needed to be removed'
+					: `Cleanup completed: removed ${total} log ${total === 1 ? 'entry' : 'entries'} (${result.byAge} by age, ${result.byCount} by count)`;
+			return { success: true, message };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to run cleanup';
 			return fail(500, { error: message });

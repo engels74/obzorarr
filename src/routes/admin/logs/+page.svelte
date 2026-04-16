@@ -367,13 +367,16 @@ $effect(() => {
 				<span class="filter-label">Log Level</span>
 				<div class="level-checkboxes">
 					{#each logLevels as level}
+						{@const isActive = selectedLevels.includes(level)}
 						<button
 							type="button"
 							class="level-toggle {getLevelClass(level)}"
-							class:active={selectedLevels.includes(level)}
+							class:active={isActive}
+							aria-pressed={isActive}
 							onclick={() => toggleLevel(level)}
 						>
-							{level}
+							<span class="level-toggle-check" aria-hidden="true">{isActive ? '✓' : ''}</span>
+							<span class="level-toggle-label">{level}</span>
 							<span class="level-count">({visibleLevelCounts[level]})</span>
 						</button>
 					{/each}
@@ -748,19 +751,49 @@ $effect(() => {
 		}
 
 		.level-toggle {
+			display: inline-flex;
+			align-items: center;
+			gap: 0.375rem;
 			padding: 0.375rem 0.75rem;
 			font-size: 0.75rem;
 			font-weight: 500;
-			background: hsl(var(--muted));
+			background: hsl(var(--muted) / 0.4);
 			color: hsl(var(--muted-foreground));
-			border: 1px solid hsl(var(--border));
+			border: 1px dashed hsl(var(--border));
 			border-radius: var(--radius);
 			cursor: pointer;
+			opacity: 0.7;
 			transition: all 0.15s ease;
 		}
 
 		.level-toggle:hover {
-			background: hsl(var(--muted) / 0.8);
+			background: hsl(var(--muted) / 0.7);
+			opacity: 1;
+		}
+
+		.level-toggle.active {
+			opacity: 1;
+			font-weight: 600;
+			border-style: solid;
+		}
+
+		.level-toggle-check {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			width: 0.875rem;
+			height: 0.875rem;
+			font-size: 0.75rem;
+			font-weight: 700;
+			line-height: 1;
+		}
+
+		.level-toggle:not(.active) .level-toggle-check {
+			opacity: 0.25;
+		}
+
+		.level-toggle:not(.active) .level-toggle-check::before {
+			content: '○';
 		}
 
 		.level-toggle.active.level-error {
