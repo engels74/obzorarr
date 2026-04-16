@@ -85,7 +85,10 @@ export async function setGlobalShareDefaults(defaults: GlobalShareDefaults): Pro
 }
 
 export async function bulkApplyUserControl(canUserControl: boolean): Promise<number> {
-	const result = await db.update(shareSettings).set({ canUserControl }).returning();
+	const result = await db
+		.update(shareSettings)
+		.set({ canUserControl })
+		.returning({ id: shareSettings.id });
 	return result.length;
 }
 

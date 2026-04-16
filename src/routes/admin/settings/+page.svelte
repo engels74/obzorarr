@@ -118,7 +118,7 @@ async function bulkApplyUserControlToExistingUsers() {
 	isBulkApplyingUserControl = true;
 
 	const formData = new FormData();
-	formData.append('canUserControl', data.globalDefaults.allowUserControl.toString());
+	formData.append('canUserControl', allowUserControl.toString());
 
 	try {
 		const response = await fetch('?/bulkApplyUserControl', {
