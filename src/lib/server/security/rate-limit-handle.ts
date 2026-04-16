@@ -1,5 +1,6 @@
 import type { Handle } from '@sveltejs/kit';
 import { checkRateLimit, RATE_LIMIT_CONFIGS, type RateLimitConfig } from '$lib/server/ratelimit';
+import { applySecurityHeaders } from './security-headers';
 
 function getConfigForPath(path: string): RateLimitConfig {
 	if (path === '/auth/plex') {
@@ -44,15 +45,18 @@ export const rateLimitHandle: Handle = async ({ event, resolve }) => {
 			event.request.headers.get('content-type')?.includes('application/json');
 
 		if (isApiRequest) {
-			return new Response(JSON.stringify({ error: 'Too many requests' }), {
-				status: 429,
-				headers: {
-					'Content-Type': 'application/json',
-					'Retry-After': String(result.retryAfter ?? 60),
-					'X-RateLimit-Remaining': '0',
-					'X-RateLimit-Reset': String(result.resetTime)
-				}
-			});
+			return applySecurityHeaders(
+				new Response(JSON.stringify({ error: 'Too many requests' }), {
+					status: 429,
+					headers: {
+						'Content-Type': 'application/json',
+						'Retry-After': String(result.retryAfter ?? 60),
+						'X-RateLimit-Remaining': '0',
+						'X-RateLimit-Reset': String(result.resetTime)
+					}
+				}),
+				event.request
+			);
 		}
 
 		const retryAfterSeconds = result.retryAfter ?? 60;
@@ -74,15 +78,18 @@ export const rateLimitHandle: Handle = async ({ event, resolve }) => {
 </body>
 </html>`;
 
-		return new Response(htmlBody, {
-			status: 429,
-			headers: {
-				'Content-Type': 'text/html; charset=utf-8',
-				'Retry-After': String(retryAfterSeconds),
-				'X-RateLimit-Remaining': '0',
-				'X-RateLimit-Reset': String(result.resetTime)
-			}
-		});
+		return applySecurityHeaders(
+			new Response(htmlBody, {
+				status: 429,
+				headers: {
+					'Content-Type': 'text/html; charset=utf-8',
+					'Retry-After': String(retryAfterSeconds),
+					'X-RateLimit-Remaining': '0',
+					'X-RateLimit-Reset': String(result.resetTime)
+				}
+			}),
+			event.request
+		);
 	}
 
 	const response = await resolve(event);

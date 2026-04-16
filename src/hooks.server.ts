@@ -19,24 +19,16 @@ import {
 import { SESSION_DURATION_MS } from '$lib/server/auth/types';
 import { logger } from '$lib/server/logging';
 import { getOnboardingStep, requiresOnboarding } from '$lib/server/onboarding';
-import { csrfHandle, rateLimitHandle, requestFilterHandle } from '$lib/server/security';
+import {
+	applySecurityHeaders,
+	csrfHandle,
+	rateLimitHandle,
+	requestFilterHandle
+} from '$lib/server/security';
 
 const securityHeadersHandle: Handle = async ({ event, resolve }) => {
 	const response = await resolve(event);
-
-	response.headers.set('X-Frame-Options', 'DENY');
-	response.headers.set('X-Content-Type-Options', 'nosniff');
-	response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-	response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-
-	const isHttps =
-		event.url.protocol === 'https:' ||
-		event.request.headers.get('x-forwarded-proto')?.includes('https');
-	if (isHttps) {
-		response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-	}
-
-	return response;
+	return applySecurityHeaders(response, event.request);
 };
 
 const proxyHandle: Handle = async ({ event, resolve }) => {

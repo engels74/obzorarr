@@ -132,6 +132,8 @@ async function bulkApplyUserControlToExistingUsers() {
 			handleFormToast({
 				error: (result.data as { error?: string })?.error ?? 'Failed to apply default.'
 			});
+		} else if (result.type === 'error') {
+			handleFormToast({ error: result.error?.message ?? 'Failed to apply default.' });
 		}
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Failed to apply default.';
