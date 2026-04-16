@@ -10,7 +10,8 @@ export const load: PageServerLoad = async ({ locals, request, url }) => {
 	const fromPlex = referer?.startsWith('https://app.plex.tv') ?? false;
 	const fromSameOrigin = referer?.startsWith(url.origin) ?? false;
 
-	if (!fromPlex && !fromSameOrigin) {
+	// Allow missing/empty referer; sessionStorage PIN check on the client is the real gate.
+	if (referer && !fromPlex && !fromSameOrigin) {
 		redirect(303, '/');
 	}
 
