@@ -637,9 +637,12 @@ $effect(() => {
 				use:enhance={() => {
 					isClearingLogs = true;
 					return async ({ update }) => {
-						await refreshAfterLogMutation(update);
-						isClearingLogs = false;
-						clearLogsDialogOpen = false;
+						try {
+							await refreshAfterLogMutation(update);
+							clearLogsDialogOpen = false;
+						} finally {
+							isClearingLogs = false;
+						}
 					};
 				}}
 				style="display: contents;"

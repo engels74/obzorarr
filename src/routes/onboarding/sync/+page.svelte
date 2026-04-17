@@ -397,8 +397,11 @@ function formatNumber(n: number): string {
 					use:enhance={() => {
 						isCancelling = true;
 						return async ({ update }) => {
-							await update();
-							isCancelling = false;
+							try {
+								await update();
+							} finally {
+								isCancelling = false;
+							}
 						};
 					}}
 				>
