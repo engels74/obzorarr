@@ -96,6 +96,7 @@
    ============================================================================= */
 
 /* Theme: Modern Minimal (Default) - Clean blue aesthetic */
+html[data-theme="modern-minimal"],
 .theme-modern-minimal {
 	--font-sans: "Inter", system-ui, sans-serif;
 	--background: 0 0% 8%;
@@ -122,6 +123,7 @@
 }
 
 /* Theme: Supabase - Teal/green brand colors */
+html[data-theme="supabase"],
 .theme-supabase {
 	--font-sans: "Outfit", system-ui, sans-serif;
 	--background: 0 0% 6%;
@@ -148,6 +150,7 @@
 }
 
 /* Theme: Doom 64 - Retro orange/brown gaming aesthetic */
+html[data-theme="doom-64"],
 .theme-doom-64 {
 	--font-sans: "Oxanium", system-ui, sans-serif;
 	--background: 0 0% 9%;
@@ -174,6 +177,7 @@
 }
 
 /* Theme: Amber Minimal - Warm amber/yellow tones */
+html[data-theme="amber-minimal"],
 .theme-amber-minimal {
 	--font-sans: "Inter", system-ui, sans-serif;
 	--background: 0 0% 8%;
@@ -200,6 +204,7 @@
 }
 
 /* Theme: Soviet Red - Classic red aesthetic */
+html[data-theme="soviet-red"],
 .theme-soviet-red {
 	--font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 	--background: 0 0% 6%;
@@ -231,6 +236,7 @@
    ============================================================================= */
 
 /* Theme: Obsidian Premium - Deep blacks with purple/platinum accents */
+html[data-theme="obsidian-premium"],
 .theme-obsidian-premium {
 	--font-sans: "Inter", system-ui, sans-serif;
 	--background: 260 15% 4%;
@@ -285,6 +291,7 @@
 }
 
 /* Theme: Aurora Premium - Teal to cyan/magenta iridescent */
+html[data-theme="aurora-premium"],
 .theme-aurora-premium {
 	--font-sans: "Outfit", system-ui, sans-serif;
 	--background: 200 30% 4%;
@@ -339,6 +346,7 @@
 }
 
 /* Theme: Champagne Premium - Warm golds with rose gold accents */
+html[data-theme="champagne-premium"],
 .theme-champagne-premium {
 	--font-sans: "Inter", system-ui, sans-serif;
 	--background: 35 15% 5%;

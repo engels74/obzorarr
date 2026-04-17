@@ -60,6 +60,12 @@ const isActive = $derived((href: string) => {
 let sidebarOpen = $state(false);
 let adminAvatarError = $state(false);
 
+// Reset avatar error when thumb URL changes so a new URL gets a fresh load attempt
+$effect(() => {
+	data.adminUser.thumb;
+	adminAvatarError = false;
+});
+
 // CSRF warning state - derived from data with local override for immediate dismiss
 let locallyDismissed = $state(false);
 let showCsrfWarning = $derived(data.csrfWarning.show && !locallyDismissed);

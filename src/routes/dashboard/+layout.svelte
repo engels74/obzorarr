@@ -47,6 +47,12 @@ const isActive = $derived((href: string) => {
 let sidebarOpen = $state(false);
 let avatarError = $state(false);
 
+// Reset avatar error when thumb URL changes so a new URL gets a fresh load attempt
+$effect(() => {
+	data.user.thumb;
+	avatarError = false;
+});
+
 function toggleSidebar() {
 	sidebarOpen = !sidebarOpen;
 }
