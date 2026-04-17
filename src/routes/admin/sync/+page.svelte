@@ -407,8 +407,12 @@ async function goToPage(page: number) {
 						pendingStart = true;
 						connectSSE();
 						return async ({ update, result }) => {
-							await update();
-							if (result.type === 'failure' || result.type === 'error') {
+							try {
+								await update();
+								if (result.type === 'failure' || result.type === 'error') {
+									pendingStart = false;
+								}
+							} catch {
 								pendingStart = false;
 							}
 						};

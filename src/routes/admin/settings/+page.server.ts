@@ -253,14 +253,29 @@ export const actions: Actions = {
 		const submittedUrl = formData.get('plexServerUrl')?.toString() ?? '';
 		const submittedToken = formData.get('plexToken')?.toString() ?? '';
 
-		// Fall back to stored config if the client omitted either field (the client
-		// never echoes the stored token to avoid hydration leaks).
+		// The client never echoes the stored token back (to avoid hydration leaks),
+		// so a missing token field is the normal case. We fall back to the stored
+		// token ONLY when the submitted URL also matches the stored URL — this
+		// prevents the stored token from being forwarded to an attacker-controlled
+		// host (SSRF / secret exfil).
 		const apiConfig = await getApiConfigWithSources();
-		const plexServerUrl = submittedUrl || apiConfig.plex.serverUrl.value;
-		const plexToken = submittedToken || apiConfig.plex.token.value;
+		const storedUrl = apiConfig.plex.serverUrl.value;
+		const plexServerUrl = submittedUrl || storedUrl;
+
+		// Normalise both URLs for comparison (strip trailing slashes).
+		const normalise = (u: string) => u.replace(/\/+$/, '');
+		const urlMatchesStored =
+			plexServerUrl && storedUrl && normalise(plexServerUrl) === normalise(storedUrl);
+
+		// Allow token fallback only when the URL hasn't changed from what is stored.
+		const plexToken = submittedToken || (urlMatchesStored ? apiConfig.plex.token.value : '');
 
 		if (!plexServerUrl || !plexToken) {
-			return fail(400, { error: 'Plex server URL and token are required' });
+			return fail(400, {
+				error: !plexToken
+					? 'A Plex token is required when testing a new server URL'
+					: 'Plex server URL and token are required'
+			});
 		}
 
 		try {
