@@ -18,6 +18,7 @@ interface Props {
 	isOwner?: boolean;
 	isAdmin?: boolean;
 	isServerWrapped?: boolean;
+	globalFloor?: ShareModeType;
 }
 
 let {
@@ -28,8 +29,21 @@ let {
 	shareSettings,
 	isOwner = false,
 	isAdmin = false,
-	isServerWrapped = false
+	isServerWrapped = false,
+	globalFloor
 }: Props = $props();
+
+const privacyLevel: Record<ShareModeType, number> = {
+	public: 0,
+	'private-link': 1,
+	'private-oauth': 2
+};
+
+const floorLevel = $derived(globalFloor ? privacyLevel[globalFloor] : 0);
+
+function isBelowFloor(mode: ShareModeType): boolean {
+	return privacyLevel[mode] < floorLevel;
+}
 
 // State
 let copied = $state(false);
@@ -260,6 +274,12 @@ $effect(() => {
 								<div class="mode-content">
 									<span class="mode-label">{modeLabels[mode as ShareModeType].label}</span>
 									<span class="mode-desc">{modeLabels[mode as ShareModeType].description}</span>
+									{#if isAdmin && globalFloor && isBelowFloor(mode as ShareModeType)}
+										<span class="floor-note">
+											Global floor is <strong>{modeLabels[globalFloor].label}</strong>. Effective
+											mode at access time will be <strong>{modeLabels[globalFloor].label}</strong>.
+										</span>
+									{/if}
 								</div>
 								{#if displayMode === mode}
 									<svg
@@ -462,7 +482,20 @@ $effect(() => {
 		}
 
 		.mode-option input[type='radio'] {
-			display: none;
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			padding: 0;
+			margin: -1px;
+			overflow: hidden;
+			clip: rect(0, 0, 0, 0);
+			white-space: nowrap;
+			border: 0;
+		}
+
+		.mode-option:focus-within {
+			outline: 2px solid hsl(var(--primary));
+			outline-offset: 2px;
 		}
 
 		.mode-content {
@@ -481,6 +514,17 @@ $effect(() => {
 		.mode-desc {
 			font-size: 0.75rem;
 			color: hsl(var(--muted-foreground));
+		}
+
+		.floor-note {
+			margin-top: 0.375rem;
+			padding: 0.375rem 0.5rem;
+			font-size: 0.7rem;
+			line-height: 1.4;
+			color: hsl(45, 93%, 65%);
+			background: rgba(250, 204, 21, 0.08);
+			border-left: 2px solid rgba(250, 204, 21, 0.5);
+			border-radius: 4px;
 		}
 
 		.check-icon {

@@ -7,6 +7,7 @@ import {
 	isSyncRunning,
 	startBackgroundSync
 } from '$lib/server/sync';
+import { cancelSync } from '$lib/server/sync/progress';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ parent }) => {
@@ -55,6 +56,20 @@ export const actions: Actions = {
 
 			return fail(500, { error: 'Failed to start sync. Please try again.' });
 		}
+	},
+
+	cancelSync: async ({ locals }) => {
+		if (!locals.user?.isAdmin) {
+			return fail(403, { error: 'Admin access required' });
+		}
+
+		const cancelled = cancelSync();
+
+		if (!cancelled) {
+			return fail(400, { error: 'No sync is currently running' });
+		}
+
+		return { success: true, message: 'Sync cancelled' };
 	},
 
 	continue: async ({ locals }) => {

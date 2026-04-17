@@ -986,7 +986,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 
 		.form-group textarea {
 			resize: vertical;
-			min-height: 150px;
+			min-height: 96px;
 			font-family: monospace;
 		}
 
@@ -1121,9 +1121,12 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			justify-content: flex-end;
 			gap: 0.75rem;
 			margin-top: 1.5rem;
-			padding-top: 1rem;
+			padding-top: 0.75rem;
+			padding-bottom: 0.25rem;
 			border-top: 1px solid hsl(var(--border));
-			position: relative;
+			position: sticky;
+			bottom: 0;
+			background: hsl(var(--card));
 			z-index: 1;
 		}
 

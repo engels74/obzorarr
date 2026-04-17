@@ -76,12 +76,12 @@ interface SubStep {
 	icon: 'appearance' | 'privacy' | 'slides' | 'ai';
 }
 
-// Build sub-steps array (AI only if configured) - reactive to data.hasOpenAI
+// Fun-fact settings work with built-in templates even without OpenAI, so always show the step
 let subSteps = $derived([
 	{ id: 'appearance', label: 'Appearance', icon: 'appearance' },
 	{ id: 'privacy', label: 'Privacy', icon: 'privacy' },
 	{ id: 'slides', label: 'Slides', icon: 'slides' },
-	...(data.hasOpenAI ? [{ id: 'ai', label: 'AI Features', icon: 'ai' as const }] : [])
+	{ id: 'ai', label: 'AI Features', icon: 'ai' }
 ] satisfies SubStep[]);
 
 let currentSubStep = $state(0);

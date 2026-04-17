@@ -1,4 +1,5 @@
 <script lang="ts">
+import { browser } from '$app/environment';
 import { goto } from '$app/navigation';
 import Logo from '$lib/components/Logo.svelte';
 import { createServerContext } from '$lib/components/slides/messaging-context';
@@ -34,8 +35,23 @@ const messagingContext = $derived(createServerContext(data.serverName));
 type ViewMode = 'story' | 'scroll';
 let viewMode = $state<ViewMode>('story');
 
+// Read the initial slide index from the URL hash synchronously so StoryMode
+// receives the correct `initialSlideIndex` prop on its first render.
+// Deferring this to a $effect raced with StoryMode's own one-shot
+// `navigation.initialize()` effect — the seeded index could arrive after
+// StoryMode had already initialised with the default 0.
+function readInitialSlideIndex(): number {
+	if (!browser) return 0;
+	const match = window.location.hash.match(/^#slide=(\d+)$/);
+	if (!match) return 0;
+	const parsed = parseInt(match[1]!, 10);
+	if (Number.isNaN(parsed)) return 0;
+	const max = Math.max(0, data.slides.length - 1);
+	return Math.min(Math.max(parsed, 0), max);
+}
+
 /** Current slide index for mode switching (preserves position) */
-let currentSlideIndex = $state(0);
+let currentSlideIndex = $state(readInitialSlideIndex());
 
 /** Whether to show the summary page */
 let showSummary = $state(false);
@@ -45,6 +61,19 @@ let showShareModal = $state(false);
 
 /** Key for forcing StoryMode remount on restart */
 let storyKey = $state(0);
+
+// Reflect slide index back into the hash without creating history entries.
+$effect(() => {
+	if (!browser) return;
+	const next = `#slide=${currentSlideIndex}`;
+	if (window.location.hash !== next) {
+		history.replaceState(
+			history.state,
+			'',
+			`${window.location.pathname}${window.location.search}${next}`
+		);
+	}
+});
 
 // ==========================================================================
 // Event Handlers
@@ -76,9 +105,15 @@ function handleComplete(): void {
  * Handle close/exit action
  */
 function handleClose(): void {
-	const isSameOrigin =
-		document.referrer !== '' && document.referrer.startsWith(window.location.origin);
-	if (isSameOrigin && window.history.length > 1) {
+	let sameOrigin = false;
+	if (document.referrer) {
+		try {
+			sameOrigin = new URL(document.referrer).origin === window.location.origin;
+		} catch {
+			sameOrigin = false;
+		}
+	}
+	if (sameOrigin && window.history.length > 1) {
 		window.history.back();
 	} else {
 		goto('/');
@@ -99,7 +134,13 @@ function handleRestart(): void {
  * Handle return home from summary
  */
 function handleHome(): void {
-	goto('/');
+	if (data.isAdmin) {
+		goto('/admin');
+	} else if (data.isLoggedIn) {
+		goto('/dashboard');
+	} else {
+		goto('/');
+	}
 }
 
 /**

@@ -199,6 +199,8 @@ export const load: PageServerLoad = async ({ params, locals, parent }) => {
 		},
 		isOwner,
 		isAdmin,
+		isLoggedIn: !!locals.user,
+		globalFloor: globalFloorForUrl,
 		currentUrl: `/wrapped/${year}/u/${urlIdentifier}`,
 		yearIdentifiers
 	};

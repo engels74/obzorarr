@@ -3,6 +3,7 @@ import { browser } from '$app/environment';
 import { enhance } from '$app/forms';
 import { goto, invalidateAll } from '$app/navigation';
 import { page } from '$app/stores';
+import * as AlertDialog from '$lib/components/ui/alert-dialog';
 import type { LogEntry, LogLevelType } from '$lib/server/logging';
 import { handleFormToast } from '$lib/utils/form-toast';
 import type { ActionData, PageData } from './$types';
@@ -51,6 +52,10 @@ $effect.pre(() => {
 	toDate = data.filters?.toTimestamp ? toLocalDateTimeInput(data.filters.toTimestamp) : '';
 });
 let autoScroll = $state(true);
+
+// Clear-logs confirmation dialog
+let clearLogsDialogOpen = $state(false);
+let isClearingLogs = $state(false);
 
 // SSE connection state
 let eventSource: EventSource | null = $state(null);
@@ -495,21 +500,13 @@ $effect(() => {
 				<button type="submit" class="control-button secondary"> Run Cleanup </button>
 			</form>
 
-			<form
-				method="POST"
-				action="?/clearLogs"
-				use:enhance={() => {
-					if (!confirm('Are you sure you want to delete all logs? This cannot be undone.')) {
-						return async () => {};
-					}
-					return async ({ update }) => {
-						await refreshAfterLogMutation(update);
-					};
-				}}
-				class="inline-form"
+			<button
+				type="button"
+				class="control-button danger"
+				onclick={() => (clearLogsDialogOpen = true)}
 			>
-				<button type="submit" class="control-button danger"> Clear All Logs </button>
-			</form>
+				Clear All Logs
+			</button>
 		</div>
 	</section>
 
@@ -623,6 +620,40 @@ $effect(() => {
 		</p>
 	</section>
 </div>
+
+<AlertDialog.Root bind:open={clearLogsDialogOpen}>
+	<AlertDialog.Content>
+		<AlertDialog.Header>
+			<AlertDialog.Title>Clear all logs?</AlertDialog.Title>
+			<AlertDialog.Description>
+				This will permanently delete every log entry. This action cannot be undone.
+			</AlertDialog.Description>
+		</AlertDialog.Header>
+		<AlertDialog.Footer>
+			<AlertDialog.Cancel disabled={isClearingLogs}>Cancel</AlertDialog.Cancel>
+			<form
+				method="POST"
+				action="?/clearLogs"
+				use:enhance={() => {
+					isClearingLogs = true;
+					return async ({ update }) => {
+						try {
+							await refreshAfterLogMutation(update);
+							clearLogsDialogOpen = false;
+						} finally {
+							isClearingLogs = false;
+						}
+					};
+				}}
+				style="display: contents;"
+			>
+				<AlertDialog.Action type="submit" disabled={isClearingLogs}>
+					{isClearingLogs ? 'Clearing…' : 'Clear All'}
+				</AlertDialog.Action>
+			</form>
+		</AlertDialog.Footer>
+	</AlertDialog.Content>
+</AlertDialog.Root>
 
 <style>
 	.logs-page {

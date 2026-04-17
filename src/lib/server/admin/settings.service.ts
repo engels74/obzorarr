@@ -311,6 +311,16 @@ export interface ConfigValue<T> {
 	isLocked: boolean;
 }
 
+/**
+ * Shape exposed to the client for secret fields. Omits the raw value so it never
+ * crosses the wire during SvelteKit hydration.
+ */
+export interface SafeConfigValue {
+	source: ConfigSource;
+	isLocked: boolean;
+	hasValue: boolean;
+}
+
 export interface ApiConfigWithSources {
 	plex: {
 		serverUrl: ConfigValue<string>;
@@ -320,6 +330,14 @@ export interface ApiConfigWithSources {
 		apiKey: ConfigValue<string>;
 		baseUrl: ConfigValue<string>;
 		model: ConfigValue<string>;
+	};
+}
+
+export function toSafeConfigValue(config: ConfigValue<string>): SafeConfigValue {
+	return {
+		source: config.source,
+		isLocked: config.isLocked,
+		hasValue: Boolean(config.value)
 	};
 }
 
