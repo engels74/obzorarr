@@ -1,3 +1,5 @@
+import { dev } from '$app/environment';
+
 const CSP_DIRECTIVES = [
 	"default-src 'self'",
 	"img-src 'self' https://plex.tv https://*.plex.direct data:",
@@ -15,7 +17,9 @@ export function applySecurityHeaders(response: Response, request: Request): Resp
 	response.headers.set('X-Content-Type-Options', 'nosniff');
 	response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 	response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-	response.headers.set('Content-Security-Policy', CSP_DIRECTIVES);
+	if (!dev) {
+		response.headers.set('Content-Security-Policy', CSP_DIRECTIVES);
+	}
 
 	const isHttps =
 		new URL(request.url).protocol === 'https:' ||
