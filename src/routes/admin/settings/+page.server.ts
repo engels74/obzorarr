@@ -270,12 +270,14 @@ export const actions: Actions = {
 		// Allow token fallback only when the URL hasn't changed from what is stored.
 		const plexToken = submittedToken || (urlMatchesStored ? apiConfig.plex.token.value : '');
 
-		if (!plexServerUrl || !plexToken) {
-			return fail(400, {
-				error: !plexToken
-					? 'A Plex token is required when testing a new server URL'
-					: 'Plex server URL and token are required'
-			});
+		if (!plexServerUrl && !plexToken) {
+			return fail(400, { error: 'Plex server URL and token are required' });
+		}
+		if (!plexServerUrl) {
+			return fail(400, { error: 'Plex server URL is required' });
+		}
+		if (!plexToken) {
+			return fail(400, { error: 'A Plex token is required to test the server connection' });
 		}
 
 		try {

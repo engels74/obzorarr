@@ -69,7 +69,11 @@ $effect(() => {
 	if (!browser) return;
 	const next = `#slide=${currentSlideIndex}`;
 	if (window.location.hash !== next) {
-		history.replaceState(null, '', `${window.location.pathname}${window.location.search}${next}`);
+		history.replaceState(
+			history.state,
+			'',
+			`${window.location.pathname}${window.location.search}${next}`
+		);
 	}
 });
 
