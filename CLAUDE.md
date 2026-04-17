@@ -2,159 +2,105 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project Overview
+## Project
 
-Obzorarr is a "Plex Wrapped" application that generates annual statistics and animated slideshow presentations from Plex Media Server viewing history. It's built with Bun, SvelteKit 5, SQLite (Drizzle ORM), and uses GSAP/Motion for animations.
+Obzorarr is a "Wrapped for Plex" SvelteKit app that syncs Plex viewing history into SQLite and renders an animated yearly recap. Runtime is Bun end-to-end (dev server, test runner, production build via `svelte-adapter-bun`).
 
-## Common Commands
+## Commands
 
 ```bash
-# Development
-bun install              # Install dependencies
-bun run dev              # Start dev server (localhost:3000)
+bun install              # installs deps AND sets up prek pre-commit hooks (postinstall)
+bun run dev              # dev server (bun --bun vite dev)
+bun run build            # production build -> ./build
+bun run start            # run the built server (bun ./build)
 
-# Database
-bun run db:generate      # Generate Drizzle migrations
-bun run db:migrate       # Apply migrations (scripts/migrate.ts)
-bun run db:studio        # Open Drizzle Studio GUI
+bun run check            # svelte-kit sync + svelte-check (TypeScript + Svelte types)
+bun run lint             # biome lint .
+bun run lint:fix         # biome lint --write .
+bun run format           # biome format --write .
+bun run check:biome      # biome check . (lint + format, read-only)
 
-# Testing
-bun test                 # Run all tests (uses in-memory SQLite)
-bun test <file>          # Run single test file
+bun run test             # runs bun test with --env-file=.env.test (coverage required ≥80% line/fn)
+bun test path/to/file.test.ts                      # single file
+bun test --test-name-pattern "regex of test name"  # single test by name
 
-# Build & Production
-bun run build            # Build for production
-bun run preview          # Preview production build
-bun run start            # Run production server (bun ./build)
-
-# Code Quality
-bun run check            # TypeScript + Svelte type checking
-bun run format           # Format with Prettier
-bun run format:check     # Check formatting
+bun run db:generate      # drizzle-kit generate (creates migration from schema.ts changes)
+bun run db:migrate       # bun run scripts/migrate.ts (applies migrations to DATABASE_PATH)
+bun run db:studio        # drizzle-kit studio
 ```
 
-## Coding Guidelines
+`.env.test` forces `DATABASE_PATH=:memory:`; `src/lib/server/db/client.ts` actively **throws** if `NODE_ENV=test` tries to open a non-test path on disk — always run tests via `bun run test`, never bare `bun test`, so the env file is loaded.
 
-**Always follow the coding patterns established in:**
-`.augment/rules/bun-svelte-pro.md`
-
-Before making any changes, review this file to ensure consistency with project standards.
-
-### Comment Philosophy
-
-This codebase maintains a comment-minimal style. Follow these principles:
-
-- **Remove redundant comments** that restate what the code does—the code is the documentation
-- **Keep comments that explain WHY**, not WHAT (business logic rationale, non-obvious decisions)
-- **Preserve essential context** that isn't obvious from reading the code itself
-- **Avoid over-explanatory JSDoc** where TypeScript types already provide sufficient documentation
-- **Never add section dividers** or decorative comment blocks
+Pre-push hooks (via prek) run `bun run check` and `bun test`. CI (`.github/workflows/code-quality.yml`) runs prek hooks → type-check → tests sequentially.
 
 ## Architecture
 
-### Request Flow
+### Request pipeline (`src/hooks.server.ts`)
 
-Requests flow through sequential hooks in `src/hooks.server.ts`:
+All requests pass through `sequence(...)` in this order:
+`requestFilter → rateLimit → proxy (x-forwarded-*) → csrf → initialization → securityHeaders → auth → onboarding → authorization`.
 
-1. `requestFilterHandle` - Blocks suspicious requests (path traversal, etc.)
-2. `rateLimitHandle` - Rate limiting for API endpoints
-3. `proxyHandle` - Handles X-Forwarded-\* headers for reverse proxies
-4. `csrfHandle` - CSRF protection
-5. `initializationHandle` - One-time startup tasks (clears conflicting settings)
-6. `securityHeadersHandle` - Sets security headers (X-Frame-Options, HSTS, etc.)
-7. `authHandle` - Session validation, populates `event.locals.user`
-8. `onboardingHandle` - Redirects to setup wizard if not configured
-9. `authorizationHandle` - Admin route protection
+- **CSRF** is origin-based, configured from DB (`app_settings`) first, then `ORIGIN` env var. SvelteKit's built-in origin check is disabled (`trustedOrigins: ['*']` in `svelte.config.js`) because this app sits behind a reverse proxy; protection comes from the custom `csrfHandle` + SameSite=Lax cookies.
+- **CSP** is set in `svelte.config.js` with `mode: 'nonce'`.
+- **`authorizationHandle`** gates `/admin` to `locals.user.isAdmin`. The root `+page.server.ts` redirects logged-in users to `/admin` or `/dashboard`.
+- **`DEV_BYPASS_AUTH`** (dev only) short-circuits auth by creating a hardcoded `DEV_SESSION_ID`. Tuned with `DEV_BYPASS_USER` (empty/`random`/plexId/username) and optional `DEV_PLEX_TOKEN` for onboarding testing. See `src/lib/server/auth/dev-bypass.ts`.
 
-### Directory Structure
+### Authentication
 
-- **`src/lib/server/`** - Backend services (auth, sync, stats, plex client, etc.)
-- **`src/lib/components/`** - Svelte components
-  - `slides/` - Animated presentation slides (16 built-in types + custom slides)
-  - `ui/` - shadcn/bits-ui primitives
-- **`src/lib/stores/`** - Svelte runes stores (`*.svelte.ts`)
-- **`src/routes/`** - SvelteKit routes with SSR data loading
+Plex OAuth PIN flow in `src/lib/server/auth/` (`plex-oauth.ts` requests/polls PIN → `login-completion.ts` creates session). Sessions live in the `sessions` table for 7 days; membership is periodically revalidated against Plex.tv (`revalidation.ts`). `locals.user` is `{ id, plexId, username, isAdmin }`.
 
-### Key Services (`src/lib/server/`)
+### Data layer
 
-| Service          | Purpose                                                |
-| ---------------- | ------------------------------------------------------ |
-| `admin/`         | Settings management, user administration               |
-| `anonymization/` | User stats anonymization (REAL, ANONYMOUS, HYBRID)     |
-| `auth/`          | Plex OAuth flow, session management, dev bypass        |
-| `funfacts/`      | AI-generated or templated fun facts                    |
-| `logging/`       | Structured logging with retention policies             |
-| `logo/`          | Wrapped logo visibility settings                       |
-| `onboarding/`    | Setup wizard flow and step management                  |
-| `plex/`          | Plex API client with pagination                        |
-| `ratelimit/`     | Rate limiting for API endpoints                        |
-| `security/`      | Request filtering, CSRF protection, security headers   |
-| `sharing/`       | Share tokens, access modes (public/restricted/private) |
-| `slides/`        | Slide configuration and custom slides                  |
-| `stats/`         | Stats calculation with caching (1hr TTL)               |
-| `sync/`          | History sync engine with Croner scheduler              |
+Drizzle ORM + `bun:sqlite`. Schema in `src/lib/server/db/schema.ts` (users, sessions, playHistory, syncStatus, cachedStats, shareSettings, slideConfig, customSlides, appSettings, plexAccounts, metadataCache, logs). `src/lib/server/db/client.ts` opens the DB with WAL + `busy_timeout=5000` and **auto-runs migrations on import** (except in-memory). To change the schema: edit `schema.ts`, run `db:generate`, commit the file under `drizzle/`. Runtime applies it on next boot.
 
-### Database Schema (`src/lib/server/db/schema.ts`)
+### Sync system (`src/lib/server/sync/`)
 
-Key tables:
+- `service.ts` — `startSync()` paginates Plex history, inserts batches, enriches metadata, updates `syncStatus`. Only one sync may run at a time (`isSyncRunning()`).
+- `scheduler.ts` — `croner`-backed recurring sync, cron expression stored as an app setting (`SYNC_CRON_EXPRESSION`) or env fallback.
+- `live-sync.ts` — `triggerLiveSyncIfNeeded()` kicks a short incremental sync on wrapped page loads (fire-and-forget, silent on error).
+- `plex-accounts.service.ts` — mirrors Plex server users into `plexAccounts` so stats can display usernames.
+- After sync, stats cache is invalidated via `invalidateCache()` in `$lib/server/stats/engine`.
 
-- `users` - Plex users (plexId vs accountId distinction matters)
-- `playHistory` - Watch records (historyKey ensures uniqueness)
-- `syncStatus` - Sync job tracking and progress
-- `cachedStats` - Cached statistics with TTL
-- `shareSettings` - Per-user, per-year share tokens and access modes
-- `customSlides` - Admin-created custom slides with markdown content
-- `slideConfig` - Slide ordering and enable/disable state
-- `appSettings` - Key-value store for application settings
-- `sessions` - User authentication sessions
-- `logs` - Structured application logs with retention
-- `plexAccounts` - Maps local accountId to Plex identity
-- `metadataCache` - Cached metadata for media items (genres, duration, year)
+### Stats + wrapped rendering
 
-### Account ID vs Plex ID
+Stats engine (`$lib/server/stats/engine`) exposes `calculateUserStats`, `calculateServerStats`, `getServerStatsWithAnonymization`, with a `cachedStats` TTL cache. Wrapped pages at `/wrapped/[year]` (server-wide) and `/wrapped/[year]/u/[identifier]` (per-user) load stats + slide config + fun facts in parallel. Slides come from `$lib/server/slides` — built-in `slideConfig` rows plus admin-defined `customSlides` interleaved with AI/template fun facts (`$lib/server/funfacts`). Markdown is rendered server-side (`renderMarkdownSync`) and sanitized before hitting the client.
 
-The codebase distinguishes between:
+### Sharing & access control
 
-- **plexId** - Global Plex.tv user ID
-- **accountId** - Local server account ID (used in watch history)
+`$lib/server/sharing/` enforces three modes (`public`, `private-oauth`, `private-link` with tokens). `checkServerWrappedAccess` / `checkWrappedAccess` are called at the top of wrapped `+page.server.ts` loads; `ShareAccessDeniedError` → `error(403)`, `InvalidShareTokenError` → `error(404)`. Per-user settings are in `shareSettings`; global defaults live in app settings.
 
-This matters for server owners who appear in history under accountId=1 but have a different plexId.
+### Onboarding
 
-### Dev Authentication Bypass
+5-step flow (`csrf → plex → sync → settings → complete`) in `$lib/server/onboarding`. `onboardingHandle` in hooks redirects everything except `/onboarding`, `/auth`, `/_app`, `/favicon`, `/api/onboarding`, `/api/sync` until `ONBOARDING_COMPLETED=true` in app settings.
 
-Set in `.env` for development without real Plex OAuth:
+### Route map
 
-```
-DEV_BYPASS_AUTH=true
-DEV_BYPASS_USER=              # empty=owner, "random", <plexId>, or <username>
-DEV_PLEX_TOKEN=               # For onboarding testing when PLEX_TOKEN is empty
-```
+- `/` — landing + username form (redirects logged-in users)
+- `/auth/*` — Plex PIN callback flow
+- `/onboarding/*` — first-run wizard
+- `/dashboard` — non-admin user home (redirects admins to `/admin`)
+- `/admin` (layout-gated admin) → `settings`, `sync`, `users`, `logs`, `slides`, `wrapped`
+- `/wrapped/[year]` and `/wrapped/[year]/u/[identifier]` — slideshow
+- `/api/{sync,onboarding,security}` — JSON endpoints for client-side polling/actions
 
-To test the onboarding flow, set `DEV_PLEX_TOKEN` to a valid Plex.tv token while leaving `PLEX_SERVER_URL` and `PLEX_TOKEN` empty.
+## Conventions
+
+**Project rules live in `.augment/rules/bun-svelte-pro.md`** — read it before non-trivial work. Highlights:
+
+- **Svelte 5 runes only** (`$state`, `$derived`, `$effect`, `$props()`). No Svelte 4 patterns, no stores for component-local state.
+- **Data loading in `+page.server.ts`** (SSR). Reserve `+server.ts` for REST/external integrations; use form actions with `use:enhance` for mutations.
+- **Form actions return `fail(status, {...})` for validation and `redirect(303, ...)` for success.** Client components call `$lib/utils/form-toast.ts`'s `handleFormToast(form)` from a `$effect` to surface toasts.
+- **Zod** validates every form action payload. Share schemas from `$lib/server/.../types.ts` when a value is used in multiple places.
+- **Import aliases**: `$lib/...` for shared code, `$lib/server/...` is server-only (never import from a `.svelte` or client file). Use `./$types` for `PageServerLoad`, `Actions`, `PageData`, `PageProps`.
+- **Errors**: throw via `error(status, msg)` from `@sveltejs/kit` for expected HTTP errors; let `handleError` in `hooks.server.ts` sanitize unexpected errors (logs via `$lib/server/logging`, returns generic message to client).
+- **Styling**: UnoCSS (`uno.config.ts`) with `presetShadcn` + `presetIcons` + `presetAnimations`. Design tokens are oklch colors in `src/app.css`. shadcn-svelte primitives live under `src/lib/components/ui/`.
+- **Biome** formats with **tabs**, single quotes, no trailing commas, 100-col width. Svelte files have relaxed rules (unused imports/vars allowed to support `<script>` patterns).
+- **Commits**: Conventional Commits, lowercase, imperative. Types: `feat|fix|refactor|perf|style|test|docs|build|ops|chore`. Use `!` for breaking.
+- **Don't commit** files that look like secrets (`.env`, tokens in code). The large-file hook blocks >500KB.
 
 ## Testing
 
-Tests use Bun's test runner with in-memory SQLite. Test setup (`tests/setup.ts`) mocks SvelteKit's `$env` modules and creates all database tables.
-
-- **Unit tests**: `tests/unit/` - Direct function testing
-- **Property tests**: `tests/property/` - fast-check based generative testing
-
-Tests run with `--env-file=.env.test` (configured in package.json).
-
-## Key Patterns
-
-### SSR Data Loading
-
-Data fetching happens in `+page.server.ts` files, not client-side API calls.
-
-### Sync Progress
-
-Uses Server-Sent Events (SSE) via `/api/sync/status/stream` for real-time progress updates.
-
-### Validation
-
-Zod schemas validate all external data (Plex API responses, form inputs).
-
-### Logging
-
-Uses structured logging via `logger` from `$lib/server/logging`. Logs are stored in SQLite with configurable retention.
+- `bun:test` with `tests/setup.ts` preloaded (sets `NODE_ENV=test`, `DATABASE_PATH=:memory:`, mocks `$env/dynamic/private`).
+- Structure: `tests/unit/**` (mirrors `src/lib/server`), `tests/property/**` (fast-check property tests), `tests/helpers/**` (shared fixtures/factories).
+- Coverage threshold is 80% line/function (`bunfig.toml`). Don't drop it when adding tests.
+- For code that touches DB, use in-memory SQLite; migrations run automatically on import in normal boot but tests typically use helpers to set up schema — check `tests/helpers/` before inventing a new setup.
