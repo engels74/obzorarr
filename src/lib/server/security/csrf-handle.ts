@@ -2,6 +2,7 @@ import type { Handle } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 import { getCsrfConfigWithSource } from '$lib/server/admin/settings.service';
 import { logger } from '$lib/server/logging';
+import { applySecurityHeaders } from './security-headers';
 
 const STATE_CHANGING_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
 
@@ -62,10 +63,13 @@ export const csrfHandle: Handle = async ({ event, resolve }) => {
 			method,
 			path: event.url.pathname
 		});
-		return new Response(JSON.stringify({ error: 'CSRF check failed: missing origin header' }), {
-			status: 403,
-			headers: { 'Content-Type': 'application/json' }
-		});
+		return applySecurityHeaders(
+			new Response(JSON.stringify({ error: 'CSRF check failed: missing origin header' }), {
+				status: 403,
+				headers: { 'Content-Type': 'application/json' }
+			}),
+			event.request
+		);
 	}
 
 	// Compare origins (case-insensitive per URL spec)
@@ -76,10 +80,13 @@ export const csrfHandle: Handle = async ({ event, resolve }) => {
 			expected: expectedOrigin,
 			received: requestOrigin
 		});
-		return new Response(JSON.stringify({ error: 'CSRF check failed: origin mismatch' }), {
-			status: 403,
-			headers: { 'Content-Type': 'application/json' }
-		});
+		return applySecurityHeaders(
+			new Response(JSON.stringify({ error: 'CSRF check failed: origin mismatch' }), {
+				status: 403,
+				headers: { 'Content-Type': 'application/json' }
+			}),
+			event.request
+		);
 	}
 
 	return resolve(event);

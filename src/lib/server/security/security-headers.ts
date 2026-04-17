@@ -3,6 +3,8 @@ export function applySecurityHeaders(response: Response, request: Request): Resp
 	response.headers.set('X-Content-Type-Options', 'nosniff');
 	response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 	response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+	// Content-Security-Policy is managed by SvelteKit's kit.csp (svelte.config.js)
+	// using nonce mode, which eliminates the need for 'unsafe-inline' on script-src.
 
 	const isHttps =
 		new URL(request.url).protocol === 'https:' ||

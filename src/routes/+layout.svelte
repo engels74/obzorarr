@@ -37,6 +37,9 @@ $effect(() => {
 	// Add the effective theme class
 	document.body.classList.add(themeClass);
 
+	// Keep <html data-theme> (set by pre-paint script) in sync with live changes
+	document.documentElement.setAttribute('data-theme', effectiveTheme);
+
 	// Add/remove wrapped route class for full-viewport theming
 	if (isWrappedRoute) {
 		document.body.classList.add('wrapped-route');

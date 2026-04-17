@@ -58,6 +58,13 @@ const isActive = $derived((href: string) => {
 
 // Mobile sidebar state
 let sidebarOpen = $state(false);
+let adminAvatarError = $state(false);
+
+// Reset avatar error when thumb URL changes so a new URL gets a fresh load attempt
+$effect(() => {
+	data.adminUser.thumb;
+	adminAvatarError = false;
+});
 
 // CSRF warning state - derived from data with local override for immediate dismiss
 let locallyDismissed = $state(false);
@@ -134,7 +141,13 @@ function handleCsrfWarningDismissed() {
 				{#each navItems as item (item.href)}
 					{@const active = isActive(item.href)}
 					<li>
-						<a href={item.href} class="nav-link" class:active onclick={closeSidebar}>
+						<a
+							href={item.href}
+							class="nav-link"
+							class:active
+							aria-current={active ? 'page' : undefined}
+							onclick={closeSidebar}
+						>
 							<span class="nav-icon-wrap" class:active>
 								<item.icon class="nav-icon" />
 							</span>
@@ -151,7 +164,18 @@ function handleCsrfWarningDismissed() {
 		<div class="sidebar-footer">
 			<div class="user-card">
 				<div class="user-avatar">
-					<User class="user-avatar-icon" />
+					{#if data.adminUser.thumb && !adminAvatarError}
+						<img
+							src={data.adminUser.thumb}
+							alt={data.adminUser.username}
+							class="user-avatar-img"
+							onerror={() => {
+								adminAvatarError = true;
+							}}
+						/>
+					{:else}
+						<User class="user-avatar-icon" />
+					{/if}
 				</div>
 				<div class="user-info">
 					<span class="user-name">{data.adminUser.username}</span>
@@ -406,12 +430,20 @@ function handleCsrfWarningDismissed() {
 			background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.8) 100%);
 			border-radius: 0.5rem;
 			flex-shrink: 0;
+			overflow: hidden;
 		}
 
 		.user-avatar :global(.user-avatar-icon) {
 			width: 1.125rem;
 			height: 1.125rem;
 			color: hsl(var(--primary-foreground));
+		}
+
+		.user-avatar-img {
+			width: 100%;
+			height: 100%;
+			object-fit: cover;
+			display: block;
 		}
 
 		.user-info {

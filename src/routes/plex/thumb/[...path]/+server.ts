@@ -22,7 +22,7 @@ function isAllowedPath(path: string): boolean {
 // Intentionally unauthenticated: shared/public wrapped pages render thumbnails
 // via getThumbUrl() without a user session. Path validation (ALLOWED_PATH_PATTERNS)
 // restricts access to Plex library metadata thumbnails only.
-export const GET: RequestHandler = async ({ params }) => {
+export const GET: RequestHandler = async ({ params, request }) => {
 	const { path } = params;
 
 	if (!path) {
@@ -33,7 +33,6 @@ export const GET: RequestHandler = async ({ params }) => {
 		error(400, { message: 'Invalid thumbnail path' });
 	}
 
-	// Get merged config (database takes priority over environment)
 	const config = await getPlexConfig();
 
 	if (!config.serverUrl) {
@@ -43,10 +42,27 @@ export const GET: RequestHandler = async ({ params }) => {
 	const plexUrl = new URL(`/${path}`, config.serverUrl);
 
 	try {
+		const upstreamHeaders: Record<string, string> = getPlexHeaders(config.token);
+		const ifNoneMatch = request.headers.get('if-none-match');
+		const ifModSince = request.headers.get('if-modified-since');
+		if (ifNoneMatch) upstreamHeaders['If-None-Match'] = ifNoneMatch;
+		if (ifModSince) upstreamHeaders['If-Modified-Since'] = ifModSince;
+
 		const response = await fetch(plexUrl.toString(), {
 			method: 'GET',
-			headers: getPlexHeaders(config.token)
+			headers: upstreamHeaders
 		});
+
+		if (response.status === 304) {
+			const notModHeaders: Record<string, string> = {
+				'Cache-Control': `public, max-age=${CACHE_MAX_AGE}, immutable`
+			};
+			const etag = response.headers.get('etag');
+			const lastMod = response.headers.get('last-modified');
+			if (etag) notModHeaders['ETag'] = etag;
+			if (lastMod) notModHeaders['Last-Modified'] = lastMod;
+			return new Response(null, { status: 304, headers: notModHeaders });
+		}
 
 		if (!response.ok) {
 			if (response.status === 404) {
@@ -56,19 +72,25 @@ export const GET: RequestHandler = async ({ params }) => {
 			console.error(
 				`[Plex Thumb] Error fetching thumbnail: ${response.status} ${response.statusText}`
 			);
-			error(502, { message: 'Failed to fetch thumbnail from Plex' });
+			error(502, { message: 'Thumbnail unavailable' });
 		}
 
 		const imageData = await response.arrayBuffer();
 		const contentType = response.headers.get('content-type') || 'image/jpeg';
+		const etag = response.headers.get('etag');
+		const lastMod = response.headers.get('last-modified');
+
+		const headers: Record<string, string> = {
+			'Content-Type': contentType,
+			'Cache-Control': `public, max-age=${CACHE_MAX_AGE}, immutable`,
+			'Content-Length': String(imageData.byteLength)
+		};
+		if (etag) headers['ETag'] = etag;
+		if (lastMod) headers['Last-Modified'] = lastMod;
 
 		return new Response(imageData, {
 			status: 200,
-			headers: {
-				'Content-Type': contentType,
-				'Cache-Control': `public, max-age=${CACHE_MAX_AGE}, immutable`,
-				'Content-Length': String(imageData.byteLength)
-			}
+			headers
 		});
 	} catch (err) {
 		if (err instanceof Error && 'status' in err) {
@@ -76,6 +98,6 @@ export const GET: RequestHandler = async ({ params }) => {
 		}
 
 		console.error('[Plex Thumb] Network error:', err);
-		error(502, { message: 'Unable to connect to Plex server' });
+		error(502, { message: 'Thumbnail unavailable' });
 	}
 };

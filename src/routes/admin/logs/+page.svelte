@@ -412,8 +412,14 @@ $effect(() => {
 				<input
 					type="datetime-local"
 					id="from-date"
-					bind:value={fromDate}
-					onchange={() => applyFilters()}
+					value={fromDate}
+					oninput={(e) => {
+						fromDate = e.currentTarget.value;
+					}}
+					onchange={(e) => {
+						fromDate = e.currentTarget.value;
+						applyFilters();
+					}}
 				/>
 			</div>
 
@@ -423,8 +429,14 @@ $effect(() => {
 				<input
 					type="datetime-local"
 					id="to-date"
-					bind:value={toDate}
-					onchange={() => applyFilters()}
+					value={toDate}
+					oninput={(e) => {
+						toDate = e.currentTarget.value;
+					}}
+					onchange={(e) => {
+						toDate = e.currentTarget.value;
+						applyFilters();
+					}}
 				/>
 			</div>
 		</div>

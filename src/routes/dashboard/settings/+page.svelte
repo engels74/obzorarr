@@ -452,8 +452,15 @@ function getLogoModeDescription(): string {
 							</span>
 						</div>
 
+						{#if data.user.plexId}
+							<div class="detail-row">
+								<span class="detail-label">Plex ID</span>
+								<span class="detail-value mono">{data.user.plexId}</span>
+							</div>
+						{/if}
+
 						<div class="detail-row">
-							<span class="detail-label">User ID</span>
+							<span class="detail-label">Account ID</span>
 							<span class="detail-value mono">{data.user.id}</span>
 						</div>
 					</div>

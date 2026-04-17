@@ -787,7 +787,7 @@ const logFieldErrors = $derived(
 						{/if}
 					</form>
 
-					{#if !openaiApiKeyLocked && openaiApiKeySource === 'db'}
+					{#if !openaiApiKeyLocked}
 						<form method="POST" action="?/clearOpenaiKey" use:enhance class="panel-form">
 							<div class="panel-actions">
 								<button type="submit" class="btn-destructive">
@@ -865,7 +865,7 @@ const logFieldErrors = $derived(
 								<label class="theme-card" class:selected={selectedWrappedTheme === theme.value}>
 									<input
 										type="radio"
-										name="theme"
+										name="wrappedTheme"
 										value={theme.value}
 										bind:group={selectedWrappedTheme}
 									/>
@@ -1370,9 +1370,14 @@ const logFieldErrors = $derived(
 										action="?/resetCsrfWarning"
 										use:enhance={() => {
 											isResettingCsrfWarning = true;
-											return async ({ update }) => {
+											return async ({ result, update }) => {
 												isResettingCsrfWarning = false;
-												await update();
+												if (result.type === 'success' || result.type === 'failure') {
+													handleFormToast(
+														result.data as { success?: boolean; message?: string; error?: string }
+													);
+												}
+												await update({ reset: false });
 											};
 										}}
 									>

@@ -7,8 +7,38 @@
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 		%sveltekit.head%
+		<script nonce="%sveltekit.nonce%">
+			(function () {
+				try {
+					var validThemes = ['modern-minimal','supabase','doom-64','amber-minimal','soviet-red','obsidian-premium','aurora-premium','champagne-premium'];
+					var cookies = document.cookie || '';
+					var ui = (cookies.match(/(?:^|;\s*)ui_theme=([^;]+)/) || [])[1];
+					var wrapped = (cookies.match(/(?:^|;\s*)wrapped_theme=([^;]+)/) || [])[1];
+					var isWrapped = location.pathname.indexOf('/wrapped') === 0;
+					var raw = (isWrapped ? wrapped : ui) || ui || '';
+					var theme = 'modern-minimal';
+					try { theme = decodeURIComponent(raw) || 'modern-minimal'; } catch (e) {}
+					if (validThemes.indexOf(theme) === -1) theme = 'modern-minimal';
+					document.documentElement.setAttribute('data-theme', theme);
+					if (isWrapped) {
+						document.documentElement.setAttribute('data-wrapped-route', '1');
+					}
+				} catch (e) {}
+			})();
+		</script>
 	</head>
 	<body data-sveltekit-preload-data="hover">
 		<div style="display: contents">%sveltekit.body%</div>
+		<script nonce="%sveltekit.nonce%">
+			(function () {
+				try {
+					var theme = document.documentElement.getAttribute('data-theme');
+					var isWrapped =
+						document.documentElement.getAttribute('data-wrapped-route') === '1';
+					if (theme) document.body.classList.add('theme-' + theme);
+					if (isWrapped) document.body.classList.add('wrapped-route');
+				} catch (e) {}
+			})();
+		</script>
 	</body>
 </html>

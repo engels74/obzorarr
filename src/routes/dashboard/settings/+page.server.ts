@@ -45,6 +45,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	return {
 		user: {
 			id: userProfile?.id ?? userId,
+			plexId: userProfile?.plexId ?? locals.user!.plexId ?? null,
 			username: userProfile?.username ?? locals.user!.username,
 			email: userProfile?.email ?? null,
 			thumb: userProfile?.thumb ?? null,

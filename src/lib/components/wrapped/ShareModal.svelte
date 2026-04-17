@@ -38,14 +38,6 @@ let isUpdating = $state(false);
 let optimisticMode = $state<ShareModeType | null>(null);
 let optimisticShareToken = $state<string | null | undefined>(undefined);
 
-// Reset optimistic state when server data updates
-$effect.pre(() => {
-	if (shareSettings?.mode) {
-		optimisticMode = null;
-		optimisticShareToken = undefined;
-	}
-});
-
 const displayMode = $derived(optimisticMode ?? shareSettings?.mode);
 const displayShareToken = $derived(
 	optimisticShareToken === undefined ? shareSettings?.shareToken : optimisticShareToken
@@ -245,11 +237,13 @@ $effect(() => {
 								await update();
 							} finally {
 								isUpdating = false;
+								optimisticMode = null;
+								optimisticShareToken = undefined;
 							}
 						};
 					}}
 				>
-					<div class="mode-options">
+					<div class="mode-options" role="radiogroup" aria-labelledby="visibility-label">
 						{#each availableModes as mode}
 							<label class="mode-option" class:active={displayMode === mode}>
 								<input

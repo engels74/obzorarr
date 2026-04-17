@@ -27,7 +27,7 @@ const SLIDE_NAMES: Record<SlideType, string> = {
 	'top-shows': 'Top Shows',
 	genres: 'Genre Breakdown',
 	distribution: 'Viewing Distribution',
-	percentile: 'Percentile Ranking',
+	percentile: 'Percentile / Top Contributors',
 	binge: 'Longest Binge',
 	'first-last': 'First & Last Watch',
 	'weekday-patterns': 'Weekday Patterns',
@@ -315,9 +315,18 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 
 							{#if deletingSlideId === item.id}
 								<div class="confirm-delete">
+									<span class="confirm-delete-text">
+										Delete <strong>"{item.title}"</strong> permanently?
+									</span>
 									<form method="POST" action="?/deleteCustom" use:enhance class="delete-form">
 										<input type="hidden" name="id" value={item.id} />
-										<button type="submit" class="confirm-button">Confirm?</button>
+										<button
+											type="submit"
+											class="confirm-button"
+											aria-label={`Confirm delete "${item.title}"`}
+										>
+											Delete
+										</button>
 									</form>
 									<button
 										type="button"
@@ -442,10 +451,19 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 						max="15"
 						required
 					/>
+					{#if customCount < 1 || customCount > 15}
+						<span class="custom-count-error">Custom count must be between 1 and 15.</span>
+					{/if}
 				</div>
 			{/if}
 
-			<button type="submit" class="save-frequency-button"> Save Frequency Settings </button>
+			<button
+				type="submit"
+				class="save-frequency-button"
+				disabled={selectedFrequencyMode === 'custom' && (customCount < 1 || customCount > 15)}
+			>
+				Save Frequency Settings
+			</button>
 		</form>
 	</section>
 
@@ -780,7 +798,18 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 		.confirm-delete {
 			display: flex;
 			align-items: center;
-			gap: 0.375rem;
+			gap: 0.5rem;
+			flex-wrap: wrap;
+		}
+
+		.confirm-delete-text {
+			font-size: 0.75rem;
+			color: hsl(var(--muted-foreground));
+		}
+
+		.confirm-delete-text strong {
+			color: hsl(var(--foreground));
+			font-weight: 600;
 		}
 
 		.confirm-button {
@@ -1261,6 +1290,16 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			outline: none;
 			border-color: hsl(var(--ring));
 			box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+		}
+
+		.custom-count-error {
+			font-size: 0.75rem;
+			color: hsl(var(--destructive));
+		}
+
+		.save-frequency-button:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
 		}
 
 		.save-frequency-button {

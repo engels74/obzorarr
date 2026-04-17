@@ -45,6 +45,13 @@ const isActive = $derived((href: string) => {
 
 // Mobile sidebar state
 let sidebarOpen = $state(false);
+let avatarError = $state(false);
+
+// Reset avatar error when thumb URL changes so a new URL gets a fresh load attempt
+$effect(() => {
+	data.user.thumb;
+	avatarError = false;
+});
 
 function toggleSidebar() {
 	sidebarOpen = !sidebarOpen;
@@ -122,7 +129,18 @@ function closeSidebar() {
 		<div class="sidebar-footer">
 			<div class="user-card">
 				<div class="user-avatar">
-					<User class="user-avatar-icon" />
+					{#if data.user.thumb && !avatarError}
+						<img
+							src={data.user.thumb}
+							alt={data.user.username}
+							class="user-avatar-img"
+							onerror={() => {
+								avatarError = true;
+							}}
+						/>
+					{:else}
+						<User class="user-avatar-icon" />
+					{/if}
 				</div>
 				<div class="user-info">
 					<span class="user-name">{data.user.username}</span>
@@ -374,12 +392,20 @@ function closeSidebar() {
 			background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.8) 100%);
 			border-radius: 0.5rem;
 			flex-shrink: 0;
+			overflow: hidden;
 		}
 
 		.user-avatar :global(.user-avatar-icon) {
 			width: 1.125rem;
 			height: 1.125rem;
 			color: hsl(var(--primary-foreground));
+		}
+
+		.user-avatar-img {
+			width: 100%;
+			height: 100%;
+			object-fit: cover;
+			display: block;
 		}
 
 		.user-info {
