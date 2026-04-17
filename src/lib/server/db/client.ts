@@ -25,7 +25,9 @@ if (databasePath !== ':memory:') {
 
 // Keep adapter-bun/Rolldown from resolving Bun's builtin at build time.
 const sqliteModuleName = ['bun', 'sqlite'].join(':');
-const { Database } = (await import(sqliteModuleName)) as typeof import('bun:sqlite');
+const { Database } = (await import(
+	/* @vite-ignore */ sqliteModuleName
+)) as typeof import('bun:sqlite');
 const sqlite: BunDatabase = new Database(databasePath, {
 	strict: true,
 	create: true

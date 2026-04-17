@@ -34,3 +34,4 @@ docs/
 
 # Build analysis
 bundle-stats.html
+.omx/
