@@ -6,6 +6,20 @@ const config = {
 	preprocess: vitePreprocess(),
 
 	kit: {
+		csp: {
+			mode: 'nonce',
+			directives: {
+				'default-src': ['self'],
+				'img-src': ['self', 'https://plex.tv', 'https://*.plex.direct', 'data:'],
+				'style-src': ['self', 'unsafe-inline', 'https://fonts.googleapis.com'],
+				'font-src': ['self', 'https://fonts.gstatic.com'],
+				'script-src': ['self'],
+				'connect-src': ['self', 'https://plex.tv'],
+				'frame-ancestors': ['none'],
+				'base-uri': ['self'],
+				'form-action': ['self']
+			}
+		},
 		adapter: adapter({
 			out: 'build',
 			precompress: true
