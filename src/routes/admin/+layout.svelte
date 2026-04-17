@@ -58,6 +58,7 @@ const isActive = $derived((href: string) => {
 
 // Mobile sidebar state
 let sidebarOpen = $state(false);
+let adminAvatarError = $state(false);
 
 // CSRF warning state - derived from data with local override for immediate dismiss
 let locallyDismissed = $state(false);
@@ -157,13 +158,13 @@ function handleCsrfWarningDismissed() {
 		<div class="sidebar-footer">
 			<div class="user-card">
 				<div class="user-avatar">
-					{#if data.adminUser.thumb}
+					{#if data.adminUser.thumb && !adminAvatarError}
 						<img
 							src={data.adminUser.thumb}
 							alt={data.adminUser.username}
 							class="user-avatar-img"
-							onerror={(e) => {
-								(e.currentTarget as HTMLImageElement).style.display = 'none';
+							onerror={() => {
+								adminAvatarError = true;
 							}}
 						/>
 					{:else}

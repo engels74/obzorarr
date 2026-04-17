@@ -235,10 +235,10 @@ $effect(() => {
 									optimisticShareToken = undefined;
 								}
 								await update();
-								optimisticMode = null;
-								optimisticShareToken = undefined;
 							} finally {
 								isUpdating = false;
+								optimisticMode = null;
+								optimisticShareToken = undefined;
 							}
 						};
 					}}

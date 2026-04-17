@@ -45,6 +45,7 @@ const isActive = $derived((href: string) => {
 
 // Mobile sidebar state
 let sidebarOpen = $state(false);
+let avatarError = $state(false);
 
 function toggleSidebar() {
 	sidebarOpen = !sidebarOpen;
@@ -122,13 +123,13 @@ function closeSidebar() {
 		<div class="sidebar-footer">
 			<div class="user-card">
 				<div class="user-avatar">
-					{#if data.user.thumb}
+					{#if data.user.thumb && !avatarError}
 						<img
 							src={data.user.thumb}
 							alt={data.user.username}
 							class="user-avatar-img"
-							onerror={(e) => {
-								(e.currentTarget as HTMLImageElement).style.display = 'none';
+							onerror={() => {
+								avatarError = true;
 							}}
 						/>
 					{:else}
