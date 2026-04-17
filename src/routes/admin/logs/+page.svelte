@@ -373,7 +373,7 @@ $effect(() => {
 							type="button"
 							class="level-toggle {getLevelClass(level)}"
 							class:active={isActive}
-							aria-pressed={isShown}
+							aria-pressed={isActive}
 							onclick={() => toggleLevel(level)}
 						>
 							<span class="level-toggle-check" aria-hidden="true">{isActive ? '✓' : ''}</span>
