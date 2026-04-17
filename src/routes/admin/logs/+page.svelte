@@ -368,7 +368,6 @@ $effect(() => {
 				<div class="level-checkboxes">
 					{#each logLevels as level}
 						{@const isActive = selectedLevels.includes(level)}
-						{@const isShown = selectedLevels.length === 0 || isActive}
 						<button
 							type="button"
 							class="level-toggle {getLevelClass(level)}"

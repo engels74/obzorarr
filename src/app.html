@@ -10,13 +10,15 @@
 		<script>
 			(function () {
 				try {
+					var validThemes = ['modern-minimal','supabase','doom-64','amber-minimal','soviet-red','obsidian-premium','aurora-premium','champagne-premium'];
 					var cookies = document.cookie || '';
 					var ui = (cookies.match(/(?:^|;\s*)ui_theme=([^;]+)/) || [])[1];
 					var wrapped = (cookies.match(/(?:^|;\s*)wrapped_theme=([^;]+)/) || [])[1];
 					var isWrapped = location.pathname.indexOf('/wrapped') === 0;
-					var theme = decodeURIComponent(
-						(isWrapped ? wrapped : ui) || ui || 'modern-minimal'
-					);
+					var raw = (isWrapped ? wrapped : ui) || ui || '';
+					var theme = 'modern-minimal';
+					try { theme = decodeURIComponent(raw) || 'modern-minimal'; } catch (e) {}
+					if (validThemes.indexOf(theme) === -1) theme = 'modern-minimal';
 					document.documentElement.setAttribute('data-theme', theme);
 					if (isWrapped) {
 						document.documentElement.setAttribute('data-wrapped-route', '1');
