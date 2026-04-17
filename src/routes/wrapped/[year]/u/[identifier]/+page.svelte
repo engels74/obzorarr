@@ -41,8 +41,23 @@ let showLogo = $derived(showLogoOverride ?? data.showLogo);
 type ViewMode = 'story' | 'scroll';
 let viewMode = $state<ViewMode>('story');
 
+// Read the initial slide index from the URL hash synchronously so StoryMode
+// receives the correct `initialSlideIndex` prop on its first render.
+// Deferring this to a $effect raced with StoryMode's own one-shot
+// `navigation.initialize()` effect — the seeded index could arrive after
+// StoryMode had already initialised with the default 0.
+function readInitialSlideIndex(): number {
+	if (!browser) return 0;
+	const match = window.location.hash.match(/^#slide=(\d+)$/);
+	if (!match) return 0;
+	const parsed = parseInt(match[1]!, 10);
+	if (Number.isNaN(parsed)) return 0;
+	const max = Math.max(0, data.slides.length - 1);
+	return Math.min(Math.max(parsed, 0), max);
+}
+
 /** Current slide index for mode switching (preserves position) */
-let currentSlideIndex = $state(0);
+let currentSlideIndex = $state(readInitialSlideIndex());
 
 /** Whether to show the summary page */
 let showSummary = $state(false);
@@ -52,17 +67,6 @@ let showShareModal = $state(false);
 
 /** Key for forcing StoryMode remount on restart */
 let storyKey = $state(0);
-
-// Seed slide index from URL hash (e.g. #slide=3) so reloads preserve position.
-$effect(() => {
-	if (!browser) return;
-	const match = window.location.hash.match(/^#slide=(\d+)$/);
-	if (!match) return;
-	const parsed = parseInt(match[1]!, 10);
-	if (Number.isNaN(parsed)) return;
-	const max = Math.max(0, data.slides.length - 1);
-	currentSlideIndex = Math.min(Math.max(parsed, 0), max);
-});
 
 // Reflect slide index back into the hash without creating history entries.
 $effect(() => {
