@@ -27,6 +27,8 @@ let cronExpression = $state('0 0 * * *');
 const cronError = $derived(validateCron(cronExpression));
 let isSyncing = $state(false);
 let isCancelling = $state(false);
+// Optimistic flag so Cancel is hit-testable during the brief gap between Start-click and the first SSE frame.
+let pendingStart = $state(false);
 
 function validateCron(expr: string): string {
 	const trimmed = expr.trim();
@@ -48,7 +50,9 @@ let isConnected = $state(false);
 let syncCompleted = $state(false);
 
 const syncActive = $derived(
-	(data.isRunning && !syncCompleted) || (progress !== null && progress.status === 'running')
+	(data.isRunning && !syncCompleted) ||
+		(progress !== null && progress.status === 'running') ||
+		pendingStart
 );
 
 const enrichmentPercent = $derived(() => {
@@ -90,9 +94,11 @@ function connectSSE() {
 
 			if (eventData.type === 'connected' || eventData.type === 'progress') {
 				if (eventData.progress) progress = eventData.progress;
+				if (progress?.status === 'running') pendingStart = false;
 			} else if (['completed', 'failed', 'cancelled'].includes(eventData.type)) {
 				if (eventData.progress) progress = eventData.progress;
 				syncCompleted = true;
+				pendingStart = false;
 				setTimeout(() => {
 					disconnectSSE();
 					isSyncing = false;
@@ -105,6 +111,7 @@ function connectSSE() {
 			} else if (eventData.type === 'idle') {
 				progress = null;
 				isSyncing = false;
+				pendingStart = false;
 			}
 		} catch (e) {
 			console.error('Failed to parse SSE event:', e);
@@ -362,7 +369,7 @@ async function goToPage(page: number) {
 						{/if}
 					</div>
 
-					{#if progress?.status === 'running'}
+					{#if progress?.status === 'running' || pendingStart}
 						<form
 							method="POST"
 							action="?/cancelSync"
@@ -394,9 +401,13 @@ async function goToPage(page: number) {
 					use:enhance={() => {
 						isSyncing = true;
 						syncCompleted = false;
+						pendingStart = true;
 						connectSSE();
-						return async ({ update }) => {
+						return async ({ update, result }) => {
 							await update();
+							if (result.type === 'failure' || result.type === 'error') {
+								pendingStart = false;
+							}
 						};
 					}}
 					class="sync-form"

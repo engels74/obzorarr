@@ -28,6 +28,7 @@ let phase = $state<'fetching' | 'enriching' | null>(
 let enrichmentTotal = $state(untrack(() => data.currentProgress?.enrichmentTotal ?? 0));
 let enrichmentProcessed = $state(untrack(() => data.currentProgress?.enrichmentProcessed ?? 0));
 let isStarting = $state(false);
+let isCancelling = $state(false);
 let error = $state<string | null>(null);
 
 // SSE connection
@@ -388,14 +389,40 @@ function formatNumber(n: number): string {
 	</div>
 
 	{#snippet footer()}
-		<form method="POST" action="?/continue" use:enhance>
-			<button type="submit" class="continue-button" disabled={!hasStarted}>
-				<span>Continue</span>
-				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-					<path d="M5 12h14M12 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" />
-				</svg>
-			</button>
-		</form>
+		<div class="footer-actions">
+			{#if isRunning}
+				<form
+					method="POST"
+					action="?/cancelSync"
+					use:enhance={() => {
+						isCancelling = true;
+						return async ({ update }) => {
+							await update();
+							isCancelling = false;
+						};
+					}}
+				>
+					<button type="submit" class="cancel-button" disabled={isCancelling}>
+						{#if isCancelling}
+							<span class="btn-spinner"></span>
+						{:else}
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<rect x="6" y="6" width="12" height="12" rx="2" />
+							</svg>
+						{/if}
+						<span>Cancel</span>
+					</button>
+				</form>
+			{/if}
+			<form method="POST" action="?/continue" use:enhance>
+				<button type="submit" class="continue-button" disabled={!hasStarted}>
+					<span>Continue</span>
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+						<path d="M5 12h14M12 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" />
+					</svg>
+				</button>
+			</form>
+		</div>
 	{/snippet}
 </OnboardingCard>
 
@@ -845,6 +872,47 @@ function formatNumber(n: number): string {
 			color: rgba(255, 255, 255, 0.5);
 			text-align: center;
 			animation: fade-slide-in 0.3s ease-out;
+		}
+
+		/* Footer actions (Cancel + Continue) */
+		.footer-actions {
+			display: flex;
+			gap: 0.75rem;
+			align-items: center;
+			justify-content: flex-end;
+			flex-wrap: wrap;
+		}
+
+		/* Cancel button */
+		.cancel-button {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			gap: 0.5rem;
+			padding: 0.75rem 1.5rem;
+			font-size: 0.95rem;
+			font-weight: 600;
+			color: hsl(0, 84%, 70%);
+			background: rgba(239, 68, 68, 0.08);
+			border: 1px solid rgba(239, 68, 68, 0.3);
+			border-radius: 10px;
+			cursor: pointer;
+			transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+		}
+
+		.cancel-button:hover:not(:disabled) {
+			background: rgba(239, 68, 68, 0.15);
+			border-color: rgba(239, 68, 68, 0.5);
+		}
+
+		.cancel-button:disabled {
+			opacity: 0.6;
+			cursor: not-allowed;
+		}
+
+		.cancel-button svg {
+			width: 18px;
+			height: 18px;
 		}
 
 		/* Continue button */

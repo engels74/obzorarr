@@ -50,7 +50,7 @@ export const load: PageServerLoad = async ({ url }) => {
 		]);
 
 	const currentYear = new Date().getFullYear();
-	const availableYears = Array.from({ length: 6 }, (_, i) => currentYear - i);
+	const availableYears = Array.from({ length: currentYear - 2000 + 1 }, (_, i) => currentYear - i);
 
 	return {
 		isRunning,

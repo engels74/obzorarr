@@ -105,15 +105,10 @@ let selectedDefaultShareMode = $state('public');
 let allowUserControl = $state(true);
 let isBulkApplyingUserControl = $state(false);
 
-async function bulkApplyUserControlToExistingUsers() {
-	if (
-		!window.confirm(
-			"This will overwrite the per-user 'can control' setting for every user. Continue?"
-		)
-	) {
-		return;
-	}
+let bulkApplyUserControlDialogOpen = $state(false);
 
+async function confirmBulkApplyUserControl() {
+	bulkApplyUserControlDialogOpen = false;
 	isBulkApplyingUserControl = true;
 
 	const formData = new FormData();
@@ -158,11 +153,17 @@ let openaiBaseUrlLocked = $state(false);
 let openaiModelLocked = $state(false);
 let csrfOriginLocked = $state(false);
 
+// Secret fields: true when a value is stored server-side (DB or ENV).
+// Used to display a placeholder without exposing the raw value.
+let plexTokenHasValue = $state(false);
+let openaiApiKeyHasValue = $state(false);
+
 // Sync local state with data (initial load and after form submission)
 $effect(() => {
 	plexServerUrl = data.settings.plexServerUrl.value;
-	plexToken = data.settings.plexToken.value;
-	openaiApiKey = data.settings.openaiApiKey.value;
+	// Secret fields are never hydrated with the raw value; blank input = no change.
+	plexToken = '';
+	openaiApiKey = '';
 	openaiBaseUrl = data.settings.openaiBaseUrl.value;
 	openaiModel = data.settings.openaiModel.value;
 	plexServerUrlSource = data.settings.plexServerUrl.source;
@@ -175,6 +176,8 @@ $effect(() => {
 	openaiApiKeyLocked = data.settings.openaiApiKey.isLocked;
 	openaiBaseUrlLocked = data.settings.openaiBaseUrl.isLocked;
 	openaiModelLocked = data.settings.openaiModel.isLocked;
+	plexTokenHasValue = data.settings.plexToken.hasValue;
+	openaiApiKeyHasValue = data.settings.openaiApiKey.hasValue;
 	selectedUITheme = data.uiTheme;
 	selectedWrappedTheme = data.wrappedTheme;
 	selectedAnonymization = data.anonymizationMode;
@@ -484,10 +487,15 @@ const logFieldErrors = $derived(
 							<Zap class="panel-icon plex" />
 							<h2>Plex Server</h2>
 						</div>
-						<div class="connection-status" class:connected={plexServerUrl && plexToken}>
+						<div
+							class="connection-status"
+							class:connected={plexServerUrl && (plexToken || plexTokenHasValue)}
+						>
 							<span class="status-dot"></span>
 							<span class="status-text"
-								>{plexServerUrl && plexToken ? 'Configured' : 'Not configured'}</span
+								>{plexServerUrl && (plexToken || plexTokenHasValue)
+									? 'Configured'
+									: 'Not configured'}</span
 							>
 						</div>
 					</div>
@@ -512,6 +520,7 @@ const logFieldErrors = $derived(
 								id="plexServerUrl"
 								name="plexServerUrl"
 								bind:value={plexServerUrl}
+								maxlength="512"
 								placeholder="http://192.168.1.100:32400"
 								class:from-env={plexServerUrlLocked}
 								disabled={plexServerUrlLocked}
@@ -545,7 +554,10 @@ const logFieldErrors = $derived(
 									id="plexToken"
 									name="plexToken"
 									bind:value={plexToken}
-									placeholder="X-Plex-Token"
+									maxlength="512"
+									placeholder={plexTokenHasValue
+										? '(unchanged — re-enter to change)'
+										: 'X-Plex-Token'}
 									class:from-env={plexTokenLocked}
 									disabled={plexTokenLocked}
 								/>
@@ -581,7 +593,7 @@ const logFieldErrors = $derived(
 							<button
 								type="button"
 								class="btn-secondary"
-								disabled={isTesting || !plexServerUrl || !plexToken}
+								disabled={isTesting || !plexServerUrl || (!plexToken && !plexTokenHasValue)}
 								onclick={async () => {
 									isTesting = true;
 									testConnectionResult = null;
@@ -682,7 +694,10 @@ const logFieldErrors = $derived(
 									id="openaiApiKey"
 									name="openaiApiKey"
 									bind:value={openaiApiKey}
-									placeholder="sk-..."
+									maxlength="512"
+									placeholder={openaiApiKeyHasValue
+										? '(unchanged — re-enter to change)'
+										: 'sk-...'}
 									class:from-env={openaiApiKeyLocked}
 									disabled={openaiApiKeyLocked}
 								/>
@@ -727,6 +742,7 @@ const logFieldErrors = $derived(
 									id="openaiBaseUrl"
 									name="openaiBaseUrl"
 									bind:value={openaiBaseUrl}
+									maxlength="512"
 									placeholder="https://api.openai.com/v1"
 									class:from-env={openaiBaseUrlLocked}
 									disabled={openaiBaseUrlLocked}
@@ -759,6 +775,7 @@ const logFieldErrors = $derived(
 									id="openaiModel"
 									name="openaiModel"
 									bind:value={openaiModel}
+									maxlength="100"
 									placeholder="gpt-5-mini"
 									class:from-env={openaiModelLocked}
 									disabled={openaiModelLocked}
@@ -889,6 +906,95 @@ const logFieldErrors = $derived(
 						</div>
 					</form>
 				</section>
+
+				<!-- Wrapped Logo Section -->
+				<section class="panel theme-panel">
+					<div class="panel-header">
+						<div class="panel-title">
+							<Image class="panel-icon" />
+							<h2>Wrapped Page Logo</h2>
+						</div>
+					</div>
+					<p class="panel-description">
+						Control logo visibility on Year in Review slideshow pages.
+					</p>
+
+					<form method="POST" action="?/updateWrappedLogoMode" use:enhance>
+						<div class="option-cards">
+							<label
+								class="option-card"
+								class:selected={selectedWrappedLogoMode === 'always_show'}
+							>
+								<input
+									type="radio"
+									name="logoMode"
+									value="always_show"
+									bind:group={selectedWrappedLogoMode}
+								/>
+								<div class="option-icon">
+									<Image />
+								</div>
+								<div class="option-content">
+									<span class="option-title">Always Show</span>
+									<span class="option-desc">{wrappedLogoDescriptions.always_show}</span>
+								</div>
+								{#if selectedWrappedLogoMode === 'always_show'}
+									<div class="option-check"><Check /></div>
+								{/if}
+							</label>
+
+							<label
+								class="option-card"
+								class:selected={selectedWrappedLogoMode === 'always_hide'}
+							>
+								<input
+									type="radio"
+									name="logoMode"
+									value="always_hide"
+									bind:group={selectedWrappedLogoMode}
+								/>
+								<div class="option-icon">
+									<ImageOff />
+								</div>
+								<div class="option-content">
+									<span class="option-title">Always Hide</span>
+									<span class="option-desc">{wrappedLogoDescriptions.always_hide}</span>
+								</div>
+								{#if selectedWrappedLogoMode === 'always_hide'}
+									<div class="option-check"><Check /></div>
+								{/if}
+							</label>
+
+							<label
+								class="option-card"
+								class:selected={selectedWrappedLogoMode === 'user_choice'}
+							>
+								<input
+									type="radio"
+									name="logoMode"
+									value="user_choice"
+									bind:group={selectedWrappedLogoMode}
+								/>
+								<div class="option-icon">
+									<ToggleRight />
+								</div>
+								<div class="option-content">
+									<span class="option-title">User Choice</span>
+									<span class="option-desc">{wrappedLogoDescriptions.user_choice}</span>
+								</div>
+								{#if selectedWrappedLogoMode === 'user_choice'}
+									<div class="option-check"><Check /></div>
+								{/if}
+							</label>
+						</div>
+						<div class="panel-actions">
+							<button type="submit" class="btn-primary">
+								<Image class="btn-icon" />
+								Apply Logo Mode
+							</button>
+						</div>
+					</form>
+				</section>
 			</div>
 		{/if}
 
@@ -969,69 +1075,6 @@ const logFieldErrors = $derived(
 						</label>
 					</div>
 
-					<h3 class="subsection-title">
-						<Image class="subsection-icon" />
-						Wrapped Page Logo
-					</h3>
-
-					<div class="option-cards">
-						<label class="option-card" class:selected={selectedWrappedLogoMode === 'always_show'}>
-							<input
-								type="radio"
-								name="logoMode"
-								value="always_show"
-								bind:group={selectedWrappedLogoMode}
-							/>
-							<div class="option-icon">
-								<Image />
-							</div>
-							<div class="option-content">
-								<span class="option-title">Always Show</span>
-								<span class="option-desc">{wrappedLogoDescriptions.always_show}</span>
-							</div>
-							{#if selectedWrappedLogoMode === 'always_show'}
-								<div class="option-check"><Check /></div>
-							{/if}
-						</label>
-
-						<label class="option-card" class:selected={selectedWrappedLogoMode === 'always_hide'}>
-							<input
-								type="radio"
-								name="logoMode"
-								value="always_hide"
-								bind:group={selectedWrappedLogoMode}
-							/>
-							<div class="option-icon">
-								<ImageOff />
-							</div>
-							<div class="option-content">
-								<span class="option-title">Always Hide</span>
-								<span class="option-desc">{wrappedLogoDescriptions.always_hide}</span>
-							</div>
-							{#if selectedWrappedLogoMode === 'always_hide'}
-								<div class="option-check"><Check /></div>
-							{/if}
-						</label>
-
-						<label class="option-card" class:selected={selectedWrappedLogoMode === 'user_choice'}>
-							<input
-								type="radio"
-								name="logoMode"
-								value="user_choice"
-								bind:group={selectedWrappedLogoMode}
-							/>
-							<div class="option-icon">
-								<ToggleRight />
-							</div>
-							<div class="option-content">
-								<span class="option-title">User Choice</span>
-								<span class="option-desc">{wrappedLogoDescriptions.user_choice}</span>
-							</div>
-							{#if selectedWrappedLogoMode === 'user_choice'}
-								<div class="option-check"><Check /></div>
-							{/if}
-						</label>
-					</div>
 				</section>
 
 				<!-- Sharing Access Section -->
@@ -1189,7 +1232,7 @@ const logFieldErrors = $derived(
 						type="button"
 						class="btn-secondary"
 						disabled={isBulkApplyingUserControl}
-						onclick={bulkApplyUserControlToExistingUsers}
+						onclick={() => (bulkApplyUserControlDialogOpen = true)}
 					>
 						{#if isBulkApplyingUserControl}
 							<Loader2 class="btn-icon spinning" />
@@ -1305,6 +1348,9 @@ const logFieldErrors = $derived(
 								{/if}
 							</div>
 
+							<p class="csrf-actions-caption">
+								Warning-reset controls appear when a CSRF warning is active.
+							</p>
 							<div class="csrf-actions">
 								{#if !csrfOriginLocked}
 									<form
@@ -1866,6 +1912,27 @@ const logFieldErrors = $derived(
 					{/if}
 				</AlertDialog.Action>
 			</form>
+		</AlertDialog.Footer>
+	</AlertDialog.Content>
+</AlertDialog.Root>
+
+<AlertDialog.Root bind:open={bulkApplyUserControlDialogOpen}>
+	<AlertDialog.Content>
+		<AlertDialog.Header>
+			<AlertDialog.Title>Apply default to all users?</AlertDialog.Title>
+			<AlertDialog.Description>
+				This will overwrite the per-user "can control" setting for every existing user. Future users
+				will still receive the current default.
+			</AlertDialog.Description>
+		</AlertDialog.Header>
+		<AlertDialog.Footer>
+			<AlertDialog.Cancel disabled={isBulkApplyingUserControl}>Cancel</AlertDialog.Cancel>
+			<AlertDialog.Action
+				disabled={isBulkApplyingUserControl}
+				onclick={confirmBulkApplyUserControl}
+			>
+				{isBulkApplyingUserControl ? 'Applying…' : 'Apply to all users'}
+			</AlertDialog.Action>
 		</AlertDialog.Footer>
 	</AlertDialog.Content>
 </AlertDialog.Root>
@@ -3025,7 +3092,13 @@ const logFieldErrors = $derived(
 			gap: 0.75rem;
 			align-items: center;
 			flex-wrap: wrap;
-			margin-top: 1rem;
+			margin-top: 0.5rem;
+		}
+
+		.csrf-actions-caption {
+			margin: 1rem 0 0;
+			font-size: 0.8rem;
+			color: hsl(var(--muted-foreground));
 		}
 
 		/* Help Trigger - Whisper-quiet info hint */

@@ -76,6 +76,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		showLogo: logoVisibility.showLogo,
 		canUserControlLogo: false,
 		currentUrl: `/wrapped/${year}`,
-		isAdmin: locals.user?.isAdmin ?? false
+		isAdmin: locals.user?.isAdmin ?? false,
+		isLoggedIn: !!locals.user
 	};
 };

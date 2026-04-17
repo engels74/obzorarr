@@ -6,6 +6,7 @@ import { getUserFullProfile } from '$lib/server/admin/users.service';
 import { db } from '$lib/server/db/client';
 import { sessions } from '$lib/server/db/schema';
 import {
+	getGlobalAllowUserControl,
 	getGlobalDefaultShareMode,
 	getOrCreateShareSettings,
 	getUserLogoPreference,
@@ -33,14 +34,25 @@ export const load: PageServerLoad = async ({ locals }) => {
 	const userId = locals.user!.id;
 	const currentYear = new Date().getFullYear();
 
-	const [userProfile, shareSettings, wrappedLogoMode, userLogoPreference, sessionExpiration] =
-		await Promise.all([
-			getUserFullProfile(userId),
-			getOrCreateShareSettings({ userId, year: currentYear }),
-			getWrappedLogoMode(),
-			getUserLogoPreference(userId, currentYear),
-			getSessionExpiration(userId)
-		]);
+	const [
+		userProfile,
+		shareSettings,
+		wrappedLogoMode,
+		userLogoPreference,
+		sessionExpiration,
+		globalAllowUserControl
+	] = await Promise.all([
+		getUserFullProfile(userId),
+		getOrCreateShareSettings({ userId, year: currentYear }),
+		getWrappedLogoMode(),
+		getUserLogoPreference(userId, currentYear),
+		getSessionExpiration(userId),
+		getGlobalAllowUserControl()
+	]);
+
+	// Effective control gate: admin's global toggle short-circuits the per-user flag
+	// so an "off" global floor is immediately authoritative without a bulk rewrite.
+	const effectiveCanUserControl = globalAllowUserControl && shareSettings.canUserControl;
 
 	return {
 		user: {
@@ -54,7 +66,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		shareSettings: {
 			mode: shareSettings.mode,
 			shareToken: shareSettings.shareToken,
-			canUserControl: shareSettings.canUserControl
+			canUserControl: effectiveCanUserControl
 		},
 		userLogoPreference,
 		wrappedLogoMode,
@@ -78,9 +90,12 @@ export const actions: Actions = {
 		}
 
 		try {
-			const shareSettings = await getOrCreateShareSettings({ userId, year: currentYear });
+			const [shareSettings, globalAllowUserControl] = await Promise.all([
+				getOrCreateShareSettings({ userId, year: currentYear }),
+				getGlobalAllowUserControl()
+			]);
 
-			if (!shareSettings.canUserControl) {
+			if (!globalAllowUserControl || !shareSettings.canUserControl) {
 				return fail(403, {
 					error: 'You do not have permission to change sharing settings',
 					action: 'updateShareMode'
@@ -110,9 +125,12 @@ export const actions: Actions = {
 		const currentYear = new Date().getFullYear();
 
 		try {
-			const shareSettings = await getOrCreateShareSettings({ userId, year: currentYear });
+			const [shareSettings, globalAllowUserControl] = await Promise.all([
+				getOrCreateShareSettings({ userId, year: currentYear }),
+				getGlobalAllowUserControl()
+			]);
 
-			if (!shareSettings.canUserControl) {
+			if (!globalAllowUserControl || !shareSettings.canUserControl) {
 				return fail(403, {
 					error: 'You do not have permission to change sharing settings',
 					action: 'regenerateToken'

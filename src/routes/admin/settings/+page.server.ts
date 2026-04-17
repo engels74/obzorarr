@@ -27,6 +27,7 @@ import {
 	setWrappedTheme,
 	ThemePresets,
 	type ThemePresetType,
+	toSafeConfigValue,
 	WrappedLogoMode,
 	type WrappedLogoModeType
 } from '$lib/server/admin/settings.service';
@@ -75,18 +76,17 @@ const ServerWrappedModeSchema = z.enum(['public', 'private-oauth']);
 
 const PrivacySettingsSchema = z.object({
 	anonymizationMode: AnonymizationSchema,
-	logoMode: WrappedLogoModeSchema,
 	serverWrappedShareMode: ServerWrappedModeSchema,
 	defaultShareMode: ShareModeSchema,
 	allowUserControl: z.coerce.boolean()
 });
 
 const ApiConfigSchema = z.object({
-	plexServerUrl: z.string().url('Invalid URL format').optional().or(z.literal('')),
-	plexToken: z.string().optional(),
-	openaiApiKey: z.string().optional(),
-	openaiBaseUrl: z.string().url('Invalid URL format').optional().or(z.literal('')),
-	openaiModel: z.string().optional()
+	plexServerUrl: z.string().max(512).url('Invalid URL format').optional().or(z.literal('')),
+	plexToken: z.string().max(512).optional(),
+	openaiApiKey: z.string().max(512).optional(),
+	openaiBaseUrl: z.string().max(512).url('Invalid URL format').optional().or(z.literal('')),
+	openaiModel: z.string().max(100).optional()
 });
 
 const LogSettingsSchema = z.object({
@@ -109,6 +109,8 @@ interface SettingValue {
 	source: ConfigSource;
 	isLocked: boolean;
 }
+
+type SafeSettingValue = Omit<SettingValue, 'value'> & { hasValue: boolean };
 
 export const load: PageServerLoad = async () => {
 	const [
@@ -148,8 +150,8 @@ export const load: PageServerLoad = async () => {
 	return {
 		settings: {
 			plexServerUrl: apiConfig.plex.serverUrl as SettingValue,
-			plexToken: apiConfig.plex.token as SettingValue,
-			openaiApiKey: apiConfig.openai.apiKey as SettingValue,
+			plexToken: toSafeConfigValue(apiConfig.plex.token) satisfies SafeSettingValue,
+			openaiApiKey: toSafeConfigValue(apiConfig.openai.apiKey) satisfies SafeSettingValue,
 			openaiBaseUrl: apiConfig.openai.baseUrl as SettingValue,
 			openaiModel: apiConfig.openai.model as SettingValue
 		},
@@ -220,19 +222,17 @@ export const actions: Actions = {
 		try {
 			const apiConfig = await getApiConfigWithSources();
 
-			// Save each setting (only if provided AND not locked by ENV)
+			// Save each setting (only if provided AND not locked by ENV).
+			// Secret fields (plexToken, openaiApiKey) are blank on load to avoid
+			// leaking via hydration; an empty submission means "no change".
 			if (parsed.data.plexServerUrl && !apiConfig.plex.serverUrl.isLocked) {
 				await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, parsed.data.plexServerUrl);
 			}
 			if (parsed.data.plexToken && !apiConfig.plex.token.isLocked) {
 				await setAppSetting(AppSettingsKey.PLEX_TOKEN, parsed.data.plexToken);
 			}
-			if (!apiConfig.openai.apiKey.isLocked) {
-				if (parsed.data.openaiApiKey) {
-					await setAppSetting(AppSettingsKey.OPENAI_API_KEY, parsed.data.openaiApiKey);
-				} else if (parsed.data.openaiApiKey === '') {
-					await deleteAppSetting(AppSettingsKey.OPENAI_API_KEY);
-				}
+			if (parsed.data.openaiApiKey && !apiConfig.openai.apiKey.isLocked) {
+				await setAppSetting(AppSettingsKey.OPENAI_API_KEY, parsed.data.openaiApiKey);
 			}
 			if (parsed.data.openaiBaseUrl && !apiConfig.openai.baseUrl.isLocked) {
 				await setAppSetting(AppSettingsKey.OPENAI_BASE_URL, parsed.data.openaiBaseUrl);
@@ -250,8 +250,14 @@ export const actions: Actions = {
 
 	testPlexConnection: async ({ request }) => {
 		const formData = await request.formData();
-		const plexServerUrl = formData.get('plexServerUrl')?.toString();
-		const plexToken = formData.get('plexToken')?.toString();
+		const submittedUrl = formData.get('plexServerUrl')?.toString() ?? '';
+		const submittedToken = formData.get('plexToken')?.toString() ?? '';
+
+		// Fall back to stored config if the client omitted either field (the client
+		// never echoes the stored token to avoid hydration leaks).
+		const apiConfig = await getApiConfigWithSources();
+		const plexServerUrl = submittedUrl || apiConfig.plex.serverUrl.value;
+		const plexToken = submittedToken || apiConfig.plex.token.value;
 
 		if (!plexServerUrl || !plexToken) {
 			return fail(400, { error: 'Plex server URL and token are required' });
@@ -563,7 +569,6 @@ export const actions: Actions = {
 
 		const data = {
 			anonymizationMode: formData.get('anonymizationMode'),
-			logoMode: formData.get('logoMode'),
 			serverWrappedShareMode: formData.get('serverWrappedShareMode'),
 			defaultShareMode: formData.get('defaultShareMode'),
 			allowUserControl: formData.get('allowUserControl') === 'true'
@@ -580,7 +585,6 @@ export const actions: Actions = {
 		try {
 			await Promise.all([
 				setAnonymizationMode(parsed.data.anonymizationMode as AnonymizationModeType),
-				setWrappedLogoMode(parsed.data.logoMode as WrappedLogoModeType),
 				setServerWrappedShareMode(parsed.data.serverWrappedShareMode as ShareModeType),
 				setGlobalShareDefaults({
 					defaultShareMode: parsed.data.defaultShareMode as ShareModeType,
