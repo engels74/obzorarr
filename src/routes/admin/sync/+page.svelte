@@ -120,6 +120,9 @@ function connectSSE() {
 
 	eventSource.onerror = () => {
 		isConnected = false;
+		pendingStart = false;
+		eventSource?.close();
+		eventSource = null;
 		setTimeout(() => {
 			if (isSyncing && !eventSource) connectSSE();
 		}, 2000);
