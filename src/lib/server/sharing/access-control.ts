@@ -104,10 +104,10 @@ export async function checkWrappedAccess(
 			case 'invalid_token':
 				throw new InvalidShareTokenError();
 			case 'not_authenticated':
-				throw new ShareAccessDeniedError('You must be logged in to view this page.');
+				throw new ShareAccessDeniedError('Sign in with your Plex account to view this wrapped.');
 			case 'mode_requires_auth':
 				throw new ShareAccessDeniedError(
-					'You must be a member of this Plex server to view this page.'
+					'This wrapped is visible only to members of this Plex server. Sign in with your Plex account to view.'
 				);
 			default:
 				throw new ShareAccessDeniedError();
@@ -180,10 +180,10 @@ export async function checkServerWrappedAccess(
 	if (!result.allowed) {
 		switch (result.denialReason) {
 			case 'not_authenticated':
-				throw new ShareAccessDeniedError('You must be logged in to view this page.');
+				throw new ShareAccessDeniedError('Sign in with your Plex account to view this wrapped.');
 			case 'mode_requires_auth':
 				throw new ShareAccessDeniedError(
-					'You must be a member of this Plex server to view this page.'
+					'This wrapped is visible only to members of this Plex server. Sign in with your Plex account to view.'
 				);
 			default:
 				throw new ShareAccessDeniedError();

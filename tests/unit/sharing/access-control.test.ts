@@ -274,7 +274,7 @@ describe('Sharing Access Control', () => {
 				} catch (error) {
 					expect(error).toBeInstanceOf(ShareAccessDeniedError);
 					expect((error as ShareAccessDeniedError).message).toBe(
-						'You must be logged in to view this page.'
+						'Sign in with your Plex account to view this wrapped.'
 					);
 				}
 			});
@@ -383,7 +383,9 @@ describe('Sharing Access Control', () => {
 					expect.unreachable('Should have thrown');
 				} catch (error) {
 					expect(error).toBeInstanceOf(ShareAccessDeniedError);
-					expect((error as ShareAccessDeniedError).message).toContain('member of this Plex server');
+					expect((error as ShareAccessDeniedError).message).toContain(
+						'members of this Plex server'
+					);
 				}
 			});
 
@@ -398,7 +400,7 @@ describe('Sharing Access Control', () => {
 					expect.unreachable('Should have thrown');
 				} catch (error) {
 					expect(error).toBeInstanceOf(ShareAccessDeniedError);
-					expect((error as ShareAccessDeniedError).message).toContain('logged in');
+					expect((error as ShareAccessDeniedError).message).toContain('Sign in');
 				}
 			});
 
@@ -824,7 +826,7 @@ describe('Sharing Access Control', () => {
 					expect.unreachable('Should have thrown');
 				} catch (error) {
 					expect(error).toBeInstanceOf(ShareAccessDeniedError);
-					expect((error as ShareAccessDeniedError).message).toContain('logged in');
+					expect((error as ShareAccessDeniedError).message).toContain('Sign in');
 				}
 			});
 

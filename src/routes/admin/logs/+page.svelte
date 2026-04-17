@@ -368,11 +368,12 @@ $effect(() => {
 				<div class="level-checkboxes">
 					{#each logLevels as level}
 						{@const isActive = selectedLevels.includes(level)}
+						{@const isShown = selectedLevels.length === 0 || isActive}
 						<button
 							type="button"
 							class="level-toggle {getLevelClass(level)}"
 							class:active={isActive}
-							aria-pressed={isActive}
+							aria-pressed={isShown}
 							onclick={() => toggleLevel(level)}
 						>
 							<span class="level-toggle-check" aria-hidden="true">{isActive ? '✓' : ''}</span>
@@ -412,8 +413,14 @@ $effect(() => {
 				<input
 					type="datetime-local"
 					id="from-date"
-					bind:value={fromDate}
-					onchange={() => applyFilters()}
+					value={fromDate}
+					oninput={(e) => {
+						fromDate = e.currentTarget.value;
+					}}
+					onchange={(e) => {
+						fromDate = e.currentTarget.value;
+						applyFilters();
+					}}
 				/>
 			</div>
 
@@ -423,8 +430,14 @@ $effect(() => {
 				<input
 					type="datetime-local"
 					id="to-date"
-					bind:value={toDate}
-					onchange={() => applyFilters()}
+					value={toDate}
+					oninput={(e) => {
+						toDate = e.currentTarget.value;
+					}}
+					onchange={(e) => {
+						toDate = e.currentTarget.value;
+						applyFilters();
+					}}
 				/>
 			</div>
 		</div>

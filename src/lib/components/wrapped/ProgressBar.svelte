@@ -57,18 +57,18 @@ let { current, total, class: klass = '' }: Props = $props();
 		}
 
 		.segment.completed {
-			background-color: var(--primary, #dc2626);
+			background-color: hsl(var(--primary));
 			opacity: 1;
 		}
 
 		.segment.active {
-			background-color: var(--primary, #dc2626);
+			background-color: hsl(var(--primary));
 			opacity: 1;
 			animation: pulse 2s ease-in-out infinite;
 		}
 
 		.segment.pending {
-			background-color: var(--muted, rgba(255, 255, 255, 0.3));
+			background-color: hsl(var(--muted) / 0.3);
 			opacity: 0.5;
 		}
 

@@ -1,5 +1,5 @@
 import type { Handle, HandleServerError } from '@sveltejs/kit';
-import { isRedirect, redirect } from '@sveltejs/kit';
+import { isRedirect } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
@@ -30,6 +30,16 @@ const securityHeadersHandle: Handle = async ({ event, resolve }) => {
 	const response = await resolve(event);
 	return applySecurityHeaders(response, event.request);
 };
+
+function redirectResponse(event: { request: Request }, location: string): Response {
+	return applySecurityHeaders(
+		new Response(null, {
+			status: 303,
+			headers: { Location: location }
+		}),
+		event.request
+	);
+}
 
 const proxyHandle: Handle = async ({ event, resolve }) => {
 	const proto = event.request.headers.get('x-forwarded-proto');
@@ -194,7 +204,7 @@ const onboardingHandle: Handle = async ({ event, resolve }) => {
 
 		if (needsOnboarding) {
 			const currentStep = await getOnboardingStep();
-			redirect(303, `/onboarding/${currentStep}`);
+			return redirectResponse(event, `/onboarding/${currentStep}`);
 		}
 	} catch (error) {
 		// Re-throw redirects - they are expected behavior, not errors
@@ -212,16 +222,9 @@ const onboardingHandle: Handle = async ({ event, resolve }) => {
 };
 
 const authorizationHandle: Handle = async ({ event, resolve }) => {
-	// Check if this is an admin route
 	if (event.url.pathname.startsWith('/admin')) {
-		// Require authentication
-		if (!event.locals.user) {
-			redirect(303, '/');
-		}
-
-		// Require admin privileges
-		if (!event.locals.user.isAdmin) {
-			redirect(303, '/');
+		if (!event.locals.user || !event.locals.user.isAdmin) {
+			return redirectResponse(event, '/');
 		}
 	}
 

@@ -51,7 +51,7 @@ function getShareModeLabel(mode: string | null, source: string | null): string {
 	<header class="page-header">
 		<div class="page-header-row">
 			<div>
-				<h1>User Management</h1>
+				<h1>Users</h1>
 				<p class="subtitle">Manage server users for {data.year}</p>
 				{#if data.availableYears.length === 0}
 					<p class="empty-hint">No watch history yet. Run a sync to populate years.</p>

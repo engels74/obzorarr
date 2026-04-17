@@ -1,5 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import { z } from 'zod';
+import { env } from '$env/dynamic/private';
 import {
 	AnonymizationMode,
 	type AnonymizationModeType,
@@ -226,8 +227,12 @@ export const actions: Actions = {
 			if (parsed.data.plexToken && !apiConfig.plex.token.isLocked) {
 				await setAppSetting(AppSettingsKey.PLEX_TOKEN, parsed.data.plexToken);
 			}
-			if (parsed.data.openaiApiKey && !apiConfig.openai.apiKey.isLocked) {
-				await setAppSetting(AppSettingsKey.OPENAI_API_KEY, parsed.data.openaiApiKey);
+			if (!apiConfig.openai.apiKey.isLocked) {
+				if (parsed.data.openaiApiKey) {
+					await setAppSetting(AppSettingsKey.OPENAI_API_KEY, parsed.data.openaiApiKey);
+				} else if (parsed.data.openaiApiKey === '') {
+					await deleteAppSetting(AppSettingsKey.OPENAI_API_KEY);
+				}
 			}
 			if (parsed.data.openaiBaseUrl && !apiConfig.openai.baseUrl.isLocked) {
 				await setAppSetting(AppSettingsKey.OPENAI_BASE_URL, parsed.data.openaiBaseUrl);
@@ -300,7 +305,7 @@ export const actions: Actions = {
 
 	updateWrappedTheme: async ({ request }) => {
 		const formData = await request.formData();
-		const theme = formData.get('theme');
+		const theme = formData.get('wrappedTheme') ?? formData.get('theme');
 
 		const parsed = ThemeSchema.safeParse(theme);
 		if (!parsed.success) {
@@ -649,7 +654,10 @@ export const actions: Actions = {
 		} else {
 			try {
 				await deleteAppSetting(AppSettingsKey.CSRF_ORIGIN);
-				return { success: true, message: 'CSRF origin cleared (using environment variable)' };
+				const message = env.ORIGIN
+					? 'CSRF origin cleared. Application now uses environment variable.'
+					: 'CSRF origin cleared. CSRF protection is currently disabled — set ORIGIN env or re-add an origin.';
+				return { success: true, message };
 			} catch (error) {
 				const message = error instanceof Error ? error.message : 'Failed to clear CSRF origin';
 				return fail(500, { error: message });
@@ -667,7 +675,10 @@ export const actions: Actions = {
 
 		try {
 			await deleteAppSetting(AppSettingsKey.CSRF_ORIGIN);
-			return { success: true, message: 'CSRF origin cleared (using environment variable)' };
+			const message = env.ORIGIN
+				? 'CSRF origin cleared. Application now uses environment variable.'
+				: 'CSRF origin cleared. CSRF protection is currently disabled — set ORIGIN env or re-add an origin.';
+			return { success: true, message };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to clear CSRF origin';
 			return fail(500, { error: message });
@@ -695,7 +706,7 @@ export const actions: Actions = {
 		try {
 			await resetCsrfWarningDismissal();
 			logger.info('CSRF warning re-enabled by admin', 'Security');
-			return { success: true, message: 'CSRF warning will now be shown again' };
+			return { success: true, message: 'CSRF warning re-enabled for this user' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to reset CSRF warning';
 			logger.error(`Failed to reset CSRF warning: ${message}`, 'Security');

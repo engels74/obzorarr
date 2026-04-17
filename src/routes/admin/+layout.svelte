@@ -134,7 +134,13 @@ function handleCsrfWarningDismissed() {
 				{#each navItems as item (item.href)}
 					{@const active = isActive(item.href)}
 					<li>
-						<a href={item.href} class="nav-link" class:active onclick={closeSidebar}>
+						<a
+							href={item.href}
+							class="nav-link"
+							class:active
+							aria-current={active ? 'page' : undefined}
+							onclick={closeSidebar}
+						>
 							<span class="nav-icon-wrap" class:active>
 								<item.icon class="nav-icon" />
 							</span>
@@ -151,7 +157,18 @@ function handleCsrfWarningDismissed() {
 		<div class="sidebar-footer">
 			<div class="user-card">
 				<div class="user-avatar">
-					<User class="user-avatar-icon" />
+					{#if data.adminUser.thumb}
+						<img
+							src={data.adminUser.thumb}
+							alt={data.adminUser.username}
+							class="user-avatar-img"
+							onerror={(e) => {
+								(e.currentTarget as HTMLImageElement).style.display = 'none';
+							}}
+						/>
+					{:else}
+						<User class="user-avatar-icon" />
+					{/if}
 				</div>
 				<div class="user-info">
 					<span class="user-name">{data.adminUser.username}</span>
@@ -406,12 +423,20 @@ function handleCsrfWarningDismissed() {
 			background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.8) 100%);
 			border-radius: 0.5rem;
 			flex-shrink: 0;
+			overflow: hidden;
 		}
 
 		.user-avatar :global(.user-avatar-icon) {
 			width: 1.125rem;
 			height: 1.125rem;
 			color: hsl(var(--primary-foreground));
+		}
+
+		.user-avatar-img {
+			width: 100%;
+			height: 100%;
+			object-fit: cover;
+			display: block;
 		}
 
 		.user-info {

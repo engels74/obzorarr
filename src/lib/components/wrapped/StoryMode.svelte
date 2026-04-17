@@ -333,13 +333,13 @@ function handleSlideAnimationComplete(): void {}
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+<!-- svelte-ignore a11y_click_events_have_key_events -->
 <div
 	bind:this={container}
 	class="story-mode {klass}"
 	role="application"
 	aria-label="Story presentation - use arrow keys to navigate"
 	onclick={handleClick}
-	onkeydown={handleKeyDown}
 	ontouchstart={handleTouchStart}
 	ontouchend={handleTouchEnd}
 	tabindex="0"
