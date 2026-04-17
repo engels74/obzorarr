@@ -158,6 +158,16 @@ let csrfOriginLocked = $state(false);
 let plexTokenHasValue = $state(false);
 let openaiApiKeyHasValue = $state(false);
 
+// Mirror the server's URL-match gate in testPlexConnection: the stored token
+// fallback is only honoured when the submitted URL equals the stored URL
+// (same trailing-slash normalisation). When the URL changes, a fresh token
+// must be entered — disable Test and show a hint so users get a clear signal
+// instead of a deterministic 400.
+const storedPlexServerUrl = $derived(data.settings.plexServerUrl.value);
+const plexUrlChanged = $derived(
+	(plexServerUrl ?? '').replace(/\/+$/, '') !== (storedPlexServerUrl ?? '').replace(/\/+$/, '')
+);
+
 // Sync local state with data (initial load and after form submission)
 $effect(() => {
 	plexServerUrl = data.settings.plexServerUrl.value;
@@ -579,6 +589,10 @@ const logFieldErrors = $derived(
 								<span class="field-hint env-hint"
 									>This value is set via PLEX_TOKEN environment variable</span
 								>
+							{:else if plexUrlChanged && !plexToken && plexTokenHasValue}
+								<span class="field-hint">
+									Enter a token for the new server URL before testing the connection.
+								</span>
 							{/if}
 						</div>
 
@@ -593,7 +607,9 @@ const logFieldErrors = $derived(
 							<button
 								type="button"
 								class="btn-secondary"
-								disabled={isTesting || !plexServerUrl || (!plexToken && !plexTokenHasValue)}
+								disabled={isTesting ||
+									!plexServerUrl ||
+									(plexUrlChanged ? !plexToken : !plexToken && !plexTokenHasValue)}
 								onclick={async () => {
 									isTesting = true;
 									testConnectionResult = null;
