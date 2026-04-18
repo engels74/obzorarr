@@ -1,7 +1,7 @@
 <script lang="ts">
 import { enhance } from '$app/forms';
 import * as AlertDialog from '$lib/components/ui/alert-dialog';
-import type { ShareModeType } from '$lib/sharing/types';
+import { ShareModePrivacyLevel, type ShareModeType } from '$lib/sharing/types';
 
 interface ShareSettings {
 	mode: ShareModeType;
@@ -33,16 +33,10 @@ let {
 	globalFloor
 }: Props = $props();
 
-const privacyLevel: Record<ShareModeType, number> = {
-	public: 0,
-	'private-link': 1,
-	'private-oauth': 2
-};
-
-const floorLevel = $derived(globalFloor ? privacyLevel[globalFloor] : 0);
+const floorLevel = $derived(globalFloor ? ShareModePrivacyLevel[globalFloor] : 0);
 
 function isBelowFloor(mode: ShareModeType): boolean {
-	return privacyLevel[mode] < floorLevel;
+	return ShareModePrivacyLevel[mode] < floorLevel;
 }
 
 // State

@@ -71,6 +71,11 @@ function isBelowFloor(mode: string): boolean {
 	);
 }
 
+// True when the currently-selected mode is blocked by the admin privacy floor.
+// Disables Save to prevent a misleading 'Invalid share mode' toast (disabled
+// radio inputs are not submitted by the browser, so `mode` arrives as null).
+let isSelectedModeBelowFloor = $derived(isBelowFloor(selectedShareMode));
+
 // Icon helpers
 function getShareIcon(mode: string): string {
 	switch (mode) {
@@ -270,7 +275,17 @@ function getLogoModeDescription(): string {
 						</div>
 
 						<div class="form-actions">
-							<button type="submit" class="save-button" disabled={isUpdating}>
+							{#if isSelectedModeBelowFloor}
+								<p class="floor-note">
+									Your current share mode is below the server's minimum privacy floor. Select a
+									higher-privacy option above to save.
+								</p>
+							{/if}
+							<button
+								type="submit"
+								class="save-button"
+								disabled={isUpdating || isSelectedModeBelowFloor}
+							>
 								{isUpdating ? 'Saving...' : 'Save Sharing Settings'}
 							</button>
 						</div>
