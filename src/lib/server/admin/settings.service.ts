@@ -514,6 +514,14 @@ export async function clearConflictingDbSettings(): Promise<string[]> {
 		}
 	}
 
+	// If either Plex config key is driven by an env var, the cached machineId may
+	// have been derived from a different PLEX_SERVER_URL/PLEX_TOKEN (e.g. the env
+	// changed between restarts). Drop the cache so the next call to
+	// getConfiguredServerMachineId() re-fetches /identity against the current config.
+	if (plexEnv.serverUrl || plexEnv.token) {
+		await deleteAppSetting(AppSettingsKey.SERVER_MACHINE_ID);
+	}
+
 	return clearedSettings;
 }
 
