@@ -39,13 +39,16 @@ let statCards: HTMLElement[] = $state([]);
 let buttonsRow: HTMLElement | undefined = $state();
 
 // Swallow leftover slideshow navigation keys so a user mashing
-// arrow/space past the end of StoryMode cannot accidentally activate
-// a focused button on this page.
+// arrow/space past the end of StoryMode cannot accidentally trigger
+// scrolling/navigation while focus is on the heading or other
+// non-interactive element. Skip prevention when a button/link is focused
+// so Space can still activate it.
 function handleSummaryKeyDown(event: KeyboardEvent) {
 	const trapped = ['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown', ' ', 'Spacebar'];
-	if (trapped.includes(event.key)) {
-		event.preventDefault();
-	}
+	if (!trapped.includes(event.key)) return;
+	const target = event.target as Element | null;
+	if (target?.closest('a, button, input, select, textarea, [contenteditable]')) return;
+	event.preventDefault();
 }
 
 // Move initial focus to the heading instead of the first button so

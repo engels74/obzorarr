@@ -94,6 +94,13 @@ const shareModeDescriptions: Record<string, string> = {
 	'private-link': 'Anyone with the special link can view'
 };
 
+// Human-readable labels used in floor-note hint text
+const shareModeLabels: Record<string, string> = {
+	public: 'Public',
+	'private-oauth': 'Server Members',
+	'private-link': 'Private Link'
+};
+
 // Generate share URL
 function getShareUrl(): string {
 	const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
@@ -212,7 +219,7 @@ function getLogoModeDescription(): string {
 								<span class="card-desc">{shareModeDescriptions.public}</span>
 								{#if isBelowFloor('public')}
 									<span class="floor-note">
-										Your administrator requires at least Server Members privacy.
+										Your administrator requires at least {shareModeLabels[data.globalFloor ?? ''] ?? data.globalFloor} privacy.
 									</span>
 								{/if}
 							</label>
@@ -235,7 +242,7 @@ function getLogoModeDescription(): string {
 								<span class="card-desc">{shareModeDescriptions['private-link']}</span>
 								{#if isBelowFloor('private-link')}
 									<span class="floor-note">
-										Your administrator requires at least Server Members privacy.
+										Your administrator requires at least {shareModeLabels[data.globalFloor ?? ''] ?? data.globalFloor} privacy.
 									</span>
 								{/if}
 							</label>
@@ -258,7 +265,7 @@ function getLogoModeDescription(): string {
 								<span class="card-desc">{shareModeDescriptions['private-oauth']}</span>
 								{#if isBelowFloor('private-oauth')}
 									<span class="floor-note">
-										Your administrator requires at least Server Members privacy.
+										Your administrator requires at least {shareModeLabels[data.globalFloor ?? ''] ?? data.globalFloor} privacy.
 									</span>
 								{/if}
 							</label>
