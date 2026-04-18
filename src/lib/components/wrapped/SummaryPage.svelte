@@ -48,8 +48,8 @@ let buttonsRow: HTMLElement | undefined = $state();
 function handleSummaryKeyDown(event: KeyboardEvent) {
 	const trapped = ['ArrowRight', 'ArrowLeft'];
 	if (!trapped.includes(event.key)) return;
-	const target = event.target as Element | null;
-	if (target?.closest('a, button, input, select, textarea, [contenteditable]')) return;
+	if (!(event.target instanceof Element)) return;
+	if (event.target.closest('a, button, input, select, textarea, [contenteditable]')) return;
 	event.preventDefault();
 }
 
