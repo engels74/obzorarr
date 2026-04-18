@@ -22,6 +22,7 @@ let isOAuthLoading = $state(false);
 let isRedirecting = $state(false);
 let oauthError = $state<string | null>(null);
 let loginController: PlexLoginController | null = null;
+let confirmOwnershipChecked = $state(false);
 
 // Popup fallback state
 let showPopupBlockedModal = $state(false);
@@ -449,6 +450,13 @@ const canContinue = $derived(
 	(data.hasEnvConfig && data.canProceed) || (!data.hasEnvConfig && serverSaved)
 );
 
+type MembershipFailureForm = {
+	error?: string;
+	membershipReason?: 'not_reachable' | 'not_in_resources';
+	configuredMachineId?: string;
+};
+const membershipFailure = $derived<MembershipFailureForm>((form ?? {}) as MembershipFailureForm);
+
 function formatServerUrl(url: string | null): string {
 	if (!url) return '';
 	try {
@@ -539,6 +547,64 @@ function formatServerUrl(url: string | null): string {
 					</svg>
 				</div>
 			</div>
+
+			{#if !data.configuredUrlReachable}
+				<div class="error-card animate-item">
+					<div class="error-icon">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<circle cx="12" cy="12" r="10" />
+							<line x1="12" y1="8" x2="12" y2="12" />
+							<line x1="12" y1="16" x2="12.01" y2="16" />
+						</svg>
+					</div>
+					<div class="error-content">
+						<p class="error-title">Cannot reach configured Plex server</p>
+						<p class="error-message">
+							{data.configuredUrlErrorReason ||
+								'Obzorarr could not reach the server at the configured URL.'}
+						</p>
+						<form method="POST" action="?/forceManualSelection" use:enhance class="error-action-form">
+							<button type="submit" class="error-action-btn">Use a different server</button>
+						</form>
+					</div>
+				</div>
+			{/if}
+
+			{#if membershipFailure.membershipReason === 'not_in_resources' && membershipFailure.configuredMachineId}
+				<div class="error-card animate-item">
+					<div class="error-icon">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<circle cx="12" cy="12" r="10" />
+							<line x1="12" y1="8" x2="12" y2="12" />
+							<line x1="12" y1="16" x2="12.01" y2="16" />
+						</svg>
+					</div>
+					<div class="error-content">
+						<p class="error-title">Server not listed under your Plex.tv account</p>
+						<p class="error-message">
+							Obzorarr reached the configured server (machineIdentifier <code
+								>{membershipFailure.configuredMachineId}</code
+							>), but Plex.tv does not list it under your account's accessible servers.
+						</p>
+						<label class="override-checkbox">
+							<input type="checkbox" bind:checked={confirmOwnershipChecked} />
+							<span>I confirm I am the owner of this server (bypasses Plex.tv verification)</span>
+						</label>
+						<div class="override-actions">
+							<form method="POST" action="?/confirmOwnershipOverride" use:enhance>
+								<button type="submit" class="error-action-btn" disabled={!confirmOwnershipChecked}
+									>Continue anyway</button
+								>
+							</form>
+							<form method="POST" action="?/forceManualSelection" use:enhance>
+								<button type="submit" class="error-action-btn secondary"
+									>Use a different server</button
+								>
+							</form>
+						</div>
+					</div>
+				</div>
+			{/if}
 
 			{#if showLoginButton}
 				<div class="action-section animate-item">
@@ -1316,6 +1382,79 @@ function formatServerUrl(url: string | null): string {
 			font-size: 0.85rem;
 			color: rgba(255, 255, 255, 0.55);
 			line-height: 1.5;
+		}
+
+		.error-message code {
+			font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+			font-size: 0.8rem;
+			background: rgba(255, 255, 255, 0.06);
+			padding: 0.1rem 0.3rem;
+			border-radius: 4px;
+			color: rgba(255, 255, 255, 0.8);
+		}
+
+		.error-action-form {
+			margin-top: 0.75rem;
+		}
+
+		.error-action-btn {
+			display: inline-flex;
+			align-items: center;
+			gap: 0.4rem;
+			padding: 0.5rem 0.875rem;
+			font-size: 0.85rem;
+			font-weight: 500;
+			color: hsl(0, 84%, 70%);
+			background: rgba(239, 68, 68, 0.1);
+			border: 1px solid rgba(239, 68, 68, 0.3);
+			border-radius: 8px;
+			cursor: pointer;
+			transition: all 0.2s ease;
+		}
+
+		.error-action-btn:hover:not(:disabled) {
+			background: rgba(239, 68, 68, 0.18);
+			border-color: rgba(239, 68, 68, 0.5);
+		}
+
+		.error-action-btn:disabled {
+			opacity: 0.4;
+			cursor: not-allowed;
+		}
+
+		.error-action-btn.secondary {
+			color: rgba(255, 255, 255, 0.7);
+			background: rgba(255, 255, 255, 0.04);
+			border-color: rgba(255, 255, 255, 0.12);
+		}
+
+		.error-action-btn.secondary:hover:not(:disabled) {
+			background: rgba(255, 255, 255, 0.08);
+			border-color: rgba(255, 255, 255, 0.2);
+		}
+
+		.override-checkbox {
+			display: flex;
+			align-items: flex-start;
+			gap: 0.5rem;
+			margin-top: 0.75rem;
+			font-size: 0.85rem;
+			color: rgba(255, 255, 255, 0.75);
+			cursor: pointer;
+			line-height: 1.4;
+		}
+
+		.override-checkbox input[type='checkbox'] {
+			margin-top: 0.15rem;
+			flex-shrink: 0;
+			accent-color: hsl(var(--primary));
+		}
+
+		.override-actions {
+			display: flex;
+			gap: 0.5rem;
+			margin-top: 0.75rem;
+			flex-wrap: wrap;
 		}
 
 		/* Server Section */

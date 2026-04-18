@@ -1,5 +1,6 @@
 import { getApiConfigWithSources } from '$lib/server/admin/settings.service';
 import { logger } from '$lib/server/logging';
+import { getConfiguredServerMachineId } from '$lib/server/plex/server-identity.service';
 import {
 	type MembershipResult,
 	NotServerMemberError,
@@ -288,8 +289,24 @@ function matchesPlainHost(configuredUrl: string, server: PlexResource): boolean 
 
 function findConfiguredServer(
 	servers: PlexResource[],
-	configuredUrl: string
+	configuredUrl: string,
+	configuredMachineIdFromIdentity?: string
 ): PlexResource | undefined {
+	// Strategy 0: Match by machineIdentifier fetched from GET {PLEX_SERVER_URL}/identity.
+	// This works for any reachable URL form — IP, hostname, .plex.direct, reverse proxy.
+	if (configuredMachineIdFromIdentity) {
+		const serverByConfiguredId = servers.find(
+			(s) => s.clientIdentifier.toLowerCase() === configuredMachineIdFromIdentity.toLowerCase()
+		);
+		if (serverByConfiguredId) {
+			logger.debug(
+				`Matched server by /identity machineIdentifier: ${configuredMachineIdFromIdentity} -> ${serverByConfiguredId.name}`,
+				'Membership'
+			);
+			return serverByConfiguredId;
+		}
+	}
+
 	// Strategy 1: For .plex.direct URLs, try matching by machine ID (most reliable when IDs match)
 	const configuredMachineId = extractPlexDirectMachineId(configuredUrl);
 
@@ -371,14 +388,37 @@ export async function verifyServerMembership(userToken: string): Promise<Members
 		}
 	}
 
+	// Ask the configured server for its own machineIdentifier via /identity.
+	// Works for any URL form (IP, hostname, proxied, docker-dns) provided the
+	// server is reachable from obzorarr with the configured PLEX_TOKEN.
+	const identityResult = await getConfiguredServerMachineId();
+	const configuredMachineIdFromIdentity = identityResult.machineId ?? undefined;
+	logger.debug(
+		`Configured server machineIdentifier: ${identityResult.machineId ?? 'null'} (source: ${
+			identityResult.source
+		}${identityResult.errorReason ? `, reason: ${identityResult.errorReason}` : ''})`,
+		'Membership'
+	);
+
 	// Find the configured server
-	const configuredServer = findConfiguredServer(servers, configuredUrl);
+	const configuredServer = findConfiguredServer(
+		servers,
+		configuredUrl,
+		configuredMachineIdFromIdentity
+	);
 
 	if (!configuredServer) {
 		logger.debug('No matching server found for configured URL', 'Membership');
+		const reason: MembershipResult['reason'] = configuredMachineIdFromIdentity
+			? 'not_in_resources'
+			: 'not_reachable';
 		return {
 			isMember: false,
-			isOwner: false
+			isOwner: false,
+			reason,
+			...(configuredMachineIdFromIdentity
+				? { configuredMachineId: configuredMachineIdFromIdentity }
+				: {})
 		};
 	}
 
@@ -387,21 +427,42 @@ export async function verifyServerMembership(userToken: string): Promise<Members
 		'Membership'
 	);
 
-	return {
+	const result: MembershipResult = {
 		isMember: true,
 		isOwner: configuredServer.owned,
 		serverName: configuredServer.name
 	};
+
+	if (!configuredServer.owned) {
+		result.reason = 'not_owner';
+	}
+
+	if (configuredMachineIdFromIdentity) {
+		result.configuredMachineId = configuredMachineIdFromIdentity;
+	}
+
+	return result;
 }
 
 export async function requireServerMembership(userToken: string): Promise<MembershipResult> {
 	const membership = await verifyServerMembership(userToken);
 
 	if (!membership.isMember) {
-		throw new NotServerMemberError();
+		throw new NotServerMemberError(messageForMembershipFailure(membership));
 	}
 
 	return membership;
+}
+
+function messageForMembershipFailure(membership: MembershipResult): string {
+	switch (membership.reason) {
+		case 'not_reachable':
+			return 'Obzorarr could not reach the configured Plex server. Check that PLEX_SERVER_URL and PLEX_TOKEN are correct and the server is online.';
+		case 'not_in_resources':
+			return 'The configured Plex server is not listed under your Plex.tv account. Sign in with the owner account, or confirm ownership to bypass the check.';
+		default:
+			return 'You are not a member of this Plex server.';
+	}
 }
 
 export function determineRole(isOwner: boolean): { isAdmin: boolean } {

@@ -2,7 +2,8 @@ import { redirect } from '@sveltejs/kit';
 import {
 	getApiConfigWithSources,
 	getUITheme,
-	hasPlexEnvConfig
+	hasPlexEnvConfig,
+	isPlexServerUrlOverrideManual
 } from '$lib/server/admin/settings.service';
 import {
 	getOnboardingStep,
@@ -34,8 +35,12 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 		redirect(303, `/onboarding/${currentStep}`);
 	}
 
-	const [apiConfig, uiTheme] = await Promise.all([getApiConfigWithSources(), getUITheme()]);
-	const hasEnvConfigValue = hasPlexEnvConfig();
+	const [apiConfig, uiTheme, overrideManual] = await Promise.all([
+		getApiConfigWithSources(),
+		getUITheme(),
+		isPlexServerUrlOverrideManual()
+	]);
+	const hasEnvConfigValue = hasPlexEnvConfig() && !overrideManual;
 	const serverName = hasEnvConfigValue ? await getServerName() : null;
 
 	const steps: { id: OnboardingStep; label: string }[] = [

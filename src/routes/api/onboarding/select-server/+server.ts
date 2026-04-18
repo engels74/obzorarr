@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
 	AppSettingsKey,
 	setAppSetting,
+	setCachedServerMachineId,
 	setCachedServerName
 } from '$lib/server/admin/settings.service';
 import {
@@ -121,6 +122,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, serverUrl);
 		await setAppSetting(AppSettingsKey.PLEX_TOKEN, accessToken);
 		await setCachedServerName(serverName);
+		if (testResult.machineIdentifier) {
+			await setCachedServerMachineId(testResult.machineIdentifier);
+		}
 
 		logger.info(`Onboarding: Server configured - ${serverName} (${serverUrl})`, 'Onboarding');
 
