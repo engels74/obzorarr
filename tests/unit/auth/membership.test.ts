@@ -56,6 +56,7 @@ describe('verifyServerMembership', () => {
 		// periodic session revalidation on onboarding completion — during onboarding
 		// there is no meaningful configured server to check against, and without the
 		// gate the revalidator would incorrectly revoke the freshly-created session.
+		configSpy = mockConfiguredUrl('http://test-plex-server:32400');
 		fetchSpy = spyOn(global, 'fetch').mockResolvedValue(
 			createMockResponse([
 				{
