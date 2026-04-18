@@ -264,12 +264,7 @@ function matchesPlainHost(configuredUrl: string, server: PlexResource): boolean 
 			if (!conn.uri.includes('.plex.direct')) continue;
 			const extracted = extractPlexDirectIpAndPort(conn.uri);
 			if (!extracted) continue;
-			const embeddedPort = extracted.port === '' ? 32400 : parseInt(extracted.port, 10);
-			if (
-				extracted.ip.toLowerCase() === configuredHost &&
-				!Number.isNaN(embeddedPort) &&
-				portsMatch(embeddedPort)
-			) {
+			if (extracted.ip.toLowerCase() === configuredHost && portsMatch(conn.port)) {
 				return true;
 			}
 		}
