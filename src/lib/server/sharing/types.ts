@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
-import { ShareMode, type ShareModeType } from '$lib/sharing/types';
+import { ShareMode, ShareModePrivacyLevel, type ShareModeType } from '$lib/sharing/types';
 
-export { ShareMode, type ShareModeType };
+export { ShareMode, ShareModePrivacyLevel, type ShareModeType };
 
 export const ShareSettingsKey = {
 	DEFAULT_SHARE_MODE: 'default_share_mode',
@@ -16,12 +16,6 @@ export const ShareModeSource = {
 } as const;
 
 export type ShareModeSourceType = (typeof ShareModeSource)[keyof typeof ShareModeSource];
-
-export const ShareModePrivacyLevel = {
-	[ShareMode.PUBLIC]: 0,
-	[ShareMode.PRIVATE_LINK]: 1,
-	[ShareMode.PRIVATE_OAUTH]: 2
-} as const;
 
 export function getMoreRestrictiveMode(mode1: ShareModeType, mode2: ShareModeType): ShareModeType {
 	const level1 = ShareModePrivacyLevel[mode1] ?? 0;

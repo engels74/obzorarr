@@ -3,6 +3,7 @@ import { enhance } from '$app/forms';
 import { page } from '$app/stores';
 import * as AlertDialog from '$lib/components/ui/alert-dialog';
 import * as Tabs from '$lib/components/ui/tabs';
+import { ShareModePrivacyLevel } from '$lib/sharing/types';
 import { handleFormToast } from '$lib/utils/form-toast';
 import type { ActionData, PageData } from './$types';
 
@@ -60,17 +61,14 @@ $effect(() => {
 	}
 });
 
-// Privacy floor check (mirrors $lib/server/sharing/types.ts:20-24)
-const privacyLevel: Record<string, number> = {
-	public: 0,
-	'private-link': 1,
-	'private-oauth': 2
-};
-
+// Privacy floor check — uses shared ShareModePrivacyLevel from $lib/sharing/types
 function isBelowFloor(mode: string): boolean {
 	const floor = data.globalFloor;
 	if (!floor) return false;
-	return (privacyLevel[mode] ?? 0) < (privacyLevel[floor] ?? 0);
+	return (
+		(ShareModePrivacyLevel[mode as keyof typeof ShareModePrivacyLevel] ?? 0) <
+		(ShareModePrivacyLevel[floor as keyof typeof ShareModePrivacyLevel] ?? 0)
+	);
 }
 
 // Icon helpers
