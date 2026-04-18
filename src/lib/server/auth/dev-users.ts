@@ -7,7 +7,8 @@ import {
 	PLEX_PRODUCT,
 	PLEX_VERSION,
 	PlexAuthApiError,
-	PlexFriendsResponseSchema,
+	type PlexFriend,
+	PlexFriendSchema,
 	PlexServerIdentitySchema,
 	type PlexSharedServerUser
 } from './types';
@@ -104,26 +105,47 @@ async function fetchSharedUsers(
 	}
 
 	const data = await response.json();
-	const result = PlexFriendsResponseSchema.safeParse(data);
 
-	if (!result.success) {
+	if (!Array.isArray(data)) {
 		logger.warn(
-			`Invalid friends response: ${result.error.message}. Shared users will not be available for dev bypass.`,
+			`Invalid friends response: expected array, received ${data === null ? 'null' : typeof data}. Shared users will not be available for dev bypass.`,
 			'DevUsers'
 		);
 		return [];
 	}
 
-	// Filter friends to only those with access to this specific server
-	// and map to PlexSharedServerUser format for compatibility
-	return result.data
+	const friends: PlexFriend[] = [];
+	let skipped = 0;
+	for (const entry of data) {
+		const parsed = PlexFriendSchema.safeParse(entry);
+		if (parsed.success) {
+			friends.push(parsed.data);
+		} else {
+			skipped++;
+		}
+	}
+
+	if (skipped > 0) {
+		logger.warn(
+			`Skipped ${skipped} malformed friend record(s) from Plex v2 friends response.`,
+			'DevUsers'
+		);
+	}
+
+	// Filter friends to only those with a usable username and access to this specific server,
+	// then map to PlexSharedServerUser format for compatibility.
+	return friends
+		.filter(
+			(friend): friend is PlexFriend & { username: string } =>
+				typeof friend.username === 'string' && friend.username.length > 0
+		)
 		.filter((friend) =>
 			friend.sharedServers?.some((s) => s.machineIdentifier === machineIdentifier)
 		)
 		.map((friend) => ({
 			id: friend.id,
 			username: friend.username,
-			email: friend.email,
+			email: friend.email ?? undefined,
 			thumb: friend.thumb
 		}));
 }
