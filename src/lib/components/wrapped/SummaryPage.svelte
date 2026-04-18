@@ -33,9 +33,34 @@ const bingeEpisodes = $derived(stats.longestBinge?.plays ?? null);
 // Element refs for animations
 let container: HTMLElement | undefined = $state();
 let header: HTMLElement | undefined = $state();
+let title: HTMLElement | undefined = $state();
 let statsGrid: HTMLElement | undefined = $state();
 let statCards: HTMLElement[] = $state([]);
 let buttonsRow: HTMLElement | undefined = $state();
+
+// Swallow leftover slideshow left/right-arrow keys so a user mashing
+// them past the end of StoryMode cannot accidentally trigger slide
+// navigation while focus is on a non-interactive element.
+// ArrowUp/ArrowDown and Space are intentionally NOT trapped so the
+// browser can still scroll the document with the keyboard (needed on
+// small screens / accessibility zoom). A `closest()` guard is kept so
+// any future additions to the trap list still exempt focused controls.
+function handleSummaryKeyDown(event: KeyboardEvent) {
+	const trapped = ['ArrowRight', 'ArrowLeft'];
+	if (!trapped.includes(event.key)) return;
+	if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+	if (!(event.target instanceof Element)) return;
+	if (event.target.closest('a, button, input, select, textarea, [contenteditable]')) return;
+	event.preventDefault();
+}
+
+// Move initial focus to the heading instead of the first button so
+// stray Enter/Space presses don't trigger navigation away from the page.
+$effect(() => {
+	if (title) {
+		title.focus({ preventScroll: true });
+	}
+});
 
 // Entrance animation
 $effect(() => {
@@ -112,9 +137,11 @@ $effect(() => {
 });
 </script>
 
-<section bind:this={container} class="summary-page {klass}">
+<svelte:window onkeydown={handleSummaryKeyDown} />
+
+<section bind:this={container} class="summary-page {klass}" tabindex="-1">
 	<div bind:this={header} class="header">
-		<h1 class="title">
+		<h1 bind:this={title} class="title" tabindex="-1">
 			{#if username}
 				{username}'s {year} Wrapped
 			{:else}
@@ -307,6 +334,20 @@ $effect(() => {
 			text-align: center;
 			margin-bottom: 2.5rem;
 			z-index: 1;
+		}
+
+		/* Suppress focus ring on the section itself (programmatic focus only,
+		   never reached via keyboard Tab) and on mouse-focus of the title. */
+		.summary-page:focus,
+		.title:focus:not(:focus-visible) {
+			outline: none;
+		}
+
+		/* Restore a visible focus indicator for keyboard users on the title heading. */
+		.title:focus-visible {
+			outline: 2px solid hsl(var(--primary));
+			outline-offset: 4px;
+			border-radius: 4px;
 		}
 
 		.title {

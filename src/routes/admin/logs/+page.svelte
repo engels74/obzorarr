@@ -207,9 +207,15 @@ function handleSourceChange(event: Event) {
 
 // Clear all filters
 function clearFilters() {
+	// Cancel any pending debounced search so it doesn't race the navigation
+	if (searchDebounce) {
+		clearTimeout(searchDebounce);
+		searchDebounce = null;
+	}
+	searchText = '';
 	fromDate = '';
 	toDate = '';
-	goto('/admin/logs', { replaceState: true });
+	goto('/admin/logs', { replaceState: true, invalidateAll: true });
 }
 
 // Connect to SSE stream

@@ -1,7 +1,7 @@
 <script lang="ts">
 import { enhance } from '$app/forms';
 import * as AlertDialog from '$lib/components/ui/alert-dialog';
-import type { ShareModeType } from '$lib/sharing/types';
+import { ShareModePrivacyLevel, type ShareModeType } from '$lib/sharing/types';
 
 interface ShareSettings {
 	mode: ShareModeType;
@@ -33,16 +33,10 @@ let {
 	globalFloor
 }: Props = $props();
 
-const privacyLevel: Record<ShareModeType, number> = {
-	public: 0,
-	'private-link': 1,
-	'private-oauth': 2
-};
-
-const floorLevel = $derived(globalFloor ? privacyLevel[globalFloor] : 0);
+const floorLevel = $derived(globalFloor ? ShareModePrivacyLevel[globalFloor] : 0);
 
 function isBelowFloor(mode: ShareModeType): boolean {
-	return privacyLevel[mode] < floorLevel;
+	return ShareModePrivacyLevel[mode] < floorLevel;
 }
 
 // State
@@ -274,7 +268,7 @@ $effect(() => {
 								<div class="mode-content">
 									<span class="mode-label">{modeLabels[mode as ShareModeType].label}</span>
 									<span class="mode-desc">{modeLabels[mode as ShareModeType].description}</span>
-									{#if isAdmin && globalFloor && isBelowFloor(mode as ShareModeType)}
+									{#if globalFloor && isBelowFloor(mode as ShareModeType)}
 										<span class="floor-note">
 											Global floor is <strong>{modeLabels[globalFloor].label}</strong>. Effective
 											mode at access time will be <strong>{modeLabels[globalFloor].label}</strong>.

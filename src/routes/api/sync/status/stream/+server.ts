@@ -1,6 +1,20 @@
 import { getSyncProgress, type LiveSyncProgress } from '$lib/server/sync/progress';
 import type { RequestHandler } from './$types';
 
+/**
+ * SSE sync-status stream.
+ *
+ * Intentionally unauthenticated: the onboarding flow polls this endpoint
+ * before any user account exists. `authorizationHandle` in `hooks.server.ts`
+ * gates `/admin/*` only — `/api/sync/status/stream` is reachable pre-login
+ * by design.
+ *
+ * Because the endpoint is public, the SSE payload MUST stay narrowly
+ * projected: only counters, phase, and status — no item titles, usernames,
+ * or raw error messages. `simplifyProgress()` enforces the shape; do not
+ * widen it without re-evaluating PII exposure.
+ */
+
 const POLL_INTERVAL_ACTIVE_MS = 500;
 const POLL_INTERVAL_IDLE_MS = 2000;
 

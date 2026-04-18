@@ -3,6 +3,7 @@ import { enhance } from '$app/forms';
 import { page } from '$app/stores';
 import * as AlertDialog from '$lib/components/ui/alert-dialog';
 import * as Tabs from '$lib/components/ui/tabs';
+import { ShareModePrivacyLevel } from '$lib/sharing/types';
 import { handleFormToast } from '$lib/utils/form-toast';
 import type { ActionData, PageData } from './$types';
 
@@ -33,7 +34,8 @@ function getInitialTab(): TabValue {
 let activeTab = $state<TabValue>(getInitialTab());
 
 // Form state
-let selectedShareMode = $state('');
+// svelte-ignore state_referenced_locally
+let selectedShareMode = $state<string>(data.shareSettings.mode);
 let selectedLogoPreference = $state<'show' | 'hide'>('show');
 let isUpdating = $state(false);
 let isRegenerating = $state(false);
@@ -51,10 +53,29 @@ $effect(() => {
 	selectedLogoPreference = data.userLogoPreference === false ? 'hide' : 'show';
 });
 
-// Show toast notifications
+// Show toast notifications and snap radio back to server truth on rejection
 $effect(() => {
 	handleFormToast(form);
+	const payload = form as unknown as { action?: string; currentMode?: string } | null | undefined;
+	if (payload?.action === 'updateShareMode' && typeof payload.currentMode === 'string') {
+		selectedShareMode = payload.currentMode;
+	}
 });
+
+// Privacy floor check — uses shared ShareModePrivacyLevel from $lib/sharing/types
+function isBelowFloor(mode: string): boolean {
+	const floor = data.globalFloor;
+	if (!floor) return false;
+	return (
+		(ShareModePrivacyLevel[mode as keyof typeof ShareModePrivacyLevel] ?? 0) <
+		(ShareModePrivacyLevel[floor as keyof typeof ShareModePrivacyLevel] ?? 0)
+	);
+}
+
+// True when the currently-selected mode is blocked by the admin privacy floor.
+// Disables Save to prevent a misleading 'Invalid share mode' toast (disabled
+// radio inputs are not submitted by the browser, so `mode` arrives as null).
+let isSelectedModeBelowFloor = $derived(isBelowFloor(selectedShareMode));
 
 // Icon helpers
 function getShareIcon(mode: string): string {
@@ -75,6 +96,13 @@ const shareModeDescriptions: Record<string, string> = {
 	public: 'Anyone can view your wrapped page',
 	'private-oauth': 'Only Plex server members can view',
 	'private-link': 'Anyone with the special link can view'
+};
+
+// Human-readable labels used in floor-note hint text
+const shareModeLabels: Record<string, string> = {
+	public: 'Public',
+	'private-oauth': 'Server Members',
+	'private-link': 'Private Link'
 };
 
 // Generate share URL
@@ -177,48 +205,88 @@ function getLogoModeDescription(): string {
 						class="share-form"
 					>
 						<div class="privacy-card-grid three-col">
-							<label class="privacy-card" class:selected={selectedShareMode === 'public'}>
+							<label
+								class="privacy-card"
+								class:selected={selectedShareMode === 'public'}
+								class:below-floor={isBelowFloor('public')}
+								aria-disabled={isBelowFloor('public')}
+							>
 								<input
 									type="radio"
 									name="mode"
 									value="public"
 									bind:group={selectedShareMode}
-									disabled={isUpdating}
+									disabled={isBelowFloor('public') || isUpdating}
 								/>
 								<span class="card-icon">{getShareIcon('public')}</span>
 								<span class="card-title">Public</span>
 								<span class="card-desc">{shareModeDescriptions.public}</span>
+								{#if isBelowFloor('public')}
+									<span class="floor-note">
+										Your administrator requires at least {shareModeLabels[data.globalFloor ?? ''] ?? data.globalFloor} privacy.
+									</span>
+								{/if}
 							</label>
 
-							<label class="privacy-card" class:selected={selectedShareMode === 'private-link'}>
+							<label
+								class="privacy-card"
+								class:selected={selectedShareMode === 'private-link'}
+								class:below-floor={isBelowFloor('private-link')}
+								aria-disabled={isBelowFloor('private-link')}
+							>
 								<input
 									type="radio"
 									name="mode"
 									value="private-link"
 									bind:group={selectedShareMode}
-									disabled={isUpdating}
+									disabled={isBelowFloor('private-link') || isUpdating}
 								/>
 								<span class="card-icon">{getShareIcon('private-link')}</span>
 								<span class="card-title">Private Link</span>
 								<span class="card-desc">{shareModeDescriptions['private-link']}</span>
+								{#if isBelowFloor('private-link')}
+									<span class="floor-note">
+										Your administrator requires at least {shareModeLabels[data.globalFloor ?? ''] ?? data.globalFloor} privacy.
+									</span>
+								{/if}
 							</label>
 
-							<label class="privacy-card" class:selected={selectedShareMode === 'private-oauth'}>
+							<label
+								class="privacy-card"
+								class:selected={selectedShareMode === 'private-oauth'}
+								class:below-floor={isBelowFloor('private-oauth')}
+								aria-disabled={isBelowFloor('private-oauth')}
+							>
 								<input
 									type="radio"
 									name="mode"
 									value="private-oauth"
 									bind:group={selectedShareMode}
-									disabled={isUpdating}
+									disabled={isBelowFloor('private-oauth') || isUpdating}
 								/>
 								<span class="card-icon">{getShareIcon('private-oauth')}</span>
 								<span class="card-title">Server Members</span>
 								<span class="card-desc">{shareModeDescriptions['private-oauth']}</span>
+								{#if isBelowFloor('private-oauth')}
+									<span class="floor-note">
+										Your administrator requires at least {shareModeLabels[data.globalFloor ?? ''] ?? data.globalFloor} privacy.
+									</span>
+								{/if}
 							</label>
 						</div>
 
 						<div class="form-actions">
-							<button type="submit" class="save-button" disabled={isUpdating}>
+							{#if isSelectedModeBelowFloor}
+								<p class="floor-note">
+									Your current share mode is below the server's minimum privacy floor. Select a
+									higher-privacy option above to save.
+								</p>
+							{/if}
+							<button
+								type="submit"
+								class="save-button"
+								disabled={isUpdating || isSelectedModeBelowFloor}
+							>
 								{isUpdating ? 'Saving...' : 'Save Sharing Settings'}
 							</button>
 						</div>
@@ -640,6 +708,28 @@ function getLogoModeDescription(): string {
 		.privacy-card.selected {
 			border-color: hsl(var(--primary));
 			background: hsl(var(--primary) / 0.1);
+		}
+
+		.privacy-card.below-floor {
+			opacity: 0.55;
+			cursor: not-allowed;
+		}
+
+		.privacy-card.below-floor:hover {
+			border-color: hsl(var(--border));
+			background: hsl(var(--muted));
+		}
+
+		.floor-note {
+			margin-top: 0.5rem;
+			padding: 0.375rem 0.5rem;
+			font-size: 0.7rem;
+			line-height: 1.4;
+			color: hsl(45, 93%, 65%);
+			background: rgba(250, 204, 21, 0.08);
+			border-left: 2px solid rgba(250, 204, 21, 0.5);
+			border-radius: 4px;
+			text-align: left;
 		}
 
 		.privacy-card input[type='radio'] {
