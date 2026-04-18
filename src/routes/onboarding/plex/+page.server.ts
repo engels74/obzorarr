@@ -5,11 +5,11 @@ import {
 	setPlexServerUrlOverrideManual
 } from '$lib/server/admin/settings.service';
 import { verifyServerMembership } from '$lib/server/auth/membership';
-import { getSessionPlexToken, updateUserAndSessionAdmin } from '$lib/server/auth/session';
+import { getSessionPlexToken } from '$lib/server/auth/session';
 import { db } from '$lib/server/db/client';
-import { users } from '$lib/server/db/schema';
+import { sessions, users } from '$lib/server/db/schema';
 import { logger } from '$lib/server/logging';
-import { OnboardingSteps, setOnboardingStep } from '$lib/server/onboarding';
+import { isOnboardingComplete, OnboardingSteps, setOnboardingStep } from '$lib/server/onboarding';
 import { getConfiguredServerMachineId } from '$lib/server/plex/server-identity.service';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -133,6 +133,10 @@ export const actions: Actions = {
 			return fail(401, { error: 'Please sign in with Plex first' });
 		}
 
+		if (!locals.user.isAdmin) {
+			return fail(403, { error: 'Only the server owner can configure Obzorarr.' });
+		}
+
 		await setPlexServerUrlOverrideManual(true);
 
 		logger.info(
@@ -146,6 +150,12 @@ export const actions: Actions = {
 	confirmOwnershipOverride: async ({ locals, cookies }) => {
 		if (!locals.user) {
 			return fail(401, { error: 'Please sign in with Plex first' });
+		}
+
+		if (await isOnboardingComplete()) {
+			return fail(403, {
+				error: 'Onboarding is already complete. Admin status cannot be changed from this page.'
+			});
 		}
 
 		const sessionId = cookies.get('session');
@@ -164,8 +174,11 @@ export const actions: Actions = {
 		const apiConfig = await getApiConfigWithSources();
 		const configuredUrl = apiConfig.plex.serverUrl.value;
 
-		await updateUserAndSessionAdmin(sessionId, locals.user.id, true);
-		await db.update(users).set({ accountId: 1 }).where(eq(users.id, locals.user.id));
+		const userId = locals.user.id;
+		await db.transaction(async (tx) => {
+			await tx.update(sessions).set({ isAdmin: true }).where(eq(sessions.id, sessionId));
+			await tx.update(users).set({ isAdmin: true, accountId: 1 }).where(eq(users.id, userId));
+		});
 
 		logger.warn(
 			`Onboarding: Admin override used for ${configuredUrl} machineId=${identity.machineId} user=${locals.user.username}`,
