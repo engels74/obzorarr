@@ -144,8 +144,8 @@ function matchesByIpAndPort(
 		// Compare ports - handle default ports and string/number conversion
 		let matchesPort = false;
 		if (configuredPort === '') {
-			// No port in configured URL - match typical Plex defaults
-			matchesPort = conn.port === 32400 || conn.port === 443;
+			// .plex.direct URLs are always https:, so the implicit default port is 443.
+			matchesPort = conn.port === 443;
 		} else {
 			matchesPort = conn.port.toString() === configuredPort;
 		}
@@ -230,6 +230,7 @@ export function filterServerResources(resources: PlexResource[]): PlexResource[]
 function matchesPlainHost(configuredUrl: string, server: PlexResource): boolean {
 	let configuredHost: string;
 	let configuredPort: string;
+	let configuredProtocol: string;
 	try {
 		const parsed = new URL(configuredUrl);
 		configuredHost = parsed.hostname.toLowerCase();
@@ -238,13 +239,16 @@ function matchesPlainHost(configuredUrl: string, server: PlexResource): boolean 
 			return false;
 		}
 		configuredPort = parsed.port;
+		configuredProtocol = parsed.protocol;
 	} catch {
 		return false;
 	}
 
 	const portsMatch = (connPort: number): boolean => {
 		if (configuredPort === '') {
-			return connPort === 32400 || connPort === 443 || connPort === 80;
+			if (configuredProtocol === 'https:') return connPort === 443;
+			if (configuredProtocol === 'http:') return connPort === 80;
+			return connPort === 32400;
 		}
 		return connPort.toString() === configuredPort;
 	};
