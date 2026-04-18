@@ -281,6 +281,10 @@ async function showCacheConfirmation(year?: number) {
 			handleFormToast({
 				error: (result.data as { error?: string })?.error ?? 'Failed to prepare delete preview.'
 			});
+		} else if (result.type === 'error') {
+			handleFormToast({
+				error: result.error?.message ?? 'Failed to prepare delete preview.'
+			});
 		}
 	} catch (error) {
 		console.error('Failed to get cache count:', error);
@@ -362,6 +366,10 @@ async function showHistoryConfirmation(year?: number) {
 		} else if (result.type === 'failure') {
 			handleFormToast({
 				error: (result.data as { error?: string })?.error ?? 'Failed to prepare delete preview.'
+			});
+		} else if (result.type === 'error') {
+			handleFormToast({
+				error: result.error?.message ?? 'Failed to prepare delete preview.'
 			});
 		}
 	} catch (error) {
