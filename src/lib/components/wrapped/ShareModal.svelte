@@ -274,7 +274,7 @@ $effect(() => {
 								<div class="mode-content">
 									<span class="mode-label">{modeLabels[mode as ShareModeType].label}</span>
 									<span class="mode-desc">{modeLabels[mode as ShareModeType].description}</span>
-									{#if isAdmin && globalFloor && isBelowFloor(mode as ShareModeType)}
+									{#if globalFloor && isBelowFloor(mode as ShareModeType)}
 										<span class="floor-note">
 											Global floor is <strong>{modeLabels[globalFloor].label}</strong>. Effective
 											mode at access time will be <strong>{modeLabels[globalFloor].label}</strong>.

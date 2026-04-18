@@ -51,10 +51,27 @@ $effect(() => {
 	selectedLogoPreference = data.userLogoPreference === false ? 'hide' : 'show';
 });
 
-// Show toast notifications
+// Show toast notifications and snap radio back to server truth on rejection
 $effect(() => {
 	handleFormToast(form);
+	const payload = form as unknown as { action?: string; currentMode?: string } | null | undefined;
+	if (payload?.action === 'updateShareMode' && typeof payload.currentMode === 'string') {
+		selectedShareMode = payload.currentMode;
+	}
 });
+
+// Privacy floor check (mirrors $lib/server/sharing/types.ts:20-24)
+const privacyLevel: Record<string, number> = {
+	public: 0,
+	'private-link': 1,
+	'private-oauth': 2
+};
+
+function isBelowFloor(mode: string): boolean {
+	const floor = data.globalFloor;
+	if (!floor) return false;
+	return (privacyLevel[mode] ?? 0) < (privacyLevel[floor] ?? 0);
+}
 
 // Icon helpers
 function getShareIcon(mode: string): string {
@@ -177,43 +194,73 @@ function getLogoModeDescription(): string {
 						class="share-form"
 					>
 						<div class="privacy-card-grid three-col">
-							<label class="privacy-card" class:selected={selectedShareMode === 'public'}>
+							<label
+								class="privacy-card"
+								class:selected={selectedShareMode === 'public'}
+								class:below-floor={isBelowFloor('public')}
+								aria-disabled={isBelowFloor('public')}
+							>
 								<input
 									type="radio"
 									name="mode"
 									value="public"
 									bind:group={selectedShareMode}
-									disabled={isUpdating}
+									disabled={isBelowFloor('public') || isUpdating}
 								/>
 								<span class="card-icon">{getShareIcon('public')}</span>
 								<span class="card-title">Public</span>
 								<span class="card-desc">{shareModeDescriptions.public}</span>
+								{#if isBelowFloor('public')}
+									<span class="floor-note">
+										Your administrator requires at least Server Members privacy.
+									</span>
+								{/if}
 							</label>
 
-							<label class="privacy-card" class:selected={selectedShareMode === 'private-link'}>
+							<label
+								class="privacy-card"
+								class:selected={selectedShareMode === 'private-link'}
+								class:below-floor={isBelowFloor('private-link')}
+								aria-disabled={isBelowFloor('private-link')}
+							>
 								<input
 									type="radio"
 									name="mode"
 									value="private-link"
 									bind:group={selectedShareMode}
-									disabled={isUpdating}
+									disabled={isBelowFloor('private-link') || isUpdating}
 								/>
 								<span class="card-icon">{getShareIcon('private-link')}</span>
 								<span class="card-title">Private Link</span>
 								<span class="card-desc">{shareModeDescriptions['private-link']}</span>
+								{#if isBelowFloor('private-link')}
+									<span class="floor-note">
+										Your administrator requires at least Server Members privacy.
+									</span>
+								{/if}
 							</label>
 
-							<label class="privacy-card" class:selected={selectedShareMode === 'private-oauth'}>
+							<label
+								class="privacy-card"
+								class:selected={selectedShareMode === 'private-oauth'}
+								class:below-floor={isBelowFloor('private-oauth')}
+								aria-disabled={isBelowFloor('private-oauth')}
+							>
 								<input
 									type="radio"
 									name="mode"
 									value="private-oauth"
 									bind:group={selectedShareMode}
-									disabled={isUpdating}
+									disabled={isBelowFloor('private-oauth') || isUpdating}
 								/>
 								<span class="card-icon">{getShareIcon('private-oauth')}</span>
 								<span class="card-title">Server Members</span>
 								<span class="card-desc">{shareModeDescriptions['private-oauth']}</span>
+								{#if isBelowFloor('private-oauth')}
+									<span class="floor-note">
+										Your administrator requires at least Server Members privacy.
+									</span>
+								{/if}
 							</label>
 						</div>
 
@@ -640,6 +687,28 @@ function getLogoModeDescription(): string {
 		.privacy-card.selected {
 			border-color: hsl(var(--primary));
 			background: hsl(var(--primary) / 0.1);
+		}
+
+		.privacy-card.below-floor {
+			opacity: 0.55;
+			cursor: not-allowed;
+		}
+
+		.privacy-card.below-floor:hover {
+			border-color: hsl(var(--border));
+			background: hsl(var(--muted));
+		}
+
+		.floor-note {
+			margin-top: 0.5rem;
+			padding: 0.375rem 0.5rem;
+			font-size: 0.7rem;
+			line-height: 1.4;
+			color: hsl(45, 93%, 65%);
+			background: rgba(250, 204, 21, 0.08);
+			border-left: 2px solid rgba(250, 204, 21, 0.5);
+			border-radius: 4px;
+			text-align: left;
 		}
 
 		.privacy-card input[type='radio'] {

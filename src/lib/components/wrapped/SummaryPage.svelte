@@ -33,9 +33,28 @@ const bingeEpisodes = $derived(stats.longestBinge?.plays ?? null);
 // Element refs for animations
 let container: HTMLElement | undefined = $state();
 let header: HTMLElement | undefined = $state();
+let title: HTMLElement | undefined = $state();
 let statsGrid: HTMLElement | undefined = $state();
 let statCards: HTMLElement[] = $state([]);
 let buttonsRow: HTMLElement | undefined = $state();
+
+// Swallow leftover slideshow navigation keys so a user mashing
+// arrow/space past the end of StoryMode cannot accidentally activate
+// a focused button on this page.
+function handleSummaryKeyDown(event: KeyboardEvent) {
+	const trapped = ['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown', ' ', 'Spacebar'];
+	if (trapped.includes(event.key)) {
+		event.preventDefault();
+	}
+}
+
+// Move initial focus to the heading instead of the first button so
+// stray Enter/Space presses don't trigger navigation away from the page.
+$effect(() => {
+	if (title) {
+		title.focus({ preventScroll: true });
+	}
+});
 
 // Entrance animation
 $effect(() => {
@@ -112,9 +131,11 @@ $effect(() => {
 });
 </script>
 
-<section bind:this={container} class="summary-page {klass}">
+<svelte:window onkeydown={handleSummaryKeyDown} />
+
+<section bind:this={container} class="summary-page {klass}" tabindex="-1">
 	<div bind:this={header} class="header">
-		<h1 class="title">
+		<h1 bind:this={title} class="title" tabindex="-1">
 			{#if username}
 				{username}'s {year} Wrapped
 			{:else}
@@ -307,6 +328,11 @@ $effect(() => {
 			text-align: center;
 			margin-bottom: 2.5rem;
 			z-index: 1;
+		}
+
+		.summary-page:focus,
+		.title:focus {
+			outline: none;
 		}
 
 		.title {

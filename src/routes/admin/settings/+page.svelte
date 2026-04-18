@@ -277,9 +277,14 @@ async function showCacheConfirmation(year?: number) {
 			const data = result.data as { success: boolean; count: number; year?: number };
 			pendingCacheCount = data.count;
 			cacheDialogOpen = true;
+		} else if (result.type === 'failure') {
+			handleFormToast({
+				error: (result.data as { error?: string })?.error ?? 'Failed to prepare delete preview.'
+			});
 		}
 	} catch (error) {
 		console.error('Failed to get cache count:', error);
+		handleFormToast({ error: 'Failed to prepare delete preview. Please try again.' });
 	} finally {
 		loadingCount = false;
 	}
@@ -354,9 +359,14 @@ async function showHistoryConfirmation(year?: number) {
 			const data = result.data as { success: boolean; count: number; year?: number };
 			pendingHistoryCount = data.count;
 			historyDialogOpen = true;
+		} else if (result.type === 'failure') {
+			handleFormToast({
+				error: (result.data as { error?: string })?.error ?? 'Failed to prepare delete preview.'
+			});
 		}
 	} catch (error) {
 		console.error('Failed to get history count:', error);
+		handleFormToast({ error: 'Failed to prepare delete preview. Please try again.' });
 	} finally {
 		loadingHistoryCount = false;
 	}

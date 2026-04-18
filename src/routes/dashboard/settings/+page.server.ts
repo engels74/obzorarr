@@ -40,14 +40,16 @@ export const load: PageServerLoad = async ({ locals }) => {
 		wrappedLogoMode,
 		userLogoPreference,
 		sessionExpiration,
-		globalAllowUserControl
+		globalAllowUserControl,
+		globalFloor
 	] = await Promise.all([
 		getUserFullProfile(userId),
 		getOrCreateShareSettings({ userId, year: currentYear }),
 		getWrappedLogoMode(),
 		getUserLogoPreference(userId, currentYear),
 		getSessionExpiration(userId),
-		getGlobalAllowUserControl()
+		getGlobalAllowUserControl(),
+		getGlobalDefaultShareMode()
 	]);
 
 	// Effective control gate: admin's global toggle short-circuits the per-user flag
@@ -72,7 +74,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 		wrappedLogoMode,
 		canControlLogo: wrappedLogoMode === WrappedLogoMode.USER_CHOICE,
 		currentYear,
-		sessionExpiresAt: sessionExpiration
+		sessionExpiresAt: sessionExpiration,
+		globalFloor
 	};
 };
 
@@ -86,7 +89,12 @@ export const actions: Actions = {
 
 		const parsed = ShareModeSchema.safeParse(mode);
 		if (!parsed.success) {
-			return fail(400, { error: 'Invalid share mode', action: 'updateShareMode' });
+			const existing = await getOrCreateShareSettings({ userId, year: currentYear });
+			return fail(400, {
+				error: 'Invalid share mode',
+				action: 'updateShareMode',
+				currentMode: existing.mode
+			});
 		}
 
 		try {
@@ -98,7 +106,8 @@ export const actions: Actions = {
 			if (!globalAllowUserControl || !shareSettings.canUserControl) {
 				return fail(403, {
 					error: 'You do not have permission to change sharing settings',
-					action: 'updateShareMode'
+					action: 'updateShareMode',
+					currentMode: shareSettings.mode
 				});
 			}
 
@@ -107,7 +116,8 @@ export const actions: Actions = {
 			if (!meetsPrivacyFloor(parsed.data, globalFloor)) {
 				return fail(403, {
 					error: `Cannot set share mode to "${parsed.data}". Server requires at least "${globalFloor}" privacy level.`,
-					action: 'updateShareMode'
+					action: 'updateShareMode',
+					currentMode: shareSettings.mode
 				});
 			}
 
