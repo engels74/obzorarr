@@ -108,7 +108,7 @@ async function fetchSharedUsers(
 
 	if (!Array.isArray(data)) {
 		logger.warn(
-			`Invalid friends response: expected array, received ${typeof data}. Shared users will not be available for dev bypass.`,
+			`Invalid friends response: expected array, received ${data === null ? 'null' : typeof data}. Shared users will not be available for dev bypass.`,
 			'DevUsers'
 		);
 		return [];

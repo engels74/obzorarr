@@ -160,7 +160,7 @@ async function fetchSharedUsers(
 
 	if (!Array.isArray(data)) {
 		logger.warn(
-			`Invalid friends response: expected array, received ${typeof data}. Shared users will not have cached usernames.`,
+			`Invalid friends response: expected array, received ${data === null ? 'null' : typeof data}. Shared users will not have cached usernames.`,
 			'PlexAccountsSync'
 		);
 		return [];
