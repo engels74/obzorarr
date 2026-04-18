@@ -9,6 +9,7 @@ import {
 	getGlobalAllowUserControl,
 	getGlobalDefaultShareMode,
 	getOrCreateShareSettings,
+	getShareSettings,
 	getUserLogoPreference,
 	regenerateShareToken,
 	updateShareSettings,
@@ -89,9 +90,7 @@ export const actions: Actions = {
 
 		const parsed = ShareModeSchema.safeParse(mode);
 		if (!parsed.success) {
-			const existing = await getOrCreateShareSettings({ userId, year: currentYear }).catch(
-				() => null
-			);
+			const existing = await getShareSettings(userId, currentYear).catch(() => null);
 			return fail(400, {
 				error: 'Invalid share mode',
 				action: 'updateShareMode',
