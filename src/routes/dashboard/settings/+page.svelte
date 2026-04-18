@@ -34,7 +34,8 @@ function getInitialTab(): TabValue {
 let activeTab = $state<TabValue>(getInitialTab());
 
 // Form state
-let selectedShareMode = $state('');
+// svelte-ignore state_referenced_locally
+let selectedShareMode = $state<string>(data.shareSettings.mode);
 let selectedLogoPreference = $state<'show' | 'hide'>('show');
 let isUpdating = $state(false);
 let isRegenerating = $state(false);
