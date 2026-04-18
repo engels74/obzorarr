@@ -38,13 +38,15 @@ let statsGrid: HTMLElement | undefined = $state();
 let statCards: HTMLElement[] = $state([]);
 let buttonsRow: HTMLElement | undefined = $state();
 
-// Swallow leftover slideshow navigation keys so a user mashing
-// arrow/space past the end of StoryMode cannot accidentally trigger
-// scrolling/navigation while focus is on the heading or other
-// non-interactive element. Skip prevention when a button/link is focused
-// so Space can still activate it.
+// Swallow leftover slideshow left/right-arrow keys so a user mashing
+// them past the end of StoryMode cannot accidentally trigger slide
+// navigation while focus is on a non-interactive element.
+// ArrowUp/ArrowDown and Space are intentionally NOT trapped so the
+// browser can still scroll the document with the keyboard (needed on
+// small screens / accessibility zoom). A `closest()` guard is kept so
+// any future additions to the trap list still exempt focused controls.
 function handleSummaryKeyDown(event: KeyboardEvent) {
-	const trapped = ['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown', ' ', 'Spacebar'];
+	const trapped = ['ArrowRight', 'ArrowLeft'];
 	if (!trapped.includes(event.key)) return;
 	const target = event.target as Element | null;
 	if (target?.closest('a, button, input, select, textarea, [contenteditable]')) return;
@@ -333,9 +335,18 @@ $effect(() => {
 			z-index: 1;
 		}
 
+		/* Suppress focus ring on the section itself (programmatic focus only,
+		   never reached via keyboard Tab) and on mouse-focus of the title. */
 		.summary-page:focus,
-		.title:focus {
+		.title:focus:not(:focus-visible) {
 			outline: none;
+		}
+
+		/* Restore a visible focus indicator for keyboard users on the title heading. */
+		.title:focus-visible {
+			outline: 2px solid hsl(var(--primary));
+			outline-offset: 4px;
+			border-radius: 4px;
 		}
 
 		.title {

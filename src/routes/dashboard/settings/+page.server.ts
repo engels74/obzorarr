@@ -97,11 +97,14 @@ export const actions: Actions = {
 			});
 		}
 
+		let currentMode: string | undefined;
+
 		try {
 			const [shareSettings, globalAllowUserControl] = await Promise.all([
 				getOrCreateShareSettings({ userId, year: currentYear }),
 				getGlobalAllowUserControl()
 			]);
+			currentMode = shareSettings.mode;
 
 			if (!globalAllowUserControl || !shareSettings.canUserControl) {
 				return fail(403, {
@@ -126,7 +129,7 @@ export const actions: Actions = {
 			return { success: true, message: 'Sharing settings updated', action: 'updateShareMode' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to update settings';
-			return fail(500, { error: message, action: 'updateShareMode' });
+			return fail(500, { error: message, action: 'updateShareMode', currentMode });
 		}
 	},
 
