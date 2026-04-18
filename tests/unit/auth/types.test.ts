@@ -13,6 +13,7 @@ import {
 	PLEX_PRODUCT,
 	PLEX_VERSION,
 	PlexAuthApiError,
+	PlexFriendSchema,
 	SESSION_DURATION_MS,
 	SessionExpiredError
 } from '$lib/server/auth/types';
@@ -282,5 +283,55 @@ describe('Error Discrimination', () => {
 		expect(codes).toContain('NOT_SERVER_MEMBER');
 		expect(codes).toContain('SESSION_EXPIRED');
 		expect(codes).toContain('PLEX_API_ERROR');
+	});
+});
+
+describe('PlexFriendSchema', () => {
+	// Regression: Plex.tv /api/v2/friends returns null for username/email on some friends.
+	// Before this fix the schema rejected them, causing the whole list to be discarded
+	// (obzorarr-docker issue #4).
+
+	it('accepts a friend with null username', () => {
+		const result = PlexFriendSchema.safeParse({
+			id: 42,
+			username: null,
+			email: 'x@example.com'
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts a friend with null email', () => {
+		const result = PlexFriendSchema.safeParse({
+			id: 42,
+			username: 'someone',
+			email: null
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts a friend with both null username and null email', () => {
+		const result = PlexFriendSchema.safeParse({
+			id: 42,
+			username: null,
+			email: null
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('still accepts a friend with valid string username and email', () => {
+		const result = PlexFriendSchema.safeParse({
+			id: 42,
+			username: 'someone',
+			email: 'x@example.com'
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('still rejects a friend without an id', () => {
+		const result = PlexFriendSchema.safeParse({
+			username: 'someone',
+			email: null
+		});
+		expect(result.success).toBe(false);
 	});
 });

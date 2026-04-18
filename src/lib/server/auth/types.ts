@@ -283,8 +283,8 @@ export const PlexFriendSharedServerSchema = z.object({
 export const PlexFriendSchema = z.object({
 	id: z.number().int(),
 	uuid: z.string().optional(),
-	username: z.string(),
-	email: z.string().optional(),
+	username: z.string().nullish(),
+	email: z.string().nullish(),
 	friendlyName: z.string().nullish(),
 	title: z.string().optional(),
 	thumb: z.string().optional(),

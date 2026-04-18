@@ -227,6 +227,66 @@ export function filterServerResources(resources: PlexResource[]): PlexResource[]
 	);
 }
 
+function matchesPlainHost(configuredUrl: string, server: PlexResource): boolean {
+	let configuredHost: string;
+	let configuredPort: string;
+	try {
+		const parsed = new URL(configuredUrl);
+		configuredHost = parsed.hostname.toLowerCase();
+		// .plex.direct URLs are handled by matchesByIpAndPort/machineId strategies.
+		if (configuredHost.endsWith('.plex.direct')) {
+			return false;
+		}
+		configuredPort = parsed.port;
+	} catch {
+		return false;
+	}
+
+	const portsMatch = (connPort: number): boolean => {
+		if (configuredPort === '') {
+			return connPort === 32400 || connPort === 443 || connPort === 80;
+		}
+		return connPort.toString() === configuredPort;
+	};
+
+	// Direct address/port match against advertised connections.
+	if (
+		server.connections?.some(
+			(conn) => conn.address.toLowerCase() === configuredHost && portsMatch(conn.port)
+		)
+	) {
+		return true;
+	}
+
+	// Match against the IP embedded in .plex.direct URIs (Plex often advertises only those).
+	if (server.connections) {
+		for (const conn of server.connections) {
+			if (!conn.uri.includes('.plex.direct')) continue;
+			const extracted = extractPlexDirectIpAndPort(conn.uri);
+			if (!extracted) continue;
+			const embeddedPort = extracted.port === '' ? 32400 : parseInt(extracted.port, 10);
+			if (
+				extracted.ip.toLowerCase() === configuredHost &&
+				!Number.isNaN(embeddedPort) &&
+				portsMatch(embeddedPort)
+			) {
+				return true;
+			}
+		}
+	}
+
+	// Match against server.publicAddress when any advertised connection uses the configured port.
+	if (
+		server.publicAddress &&
+		server.publicAddress.toLowerCase() === configuredHost &&
+		server.connections?.some((c) => portsMatch(c.port))
+	) {
+		return true;
+	}
+
+	return false;
+}
+
 function findConfiguredServer(
 	servers: PlexResource[],
 	configuredUrl: string
@@ -257,9 +317,20 @@ function findConfiguredServer(
 			);
 			return serverByIp;
 		}
+	} else {
+		// Strategy 3: For plain-host URLs (e.g. http://192.168.1.34:32400), match against
+		// connection address/port, IPs embedded in .plex.direct URIs, or publicAddress.
+		const serverByPlainHost = servers.find((s) => matchesPlainHost(configuredUrl, s));
+		if (serverByPlainHost) {
+			logger.debug(
+				`Matched server by plain host/port: ${configuredUrl} -> ${serverByPlainHost.name}`,
+				'Membership'
+			);
+			return serverByPlainHost;
+		}
 	}
 
-	// Strategy 3: Fall back to connection URI matching
+	// Strategy 4: Fall back to connection URI matching
 	return servers.find((server) => {
 		if (server.connections) {
 			return server.connections.some((conn) => urlsMatch(conn.uri, configuredUrl));
