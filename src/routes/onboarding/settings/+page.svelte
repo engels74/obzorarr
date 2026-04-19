@@ -245,10 +245,10 @@ function getThemeColors(themeValue: string) {
 				<input type="hidden" name="funFactFrequency" value={funFactFrequency} />
 				{#if enableFunFacts}
 					<input type="hidden" name="openaiApiKey" value={openaiApiKey} />
+					<input type="hidden" name="openaiBaseUrl" value={openaiBaseUrl} />
+					<input type="hidden" name="openaiModel" value={openaiModel} />
+					<input type="hidden" name="aiPersona" value={aiPersona} />
 				{/if}
-				<input type="hidden" name="openaiBaseUrl" value={openaiBaseUrl} />
-				<input type="hidden" name="openaiModel" value={openaiModel} />
-				<input type="hidden" name="aiPersona" value={aiPersona} />
 
 				<!-- Carousel Content -->
 				<div class="carousel-content" bind:this={contentRef}>
