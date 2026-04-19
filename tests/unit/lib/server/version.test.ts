@@ -44,4 +44,14 @@ describe('getAppVersion', () => {
 		envAny.COMMIT_TAG = '  0.1.10  ';
 		expect(getAppVersion()).toEqual({ kind: 'release', display: 'v0.1.10' });
 	});
+
+	it('treats a pre-release tag (0.1.10-beta) as dev, not release', () => {
+		envAny.COMMIT_TAG = '0.1.10-beta';
+		expect(getAppVersion()).toEqual({ kind: 'dev', display: '0.1.10-beta' });
+	});
+
+	it('treats a tag with trailing garbage (v1.2.3foo) as dev, not release', () => {
+		envAny.COMMIT_TAG = 'v1.2.3foo';
+		expect(getAppVersion()).toEqual({ kind: 'dev', display: 'v1.2.3foo' });
+	});
 });

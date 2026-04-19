@@ -6,7 +6,7 @@ export type AppVersion = {
 	display: string;
 };
 
-const SEMVER = /^v?\d+\.\d+\.\d+/;
+const SEMVER = /^v?\d+\.\d+\.\d+$/;
 const SHA = /^[0-9a-f]{7,40}$/i;
 
 export function getAppVersion(): AppVersion {
