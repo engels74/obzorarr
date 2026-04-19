@@ -196,10 +196,15 @@ export interface CreateSessionOptions {
 	durationMs?: number;
 }
 
+export type MembershipFailureReason = 'not_reachable' | 'not_in_resources' | 'not_owner';
+
 export interface MembershipResult {
 	isMember: boolean;
 	isOwner: boolean;
 	serverName?: string;
+	reason?: MembershipFailureReason;
+	configuredMachineId?: string;
+	identityErrorReason?: string;
 }
 
 export interface PinInfo {

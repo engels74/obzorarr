@@ -6,6 +6,7 @@ import {
 	type AnonymizationModeType,
 	AppSettingsKey,
 	type ConfigSource,
+	clearCachedServerMachineId,
 	clearPlayHistory,
 	clearStatsCache,
 	countPlayHistory,
@@ -227,9 +228,15 @@ export const actions: Actions = {
 			// leaking via hydration; an empty submission means "no change".
 			if (parsed.data.plexServerUrl && !apiConfig.plex.serverUrl.isLocked) {
 				await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, parsed.data.plexServerUrl);
+				// URL changed — the cached machineId may be stale; next membership
+				// check will re-fetch /identity against the new URL.
+				await clearCachedServerMachineId();
 			}
 			if (parsed.data.plexToken && !apiConfig.plex.token.isLocked) {
 				await setAppSetting(AppSettingsKey.PLEX_TOKEN, parsed.data.plexToken);
+				// Token changed — the cached machineId was fetched with the old token;
+				// drop it so /identity runs with the new credentials.
+				await clearCachedServerMachineId();
 			}
 			if (parsed.data.openaiApiKey && !apiConfig.openai.apiKey.isLocked) {
 				await setAppSetting(AppSettingsKey.OPENAI_API_KEY, parsed.data.openaiApiKey);

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, spyOn } from 'bun:test';
 
 import * as settingsService from '$lib/server/admin/settings.service';
 import { verifyServerMembership } from '$lib/server/auth/membership';
+import * as serverIdentityService from '$lib/server/plex/server-identity.service';
 
 function createMockResponse(data: unknown, ok = true, status = 200): Response {
 	return {
@@ -42,10 +43,12 @@ function mockConfiguredUrl(url: string): ReturnType<typeof spyOn> {
 describe('verifyServerMembership', () => {
 	let fetchSpy: ReturnType<typeof spyOn>;
 	let configSpy: ReturnType<typeof spyOn>;
+	let identitySpy: ReturnType<typeof spyOn>;
 
 	afterEach(() => {
 		fetchSpy?.mockRestore();
 		configSpy?.mockRestore();
+		identitySpy?.mockRestore();
 	});
 
 	it('returns { isMember: false, isOwner: false } when no server matches the configured URL', async () => {
@@ -57,6 +60,18 @@ describe('verifyServerMembership', () => {
 		// there is no meaningful configured server to check against, and without the
 		// gate the revalidator would incorrectly revoke the freshly-created session.
 		configSpy = mockConfiguredUrl('http://test-plex-server:32400');
+		// Mock /identity explicitly so the outcome does not depend on the
+		// shared fetch mock being (accidentally) rejected as an invalid
+		// identity response. With /identity succeeding and the returned
+		// machineId absent from /resources, the result must be not_in_resources.
+		identitySpy = spyOn(
+			serverIdentityService,
+			'refreshConfiguredServerMachineId'
+		).mockResolvedValue({
+			machineId: MOCK_MACHINE_ID,
+			source: 'fresh',
+			errorReason: null
+		});
 		fetchSpy = spyOn(global, 'fetch').mockResolvedValue(
 			createMockResponse([
 				{
@@ -83,14 +98,24 @@ describe('verifyServerMembership', () => {
 
 		expect(result.isMember).toBe(false);
 		expect(result.isOwner).toBe(false);
+		expect(result.reason).toBe('not_in_resources');
+		expect(result.configuredMachineId).toBe(MOCK_MACHINE_ID);
 	});
 
-	it('matches a plain-host configured URL against a .plex.direct-only server (obzorarr-docker #5)', async () => {
-		// Regression: when PLEX_SERVER_URL is a plain http://<lan-ip>:<port> but the
-		// server only advertises .plex.direct URIs (which is the norm once https is
-		// enabled), the previous matcher's three strategies all failed and users saw
-		// "No matching server found" during onboarding.
+	it('matches a plain-host configured URL against a .plex.direct-only server when /identity is reachable', async () => {
+		// Regression coverage for obzorarr-docker #5: plain http://<lan-ip>:<port>
+		// configured URL, server advertises .plex.direct URIs. With the reachability
+		// gate in place, /identity must be reachable for membership to be granted;
+		// once it is, Strategy 0 (machineId) pins the match.
 		configSpy = mockConfiguredUrl('http://192.168.1.34:32400');
+		identitySpy = spyOn(
+			serverIdentityService,
+			'refreshConfiguredServerMachineId'
+		).mockResolvedValue({
+			machineId: MOCK_MACHINE_ID,
+			source: 'fresh',
+			errorReason: null
+		});
 		fetchSpy = spyOn(global, 'fetch').mockResolvedValue(
 			createMockResponse([
 				{
@@ -129,58 +154,34 @@ describe('verifyServerMembership', () => {
 		expect(result.serverName).toBe('Home Server');
 	});
 
-	it('matches a plain-host configured URL via the embedded IP of a .plex.direct URI', async () => {
-		// When a server only advertises a .plex.direct URI that embeds the public IP
-		// (no structured connection with a matching address), the plain-host matcher
-		// still succeeds by extracting the IP from the URI itself.
-		configSpy = mockConfiguredUrl('http://203.0.113.10:32400');
+	it('matches by /identity machineIdentifier when URL strategies cannot (obzorarr-docker #5)', async () => {
+		// Reporter's config: hostname-based PLEX_SERVER_URL against a server that only
+		// advertises .plex.direct/IP connections. None of the URL-string strategies
+		// match. Strategy 0 uses GET /identity to fetch the real machineIdentifier
+		// and compares it directly against each resource's clientIdentifier.
+		configSpy = mockConfiguredUrl('http://plex.local.timo.be:32400');
+		identitySpy = spyOn(
+			serverIdentityService,
+			'refreshConfiguredServerMachineId'
+		).mockResolvedValue({
+			machineId: MOCK_MACHINE_ID,
+			source: 'fresh',
+			errorReason: null
+		});
 		fetchSpy = spyOn(global, 'fetch').mockResolvedValue(
 			createMockResponse([
 				{
-					name: 'Remote Server',
-					product: 'Plex Media Server',
-					clientIdentifier: MOCK_MACHINE_ID,
-					owned: false,
-					provides: 'server',
-					connections: [
-						{
-							protocol: 'https',
-							address: 'some-internal-host',
-							port: 32400,
-							uri: `https://203-0-113-10.${MOCK_MACHINE_ID}.plex.direct:32400`,
-							local: false,
-							relay: false
-						}
-					]
-				}
-			])
-		);
-
-		const result = await verifyServerMembership('user-token');
-
-		expect(result.isMember).toBe(true);
-		expect(result.isOwner).toBe(false);
-	});
-
-	it('matches a plain-host configured URL via server.publicAddress', async () => {
-		// If the configured host equals publicAddress and any advertised connection
-		// uses the configured port, treat it as the same server.
-		configSpy = mockConfiguredUrl('http://203.0.113.10:32400');
-		fetchSpy = spyOn(global, 'fetch').mockResolvedValue(
-			createMockResponse([
-				{
-					name: 'Public IP Server',
+					name: 'X.A.N.A.',
 					product: 'Plex Media Server',
 					clientIdentifier: MOCK_MACHINE_ID,
 					owned: true,
 					provides: 'server',
-					publicAddress: '203.0.113.10',
 					connections: [
 						{
 							protocol: 'https',
-							address: 'internal.example.com',
+							address: '10.244.0.25',
 							port: 32400,
-							uri: 'https://internal.example.com:32400',
+							uri: `https://10-244-0-25.${MOCK_MACHINE_ID}.plex.direct:32400`,
 							local: true,
 							relay: false
 						}
@@ -193,5 +194,107 @@ describe('verifyServerMembership', () => {
 
 		expect(result.isMember).toBe(true);
 		expect(result.isOwner).toBe(true);
+		expect(result.serverName).toBe('X.A.N.A.');
+		expect(result.configuredMachineId).toBe(MOCK_MACHINE_ID);
+	});
+
+	it('returns reason "not_reachable" when /identity is unreachable and URL strategies fail', async () => {
+		configSpy = mockConfiguredUrl('http://plex.local.timo.be:32400');
+		identitySpy = spyOn(
+			serverIdentityService,
+			'refreshConfiguredServerMachineId'
+		).mockResolvedValue({
+			machineId: null,
+			source: 'unavailable',
+			errorReason: 'Connection timed out - the server may be unreachable'
+		});
+		fetchSpy = spyOn(global, 'fetch').mockResolvedValue(
+			createMockResponse([
+				{
+					name: 'Some Server',
+					product: 'Plex Media Server',
+					clientIdentifier: 'a-different-machine-id',
+					owned: true,
+					provides: 'server',
+					connections: [
+						{
+							protocol: 'https',
+							address: '10.0.0.1',
+							port: 32400,
+							uri: 'https://10-0-0-1.a-different-machine-id.plex.direct:32400',
+							local: false,
+							relay: false
+						}
+					]
+				}
+			])
+		);
+
+		const result = await verifyServerMembership('user-token');
+
+		expect(result.isMember).toBe(false);
+		expect(result.reason).toBe('not_reachable');
+		expect(result.configuredMachineId).toBeUndefined();
+	});
+
+	it('returns reason "not_in_resources" when /identity succeeds but the server is not in plex.tv resources', async () => {
+		configSpy = mockConfiguredUrl('http://plex.local.timo.be:32400');
+		identitySpy = spyOn(
+			serverIdentityService,
+			'refreshConfiguredServerMachineId'
+		).mockResolvedValue({
+			machineId: MOCK_MACHINE_ID,
+			source: 'fresh',
+			errorReason: null
+		});
+		fetchSpy = spyOn(global, 'fetch').mockResolvedValue(
+			createMockResponse([
+				{
+					name: 'Unrelated Server',
+					product: 'Plex Media Server',
+					clientIdentifier: 'b'.repeat(32),
+					owned: true,
+					provides: 'server',
+					connections: []
+				}
+			])
+		);
+
+		const result = await verifyServerMembership('user-token');
+
+		expect(result.isMember).toBe(false);
+		expect(result.reason).toBe('not_in_resources');
+		expect(result.configuredMachineId).toBe(MOCK_MACHINE_ID);
+	});
+
+	it('returns reason "not_owner" when Strategy 0 matches but the server is not owned', async () => {
+		configSpy = mockConfiguredUrl('http://plex.local.timo.be:32400');
+		identitySpy = spyOn(
+			serverIdentityService,
+			'refreshConfiguredServerMachineId'
+		).mockResolvedValue({
+			machineId: MOCK_MACHINE_ID,
+			source: 'cache',
+			errorReason: null
+		});
+		fetchSpy = spyOn(global, 'fetch').mockResolvedValue(
+			createMockResponse([
+				{
+					name: "Friend's Server",
+					product: 'Plex Media Server',
+					clientIdentifier: MOCK_MACHINE_ID,
+					owned: false,
+					provides: 'server',
+					connections: []
+				}
+			])
+		);
+
+		const result = await verifyServerMembership('user-token');
+
+		expect(result.isMember).toBe(true);
+		expect(result.isOwner).toBe(false);
+		expect(result.reason).toBe('not_owner');
+		expect(result.configuredMachineId).toBe(MOCK_MACHINE_ID);
 	});
 });

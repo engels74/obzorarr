@@ -20,6 +20,7 @@ export const AppSettingsKey = {
 	SYNC_CRON_EXPRESSION: 'sync_cron_expression',
 	WRAPPED_LOGO_MODE: 'wrapped_logo_mode',
 	SERVER_NAME: 'server_name',
+	SERVER_MACHINE_ID: 'server_machine_id',
 	FUN_FACT_FREQUENCY: 'fun_fact_frequency',
 	FUN_FACT_CUSTOM_COUNT: 'fun_fact_custom_count',
 	FUN_FACTS_AI_PERSONA: 'fun_facts_ai_persona',
@@ -186,6 +187,18 @@ export async function getCachedServerName(): Promise<string | null> {
 
 export async function setCachedServerName(name: string): Promise<void> {
 	await setAppSetting(AppSettingsKey.SERVER_NAME, name);
+}
+
+export async function getCachedServerMachineId(): Promise<string | null> {
+	return getAppSetting(AppSettingsKey.SERVER_MACHINE_ID);
+}
+
+export async function setCachedServerMachineId(machineId: string): Promise<void> {
+	await setAppSetting(AppSettingsKey.SERVER_MACHINE_ID, machineId);
+}
+
+export async function clearCachedServerMachineId(): Promise<void> {
+	await deleteAppSetting(AppSettingsKey.SERVER_MACHINE_ID);
 }
 
 export async function getFunFactFrequency(): Promise<FunFactFrequencyConfig> {
@@ -485,6 +498,15 @@ export async function clearConflictingDbSettings(): Promise<string[]> {
 			await deleteAppSetting(dbKey);
 			clearedSettings.push(label);
 		}
+	}
+
+	// If either Plex config key is driven by an env var, the cached machineId may
+	// have been derived from a different PLEX_SERVER_URL/PLEX_TOKEN (e.g. the env
+	// changed between restarts). Drop the cache so the next call to
+	// getConfiguredServerMachineId() re-fetches /identity against the current config.
+	if ((plexEnv.serverUrl || plexEnv.token) && dbSettings[AppSettingsKey.SERVER_MACHINE_ID]) {
+		await deleteAppSetting(AppSettingsKey.SERVER_MACHINE_ID);
+		clearedSettings.push('SERVER_MACHINE_ID');
 	}
 
 	return clearedSettings;

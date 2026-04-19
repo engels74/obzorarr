@@ -1,5 +1,6 @@
 import { getApiConfigWithSources } from '$lib/server/admin/settings.service';
 import { logger } from '$lib/server/logging';
+import { refreshConfiguredServerMachineId } from '$lib/server/plex/server-identity.service';
 import {
 	type MembershipResult,
 	NotServerMemberError,
@@ -288,8 +289,24 @@ function matchesPlainHost(configuredUrl: string, server: PlexResource): boolean 
 
 function findConfiguredServer(
 	servers: PlexResource[],
-	configuredUrl: string
+	configuredUrl: string,
+	configuredMachineIdFromIdentity?: string
 ): PlexResource | undefined {
+	// Strategy 0: Match by machineIdentifier fetched from GET {PLEX_SERVER_URL}/identity.
+	// This works for any reachable URL form — IP, hostname, .plex.direct, reverse proxy.
+	if (configuredMachineIdFromIdentity) {
+		const serverByConfiguredId = servers.find(
+			(s) => s.clientIdentifier.toLowerCase() === configuredMachineIdFromIdentity.toLowerCase()
+		);
+		if (serverByConfiguredId) {
+			logger.debug(
+				`Matched server by /identity machineIdentifier: ${configuredMachineIdFromIdentity} -> ${serverByConfiguredId.name}`,
+				'Membership'
+			);
+			return serverByConfiguredId;
+		}
+	}
+
 	// Strategy 1: For .plex.direct URLs, try matching by machine ID (most reliable when IDs match)
 	const configuredMachineId = extractPlexDirectMachineId(configuredUrl);
 
@@ -371,14 +388,52 @@ export async function verifyServerMembership(userToken: string): Promise<Members
 		}
 	}
 
+	// Ask the configured server for its own machineIdentifier via /identity.
+	// Works for any URL form (IP, hostname, proxied, docker-dns) provided the
+	// server is reachable from obzorarr with the configured PLEX_TOKEN.
+	// Always do a live probe: the SQLite-backed machineId cache has no TTL, so
+	// a cache-first read could pass the reachability gate below using a stale
+	// id even after the token was revoked or the server went offline (e.g.
+	// during a 15-minute session revalidation that does not pre-refresh).
+	const identityResult = await refreshConfiguredServerMachineId();
+	const configuredMachineIdFromIdentity = identityResult.machineId ?? undefined;
+	logger.debug(
+		`Configured server machineIdentifier: ${identityResult.machineId ?? 'null'} (source: ${
+			identityResult.source
+		}${identityResult.errorReason ? `, reason: ${identityResult.errorReason}` : ''})`,
+		'Membership'
+	);
+
+	// Reachability gate: if /identity failed, the configured server is unreachable
+	// or the PLEX_TOKEN is no longer valid. Don't admit membership via URL-only
+	// matches (e.g. a .plex.direct hostname that still appears in /resources) —
+	// onboarding must not proceed into a state where every subsequent Plex call
+	// fails with the same issue. This preserves iter-1/2 hostname matching for
+	// the intended case where /identity succeeded but /resources omits the server.
+	if (!configuredMachineIdFromIdentity) {
+		logger.debug('Configured server unreachable; skipping URL-based matching', 'Membership');
+		return {
+			isMember: false,
+			isOwner: false,
+			reason: 'not_reachable',
+			...(identityResult.errorReason ? { identityErrorReason: identityResult.errorReason } : {})
+		};
+	}
+
 	// Find the configured server
-	const configuredServer = findConfiguredServer(servers, configuredUrl);
+	const configuredServer = findConfiguredServer(
+		servers,
+		configuredUrl,
+		configuredMachineIdFromIdentity
+	);
 
 	if (!configuredServer) {
 		logger.debug('No matching server found for configured URL', 'Membership');
 		return {
 			isMember: false,
-			isOwner: false
+			isOwner: false,
+			reason: 'not_in_resources',
+			configuredMachineId: configuredMachineIdFromIdentity
 		};
 	}
 
@@ -387,21 +442,44 @@ export async function verifyServerMembership(userToken: string): Promise<Members
 		'Membership'
 	);
 
-	return {
+	const result: MembershipResult = {
 		isMember: true,
 		isOwner: configuredServer.owned,
 		serverName: configuredServer.name
 	};
+
+	if (!configuredServer.owned) {
+		result.reason = 'not_owner';
+	}
+
+	if (configuredMachineIdFromIdentity) {
+		result.configuredMachineId = configuredMachineIdFromIdentity;
+	}
+
+	return result;
 }
 
 export async function requireServerMembership(userToken: string): Promise<MembershipResult> {
 	const membership = await verifyServerMembership(userToken);
 
 	if (!membership.isMember) {
-		throw new NotServerMemberError();
+		throw new NotServerMemberError(messageForMembershipFailure(membership));
 	}
 
 	return membership;
+}
+
+export function messageForMembershipFailure(membership: MembershipResult): string {
+	switch (membership.reason) {
+		case 'not_reachable': {
+			const detail = membership.identityErrorReason ? ` (${membership.identityErrorReason})` : '';
+			return `Obzorarr could not reach or authenticate with the configured Plex server${detail}. Check that PLEX_SERVER_URL and PLEX_TOKEN are correct and the server is online.`;
+		}
+		case 'not_in_resources':
+			return 'The configured Plex server is not listed under your Plex.tv account. Please sign in with the server owner account.';
+		default:
+			return 'You are not a member of this Plex server.';
+	}
 }
 
 export function determineRole(isOwner: boolean): { isAdmin: boolean } {
