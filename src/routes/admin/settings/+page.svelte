@@ -835,7 +835,7 @@ const logFieldErrors = $derived(
 							<button
 								type="button"
 								class="btn-secondary"
-								disabled={isTestingAI || (!openaiApiKey && !openaiApiKeyHasValue)}
+								disabled={isTestingAI || (!openaiApiKey.trim() && !openaiApiKeyHasValue)}
 								onclick={async () => {
 									isTestingAI = true;
 									testAIResult = null;
