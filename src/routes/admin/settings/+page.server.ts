@@ -324,8 +324,8 @@ export const actions: Actions = {
 
 		const apiConfig = await getApiConfigWithSources();
 		const storedKey = apiConfig.openai.apiKey.value;
-		const storedBaseUrl = apiConfig.openai.baseUrl.value;
-		const storedModel = apiConfig.openai.model.value;
+		const storedBaseUrl = apiConfig.openai.baseUrl.value.trim();
+		const storedModel = apiConfig.openai.model.value.trim();
 
 		const baseUrl = submittedBaseUrl || storedBaseUrl;
 		const model = submittedModel || storedModel;
