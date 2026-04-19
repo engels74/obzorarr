@@ -2,6 +2,7 @@ import { error, json } from '@sveltejs/kit';
 import { z } from 'zod';
 import {
 	AppSettingsKey,
+	clearCachedServerMachineId,
 	setAppSetting,
 	setCachedServerMachineId,
 	setCachedServerName
@@ -124,6 +125,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		await setCachedServerName(serverName);
 		if (testResult.machineIdentifier) {
 			await setCachedServerMachineId(testResult.machineIdentifier);
+		} else {
+			// Server URL/token just changed. Drop any machineId cached from a
+			// previous server so membership matching doesn't reuse a stale id.
+			await clearCachedServerMachineId();
 		}
 
 		logger.info(`Onboarding: Server configured - ${serverName} (${serverUrl})`, 'Onboarding');

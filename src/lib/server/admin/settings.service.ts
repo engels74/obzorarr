@@ -518,8 +518,9 @@ export async function clearConflictingDbSettings(): Promise<string[]> {
 	// have been derived from a different PLEX_SERVER_URL/PLEX_TOKEN (e.g. the env
 	// changed between restarts). Drop the cache so the next call to
 	// getConfiguredServerMachineId() re-fetches /identity against the current config.
-	if (plexEnv.serverUrl || plexEnv.token) {
+	if ((plexEnv.serverUrl || plexEnv.token) && dbSettings[AppSettingsKey.SERVER_MACHINE_ID]) {
 		await deleteAppSetting(AppSettingsKey.SERVER_MACHINE_ID);
+		clearedSettings.push('SERVER_MACHINE_ID');
 	}
 
 	return clearedSettings;

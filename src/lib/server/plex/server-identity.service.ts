@@ -135,6 +135,9 @@ export async function refreshConfiguredServerMachineId(): Promise<ConfiguredMach
 		return { machineId: identity.machineIdentifier, source: 'fresh', errorReason: null };
 	}
 
+	// Evict any stale cached id so cache-first callers (e.g. confirmOwnershipOverride)
+	// can't satisfy a reachability gate with a machineId from a no-longer-reachable server.
+	await clearCachedServerMachineId();
 	return { machineId: null, source: 'unavailable', errorReason };
 }
 
