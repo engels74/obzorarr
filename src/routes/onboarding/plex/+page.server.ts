@@ -8,7 +8,10 @@ import { db } from '$lib/server/db/client';
 import { sessions, users } from '$lib/server/db/schema';
 import { logger } from '$lib/server/logging';
 import { isOnboardingComplete, OnboardingSteps, setOnboardingStep } from '$lib/server/onboarding';
-import { refreshConfiguredServerMachineId } from '$lib/server/plex/server-identity.service';
+import {
+	fetchServerIdentity,
+	refreshConfiguredServerMachineId
+} from '$lib/server/plex/server-identity.service';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ parent }) => {
@@ -148,17 +151,15 @@ export const actions: Actions = {
 			});
 		}
 
-		// No override flag is persisted: when env is absent the DB is already
-		// authoritative. Writing a flag here would be dead state today and a
-		// footgun later — a pre-existing `true` would silently bypass the env
-		// guard above if env vars were added in a future boot.
-
-		logger.info(
-			`Onboarding: Manual server selection requested by ${locals.user.username}`,
-			'Onboarding'
-		);
-
-		redirect(303, '/onboarding/plex');
+		// The "Use a different server" button is only rendered when hasEnvConfig is
+		// true (see +page.svelte), which means the guard above has already returned.
+		// If the action is ever reached with env absent, the manual picker is already
+		// visible on the same page, so there is no meaningful redirect target — surface
+		// the dead-end explicitly rather than no-op.
+		return fail(400, {
+			error:
+				'Manual server selection is already available on this page. Reload if the picker is not visible.'
+		});
 	},
 
 	confirmOwnershipOverride: async ({ locals, cookies }) => {
@@ -177,12 +178,13 @@ export const actions: Actions = {
 			return fail(401, { error: 'Session not found' });
 		}
 
+		const plexToken = await getSessionPlexToken(sessionId);
+		if (!plexToken) {
+			return fail(401, { error: 'Session expired. Please sign in again.' });
+		}
+
 		let membership: MembershipResult;
 		try {
-			const plexToken = await getSessionPlexToken(sessionId);
-			if (!plexToken) {
-				return fail(401, { error: 'Session expired. Please sign in again.' });
-			}
 			membership = await verifyServerMembership(plexToken);
 		} catch (err) {
 			if (
@@ -202,16 +204,41 @@ export const actions: Actions = {
 			return fail(500, { error: 'Failed to verify server ownership. Please try again.' });
 		}
 
-		if (!membership.isOwner) {
-			return fail(403, {
-				error: membership.isMember
-					? 'Only the server owner can use the admin override. Please sign in with the server owner account.'
-					: messageForMembershipFailure(membership)
-			});
-		}
-
 		const apiConfig = await getApiConfigWithSources();
 		const configuredUrl = apiConfig.plex.serverUrl.value;
+
+		// The override exists for the narrow case where the configured server is
+		// not in the user's Plex.tv /resources list (e.g. hostname-routed self-hosts
+		// Plex.tv can't return), so verifyServerMembership cannot set isOwner here.
+		// When that specific failure mode occurs, require direct token-level access
+		// instead: the user's plex token must be able to fetch /identity from the
+		// configured URL and return the same machineIdentifier the configured token
+		// already observed. That proves they can talk to the server with their own
+		// credentials, which is the strongest available proof when /resources is silent.
+		if (!membership.isOwner) {
+			if (membership.reason !== 'not_in_resources' || !membership.configuredMachineId) {
+				return fail(403, {
+					error: membership.isMember
+						? 'Only the server owner can use the admin override. Please sign in with the server owner account.'
+						: messageForMembershipFailure(membership)
+				});
+			}
+
+			const directProbe = await fetchServerIdentity(configuredUrl, plexToken);
+			const matches =
+				directProbe.identity?.machineIdentifier.toLowerCase() ===
+				membership.configuredMachineId.toLowerCase();
+			if (!matches) {
+				logger.warn(
+					`Onboarding: Admin override denied for ${configuredUrl} user=${locals.user.username} reason=${directProbe.errorReason ?? 'machine_id_mismatch'}`,
+					'Onboarding'
+				);
+				return fail(403, {
+					error:
+						'Could not verify ownership with your Plex token. The token must be able to reach the configured server directly.'
+				});
+			}
+		}
 
 		const userId = locals.user.id;
 		await db.transaction(async (tx) => {
