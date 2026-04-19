@@ -3,14 +3,12 @@ import { eq } from 'drizzle-orm';
 import { getApiConfigWithSources, hasPlexEnvConfig } from '$lib/server/admin/settings.service';
 import { messageForMembershipFailure, verifyServerMembership } from '$lib/server/auth/membership';
 import { getSessionPlexToken } from '$lib/server/auth/session';
+import type { MembershipResult } from '$lib/server/auth/types';
 import { db } from '$lib/server/db/client';
 import { sessions, users } from '$lib/server/db/schema';
 import { logger } from '$lib/server/logging';
 import { isOnboardingComplete, OnboardingSteps, setOnboardingStep } from '$lib/server/onboarding';
-import {
-	getConfiguredServerMachineId,
-	refreshConfiguredServerMachineId
-} from '$lib/server/plex/server-identity.service';
+import { refreshConfiguredServerMachineId } from '$lib/server/plex/server-identity.service';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ parent }) => {
@@ -179,11 +177,36 @@ export const actions: Actions = {
 			return fail(401, { error: 'Session not found' });
 		}
 
-		const identity = await getConfiguredServerMachineId();
-		if (!identity.machineId) {
-			return fail(400, {
-				error:
-					'The configured server is not reachable, so ownership cannot be verified. Choose a different server.'
+		let membership: MembershipResult;
+		try {
+			const plexToken = await getSessionPlexToken(sessionId);
+			if (!plexToken) {
+				return fail(401, { error: 'Session expired. Please sign in again.' });
+			}
+			membership = await verifyServerMembership(plexToken);
+		} catch (err) {
+			if (
+				err instanceof Response ||
+				(err &&
+					typeof err === 'object' &&
+					'status' in err &&
+					(err as { status: number }).status >= 300 &&
+					(err as { status: number }).status < 400)
+			) {
+				throw err;
+			}
+			logger.error(
+				`Ownership override verification failed: ${err instanceof Error ? err.message : String(err)}`,
+				'Onboarding'
+			);
+			return fail(500, { error: 'Failed to verify server ownership. Please try again.' });
+		}
+
+		if (!membership.isOwner) {
+			return fail(403, {
+				error: membership.isMember
+					? 'Only the server owner can use the admin override. Please sign in with the server owner account.'
+					: messageForMembershipFailure(membership)
 			});
 		}
 
@@ -197,7 +220,7 @@ export const actions: Actions = {
 		});
 
 		logger.warn(
-			`Onboarding: Admin override used for ${configuredUrl} machineId=${identity.machineId} user=${locals.user.username}`,
+			`Onboarding: Admin override used for ${configuredUrl} machineId=${membership.configuredMachineId ?? 'unknown'} user=${locals.user.username}`,
 			'Onboarding'
 		);
 
