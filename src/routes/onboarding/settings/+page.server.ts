@@ -300,8 +300,8 @@ export const actions: Actions = {
 				enableFunFacts: formData.get('enableFunFacts'),
 				funFactFrequency: formData.get('funFactFrequency'),
 				openaiApiKey: formData.get('openaiApiKey') ?? undefined,
-				openaiBaseUrl: formData.get('openaiBaseUrl') ?? undefined,
-				openaiModel: formData.get('openaiModel') ?? undefined,
+				openaiBaseUrl: (formData.get('openaiBaseUrl') as string | null)?.trim() ?? undefined,
+				openaiModel: (formData.get('openaiModel') as string | null)?.trim() ?? undefined,
 				aiPersona: formData.get('aiPersona') ?? undefined
 			};
 
@@ -315,6 +315,7 @@ export const actions: Actions = {
 			const data = parseResult.data;
 			const openaiApiKey = data.openaiApiKey?.trim();
 			const openaiBaseUrl = data.openaiBaseUrl?.trim().replace(/\/+$/, '');
+			const openaiModel = data.openaiModel?.trim();
 
 			// Save all settings in parallel
 			await Promise.all([
@@ -340,8 +341,8 @@ export const actions: Actions = {
 				data.enableFunFacts && openaiBaseUrl
 					? setAppSetting(AppSettingsKey.OPENAI_BASE_URL, openaiBaseUrl)
 					: Promise.resolve(),
-				data.enableFunFacts && data.openaiModel
-					? setAppSetting(AppSettingsKey.OPENAI_MODEL, data.openaiModel)
+				data.enableFunFacts && openaiModel
+					? setAppSetting(AppSettingsKey.OPENAI_MODEL, openaiModel)
 					: Promise.resolve(),
 				data.enableFunFacts && data.aiPersona
 					? setAppSetting(AppSettingsKey.FUN_FACTS_AI_PERSONA, data.aiPersona)

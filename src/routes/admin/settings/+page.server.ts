@@ -318,7 +318,7 @@ export const actions: Actions = {
 
 	testAIConnection: async ({ request }) => {
 		const formData = await request.formData();
-		const submittedKey = formData.get('openaiApiKey')?.toString() ?? '';
+		const submittedKey = (formData.get('openaiApiKey')?.toString() ?? '').trim();
 		const submittedBaseUrl = (formData.get('openaiBaseUrl')?.toString() ?? '').trim();
 		const submittedModel = (formData.get('openaiModel')?.toString() ?? '').trim();
 
