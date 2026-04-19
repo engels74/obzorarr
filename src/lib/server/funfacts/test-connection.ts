@@ -52,10 +52,13 @@ export async function testOpenAIConnection(
 			error: `Request failed: ${response.status} ${response.statusText}`
 		};
 	} catch (error) {
-		if ((error as Error).name === 'AbortError') {
+		if (error instanceof Error && error.name === 'AbortError') {
 			return { success: false, error: 'Connection timed out' };
 		}
-		return { success: false, error: (error as Error).message };
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : String(error)
+		};
 	} finally {
 		clearTimeout(timeoutId);
 	}

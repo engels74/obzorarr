@@ -147,6 +147,16 @@ describe('testOpenAIConnection', () => {
 		expect(result).toEqual({ success: false, error: 'network down' });
 	});
 
+	it('returns a string representation when fetch rejects with a non-Error value', async () => {
+		globalThis.fetch = mock(() =>
+			Promise.reject('unexpected string error')
+		) as unknown as typeof fetch;
+
+		const result = await testOpenAIConnection('sk-test');
+
+		expect(result).toEqual({ success: false, error: 'unexpected string error' });
+	});
+
 	it('trims whitespace from the API key before sending the Authorization header', async () => {
 		const captured: { init?: RequestInit } = {};
 

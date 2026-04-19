@@ -313,6 +313,8 @@ export const actions: Actions = {
 			}
 
 			const data = parseResult.data;
+			const openaiApiKey = data.openaiApiKey?.trim();
+			const openaiBaseUrl = data.openaiBaseUrl?.trim().replace(/\/+$/, '');
 
 			// Save all settings in parallel
 			await Promise.all([
@@ -332,11 +334,11 @@ export const actions: Actions = {
 				data.enableFunFacts && data.funFactFrequency
 					? setFunFactFrequency(data.funFactFrequency as FunFactFrequencyType)
 					: Promise.resolve(),
-				data.enableFunFacts && data.openaiApiKey
-					? setAppSetting(AppSettingsKey.OPENAI_API_KEY, data.openaiApiKey)
+				data.enableFunFacts && openaiApiKey
+					? setAppSetting(AppSettingsKey.OPENAI_API_KEY, openaiApiKey)
 					: Promise.resolve(),
-				data.enableFunFacts && data.openaiBaseUrl
-					? setAppSetting(AppSettingsKey.OPENAI_BASE_URL, data.openaiBaseUrl)
+				data.enableFunFacts && openaiBaseUrl
+					? setAppSetting(AppSettingsKey.OPENAI_BASE_URL, openaiBaseUrl)
 					: Promise.resolve(),
 				data.enableFunFacts && data.openaiModel
 					? setAppSetting(AppSettingsKey.OPENAI_MODEL, data.openaiModel)
