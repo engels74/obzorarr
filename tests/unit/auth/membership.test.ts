@@ -64,7 +64,10 @@ describe('verifyServerMembership', () => {
 		// shared fetch mock being (accidentally) rejected as an invalid
 		// identity response. With /identity succeeding and the returned
 		// machineId absent from /resources, the result must be not_in_resources.
-		identitySpy = spyOn(serverIdentityService, 'getConfiguredServerMachineId').mockResolvedValue({
+		identitySpy = spyOn(
+			serverIdentityService,
+			'refreshConfiguredServerMachineId'
+		).mockResolvedValue({
 			machineId: MOCK_MACHINE_ID,
 			source: 'fresh',
 			errorReason: null
@@ -105,7 +108,10 @@ describe('verifyServerMembership', () => {
 		// gate in place, /identity must be reachable for membership to be granted;
 		// once it is, Strategy 0 (machineId) pins the match.
 		configSpy = mockConfiguredUrl('http://192.168.1.34:32400');
-		identitySpy = spyOn(serverIdentityService, 'getConfiguredServerMachineId').mockResolvedValue({
+		identitySpy = spyOn(
+			serverIdentityService,
+			'refreshConfiguredServerMachineId'
+		).mockResolvedValue({
 			machineId: MOCK_MACHINE_ID,
 			source: 'fresh',
 			errorReason: null
@@ -154,7 +160,10 @@ describe('verifyServerMembership', () => {
 		// match. Strategy 0 uses GET /identity to fetch the real machineIdentifier
 		// and compares it directly against each resource's clientIdentifier.
 		configSpy = mockConfiguredUrl('http://plex.local.timo.be:32400');
-		identitySpy = spyOn(serverIdentityService, 'getConfiguredServerMachineId').mockResolvedValue({
+		identitySpy = spyOn(
+			serverIdentityService,
+			'refreshConfiguredServerMachineId'
+		).mockResolvedValue({
 			machineId: MOCK_MACHINE_ID,
 			source: 'fresh',
 			errorReason: null
@@ -191,7 +200,10 @@ describe('verifyServerMembership', () => {
 
 	it('returns reason "not_reachable" when /identity is unreachable and URL strategies fail', async () => {
 		configSpy = mockConfiguredUrl('http://plex.local.timo.be:32400');
-		identitySpy = spyOn(serverIdentityService, 'getConfiguredServerMachineId').mockResolvedValue({
+		identitySpy = spyOn(
+			serverIdentityService,
+			'refreshConfiguredServerMachineId'
+		).mockResolvedValue({
 			machineId: null,
 			source: 'unavailable',
 			errorReason: 'Connection timed out - the server may be unreachable'
@@ -227,7 +239,10 @@ describe('verifyServerMembership', () => {
 
 	it('returns reason "not_in_resources" when /identity succeeds but the server is not in plex.tv resources', async () => {
 		configSpy = mockConfiguredUrl('http://plex.local.timo.be:32400');
-		identitySpy = spyOn(serverIdentityService, 'getConfiguredServerMachineId').mockResolvedValue({
+		identitySpy = spyOn(
+			serverIdentityService,
+			'refreshConfiguredServerMachineId'
+		).mockResolvedValue({
 			machineId: MOCK_MACHINE_ID,
 			source: 'fresh',
 			errorReason: null
@@ -254,7 +269,10 @@ describe('verifyServerMembership', () => {
 
 	it('returns reason "not_owner" when Strategy 0 matches but the server is not owned', async () => {
 		configSpy = mockConfiguredUrl('http://plex.local.timo.be:32400');
-		identitySpy = spyOn(serverIdentityService, 'getConfiguredServerMachineId').mockResolvedValue({
+		identitySpy = spyOn(
+			serverIdentityService,
+			'refreshConfiguredServerMachineId'
+		).mockResolvedValue({
 			machineId: MOCK_MACHINE_ID,
 			source: 'cache',
 			errorReason: null

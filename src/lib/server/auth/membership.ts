@@ -1,6 +1,6 @@
 import { getApiConfigWithSources } from '$lib/server/admin/settings.service';
 import { logger } from '$lib/server/logging';
-import { getConfiguredServerMachineId } from '$lib/server/plex/server-identity.service';
+import { refreshConfiguredServerMachineId } from '$lib/server/plex/server-identity.service';
 import {
 	type MembershipResult,
 	NotServerMemberError,
@@ -391,7 +391,11 @@ export async function verifyServerMembership(userToken: string): Promise<Members
 	// Ask the configured server for its own machineIdentifier via /identity.
 	// Works for any URL form (IP, hostname, proxied, docker-dns) provided the
 	// server is reachable from obzorarr with the configured PLEX_TOKEN.
-	const identityResult = await getConfiguredServerMachineId();
+	// Always do a live probe: the SQLite-backed machineId cache has no TTL, so
+	// a cache-first read could pass the reachability gate below using a stale
+	// id even after the token was revoked or the server went offline (e.g.
+	// during a 15-minute session revalidation that does not pre-refresh).
+	const identityResult = await refreshConfiguredServerMachineId();
 	const configuredMachineIdFromIdentity = identityResult.machineId ?? undefined;
 	logger.debug(
 		`Configured server machineIdentifier: ${identityResult.machineId ?? 'null'} (source: ${
