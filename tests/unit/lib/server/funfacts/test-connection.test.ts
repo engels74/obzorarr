@@ -185,4 +185,36 @@ describe('testOpenAIConnection', () => {
 		expect(result.success).toBe(true);
 		expect(captured.url).toBe('https://custom.example.com/v1/chat/completions');
 	});
+
+	it('treats blank-string baseUrl and model as missing, falling back to defaults', async () => {
+		const captured: { url?: string; body?: string } = {};
+
+		globalThis.fetch = mock(async (input: RequestInfo | URL, init?: RequestInit) => {
+			captured.url = typeof input === 'string' ? input : input.toString();
+			captured.body = init?.body as string;
+			return new Response(null, { status: 200 });
+		}) as unknown as typeof fetch;
+
+		const result = await testOpenAIConnection('sk-test', '', '');
+
+		expect(result.success).toBe(true);
+		expect(captured.url).toBe('https://api.openai.com/v1/chat/completions');
+		expect(JSON.parse(captured.body ?? '{}').model).toBe('gpt-5-mini');
+	});
+
+	it('treats whitespace-only baseUrl and model as missing, falling back to defaults', async () => {
+		const captured: { url?: string; body?: string } = {};
+
+		globalThis.fetch = mock(async (input: RequestInfo | URL, init?: RequestInit) => {
+			captured.url = typeof input === 'string' ? input : input.toString();
+			captured.body = init?.body as string;
+			return new Response(null, { status: 200 });
+		}) as unknown as typeof fetch;
+
+		const result = await testOpenAIConnection('sk-test', '   ', '\t');
+
+		expect(result.success).toBe(true);
+		expect(captured.url).toBe('https://api.openai.com/v1/chat/completions');
+		expect(JSON.parse(captured.body ?? '{}').model).toBe('gpt-5-mini');
+	});
 });

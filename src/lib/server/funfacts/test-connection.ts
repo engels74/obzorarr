@@ -16,8 +16,8 @@ export async function testOpenAIConnection(
 		return { success: false, error: 'API key is required' };
 	}
 
-	const resolvedBaseUrl = (baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, '');
-	const resolvedModel = model ?? DEFAULT_MODEL;
+	const resolvedBaseUrl = (baseUrl?.trim() || DEFAULT_BASE_URL).replace(/\/+$/, '');
+	const resolvedModel = model?.trim() || DEFAULT_MODEL;
 
 	const controller = new AbortController();
 	const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
