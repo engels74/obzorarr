@@ -400,6 +400,22 @@ export async function verifyServerMembership(userToken: string): Promise<Members
 		'Membership'
 	);
 
+	// Reachability gate: if /identity failed, the configured server is unreachable
+	// or the PLEX_TOKEN is no longer valid. Don't admit membership via URL-only
+	// matches (e.g. a .plex.direct hostname that still appears in /resources) —
+	// onboarding must not proceed into a state where every subsequent Plex call
+	// fails with the same issue. This preserves iter-1/2 hostname matching for
+	// the intended case where /identity succeeded but /resources omits the server.
+	if (!configuredMachineIdFromIdentity) {
+		logger.debug('Configured server unreachable; skipping URL-based matching', 'Membership');
+		return {
+			isMember: false,
+			isOwner: false,
+			reason: 'not_reachable',
+			...(identityResult.errorReason ? { identityErrorReason: identityResult.errorReason } : {})
+		};
+	}
+
 	// Find the configured server
 	const configuredServer = findConfiguredServer(
 		servers,
@@ -409,19 +425,11 @@ export async function verifyServerMembership(userToken: string): Promise<Members
 
 	if (!configuredServer) {
 		logger.debug('No matching server found for configured URL', 'Membership');
-		const reason: MembershipResult['reason'] = configuredMachineIdFromIdentity
-			? 'not_in_resources'
-			: 'not_reachable';
 		return {
 			isMember: false,
 			isOwner: false,
-			reason,
-			...(configuredMachineIdFromIdentity
-				? { configuredMachineId: configuredMachineIdFromIdentity }
-				: {}),
-			...(!configuredMachineIdFromIdentity && identityResult.errorReason
-				? { identityErrorReason: identityResult.errorReason }
-				: {})
+			reason: 'not_in_resources',
+			configuredMachineId: configuredMachineIdFromIdentity
 		};
 	}
 

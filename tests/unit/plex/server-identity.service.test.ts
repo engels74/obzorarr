@@ -230,4 +230,17 @@ describe('refreshConfiguredServerMachineId', () => {
 		expect(result.source).toBe('fresh');
 		expect(await settingsService.getCachedServerMachineId()).toBe(MOCK_MACHINE_ID);
 	});
+
+	it('evicts the cached machineId when /identity fails so stale ids cannot survive a failed refresh', async () => {
+		await settingsService.setCachedServerMachineId(MOCK_MACHINE_ID);
+		configSpy = mockApiConfig(MOCK_URL, MOCK_TOKEN);
+		fetchSpy = spyOn(global, 'fetch').mockResolvedValue(createMockResponse(null, false, 401));
+
+		const result = await refreshConfiguredServerMachineId();
+
+		expect(result.machineId).toBeNull();
+		expect(result.source).toBe('unavailable');
+		expect(result.errorReason).toContain('Authentication failed');
+		expect(await settingsService.getCachedServerMachineId()).toBeNull();
+	});
 });
