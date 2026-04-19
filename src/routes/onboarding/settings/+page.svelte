@@ -544,7 +544,7 @@ function getThemeColors(themeValue: string) {
 								<div class="setting-group">
 									<label class="field-label" for="onboarding-openai-api-key">OpenAI API Key</label>
 									<p class="setting-description">
-										Your key is stored server-side and never exposed to the client.
+										Your key is stored server-side and not returned to the browser once saved.
 									</p>
 									<input
 										id="onboarding-openai-api-key"
