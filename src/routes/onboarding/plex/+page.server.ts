@@ -7,7 +7,10 @@ import { db } from '$lib/server/db/client';
 import { sessions, users } from '$lib/server/db/schema';
 import { logger } from '$lib/server/logging';
 import { isOnboardingComplete, OnboardingSteps, setOnboardingStep } from '$lib/server/onboarding';
-import { getConfiguredServerMachineId } from '$lib/server/plex/server-identity.service';
+import {
+	getConfiguredServerMachineId,
+	refreshConfiguredServerMachineId
+} from '$lib/server/plex/server-identity.service';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ parent }) => {
@@ -20,7 +23,10 @@ export const load: PageServerLoad = async ({ parent }) => {
 	let configuredUrlErrorReason: string | null = null;
 
 	if (parentData.hasEnvConfig) {
-		const identity = await getConfiguredServerMachineId();
+		// Force a live /identity probe on load so the reachability banner reflects
+		// the current server state, not a possibly-stale cached machineId that
+		// could hide the "Cannot reach configured Plex server" remediation path.
+		const identity = await refreshConfiguredServerMachineId();
 		configuredMachineId = identity.machineId;
 		configuredUrlReachable = identity.machineId !== null;
 		configuredUrlErrorReason = identity.errorReason;

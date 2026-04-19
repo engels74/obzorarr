@@ -55,8 +55,6 @@ export async function fetchServerIdentity(
 			signal: controller.signal
 		});
 
-		clearTimeout(timeoutId);
-
 		if (response.status === 401) {
 			logger.debug('Server identity fetch failed: 401 (bad token)', 'ServerIdentity');
 			return {
@@ -94,8 +92,6 @@ export async function fetchServerIdentity(
 			errorReason: null
 		};
 	} catch (err) {
-		clearTimeout(timeoutId);
-
 		if (err instanceof Error) {
 			const reason = classifyConnectionError(err);
 			logger.debug(`Server identity fetch failed: ${reason}`, 'ServerIdentity');
@@ -104,6 +100,11 @@ export async function fetchServerIdentity(
 
 		logger.debug('Server identity fetch failed: unknown error', 'ServerIdentity');
 		return { identity: null, errorReason: 'Connection failed' };
+	} finally {
+		// Keep the timer armed until after response.json() + parsing complete so
+		// CONNECTION_TIMEOUT_MS caps the whole /identity call, not just the
+		// initial fetch resolving its headers.
+		clearTimeout(timeoutId);
 	}
 }
 
