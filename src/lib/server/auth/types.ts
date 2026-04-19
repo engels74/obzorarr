@@ -204,6 +204,7 @@ export interface MembershipResult {
 	serverName?: string;
 	reason?: MembershipFailureReason;
 	configuredMachineId?: string;
+	identityErrorReason?: string;
 }
 
 export interface PinInfo {

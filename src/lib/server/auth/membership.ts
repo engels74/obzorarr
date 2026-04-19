@@ -418,6 +418,9 @@ export async function verifyServerMembership(userToken: string): Promise<Members
 			reason,
 			...(configuredMachineIdFromIdentity
 				? { configuredMachineId: configuredMachineIdFromIdentity }
+				: {}),
+			...(!configuredMachineIdFromIdentity && identityResult.errorReason
+				? { identityErrorReason: identityResult.errorReason }
 				: {})
 		};
 	}
@@ -454,10 +457,12 @@ export async function requireServerMembership(userToken: string): Promise<Member
 	return membership;
 }
 
-function messageForMembershipFailure(membership: MembershipResult): string {
+export function messageForMembershipFailure(membership: MembershipResult): string {
 	switch (membership.reason) {
-		case 'not_reachable':
-			return 'Obzorarr could not reach the configured Plex server. Check that PLEX_SERVER_URL and PLEX_TOKEN are correct and the server is online.';
+		case 'not_reachable': {
+			const detail = membership.identityErrorReason ? ` (${membership.identityErrorReason})` : '';
+			return `Obzorarr could not reach or authenticate with the configured Plex server${detail}. Check that PLEX_SERVER_URL and PLEX_TOKEN are correct and the server is online.`;
+		}
 		case 'not_in_resources':
 			return 'The configured Plex server is not listed under your Plex.tv account. Please sign in with the server owner account.';
 		default:

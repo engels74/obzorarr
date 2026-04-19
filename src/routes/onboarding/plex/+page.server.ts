@@ -1,11 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
-import {
-	getApiConfigWithSources,
-	hasPlexEnvConfig,
-	setPlexServerUrlOverrideManual
-} from '$lib/server/admin/settings.service';
-import { verifyServerMembership } from '$lib/server/auth/membership';
+import { getApiConfigWithSources, hasPlexEnvConfig } from '$lib/server/admin/settings.service';
+import { messageForMembershipFailure, verifyServerMembership } from '$lib/server/auth/membership';
 import { getSessionPlexToken } from '$lib/server/auth/session';
 import { db } from '$lib/server/db/client';
 import { sessions, users } from '$lib/server/db/schema';
@@ -65,10 +61,7 @@ export const actions: Actions = {
 					membershipReason?: 'not_reachable' | 'not_in_resources';
 					configuredMachineId?: string;
 				} = {
-					error:
-						membership.reason === 'not_reachable'
-							? 'Obzorarr could not reach the configured Plex server. Check that PLEX_SERVER_URL and PLEX_TOKEN are correct and the server is online.'
-							: 'The configured Plex server is not listed under your Plex.tv account. Sign in with the owner account, or confirm ownership to bypass the check.',
+					error: messageForMembershipFailure(membership),
 					membershipReason:
 						membership.reason === 'not_reachable' ? 'not_reachable' : 'not_in_resources'
 				};
@@ -151,10 +144,13 @@ export const actions: Actions = {
 			});
 		}
 
-		await setPlexServerUrlOverrideManual(true);
+		// No override flag is persisted: when env is absent the DB is already
+		// authoritative. Writing a flag here would be dead state today and a
+		// footgun later — a pre-existing `true` would silently bypass the env
+		// guard above if env vars were added in a future boot.
 
 		logger.info(
-			`Onboarding: Manual server selection override enabled by ${locals.user.username}`,
+			`Onboarding: Manual server selection requested by ${locals.user.username}`,
 			'Onboarding'
 		);
 
