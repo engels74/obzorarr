@@ -1,8 +1,9 @@
 <script lang="ts">
 import { animate } from 'motion';
 import { untrack } from 'svelte';
-import { enhance } from '$app/forms';
+import { deserialize, enhance } from '$app/forms';
 import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
+import { handleFormToast } from '$lib/utils/form-toast';
 import { loadThemeFont } from '$lib/utils/theme-fonts';
 import type { ActionData, PageData } from './$types';
 
@@ -21,8 +22,23 @@ let anonymizationMode = $state(untrack(() => data.settings.anonymizationMode));
 let wrappedLogoMode = $state(untrack(() => data.settings.wrappedLogoMode));
 let defaultShareMode = $state(untrack(() => data.settings.defaultShareMode));
 let allowUserControl = $state(untrack(() => data.settings.allowUserControl));
-let enableFunFacts = $state(untrack(() => data.funFactConfig.count > 0));
+let enableFunFacts = $state(false);
 let funFactFrequency = $state(untrack(() => data.funFactConfig.mode || 'normal'));
+let openaiApiKey = $state('');
+let openaiBaseUrl = $state(
+	untrack(() => data.openaiConfig?.baseUrl ?? 'https://api.openai.com/v1')
+);
+let openaiModel = $state(untrack(() => data.openaiConfig?.model ?? 'gpt-5-mini'));
+let aiPersona = $state(untrack(() => data.openaiConfig?.persona ?? 'witty'));
+let isTestingAI = $state(false);
+let testAIResult = $state<{ type: 'success' | 'error'; message: string } | null>(null);
+
+const aiPersonaOptions = [
+	{ value: 'witty', label: 'Witty', description: 'Clever and humorous' },
+	{ value: 'wholesome', label: 'Wholesome', description: 'Warm and kind' },
+	{ value: 'nerdy', label: 'Nerdy', description: 'Data-driven and detailed' },
+	{ value: 'random', label: 'Random', description: 'Mix of styles' }
+] as const;
 
 // All available theme classes for removal
 const themeClasses = [
@@ -227,6 +243,10 @@ function getThemeColors(themeValue: string) {
 				<input type="hidden" name="enabledSlides" value={enabledSlidesString} />
 				<input type="hidden" name="enableFunFacts" value={enableFunFacts} />
 				<input type="hidden" name="funFactFrequency" value={funFactFrequency} />
+				<input type="hidden" name="openaiApiKey" value={openaiApiKey} />
+				<input type="hidden" name="openaiBaseUrl" value={openaiBaseUrl} />
+				<input type="hidden" name="openaiModel" value={openaiModel} />
+				<input type="hidden" name="aiPersona" value={aiPersona} />
 
 				<!-- Carousel Content -->
 				<div class="carousel-content" bind:this={contentRef}>
@@ -511,6 +531,133 @@ function getThemeColors(themeValue: string) {
 													value={option.value}
 													checked={funFactFrequency === option.value}
 													onchange={() => (funFactFrequency = option.value)}
+												/>
+												<span class="frequency-label">{option.label}</span>
+												<span class="frequency-desc">{option.description}</span>
+											</label>
+										{/each}
+									</div>
+								</div>
+
+								<div class="setting-group">
+									<label class="field-label" for="onboarding-openai-api-key">OpenAI API Key</label>
+									<p class="setting-description">
+										Your key is stored server-side and never exposed to the client.
+									</p>
+									<input
+										id="onboarding-openai-api-key"
+										class="text-input"
+										type="password"
+										bind:value={openaiApiKey}
+										maxlength="512"
+										placeholder="sk-..."
+										autocomplete="off"
+									/>
+								</div>
+
+								<div class="setting-group">
+									<label class="field-label" for="onboarding-openai-base-url">Base URL</label>
+									<input
+										id="onboarding-openai-base-url"
+										class="text-input"
+										type="url"
+										bind:value={openaiBaseUrl}
+										maxlength="512"
+										placeholder="https://api.openai.com/v1"
+									/>
+								</div>
+
+								<div class="setting-group">
+									<label class="field-label" for="onboarding-openai-model">Model</label>
+									<input
+										id="onboarding-openai-model"
+										class="text-input"
+										type="text"
+										bind:value={openaiModel}
+										maxlength="100"
+										placeholder="gpt-5-mini"
+									/>
+									<div class="test-connection-row">
+										<button
+											type="button"
+											class="btn-test"
+											disabled={isTestingAI || !openaiApiKey}
+											onclick={async () => {
+												isTestingAI = true;
+												testAIResult = null;
+												const formData = new FormData();
+												formData.set('openaiApiKey', openaiApiKey);
+												formData.set('openaiBaseUrl', openaiBaseUrl);
+												formData.set('openaiModel', openaiModel);
+												try {
+													const response = await fetch('?/testAIConnection', {
+														method: 'POST',
+														body: formData
+													});
+													const result = deserialize(await response.text());
+													if (result.type === 'success' || result.type === 'failure') {
+														const payload = result.data as {
+															success?: boolean;
+															message?: string;
+															error?: string;
+														};
+														handleFormToast(payload);
+														testAIResult = payload.error
+															? { type: 'error', message: payload.error }
+															: {
+																	type: 'success',
+																	message: payload.message ?? 'Connection succeeded'
+																};
+													} else if (result.type === 'error') {
+														const message =
+															result.error?.message ?? 'An error occurred while testing connection';
+														handleFormToast({ error: message });
+														testAIResult = { type: 'error', message };
+													} else {
+														const message = 'Unexpected response from server';
+														handleFormToast({ error: message });
+														testAIResult = { type: 'error', message };
+													}
+												} catch {
+													const message =
+														'Failed to test connection. Please check your network and try again.';
+													handleFormToast({ error: message });
+													testAIResult = { type: 'error', message };
+												} finally {
+													isTestingAI = false;
+												}
+											}}
+										>
+											{#if isTestingAI}
+												<span class="spinner"></span>
+												Testing...
+											{:else}
+												Test Connection
+											{/if}
+										</button>
+										{#if testAIResult}
+											<div class="inline-result" class:error={testAIResult.type === 'error'}>
+												{testAIResult.message}
+											</div>
+										{/if}
+									</div>
+								</div>
+
+								<div class="setting-group">
+									<span class="setting-label">AI Persona</span>
+									<p class="setting-description">Tone used when generating AI fun facts</p>
+									<div class="frequency-options">
+										{#each aiPersonaOptions as option}
+											<label
+												class="frequency-option"
+												class:selected={aiPersona === option.value}
+											>
+												<input
+													type="radio"
+													name="aiPersonaRadio"
+													value={option.value}
+													checked={aiPersona === option.value}
+													onchange={() => (aiPersona = option.value)}
 												/>
 												<span class="frequency-label">{option.label}</span>
 												<span class="frequency-desc">{option.description}</span>
@@ -1287,6 +1434,86 @@ function getThemeColors(themeValue: string) {
 		.frequency-desc {
 			font-size: 0.7rem;
 			color: rgba(255, 255, 255, 0.45);
+		}
+
+		/* Text inputs (API key, base URL, model) */
+		.field-label {
+			display: block;
+			font-size: 0.875rem;
+			font-weight: 500;
+			color: rgba(255, 255, 255, 0.9);
+			margin-bottom: 0.25rem;
+		}
+
+		.text-input {
+			display: block;
+			width: 100%;
+			padding: 0.625rem 0.875rem;
+			background: rgba(0, 0, 0, 0.25);
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			border-radius: 0.5rem;
+			color: rgba(255, 255, 255, 0.95);
+			font-size: 0.875rem;
+			font-family: inherit;
+			transition: border-color 0.2s ease, background 0.2s ease;
+		}
+
+		.text-input::placeholder {
+			color: rgba(255, 255, 255, 0.35);
+		}
+
+		.text-input:focus {
+			outline: none;
+			background: rgba(0, 0, 0, 0.35);
+			border-color: hsl(var(--primary) / 0.5);
+		}
+
+		.test-connection-row {
+			display: flex;
+			align-items: center;
+			gap: 0.75rem;
+			flex-wrap: wrap;
+			margin-top: 0.625rem;
+		}
+
+		.btn-test {
+			display: inline-flex;
+			align-items: center;
+			gap: 0.5rem;
+			padding: 0.5rem 0.875rem;
+			background: rgba(0, 0, 0, 0.3);
+			border: 1px solid rgba(255, 255, 255, 0.15);
+			border-radius: 0.5rem;
+			color: rgba(255, 255, 255, 0.85);
+			font-size: 0.8rem;
+			font-weight: 500;
+			cursor: pointer;
+			transition: all 0.2s ease;
+		}
+
+		.btn-test:hover:not(:disabled) {
+			background: rgba(0, 0, 0, 0.45);
+			border-color: rgba(255, 255, 255, 0.25);
+		}
+
+		.btn-test:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+		}
+
+		.inline-result {
+			font-size: 0.8rem;
+			padding: 0.375rem 0.625rem;
+			background: rgba(34, 197, 94, 0.15);
+			border: 1px solid rgba(34, 197, 94, 0.4);
+			border-radius: 0.5rem;
+			color: #86efac;
+		}
+
+		.inline-result.error {
+			background: rgba(239, 68, 68, 0.15);
+			border-color: rgba(239, 68, 68, 0.4);
+			color: #fca5a5;
 		}
 
 		/* Spinner */

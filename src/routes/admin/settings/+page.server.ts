@@ -33,6 +33,7 @@ import {
 	type WrappedLogoModeType
 } from '$lib/server/admin/settings.service';
 import { getAvailableYears } from '$lib/server/admin/users.service';
+import { testOpenAIConnection } from '$lib/server/funfacts/test-connection';
 import {
 	getLogMaxCount,
 	getLogRetentionDays,
@@ -313,6 +314,38 @@ export const actions: Actions = {
 			const message = error instanceof Error ? error.message : 'Connection failed';
 			return fail(500, { error: message });
 		}
+	},
+
+	testAIConnection: async ({ request }) => {
+		const formData = await request.formData();
+		const submittedKey = formData.get('openaiApiKey')?.toString() ?? '';
+		const submittedBaseUrl = formData.get('openaiBaseUrl')?.toString() ?? '';
+		const submittedModel = formData.get('openaiModel')?.toString() ?? '';
+
+		const apiConfig = await getApiConfigWithSources();
+		const storedKey = apiConfig.openai.apiKey.value;
+		const storedBaseUrl = apiConfig.openai.baseUrl.value;
+		const storedModel = apiConfig.openai.model.value;
+
+		const baseUrl = submittedBaseUrl || storedBaseUrl;
+		const model = submittedModel || storedModel;
+
+		// The client never echoes the stored API key back (to avoid hydration leaks),
+		// so a missing key field is the normal case. Fall back to the stored key
+		// ONLY when the submitted base URL and model also match what's stored —
+		// prevents the stored key being forwarded to an attacker-controlled
+		// endpoint (same safeguard as testPlexConnection).
+		const normalise = (u: string) => u.replace(/\/+$/, '');
+		const baseUrlMatchesStored =
+			!!baseUrl && !!storedBaseUrl && normalise(baseUrl) === normalise(storedBaseUrl);
+		const modelMatchesStored = model === storedModel;
+		const apiKey = submittedKey || (baseUrlMatchesStored && modelMatchesStored ? storedKey : '');
+
+		const result = await testOpenAIConnection(apiKey, baseUrl, model);
+		if (!result.success) {
+			return fail(400, { error: result.error });
+		}
+		return { success: true, message: result.message };
 	},
 
 	updateUITheme: async ({ request }) => {
