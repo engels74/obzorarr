@@ -153,6 +153,12 @@ function closeSidebar() {
 					<span>Logout</span>
 				</button>
 			</form>
+			<div
+				class="text-[10px] text-muted-foreground/50 font-mono tracking-wider text-center leading-none select-all"
+				title={data.appVersion.kind}
+			>
+				{data.appVersion.display}
+			</div>
 		</div>
 	</aside>
 

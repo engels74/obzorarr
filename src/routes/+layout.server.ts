@@ -1,4 +1,5 @@
 import { getUITheme, getWrappedTheme } from '$lib/server/admin/settings.service';
+import { getAppVersion } from '$lib/server/version';
 import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = async ({ cookies }) => {
@@ -19,6 +20,7 @@ export const load: LayoutServerLoad = async ({ cookies }) => {
 
 	return {
 		uiTheme,
-		wrappedTheme
+		wrappedTheme,
+		appVersion: getAppVersion()
 	};
 };
