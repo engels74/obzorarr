@@ -65,8 +65,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				signal: controller.signal
 			});
 
-			clearTimeout(timeoutId);
-
 			// Check for authentication errors
 			if (response.status === 401) {
 				logger.debug('Connection test failed: Authentication failed', 'Onboarding');
@@ -110,8 +108,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				machineIdentifier
 			});
 		} catch (fetchError) {
-			clearTimeout(timeoutId);
-
 			if (fetchError instanceof Error) {
 				const errorMessage = classifyConnectionError(fetchError);
 				logger.debug(`Connection test failed: ${errorMessage}`, 'Onboarding');
@@ -126,6 +122,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				success: false,
 				error: 'Connection failed'
 			});
+		} finally {
+			// Keep the timer armed until after response.json() + parsing complete so
+			// CONNECTION_TIMEOUT_MS caps the whole /identity call, not just the
+			// initial fetch resolving its headers.
+			clearTimeout(timeoutId);
 		}
 	} catch (err) {
 		// Re-throw SvelteKit errors

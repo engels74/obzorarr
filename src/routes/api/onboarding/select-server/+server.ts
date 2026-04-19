@@ -54,8 +54,6 @@ async function testConnection(url: string, accessToken: string): Promise<Connect
 			signal: controller.signal
 		});
 
-		clearTimeout(timeoutId);
-
 		if (response.status === 401) {
 			return { success: false, error: 'Authentication failed - the access token may be invalid' };
 		}
@@ -79,13 +77,13 @@ async function testConnection(url: string, accessToken: string): Promise<Connect
 			machineIdentifier: identityResult.data.MediaContainer.machineIdentifier
 		};
 	} catch (fetchError) {
-		clearTimeout(timeoutId);
-
 		if (fetchError instanceof Error) {
 			return { success: false, error: classifyConnectionError(fetchError) };
 		}
 
 		return { success: false, error: 'Connection failed' };
+	} finally {
+		clearTimeout(timeoutId);
 	}
 }
 
