@@ -2,6 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import {
 	getApiConfigWithSources,
+	hasPlexEnvConfig,
 	setPlexServerUrlOverrideManual
 } from '$lib/server/admin/settings.service';
 import { verifyServerMembership } from '$lib/server/auth/membership';
@@ -135,6 +136,19 @@ export const actions: Actions = {
 
 		if (!locals.user.isAdmin) {
 			return fail(403, { error: 'Only the server owner can configure Obzorarr.' });
+		}
+
+		// When PLEX_SERVER_URL / PLEX_TOKEN are set as environment variables they
+		// take unconditional precedence over any database value in getPlexConfig().
+		// Letting the user proceed through the manual picker would silently write
+		// DB values that the rest of the application ignores, creating a confusing
+		// "I configured a different server but nothing changed" experience.
+		// The correct remediation is to update or remove the env vars.
+		if (hasPlexEnvConfig()) {
+			return fail(400, {
+				error:
+					'PLEX_SERVER_URL / PLEX_TOKEN are set as environment variables and cannot be overridden from the UI. To use a different server, update those environment variables and restart Obzorarr.'
+			});
 		}
 
 		await setPlexServerUrlOverrideManual(true);

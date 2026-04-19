@@ -459,7 +459,7 @@ function messageForMembershipFailure(membership: MembershipResult): string {
 		case 'not_reachable':
 			return 'Obzorarr could not reach the configured Plex server. Check that PLEX_SERVER_URL and PLEX_TOKEN are correct and the server is online.';
 		case 'not_in_resources':
-			return 'The configured Plex server is not listed under your Plex.tv account. Sign in with the owner account, or confirm ownership to bypass the check.';
+			return 'The configured Plex server is not listed under your Plex.tv account. Please sign in with the server owner account.';
 		default:
 			return 'You are not a member of this Plex server.';
 	}
