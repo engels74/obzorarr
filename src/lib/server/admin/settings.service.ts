@@ -21,7 +21,6 @@ export const AppSettingsKey = {
 	WRAPPED_LOGO_MODE: 'wrapped_logo_mode',
 	SERVER_NAME: 'server_name',
 	SERVER_MACHINE_ID: 'server_machine_id',
-	PLEX_SERVER_URL_OVERRIDE_MANUAL: 'plex_server_url_override_manual',
 	FUN_FACT_FREQUENCY: 'fun_fact_frequency',
 	FUN_FACT_CUSTOM_COUNT: 'fun_fact_custom_count',
 	FUN_FACTS_AI_PERSONA: 'fun_facts_ai_persona',
@@ -200,19 +199,6 @@ export async function setCachedServerMachineId(machineId: string): Promise<void>
 
 export async function clearCachedServerMachineId(): Promise<void> {
 	await deleteAppSetting(AppSettingsKey.SERVER_MACHINE_ID);
-}
-
-export async function isPlexServerUrlOverrideManual(): Promise<boolean> {
-	const value = await getAppSetting(AppSettingsKey.PLEX_SERVER_URL_OVERRIDE_MANUAL);
-	return value === 'true';
-}
-
-export async function setPlexServerUrlOverrideManual(enabled: boolean): Promise<void> {
-	if (enabled) {
-		await setAppSetting(AppSettingsKey.PLEX_SERVER_URL_OVERRIDE_MANUAL, 'true');
-	} else {
-		await deleteAppSetting(AppSettingsKey.PLEX_SERVER_URL_OVERRIDE_MANUAL);
-	}
 }
 
 export async function getFunFactFrequency(): Promise<FunFactFrequencyConfig> {
