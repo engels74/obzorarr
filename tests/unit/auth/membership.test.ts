@@ -60,6 +60,15 @@ describe('verifyServerMembership', () => {
 		// there is no meaningful configured server to check against, and without the
 		// gate the revalidator would incorrectly revoke the freshly-created session.
 		configSpy = mockConfiguredUrl('http://test-plex-server:32400');
+		// Mock /identity explicitly so the outcome does not depend on the
+		// shared fetch mock being (accidentally) rejected as an invalid
+		// identity response. With /identity succeeding and the returned
+		// machineId absent from /resources, the result must be not_in_resources.
+		identitySpy = spyOn(serverIdentityService, 'getConfiguredServerMachineId').mockResolvedValue({
+			machineId: MOCK_MACHINE_ID,
+			source: 'fresh',
+			errorReason: null
+		});
 		fetchSpy = spyOn(global, 'fetch').mockResolvedValue(
 			createMockResponse([
 				{
@@ -86,6 +95,8 @@ describe('verifyServerMembership', () => {
 
 		expect(result.isMember).toBe(false);
 		expect(result.isOwner).toBe(false);
+		expect(result.reason).toBe('not_in_resources');
+		expect(result.configuredMachineId).toBe(MOCK_MACHINE_ID);
 	});
 
 	it('matches a plain-host configured URL against a .plex.direct-only server when /identity is reachable', async () => {
