@@ -81,13 +81,13 @@ const SettingsSchema = z.object({
 		WrappedLogoMode.USER_CHOICE
 	]),
 	defaultShareMode: z.enum([ShareMode.PUBLIC, ShareMode.PRIVATE_OAUTH, ShareMode.PRIVATE_LINK]),
-	allowUserControl: z.coerce.boolean(),
+	allowUserControl: z.enum(['true', 'false']).transform((v) => v === 'true'),
 
 	// Slides (comma-separated list of enabled slide types)
 	enabledSlides: z.string().optional(),
 
 	// AI Features
-	enableFunFacts: z.coerce.boolean(),
+	enableFunFacts: z.enum(['true', 'false']).transform((v) => v === 'true'),
 	funFactFrequency: z
 		.enum([
 			FunFactFrequency.FEW,
