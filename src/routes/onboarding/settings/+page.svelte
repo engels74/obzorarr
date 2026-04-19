@@ -26,9 +26,9 @@ let enableFunFacts = $state(false);
 let funFactFrequency = $state(untrack(() => data.funFactConfig.mode || 'normal'));
 let openaiApiKey = $state('');
 let openaiBaseUrl = $state(
-	untrack(() => data.openaiConfig?.baseUrl ?? 'https://api.openai.com/v1')
+	untrack(() => data.openaiConfig?.baseUrl || 'https://api.openai.com/v1')
 );
-let openaiModel = $state(untrack(() => data.openaiConfig?.model ?? 'gpt-5-mini'));
+let openaiModel = $state(untrack(() => data.openaiConfig?.model || 'gpt-5-mini'));
 let aiPersona = $state(untrack(() => data.openaiConfig?.persona ?? 'witty'));
 let isTestingAI = $state(false);
 let testAIResult = $state<{ type: 'success' | 'error'; message: string } | null>(null);

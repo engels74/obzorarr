@@ -11,11 +11,12 @@ export async function testOpenAIConnection(
 	baseUrl?: string,
 	model?: string
 ): Promise<TestOpenAIConnectionResult> {
-	if (!apiKey || !apiKey.trim()) {
+	const trimmedKey = apiKey.trim();
+	if (!trimmedKey) {
 		return { success: false, error: 'API key is required' };
 	}
 
-	const resolvedBaseUrl = baseUrl ?? DEFAULT_BASE_URL;
+	const resolvedBaseUrl = (baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, '');
 	const resolvedModel = model ?? DEFAULT_MODEL;
 
 	const controller = new AbortController();
@@ -26,7 +27,7 @@ export async function testOpenAIConnection(
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				Authorization: `Bearer ${apiKey}`
+				Authorization: `Bearer ${trimmedKey}`
 			},
 			body: JSON.stringify({
 				model: resolvedModel,

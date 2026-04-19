@@ -146,4 +146,33 @@ describe('testOpenAIConnection', () => {
 
 		expect(result).toEqual({ success: false, error: 'network down' });
 	});
+
+	it('trims whitespace from the API key before sending the Authorization header', async () => {
+		const captured: { init?: RequestInit } = {};
+
+		globalThis.fetch = mock(async (_input: RequestInfo | URL, init?: RequestInit) => {
+			captured.init = init;
+			return new Response(null, { status: 200 });
+		}) as unknown as typeof fetch;
+
+		const result = await testOpenAIConnection('  sk-padded  ');
+
+		expect(result.success).toBe(true);
+		const headers = captured.init?.headers as Record<string, string>;
+		expect(headers.Authorization).toBe('Bearer sk-padded');
+	});
+
+	it('strips trailing slash from baseUrl before building the endpoint URL', async () => {
+		const captured: { url?: string } = {};
+
+		globalThis.fetch = mock(async (input: RequestInfo | URL) => {
+			captured.url = typeof input === 'string' ? input : input.toString();
+			return new Response(null, { status: 200 });
+		}) as unknown as typeof fetch;
+
+		const result = await testOpenAIConnection('sk-test', 'https://custom.example.com/v1/');
+
+		expect(result.success).toBe(true);
+		expect(captured.url).toBe('https://custom.example.com/v1/chat/completions');
+	});
 });
