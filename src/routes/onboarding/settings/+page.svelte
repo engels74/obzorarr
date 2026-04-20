@@ -29,7 +29,12 @@ let openaiBaseUrl = $state(
 	untrack(() => data.openaiConfig?.baseUrl || 'https://api.openai.com/v1')
 );
 let openaiModel = $state(untrack(() => data.openaiConfig?.model || 'gpt-5-mini'));
-let aiPersona = $state(untrack(() => data.openaiConfig?.persona ?? 'witty'));
+let aiPersona = $state(
+	untrack(() => {
+		const p = data.openaiConfig?.persona;
+		return p === 'witty' || p === 'wholesome' || p === 'nerdy' || p === 'random' ? p : 'witty';
+	})
+);
 let isTestingAI = $state(false);
 let testAIResult = $state<{ type: 'success' | 'error'; message: string } | null>(null);
 
