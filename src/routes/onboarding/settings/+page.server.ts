@@ -300,8 +300,8 @@ export const actions: Actions = {
 				enableFunFacts: formData.get('enableFunFacts'),
 				funFactFrequency: formData.get('funFactFrequency'),
 				openaiApiKey: formData.get('openaiApiKey') ?? undefined,
-				openaiBaseUrl: (formData.get('openaiBaseUrl') as string | null)?.trim() ?? undefined,
-				openaiModel: (formData.get('openaiModel') as string | null)?.trim() ?? undefined,
+				openaiBaseUrl: formData.get('openaiBaseUrl')?.toString().trim() ?? undefined,
+				openaiModel: formData.get('openaiModel')?.toString().trim() ?? undefined,
 				aiPersona: formData.get('aiPersona') ?? undefined
 			};
 
