@@ -93,6 +93,8 @@ let selectedAnonymization = $state('');
 let selectedWrappedLogoMode = $state('');
 let isTesting = $state(false);
 let testConnectionResult = $state<{ type: 'success' | 'error'; message: string } | null>(null);
+let isTestingAI = $state(false);
+let testAIResult = $state<{ type: 'success' | 'error'; message: string } | null>(null);
 
 // Logging settings state
 let logRetentionDays = $state(7);
@@ -822,18 +824,84 @@ const logFieldErrors = $derived(
 							</div>
 						</div>
 
-						{#if !openaiApiKeyLocked || !openaiBaseUrlLocked || !openaiModelLocked}
-							<div class="panel-actions">
+						<div class="panel-actions">
+							{#if !openaiApiKeyLocked || !openaiBaseUrlLocked || !openaiModelLocked}
 								<button type="submit" class="btn-primary">
 									<Check class="btn-icon" />
 									Save OpenAI Settings
 								</button>
-							</div>
-						{:else}
+							{/if}
+
+							<button
+								type="button"
+								class="btn-secondary"
+								disabled={isTestingAI || (!openaiApiKey.trim() && !openaiApiKeyHasValue)}
+								onclick={async () => {
+									isTestingAI = true;
+									testAIResult = null;
+									const formData = new FormData();
+									formData.set('openaiApiKey', openaiApiKey);
+									formData.set('openaiBaseUrl', openaiBaseUrl);
+									formData.set('openaiModel', openaiModel);
+									try {
+										const response = await fetch('?/testAIConnection', {
+											method: 'POST',
+											body: formData
+										});
+										const result = deserialize(await response.text());
+										if (result.type === 'success' || result.type === 'failure') {
+											const data = result.data as {
+												success?: boolean;
+												message?: string;
+												error?: string;
+											};
+											handleFormToast(data);
+											testAIResult = data.error
+												? { type: 'error', message: data.error }
+												: {
+														type: 'success',
+														message: data.message ?? 'OpenAI connection succeeded'
+													};
+										} else if (result.type === 'error') {
+											const message =
+												result.error?.message ?? 'An error occurred while testing connection';
+											handleFormToast({ error: message });
+											testAIResult = { type: 'error', message };
+										} else {
+											const message = 'Unexpected response from server';
+											handleFormToast({ error: message });
+											testAIResult = { type: 'error', message };
+										}
+									} catch {
+										const message =
+											'Failed to test connection. Please check your network and try again.';
+										handleFormToast({ error: message });
+										testAIResult = { type: 'error', message };
+									} finally {
+										isTestingAI = false;
+									}
+								}}
+							>
+								{#if isTestingAI}
+									<Loader2 class="btn-icon spinning" />
+									Testing...
+								{:else}
+									<Zap class="btn-icon" />
+									Test Connection
+								{/if}
+							</button>
+						</div>
+
+						{#if openaiApiKeyLocked && openaiBaseUrlLocked && openaiModelLocked}
 							<div class="panel-info">
 								<span class="info-text"
 									>All OpenAI settings are managed via environment variables</span
 								>
+							</div>
+						{/if}
+						{#if testAIResult}
+							<div class="inline-result" class:error={testAIResult.type === 'error'}>
+								{testAIResult.message}
 							</div>
 						{/if}
 					</form>

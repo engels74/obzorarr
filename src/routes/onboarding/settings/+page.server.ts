@@ -11,15 +11,18 @@ import { DEFAULT_SLIDE_ORDER, type SlideType } from '$lib/components/slides/type
 import {
 	AnonymizationMode,
 	type AnonymizationModeType,
+	AppSettingsKey,
 	FunFactFrequency,
 	type FunFactFrequencyType,
 	getAnonymizationMode,
+	getAppSetting,
 	getFunFactFrequency,
 	getUITheme,
 	getWrappedLogoMode,
 	getWrappedTheme,
 	hasOpenAIEnvConfig,
 	setAnonymizationMode,
+	setAppSetting,
 	setFunFactFrequency,
 	setUITheme,
 	setWrappedLogoMode,
@@ -29,6 +32,8 @@ import {
 	WrappedLogoMode,
 	type WrappedLogoModeType
 } from '$lib/server/admin/settings.service';
+import { testOpenAIConnection } from '$lib/server/funfacts/test-connection';
+import { AIPersonaSchema } from '$lib/server/funfacts/types';
 import { logger } from '$lib/server/logging';
 import { OnboardingSteps, setOnboardingStep } from '$lib/server/onboarding';
 import {
@@ -76,13 +81,13 @@ const SettingsSchema = z.object({
 		WrappedLogoMode.USER_CHOICE
 	]),
 	defaultShareMode: z.enum([ShareMode.PUBLIC, ShareMode.PRIVATE_OAUTH, ShareMode.PRIVATE_LINK]),
-	allowUserControl: z.coerce.boolean(),
+	allowUserControl: z.enum(['true', 'false']).transform((v) => v === 'true'),
 
 	// Slides (comma-separated list of enabled slide types)
 	enabledSlides: z.string().optional(),
 
 	// AI Features
-	enableFunFacts: z.coerce.boolean(),
+	enableFunFacts: z.enum(['true', 'false']).transform((v) => v === 'true'),
 	funFactFrequency: z
 		.enum([
 			FunFactFrequency.FEW,
@@ -90,7 +95,11 @@ const SettingsSchema = z.object({
 			FunFactFrequency.MANY,
 			FunFactFrequency.CUSTOM
 		])
-		.optional()
+		.optional(),
+	openaiApiKey: z.string().max(512).optional(),
+	openaiBaseUrl: z.string().max(512).url().optional().or(z.literal('')),
+	openaiModel: z.string().max(100).optional(),
+	aiPersona: AIPersonaSchema.optional()
 });
 
 /**
@@ -111,7 +120,10 @@ export const load: PageServerLoad = async ({ parent }) => {
 		defaultShareMode,
 		allowUserControl,
 		slideConfigs,
-		funFactConfig
+		funFactConfig,
+		openaiBaseUrl,
+		openaiModel,
+		openaiPersona
 	] = await Promise.all([
 		getUITheme(),
 		getWrappedTheme(),
@@ -120,7 +132,10 @@ export const load: PageServerLoad = async ({ parent }) => {
 		getGlobalDefaultShareMode(),
 		getGlobalAllowUserControl(),
 		getAllSlideConfigs(),
-		getFunFactFrequency()
+		getFunFactFrequency(),
+		getAppSetting(AppSettingsKey.OPENAI_BASE_URL),
+		getAppSetting(AppSettingsKey.OPENAI_MODEL),
+		getAppSetting(AppSettingsKey.FUN_FACTS_AI_PERSONA)
 	]);
 
 	// Check if OpenAI is configured (for AI features section)
@@ -224,7 +239,12 @@ export const load: PageServerLoad = async ({ parent }) => {
 		wrappedLogoOptions,
 		hasOpenAI,
 		funFactConfig,
-		funFactOptions
+		funFactOptions,
+		openaiConfig: {
+			baseUrl: openaiBaseUrl,
+			model: openaiModel,
+			persona: openaiPersona
+		}
 	};
 };
 
@@ -278,7 +298,11 @@ export const actions: Actions = {
 				allowUserControl: formData.get('allowUserControl'),
 				enabledSlides: formData.get('enabledSlides'),
 				enableFunFacts: formData.get('enableFunFacts'),
-				funFactFrequency: formData.get('funFactFrequency')
+				funFactFrequency: formData.get('funFactFrequency'),
+				openaiApiKey: formData.get('openaiApiKey') ?? undefined,
+				openaiBaseUrl: formData.get('openaiBaseUrl')?.toString().trim() ?? undefined,
+				openaiModel: formData.get('openaiModel')?.toString().trim() ?? undefined,
+				aiPersona: formData.get('aiPersona') ?? undefined
 			};
 
 			// Validate
@@ -289,6 +313,9 @@ export const actions: Actions = {
 			}
 
 			const data = parseResult.data;
+			const openaiApiKey = data.openaiApiKey?.trim();
+			const openaiBaseUrl = data.openaiBaseUrl?.trim().replace(/\/+$/, '');
+			const openaiModel = data.openaiModel?.trim();
 
 			// Save all settings in parallel
 			await Promise.all([
@@ -307,6 +334,18 @@ export const actions: Actions = {
 				// AI Features (only if enabled)
 				data.enableFunFacts && data.funFactFrequency
 					? setFunFactFrequency(data.funFactFrequency as FunFactFrequencyType)
+					: Promise.resolve(),
+				data.enableFunFacts && openaiApiKey
+					? setAppSetting(AppSettingsKey.OPENAI_API_KEY, openaiApiKey)
+					: Promise.resolve(),
+				data.enableFunFacts && openaiBaseUrl
+					? setAppSetting(AppSettingsKey.OPENAI_BASE_URL, openaiBaseUrl)
+					: Promise.resolve(),
+				data.enableFunFacts && openaiModel
+					? setAppSetting(AppSettingsKey.OPENAI_MODEL, openaiModel)
+					: Promise.resolve(),
+				data.enableFunFacts && data.aiPersona
+					? setAppSetting(AppSettingsKey.FUN_FACTS_AI_PERSONA, data.aiPersona)
 					: Promise.resolve()
 			]);
 
@@ -368,5 +407,31 @@ export const actions: Actions = {
 		// Advance to completion step
 		await setOnboardingStep(OnboardingSteps.COMPLETE);
 		redirect(303, '/onboarding/complete');
+	},
+
+	/**
+	 * Test OpenAI connection using values submitted from the form.
+	 * Does not fall back to stored values — onboarding submits fresh input.
+	 */
+	testAIConnection: async ({ request, locals }) => {
+		if (!locals.user?.isAdmin) {
+			return fail(403, { error: 'Admin access required' });
+		}
+
+		const formData = await request.formData();
+		const apiKey = (formData.get('openaiApiKey') ?? '').toString();
+		const baseUrlRaw = (formData.get('openaiBaseUrl') ?? '').toString();
+		const modelRaw = (formData.get('openaiModel') ?? '').toString();
+
+		const baseUrl = baseUrlRaw.trim() || undefined;
+		const model = modelRaw.trim() || undefined;
+
+		const result = await testOpenAIConnection(apiKey, baseUrl, model);
+
+		if (!result.success) {
+			return fail(400, { error: result.error });
+		}
+
+		return { success: true, message: result.message };
 	}
 };

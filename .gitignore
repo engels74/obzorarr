@@ -35,3 +35,6 @@ docs/
 # Build analysis
 bundle-stats.html
 .omx/
+
+# Test artifacts
+screenshots/

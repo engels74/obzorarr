@@ -1,4 +1,8 @@
-import { AppSettingsKey, getAppSetting } from '$lib/server/admin/settings.service';
+import {
+	AppSettingsKey,
+	getApiConfigWithSources,
+	getAppSetting
+} from '$lib/server/admin/settings.service';
 import type { ServerStats, Stats, UserStats } from '$lib/server/stats/types';
 import { isUserStats } from '$lib/server/stats/types';
 import { buildEnhancedPrompt, enrichContext } from './ai';
@@ -16,18 +20,20 @@ import type {
 import { AIGenerationError } from './types';
 
 export async function getFunFactsConfig(): Promise<FunFactsConfig> {
-	const [apiKey, baseUrl, model, persona] = await Promise.all([
-		getAppSetting(AppSettingsKey.OPENAI_API_KEY),
-		getAppSetting(AppSettingsKey.OPENAI_BASE_URL),
-		getAppSetting(AppSettingsKey.OPENAI_MODEL),
+	const [apiConfig, persona] = await Promise.all([
+		getApiConfigWithSources(),
 		getAppSetting(AppSettingsKey.FUN_FACTS_AI_PERSONA)
 	]);
 
+	const apiKey = apiConfig.openai.apiKey.value.trim();
+	const baseUrl = apiConfig.openai.baseUrl.value.trim().replace(/\/+$/, '');
+	const model = apiConfig.openai.model.value.trim();
+
 	return {
 		aiEnabled: Boolean(apiKey),
-		openaiApiKey: apiKey ?? undefined,
-		openaiBaseUrl: baseUrl ?? 'https://api.openai.com/v1',
-		openaiModel: model ?? 'gpt-5-mini',
+		openaiApiKey: apiKey || undefined,
+		openaiBaseUrl: baseUrl || 'https://api.openai.com/v1',
+		openaiModel: model || 'gpt-5-mini',
 		maxAIRetries: 2,
 		aiTimeoutMs: 10000,
 		aiPersona: (persona as AIPersona) ?? 'witty'
