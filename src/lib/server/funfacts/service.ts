@@ -25,9 +25,9 @@ export async function getFunFactsConfig(): Promise<FunFactsConfig> {
 		getAppSetting(AppSettingsKey.FUN_FACTS_AI_PERSONA)
 	]);
 
-	const apiKey = apiConfig.openai.apiKey.value;
-	const baseUrl = apiConfig.openai.baseUrl.value.replace(/\/+$/, '');
-	const model = apiConfig.openai.model.value;
+	const apiKey = apiConfig.openai.apiKey.value.trim();
+	const baseUrl = apiConfig.openai.baseUrl.value.trim().replace(/\/+$/, '');
+	const model = apiConfig.openai.model.value.trim();
 
 	return {
 		aiEnabled: Boolean(apiKey),
