@@ -200,7 +200,8 @@ export const load: PageServerLoad = async () => {
 			originSource: csrfConfig.origin.source,
 			originLocked: csrfConfig.origin.isLocked,
 			warningDismissed: csrfWarningDismissed,
-			csrfOriginSkipped: csrfOriginSkippedRaw === 'true'
+			// Flag is only effective when no origin is configured; mirror csrfHandle semantics
+			csrfOriginSkipped: csrfOriginSkippedRaw === 'true' && !csrfConfig.origin.value
 		}
 	};
 };
@@ -763,6 +764,16 @@ export const actions: Actions = {
 						'CSRF origin skip enabled. CSRF origin validation is now relaxed — set a proper ORIGIN when possible.'
 				};
 			} else {
+				// Refuse to clear the skip flag when no origin is configured: doing so
+				// would immediately 403 all subsequent state-changing requests (including
+				// the POST to re-enable this flag), locking the operator out of the UI.
+				const csrfConfig = await getCsrfConfigWithSource();
+				if (!csrfConfig.origin.value) {
+					return fail(400, {
+						error:
+							'Cannot disable CSRF skip while no ORIGIN is configured. Set a CSRF origin first, then disable the skip.'
+					});
+				}
 				await deleteAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED);
 				logger.info('CSRF origin-skip flag disabled by admin', 'Security');
 				return {
