@@ -1519,33 +1519,36 @@ const logFieldErrors = $derived(
 									</p>
 								{/if}
 
-								<form
-									method="POST"
-									action="?/toggleCsrfSkip"
-									use:enhance={() => {
-										return async ({ result, update }) => {
-											if (result.type === 'success' || result.type === 'failure') {
-												handleFormToast(
-													result.data as { success?: boolean; message?: string; error?: string }
-												);
-											}
-											await update({ reset: false });
-										};
-									}}
-								>
-									<input
-										type="hidden"
-										name="enabled"
-										value={data.security.csrfOriginSkipped ? 'false' : 'true'}
-									/>
-									<button
-										type="submit"
-										class={data.security.csrfOriginSkipped ? 'btn-destructive' : 'btn-secondary'}
-									>
+								{#if data.security.csrfOriginSkipped}
+									<p class="field-hint" style="color: hsl(var(--muted-foreground)); width: 100%;">
+										To disable the CSRF skip, configure a CSRF origin above first.
+									</p>
+									<button type="button" class="btn-destructive" disabled>
 										<ShieldAlert class="btn-icon" />
-										{data.security.csrfOriginSkipped ? 'Disable CSRF Skip' : 'Enable CSRF Skip'}
+										Disable CSRF Skip
 									</button>
-								</form>
+								{:else}
+									<form
+										method="POST"
+										action="?/toggleCsrfSkip"
+										use:enhance={() => {
+											return async ({ result, update }) => {
+												if (result.type === 'success' || result.type === 'failure') {
+													handleFormToast(
+														result.data as { success?: boolean; message?: string; error?: string }
+													);
+												}
+												await update({ reset: false });
+											};
+										}}
+									>
+										<input type="hidden" name="enabled" value="true" />
+										<button type="submit" class="btn-secondary">
+											<ShieldAlert class="btn-icon" />
+											Enable CSRF Skip
+										</button>
+									</form>
+								{/if}
 
 								{#if data.security.warningDismissed}
 									<form

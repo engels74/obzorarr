@@ -756,6 +756,16 @@ export const actions: Actions = {
 		const enabled = formData.get('enabled') === 'true';
 		try {
 			if (enabled) {
+				// Refuse to set the skip flag when an origin is already configured: the flag
+				// has no effect in that state (csrfHandle only consults it when expectedOrigin
+				// is unset), so setting it would be misleading and create a latent footgun.
+				const csrfConfig = await getCsrfConfigWithSource();
+				if (csrfConfig.origin.value) {
+					return fail(400, {
+						error:
+							'CSRF is already enforced by the configured origin; skipping is not needed. Remove the origin first if you truly intend to skip.'
+					});
+				}
 				await setAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED, 'true');
 				logger.warn('CSRF origin-skip flag enabled by admin', 'Security');
 				return {
