@@ -1527,6 +1527,14 @@ const logFieldErrors = $derived(
 										<ShieldAlert class="btn-icon" />
 										Disable CSRF Skip
 									</button>
+								{:else if data.security.csrfEnabled}
+									<p class="field-hint" style="color: hsl(var(--muted-foreground)); width: 100%;">
+										CSRF is already enforced by the configured origin — skipping is not needed.
+									</p>
+									<button type="button" class="btn-secondary" disabled>
+										<ShieldAlert class="btn-icon" />
+										Enable CSRF Skip
+									</button>
 								{:else}
 									<form
 										method="POST"
