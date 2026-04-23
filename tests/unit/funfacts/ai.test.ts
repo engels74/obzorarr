@@ -2,15 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
 import { AppSettingsKey } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
 import { appSettings } from '$lib/server/db/schema';
+import type { FunFactsConfig } from '$lib/server/funfacts';
 import {
+	AIGenerationError,
 	buildGenerationContext,
 	generateFunFacts,
 	generateWithAI,
 	getFunFactsConfig,
 	isAIAvailable
-} from '$lib/server/funfacts/service';
-import type { FunFactsConfig } from '$lib/server/funfacts/types';
-import { AIGenerationError } from '$lib/server/funfacts/types';
+} from '$lib/server/funfacts';
 import type { UserStats } from '$lib/server/stats/types';
 
 /**
