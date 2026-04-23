@@ -209,6 +209,74 @@ describe('proxyHandle', () => {
 
 			expect(rewrittenUrl.host).toBe('localhost:5173');
 		});
+
+		it('rejects a forwarded host containing @ (userinfo-delimiter hostname spoof)', async () => {
+			// new URL('https://trusted.example@evil.example/') → hostname=evil.example
+			const { rewrittenUrl } = await invokeWithRawHeaders({
+				url: 'http://localhost:5173/p',
+				headerLookup: (name) => {
+					if (name === 'x-forwarded-proto') return 'https';
+					if (name === 'x-forwarded-host') return 'trusted.example@evil.example';
+					return null;
+				}
+			});
+
+			expect(rewrittenUrl.host).toBe('localhost:5173');
+			expect(rewrittenUrl.protocol).toBe('http:');
+		});
+
+		it('rejects a forwarded host containing / (path delimiter)', async () => {
+			const { rewrittenUrl } = await invokeWithRawHeaders({
+				url: 'http://localhost:5173/p',
+				headerLookup: (name) => {
+					if (name === 'x-forwarded-proto') return 'https';
+					if (name === 'x-forwarded-host') return 'evil.com/injected';
+					return null;
+				}
+			});
+
+			expect(rewrittenUrl.host).toBe('localhost:5173');
+		});
+
+		it('rejects a forwarded host containing ? (query delimiter)', async () => {
+			const { rewrittenUrl } = await invokeWithRawHeaders({
+				url: 'http://localhost:5173/p',
+				headerLookup: (name) => {
+					if (name === 'x-forwarded-proto') return 'https';
+					if (name === 'x-forwarded-host') return 'evil.com?x=1';
+					return null;
+				}
+			});
+
+			expect(rewrittenUrl.host).toBe('localhost:5173');
+		});
+
+		it('rejects a forwarded host containing # (fragment delimiter)', async () => {
+			const { rewrittenUrl } = await invokeWithRawHeaders({
+				url: 'http://localhost:5173/p',
+				headerLookup: (name) => {
+					if (name === 'x-forwarded-proto') return 'https';
+					if (name === 'x-forwarded-host') return 'evil.com#frag';
+					return null;
+				}
+			});
+
+			expect(rewrittenUrl.host).toBe('localhost:5173');
+		});
+
+		it('accepts a legitimate IPv6 host with port ([::1]:8443)', async () => {
+			const { rewrittenUrl } = await invoke({
+				url: 'http://localhost:5173/p',
+				headers: {
+					'x-forwarded-proto': 'https',
+					'x-forwarded-host': '[::1]:8443'
+				}
+			});
+
+			expect(rewrittenUrl.hostname).toBe('[::1]');
+			expect(rewrittenUrl.port).toBe('8443');
+			expect(rewrittenUrl.protocol).toBe('https:');
+		});
 	});
 
 	describe('TRUST_PROXY env override', () => {

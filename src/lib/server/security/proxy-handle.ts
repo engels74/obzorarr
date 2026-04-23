@@ -17,10 +17,17 @@ function isValidForwardedProto(value: string): value is 'http' | 'https' {
 	return value === 'http' || value === 'https';
 }
 
-// Reject CR/LF (response-splitting / header-injection defense) and any
-// whitespace inside the host token.
+// Reject CR/LF (response-splitting / header-injection defense), whitespace,
+// and URL delimiter characters that would confuse new URL() into parsing a
+// different host than intended.  Specifically:
+//   @  — userinfo delimiter: "trusted@evil.com" → hostname is evil.com
+//   /  — path delimiter: "evil.com/path" passes through to pathname
+//   ?  — query delimiter: "evil.com?x=1" passes through to search
+//   #  — fragment delimiter: "evil.com#foo" passes through to hash
+// IPv6 literals like "[::1]:8443" are NOT rejected because they contain no
+// delimiter characters from the banned set.
 function isSafeForwardedHost(value: string): boolean {
-	return value.length > 0 && !/[\r\n\s]/.test(value);
+	return value.length > 0 && !/[\r\n\s@/?#]/.test(value);
 }
 
 // NOTE: this handler does NOT touch event.getClientAddress(); the production
