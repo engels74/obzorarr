@@ -30,17 +30,15 @@ export const proxyHandle: Handle = async ({ event, resolve }) => {
 	const config = await getTrustProxyConfigWithSource();
 	const trustProxy = config.trustProxy.value === 'true';
 
-	if (!proxyStartupLogged) {
+	if (!proxyStartupLogged && trustProxy) {
 		proxyStartupLogged = true;
-		if (trustProxy) {
-			const sourceLabel = config.trustProxy.source === 'env' ? 'environment' : 'database';
-			logger.warn(
-				`Trusting reverse-proxy x-forwarded-* headers (source: ${sourceLabel}). ` +
-					'The upstream proxy MUST strip inbound x-forwarded-* headers from clients ' +
-					'or attackers can poison event.url.host / event.url.protocol.',
-				'Proxy'
-			);
-		}
+		const sourceLabel = config.trustProxy.source === 'env' ? 'environment' : 'database';
+		logger.warn(
+			`Trusting reverse-proxy x-forwarded-* headers (source: ${sourceLabel}). ` +
+				'The upstream proxy MUST strip inbound x-forwarded-* headers from clients ' +
+				'or attackers can poison event.url.host / event.url.protocol.',
+			'Proxy'
+		);
 	}
 
 	if (!trustProxy) {

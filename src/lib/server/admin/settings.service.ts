@@ -471,7 +471,14 @@ export interface TrustProxyConfigWithSource {
 
 export async function getTrustProxyConfigWithSource(): Promise<TrustProxyConfigWithSource> {
 	const dbSettings = await getAllAppSettings();
-	const envValue = env.TRUST_PROXY ?? '';
+	// resolveConfigValue treats any non-empty envValue as "env-locked" and returns
+	// it verbatim. getTrustProxy() / proxyHandle then compare with === 'true', so a
+	// raw env like 'TRUE' or ' true ' would lock the UI on while runtime stays off.
+	// Normalize to the canonical 'true'/'false' the rest of the pipeline expects.
+	// An empty string means "not set" (no lock). Mirrors the case-insensitive
+	// 'true' convention used by isLiveSyncEnabled() in sync/live-sync.ts.
+	const rawEnv = env.TRUST_PROXY ?? '';
+	const envValue = rawEnv === '' ? '' : rawEnv.trim().toLowerCase() === 'true' ? 'true' : 'false';
 
 	return {
 		trustProxy: resolveConfigValue(dbSettings, AppSettingsKey.TRUST_PROXY, envValue, 'false')

@@ -108,6 +108,10 @@ const CsrfOriginSchema = z.object({
 		})
 });
 
+const TrustProxySchema = z.object({
+	enabled: z.enum(['true', 'false']).transform((v) => v === 'true')
+});
+
 interface SettingValue {
 	value: string;
 	source: ConfigSource;
@@ -860,7 +864,11 @@ export const actions: Actions = {
 		}
 
 		const formData = await request.formData();
-		const enabled = formData.get('enabled') === 'true';
+		const parsed = TrustProxySchema.safeParse({ enabled: formData.get('enabled') });
+		if (!parsed.success) {
+			return fail(400, { error: 'Invalid input: enabled must be "true" or "false"' });
+		}
+		const enabled = parsed.data.enabled;
 
 		try {
 			await setAppSetting(AppSettingsKey.TRUST_PROXY, enabled ? 'true' : 'false');
