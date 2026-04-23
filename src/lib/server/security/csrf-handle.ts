@@ -1,7 +1,12 @@
 import type { Handle } from '@sveltejs/kit';
 import { dev } from '$app/environment';
-import { getCsrfConfigWithSource } from '$lib/server/admin/settings.service';
+import {
+	AppSettingsKey,
+	getAppSetting,
+	getCsrfConfigWithSource
+} from '$lib/server/admin/settings.service';
 import { logger } from '$lib/server/logging';
+import { isOnboardingComplete } from '$lib/server/onboarding/status';
 import { applySecurityHeaders } from './security-headers';
 
 const STATE_CHANGING_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
@@ -50,8 +55,29 @@ export const csrfHandle: Handle = async ({ event, resolve }) => {
 		}
 	}
 
-	// If ORIGIN not configured anywhere, skip check (allows unconfigured dev environments)
+	// If ORIGIN not configured anywhere
 	if (!expectedOrigin) {
+		if (dev) return resolve(event);
+
+		const [onboardingDone, explicitSkip] = await Promise.all([
+			isOnboardingComplete(),
+			getAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED)
+		]);
+
+		if (onboardingDone && explicitSkip !== 'true') {
+			logger.warn('CSRF rejected: no origin configured and no explicit skip', 'CSRF', {
+				method,
+				route: event.route.id ?? '<unmatched>'
+			});
+			return applySecurityHeaders(
+				new Response(JSON.stringify({ error: 'CSRF protection not configured' }), {
+					status: 403,
+					headers: { 'Content-Type': 'application/json' }
+				}),
+				event.request
+			);
+		}
+
 		return resolve(event);
 	}
 
@@ -61,7 +87,7 @@ export const csrfHandle: Handle = async ({ event, resolve }) => {
 	if (!requestOrigin) {
 		logger.warn('CSRF check failed: missing origin header', 'CSRF', {
 			method,
-			path: event.url.pathname
+			route: event.route.id ?? '<unmatched>'
 		});
 		return applySecurityHeaders(
 			new Response(JSON.stringify({ error: 'CSRF check failed: missing origin header' }), {
@@ -76,7 +102,7 @@ export const csrfHandle: Handle = async ({ event, resolve }) => {
 	if (requestOrigin.toLowerCase() !== expectedOrigin.toLowerCase()) {
 		logger.warn('CSRF check failed: origin mismatch', 'CSRF', {
 			method,
-			path: event.url.pathname,
+			route: event.route.id ?? '<unmatched>',
 			expected: expectedOrigin,
 			received: requestOrigin
 		});

@@ -124,19 +124,10 @@ export const load: PageServerLoad = async ({ params, locals, parent }) => {
 	if (accessedViaToken) {
 		const parentData = await parent();
 		const availableYears = parentData.availableYears;
-		const globalFloor = await getGlobalDefaultShareMode();
 		yearIdentifiers = {};
 
 		for (const availYear of availableYears) {
-			const yearSettings = await getOrCreateShareSettings({ userId, year: availYear });
-			const effectiveMode = getMoreRestrictiveMode(yearSettings.mode, globalFloor);
-
-			if (effectiveMode === ShareMode.PRIVATE_LINK) {
-				const token = yearSettings.shareToken ?? (await ensureShareToken(userId, availYear));
-				yearIdentifiers[availYear] = token;
-			} else {
-				yearIdentifiers[availYear] = userId;
-			}
+			yearIdentifiers[availYear] = availYear === year ? identifier : userId;
 		}
 	}
 

@@ -3,11 +3,12 @@ import { isRedirect } from '@sveltejs/kit';
 import {
 	AppSettingsKey,
 	deleteAppSetting,
-	getAppSetting
+	getAppSetting,
+	setAppSetting
 } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
 import { appSettings } from '$lib/server/db/schema';
-import { getOnboardingStep, OnboardingSteps } from '$lib/server/onboarding';
+import { getOnboardingStep, OnboardingSteps, setOnboardingStep } from '$lib/server/onboarding';
 import { actions } from '../../../src/routes/onboarding/csrf/+page.server';
 
 const ORIGIN = 'http://localhost:5173';
@@ -147,5 +148,71 @@ describe('onboarding CSRF actions', () => {
 
 		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBeNull();
 		expect(await getOnboardingStep()).toBe(OnboardingSteps.PLEX);
+	});
+
+	it('skipCsrf writes CSRF_ORIGIN_SKIPPED=true as explicit opt-out', async () => {
+		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED)).toBeNull();
+
+		await expectRedirect(() => runSkipCsrf(createFormRequest('not-a-url')), '/onboarding/plex');
+
+		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED)).toBe('true');
+	});
+
+	it('saveOrigin clears CSRF_ORIGIN_SKIPPED on success', async () => {
+		await setAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED, 'true');
+
+		await expectRedirect(() => runSaveOrigin(createFormRequest(ORIGIN)), '/onboarding/plex');
+
+		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED)).toBeNull();
+		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBe(ORIGIN);
+	});
+
+	describe('onboarding-step guard', () => {
+		it('testOrigin returns 403 when onboarding is already complete', async () => {
+			await setAppSetting(AppSettingsKey.ONBOARDING_COMPLETED, 'true');
+
+			const result = await runTestOrigin(createFormRequest(ORIGIN));
+
+			expect(result).toEqual({
+				status: 403,
+				data: { testError: 'Not allowed at this onboarding stage' }
+			});
+		});
+
+		it('saveOrigin returns 403 when current step is past CSRF', async () => {
+			await setOnboardingStep(OnboardingSteps.PLEX);
+
+			const result = await runSaveOrigin(createFormRequest(ORIGIN));
+
+			expect(result).toEqual({
+				status: 403,
+				data: { error: 'Not allowed at this onboarding stage' }
+			});
+			expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBeNull();
+		});
+
+		it('skipCsrf returns 403 when onboarding is complete', async () => {
+			await setAppSetting(AppSettingsKey.ONBOARDING_COMPLETED, 'true');
+
+			const result = await runSkipCsrf(createFormRequest('not-a-url'));
+
+			expect(result).toEqual({
+				status: 403,
+				data: { error: 'Not allowed at this onboarding stage' }
+			});
+			expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED)).toBeNull();
+		});
+
+		it('skipCsrf returns 403 when current step is past CSRF', async () => {
+			await setOnboardingStep(OnboardingSteps.SETTINGS);
+
+			const result = await runSkipCsrf(createFormRequest('not-a-url'));
+
+			expect(result).toEqual({
+				status: 403,
+				data: { error: 'Not allowed at this onboarding stage' }
+			});
+			expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED)).toBeNull();
+		});
 	});
 });

@@ -234,7 +234,7 @@ const authorizationHandle: Handle = async ({ event, resolve }) => {
 export const handleError: HandleServerError = async ({ error, event }) => {
 	// Log the full error for debugging
 	logger.error(`Unexpected error: ${error}`, 'ErrorHandler', {
-		path: event.url.pathname,
+		route: event.route.id ?? '<unmatched>',
 		method: event.request.method
 	});
 

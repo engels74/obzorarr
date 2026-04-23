@@ -13,6 +13,9 @@ export const GET: RequestHandler = async ({ cookies, locals }) => {
 	if (!locals.user) {
 		error(401, 'Authentication required');
 	}
+	if (!locals.user.isAdmin) {
+		error(403, 'Only server owners can configure Obzorarr');
+	}
 
 	const sessionId = cookies.get('session');
 	if (!sessionId) {
