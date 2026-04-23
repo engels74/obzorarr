@@ -500,7 +500,7 @@ export async function clearConflictingDbSettings(): Promise<string[]> {
 	const plexEnv = getPlexEnvConfig();
 	const openaiEnv = getOpenAIEnvConfig();
 	const csrfEnvOrigin = env.ORIGIN ?? '';
-	const trustProxyEnv = env.TRUST_PROXY ?? '';
+	const trustProxyEnv = (env.TRUST_PROXY ?? '').trim();
 
 	const envToDbMapping: Array<{ envValue: string; dbKey: AppSettingsKeyType; label: string }> = [
 		{
