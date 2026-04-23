@@ -1512,6 +1512,52 @@ const logFieldErrors = $derived(
 									</button>
 								{/if}
 
+								{#if data.security.csrfOriginSkipped}
+									<p class="field-hint" style="color: hsl(25 95% 53%); width: 100%;">
+										CSRF origin skip is currently <strong>active</strong>. Origin validation is
+										relaxed — configure a proper ORIGIN when possible.
+									</p>
+								{/if}
+
+								{#if data.security.csrfOriginSkipped}
+									<p class="field-hint" style="color: hsl(var(--muted-foreground)); width: 100%;">
+										To disable the CSRF skip, configure a CSRF origin above first.
+									</p>
+									<button type="button" class="btn-destructive" disabled>
+										<ShieldAlert class="btn-icon" />
+										Disable CSRF Skip
+									</button>
+								{:else if data.security.csrfEnabled}
+									<p class="field-hint" style="color: hsl(var(--muted-foreground)); width: 100%;">
+										CSRF is already enforced by the configured origin — skipping is not needed.
+									</p>
+									<button type="button" class="btn-secondary" disabled>
+										<ShieldAlert class="btn-icon" />
+										Enable CSRF Skip
+									</button>
+								{:else}
+									<form
+										method="POST"
+										action="?/toggleCsrfSkip"
+										use:enhance={() => {
+											return async ({ result, update }) => {
+												if (result.type === 'success' || result.type === 'failure') {
+													handleFormToast(
+														result.data as { success?: boolean; message?: string; error?: string }
+													);
+												}
+												await update({ reset: false });
+											};
+										}}
+									>
+										<input type="hidden" name="enabled" value="true" />
+										<button type="submit" class="btn-secondary">
+											<ShieldAlert class="btn-icon" />
+											Enable CSRF Skip
+										</button>
+									</form>
+								{/if}
+
 								{#if data.security.warningDismissed}
 									<form
 										method="POST"
@@ -1985,8 +2031,9 @@ const logFieldErrors = $derived(
 		<AlertDialog.Header>
 			<AlertDialog.Title>Clear CSRF Origin?</AlertDialog.Title>
 			<AlertDialog.Description>
-				This will remove the CSRF origin value from the database. CSRF protection will be disabled
-				unless an ORIGIN environment variable is set.
+				This will remove the CSRF origin value from the database. If no ORIGIN environment variable
+				is set and the CSRF skip flag is not enabled, all admin POST requests will be rejected
+				(fail-closed). The server will block this action in that case.
 				<br /><br />
 				You can reconfigure this setting at any time.
 			</AlertDialog.Description>

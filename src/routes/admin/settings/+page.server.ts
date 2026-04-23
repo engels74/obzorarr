@@ -14,6 +14,7 @@ import {
 	deleteAppSetting,
 	getAnonymizationMode,
 	getApiConfigWithSources,
+	getAppSetting,
 	getCsrfConfigWithSource,
 	getUITheme,
 	getWrappedLogoMode,
@@ -129,7 +130,8 @@ export const load: PageServerLoad = async () => {
 		allowUserControl,
 		serverWrappedShareMode,
 		csrfConfig,
-		csrfWarningDismissed
+		csrfWarningDismissed,
+		csrfOriginSkippedRaw
 	] = await Promise.all([
 		getApiConfigWithSources(),
 		getUITheme(),
@@ -144,7 +146,8 @@ export const load: PageServerLoad = async () => {
 		getGlobalAllowUserControl(),
 		getServerWrappedShareMode(),
 		getCsrfConfigWithSource(),
-		isCsrfWarningDismissed()
+		isCsrfWarningDismissed(),
+		getAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED)
 	]);
 
 	const currentYear = new Date().getFullYear();
@@ -196,7 +199,9 @@ export const load: PageServerLoad = async () => {
 			csrfEnabled: !!csrfConfig.origin.value,
 			originSource: csrfConfig.origin.source,
 			originLocked: csrfConfig.origin.isLocked,
-			warningDismissed: csrfWarningDismissed
+			warningDismissed: csrfWarningDismissed,
+			// Flag is only effective when no origin is configured; mirror csrfHandle semantics
+			csrfOriginSkipped: csrfOriginSkippedRaw === 'true' && !csrfConfig.origin.value
 		}
 	};
 };
@@ -713,6 +718,15 @@ export const actions: Actions = {
 				return fail(500, { error: message });
 			}
 		} else {
+			const csrfSkipFlag = await getAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED);
+			if (!env.ORIGIN && csrfSkipFlag !== 'true') {
+				return fail(400, {
+					error:
+						'Cannot clear CSRF origin: no ORIGIN environment variable is set and the CSRF skip flag is not enabled. ' +
+						'Clearing would lock all admin POST requests (403). Set ORIGIN in your environment or enable the CSRF skip flag first.'
+				});
+			}
+
 			try {
 				await deleteAppSetting(AppSettingsKey.CSRF_ORIGIN);
 				const message = env.ORIGIN
@@ -734,6 +748,15 @@ export const actions: Actions = {
 			});
 		}
 
+		const csrfSkipFlag = await getAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED);
+		if (!env.ORIGIN && csrfSkipFlag !== 'true') {
+			return fail(400, {
+				error:
+					'Cannot clear CSRF origin: no ORIGIN environment variable is set and the CSRF skip flag is not enabled. ' +
+					'Clearing would lock all admin POST requests (403). Set ORIGIN in your environment or enable the CSRF skip flag first.'
+			});
+		}
+
 		try {
 			await deleteAppSetting(AppSettingsKey.CSRF_ORIGIN);
 			const message = env.ORIGIN
@@ -742,6 +765,53 @@ export const actions: Actions = {
 			return { success: true, message };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to clear CSRF origin';
+			return fail(500, { error: message });
+		}
+	},
+
+	toggleCsrfSkip: async ({ request }) => {
+		const formData = await request.formData();
+		const enabled = formData.get('enabled') === 'true';
+		try {
+			if (enabled) {
+				// Refuse to set the skip flag when an origin is already configured: the flag
+				// has no effect in that state (csrfHandle only consults it when expectedOrigin
+				// is unset), so setting it would be misleading and create a latent footgun.
+				const csrfConfig = await getCsrfConfigWithSource();
+				if (csrfConfig.origin.value) {
+					return fail(400, {
+						error:
+							'CSRF is already enforced by the configured origin; skipping is not needed. Remove the origin first if you truly intend to skip.'
+					});
+				}
+				await setAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED, 'true');
+				logger.warn('CSRF origin-skip flag enabled by admin', 'Security');
+				return {
+					success: true,
+					message:
+						'CSRF origin skip enabled. CSRF origin validation is now relaxed — set a proper ORIGIN when possible.'
+				};
+			} else {
+				// Refuse to clear the skip flag when no origin is configured: doing so
+				// would immediately 403 all subsequent state-changing requests (including
+				// the POST to re-enable this flag), locking the operator out of the UI.
+				const csrfConfig = await getCsrfConfigWithSource();
+				if (!csrfConfig.origin.value) {
+					return fail(400, {
+						error:
+							'Cannot disable CSRF skip while no ORIGIN is configured. Set a CSRF origin first, then disable the skip.'
+					});
+				}
+				await deleteAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED);
+				logger.info('CSRF origin-skip flag disabled by admin', 'Security');
+				return {
+					success: true,
+					message: 'CSRF origin skip disabled. Normal origin validation is restored.'
+				};
+			}
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to update CSRF skip setting';
+			logger.error(`Failed to toggle CSRF skip: ${message}`, 'Security');
 			return fail(500, { error: message });
 		}
 	},

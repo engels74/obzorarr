@@ -529,6 +529,70 @@ describe('Sharing Access Control', () => {
 			expect(result.userId).toBe(testUserId);
 			expect(result.year).toBe(testYear);
 		});
+
+		describe('global floor enforcement', () => {
+			it('throws ShareAccessDeniedError when floor is raised to private-oauth', async () => {
+				const token = generateShareToken();
+
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_OAUTH,
+					allowUserControl: false
+				});
+				await db.insert(shareSettings).values({
+					userId,
+					year,
+					mode: ShareMode.PRIVATE_LINK,
+					shareToken: token,
+					canUserControl: false
+				});
+
+				try {
+					await checkTokenAccess(token);
+					expect.unreachable('Should have thrown');
+				} catch (error) {
+					expect(error).toBeInstanceOf(ShareAccessDeniedError);
+				}
+			});
+
+			it('allows token access when floor is public', async () => {
+				const token = generateShareToken();
+
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PUBLIC,
+					allowUserControl: false
+				});
+				await db.insert(shareSettings).values({
+					userId,
+					year,
+					mode: ShareMode.PRIVATE_LINK,
+					shareToken: token,
+					canUserControl: false
+				});
+
+				const result = await checkTokenAccess(token);
+				expect(result.userId).toBe(userId);
+				expect(result.year).toBe(year);
+			});
+
+			it('allows token access when floor matches private-link', async () => {
+				const token = generateShareToken();
+
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_LINK,
+					allowUserControl: false
+				});
+				await db.insert(shareSettings).values({
+					userId,
+					year,
+					mode: ShareMode.PRIVATE_LINK,
+					shareToken: token,
+					canUserControl: false
+				});
+
+				const result = await checkTokenAccess(token);
+				expect(result.userId).toBe(userId);
+			});
+		});
 	});
 
 	// =========================================================================

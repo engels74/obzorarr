@@ -30,6 +30,16 @@ mock.module('$env/static/private', () => ({
 	PLEX_TOKEN: 'test-plex-token'
 }));
 
+// Mock SvelteKit's $app/environment virtual module. Tests exercise production-mode
+// behavior (dev=false) by default; individual tests may re-mock this module if they
+// need to simulate the dev flag being true.
+mock.module('$app/environment', () => ({
+	dev: false,
+	browser: false,
+	building: false,
+	version: 'test'
+}));
+
 // Import database client DYNAMICALLY after setting environment variables
 // NOTE: Static imports are hoisted and execute BEFORE the code above,
 // which would cause the db client to read DATABASE_PATH before we set it.

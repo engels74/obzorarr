@@ -2,12 +2,23 @@ import { fail, redirect } from '@sveltejs/kit';
 import { z } from 'zod';
 import {
 	AppSettingsKey,
+	deleteAppSetting,
 	getCsrfConfigWithSource,
 	setAppSetting
 } from '$lib/server/admin/settings.service';
 import { logger } from '$lib/server/logging';
-import { OnboardingSteps, setOnboardingStep } from '$lib/server/onboarding';
+import {
+	getOnboardingStep,
+	isOnboardingComplete,
+	OnboardingSteps,
+	setOnboardingStep
+} from '$lib/server/onboarding';
 import type { Actions, PageServerLoad } from './$types';
+
+async function isOnboardingCsrfStep(): Promise<boolean> {
+	const [done, step] = await Promise.all([isOnboardingComplete(), getOnboardingStep()]);
+	return !done && step === OnboardingSteps.CSRF;
+}
 
 const CsrfOriginSchema = z.object({
 	csrfOrigin: z
@@ -62,6 +73,10 @@ export const load: PageServerLoad = async ({ request, parent }) => {
 
 export const actions: Actions = {
 	testOrigin: async ({ request }) => {
+		if (!(await isOnboardingCsrfStep())) {
+			return fail(403, { testError: 'Not allowed at this onboarding stage' });
+		}
+
 		const formData = await request.formData();
 		const proposedOrigin = formData.get('csrfOrigin')?.toString();
 
@@ -88,6 +103,10 @@ export const actions: Actions = {
 	},
 
 	saveOrigin: async ({ request }) => {
+		if (!(await isOnboardingCsrfStep())) {
+			return fail(403, { error: 'Not allowed at this onboarding stage' });
+		}
+
 		const csrfConfig = await getCsrfConfigWithSource();
 		if (csrfConfig.origin.isLocked) {
 			return fail(400, { error: 'CSRF origin is locked via ORIGIN environment variable' });
@@ -117,6 +136,7 @@ export const actions: Actions = {
 		}
 
 		await setAppSetting(AppSettingsKey.CSRF_ORIGIN, result.data.csrfOrigin);
+		await deleteAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED);
 		logger.info(`Onboarding: CSRF origin configured - ${result.data.csrfOrigin}`, 'Onboarding');
 
 		await setOnboardingStep(OnboardingSteps.PLEX);
@@ -124,6 +144,11 @@ export const actions: Actions = {
 	},
 
 	skipCsrf: async () => {
+		if (!(await isOnboardingCsrfStep())) {
+			return fail(403, { error: 'Not allowed at this onboarding stage' });
+		}
+
+		await setAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED, 'true');
 		logger.info('Onboarding: CSRF configuration skipped', 'Onboarding');
 
 		await setOnboardingStep(OnboardingSteps.PLEX);

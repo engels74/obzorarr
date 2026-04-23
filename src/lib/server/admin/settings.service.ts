@@ -28,6 +28,7 @@ export const AppSettingsKey = {
 	ONBOARDING_COMPLETED: 'onboarding_completed',
 	ONBOARDING_CURRENT_STEP: 'onboarding_current_step',
 	CSRF_ORIGIN: 'csrf_origin',
+	CSRF_ORIGIN_SKIPPED: 'csrf_origin_skipped',
 	CSRF_WARNING_DISMISSED: 'csrf_warning_dismissed'
 } as const;
 

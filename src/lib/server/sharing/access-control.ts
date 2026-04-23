@@ -140,6 +140,17 @@ export async function checkTokenAccess(token: string): Promise<CheckTokenAccessR
 		throw new InvalidShareTokenError('This share link is no longer valid.');
 	}
 
+	// Apply the global privacy floor: if the admin has raised the floor above
+	// private-link (e.g. to private-oauth), a token alone is no longer sufficient
+	// even though the per-user mode is still stored as private-link.
+	const globalFloor = await getGlobalDefaultShareMode();
+	const effectiveMode = getMoreRestrictiveMode(settings.mode, globalFloor);
+	if (effectiveMode !== ShareMode.PRIVATE_LINK) {
+		throw new ShareAccessDeniedError(
+			'This wrapped is visible only to members of this Plex server. Sign in with your Plex account to view.'
+		);
+	}
+
 	return {
 		settings,
 		userId: settings.userId,

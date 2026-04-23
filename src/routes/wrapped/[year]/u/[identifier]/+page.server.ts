@@ -45,7 +45,7 @@ async function resolveUserIdFromIdentifier(
 			const tokenResult = await checkTokenAccess(identifier);
 			return tokenResult.year === year ? tokenResult.userId : null;
 		} catch (err) {
-			if (err instanceof InvalidShareTokenError) {
+			if (err instanceof InvalidShareTokenError || err instanceof ShareAccessDeniedError) {
 				return null;
 			}
 			throw err;
@@ -81,6 +81,9 @@ export const load: PageServerLoad = async ({ params, locals, parent }) => {
 		} catch (err) {
 			if (err instanceof InvalidShareTokenError) {
 				error(404, 'This share link is invalid, expired, or has been revoked.');
+			}
+			if (err instanceof ShareAccessDeniedError) {
+				error(403, err.message);
 			}
 			throw err;
 		}
@@ -124,19 +127,10 @@ export const load: PageServerLoad = async ({ params, locals, parent }) => {
 	if (accessedViaToken) {
 		const parentData = await parent();
 		const availableYears = parentData.availableYears;
-		const globalFloor = await getGlobalDefaultShareMode();
 		yearIdentifiers = {};
 
 		for (const availYear of availableYears) {
-			const yearSettings = await getOrCreateShareSettings({ userId, year: availYear });
-			const effectiveMode = getMoreRestrictiveMode(yearSettings.mode, globalFloor);
-
-			if (effectiveMode === ShareMode.PRIVATE_LINK) {
-				const token = yearSettings.shareToken ?? (await ensureShareToken(userId, availYear));
-				yearIdentifiers[availYear] = token;
-			} else {
-				yearIdentifiers[availYear] = userId;
-			}
+			yearIdentifiers[availYear] = availYear === year ? identifier : userId;
 		}
 	}
 
