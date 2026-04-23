@@ -1512,6 +1512,41 @@ const logFieldErrors = $derived(
 									</button>
 								{/if}
 
+								{#if data.security.csrfOriginSkipped}
+									<p class="field-hint" style="color: hsl(25 95% 53%); width: 100%;">
+										CSRF origin skip is currently <strong>active</strong>. Origin validation is
+										relaxed — configure a proper ORIGIN when possible.
+									</p>
+								{/if}
+
+								<form
+									method="POST"
+									action="?/toggleCsrfSkip"
+									use:enhance={() => {
+										return async ({ result, update }) => {
+											if (result.type === 'success' || result.type === 'failure') {
+												handleFormToast(
+													result.data as { success?: boolean; message?: string; error?: string }
+												);
+											}
+											await update({ reset: false });
+										};
+									}}
+								>
+									<input
+										type="hidden"
+										name="enabled"
+										value={data.security.csrfOriginSkipped ? 'false' : 'true'}
+									/>
+									<button
+										type="submit"
+										class={data.security.csrfOriginSkipped ? 'btn-destructive' : 'btn-secondary'}
+									>
+										<ShieldAlert class="btn-icon" />
+										{data.security.csrfOriginSkipped ? 'Disable CSRF Skip' : 'Enable CSRF Skip'}
+									</button>
+								</form>
+
 								{#if data.security.warningDismissed}
 									<form
 										method="POST"

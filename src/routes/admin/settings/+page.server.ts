@@ -14,6 +14,7 @@ import {
 	deleteAppSetting,
 	getAnonymizationMode,
 	getApiConfigWithSources,
+	getAppSetting,
 	getCsrfConfigWithSource,
 	getUITheme,
 	getWrappedLogoMode,
@@ -129,7 +130,8 @@ export const load: PageServerLoad = async () => {
 		allowUserControl,
 		serverWrappedShareMode,
 		csrfConfig,
-		csrfWarningDismissed
+		csrfWarningDismissed,
+		csrfOriginSkippedRaw
 	] = await Promise.all([
 		getApiConfigWithSources(),
 		getUITheme(),
@@ -144,7 +146,8 @@ export const load: PageServerLoad = async () => {
 		getGlobalAllowUserControl(),
 		getServerWrappedShareMode(),
 		getCsrfConfigWithSource(),
-		isCsrfWarningDismissed()
+		isCsrfWarningDismissed(),
+		getAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED)
 	]);
 
 	const currentYear = new Date().getFullYear();
@@ -196,7 +199,8 @@ export const load: PageServerLoad = async () => {
 			csrfEnabled: !!csrfConfig.origin.value,
 			originSource: csrfConfig.origin.source,
 			originLocked: csrfConfig.origin.isLocked,
-			warningDismissed: csrfWarningDismissed
+			warningDismissed: csrfWarningDismissed,
+			csrfOriginSkipped: csrfOriginSkippedRaw === 'true'
 		}
 	};
 };
@@ -742,6 +746,33 @@ export const actions: Actions = {
 			return { success: true, message };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to clear CSRF origin';
+			return fail(500, { error: message });
+		}
+	},
+
+	toggleCsrfSkip: async ({ request }) => {
+		const formData = await request.formData();
+		const enabled = formData.get('enabled') === 'true';
+		try {
+			if (enabled) {
+				await setAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED, 'true');
+				logger.warn('CSRF origin-skip flag enabled by admin', 'Security');
+				return {
+					success: true,
+					message:
+						'CSRF origin skip enabled. CSRF origin validation is now relaxed — set a proper ORIGIN when possible.'
+				};
+			} else {
+				await deleteAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED);
+				logger.info('CSRF origin-skip flag disabled by admin', 'Security');
+				return {
+					success: true,
+					message: 'CSRF origin skip disabled. Normal origin validation is restored.'
+				};
+			}
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to update CSRF skip setting';
+			logger.error(`Failed to toggle CSRF skip: ${message}`, 'Security');
 			return fail(500, { error: message });
 		}
 	},
