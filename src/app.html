@@ -8,7 +8,7 @@
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 		%sveltekit.head%
 		<script nonce="%sveltekit.nonce%">
-			(function () {
+			(() => {
 				try {
 					var validThemes = ['modern-minimal','supabase','doom-64','amber-minimal','soviet-red','obsidian-premium','aurora-premium','champagne-premium'];
 					var cookies = document.cookie || '';
@@ -30,7 +30,7 @@
 	<body data-sveltekit-preload-data="hover">
 		<div style="display: contents">%sveltekit.body%</div>
 		<script nonce="%sveltekit.nonce%">
-			(function () {
+			(() => {
 				try {
 					var theme = document.documentElement.getAttribute('data-theme');
 					var isWrapped =
