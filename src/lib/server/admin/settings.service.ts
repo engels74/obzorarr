@@ -477,8 +477,8 @@ export async function getTrustProxyConfigWithSource(): Promise<TrustProxyConfigW
 	// Normalize to the canonical 'true'/'false' the rest of the pipeline expects.
 	// An empty string means "not set" (no lock). Mirrors the case-insensitive
 	// 'true' convention used by isLiveSyncEnabled() in sync/live-sync.ts.
-	const rawEnv = env.TRUST_PROXY ?? '';
-	const envValue = rawEnv === '' ? '' : rawEnv.trim().toLowerCase() === 'true' ? 'true' : 'false';
+	const rawEnv = (env.TRUST_PROXY ?? '').trim();
+	const envValue = rawEnv === '' ? '' : rawEnv.toLowerCase() === 'true' ? 'true' : 'false';
 
 	return {
 		trustProxy: resolveConfigValue(dbSettings, AppSettingsKey.TRUST_PROXY, envValue, 'false')
