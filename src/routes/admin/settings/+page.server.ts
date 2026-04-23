@@ -718,6 +718,15 @@ export const actions: Actions = {
 				return fail(500, { error: message });
 			}
 		} else {
+			const csrfSkipFlag = await getAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED);
+			if (!env.ORIGIN && csrfSkipFlag !== 'true') {
+				return fail(400, {
+					error:
+						'Cannot clear CSRF origin: no ORIGIN environment variable is set and the CSRF skip flag is not enabled. ' +
+						'Clearing would lock all admin POST requests (403). Set ORIGIN in your environment or enable the CSRF skip flag first.'
+				});
+			}
+
 			try {
 				await deleteAppSetting(AppSettingsKey.CSRF_ORIGIN);
 				const message = env.ORIGIN
@@ -736,6 +745,15 @@ export const actions: Actions = {
 		if (csrfConfig.origin.isLocked) {
 			return fail(400, {
 				error: 'CSRF origin is set via environment variable and cannot be cleared here'
+			});
+		}
+
+		const csrfSkipFlag = await getAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED);
+		if (!env.ORIGIN && csrfSkipFlag !== 'true') {
+			return fail(400, {
+				error:
+					'Cannot clear CSRF origin: no ORIGIN environment variable is set and the CSRF skip flag is not enabled. ' +
+					'Clearing would lock all admin POST requests (403). Set ORIGIN in your environment or enable the CSRF skip flag first.'
 			});
 		}
 

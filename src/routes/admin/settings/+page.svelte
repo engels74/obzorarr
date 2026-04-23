@@ -2023,8 +2023,9 @@ const logFieldErrors = $derived(
 		<AlertDialog.Header>
 			<AlertDialog.Title>Clear CSRF Origin?</AlertDialog.Title>
 			<AlertDialog.Description>
-				This will remove the CSRF origin value from the database. CSRF protection will be disabled
-				unless an ORIGIN environment variable is set.
+				This will remove the CSRF origin value from the database. If no ORIGIN environment variable
+				is set and the CSRF skip flag is not enabled, all admin POST requests will be rejected
+				(fail-closed). The server will block this action in that case.
 				<br /><br />
 				You can reconfigure this setting at any time.
 			</AlertDialog.Description>
