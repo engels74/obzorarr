@@ -11,6 +11,7 @@ import {
 	InvalidShareTokenError,
 	ShareAccessDeniedError,
 	ShareMode,
+	ShareModePrivacyLevel,
 	type ShareModeType,
 	type ShareSettings
 } from './types';
@@ -136,19 +137,34 @@ export async function checkTokenAccess(token: string): Promise<CheckTokenAccessR
 		throw new InvalidShareTokenError();
 	}
 
-	if (settings.mode !== ShareMode.PRIVATE_LINK) {
+	// A per-user mode that is explicitly MORE restrictive than private-link
+	// (e.g. private-oauth) means the owner has chosen auth over tokens; the
+	// token is stale regardless of the global floor.
+	if (ShareModePrivacyLevel[settings.mode] > ShareModePrivacyLevel[ShareMode.PRIVATE_LINK]) {
 		throw new InvalidShareTokenError('This share link is no longer valid.');
 	}
 
-	// Apply the global privacy floor: if the admin has raised the floor above
-	// private-link (e.g. to private-oauth), a token alone is no longer sufficient
-	// even though the per-user mode is still stored as private-link.
+	// Resolve against the global privacy floor. This mirrors the effective-mode
+	// computation done at mint-time (see `+page.server.ts` for user wrapped) and
+	// in `checkWrappedAccess`, so that a token minted because the floor raised a
+	// less-restrictive per-user row (e.g. EXPLICIT 'public') up to 'private-link'
+	// is also honored here. Without this symmetry, `checkTokenAccess` would reject
+	// tokens on the raw `settings.mode` while the minting site happily issues them
+	// on `effectiveMode`, producing share URLs that work for the owner but not
+	// for any non-owner they send them to.
 	const globalFloor = await getGlobalDefaultShareMode();
 	const effectiveMode = getMoreRestrictiveMode(settings.mode, globalFloor);
 	if (effectiveMode !== ShareMode.PRIVATE_LINK) {
-		throw new ShareAccessDeniedError(
-			'This wrapped is visible only to members of this Plex server. Sign in with your Plex account to view.'
-		);
+		// Floor pushed the effective mode above private-link (e.g. private-oauth):
+		// token alone is no longer sufficient, direct the viewer to sign in.
+		if (ShareModePrivacyLevel[effectiveMode] > ShareModePrivacyLevel[ShareMode.PRIVATE_LINK]) {
+			throw new ShareAccessDeniedError(
+				'This wrapped is visible only to members of this Plex server. Sign in with your Plex account to view.'
+			);
+		}
+		// Both per-user mode and floor are public: the page is public, so the
+		// token is meaningless; treat as a stale link.
+		throw new InvalidShareTokenError('This share link is no longer valid.');
 	}
 
 	return {
