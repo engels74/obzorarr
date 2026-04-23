@@ -61,27 +61,40 @@ export async function getGlobalAllowUserControl(): Promise<boolean> {
 }
 
 export async function setGlobalShareDefaults(defaults: GlobalShareDefaults): Promise<void> {
-	await db
-		.insert(appSettings)
-		.values({
-			key: ShareSettingsKey.DEFAULT_SHARE_MODE,
-			value: defaults.defaultShareMode
-		})
-		.onConflictDoUpdate({
-			target: appSettings.key,
-			set: { value: defaults.defaultShareMode }
-		});
+	await db.transaction(async (tx) => {
+		await tx
+			.insert(appSettings)
+			.values({
+				key: ShareSettingsKey.DEFAULT_SHARE_MODE,
+				value: defaults.defaultShareMode
+			})
+			.onConflictDoUpdate({
+				target: appSettings.key,
+				set: { value: defaults.defaultShareMode }
+			});
 
-	await db
-		.insert(appSettings)
-		.values({
-			key: ShareSettingsKey.ALLOW_USER_CONTROL,
-			value: String(defaults.allowUserControl)
-		})
-		.onConflictDoUpdate({
-			target: appSettings.key,
-			set: { value: String(defaults.allowUserControl) }
-		});
+		await tx
+			.insert(appSettings)
+			.values({
+				key: ShareSettingsKey.ALLOW_USER_CONTROL,
+				value: String(defaults.allowUserControl)
+			})
+			.onConflictDoUpdate({
+				target: appSettings.key,
+				set: { value: String(defaults.allowUserControl) }
+			});
+
+		// Rotate tokens for default-sourced rows when the new global default is
+		// no longer PRIVATE_LINK. Any captured token from a previous PRIVATE_LINK
+		// default becomes unusable; getShareSettings re-mints on demand if the
+		// default later flips back to PRIVATE_LINK.
+		if (defaults.defaultShareMode !== ShareMode.PRIVATE_LINK) {
+			await tx
+				.update(shareSettings)
+				.set({ shareToken: null })
+				.where(eq(shareSettings.modeSource, ShareModeSource.DEFAULT));
+		}
+	});
 }
 
 export async function bulkApplyUserControl(canUserControl: boolean): Promise<number> {
@@ -170,13 +183,18 @@ function toShareSettings(record: ShareSettingsRecord, globalDefault: ShareModeTy
 	const modeSource = (record.modeSource ?? ShareModeSource.EXPLICIT) as ShareModeSourceType;
 	const mode = modeSource === ShareModeSource.DEFAULT ? globalDefault : storedMode;
 
+	// Defense-in-depth: never expose a stored token unless the effective mode is
+	// PRIVATE_LINK. This guards against capture-and-replay if a row still holds
+	// a token after the effective mode was widened (e.g. global default changed).
+	const shareToken = mode === ShareMode.PRIVATE_LINK ? record.shareToken : null;
+
 	return {
 		userId: record.userId,
 		year: record.year,
 		mode,
 		storedMode,
 		modeSource,
-		shareToken: record.shareToken,
+		shareToken,
 		canUserControl: record.canUserControl ?? false
 	};
 }
@@ -302,14 +320,24 @@ export async function regenerateShareToken(userId: number, year: number): Promis
 }
 
 export async function ensureShareToken(userId: number, year: number): Promise<string> {
-	const settings = await getShareSettings(userId, year);
+	// Read the raw DB row directly (bypassing toShareSettings sanitization) so
+	// that we see any existing token even when the stored mode is not private-link
+	// but the global floor has raised the effective mode to private-link. Using the
+	// sanitized ShareSettings path would always return shareToken=null in that case,
+	// causing a new token to be minted on every page load and breaking shared URLs.
+	const raw = await db
+		.select({ shareToken: shareSettings.shareToken })
+		.from(shareSettings)
+		.where(and(eq(shareSettings.userId, userId), eq(shareSettings.year, year)))
+		.limit(1);
 
-	if (!settings) {
+	const row = raw[0];
+	if (!row) {
 		throw new ShareSettingsNotFoundError();
 	}
 
-	if (settings.shareToken) {
-		return settings.shareToken;
+	if (row.shareToken) {
+		return row.shareToken;
 	}
 
 	const newToken = generateShareToken();
@@ -317,9 +345,23 @@ export async function ensureShareToken(userId: number, year: number): Promise<st
 	await db
 		.update(shareSettings)
 		.set({ shareToken: newToken })
-		.where(and(eq(shareSettings.userId, userId), eq(shareSettings.year, year)));
+		.where(
+			and(
+				eq(shareSettings.userId, userId),
+				eq(shareSettings.year, year),
+				isNull(shareSettings.shareToken)
+			)
+		);
 
-	return newToken;
+	// Re-read to get the winner in case of a concurrent mint (same pattern as
+	// getShareSettings uses for its own lazy-mint path).
+	const refreshed = await db
+		.select({ shareToken: shareSettings.shareToken })
+		.from(shareSettings)
+		.where(and(eq(shareSettings.userId, userId), eq(shareSettings.year, year)))
+		.limit(1);
+
+	return refreshed[0]?.shareToken ?? newToken;
 }
 
 export async function getShareSettingsByToken(token: string): Promise<ShareSettings | null> {

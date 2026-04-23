@@ -167,10 +167,24 @@ export const load: PageServerLoad = async ({ params, locals, parent }) => {
 
 	const globalFloorForUrl = await getGlobalDefaultShareMode();
 	const effectiveModeForUrl = getMoreRestrictiveMode(shareSettings.mode, globalFloorForUrl);
-	const urlIdentifier =
+	// Resolve the share token for the URL, minting one lazily if needed (e.g. when
+	// the global floor raises the effective mode to private-link but the per-user
+	// row was created under a less-restrictive mode and has no token yet).
+	const resolvedShareToken =
 		effectiveModeForUrl === ShareMode.PRIVATE_LINK
 			? (shareSettings.shareToken ?? (await ensureShareToken(userId, year)))
-			: userId;
+			: null;
+	const urlIdentifier = resolvedShareToken ?? userId;
+
+	// Only owner/admin sees the raw token, and only when the effective mode is
+	// actually private-link. Anonymous and non-owner viewers never receive it,
+	// even if the row still holds one (defense-in-depth against capture/replay).
+	// Use resolvedShareToken (not the stale shareSettings.shareToken) so that a
+	// freshly-minted token is correctly surfaced to the owner/admin.
+	const exposedShareToken =
+		(isOwner || isAdmin) && effectiveModeForUrl === ShareMode.PRIVATE_LINK
+			? resolvedShareToken
+			: null;
 
 	return {
 		stats,
@@ -188,7 +202,7 @@ export const load: PageServerLoad = async ({ params, locals, parent }) => {
 			mode: shareSettings.mode,
 			storedMode: shareSettings.storedMode,
 			modeSource: shareSettings.modeSource,
-			shareToken: shareSettings.shareToken,
+			shareToken: exposedShareToken,
 			canUserControl: shareSettings.canUserControl || isAdmin
 		},
 		isOwner,

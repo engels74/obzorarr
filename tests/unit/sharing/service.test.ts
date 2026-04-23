@@ -154,6 +154,138 @@ describe('Sharing Service', () => {
 				expect(mode).toBe(ShareMode.PRIVATE_OAUTH);
 				expect(allowed).toBe(true);
 			});
+
+			it('nulls tokens on default-source rows when widening from PRIVATE_LINK to PUBLIC', async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_LINK,
+					allowUserControl: true
+				});
+
+				const defaultToken = generateShareToken();
+				const explicitToken = generateShareToken();
+
+				await db.insert(shareSettings).values([
+					{
+						userId: 1,
+						year: 2024,
+						mode: ShareMode.PRIVATE_LINK,
+						modeSource: ShareModeSource.DEFAULT,
+						shareToken: defaultToken,
+						canUserControl: true
+					},
+					{
+						userId: 2,
+						year: 2024,
+						mode: ShareMode.PRIVATE_LINK,
+						modeSource: ShareModeSource.EXPLICIT,
+						shareToken: explicitToken,
+						canUserControl: true
+					}
+				]);
+
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PUBLIC,
+					allowUserControl: true
+				});
+
+				const rows = await db.select().from(shareSettings);
+				const defaultRow = rows.find((r) => r.userId === 1);
+				const explicitRow = rows.find((r) => r.userId === 2);
+
+				expect(defaultRow?.shareToken).toBeNull();
+				expect(explicitRow?.shareToken).toBe(explicitToken);
+			});
+
+			it('nulls tokens on default-source rows when widening from PRIVATE_LINK to PRIVATE_OAUTH', async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_LINK,
+					allowUserControl: true
+				});
+
+				const defaultToken = generateShareToken();
+				await db.insert(shareSettings).values({
+					userId: 1,
+					year: 2024,
+					mode: ShareMode.PRIVATE_LINK,
+					modeSource: ShareModeSource.DEFAULT,
+					shareToken: defaultToken,
+					canUserControl: true
+				});
+
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_OAUTH,
+					allowUserControl: true
+				});
+
+				const row = await db.select().from(shareSettings).limit(1);
+				expect(row[0]?.shareToken).toBeNull();
+			});
+
+			it('does not touch tokens when transitioning from PUBLIC to PRIVATE_LINK', async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PUBLIC,
+					allowUserControl: true
+				});
+
+				const explicitToken = generateShareToken();
+				await db.insert(shareSettings).values({
+					userId: 1,
+					year: 2024,
+					mode: ShareMode.PRIVATE_LINK,
+					modeSource: ShareModeSource.EXPLICIT,
+					shareToken: explicitToken,
+					canUserControl: true
+				});
+
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_LINK,
+					allowUserControl: true
+				});
+
+				const row = await db.select().from(shareSettings).limit(1);
+				expect(row[0]?.shareToken).toBe(explicitToken);
+			});
+		});
+
+		describe('toShareSettings token stripping', () => {
+			it('returns shareToken: null when effective mode is PUBLIC even if DB row holds a token', async () => {
+				const stashedToken = generateShareToken();
+				// Default-sourced row originally created when global default was PRIVATE_LINK.
+				await db.insert(shareSettings).values({
+					userId: 1,
+					year: 2024,
+					mode: ShareMode.PRIVATE_LINK,
+					modeSource: ShareModeSource.DEFAULT,
+					shareToken: stashedToken,
+					canUserControl: true
+				});
+
+				// Force a PUBLIC global default WITHOUT going through setGlobalShareDefaults
+				// (which would null the token) so we exercise the in-memory strip path.
+				await db.insert(appSettings).values({
+					key: ShareSettingsKey.DEFAULT_SHARE_MODE,
+					value: ShareMode.PUBLIC
+				});
+
+				const settings = await getShareSettings(1, 2024);
+				expect(settings?.mode).toBe(ShareMode.PUBLIC);
+				expect(settings?.shareToken).toBeNull();
+			});
+
+			it('returns shareToken when effective mode is PRIVATE_LINK', async () => {
+				const token = generateShareToken();
+				await db.insert(shareSettings).values({
+					userId: 1,
+					year: 2024,
+					mode: ShareMode.PRIVATE_LINK,
+					modeSource: ShareModeSource.EXPLICIT,
+					shareToken: token,
+					canUserControl: true
+				});
+
+				const settings = await getShareSettings(1, 2024);
+				expect(settings?.shareToken).toBe(token);
+			});
 		});
 	});
 

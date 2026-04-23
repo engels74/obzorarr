@@ -454,12 +454,19 @@ let isSavingCsrf = $state(false);
 let csrfClearDialogOpen = $state(false);
 let isClearingCsrf = $state(false);
 let isResettingCsrfWarning = $state(false);
+let trustProxyValue = $state(false);
+let trustProxySource = $state<'env' | 'db' | 'default'>('default');
+let trustProxyLocked = $state(false);
+let isSavingTrustProxy = $state(false);
 
 // Sync CSRF state from data
 $effect(() => {
 	csrfOriginValue = data.security.originValue;
 	csrfOriginSource = data.security.originSource;
 	csrfOriginLocked = data.security.originLocked;
+	trustProxyValue = data.security.trustProxyValue;
+	trustProxySource = data.security.trustProxySource;
+	trustProxyLocked = data.security.trustProxyLocked;
 });
 
 // Detect current URL for CSRF origin
@@ -1587,6 +1594,125 @@ const logFieldErrors = $derived(
 									</form>
 								{/if}
 							</div>
+						</div>
+					</section>
+
+					<!-- TRUST_PROXY Panel -->
+					<section class="panel csrf-panel">
+						<div class="panel-header">
+							<div class="panel-title">
+								<ShieldCheck class="panel-icon security" />
+								<h2>Reverse Proxy Header Trust</h2>
+								<Tooltip.Root>
+									<Tooltip.Trigger>
+										<span
+											role="button"
+											tabindex="0"
+											class="help-trigger"
+											aria-label="Learn how reverse-proxy header trust works"
+										>
+											<CircleHelp />
+										</span>
+									</Tooltip.Trigger>
+									<Tooltip.Content side="right" sideOffset={8} class="csrf-tooltip">
+										<div class="csrf-tooltip-inner">
+											<strong>How Reverse-Proxy Header Trust Works</strong>
+											<p>
+												When enabled, Obzorarr trusts <code>X-Forwarded-Proto</code> and
+												<code>X-Forwarded-Host</code> from the upstream proxy and uses them to
+												build absolute URLs. Enable ONLY if your reverse proxy strips inbound
+												forwarded headers from clients — otherwise an attacker can poison the
+												app's view of its own host and protocol.
+											</p>
+										</div>
+									</Tooltip.Content>
+								</Tooltip.Root>
+							</div>
+							<div class="connection-status" class:connected={trustProxyValue}>
+								<span class="status-dot"></span>
+								<span class="status-text">{trustProxyValue ? 'Trusted' : 'Disabled'}</span>
+							</div>
+						</div>
+
+						<p class="panel-description">
+							Trust <code>X-Forwarded-Proto</code> and <code>X-Forwarded-Host</code> from the
+							upstream reverse proxy. Default: off.
+						</p>
+
+						<div class="panel-form">
+							<div class="form-field">
+								<div class="field-header">
+									<label for="trustProxy">TRUST_PROXY</label>
+									{#if trustProxyLocked}
+										<span class="env-lock-badge">
+											<Lock class="badge-icon" />
+											Set via environment variable
+										</span>
+									{:else if trustProxySource !== 'default'}
+										<span class="source-badge" class:env={trustProxySource === 'env'}>
+											{getSourceLabel(trustProxySource)}
+										</span>
+									{/if}
+								</div>
+								{#if trustProxyLocked}
+									<span class="field-hint env-hint">
+										This value is set via TRUST_PROXY environment variable and cannot be changed
+										here.
+									</span>
+								{:else}
+									<span class="field-hint">
+										Enable only if your reverse proxy strips inbound <code>X-Forwarded-*</code>
+										headers from clients. Environment variable takes priority over database.
+									</span>
+								{/if}
+							</div>
+
+							{#if !trustProxyLocked}
+								<div class="csrf-actions">
+									<form
+										method="POST"
+										action="?/updateTrustProxy"
+										use:enhance={() => {
+											isSavingTrustProxy = true;
+											return async ({ result, update }) => {
+												isSavingTrustProxy = false;
+												if (result.type === 'success' || result.type === 'failure') {
+													handleFormToast(
+														result.data as {
+															success?: boolean;
+															message?: string;
+															error?: string;
+														}
+													);
+												}
+												await update({ reset: false });
+											};
+										}}
+									>
+										<input
+											type="hidden"
+											name="enabled"
+											value={trustProxyValue ? 'false' : 'true'}
+										/>
+										<button
+											type="submit"
+											class={trustProxyValue ? 'btn-destructive' : 'btn-primary'}
+											disabled={isSavingTrustProxy}
+										>
+											{#if isSavingTrustProxy}
+												<Loader2 class="btn-icon spinning" />
+												Saving...
+											{:else if trustProxyValue}
+												<ShieldAlert class="btn-icon" />
+												Disable Header Trust
+											{:else}
+												<ShieldCheck class="btn-icon" />
+												Enable Header Trust
+											{/if}
+										</button>
+									</form>
+								</div>
+							{/if}
 						</div>
 					</section>
 

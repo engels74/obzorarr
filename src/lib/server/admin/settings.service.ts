@@ -29,7 +29,8 @@ export const AppSettingsKey = {
 	ONBOARDING_CURRENT_STEP: 'onboarding_current_step',
 	CSRF_ORIGIN: 'csrf_origin',
 	CSRF_ORIGIN_SKIPPED: 'csrf_origin_skipped',
-	CSRF_WARNING_DISMISSED: 'csrf_warning_dismissed'
+	CSRF_WARNING_DISMISSED: 'csrf_warning_dismissed',
+	TRUST_PROXY: 'trust_proxy'
 } as const;
 
 export type AppSettingsKeyType = (typeof AppSettingsKey)[keyof typeof AppSettingsKey];
@@ -464,6 +465,31 @@ export async function getCsrfOrigin(): Promise<string | null> {
 	return config.origin.value || null;
 }
 
+export interface TrustProxyConfigWithSource {
+	trustProxy: ConfigValue<string>;
+}
+
+export async function getTrustProxyConfigWithSource(): Promise<TrustProxyConfigWithSource> {
+	const dbSettings = await getAllAppSettings();
+	// resolveConfigValue treats any non-empty envValue as "env-locked" and returns
+	// it verbatim. getTrustProxy() / proxyHandle then compare with === 'true', so a
+	// raw env like 'TRUE' or ' true ' would lock the UI on while runtime stays off.
+	// Normalize to the canonical 'true'/'false' the rest of the pipeline expects.
+	// An empty string means "not set" (no lock). Mirrors the case-insensitive
+	// 'true' convention used by isLiveSyncEnabled() in sync/live-sync.ts.
+	const rawEnv = (env.TRUST_PROXY ?? '').trim();
+	const envValue = rawEnv === '' ? '' : rawEnv.toLowerCase() === 'true' ? 'true' : 'false';
+
+	return {
+		trustProxy: resolveConfigValue(dbSettings, AppSettingsKey.TRUST_PROXY, envValue, 'false')
+	};
+}
+
+export async function getTrustProxy(): Promise<boolean> {
+	const config = await getTrustProxyConfigWithSource();
+	return config.trustProxy.value === 'true';
+}
+
 /**
  * Clear database settings that conflict with environment variables.
  * When ENV takes precedence, we auto-clear conflicting DB values to avoid confusion.
@@ -474,6 +500,7 @@ export async function clearConflictingDbSettings(): Promise<string[]> {
 	const plexEnv = getPlexEnvConfig();
 	const openaiEnv = getOpenAIEnvConfig();
 	const csrfEnvOrigin = env.ORIGIN ?? '';
+	const trustProxyEnv = (env.TRUST_PROXY ?? '').trim();
 
 	const envToDbMapping: Array<{ envValue: string; dbKey: AppSettingsKeyType; label: string }> = [
 		{
@@ -489,7 +516,8 @@ export async function clearConflictingDbSettings(): Promise<string[]> {
 			label: 'OPENAI_BASE_URL'
 		},
 		{ envValue: openaiEnv.model, dbKey: AppSettingsKey.OPENAI_MODEL, label: 'OPENAI_MODEL' },
-		{ envValue: csrfEnvOrigin, dbKey: AppSettingsKey.CSRF_ORIGIN, label: 'CSRF_ORIGIN' }
+		{ envValue: csrfEnvOrigin, dbKey: AppSettingsKey.CSRF_ORIGIN, label: 'CSRF_ORIGIN' },
+		{ envValue: trustProxyEnv, dbKey: AppSettingsKey.TRUST_PROXY, label: 'TRUST_PROXY' }
 	];
 
 	const dbSettings = await getAllAppSettings();

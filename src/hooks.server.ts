@@ -22,6 +22,7 @@ import { getOnboardingStep, requiresOnboarding } from '$lib/server/onboarding';
 import {
 	applySecurityHeaders,
 	csrfHandle,
+	proxyHandle,
 	rateLimitHandle,
 	requestFilterHandle
 } from '$lib/server/security';
@@ -40,25 +41,6 @@ function redirectResponse(event: { request: Request }, location: string): Respon
 		event.request
 	);
 }
-
-const proxyHandle: Handle = async ({ event, resolve }) => {
-	const proto = event.request.headers.get('x-forwarded-proto');
-	const host = event.request.headers.get('x-forwarded-host');
-
-	if (proto && host) {
-		const forwardedUrl = new URL(event.url);
-		forwardedUrl.protocol = proto.includes('https') ? 'https:' : 'http:';
-		forwardedUrl.host = host;
-
-		Object.defineProperty(event, 'url', {
-			value: forwardedUrl,
-			writable: true,
-			configurable: true
-		});
-	}
-
-	return resolve(event);
-};
 
 const COOKIE_DELETE_OPTIONS = {
 	path: '/'

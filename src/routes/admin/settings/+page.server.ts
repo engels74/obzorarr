@@ -16,6 +16,7 @@ import {
 	getApiConfigWithSources,
 	getAppSetting,
 	getCsrfConfigWithSource,
+	getTrustProxyConfigWithSource,
 	getUITheme,
 	getWrappedLogoMode,
 	getWrappedTheme,
@@ -107,6 +108,10 @@ const CsrfOriginSchema = z.object({
 		})
 });
 
+const TrustProxySchema = z.object({
+	enabled: z.enum(['true', 'false']).transform((v) => v === 'true')
+});
+
 interface SettingValue {
 	value: string;
 	source: ConfigSource;
@@ -131,7 +136,8 @@ export const load: PageServerLoad = async () => {
 		serverWrappedShareMode,
 		csrfConfig,
 		csrfWarningDismissed,
-		csrfOriginSkippedRaw
+		csrfOriginSkippedRaw,
+		trustProxyConfig
 	] = await Promise.all([
 		getApiConfigWithSources(),
 		getUITheme(),
@@ -147,7 +153,8 @@ export const load: PageServerLoad = async () => {
 		getServerWrappedShareMode(),
 		getCsrfConfigWithSource(),
 		isCsrfWarningDismissed(),
-		getAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED)
+		getAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED),
+		getTrustProxyConfigWithSource()
 	]);
 
 	const currentYear = new Date().getFullYear();
@@ -201,7 +208,10 @@ export const load: PageServerLoad = async () => {
 			originLocked: csrfConfig.origin.isLocked,
 			warningDismissed: csrfWarningDismissed,
 			// Flag is only effective when no origin is configured; mirror csrfHandle semantics
-			csrfOriginSkipped: csrfOriginSkippedRaw === 'true' && !csrfConfig.origin.value
+			csrfOriginSkipped: csrfOriginSkippedRaw === 'true' && !csrfConfig.origin.value,
+			trustProxyValue: trustProxyConfig.trustProxy.value === 'true',
+			trustProxySource: trustProxyConfig.trustProxy.source,
+			trustProxyLocked: trustProxyConfig.trustProxy.isLocked
 		}
 	};
 };
@@ -841,6 +851,44 @@ export const actions: Actions = {
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to reset CSRF warning';
 			logger.error(`Failed to reset CSRF warning: ${message}`, 'Security');
+			return fail(500, { error: message });
+		}
+	},
+
+	updateTrustProxy: async ({ request }) => {
+		const trustProxyConfig = await getTrustProxyConfigWithSource();
+		if (trustProxyConfig.trustProxy.isLocked) {
+			return fail(400, {
+				error: 'TRUST_PROXY is set via environment variable and cannot be changed here'
+			});
+		}
+
+		const formData = await request.formData();
+		const parsed = TrustProxySchema.safeParse({ enabled: formData.get('enabled') });
+		if (!parsed.success) {
+			return fail(400, { error: 'Invalid input: enabled must be "true" or "false"' });
+		}
+		const enabled = parsed.data.enabled;
+
+		try {
+			await setAppSetting(AppSettingsKey.TRUST_PROXY, enabled ? 'true' : 'false');
+			if (enabled) {
+				logger.warn(
+					'Reverse-proxy header trust enabled by admin. Verify your upstream proxy strips inbound x-forwarded-* headers.',
+					'Security'
+				);
+			} else {
+				logger.info('Reverse-proxy header trust disabled by admin', 'Security');
+			}
+			return {
+				success: true,
+				message: enabled
+					? 'Reverse-proxy header trust enabled.'
+					: 'Reverse-proxy header trust disabled.'
+			};
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to update TRUST_PROXY';
+			logger.error(`Failed to update TRUST_PROXY: ${message}`, 'Security');
 			return fail(500, { error: message });
 		}
 	}
