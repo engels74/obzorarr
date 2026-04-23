@@ -61,27 +61,40 @@ export async function getGlobalAllowUserControl(): Promise<boolean> {
 }
 
 export async function setGlobalShareDefaults(defaults: GlobalShareDefaults): Promise<void> {
-	await db
-		.insert(appSettings)
-		.values({
-			key: ShareSettingsKey.DEFAULT_SHARE_MODE,
-			value: defaults.defaultShareMode
-		})
-		.onConflictDoUpdate({
-			target: appSettings.key,
-			set: { value: defaults.defaultShareMode }
-		});
+	await db.transaction(async (tx) => {
+		await tx
+			.insert(appSettings)
+			.values({
+				key: ShareSettingsKey.DEFAULT_SHARE_MODE,
+				value: defaults.defaultShareMode
+			})
+			.onConflictDoUpdate({
+				target: appSettings.key,
+				set: { value: defaults.defaultShareMode }
+			});
 
-	await db
-		.insert(appSettings)
-		.values({
-			key: ShareSettingsKey.ALLOW_USER_CONTROL,
-			value: String(defaults.allowUserControl)
-		})
-		.onConflictDoUpdate({
-			target: appSettings.key,
-			set: { value: String(defaults.allowUserControl) }
-		});
+		await tx
+			.insert(appSettings)
+			.values({
+				key: ShareSettingsKey.ALLOW_USER_CONTROL,
+				value: String(defaults.allowUserControl)
+			})
+			.onConflictDoUpdate({
+				target: appSettings.key,
+				set: { value: String(defaults.allowUserControl) }
+			});
+
+		// Rotate tokens for default-sourced rows when the new global default is
+		// no longer PRIVATE_LINK. Any captured token from a previous PRIVATE_LINK
+		// default becomes unusable; getShareSettings re-mints on demand if the
+		// default later flips back to PRIVATE_LINK.
+		if (defaults.defaultShareMode !== ShareMode.PRIVATE_LINK) {
+			await tx
+				.update(shareSettings)
+				.set({ shareToken: null })
+				.where(eq(shareSettings.modeSource, ShareModeSource.DEFAULT));
+		}
+	});
 }
 
 export async function bulkApplyUserControl(canUserControl: boolean): Promise<number> {
@@ -170,13 +183,18 @@ function toShareSettings(record: ShareSettingsRecord, globalDefault: ShareModeTy
 	const modeSource = (record.modeSource ?? ShareModeSource.EXPLICIT) as ShareModeSourceType;
 	const mode = modeSource === ShareModeSource.DEFAULT ? globalDefault : storedMode;
 
+	// Defense-in-depth: never expose a stored token unless the effective mode is
+	// PRIVATE_LINK. This guards against capture-and-replay if a row still holds
+	// a token after the effective mode was widened (e.g. global default changed).
+	const shareToken = mode === ShareMode.PRIVATE_LINK ? record.shareToken : null;
+
 	return {
 		userId: record.userId,
 		year: record.year,
 		mode,
 		storedMode,
 		modeSource,
-		shareToken: record.shareToken,
+		shareToken,
 		canUserControl: record.canUserControl ?? false
 	};
 }

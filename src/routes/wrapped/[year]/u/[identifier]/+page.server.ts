@@ -172,6 +172,14 @@ export const load: PageServerLoad = async ({ params, locals, parent }) => {
 			? (shareSettings.shareToken ?? (await ensureShareToken(userId, year)))
 			: userId;
 
+	// Only owner/admin sees the raw token, and only when the effective mode is
+	// actually private-link. Anonymous and non-owner viewers never receive it,
+	// even if the row still holds one (defense-in-depth against capture/replay).
+	const exposedShareToken =
+		(isOwner || isAdmin) && effectiveModeForUrl === ShareMode.PRIVATE_LINK
+			? shareSettings.shareToken
+			: null;
+
 	return {
 		stats,
 		slides,
@@ -188,7 +196,7 @@ export const load: PageServerLoad = async ({ params, locals, parent }) => {
 			mode: shareSettings.mode,
 			storedMode: shareSettings.storedMode,
 			modeSource: shareSettings.modeSource,
-			shareToken: shareSettings.shareToken,
+			shareToken: exposedShareToken,
 			canUserControl: shareSettings.canUserControl || isAdmin
 		},
 		isOwner,
