@@ -50,10 +50,11 @@ export async function setOnboardingStep(step: OnboardingStep): Promise<void> {
 export async function completeOnboarding(): Promise<void> {
 	await setAppSetting(AppSettingsKey.ONBOARDING_COMPLETED, 'true');
 	await deleteAppSetting(AppSettingsKey.ONBOARDING_CURRENT_STEP);
-	// Bound the CSRF skip to the onboarding window. Any post-onboarding opt-out
-	// must go through the admin-gated settings page, not the unauthenticated
-	// onboarding skip action.
-	await deleteAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED);
+	// Do NOT clear CSRF_ORIGIN_SKIPPED here. If the user skipped CSRF origin
+	// configuration during onboarding (no ORIGIN configured), clearing this flag
+	// would hard-lock the install: every POST to /admin/settings would return 403
+	// before auth runs, making UI recovery impossible. The skip flag is managed
+	// post-onboarding via the admin-gated toggleCsrfSkip action.
 }
 
 export async function resetOnboarding(): Promise<void> {
