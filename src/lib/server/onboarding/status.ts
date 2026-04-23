@@ -50,6 +50,10 @@ export async function setOnboardingStep(step: OnboardingStep): Promise<void> {
 export async function completeOnboarding(): Promise<void> {
 	await setAppSetting(AppSettingsKey.ONBOARDING_COMPLETED, 'true');
 	await deleteAppSetting(AppSettingsKey.ONBOARDING_CURRENT_STEP);
+	// Bound the CSRF skip to the onboarding window. Any post-onboarding opt-out
+	// must go through the admin-gated settings page, not the unauthenticated
+	// onboarding skip action.
+	await deleteAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED);
 }
 
 export async function resetOnboarding(): Promise<void> {

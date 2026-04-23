@@ -49,7 +49,9 @@ export const csrfHandle: Handle = async ({ event, resolve }) => {
 			logger.info(`CSRF protection active (origin from ${sourceLabel})`, 'CSRF');
 		} else if (!dev) {
 			logger.warn(
-				'CSRF protection disabled - no ORIGIN configured in environment or database',
+				'CSRF protection not configured - no ORIGIN set in environment or database. ' +
+					'State-changing requests will be rejected once onboarding is complete ' +
+					'(set CSRF_ORIGIN_SKIPPED=true in app settings to explicitly opt out).',
 				'CSRF'
 			);
 		}
