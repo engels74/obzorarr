@@ -66,6 +66,15 @@ describe('onboarding CSRF actions', () => {
 		expect(await getOnboardingStep()).toBe(OnboardingSteps.CSRF);
 	});
 
+	it('test origin accepts browser origins with explicit default ports', async () => {
+		const result = await runTestOrigin(
+			createFormRequest('https://example.com', 'https://example.com:443')
+		);
+
+		expect(result).toEqual({ testSuccess: true, testedOrigin: 'https://example.com' });
+		expect(await getOnboardingStep()).toBe(OnboardingSteps.CSRF);
+	});
+
 	it('test origin rejects invalid URLs without advancing onboarding', async () => {
 		const result = await runTestOrigin(createFormRequest('not-a-url'));
 
@@ -113,6 +122,16 @@ describe('onboarding CSRF actions', () => {
 		await expectRedirect(() => runSaveOrigin(createFormRequest(ORIGIN)), '/onboarding/plex');
 
 		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBe(ORIGIN);
+		expect(await getOnboardingStep()).toBe(OnboardingSteps.PLEX);
+	});
+
+	it('saves a matching CSRF origin when the browser origin has an explicit default port', async () => {
+		await expectRedirect(
+			() => runSaveOrigin(createFormRequest('https://example.com', 'https://example.com:443')),
+			'/onboarding/plex'
+		);
+
+		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBe('https://example.com');
 		expect(await getOnboardingStep()).toBe(OnboardingSteps.PLEX);
 	});
 

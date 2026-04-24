@@ -34,8 +34,23 @@ function getRequestOrigin(request: Request): string | null {
 	}
 }
 
+function normalizeOrigin(origin: string): string | null {
+	try {
+		return new URL(origin).origin.toLowerCase();
+	} catch {
+		return null;
+	}
+}
+
+function originsMatch(left: string, right: string): boolean {
+	const normalizedLeft = normalizeOrigin(left);
+	const normalizedRight = normalizeOrigin(right);
+	return normalizedLeft !== null && normalizedLeft === normalizedRight;
+}
+
 function isSameOriginOnboardingAction(request: Request, url: URL): boolean {
-	return getRequestOrigin(request)?.toLowerCase() === url.origin.toLowerCase();
+	const requestOrigin = getRequestOrigin(request);
+	return requestOrigin !== null && originsMatch(requestOrigin, url.origin);
 }
 
 const CsrfOriginSchema = z.object({
@@ -111,7 +126,7 @@ export const actions: Actions = {
 			});
 		}
 
-		if (result.data.csrfOrigin.toLowerCase() !== actualOrigin.toLowerCase()) {
+		if (!originsMatch(result.data.csrfOrigin, actualOrigin)) {
 			return fail(400, {
 				testError: `Origin mismatch: browser sends "${actualOrigin}" but you configured "${result.data.csrfOrigin}"`
 			});
@@ -147,7 +162,7 @@ export const actions: Actions = {
 			});
 		}
 
-		if (result.data.csrfOrigin.toLowerCase() !== actualOrigin.toLowerCase()) {
+		if (!originsMatch(result.data.csrfOrigin, actualOrigin)) {
 			return fail(400, {
 				error: `Origin mismatch: browser sends "${actualOrigin}" but you configured "${result.data.csrfOrigin}"`
 			});
