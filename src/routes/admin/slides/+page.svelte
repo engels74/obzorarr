@@ -502,7 +502,6 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 							) {
 								editorTitle = '';
 								editorContent = '';
-								handleFormToast({ error: result.data.error });
 							}
 							await update();
 						};
