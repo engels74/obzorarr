@@ -525,7 +525,7 @@ describe('Property 7: Incremental Sync Filtering', () => {
 	it('only running syncs are detected by isSyncRunning check', async () => {
 		await fc.assert(
 			fc.asyncProperty(
-				fc.constantFrom('running', 'completed', 'failed'),
+				fc.constantFrom('running', 'completed', 'failed', 'cancelled'),
 				async (status: string) => {
 					const db = createTestDatabase();
 

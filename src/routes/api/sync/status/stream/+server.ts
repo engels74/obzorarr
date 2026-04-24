@@ -2,17 +2,23 @@ import { getSyncProgress, type LiveSyncProgress } from '$lib/server/sync/progres
 import type { RequestHandler } from './$types';
 
 /**
- * SSE sync-status stream.
+ * SSE stream of sync status.
  *
- * Intentionally unauthenticated: the onboarding flow polls this endpoint
- * before any user account exists. `authorizationHandle` in `hooks.server.ts`
- * gates `/admin/*` only — `/api/sync/status/stream` is reachable pre-login
- * by design.
+ * INTENTIONALLY PUBLIC: polled by the onboarding wizard before any user account
+ * exists. `onboardingHandle` in `src/hooks.server.ts` explicitly skips `/api/sync`,
+ * and `authorizationHandle` gates `/admin/*` only — this endpoint is reachable
+ * pre-login by design.
  *
- * Because the endpoint is public, the SSE payload MUST stay narrowly
- * projected: only counters, phase, and status — no item titles, usernames,
- * or raw error messages. `simplifyProgress()` enforces the shape; do not
- * widen it without re-evaluating PII exposure.
+ * Exposed fields per frame: event `type` ∈ {'connected','update','completed',
+ * 'failed','cancelled','idle'}, boolean `inProgress`, and (for connected/update)
+ * `progress` with string `phase` ∈ {'fetching','enriching'} plus small integer
+ * counters (recordsProcessed, recordsInserted, enrichmentTotal, enrichmentProcessed).
+ * No titles, usernames, tokens, account IDs, or error bodies.
+ *
+ * `simplifyProgress()` enforces the payload shape; do not widen it without
+ * re-evaluating PII exposure.
+ *
+ * Rate-limited by the `api` bucket in `rateLimitHandle`.
  */
 
 const POLL_INTERVAL_ACTIVE_MS = 500;

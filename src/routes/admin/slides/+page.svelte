@@ -495,6 +495,13 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 						return async ({ result, update }) => {
 							if (result.type === 'success') {
 								closeEditor();
+							} else if (
+								result.type === 'failure' &&
+								typeof result.data?.error === 'string' &&
+								result.data.error.toLowerCase().includes('unsafe html')
+							) {
+								editorTitle = '';
+								editorContent = '';
 							}
 							await update();
 						};

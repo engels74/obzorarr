@@ -1,7 +1,8 @@
-import { and, between, eq, sql } from 'drizzle-orm';
+import { and, between, eq, inArray, sql } from 'drizzle-orm';
 import { env } from '$env/dynamic/private';
 import { db } from '$lib/server/db/client';
-import { appSettings, cachedStats, playHistory } from '$lib/server/db/schema';
+import { appSettings, cachedStats, playHistory, shareSettings } from '$lib/server/db/schema';
+import { ShareMode, ShareModeSource, ShareSettingsKey } from '$lib/server/sharing/types';
 import { createYearFilter } from '$lib/server/stats/utils';
 
 export const AppSettingsKey = {
@@ -83,9 +84,136 @@ export async function getAppSetting(key: AppSettingsKeyType): Promise<string | n
 }
 
 export async function setAppSetting(key: AppSettingsKeyType, value: string): Promise<void> {
-	await db.insert(appSettings).values({ key, value }).onConflictDoUpdate({
-		target: appSettings.key,
-		set: { value }
+	const now = new Date();
+	await db
+		.insert(appSettings)
+		.values({ key, value, updatedAt: now })
+		.onConflictDoUpdate({
+			target: appSettings.key,
+			set: { value, updatedAt: now }
+		});
+}
+
+/**
+ * Returns the latest `updatedAt` across the given app-settings keys, or `null`
+ * if none of the keys exist. Used by the admin settings page to detect
+ * concurrent saves from another tab: the load path returns an ISO timestamp,
+ * and each form action compares it against the current max before writing.
+ */
+export async function getAppSettingsUpdatedAt(keys: readonly string[]): Promise<Date | null> {
+	if (keys.length === 0) return null;
+	const rows = await db
+		.select({ updatedAt: appSettings.updatedAt })
+		.from(appSettings)
+		.where(inArray(appSettings.key, keys as string[]));
+	if (rows.length === 0) return null;
+	let max = 0;
+	for (const row of rows) {
+		const t = row.updatedAt.getTime();
+		if (t > max) max = t;
+	}
+	return new Date(max);
+}
+
+/**
+ * Keys covered by the privacy settings panel. Exported so the route can use
+ * the same constant for loading the current version timestamp.
+ */
+export const PRIVACY_SETTINGS_KEYS = [
+	AppSettingsKey.ANONYMIZATION_MODE,
+	ShareSettingsKey.SERVER_WRAPPED_SHARE_MODE,
+	ShareSettingsKey.DEFAULT_SHARE_MODE,
+	ShareSettingsKey.ALLOW_USER_CONTROL
+] as const;
+
+/**
+ * Atomically validates that the privacy settings have not changed since
+ * `submittedVersion` and, if so, writes all four values in a single SQLite
+ * transaction. Returns `'conflict'` when the submitted version is stale.
+ */
+export async function setPrivacySettingsAtomic(opts: {
+	anonymizationMode: AnonymizationModeType;
+	serverWrappedShareMode: string;
+	defaultShareMode: string;
+	allowUserControl: boolean;
+	submittedVersion: string;
+}): Promise<'ok' | 'conflict'> {
+	return db.transaction(async (tx) => {
+		const rows = await tx
+			.select({ updatedAt: appSettings.updatedAt })
+			.from(appSettings)
+			.where(inArray(appSettings.key, PRIVACY_SETTINGS_KEYS as unknown as string[]));
+
+		if (rows.length > 0) {
+			let maxMs = 0;
+			for (const row of rows) {
+				const t = row.updatedAt.getTime();
+				if (t > maxMs) maxMs = t;
+			}
+			const submittedMs = opts.submittedVersion ? Date.parse(opts.submittedVersion) : Number.NaN;
+			if (Number.isNaN(submittedMs) || submittedMs < maxMs) {
+				return 'conflict';
+			}
+		}
+
+		const now = new Date();
+
+		await tx
+			.insert(appSettings)
+			.values({
+				key: AppSettingsKey.ANONYMIZATION_MODE,
+				value: opts.anonymizationMode,
+				updatedAt: now
+			})
+			.onConflictDoUpdate({
+				target: appSettings.key,
+				set: { value: opts.anonymizationMode, updatedAt: now }
+			});
+
+		await tx
+			.insert(appSettings)
+			.values({
+				key: ShareSettingsKey.SERVER_WRAPPED_SHARE_MODE,
+				value: opts.serverWrappedShareMode,
+				updatedAt: now
+			})
+			.onConflictDoUpdate({
+				target: appSettings.key,
+				set: { value: opts.serverWrappedShareMode, updatedAt: now }
+			});
+
+		await tx
+			.insert(appSettings)
+			.values({
+				key: ShareSettingsKey.DEFAULT_SHARE_MODE,
+				value: opts.defaultShareMode,
+				updatedAt: now
+			})
+			.onConflictDoUpdate({
+				target: appSettings.key,
+				set: { value: opts.defaultShareMode, updatedAt: now }
+			});
+
+		await tx
+			.insert(appSettings)
+			.values({
+				key: ShareSettingsKey.ALLOW_USER_CONTROL,
+				value: String(opts.allowUserControl),
+				updatedAt: now
+			})
+			.onConflictDoUpdate({
+				target: appSettings.key,
+				set: { value: String(opts.allowUserControl), updatedAt: now }
+			});
+
+		if (opts.defaultShareMode !== ShareMode.PRIVATE_LINK) {
+			await tx
+				.update(shareSettings)
+				.set({ shareToken: null })
+				.where(eq(shareSettings.modeSource, ShareModeSource.DEFAULT));
+		}
+
+		return 'ok';
 	});
 }
 
@@ -99,12 +227,13 @@ export async function getOrCreateAppSetting(
 	}
 
 	const generated = createValue();
+	const now = new Date();
 	await db
 		.insert(appSettings)
-		.values({ key, value: generated })
+		.values({ key, value: generated, updatedAt: now })
 		.onConflictDoUpdate({
 			target: appSettings.key,
-			set: { value: generated },
+			set: { value: generated, updatedAt: now },
 			setWhere: eq(appSettings.value, '')
 		});
 

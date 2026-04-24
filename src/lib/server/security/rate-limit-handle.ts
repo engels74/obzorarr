@@ -2,7 +2,11 @@ import type { Handle } from '@sveltejs/kit';
 import { checkRateLimit, RATE_LIMIT_CONFIGS, type RateLimitConfig } from '$lib/server/ratelimit';
 import { applySecurityHeaders } from './security-headers';
 
-function getConfigForPath(path: string): RateLimitConfig {
+function getConfigForPath(path: string, method: string): RateLimitConfig {
+	if (method === 'GET' && path === '/') {
+		return RATE_LIMIT_CONFIGS.landingPage;
+	}
+
 	if (path === '/auth/plex') {
 		return RATE_LIMIT_CONFIGS.authPoll;
 	}
@@ -34,7 +38,7 @@ export const rateLimitHandle: Handle = async ({ event, resolve }) => {
 	}
 
 	const ip = event.getClientAddress();
-	const config = getConfigForPath(path);
+	const config = getConfigForPath(path, event.request.method);
 	const result = checkRateLimit(ip, config);
 
 	if (!result.allowed) {

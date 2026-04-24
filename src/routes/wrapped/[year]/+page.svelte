@@ -1,6 +1,6 @@
 <script lang="ts">
 import { browser } from '$app/environment';
-import { goto } from '$app/navigation';
+import { goto, replaceState } from '$app/navigation';
 import Logo from '$lib/components/Logo.svelte';
 import { createServerContext } from '$lib/components/slides/messaging-context';
 import {
@@ -67,11 +67,9 @@ $effect(() => {
 	if (!browser) return;
 	const next = `#slide=${currentSlideIndex}`;
 	if (window.location.hash !== next) {
-		history.replaceState(
-			history.state,
-			'',
-			`${window.location.pathname}${window.location.search}${next}`
-		);
+		const url = new URL(window.location.href);
+		url.hash = next;
+		replaceState(url, {});
 	}
 });
 

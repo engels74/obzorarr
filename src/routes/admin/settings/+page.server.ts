@@ -15,16 +15,19 @@ import {
 	getAnonymizationMode,
 	getApiConfigWithSources,
 	getAppSetting,
+	getAppSettingsUpdatedAt,
 	getCsrfConfigWithSource,
 	getTrustProxyConfigWithSource,
 	getUITheme,
 	getWrappedLogoMode,
 	getWrappedTheme,
 	isCsrfWarningDismissed,
+	PRIVACY_SETTINGS_KEYS,
 	resetCsrfWarningDismissal,
 	setAnonymizationMode,
 	setAppSetting,
 	setCachedServerName,
+	setPrivacySettingsAtomic,
 	setUITheme,
 	setWrappedLogoMode,
 	setWrappedTheme,
@@ -83,7 +86,8 @@ const PrivacySettingsSchema = z.object({
 	anonymizationMode: AnonymizationSchema,
 	serverWrappedShareMode: ServerWrappedModeSchema,
 	defaultShareMode: ShareModeSchema,
-	allowUserControl: z.coerce.boolean()
+	allowUserControl: z.coerce.boolean(),
+	settingsVersion: z.string()
 });
 
 const ApiConfigSchema = z.object({
@@ -138,7 +142,8 @@ export const load: PageServerLoad = async () => {
 		csrfConfig,
 		csrfWarningDismissed,
 		csrfOriginSkippedRaw,
-		trustProxyConfig
+		trustProxyConfig,
+		privacySettingsUpdatedAt
 	] = await Promise.all([
 		getApiConfigWithSources(),
 		getUITheme(),
@@ -155,7 +160,8 @@ export const load: PageServerLoad = async () => {
 		getCsrfConfigWithSource(),
 		isCsrfWarningDismissed(),
 		getAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED),
-		getTrustProxyConfigWithSource()
+		getTrustProxyConfigWithSource(),
+		getAppSettingsUpdatedAt(PRIVACY_SETTINGS_KEYS)
 	]);
 
 	const currentYear = new Date().getFullYear();
@@ -202,6 +208,7 @@ export const load: PageServerLoad = async () => {
 			allowUserControl
 		},
 		serverWrappedShareMode,
+		privacySettingsVersion: privacySettingsUpdatedAt?.toISOString() ?? '',
 		security: {
 			originValue: csrfConfig.origin.value,
 			csrfEnabled: !!csrfConfig.origin.value,
@@ -644,7 +651,8 @@ export const actions: Actions = requireAdminActions({
 			anonymizationMode: formData.get('anonymizationMode'),
 			serverWrappedShareMode: formData.get('serverWrappedShareMode'),
 			defaultShareMode: formData.get('defaultShareMode'),
-			allowUserControl: formData.get('allowUserControl') === 'true'
+			allowUserControl: formData.get('allowUserControl') === 'true',
+			settingsVersion: formData.get('settingsVersion')?.toString() ?? ''
 		};
 
 		const parsed = PrivacySettingsSchema.safeParse(data);
@@ -656,14 +664,19 @@ export const actions: Actions = requireAdminActions({
 		}
 
 		try {
-			await Promise.all([
-				setAnonymizationMode(parsed.data.anonymizationMode as AnonymizationModeType),
-				setServerWrappedShareMode(parsed.data.serverWrappedShareMode as ShareModeType),
-				setGlobalShareDefaults({
-					defaultShareMode: parsed.data.defaultShareMode as ShareModeType,
-					allowUserControl: parsed.data.allowUserControl
-				})
-			]);
+			const result = await setPrivacySettingsAtomic({
+				anonymizationMode: parsed.data.anonymizationMode as AnonymizationModeType,
+				serverWrappedShareMode: parsed.data.serverWrappedShareMode,
+				defaultShareMode: parsed.data.defaultShareMode,
+				allowUserControl: parsed.data.allowUserControl,
+				submittedVersion: parsed.data.settingsVersion
+			});
+
+			if (result === 'conflict') {
+				return fail(409, {
+					error: 'Settings changed in another tab. Please reload.'
+				});
+			}
 
 			return { success: true, message: 'Privacy settings updated' };
 		} catch (error) {

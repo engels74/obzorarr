@@ -509,7 +509,11 @@ function handleCsrfWarningDismissed() {
 			min-height: 100vh;
 		}
 
-		/* Responsive styles */
+		/* Responsive styles.
+		   768px covers phones through tablets; verified 2026-04 at 375px and 280px
+		   (Galaxy Fold folded). Collapses the sidebar behind an overlay and drops the
+		   main-content left margin, so content fills the viewport without horizontal
+		   scroll at smaller widths. */
 		@media (max-width: 768px) {
 			.mobile-header {
 				display: flex;

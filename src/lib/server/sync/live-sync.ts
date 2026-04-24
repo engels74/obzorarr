@@ -178,6 +178,8 @@ function schedulePostSyncCleanup(): void {
 				logger.debug('Live sync completed, cooldown started', 'LiveSync');
 			} else if (progress?.status === 'failed') {
 				logger.debug('Live sync failed, no cooldown applied', 'LiveSync');
+			} else if (progress?.status === 'cancelled') {
+				logger.debug('Live sync cancelled, no cooldown applied', 'LiveSync');
 			}
 		}
 	}, SYNC_CHECK_INTERVAL_MS);
