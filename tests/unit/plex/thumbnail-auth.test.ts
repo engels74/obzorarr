@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
+import { Buffer } from 'node:buffer';
+import { createHmac } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { AppSettingsKey, setAppSetting } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
@@ -27,6 +29,14 @@ async function expectHttpStatus(run: () => Promise<unknown>, status: number): Pr
 
 function extractToken(url: string): string {
 	return new URL(`https://obzorarr.example${url}`).searchParams.get('token') ?? '';
+}
+
+function createTestToken(payloadJson: string): string {
+	const encodedPayload = Buffer.from(payloadJson).toString('base64url');
+	const signature = createHmac('sha256', 'test-thumbnail-secret')
+		.update(encodedPayload)
+		.digest('base64url');
+	return `${encodedPayload}.${signature}`;
 }
 
 describe('thumbnail auth tokens', () => {
@@ -84,6 +94,19 @@ describe('thumbnail auth tokens', () => {
 		const token = extractToken(signedUrl as string);
 
 		await expect(verifyThumbnailToken(`${token}.extra`)).resolves.toBeNull();
+	});
+
+	it('rejects thumbnail tokens with non-finite numeric payload fields', async () => {
+		const futureExp = Math.floor(Date.now() / 1000) + 60;
+		const payloads = [
+			`{"v":1,"path":"library/metadata/123/thumb/456","exp":1e999,"kind":"server","year":${YEAR}}`,
+			`{"v":1,"path":"library/metadata/123/thumb/456","exp":${futureExp},"kind":"server","year":1e999}`,
+			`{"v":1,"path":"library/metadata/123/thumb/456","exp":${futureExp},"kind":"user","year":${YEAR},"userId":1e999}`
+		];
+
+		for (const payload of payloads) {
+			await expect(verifyThumbnailToken(createTestToken(payload))).resolves.toBeNull();
+		}
 	});
 
 	it('signs Plex-relative thumbnail paths and authorizes them while wrapped access is public', async () => {

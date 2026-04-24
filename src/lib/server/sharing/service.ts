@@ -11,6 +11,7 @@ import {
 	ShareMode,
 	ShareModeSchema,
 	ShareModeSource,
+	ShareModeSourceSchema,
 	type ShareModeSourceType,
 	type ShareModeType,
 	type ShareSettings,
@@ -28,6 +29,11 @@ export function generateShareToken(): string {
 export function isValidTokenFormat(token: string): boolean {
 	const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 	return uuidV4Regex.test(token);
+}
+
+function normalizeShareModeSource(value: string | null): ShareModeSourceType {
+	const parsed = ShareModeSourceSchema.safeParse(value ?? ShareModeSource.EXPLICIT);
+	return parsed.success ? parsed.data : ShareModeSource.EXPLICIT;
 }
 
 export async function getGlobalDefaultShareMode(): Promise<ShareModeType> {
@@ -79,7 +85,7 @@ export async function getEffectiveShareMode(userId: number, year: number): Promi
 
 	const parsed = ShareModeSchema.safeParse(record.mode);
 	const storedMode = parsed.success ? parsed.data : globalDefault;
-	const source = (record.modeSource ?? ShareModeSource.EXPLICIT) as ShareModeSourceType;
+	const source = normalizeShareModeSource(record.modeSource);
 	const rowMode = source === ShareModeSource.DEFAULT ? globalDefault : storedMode;
 	return getMoreRestrictiveMode(rowMode, globalDefault);
 }
@@ -204,7 +210,7 @@ export async function getShareSettings(
 
 function toShareSettings(record: ShareSettingsRecord, globalDefault: ShareModeType): ShareSettings {
 	const storedMode = record.mode as ShareModeType;
-	const modeSource = (record.modeSource ?? ShareModeSource.EXPLICIT) as ShareModeSourceType;
+	const modeSource = normalizeShareModeSource(record.modeSource);
 	const mode = modeSource === ShareModeSource.DEFAULT ? globalDefault : storedMode;
 
 	// Defense-in-depth: never expose a stored token unless the effective mode is

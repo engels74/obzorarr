@@ -127,6 +127,10 @@ export async function verifyThumbnailToken(
 	return parsed;
 }
 
+function isPayloadInteger(value: unknown): value is number {
+	return typeof value === 'number' && Number.isInteger(value);
+}
+
 function isThumbnailTokenPayload(value: unknown): value is ThumbnailTokenPayload {
 	if (typeof value !== 'object' || value === null) return false;
 	const payload = value as Record<string, unknown>;
@@ -134,10 +138,10 @@ function isThumbnailTokenPayload(value: unknown): value is ThumbnailTokenPayload
 		payload.v === TOKEN_VERSION &&
 		typeof payload.path === 'string' &&
 		ALLOWED_THUMB_PATH.test(payload.path) &&
-		typeof payload.exp === 'number' &&
+		isPayloadInteger(payload.exp) &&
 		(payload.kind === 'server' || payload.kind === 'user') &&
-		typeof payload.year === 'number' &&
-		(payload.kind === 'server' || typeof payload.userId === 'number') &&
+		isPayloadInteger(payload.year) &&
+		(payload.kind === 'server' || isPayloadInteger(payload.userId)) &&
 		(payload.shareTokenHash === undefined || typeof payload.shareTokenHash === 'string')
 	);
 }
