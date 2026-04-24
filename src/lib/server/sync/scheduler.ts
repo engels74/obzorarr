@@ -190,6 +190,8 @@ export async function startBackgroundSync(
 					`Sync completed: ${result.recordsInserted} records inserted in ${result.durationMs}ms`,
 					'ManualSync'
 				);
+			} else if (result.status === 'cancelled') {
+				logger.info('Sync was cancelled by user', 'ManualSync');
 			} else {
 				failSyncProgress(result.error ?? 'Unknown error');
 				logger.error(`Sync failed: ${result.error}`, 'ManualSync');
@@ -201,13 +203,8 @@ export async function startBackgroundSync(
 		})
 		.catch((error) => {
 			const message = error instanceof Error ? error.message : 'Unknown error';
-
-			if (message === 'Sync cancelled') {
-				logger.info('Sync was cancelled by user', 'ManualSync');
-			} else {
-				failSyncProgress(message);
-				logger.error(`Sync error: ${message}`, 'ManualSync');
-			}
+			failSyncProgress(message);
+			logger.error(`Sync error: ${message}`, 'ManualSync');
 
 			setTimeout(() => {
 				clearSyncProgress();

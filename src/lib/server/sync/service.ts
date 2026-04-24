@@ -6,6 +6,7 @@ import { fetchAllHistory, fetchMetadataBatch } from '$lib/server/plex/client';
 import type { ValidPlexHistoryMetadata } from '$lib/server/plex/types';
 import { invalidateCache } from '$lib/server/stats/engine';
 import { syncPlexAccounts } from './plex-accounts.service';
+import { SyncCancelledError } from './progress';
 import type { StartSyncOptions, SyncResult, SyncStatusRecord } from './types';
 
 const DEFAULT_PAGE_SIZE = 100;
@@ -144,6 +145,17 @@ async function failSyncRecord(syncId: number, error: string): Promise<void> {
 		.where(eq(syncStatus.id, syncId));
 }
 
+async function cancelSyncRecord(syncId: number, recordsProcessed: number): Promise<void> {
+	await db
+		.update(syncStatus)
+		.set({
+			status: 'cancelled',
+			completedAt: new Date(),
+			recordsProcessed
+		})
+		.where(eq(syncStatus.id, syncId));
+}
+
 async function updateSyncProgress(syncId: number, recordsProcessed: number): Promise<void> {
 	await db.update(syncStatus).set({ recordsProcessed }).where(eq(syncStatus.id, syncId));
 }
@@ -248,7 +260,7 @@ export async function startSync(options: StartSyncOptions = {}): Promise<SyncRes
 			});
 
 			if (signal?.aborted) {
-				throw new SyncError('Sync cancelled', syncId);
+				throw new SyncCancelledError();
 			}
 		}
 
@@ -355,6 +367,27 @@ export async function startSync(options: StartSyncOptions = {}): Promise<SyncRes
 			durationMs
 		};
 	} catch (error) {
+		if (error instanceof SyncCancelledError) {
+			await cancelSyncRecord(syncId, recordsProcessed);
+
+			logger.info(
+				`Cancelled: ${recordsProcessed} processed, ${recordsInserted} inserted before cancellation`,
+				`Sync-${syncId}`
+			);
+
+			return {
+				syncId,
+				status: 'cancelled',
+				recordsProcessed,
+				recordsInserted,
+				recordsSkipped,
+				lastViewedAt: maxViewedAt,
+				startedAt: new Date(startTime),
+				completedAt: new Date(),
+				durationMs: Date.now() - startTime
+			};
+		}
+
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		await failSyncRecord(syncId, errorMessage);
 

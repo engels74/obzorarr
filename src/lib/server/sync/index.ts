@@ -20,6 +20,7 @@ export {
 	failSyncProgress,
 	getSyncProgress,
 	hasSyncProgress,
+	SyncCancelledError,
 	startSyncProgress,
 	updateSyncProgress
 } from './progress';

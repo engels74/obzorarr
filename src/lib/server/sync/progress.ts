@@ -2,6 +2,13 @@ export type { LiveSyncProgress, LiveSyncStatus, SyncPhase } from '$lib/sync/type
 
 import type { LiveSyncProgress } from '$lib/sync/types';
 
+export class SyncCancelledError extends Error {
+	constructor() {
+		super('Sync cancelled');
+		this.name = 'SyncCancelledError';
+	}
+}
+
 let currentProgress: LiveSyncProgress | null = null;
 let abortController: AbortController | null = null;
 

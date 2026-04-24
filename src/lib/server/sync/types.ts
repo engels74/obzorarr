@@ -3,7 +3,8 @@ import { z } from 'zod';
 export const SyncStatusValue = {
 	RUNNING: 'running',
 	COMPLETED: 'completed',
-	FAILED: 'failed'
+	FAILED: 'failed',
+	CANCELLED: 'cancelled'
 } as const;
 
 export type SyncStatusValue = (typeof SyncStatusValue)[keyof typeof SyncStatusValue];
