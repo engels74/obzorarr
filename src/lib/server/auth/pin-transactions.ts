@@ -24,7 +24,10 @@ const COOKIE_OPTIONS = {
 };
 
 const COOKIE_DELETE_OPTIONS = {
-	path: '/'
+	path: COOKIE_OPTIONS.path,
+	httpOnly: COOKIE_OPTIONS.httpOnly,
+	secure: COOKIE_OPTIONS.secure,
+	sameSite: COOKIE_OPTIONS.sameSite
 };
 
 function generateState(): string {

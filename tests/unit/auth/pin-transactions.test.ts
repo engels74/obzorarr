@@ -3,23 +3,42 @@ import type { Cookies } from '@sveltejs/kit';
 import { completePlexPinLogin } from '$lib/server/auth/login-completion';
 import {
 	_resetPinTransactionsForTests,
+	clearPinTransaction,
 	createPinTransaction,
 	getPinTransactionForRequest,
 	markPinCallbackVerified
 } from '$lib/server/auth/pin-transactions';
 import { PinExpiredError } from '$lib/server/auth/types';
 
-function createCookies(): Cookies {
+interface CookieCall {
+	name: string;
+	value?: string;
+	options?: unknown;
+}
+
+interface TestCookies extends Cookies {
+	sets: CookieCall[];
+	deletes: CookieCall[];
+}
+
+function createCookies(): TestCookies {
 	const values = new Map<string, string>();
+	const sets: CookieCall[] = [];
+	const deletes: CookieCall[] = [];
+
 	return {
+		sets,
+		deletes,
 		get: (name: string) => values.get(name),
-		set: (name: string, value: string) => {
+		set: (name: string, value: string, options?: unknown) => {
+			sets.push({ name, value, options });
 			values.set(name, value);
 		},
-		delete: (name: string) => {
+		delete: (name: string, options?: unknown) => {
+			deletes.push({ name, options });
 			values.delete(name);
 		}
-	} as unknown as Cookies;
+	} as unknown as TestCookies;
 }
 
 describe('Plex PIN transactions', () => {
@@ -36,6 +55,23 @@ describe('Plex PIN transactions', () => {
 		expect(transaction?.state).toBe(state);
 		expect(await getPinTransactionForRequest(456, cookies)).toBeNull();
 		expect(await getPinTransactionForRequest(123, createCookies())).toBeNull();
+	});
+
+	it('clears the PIN state cookie with the same security attributes used when it was set', async () => {
+		const cookies = createCookies();
+		const state = await createPinTransaction(123, cookies);
+
+		await clearPinTransaction(cookies, state);
+
+		const setOptions = cookies.sets[0]?.options as Record<string, unknown>;
+		expect(cookies.deletes).toHaveLength(1);
+		expect(cookies.deletes[0]?.name).toBe('plex_login_state');
+		expect(cookies.deletes[0]?.options).toEqual({
+			path: setOptions.path,
+			httpOnly: setOptions.httpOnly,
+			secure: setOptions.secure,
+			sameSite: setOptions.sameSite
+		});
 	});
 
 	it('requires the callback state to match the HttpOnly state cookie', async () => {
