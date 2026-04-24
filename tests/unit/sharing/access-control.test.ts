@@ -368,12 +368,16 @@ describe('Sharing Access Control', () => {
 		});
 
 		describe('error message mapping', () => {
-			it('maps mode_requires_auth to server member required message', async () => {
-				// Insert a share setting with an invalid/unknown mode to trigger default case
+			it('maps invalid persisted modes through the global privacy floor', async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_OAUTH,
+					allowUserControl: false
+				});
+
 				await db.insert(shareSettings).values({
 					userId,
 					year,
-					mode: 'unknown-mode' as typeof ShareMode.PUBLIC, // Invalid mode
+					mode: 'unknown-mode' as typeof ShareMode.PUBLIC,
 					shareToken: null,
 					canUserControl: false
 				});
@@ -383,9 +387,7 @@ describe('Sharing Access Control', () => {
 					expect.unreachable('Should have thrown');
 				} catch (error) {
 					expect(error).toBeInstanceOf(ShareAccessDeniedError);
-					expect((error as ShareAccessDeniedError).message).toContain(
-						'members of this Plex server'
-					);
+					expect((error as ShareAccessDeniedError).message).toContain('Sign in');
 				}
 			});
 
