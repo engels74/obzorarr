@@ -31,7 +31,8 @@ export const RATE_LIMIT_CONFIGS = {
 	auth: { name: 'auth', windowMs: 300_000, maxRequests: 10 },
 	authPoll: { name: 'authPoll', windowMs: 60_000, maxRequests: 60 },
 	authRedirect: { name: 'authRedirect', windowMs: 60_000, maxRequests: 30 },
-	api: { name: 'api', windowMs: 60_000, maxRequests: 30 }
+	api: { name: 'api', windowMs: 60_000, maxRequests: 30 },
+	landingPage: { name: 'landingPage', windowMs: 60_000, maxRequests: 30 }
 } as const satisfies Record<string, RateLimitConfig>;
 
 export const STALE_THRESHOLD_MS = 5 * 60 * 1000;
