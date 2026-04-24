@@ -3,7 +3,7 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypt
 import { error } from '@sveltejs/kit';
 import { AppSettingsKey, getOrCreateAppSetting } from '$lib/server/admin/settings.service';
 import { checkServerWrappedAccess, checkWrappedAccess } from '$lib/server/sharing/access-control';
-import { getGlobalDefaultShareMode, getOrCreateShareSettings } from '$lib/server/sharing/service';
+import { getGlobalDefaultShareMode, getShareSettingsReadOnly } from '$lib/server/sharing/service';
 import {
 	getMoreRestrictiveMode,
 	InvalidShareTokenError,
@@ -223,16 +223,15 @@ export async function authorizeThumbnailPayload(
 		}
 
 		if (payload.shareTokenHash) {
-			const settings = await getOrCreateShareSettings({
-				userId: payload.userId,
-				year: payload.year
-			});
+			const settings = await getShareSettingsReadOnly(payload.userId, payload.year);
 			const globalFloor = await getGlobalDefaultShareMode();
-			const effectiveMode = getMoreRestrictiveMode(settings.mode, globalFloor);
+			const effectiveMode = settings
+				? getMoreRestrictiveMode(settings.mode, globalFloor)
+				: globalFloor;
 
 			if (
 				effectiveMode !== ShareMode.PRIVATE_LINK ||
-				!settings.shareToken ||
+				!settings?.shareToken ||
 				hashToken(settings.shareToken) !== payload.shareTokenHash
 			) {
 				error(403, { message: 'Thumbnail access denied' });

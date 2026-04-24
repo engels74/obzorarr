@@ -185,4 +185,28 @@ describe('thumbnail auth tokens', () => {
 
 		await expectHttpStatus(() => authorizeThumbnailPayload(payload!, {}), 403);
 	});
+
+	it('rejects private-link thumbnail tokens without recreating missing share settings', async () => {
+		await setGlobalShareDefaults({
+			defaultShareMode: ShareMode.PRIVATE_LINK,
+			allowUserControl: false
+		});
+
+		const signedUrl = await createSignedThumbnailUrl('/library/metadata/123/thumb/456', {
+			kind: 'user',
+			userId: USER_ID,
+			year: YEAR,
+			shareToken: TOKEN_A
+		});
+		const payload = await verifyThumbnailToken(extractToken(signedUrl as string));
+
+		await expectHttpStatus(() => authorizeThumbnailPayload(payload!, {}), 403);
+
+		const rows = await db
+			.select()
+			.from(shareSettings)
+			.where(and(eq(shareSettings.userId, USER_ID), eq(shareSettings.year, YEAR)));
+
+		expect(rows).toHaveLength(0);
+	});
 });

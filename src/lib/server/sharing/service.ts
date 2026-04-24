@@ -208,6 +208,24 @@ export async function getShareSettings(
 	return { ...settings, shareToken: refreshed[0]?.shareToken ?? generatedToken };
 }
 
+export async function getShareSettingsReadOnly(
+	userId: number,
+	year: number
+): Promise<ShareSettings | null> {
+	const result = await db
+		.select()
+		.from(shareSettings)
+		.where(and(eq(shareSettings.userId, userId), eq(shareSettings.year, year)))
+		.limit(1);
+
+	const record = result[0];
+	if (!record) {
+		return null;
+	}
+
+	return toShareSettings(record, await getGlobalDefaultShareMode());
+}
+
 function toShareSettings(record: ShareSettingsRecord, globalDefault: ShareModeType): ShareSettings {
 	const storedMode = record.mode as ShareModeType;
 	const modeSource = normalizeShareModeSource(record.modeSource);
