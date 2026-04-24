@@ -40,5 +40,7 @@ describe('startSync cancellation', () => {
 		expect(row?.status).toBe('cancelled');
 		expect(row?.completedAt).not.toBeNull();
 		expect(row?.error).toBeNull();
+		// lastViewedAt should be persisted even for cancelled syncs (null when aborted before any pages)
+		expect(row?.lastViewedAt).toBeNull();
 	});
 });

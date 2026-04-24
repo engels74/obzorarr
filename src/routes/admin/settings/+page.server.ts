@@ -22,10 +22,12 @@ import {
 	getWrappedLogoMode,
 	getWrappedTheme,
 	isCsrfWarningDismissed,
+	PRIVACY_SETTINGS_KEYS,
 	resetCsrfWarningDismissal,
 	setAnonymizationMode,
 	setAppSetting,
 	setCachedServerName,
+	setPrivacySettingsAtomic,
 	setUITheme,
 	setWrappedLogoMode,
 	setWrappedTheme,
@@ -55,7 +57,7 @@ import {
 	setGlobalShareDefaults,
 	setServerWrappedShareMode
 } from '$lib/server/sharing/service';
-import { type ShareModeType, ShareSettingsKey } from '$lib/server/sharing/types';
+import type { ShareModeType } from '$lib/server/sharing/types';
 import type { Actions, PageServerLoad } from './$types';
 
 const ThemeSchema = z.enum([
@@ -87,13 +89,6 @@ const PrivacySettingsSchema = z.object({
 	allowUserControl: z.coerce.boolean(),
 	settingsVersion: z.string()
 });
-
-const PRIVACY_SETTINGS_KEYS = [
-	AppSettingsKey.ANONYMIZATION_MODE,
-	ShareSettingsKey.SERVER_WRAPPED_SHARE_MODE,
-	ShareSettingsKey.DEFAULT_SHARE_MODE,
-	ShareSettingsKey.ALLOW_USER_CONTROL
-] as const;
 
 const ApiConfigSchema = z.object({
 	plexServerUrl: z.string().max(512).url('Invalid URL format').optional().or(z.literal('')),
@@ -668,27 +663,20 @@ export const actions: Actions = requireAdminActions({
 			});
 		}
 
-		const currentUpdatedAt = await getAppSettingsUpdatedAt(PRIVACY_SETTINGS_KEYS);
-		if (currentUpdatedAt !== null) {
-			const submittedMs = parsed.data.settingsVersion
-				? Date.parse(parsed.data.settingsVersion)
-				: Number.NaN;
-			if (Number.isNaN(submittedMs) || submittedMs < currentUpdatedAt.getTime()) {
+		try {
+			const result = await setPrivacySettingsAtomic({
+				anonymizationMode: parsed.data.anonymizationMode as AnonymizationModeType,
+				serverWrappedShareMode: parsed.data.serverWrappedShareMode,
+				defaultShareMode: parsed.data.defaultShareMode,
+				allowUserControl: parsed.data.allowUserControl,
+				submittedVersion: parsed.data.settingsVersion
+			});
+
+			if (result === 'conflict') {
 				return fail(409, {
 					error: 'Settings changed in another tab. Please reload.'
 				});
 			}
-		}
-
-		try {
-			await Promise.all([
-				setAnonymizationMode(parsed.data.anonymizationMode as AnonymizationModeType),
-				setServerWrappedShareMode(parsed.data.serverWrappedShareMode as ShareModeType),
-				setGlobalShareDefaults({
-					defaultShareMode: parsed.data.defaultShareMode as ShareModeType,
-					allowUserControl: parsed.data.allowUserControl
-				})
-			]);
 
 			return { success: true, message: 'Privacy settings updated' };
 		} catch (error) {

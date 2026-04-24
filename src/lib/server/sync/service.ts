@@ -145,13 +145,18 @@ async function failSyncRecord(syncId: number, error: string): Promise<void> {
 		.where(eq(syncStatus.id, syncId));
 }
 
-async function cancelSyncRecord(syncId: number, recordsProcessed: number): Promise<void> {
+async function cancelSyncRecord(
+	syncId: number,
+	recordsProcessed: number,
+	lastViewedAt: number | null
+): Promise<void> {
 	await db
 		.update(syncStatus)
 		.set({
 			status: 'cancelled',
 			completedAt: new Date(),
-			recordsProcessed
+			recordsProcessed,
+			lastViewedAt
 		})
 		.where(eq(syncStatus.id, syncId));
 }
@@ -374,7 +379,7 @@ export async function startSync(options: StartSyncOptions = {}): Promise<SyncRes
 		// plexRequest re-wraps the native AbortError as a PlexApiError before the
 		// post-page signal?.aborted check can run.
 		if (error instanceof SyncCancelledError || signal?.aborted) {
-			await cancelSyncRecord(syncId, recordsProcessed);
+			await cancelSyncRecord(syncId, recordsProcessed, maxViewedAt);
 
 			logger.info(
 				`Cancelled: ${recordsProcessed} processed, ${recordsInserted} inserted before cancellation`,
