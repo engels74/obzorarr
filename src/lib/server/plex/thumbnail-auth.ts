@@ -218,7 +218,7 @@ export async function authorizeThumbnailPayload(
 			return;
 		}
 
-		if (!payload.userId) {
+		if (payload.userId === undefined) {
 			error(403, { message: 'Invalid thumbnail token' });
 		}
 

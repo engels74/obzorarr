@@ -125,6 +125,20 @@ describe('thumbnail auth tokens', () => {
 		await expect(authorizeThumbnailPayload(payload!, {})).resolves.toBeUndefined();
 	});
 
+	it('authorizes a valid user thumbnail token with user id 0', async () => {
+		await setGlobalShareDefaults({ defaultShareMode: ShareMode.PUBLIC, allowUserControl: false });
+
+		const signedUrl = await createSignedThumbnailUrl('/library/metadata/123/thumb/456', {
+			kind: 'user',
+			userId: 0,
+			year: YEAR
+		});
+		const payload = await verifyThumbnailToken(extractToken(signedUrl as string));
+
+		expect(payload?.userId).toBe(0);
+		await expect(authorizeThumbnailPayload(payload!, {})).resolves.toBeUndefined();
+	});
+
 	it('rejects a previously public thumbnail token after access becomes private-oauth', async () => {
 		await setGlobalShareDefaults({ defaultShareMode: ShareMode.PUBLIC, allowUserControl: false });
 		const signedUrl = await createSignedThumbnailUrl('/library/metadata/123/thumb/456', {

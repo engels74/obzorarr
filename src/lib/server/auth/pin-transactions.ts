@@ -1,6 +1,7 @@
 import { Buffer } from 'node:buffer';
 import type { Cookies } from '@sveltejs/kit';
 import { eq, lte } from 'drizzle-orm';
+import { dev } from '$app/environment';
 import { db } from '$lib/server/db/client';
 import { pinTransactions } from '$lib/server/db/schema';
 
@@ -17,7 +18,7 @@ interface PinTransaction {
 const COOKIE_OPTIONS = {
 	path: '/',
 	httpOnly: true,
-	secure: process.env.NODE_ENV === 'production',
+	secure: !dev,
 	sameSite: 'lax' as const,
 	maxAge: Math.floor(PIN_TRANSACTION_TTL_MS / 1000)
 };
