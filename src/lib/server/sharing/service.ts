@@ -227,7 +227,8 @@ export async function getShareSettingsReadOnly(
 }
 
 function toShareSettings(record: ShareSettingsRecord, globalDefault: ShareModeType): ShareSettings {
-	const storedMode = record.mode as ShareModeType;
+	const parsedMode = ShareModeSchema.safeParse(record.mode);
+	const storedMode = parsedMode.success ? parsedMode.data : globalDefault;
 	const modeSource = normalizeShareModeSource(record.modeSource);
 	const mode = modeSource === ShareModeSource.DEFAULT ? globalDefault : storedMode;
 

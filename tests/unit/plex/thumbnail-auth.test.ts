@@ -156,6 +156,31 @@ describe('thumbnail auth tokens', () => {
 		await expectHttpStatus(() => authorizeThumbnailPayload(payload!, {}), 403);
 	});
 
+	it('authorizes private-link thumbnail tokens when persisted mode is invalid but global default is private-link', async () => {
+		await setGlobalShareDefaults({
+			defaultShareMode: ShareMode.PRIVATE_LINK,
+			allowUserControl: false
+		});
+		await db.insert(shareSettings).values({
+			userId: USER_ID,
+			year: YEAR,
+			mode: 'invalid-mode',
+			modeSource: ShareModeSource.EXPLICIT,
+			shareToken: TOKEN_A,
+			canUserControl: false
+		});
+
+		const signedUrl = await createSignedThumbnailUrl('/library/metadata/123/thumb/456', {
+			kind: 'user',
+			userId: USER_ID,
+			year: YEAR,
+			shareToken: TOKEN_A
+		});
+		const payload = await verifyThumbnailToken(extractToken(signedUrl as string));
+
+		await expect(authorizeThumbnailPayload(payload!, {})).resolves.toBeUndefined();
+	});
+
 	it('rejects private-link thumbnail tokens after the share token is regenerated', async () => {
 		await setGlobalShareDefaults({
 			defaultShareMode: ShareMode.PRIVATE_LINK,

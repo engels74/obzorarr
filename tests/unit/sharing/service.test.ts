@@ -11,6 +11,7 @@ import {
 	getOrCreateShareSettings,
 	getShareSettings,
 	getShareSettingsByToken,
+	getShareSettingsReadOnly,
 	getUserLogoPreference,
 	isValidTokenFormat,
 	regenerateShareToken,
@@ -337,6 +338,33 @@ describe('Sharing Service', () => {
 				expect(settings?.mode).toBe(ShareMode.PRIVATE_LINK);
 				expect(settings?.shareToken).toBe(token);
 				expect(effectiveMode).toBe(ShareMode.PRIVATE_LINK);
+			});
+
+			it('falls back to the global default for invalid persisted modes', async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_OAUTH,
+					allowUserControl: false
+				});
+
+				await db.insert(shareSettings).values({
+					userId,
+					year,
+					mode: 'invalid-mode',
+					modeSource: ShareModeSource.EXPLICIT,
+					shareToken: generateShareToken(),
+					canUserControl: true
+				});
+
+				const settings = await getShareSettings(userId, year);
+				const readOnlySettings = await getShareSettingsReadOnly(userId, year);
+				const effectiveMode = await getEffectiveShareMode(userId, year);
+
+				expect(settings?.storedMode).toBe(ShareMode.PRIVATE_OAUTH);
+				expect(settings?.mode).toBe(ShareMode.PRIVATE_OAUTH);
+				expect(settings?.shareToken).toBeNull();
+				expect(readOnlySettings?.storedMode).toBe(ShareMode.PRIVATE_OAUTH);
+				expect(readOnlySettings?.mode).toBe(ShareMode.PRIVATE_OAUTH);
+				expect(effectiveMode).toBe(ShareMode.PRIVATE_OAUTH);
 			});
 
 			it('maps shareToken correctly', async () => {
