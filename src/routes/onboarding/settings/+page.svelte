@@ -678,7 +678,13 @@ function getThemeColors(themeValue: string) {
 				</div>
 
 				<!-- Submit button (hidden) -->
-				<button type="submit" class="hidden-submit" disabled={isSubmitting}>Save</button>
+				<button
+					type="submit"
+					class="hidden-submit"
+					disabled={isSubmitting}
+					aria-hidden="true"
+					tabindex="-1">Save</button
+				>
 			</form>
 		</div>
 	{/snippet}
