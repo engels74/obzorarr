@@ -149,7 +149,8 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 
 	void (async () => {
 		try {
-			const { pinId, authUrl } = await fetchPin();
+			const redirectUrl = `${getBrowserWindow().location.origin}/auth/plex/redirect?flow=popup`;
+			const { pinId, authUrl } = await fetchPin(redirectUrl);
 			if (cancelled) return;
 
 			authWindow = getBrowserWindow().open(authUrl, 'plex-auth', 'width=600,height=700');

@@ -7,6 +7,7 @@ import {
 	setFunFactFrequency
 } from '$lib/server/admin/settings.service';
 import { getAvailableYears } from '$lib/server/admin/users.service';
+import { requireAdminActions } from '$lib/server/auth/guards';
 import {
 	getAllSlideConfigs,
 	initializeDefaultSlideConfig,
@@ -55,7 +56,7 @@ export const load: PageServerLoad = async () => {
 	};
 };
 
-export const actions: Actions = {
+export const actions: Actions = requireAdminActions({
 	/**
 	 * Toggle a slide's enabled state
 	 */
@@ -352,4 +353,4 @@ export const actions: Actions = {
 			return fail(500, { error: message });
 		}
 	}
-};
+});

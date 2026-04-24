@@ -30,7 +30,8 @@ export const AppSettingsKey = {
 	CSRF_ORIGIN: 'csrf_origin',
 	CSRF_ORIGIN_SKIPPED: 'csrf_origin_skipped',
 	CSRF_WARNING_DISMISSED: 'csrf_warning_dismissed',
-	TRUST_PROXY: 'trust_proxy'
+	TRUST_PROXY: 'trust_proxy',
+	THUMBNAIL_SIGNING_SECRET: 'thumbnail_signing_secret'
 } as const;
 
 export type AppSettingsKeyType = (typeof AppSettingsKey)[keyof typeof AppSettingsKey];

@@ -2,11 +2,13 @@
 import { onMount } from 'svelte';
 import { browser } from '$app/environment';
 import { LOGIN_TIMEOUT_MS, PIN_STORAGE_KEY, POLL_INTERVAL_MS } from '$lib/client/plex-login';
+import type { PageData } from './$types';
 
 type Status = 'loading' | 'success' | 'error' | 'cancelled';
 
 let status = $state<Status>('loading');
 let errorMessage = $state<string | null>(null);
+let { data }: { data: PageData } = $props();
 
 const MAX_POLL_ATTEMPTS = Math.floor(LOGIN_TIMEOUT_MS / POLL_INTERVAL_MS);
 const PIN_MAX_AGE_MS = 15 * 60 * 1000;
@@ -19,6 +21,18 @@ interface StoredPinData {
 
 onMount(async () => {
 	if (!browser) return;
+
+	if (!data.stateVerified) {
+		status = 'error';
+		errorMessage = 'Authentication session could not be verified. Please try again.';
+		return;
+	}
+
+	if (data.flow === 'popup') {
+		status = 'success';
+		setTimeout(() => window.close(), 750);
+		return;
+	}
 
 	const storedData = sessionStorage.getItem(PIN_STORAGE_KEY);
 	if (!storedData) {

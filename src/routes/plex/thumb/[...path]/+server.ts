@@ -1,8 +1,9 @@
 import { error } from '@sveltejs/kit';
 import { getPlexConfig } from '$lib/server/admin/settings.service';
+import { authorizeThumbnailPayload, verifyThumbnailToken } from '$lib/server/plex/thumbnail-auth';
 import type { RequestHandler } from './$types';
 
-const CACHE_MAX_AGE = 7 * 24 * 60 * 60;
+const CACHE_CONTROL = 'private, no-cache';
 
 function getPlexHeaders(token: string) {
 	return {
@@ -19,10 +20,7 @@ function isAllowedPath(path: string): boolean {
 	return ALLOWED_PATH_PATTERNS.some((pattern) => pattern.test(path));
 }
 
-// Intentionally unauthenticated: shared/public wrapped pages render thumbnails
-// via getThumbUrl() without a user session. Path validation (ALLOWED_PATH_PATTERNS)
-// restricts access to Plex library metadata thumbnails only.
-export const GET: RequestHandler = async ({ params, request }) => {
+export const GET: RequestHandler = async ({ locals, params, request, url }) => {
 	const { path } = params;
 
 	if (!path) {
@@ -32,6 +30,12 @@ export const GET: RequestHandler = async ({ params, request }) => {
 	if (!isAllowedPath(path)) {
 		error(400, { message: 'Invalid thumbnail path' });
 	}
+
+	const tokenPayload = await verifyThumbnailToken(url.searchParams.get('token'));
+	if (!tokenPayload || tokenPayload.path !== path) {
+		error(403, { message: 'Invalid thumbnail token' });
+	}
+	await authorizeThumbnailPayload(tokenPayload, locals);
 
 	const config = await getPlexConfig();
 
@@ -55,11 +59,11 @@ export const GET: RequestHandler = async ({ params, request }) => {
 
 		if (response.status === 304) {
 			const notModHeaders: Record<string, string> = {
-				'Cache-Control': `public, max-age=${CACHE_MAX_AGE}, immutable`
+				'Cache-Control': CACHE_CONTROL
 			};
 			const etag = response.headers.get('etag');
 			const lastMod = response.headers.get('last-modified');
-			if (etag) notModHeaders['ETag'] = etag;
+			if (etag) notModHeaders.ETag = etag;
 			if (lastMod) notModHeaders['Last-Modified'] = lastMod;
 			return new Response(null, { status: 304, headers: notModHeaders });
 		}
@@ -82,10 +86,10 @@ export const GET: RequestHandler = async ({ params, request }) => {
 
 		const headers: Record<string, string> = {
 			'Content-Type': contentType,
-			'Cache-Control': `public, max-age=${CACHE_MAX_AGE}, immutable`,
+			'Cache-Control': CACHE_CONTROL,
 			'Content-Length': String(imageData.byteLength)
 		};
-		if (etag) headers['ETag'] = etag;
+		if (etag) headers.ETag = etag;
 		if (lastMod) headers['Last-Modified'] = lastMod;
 
 		return new Response(imageData, {

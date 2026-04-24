@@ -5,6 +5,7 @@ import { db } from '$lib/server/db/client';
 import { users } from '$lib/server/db/schema';
 import { generateFunFacts } from '$lib/server/funfacts';
 import { getLogoVisibility, setUserLogoPreference } from '$lib/server/logo';
+import { signStatsThumbnails } from '$lib/server/plex/thumbnail-auth';
 import { checkTokenAccess, checkWrappedAccess } from '$lib/server/sharing/access-control';
 import {
 	ensureShareToken,
@@ -185,9 +186,15 @@ export const load: PageServerLoad = async ({ params, locals, parent }) => {
 		(isOwner || isAdmin) && effectiveModeForUrl === ShareMode.PRIVATE_LINK
 			? resolvedShareToken
 			: null;
+	const signedStats = await signStatsThumbnails(stats, {
+		kind: 'user',
+		year,
+		userId,
+		shareToken: accessedViaToken ? identifier : undefined
+	});
 
 	return {
-		stats,
+		stats: signedStats,
 		slides,
 		customSlidesMap,
 		year,

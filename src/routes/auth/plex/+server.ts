@@ -1,7 +1,11 @@
 import { error, json } from '@sveltejs/kit';
 import { z } from 'zod';
 import { completePlexPinLogin } from '$lib/server/auth/login-completion';
-import { getPinInfo } from '$lib/server/auth/plex-oauth';
+import {
+	appendPinStateToForwardUrl,
+	createPinTransaction
+} from '$lib/server/auth/pin-transactions';
+import { buildPlexOAuthUrl, requestPin } from '$lib/server/auth/plex-oauth';
 import { NotServerMemberError, PinExpiredError, PlexAuthApiError } from '$lib/server/auth/types';
 import type { RequestHandler } from './$types';
 
@@ -9,13 +13,30 @@ const PollRequestSchema = z.object({
 	pinId: z.number().int().positive()
 });
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ cookies, url }) => {
 	try {
-		const redirectUrl = url.searchParams.get('redirectUrl') ?? undefined;
-		const pinInfo = await getPinInfo(redirectUrl);
+		const pin = await requestPin();
+		const state = createPinTransaction(pin.id, cookies);
+		const redirectUrl = url.searchParams.get('redirectUrl') ?? `${url.origin}/auth/plex/redirect`;
+		const forwardUrl = appendPinStateToForwardUrl(redirectUrl, url, state);
+		const pinInfo = {
+			pinId: pin.id,
+			code: pin.code,
+			authUrl: buildPlexOAuthUrl(pin.code, forwardUrl),
+			expiresAt: pin.expiresAt ?? new Date(Date.now() + 15 * 60 * 1000).toISOString()
+		};
 
 		return json(pinInfo);
 	} catch (err) {
+		if (
+			err instanceof TypeError ||
+			(err instanceof Error && err.message.includes('redirect URL'))
+		) {
+			error(400, {
+				message: 'Invalid redirect URL'
+			});
+		}
+
 		if (err instanceof PlexAuthApiError) {
 			console.error('Plex OAuth error:', err.message);
 			error(502, {

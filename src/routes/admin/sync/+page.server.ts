@@ -1,6 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import { z } from 'zod';
 import { AppSettingsKey, getAppSetting, setAppSetting } from '$lib/server/admin/settings.service';
+import { requireAdminActions } from '$lib/server/auth/guards';
 import { cancelSync } from '$lib/server/sync/progress';
 import {
 	getSchedulerStatus,
@@ -90,7 +91,7 @@ export const load: PageServerLoad = async ({ url }) => {
 	};
 };
 
-export const actions: Actions = {
+export const actions: Actions = requireAdminActions({
 	startSync: async ({ request }) => {
 		const formData = await request.formData();
 		const backfillYearRaw = formData.get('backfillYear');
@@ -214,4 +215,4 @@ export const actions: Actions = {
 			return fail(500, { error: message });
 		}
 	}
-};
+});

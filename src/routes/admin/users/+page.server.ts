@@ -5,6 +5,7 @@ import {
 	getAvailableYears,
 	updateUserSharePermission
 } from '$lib/server/admin/users.service';
+import { requireAdminActions } from '$lib/server/auth/guards';
 import type { Actions, PageServerLoad } from './$types';
 
 const UpdateUserPermissionSchema = z.object({
@@ -44,7 +45,7 @@ export const load: PageServerLoad = async ({ url }) => {
 	};
 };
 
-export const actions: Actions = {
+export const actions: Actions = requireAdminActions({
 	updateUserPermission: async ({ request }) => {
 		const formData = await request.formData();
 
@@ -72,4 +73,4 @@ export const actions: Actions = {
 			return fail(500, { error: message });
 		}
 	}
-};
+});

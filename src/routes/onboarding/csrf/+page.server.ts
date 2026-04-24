@@ -20,6 +20,24 @@ async function isOnboardingCsrfStep(): Promise<boolean> {
 	return !done && step === OnboardingSteps.CSRF;
 }
 
+function getRequestOrigin(request: Request): string | null {
+	const origin = request.headers.get('origin');
+	if (origin) return origin;
+
+	const referer = request.headers.get('referer');
+	if (!referer) return null;
+
+	try {
+		return new URL(referer).origin;
+	} catch {
+		return null;
+	}
+}
+
+function isSameOriginOnboardingAction(request: Request, url: URL): boolean {
+	return getRequestOrigin(request)?.toLowerCase() === url.origin.toLowerCase();
+}
+
 const CsrfOriginSchema = z.object({
 	csrfOrigin: z
 		.string()
@@ -143,9 +161,13 @@ export const actions: Actions = {
 		redirect(303, '/onboarding/plex');
 	},
 
-	skipCsrf: async () => {
+	skipCsrf: async ({ request, url }) => {
 		if (!(await isOnboardingCsrfStep())) {
 			return fail(403, { error: 'Not allowed at this onboarding stage' });
+		}
+
+		if (!isSameOriginOnboardingAction(request, url)) {
+			return fail(403, { error: 'CSRF skip must be submitted from this Obzorarr origin' });
 		}
 
 		await setAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED, 'true');

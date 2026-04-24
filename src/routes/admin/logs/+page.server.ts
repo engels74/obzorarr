@@ -1,5 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import { z } from 'zod';
+import { requireAdminActions } from '$lib/server/auth/guards';
 import {
 	deleteAllLogs,
 	getDistinctSources,
@@ -122,7 +123,7 @@ export const load: PageServerLoad = async ({ url }) => {
 	};
 };
 
-export const actions: Actions = {
+export const actions: Actions = requireAdminActions({
 	clearLogs: async () => {
 		try {
 			const count = await deleteAllLogs();
@@ -184,4 +185,4 @@ export const actions: Actions = {
 			return fail(500, { error: message });
 		}
 	}
-};
+});

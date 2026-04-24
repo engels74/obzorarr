@@ -1,3 +1,4 @@
+import { requireAdmin } from '$lib/server/auth/guards';
 import { getLatestLogId, getLogsAfterId, type LogEntry } from '$lib/server/logging';
 import type { RequestHandler } from './$types';
 
@@ -5,7 +6,9 @@ const POLL_INTERVAL_BASE_MS = 1000;
 const POLL_INTERVAL_MAX_MS = 5000;
 const BACKOFF_MULTIPLIER = 1.5;
 
-export const GET: RequestHandler = async ({ request }) => {
+export const GET: RequestHandler = async ({ locals, request }) => {
+	requireAdmin(locals);
+
 	const url = new URL(request.url);
 	const initialCursor = url.searchParams.get('cursor');
 	let lastId = initialCursor ? parseInt(initialCursor, 10) : await getLatestLogId();

@@ -1,7 +1,8 @@
 import { redirect } from '@sveltejs/kit';
+import { markPinCallbackVerified } from '$lib/server/auth/pin-transactions';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals, request, url }) => {
+export const load: PageServerLoad = async ({ cookies, locals, request, url }) => {
 	if (locals.user) {
 		redirect(303, locals.user.isAdmin ? '/admin' : '/dashboard');
 	}
@@ -23,5 +24,8 @@ export const load: PageServerLoad = async ({ locals, request, url }) => {
 		redirect(303, '/');
 	}
 
-	return {};
+	return {
+		flow: url.searchParams.get('flow') === 'popup' ? 'popup' : 'redirect',
+		stateVerified: markPinCallbackVerified(cookies, url.searchParams.get('state'))
+	};
 };

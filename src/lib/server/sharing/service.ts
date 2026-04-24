@@ -4,6 +4,7 @@ import { appSettings, shareSettings } from '$lib/server/db/schema';
 import {
 	type GetOrCreateShareSettingsOptions,
 	type GlobalShareDefaults,
+	getMoreRestrictiveMode,
 	meetsPrivacyFloor,
 	PermissionExceededError,
 	ShareError,
@@ -58,6 +59,29 @@ export async function getGlobalAllowUserControl(): Promise<boolean> {
 	}
 
 	return setting.value === 'true';
+}
+
+export async function getEffectiveShareMode(userId: number, year: number): Promise<ShareModeType> {
+	const globalDefault = await getGlobalDefaultShareMode();
+	const result = await db
+		.select({
+			mode: shareSettings.mode,
+			modeSource: shareSettings.modeSource
+		})
+		.from(shareSettings)
+		.where(and(eq(shareSettings.userId, userId), eq(shareSettings.year, year)))
+		.limit(1);
+
+	const record = result[0];
+	if (!record) {
+		return globalDefault;
+	}
+
+	const parsed = ShareModeSchema.safeParse(record.mode);
+	const storedMode = parsed.success ? parsed.data : globalDefault;
+	const source = (record.modeSource ?? ShareModeSource.EXPLICIT) as ShareModeSourceType;
+	const rowMode = source === ShareModeSource.DEFAULT ? globalDefault : storedMode;
+	return getMoreRestrictiveMode(rowMode, globalDefault);
 }
 
 export async function setGlobalShareDefaults(defaults: GlobalShareDefaults): Promise<void> {
