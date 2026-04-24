@@ -197,6 +197,8 @@ export async function startSync(options: StartSyncOptions = {}): Promise<SyncRes
 	let currentPage = 0;
 
 	try {
+		if (signal?.aborted) throw new SyncCancelledError();
+
 		// Sync Plex accounts first to ensure usernames are available for stats
 		try {
 			await syncPlexAccounts();
