@@ -39,7 +39,7 @@ async function runTestOrigin(request: Request) {
 
 async function runSkipCsrf(request: Request) {
 	const skipCsrf = actions.skipCsrf as SkipCsrfAction;
-	return skipCsrf({ request } as Parameters<SkipCsrfAction>[0]);
+	return skipCsrf({ request, url: new URL(request.url) } as Parameters<SkipCsrfAction>[0]);
 }
 
 async function expectRedirect(run: () => Promise<unknown>, location: string) {
@@ -63,6 +63,15 @@ describe('onboarding CSRF actions', () => {
 		const result = await runTestOrigin(createFormRequest(ORIGIN));
 
 		expect(result).toEqual({ testSuccess: true, testedOrigin: ORIGIN });
+		expect(await getOnboardingStep()).toBe(OnboardingSteps.CSRF);
+	});
+
+	it('test origin accepts browser origins with explicit default ports', async () => {
+		const result = await runTestOrigin(
+			createFormRequest('https://example.com', 'https://example.com:443')
+		);
+
+		expect(result).toEqual({ testSuccess: true, testedOrigin: 'https://example.com' });
 		expect(await getOnboardingStep()).toBe(OnboardingSteps.CSRF);
 	});
 
@@ -116,6 +125,16 @@ describe('onboarding CSRF actions', () => {
 		expect(await getOnboardingStep()).toBe(OnboardingSteps.PLEX);
 	});
 
+	it('saves a matching CSRF origin when the browser origin has an explicit default port', async () => {
+		await expectRedirect(
+			() => runSaveOrigin(createFormRequest('https://example.com', 'https://example.com:443')),
+			'/onboarding/plex'
+		);
+
+		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBe('https://example.com');
+		expect(await getOnboardingStep()).toBe(OnboardingSteps.PLEX);
+	});
+
 	it('does not advance when the origin URL is invalid', async () => {
 		const result = await runSaveOrigin(createFormRequest('not-a-url'));
 
@@ -156,6 +175,30 @@ describe('onboarding CSRF actions', () => {
 		await expectRedirect(() => runSkipCsrf(createFormRequest('not-a-url')), '/onboarding/plex');
 
 		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED)).toBe('true');
+	});
+
+	it('skipCsrf rejects cross-origin submissions without advancing onboarding', async () => {
+		const result = await runSkipCsrf(createFormRequest('not-a-url', 'https://evil.example'));
+
+		expect(result).toEqual({
+			status: 403,
+			data: { error: 'CSRF skip must be submitted from this Obzorarr origin' }
+		});
+		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED)).toBeNull();
+		expect(await getOnboardingStep()).toBe(OnboardingSteps.CSRF);
+	});
+
+	it('skipCsrf rejects missing Origin/Referer headers', async () => {
+		const request = new Request(`${ORIGIN}/onboarding/csrf`, { method: 'POST' });
+
+		const result = await runSkipCsrf(request);
+
+		expect(result).toEqual({
+			status: 403,
+			data: { error: 'CSRF skip must be submitted from this Obzorarr origin' }
+		});
+		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED)).toBeNull();
+		expect(await getOnboardingStep()).toBe(OnboardingSteps.CSRF);
 	});
 
 	it('saveOrigin clears CSRF_ORIGIN_SKIPPED on success', async () => {

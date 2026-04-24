@@ -1,6 +1,8 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { z } from 'zod';
 import { checkRateLimit } from '$lib/server/ratelimit';
+import { getEffectiveShareMode } from '$lib/server/sharing/service';
+import { ShareMode } from '$lib/server/sharing/types';
 import { triggerLiveSyncIfNeeded } from '$lib/server/sync/live-sync';
 import { findUserByUsername } from '$lib/server/sync/plex-accounts.service';
 import type { Actions, PageServerLoad } from './$types';
@@ -53,17 +55,22 @@ export const actions: Actions = {
 
 		const { username } = parsed.data;
 
-		const userResult = await findUserByUsername(username);
+		const userResult = await findUserByUsername(username, { createIfMissing: false });
+		const currentYear = new Date().getFullYear();
+		const publicLookupFailure = {
+			error: 'No public Wrapped found for that username.',
+			username,
+			requiresAuth: true
+		};
 
 		if (!userResult) {
-			return fail(404, {
-				error: 'User not found. Make sure you have signed into Obzorarr at least once.',
-				username,
-				requiresAuth: true
-			});
+			return fail(404, publicLookupFailure);
 		}
 
-		const currentYear = new Date().getFullYear();
+		const effectiveMode = await getEffectiveShareMode(userResult.userId, currentYear);
+		if (effectiveMode !== ShareMode.PUBLIC) {
+			return fail(404, publicLookupFailure);
+		}
 
 		triggerLiveSyncIfNeeded('landing-page-lookup').catch(() => {});
 

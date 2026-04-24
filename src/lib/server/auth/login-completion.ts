@@ -5,9 +5,10 @@ import { db } from '$lib/server/db/client';
 import { users } from '$lib/server/db/schema';
 import { requiresOnboarding } from '$lib/server/onboarding';
 import { requireServerMembership, verifyServerOwnership } from './membership';
+import { clearPinTransaction, getPinTransactionForRequest } from './pin-transactions';
 import { checkPinStatus, getPlexUserInfo } from './plex-oauth';
 import { createSession } from './session';
-import { NotServerMemberError, SESSION_DURATION_MS } from './types';
+import { NotServerMemberError, PinExpiredError, SESSION_DURATION_MS } from './types';
 
 const COOKIE_OPTIONS = {
 	path: '/',
@@ -122,11 +123,26 @@ export async function completePlexPinLogin(
 	pinId: number,
 	cookies: Cookies
 ): Promise<PinLoginResult> {
+	const transaction = await getPinTransactionForRequest(pinId, cookies);
+	if (!transaction) {
+		throw new PinExpiredError('Login session expired or invalid. Please try again.');
+	}
+
+	if (!transaction.callbackVerified) {
+		return { pending: true };
+	}
+
 	const pinStatus = await checkPinStatus(pinId);
 
 	if (!pinStatus.authToken) {
 		return { pending: true };
 	}
 
-	return createSessionFromPlexToken(pinStatus.authToken, cookies);
+	const completed = await createSessionFromPlexToken(pinStatus.authToken, cookies);
+	try {
+		await clearPinTransaction(cookies, transaction.state);
+	} catch (err) {
+		console.error('Failed to clear Plex PIN transaction after successful login:', err);
+	}
+	return completed;
 }

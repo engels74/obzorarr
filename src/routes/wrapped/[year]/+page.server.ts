@@ -3,6 +3,7 @@ import { getFunFactFrequency } from '$lib/server/admin/settings.service';
 import { generateFunFacts } from '$lib/server/funfacts';
 import { getLogoVisibility } from '$lib/server/logo';
 import { getServerName } from '$lib/server/plex/server-name.service';
+import { signStatsThumbnails } from '$lib/server/plex/thumbnail-auth';
 import { checkServerWrappedAccess } from '$lib/server/sharing/access-control';
 import { ShareAccessDeniedError } from '$lib/server/sharing/types';
 import {
@@ -65,9 +66,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const slides = intersperseFunFacts(baseSlides, funFacts);
 	const logoVisibility = await getLogoVisibility(null, year);
 	const serverName = await getServerName();
+	const signedStats = await signStatsThumbnails(stats, { kind: 'server', year });
 
 	return {
-		stats,
+		stats: signedStats,
 		slides,
 		customSlidesMap,
 		year,

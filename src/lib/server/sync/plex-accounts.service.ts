@@ -338,7 +338,11 @@ export interface UserLookupResult {
 	accountId: number;
 }
 
-export async function findUserByUsername(username: string): Promise<UserLookupResult | null> {
+export async function findUserByUsername(
+	username: string,
+	options: { createIfMissing?: boolean } = {}
+): Promise<UserLookupResult | null> {
+	const { createIfMissing = true } = options;
 	const plexAccountResults = await db
 		.select()
 		.from(plexAccounts)
@@ -363,6 +367,10 @@ export async function findUserByUsername(username: string): Promise<UserLookupRe
 			username: user.username,
 			accountId: plexAccount.accountId
 		};
+	}
+
+	if (!createIfMissing) {
+		return null;
 	}
 
 	const insertResult = await db

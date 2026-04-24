@@ -30,7 +30,8 @@ export const AppSettingsKey = {
 	CSRF_ORIGIN: 'csrf_origin',
 	CSRF_ORIGIN_SKIPPED: 'csrf_origin_skipped',
 	CSRF_WARNING_DISMISSED: 'csrf_warning_dismissed',
-	TRUST_PROXY: 'trust_proxy'
+	TRUST_PROXY: 'trust_proxy',
+	THUMBNAIL_SIGNING_SECRET: 'thumbnail_signing_secret'
 } as const;
 
 export type AppSettingsKeyType = (typeof AppSettingsKey)[keyof typeof AppSettingsKey];
@@ -86,6 +87,29 @@ export async function setAppSetting(key: AppSettingsKeyType, value: string): Pro
 		target: appSettings.key,
 		set: { value }
 	});
+}
+
+export async function getOrCreateAppSetting(
+	key: AppSettingsKeyType,
+	createValue: () => string
+): Promise<string> {
+	const existing = await getAppSetting(key);
+	if (existing !== null && existing !== '') {
+		return existing;
+	}
+
+	const generated = createValue();
+	await db
+		.insert(appSettings)
+		.values({ key, value: generated })
+		.onConflictDoUpdate({
+			target: appSettings.key,
+			set: { value: generated },
+			setWhere: eq(appSettings.value, '')
+		});
+
+	const persisted = await getAppSetting(key);
+	return persisted === null || persisted === '' ? generated : persisted;
 }
 
 export async function deleteAppSetting(key: AppSettingsKeyType): Promise<void> {

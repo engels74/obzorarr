@@ -35,6 +35,7 @@ import {
 	type WrappedLogoModeType
 } from '$lib/server/admin/settings.service';
 import { getAvailableYears } from '$lib/server/admin/users.service';
+import { requireAdminActions } from '$lib/server/auth/guards';
 import { testOpenAIConnection } from '$lib/server/funfacts/test-connection';
 import {
 	getLogMaxCount,
@@ -216,7 +217,7 @@ export const load: PageServerLoad = async () => {
 	};
 };
 
-export const actions: Actions = {
+export const actions: Actions = requireAdminActions({
 	updateApiConfig: async ({ request }) => {
 		const formData = await request.formData();
 
@@ -892,4 +893,4 @@ export const actions: Actions = {
 			return fail(500, { error: message });
 		}
 	}
-};
+});

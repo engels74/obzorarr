@@ -5,6 +5,7 @@ import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
 import { clearConflictingDbSettings } from '$lib/server/admin/settings.service';
 import { getOrCreateDevSession, isDevBypassEnabled } from '$lib/server/auth/dev-bypass';
+import { isAdminRouteId } from '$lib/server/auth/guards';
 import {
 	needsRevalidation,
 	revalidateMembership,
@@ -204,7 +205,7 @@ const onboardingHandle: Handle = async ({ event, resolve }) => {
 };
 
 const authorizationHandle: Handle = async ({ event, resolve }) => {
-	if (event.url.pathname.startsWith('/admin')) {
+	if (isAdminRouteId(event.route.id)) {
 		if (!event.locals.user || !event.locals.user.isAdmin) {
 			return redirectResponse(event, '/');
 		}

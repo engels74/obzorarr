@@ -4,12 +4,14 @@ import { appSettings, shareSettings } from '$lib/server/db/schema';
 import {
 	type GetOrCreateShareSettingsOptions,
 	type GlobalShareDefaults,
+	getMoreRestrictiveMode,
 	meetsPrivacyFloor,
 	PermissionExceededError,
 	ShareError,
 	ShareMode,
 	ShareModeSchema,
 	ShareModeSource,
+	ShareModeSourceSchema,
 	type ShareModeSourceType,
 	type ShareModeType,
 	type ShareSettings,
@@ -27,6 +29,11 @@ export function generateShareToken(): string {
 export function isValidTokenFormat(token: string): boolean {
 	const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 	return uuidV4Regex.test(token);
+}
+
+function normalizeShareModeSource(value: string | null): ShareModeSourceType {
+	const parsed = ShareModeSourceSchema.safeParse(value ?? ShareModeSource.EXPLICIT);
+	return parsed.success ? parsed.data : ShareModeSource.EXPLICIT;
 }
 
 export async function getGlobalDefaultShareMode(): Promise<ShareModeType> {
@@ -58,6 +65,29 @@ export async function getGlobalAllowUserControl(): Promise<boolean> {
 	}
 
 	return setting.value === 'true';
+}
+
+export async function getEffectiveShareMode(userId: number, year: number): Promise<ShareModeType> {
+	const globalDefault = await getGlobalDefaultShareMode();
+	const result = await db
+		.select({
+			mode: shareSettings.mode,
+			modeSource: shareSettings.modeSource
+		})
+		.from(shareSettings)
+		.where(and(eq(shareSettings.userId, userId), eq(shareSettings.year, year)))
+		.limit(1);
+
+	const record = result[0];
+	if (!record) {
+		return globalDefault;
+	}
+
+	const parsed = ShareModeSchema.safeParse(record.mode);
+	const storedMode = parsed.success ? parsed.data : globalDefault;
+	const source = normalizeShareModeSource(record.modeSource);
+	const rowMode = source === ShareModeSource.DEFAULT ? globalDefault : storedMode;
+	return getMoreRestrictiveMode(rowMode, globalDefault);
 }
 
 export async function setGlobalShareDefaults(defaults: GlobalShareDefaults): Promise<void> {
@@ -178,9 +208,28 @@ export async function getShareSettings(
 	return { ...settings, shareToken: refreshed[0]?.shareToken ?? generatedToken };
 }
 
+export async function getShareSettingsReadOnly(
+	userId: number,
+	year: number
+): Promise<ShareSettings | null> {
+	const result = await db
+		.select()
+		.from(shareSettings)
+		.where(and(eq(shareSettings.userId, userId), eq(shareSettings.year, year)))
+		.limit(1);
+
+	const record = result[0];
+	if (!record) {
+		return null;
+	}
+
+	return toShareSettings(record, await getGlobalDefaultShareMode());
+}
+
 function toShareSettings(record: ShareSettingsRecord, globalDefault: ShareModeType): ShareSettings {
-	const storedMode = record.mode as ShareModeType;
-	const modeSource = (record.modeSource ?? ShareModeSource.EXPLICIT) as ShareModeSourceType;
+	const parsedMode = ShareModeSchema.safeParse(record.mode);
+	const storedMode = parsedMode.success ? parsedMode.data : globalDefault;
+	const modeSource = normalizeShareModeSource(record.modeSource);
 	const mode = modeSource === ShareModeSource.DEFAULT ? globalDefault : storedMode;
 
 	// Defense-in-depth: never expose a stored token unless the effective mode is

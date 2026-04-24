@@ -104,6 +104,17 @@ export const sessions = sqliteTable('sessions', {
 	expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull()
 });
 
+export const pinTransactions = sqliteTable(
+	'pin_transactions',
+	{
+		state: text('state').primaryKey(),
+		pinId: integer('pin_id').notNull(),
+		expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+		callbackVerified: integer('callback_verified', { mode: 'boolean' }).notNull().default(false)
+	},
+	(table) => [index('idx_pin_transactions_expires_at').on(table.expiresAt)]
+);
+
 export const logs = sqliteTable(
 	'logs',
 	{
@@ -151,6 +162,8 @@ export type CustomSlideRecord = typeof customSlides.$inferSelect;
 export type SlideConfigRecord = typeof slideConfig.$inferSelect;
 export type AppSettingRecord = typeof appSettings.$inferSelect;
 export type SessionRecord = typeof sessions.$inferSelect;
+export type PinTransactionRecord = typeof pinTransactions.$inferSelect;
+export type NewPinTransactionRecord = typeof pinTransactions.$inferInsert;
 export type LogRecord = typeof logs.$inferSelect;
 export type NewLogRecord = typeof logs.$inferInsert;
 export type MetadataCacheRecord = typeof metadataCache.$inferSelect;

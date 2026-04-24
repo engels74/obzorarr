@@ -146,6 +146,17 @@ sqlite.exec(`
 		expires_at INTEGER NOT NULL
 	);
 
+	-- PIN transactions table
+	CREATE TABLE IF NOT EXISTS pin_transactions (
+		state TEXT PRIMARY KEY NOT NULL,
+		pin_id INTEGER NOT NULL,
+		expires_at INTEGER NOT NULL,
+		callback_verified INTEGER DEFAULT 0 NOT NULL
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_pin_transactions_expires_at
+		ON pin_transactions (expires_at);
+
 	-- Logs table
 	CREATE TABLE IF NOT EXISTS logs (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,

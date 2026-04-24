@@ -20,6 +20,39 @@ async function isOnboardingCsrfStep(): Promise<boolean> {
 	return !done && step === OnboardingSteps.CSRF;
 }
 
+function getRequestOrigin(request: Request): string | null {
+	const origin = request.headers.get('origin');
+	if (origin) return origin;
+
+	const referer = request.headers.get('referer');
+	if (!referer) return null;
+
+	try {
+		return new URL(referer).origin;
+	} catch {
+		return null;
+	}
+}
+
+function normalizeOrigin(origin: string): string | null {
+	try {
+		return new URL(origin).origin.toLowerCase();
+	} catch {
+		return null;
+	}
+}
+
+function originsMatch(left: string, right: string): boolean {
+	const normalizedLeft = normalizeOrigin(left);
+	const normalizedRight = normalizeOrigin(right);
+	return normalizedLeft !== null && normalizedLeft === normalizedRight;
+}
+
+function isSameOriginOnboardingAction(request: Request, url: URL): boolean {
+	const requestOrigin = getRequestOrigin(request);
+	return requestOrigin !== null && originsMatch(requestOrigin, url.origin);
+}
+
 const CsrfOriginSchema = z.object({
 	csrfOrigin: z
 		.string()
@@ -93,7 +126,7 @@ export const actions: Actions = {
 			});
 		}
 
-		if (result.data.csrfOrigin.toLowerCase() !== actualOrigin.toLowerCase()) {
+		if (!originsMatch(result.data.csrfOrigin, actualOrigin)) {
 			return fail(400, {
 				testError: `Origin mismatch: browser sends "${actualOrigin}" but you configured "${result.data.csrfOrigin}"`
 			});
@@ -129,7 +162,7 @@ export const actions: Actions = {
 			});
 		}
 
-		if (result.data.csrfOrigin.toLowerCase() !== actualOrigin.toLowerCase()) {
+		if (!originsMatch(result.data.csrfOrigin, actualOrigin)) {
 			return fail(400, {
 				error: `Origin mismatch: browser sends "${actualOrigin}" but you configured "${result.data.csrfOrigin}"`
 			});
@@ -143,9 +176,13 @@ export const actions: Actions = {
 		redirect(303, '/onboarding/plex');
 	},
 
-	skipCsrf: async () => {
+	skipCsrf: async ({ request, url }) => {
 		if (!(await isOnboardingCsrfStep())) {
 			return fail(403, { error: 'Not allowed at this onboarding stage' });
+		}
+
+		if (!isSameOriginOnboardingAction(request, url)) {
+			return fail(403, { error: 'CSRF skip must be submitted from this Obzorarr origin' });
 		}
 
 		await setAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED, 'true');

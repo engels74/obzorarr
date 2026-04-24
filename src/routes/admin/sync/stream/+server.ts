@@ -1,3 +1,4 @@
+import { requireAdmin } from '$lib/server/auth/guards';
 import { getSyncProgress, type LiveSyncProgress } from '$lib/server/sync/progress';
 import type { RequestHandler } from './$types';
 
@@ -12,7 +13,9 @@ import type { RequestHandler } from './$types';
 
 const POLL_INTERVAL_MS = 500;
 
-export const GET: RequestHandler = async ({ request }) => {
+export const GET: RequestHandler = async ({ locals, request }) => {
+	requireAdmin(locals);
+
 	// Create a readable stream for SSE
 	const stream = new ReadableStream({
 		async start(controller) {
