@@ -57,6 +57,10 @@ let autoScroll = $state(true);
 let clearLogsDialogOpen = $state(false);
 let isClearingLogs = $state(false);
 
+// Run-cleanup confirmation dialog
+let runCleanupDialogOpen = $state(false);
+let isRunningCleanup = $state(false);
+
 // SSE connection state
 let eventSource: EventSource | null = $state(null);
 let streamedLogs = $state<LogEntry[]>([]);
@@ -493,18 +497,13 @@ $effect(() => {
 		</div>
 
 		<div class="controls-right">
-			<form
-				method="POST"
-				action="?/runCleanup"
-				use:enhance={() => {
-					return async ({ update }) => {
-						await refreshAfterLogMutation(update);
-					};
-				}}
-				class="inline-form"
+			<button
+				type="button"
+				class="control-button secondary"
+				onclick={() => (runCleanupDialogOpen = true)}
 			>
-				<button type="submit" class="control-button secondary"> Run Cleanup </button>
-			</form>
+				Run Cleanup
+			</button>
 
 			<button
 				type="button"
@@ -655,6 +654,41 @@ $effect(() => {
 			>
 				<AlertDialog.Action type="submit" disabled={isClearingLogs}>
 					{isClearingLogs ? 'Clearing…' : 'Clear All'}
+				</AlertDialog.Action>
+			</form>
+		</AlertDialog.Footer>
+	</AlertDialog.Content>
+</AlertDialog.Root>
+
+<AlertDialog.Root bind:open={runCleanupDialogOpen}>
+	<AlertDialog.Content>
+		<AlertDialog.Header>
+			<AlertDialog.Title>Run cleanup now?</AlertDialog.Title>
+			<AlertDialog.Description>
+				Logs older than {data.settings.retentionDays} days will be deleted, and only the {data.settings.maxCount.toLocaleString()}
+				newest will be kept. This cannot be undone.
+			</AlertDialog.Description>
+		</AlertDialog.Header>
+		<AlertDialog.Footer>
+			<AlertDialog.Cancel disabled={isRunningCleanup}>Cancel</AlertDialog.Cancel>
+			<form
+				method="POST"
+				action="?/runCleanup"
+				use:enhance={() => {
+					isRunningCleanup = true;
+					return async ({ update }) => {
+						try {
+							await refreshAfterLogMutation(update);
+							runCleanupDialogOpen = false;
+						} finally {
+							isRunningCleanup = false;
+						}
+					};
+				}}
+				style="display: contents;"
+			>
+				<AlertDialog.Action type="submit" disabled={isRunningCleanup}>
+					{isRunningCleanup ? 'Running…' : 'Run Cleanup'}
 				</AlertDialog.Action>
 			</form>
 		</AlertDialog.Footer>
