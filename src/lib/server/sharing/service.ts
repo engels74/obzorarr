@@ -91,27 +91,30 @@ export async function getEffectiveShareMode(userId: number, year: number): Promi
 }
 
 export async function setGlobalShareDefaults(defaults: GlobalShareDefaults): Promise<void> {
+	const now = new Date();
 	await db.transaction(async (tx) => {
 		await tx
 			.insert(appSettings)
 			.values({
 				key: ShareSettingsKey.DEFAULT_SHARE_MODE,
-				value: defaults.defaultShareMode
+				value: defaults.defaultShareMode,
+				updatedAt: now
 			})
 			.onConflictDoUpdate({
 				target: appSettings.key,
-				set: { value: defaults.defaultShareMode }
+				set: { value: defaults.defaultShareMode, updatedAt: now }
 			});
 
 		await tx
 			.insert(appSettings)
 			.values({
 				key: ShareSettingsKey.ALLOW_USER_CONTROL,
-				value: String(defaults.allowUserControl)
+				value: String(defaults.allowUserControl),
+				updatedAt: now
 			})
 			.onConflictDoUpdate({
 				target: appSettings.key,
-				set: { value: String(defaults.allowUserControl) }
+				set: { value: String(defaults.allowUserControl), updatedAt: now }
 			});
 
 		// Rotate tokens for default-sourced rows when the new global default is
@@ -152,15 +155,17 @@ export async function getServerWrappedShareMode(): Promise<ShareModeType> {
 }
 
 export async function setServerWrappedShareMode(mode: ShareModeType): Promise<void> {
+	const now = new Date();
 	await db
 		.insert(appSettings)
 		.values({
 			key: ShareSettingsKey.SERVER_WRAPPED_SHARE_MODE,
-			value: mode
+			value: mode,
+			updatedAt: now
 		})
 		.onConflictDoUpdate({
 			target: appSettings.key,
-			set: { value: mode }
+			set: { value: mode, updatedAt: now }
 		});
 }
 

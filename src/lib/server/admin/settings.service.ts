@@ -1,4 +1,4 @@
-import { and, between, eq, sql } from 'drizzle-orm';
+import { and, between, eq, inArray, sql } from 'drizzle-orm';
 import { env } from '$env/dynamic/private';
 import { db } from '$lib/server/db/client';
 import { appSettings, cachedStats, playHistory } from '$lib/server/db/schema';
@@ -83,10 +83,35 @@ export async function getAppSetting(key: AppSettingsKeyType): Promise<string | n
 }
 
 export async function setAppSetting(key: AppSettingsKeyType, value: string): Promise<void> {
-	await db.insert(appSettings).values({ key, value }).onConflictDoUpdate({
-		target: appSettings.key,
-		set: { value }
-	});
+	const now = new Date();
+	await db
+		.insert(appSettings)
+		.values({ key, value, updatedAt: now })
+		.onConflictDoUpdate({
+			target: appSettings.key,
+			set: { value, updatedAt: now }
+		});
+}
+
+/**
+ * Returns the latest `updatedAt` across the given app-settings keys, or `null`
+ * if none of the keys exist. Used by the admin settings page to detect
+ * concurrent saves from another tab: the load path returns an ISO timestamp,
+ * and each form action compares it against the current max before writing.
+ */
+export async function getAppSettingsUpdatedAt(keys: readonly string[]): Promise<Date | null> {
+	if (keys.length === 0) return null;
+	const rows = await db
+		.select({ updatedAt: appSettings.updatedAt })
+		.from(appSettings)
+		.where(inArray(appSettings.key, keys as string[]));
+	if (rows.length === 0) return null;
+	let max = 0;
+	for (const row of rows) {
+		const t = row.updatedAt.getTime();
+		if (t > max) max = t;
+	}
+	return new Date(max);
 }
 
 export async function getOrCreateAppSetting(
@@ -99,12 +124,13 @@ export async function getOrCreateAppSetting(
 	}
 
 	const generated = createValue();
+	const now = new Date();
 	await db
 		.insert(appSettings)
-		.values({ key, value: generated })
+		.values({ key, value: generated, updatedAt: now })
 		.onConflictDoUpdate({
 			target: appSettings.key,
-			set: { value: generated },
+			set: { value: generated, updatedAt: now },
 			setWhere: eq(appSettings.value, '')
 		});
 

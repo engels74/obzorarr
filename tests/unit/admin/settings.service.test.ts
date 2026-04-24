@@ -15,6 +15,7 @@ import {
 	getAnonymizationMode,
 	getApiConfigWithSources,
 	getAppSetting,
+	getAppSettingsUpdatedAt,
 	getCachedServerName,
 	getCsrfConfigWithSource,
 	getCsrfOrigin,
@@ -95,6 +96,43 @@ describe('Admin Settings Service', () => {
 
 				const value = await getAppSetting(AppSettingsKey.CURRENT_THEME);
 				expect(value).toBe(ThemePresets.AMBER_MINIMAL);
+			});
+		});
+
+		describe('getAppSettingsUpdatedAt', () => {
+			it('returns null when none of the keys exist', async () => {
+				const updatedAt = await getAppSettingsUpdatedAt([AppSettingsKey.CURRENT_THEME]);
+				expect(updatedAt).toBeNull();
+			});
+
+			it('returns the latest timestamp across the given keys', async () => {
+				await setAppSetting(AppSettingsKey.CURRENT_THEME, ThemePresets.DOOM_64);
+				// Force a distinct, later timestamp to avoid same-second ties.
+				await new Promise((resolve) => setTimeout(resolve, 1100));
+				await setAppSetting(AppSettingsKey.DEFAULT_YEAR, '2024');
+
+				const updatedAt = await getAppSettingsUpdatedAt([
+					AppSettingsKey.CURRENT_THEME,
+					AppSettingsKey.DEFAULT_YEAR
+				]);
+				expect(updatedAt).not.toBeNull();
+
+				const themeOnly = await getAppSettingsUpdatedAt([AppSettingsKey.CURRENT_THEME]);
+				expect(themeOnly).not.toBeNull();
+				expect((updatedAt as Date).getTime()).toBeGreaterThan((themeOnly as Date).getTime());
+			});
+
+			it('bumps updatedAt when a setting is re-written', async () => {
+				await setAppSetting(AppSettingsKey.CURRENT_THEME, ThemePresets.DOOM_64);
+				const first = await getAppSettingsUpdatedAt([AppSettingsKey.CURRENT_THEME]);
+
+				await new Promise((resolve) => setTimeout(resolve, 1100));
+				await setAppSetting(AppSettingsKey.CURRENT_THEME, ThemePresets.AMBER_MINIMAL);
+				const second = await getAppSettingsUpdatedAt([AppSettingsKey.CURRENT_THEME]);
+
+				expect(first).not.toBeNull();
+				expect(second).not.toBeNull();
+				expect((second as Date).getTime()).toBeGreaterThan((first as Date).getTime());
 			});
 		});
 

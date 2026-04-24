@@ -15,6 +15,7 @@ import {
 	getAnonymizationMode,
 	getApiConfigWithSources,
 	getAppSetting,
+	getAppSettingsUpdatedAt,
 	getCsrfConfigWithSource,
 	getTrustProxyConfigWithSource,
 	getUITheme,
@@ -54,7 +55,7 @@ import {
 	setGlobalShareDefaults,
 	setServerWrappedShareMode
 } from '$lib/server/sharing/service';
-import type { ShareModeType } from '$lib/server/sharing/types';
+import { type ShareModeType, ShareSettingsKey } from '$lib/server/sharing/types';
 import type { Actions, PageServerLoad } from './$types';
 
 const ThemeSchema = z.enum([
@@ -83,8 +84,16 @@ const PrivacySettingsSchema = z.object({
 	anonymizationMode: AnonymizationSchema,
 	serverWrappedShareMode: ServerWrappedModeSchema,
 	defaultShareMode: ShareModeSchema,
-	allowUserControl: z.coerce.boolean()
+	allowUserControl: z.coerce.boolean(),
+	settingsVersion: z.string()
 });
+
+const PRIVACY_SETTINGS_KEYS = [
+	AppSettingsKey.ANONYMIZATION_MODE,
+	ShareSettingsKey.SERVER_WRAPPED_SHARE_MODE,
+	ShareSettingsKey.DEFAULT_SHARE_MODE,
+	ShareSettingsKey.ALLOW_USER_CONTROL
+] as const;
 
 const ApiConfigSchema = z.object({
 	plexServerUrl: z.string().max(512).url('Invalid URL format').optional().or(z.literal('')),
@@ -138,7 +147,8 @@ export const load: PageServerLoad = async () => {
 		csrfConfig,
 		csrfWarningDismissed,
 		csrfOriginSkippedRaw,
-		trustProxyConfig
+		trustProxyConfig,
+		privacySettingsUpdatedAt
 	] = await Promise.all([
 		getApiConfigWithSources(),
 		getUITheme(),
@@ -155,7 +165,8 @@ export const load: PageServerLoad = async () => {
 		getCsrfConfigWithSource(),
 		isCsrfWarningDismissed(),
 		getAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED),
-		getTrustProxyConfigWithSource()
+		getTrustProxyConfigWithSource(),
+		getAppSettingsUpdatedAt(PRIVACY_SETTINGS_KEYS)
 	]);
 
 	const currentYear = new Date().getFullYear();
@@ -202,6 +213,7 @@ export const load: PageServerLoad = async () => {
 			allowUserControl
 		},
 		serverWrappedShareMode,
+		privacySettingsVersion: privacySettingsUpdatedAt?.toISOString() ?? '',
 		security: {
 			originValue: csrfConfig.origin.value,
 			csrfEnabled: !!csrfConfig.origin.value,
@@ -644,7 +656,8 @@ export const actions: Actions = requireAdminActions({
 			anonymizationMode: formData.get('anonymizationMode'),
 			serverWrappedShareMode: formData.get('serverWrappedShareMode'),
 			defaultShareMode: formData.get('defaultShareMode'),
-			allowUserControl: formData.get('allowUserControl') === 'true'
+			allowUserControl: formData.get('allowUserControl') === 'true',
+			settingsVersion: formData.get('settingsVersion')?.toString() ?? ''
 		};
 
 		const parsed = PrivacySettingsSchema.safeParse(data);
@@ -653,6 +666,18 @@ export const actions: Actions = requireAdminActions({
 				error: 'Invalid input',
 				fieldErrors: parsed.error.flatten().fieldErrors
 			});
+		}
+
+		const currentUpdatedAt = await getAppSettingsUpdatedAt(PRIVACY_SETTINGS_KEYS);
+		if (currentUpdatedAt !== null) {
+			const submittedMs = parsed.data.settingsVersion
+				? Date.parse(parsed.data.settingsVersion)
+				: Number.NaN;
+			if (Number.isNaN(submittedMs) || submittedMs < currentUpdatedAt.getTime()) {
+				return fail(409, {
+					error: 'Settings changed in another tab. Please reload.'
+				});
+			}
 		}
 
 		try {

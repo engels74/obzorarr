@@ -1110,6 +1110,7 @@ const logFieldErrors = $derived(
 		<!-- Privacy Tab -->
 		{#if activeTab === 'privacy'}
 			<form method="POST" action="?/updatePrivacySettings" use:enhance class="privacy-content">
+				<input type="hidden" name="settingsVersion" value={data.privacySettingsVersion} />
 				<!-- User Identity Section -->
 				<section class="panel privacy-panel">
 					<div class="panel-header">

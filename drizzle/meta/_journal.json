@@ -43,6 +43,13 @@
       "when": 1777021121000,
       "tag": "0005_pin_transactions",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1777048328931,
+      "tag": "0006_violet_sunfire",
+      "breakpoints": true
     }
   ]
 }
