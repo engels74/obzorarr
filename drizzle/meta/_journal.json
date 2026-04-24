@@ -50,6 +50,13 @@
       "when": 1777048328931,
       "tag": "0006_violet_sunfire",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1777051200000,
+      "tag": "0007_app_settings_updated_at_ms",
+      "breakpoints": true
     }
   ]
 }

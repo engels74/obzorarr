@@ -135,7 +135,7 @@ sqlite.exec(`
 	CREATE TABLE IF NOT EXISTS app_settings (
 		key TEXT PRIMARY KEY,
 		value TEXT NOT NULL,
-		updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+		updated_at INTEGER NOT NULL DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer))
 	);
 
 	-- Sessions table

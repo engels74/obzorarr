@@ -95,7 +95,9 @@ export const slideConfig = sqliteTable('slide_config', {
 export const appSettings = sqliteTable('app_settings', {
 	key: text('key').primaryKey(),
 	value: text('value').notNull(),
-	updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`)
+	updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+		.notNull()
+		.default(sql`(cast((julianday('now') - 2440587.5)*86400000 as integer))`)
 });
 
 export const sessions = sqliteTable('sessions', {

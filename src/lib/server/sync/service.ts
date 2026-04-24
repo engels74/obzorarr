@@ -367,7 +367,11 @@ export async function startSync(options: StartSyncOptions = {}): Promise<SyncRes
 			durationMs
 		};
 	} catch (error) {
-		if (error instanceof SyncCancelledError) {
+		// Treat any error that arrives while the signal is already aborted as a
+		// cancellation.  This covers the case where the abort fires mid-fetch and
+		// plexRequest re-wraps the native AbortError as a PlexApiError before the
+		// post-page signal?.aborted check can run.
+		if (error instanceof SyncCancelledError || signal?.aborted) {
 			await cancelSyncRecord(syncId, recordsProcessed);
 
 			logger.info(

@@ -107,8 +107,7 @@ describe('Admin Settings Service', () => {
 
 			it('returns the latest timestamp across the given keys', async () => {
 				await setAppSetting(AppSettingsKey.CURRENT_THEME, ThemePresets.DOOM_64);
-				// Force a distinct, later timestamp to avoid same-second ties.
-				await new Promise((resolve) => setTimeout(resolve, 1100));
+				await new Promise((resolve) => setTimeout(resolve, 2));
 				await setAppSetting(AppSettingsKey.DEFAULT_YEAR, '2024');
 
 				const updatedAt = await getAppSettingsUpdatedAt([
@@ -126,7 +125,7 @@ describe('Admin Settings Service', () => {
 				await setAppSetting(AppSettingsKey.CURRENT_THEME, ThemePresets.DOOM_64);
 				const first = await getAppSettingsUpdatedAt([AppSettingsKey.CURRENT_THEME]);
 
-				await new Promise((resolve) => setTimeout(resolve, 1100));
+				await new Promise((resolve) => setTimeout(resolve, 2));
 				await setAppSetting(AppSettingsKey.CURRENT_THEME, ThemePresets.AMBER_MINIMAL);
 				const second = await getAppSettingsUpdatedAt([AppSettingsKey.CURRENT_THEME]);
 
