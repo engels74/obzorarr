@@ -92,7 +92,10 @@ export async function verifyThumbnailToken(
 ): Promise<ThumbnailTokenPayload | null> {
 	if (!token) return null;
 
-	const [encodedPayload, signature] = token.split('.');
+	const tokenParts = token.split('.');
+	if (tokenParts.length !== 2) return null;
+
+	const [encodedPayload, signature] = tokenParts;
 	if (!encodedPayload || !signature) return null;
 
 	const secret = await getSigningSecret();

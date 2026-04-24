@@ -114,8 +114,11 @@ export async function getPinTransactionForRequest(
 }
 
 export async function clearPinTransaction(cookies: Cookies, state: string): Promise<void> {
-	await db.delete(pinTransactions).where(eq(pinTransactions.state, state));
-	cookies.delete(PIN_STATE_COOKIE, COOKIE_DELETE_OPTIONS);
+	try {
+		await db.delete(pinTransactions).where(eq(pinTransactions.state, state));
+	} finally {
+		cookies.delete(PIN_STATE_COOKIE, COOKIE_DELETE_OPTIONS);
+	}
 }
 
 export async function _resetPinTransactionsForTests(): Promise<void> {

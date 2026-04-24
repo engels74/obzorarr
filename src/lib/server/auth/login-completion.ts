@@ -139,6 +139,10 @@ export async function completePlexPinLogin(
 	}
 
 	const completed = await createSessionFromPlexToken(pinStatus.authToken, cookies);
-	await clearPinTransaction(cookies, transaction.state);
+	try {
+		await clearPinTransaction(cookies, transaction.state);
+	} catch (err) {
+		console.error('Failed to clear Plex PIN transaction after successful login:', err);
+	}
 	return completed;
 }

@@ -76,6 +76,16 @@ describe('thumbnail auth tokens', () => {
 		expect(payload?.path).toBe('library/metadata/123/thumb/456');
 	});
 
+	it('rejects thumbnail tokens with extra segments', async () => {
+		const signedUrl = await createSignedThumbnailUrl('/library/metadata/123/thumb/456', {
+			kind: 'server',
+			year: YEAR
+		});
+		const token = extractToken(signedUrl as string);
+
+		await expect(verifyThumbnailToken(`${token}.extra`)).resolves.toBeNull();
+	});
+
 	it('signs Plex-relative thumbnail paths and authorizes them while wrapped access is public', async () => {
 		await setGlobalShareDefaults({ defaultShareMode: ShareMode.PUBLIC, allowUserControl: false });
 
