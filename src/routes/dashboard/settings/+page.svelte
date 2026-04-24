@@ -351,7 +351,7 @@ function getLogoModeDescription(): string {
 					</div>
 				{:else}
 					<!-- User doesn't have control -->
-					<div class="info-banner">
+					<div class="info-banner" role="status" aria-live="polite">
 						<span class="info-icon">ℹ️</span>
 						<div class="info-content">
 							<strong>Sharing settings are managed by your server administrator</strong>
