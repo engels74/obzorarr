@@ -89,6 +89,29 @@ export async function setAppSetting(key: AppSettingsKeyType, value: string): Pro
 	});
 }
 
+export async function getOrCreateAppSetting(
+	key: AppSettingsKeyType,
+	createValue: () => string
+): Promise<string> {
+	const existing = await getAppSetting(key);
+	if (existing !== null && existing !== '') {
+		return existing;
+	}
+
+	const generated = createValue();
+	await db
+		.insert(appSettings)
+		.values({ key, value: generated })
+		.onConflictDoUpdate({
+			target: appSettings.key,
+			set: { value: generated },
+			setWhere: eq(appSettings.value, '')
+		});
+
+	const persisted = await getAppSetting(key);
+	return persisted === null || persisted === '' ? generated : persisted;
+}
+
 export async function deleteAppSetting(key: AppSettingsKeyType): Promise<void> {
 	await db.delete(appSettings).where(eq(appSettings.key, key));
 }

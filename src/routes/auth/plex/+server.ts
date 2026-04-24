@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { completePlexPinLogin } from '$lib/server/auth/login-completion';
 import {
 	appendPinStateToForwardUrl,
-	createPinTransaction
+	createPinTransaction,
+	parsePinForwardUrl
 } from '$lib/server/auth/pin-transactions';
 import { buildPlexOAuthUrl, requestPin } from '$lib/server/auth/plex-oauth';
 import { NotServerMemberError, PinExpiredError, PlexAuthApiError } from '$lib/server/auth/types';
@@ -15,9 +16,11 @@ const PollRequestSchema = z.object({
 
 export const GET: RequestHandler = async ({ cookies, url }) => {
 	try {
-		const pin = await requestPin();
-		const state = createPinTransaction(pin.id, cookies);
 		const redirectUrl = url.searchParams.get('redirectUrl') ?? `${url.origin}/auth/plex/redirect`;
+		parsePinForwardUrl(redirectUrl, url);
+
+		const pin = await requestPin();
+		const state = await createPinTransaction(pin.id, cookies);
 		const forwardUrl = appendPinStateToForwardUrl(redirectUrl, url, state);
 		const pinInfo = {
 			pinId: pin.id,

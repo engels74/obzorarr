@@ -26,6 +26,6 @@ export const load: PageServerLoad = async ({ cookies, locals, request, url }) =>
 
 	return {
 		flow: url.searchParams.get('flow') === 'popup' ? 'popup' : 'redirect',
-		stateVerified: markPinCallbackVerified(cookies, url.searchParams.get('state'))
+		stateVerified: await markPinCallbackVerified(cookies, url.searchParams.get('state'))
 	};
 };

@@ -1,5 +1,8 @@
 import { Buffer } from 'node:buffer';
 import type { Cookies } from '@sveltejs/kit';
+import { eq, lte } from 'drizzle-orm';
+import { db } from '$lib/server/db/client';
+import { pinTransactions } from '$lib/server/db/schema';
 
 const PIN_STATE_COOKIE = 'plex_login_state';
 const PIN_TRANSACTION_TTL_MS = 15 * 60 * 1000;
@@ -7,11 +10,9 @@ const PIN_TRANSACTION_TTL_MS = 15 * 60 * 1000;
 interface PinTransaction {
 	pinId: number;
 	state: string;
-	expiresAt: number;
+	expiresAt: Date;
 	callbackVerified: boolean;
 }
-
-const transactions = new Map<string, PinTransaction>();
 
 const COOKIE_OPTIONS = {
 	path: '/',
@@ -31,22 +32,18 @@ function generateState(): string {
 	return Buffer.from(bytes).toString('base64url');
 }
 
-function pruneExpired(now = Date.now()): void {
-	for (const [state, transaction] of transactions) {
-		if (transaction.expiresAt <= now) {
-			transactions.delete(state);
-		}
-	}
+async function pruneExpired(now = Date.now()): Promise<void> {
+	await db.delete(pinTransactions).where(lte(pinTransactions.expiresAt, new Date(now)));
 }
 
-export function createPinTransaction(pinId: number, cookies: Cookies): string {
-	pruneExpired();
+export async function createPinTransaction(pinId: number, cookies: Cookies): Promise<string> {
+	await pruneExpired();
 
 	const state = generateState();
-	transactions.set(state, {
+	await db.insert(pinTransactions).values({
 		pinId,
 		state,
-		expiresAt: Date.now() + PIN_TRANSACTION_TTL_MS,
+		expiresAt: new Date(Date.now() + PIN_TRANSACTION_TTL_MS),
 		callbackVerified: false
 	});
 	cookies.set(PIN_STATE_COOKIE, state, COOKIE_OPTIONS);
@@ -54,50 +51,61 @@ export function createPinTransaction(pinId: number, cookies: Cookies): string {
 	return state;
 }
 
-export function appendPinStateToForwardUrl(
-	forwardUrl: string,
-	requestUrl: URL,
-	state: string
-): string {
+export function parsePinForwardUrl(forwardUrl: string, requestUrl: URL): URL {
 	const parsed = new URL(forwardUrl, requestUrl.origin);
 
 	if (parsed.origin !== requestUrl.origin) {
 		throw new Error('Plex redirect URL must use the Obzorarr origin');
 	}
 
+	return parsed;
+}
+
+export function appendPinStateToForwardUrl(
+	forwardUrl: string,
+	requestUrl: URL,
+	state: string
+): string {
+	const parsed = parsePinForwardUrl(forwardUrl, requestUrl);
+
 	parsed.searchParams.set('state', state);
 	return parsed.toString();
 }
 
-export function markPinCallbackVerified(cookies: Cookies, state: string | null): boolean {
-	pruneExpired();
+export async function markPinCallbackVerified(
+	cookies: Cookies,
+	state: string | null
+): Promise<boolean> {
+	await pruneExpired();
 
 	const cookieState = cookies.get(PIN_STATE_COOKIE);
 	if (!state || !cookieState || state !== cookieState) {
 		return false;
 	}
 
-	const transaction = transactions.get(state);
-	if (!transaction) {
-		return false;
-	}
+	const updated = await db
+		.update(pinTransactions)
+		.set({ callbackVerified: true })
+		.where(eq(pinTransactions.state, state))
+		.returning({ state: pinTransactions.state });
 
-	transaction.callbackVerified = true;
-	return true;
+	return updated.length > 0;
 }
 
-export function getPinTransactionForRequest(
+export async function getPinTransactionForRequest(
 	pinId: number,
 	cookies: Cookies
-): PinTransaction | null {
-	pruneExpired();
+): Promise<PinTransaction | null> {
+	await pruneExpired();
 
 	const state = cookies.get(PIN_STATE_COOKIE);
 	if (!state) {
 		return null;
 	}
 
-	const transaction = transactions.get(state);
+	const transaction = await db.query.pinTransactions.findFirst({
+		where: eq(pinTransactions.state, state)
+	});
 	if (!transaction || transaction.pinId !== pinId) {
 		return null;
 	}
@@ -105,11 +113,11 @@ export function getPinTransactionForRequest(
 	return transaction;
 }
 
-export function clearPinTransaction(cookies: Cookies, state: string): void {
-	transactions.delete(state);
+export async function clearPinTransaction(cookies: Cookies, state: string): Promise<void> {
+	await db.delete(pinTransactions).where(eq(pinTransactions.state, state));
 	cookies.delete(PIN_STATE_COOKIE, COOKIE_DELETE_OPTIONS);
 }
 
-export function _resetPinTransactionsForTests(): void {
-	transactions.clear();
+export async function _resetPinTransactionsForTests(): Promise<void> {
+	await db.delete(pinTransactions);
 }

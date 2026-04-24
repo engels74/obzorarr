@@ -36,6 +36,46 @@ describe('thumbnail auth tokens', () => {
 		await setAppSetting(AppSettingsKey.THUMBNAIL_SIGNING_SECRET, 'test-thumbnail-secret');
 	});
 
+	it('keeps concurrently minted tokens valid when creating the signing secret', async () => {
+		await db.delete(appSettings);
+
+		const signedUrls = await Promise.all(
+			Array.from({ length: 20 }, () =>
+				createSignedThumbnailUrl('/library/metadata/123/thumb/456', {
+					kind: 'server',
+					year: YEAR
+				})
+			)
+		);
+
+		const payloads = await Promise.all(
+			signedUrls.map((url) => verifyThumbnailToken(extractToken(url as string)))
+		);
+
+		expect(payloads.every((payload) => payload?.path === 'library/metadata/123/thumb/456')).toBe(
+			true
+		);
+	});
+
+	it('replaces an empty signing secret before signing thumbnails', async () => {
+		await setAppSetting(AppSettingsKey.THUMBNAIL_SIGNING_SECRET, '');
+
+		const signedUrl = await createSignedThumbnailUrl('/library/metadata/123/thumb/456', {
+			kind: 'server',
+			year: YEAR
+		});
+
+		const secret = await db
+			.select({ value: appSettings.value })
+			.from(appSettings)
+			.where(eq(appSettings.key, AppSettingsKey.THUMBNAIL_SIGNING_SECRET))
+			.limit(1);
+
+		expect(secret[0]?.value).not.toBe('');
+		const payload = await verifyThumbnailToken(extractToken(signedUrl as string));
+		expect(payload?.path).toBe('library/metadata/123/thumb/456');
+	});
+
 	it('signs Plex-relative thumbnail paths and authorizes them while wrapped access is public', async () => {
 		await setGlobalShareDefaults({ defaultShareMode: ShareMode.PUBLIC, allowUserControl: false });
 

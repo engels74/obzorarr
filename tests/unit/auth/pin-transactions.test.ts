@@ -23,35 +23,35 @@ function createCookies(): Cookies {
 }
 
 describe('Plex PIN transactions', () => {
-	beforeEach(() => {
-		_resetPinTransactionsForTests();
+	beforeEach(async () => {
+		await _resetPinTransactionsForTests();
 	});
 
-	it('binds a PIN transaction to the browser state cookie', () => {
+	it('binds a PIN transaction to the browser state cookie', async () => {
 		const cookies = createCookies();
-		const state = createPinTransaction(123, cookies);
+		const state = await createPinTransaction(123, cookies);
 
-		const transaction = getPinTransactionForRequest(123, cookies);
+		const transaction = await getPinTransactionForRequest(123, cookies);
 
 		expect(transaction?.state).toBe(state);
-		expect(getPinTransactionForRequest(456, cookies)).toBeNull();
-		expect(getPinTransactionForRequest(123, createCookies())).toBeNull();
+		expect(await getPinTransactionForRequest(456, cookies)).toBeNull();
+		expect(await getPinTransactionForRequest(123, createCookies())).toBeNull();
 	});
 
-	it('requires the callback state to match the HttpOnly state cookie', () => {
+	it('requires the callback state to match the HttpOnly state cookie', async () => {
 		const cookies = createCookies();
-		const state = createPinTransaction(123, cookies);
+		const state = await createPinTransaction(123, cookies);
 
-		expect(markPinCallbackVerified(cookies, 'wrong-state')).toBe(false);
-		expect(getPinTransactionForRequest(123, cookies)?.callbackVerified).toBe(false);
+		expect(await markPinCallbackVerified(cookies, 'wrong-state')).toBe(false);
+		expect((await getPinTransactionForRequest(123, cookies))?.callbackVerified).toBe(false);
 
-		expect(markPinCallbackVerified(cookies, state)).toBe(true);
-		expect(getPinTransactionForRequest(123, cookies)?.callbackVerified).toBe(true);
+		expect(await markPinCallbackVerified(cookies, state)).toBe(true);
+		expect((await getPinTransactionForRequest(123, cookies))?.callbackVerified).toBe(true);
 	});
 
 	it('does not poll Plex or create a session before callback verification', async () => {
 		const cookies = createCookies();
-		createPinTransaction(123, cookies);
+		await createPinTransaction(123, cookies);
 
 		await expect(completePlexPinLogin(123, cookies)).resolves.toEqual({ pending: true });
 	});

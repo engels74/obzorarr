@@ -123,7 +123,7 @@ export async function completePlexPinLogin(
 	pinId: number,
 	cookies: Cookies
 ): Promise<PinLoginResult> {
-	const transaction = getPinTransactionForRequest(pinId, cookies);
+	const transaction = await getPinTransactionForRequest(pinId, cookies);
 	if (!transaction) {
 		throw new PinExpiredError('Login session expired or invalid. Please try again.');
 	}
@@ -139,6 +139,6 @@ export async function completePlexPinLogin(
 	}
 
 	const completed = await createSessionFromPlexToken(pinStatus.authToken, cookies);
-	clearPinTransaction(cookies, transaction.state);
+	await clearPinTransaction(cookies, transaction.state);
 	return completed;
 }

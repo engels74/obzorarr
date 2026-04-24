@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer';
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { error } from '@sveltejs/kit';
-import { AppSettingsKey, getAppSetting, setAppSetting } from '$lib/server/admin/settings.service';
+import { AppSettingsKey, getOrCreateAppSetting } from '$lib/server/admin/settings.service';
 import { checkServerWrappedAccess, checkWrappedAccess } from '$lib/server/sharing/access-control';
 import { getGlobalDefaultShareMode, getOrCreateShareSettings } from '$lib/server/sharing/service';
 import {
@@ -52,14 +52,9 @@ function hashToken(token: string): string {
 }
 
 async function getSigningSecret(): Promise<string> {
-	const existing = await getAppSetting(AppSettingsKey.THUMBNAIL_SIGNING_SECRET);
-	if (existing) {
-		return existing;
-	}
-
-	const generated = randomBytes(32).toString('base64url');
-	await setAppSetting(AppSettingsKey.THUMBNAIL_SIGNING_SECRET, generated);
-	return generated;
+	return getOrCreateAppSetting(AppSettingsKey.THUMBNAIL_SIGNING_SECRET, () =>
+		randomBytes(32).toString('base64url')
+	);
 }
 
 function signPayload(encodedPayload: string, secret: string): string {
