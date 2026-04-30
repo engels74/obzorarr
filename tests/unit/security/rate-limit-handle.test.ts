@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
+import { parse } from 'devalue';
 import { clearRateLimitStore } from '$lib/server/ratelimit';
 import { rateLimitHandle } from '$lib/server/security/rate-limit-handle';
 
-function makeEvent(method: string, url: string, ip = '198.51.100.10') {
-	const request = new Request(url, { method });
+function makeEvent(method: string, url: string, ip = '198.51.100.10', init: RequestInit = {}) {
+	const request = new Request(url, { ...init, method });
 	return {
 		request,
 		url: new URL(url),
@@ -50,5 +51,30 @@ describe('rateLimitHandle landing page bucket', () => {
 		expect(statuses.slice(0, 10).every((s) => s === 200)).toBe(true);
 		expect(statuses[10]).toBe(429);
 		expect(blockedResponse?.headers.get('Retry-After')).toBeTruthy();
+	});
+
+	it('returns a SvelteKit action failure for enhanced POST username lookups', async () => {
+		let blockedResponse: Response | null = null;
+
+		for (let i = 0; i < 11; i++) {
+			blockedResponse = await invoke(
+				makeEvent('POST', 'https://example.com/?/lookupUser', '198.51.100.20', {
+					headers: {
+						accept: 'application/json',
+						'content-type': 'application/x-www-form-urlencoded',
+						'x-sveltekit-action': 'true'
+					},
+					body: new URLSearchParams({ username: 'alice' })
+				})
+			);
+		}
+
+		expect(blockedResponse?.status).toBe(429);
+		const body = await blockedResponse?.json();
+		expect(body).toMatchObject({ type: 'failure', status: 429 });
+		expect(parse(body.data)).toEqual({
+			error: 'Too many requests. Please try again in 60 seconds.',
+			requiresAuth: false
+		});
 	});
 });

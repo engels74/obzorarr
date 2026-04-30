@@ -84,6 +84,7 @@ async function handleSyncComplete(): Promise<void> {
 	} finally {
 		// Hide overlay after data refresh (with minimum delay)
 		await hideLoadingWithMinDelay();
+		syncCompletionHandled = false;
 	}
 }
 
@@ -101,10 +102,11 @@ $effect(() => {
 		return;
 	}
 
-	// Reset state for fresh effect run
-	loadingStartTime = Date.now();
-	syncCompletionHandled = false;
-	isLoading = syncStatus.inProgress;
+	// Reset state for fresh effect run unless sync completion is coordinating invalidation
+	if (!syncCompletionHandled) {
+		loadingStartTime = Date.now();
+		isLoading = syncStatus.inProgress;
+	}
 
 	// Create store with initial server data
 	const store = createSyncStatusStore(
