@@ -119,7 +119,7 @@ export const actions: Actions = {
 			return fail(400, { testError: errorMessage });
 		}
 
-		const actualOrigin = request.headers.get('origin');
+		const actualOrigin = getRequestOrigin(request);
 		if (!actualOrigin) {
 			return fail(400, {
 				testError: 'Could not detect browser origin. Ensure you are accessing via HTTP/HTTPS.'
@@ -155,7 +155,7 @@ export const actions: Actions = {
 			return fail(400, { error: errorMessage });
 		}
 
-		const actualOrigin = request.headers.get('origin');
+		const actualOrigin = getRequestOrigin(request);
 		if (!actualOrigin) {
 			return fail(400, {
 				error: 'Could not detect browser origin. Ensure you are accessing via HTTP/HTTPS.'

@@ -27,6 +27,20 @@ function createFormRequest(csrfOrigin: string, origin = ORIGIN): Request {
 	});
 }
 
+function createFormRequestWithRefererOnly(
+	csrfOrigin: string,
+	referer = `${ORIGIN}/onboarding/csrf`
+): Request {
+	const formData = new FormData();
+	formData.set('csrfOrigin', csrfOrigin);
+
+	return new Request(`${ORIGIN}/onboarding/csrf`, {
+		method: 'POST',
+		headers: { referer },
+		body: formData
+	});
+}
+
 async function runSaveOrigin(request: Request) {
 	const saveOrigin = actions.saveOrigin as SaveOriginAction;
 	return saveOrigin({ request } as Parameters<SaveOriginAction>[0]);
@@ -72,6 +86,13 @@ describe('onboarding CSRF actions', () => {
 		);
 
 		expect(result).toEqual({ testSuccess: true, testedOrigin: 'https://example.com' });
+		expect(await getOnboardingStep()).toBe(OnboardingSteps.CSRF);
+	});
+
+	it('test origin accepts same-origin form submissions that only include a Referer header', async () => {
+		const result = await runTestOrigin(createFormRequestWithRefererOnly(ORIGIN));
+
+		expect(result).toEqual({ testSuccess: true, testedOrigin: ORIGIN });
 		expect(await getOnboardingStep()).toBe(OnboardingSteps.CSRF);
 	});
 
@@ -132,6 +153,16 @@ describe('onboarding CSRF actions', () => {
 		);
 
 		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBe('https://example.com');
+		expect(await getOnboardingStep()).toBe(OnboardingSteps.PLEX);
+	});
+
+	it('saves a matching CSRF origin and advances when the form submission only includes a Referer header', async () => {
+		await expectRedirect(
+			() => runSaveOrigin(createFormRequestWithRefererOnly(ORIGIN)),
+			'/onboarding/plex'
+		);
+
+		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBe(ORIGIN);
 		expect(await getOnboardingStep()).toBe(OnboardingSteps.PLEX);
 	});
 

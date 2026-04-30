@@ -8,27 +8,36 @@ import type { ActionData, PageData } from './$types';
 
 let { data, form }: { data: PageData; form: ActionData } = $props();
 
-const initialOrigin = $derived(data.csrfConfig.value || data.detection.detectedOrigin);
-let csrfOriginInput = $state<string | undefined>(undefined);
+function getInitialOrigin(): string {
+	return data.csrfConfig.value || data.detection.detectedOrigin;
+}
 
-let testResult = $state<'idle' | 'testing' | 'success' | 'failure'>('idle');
+function isDetectedOrigin(origin: string): boolean {
+	return origin === data.detection.detectedOrigin;
+}
+
+const initialOrigin = getInitialOrigin();
+const initialOriginVerified = isDetectedOrigin(initialOrigin);
+let csrfOriginInput = $state<string>(initialOrigin);
+
+let testResult = $state<'idle' | 'testing' | 'success' | 'failure'>(
+	initialOriginVerified ? 'success' : 'idle'
+);
 let testError = $state<string | null>(null);
-let testedOrigin = $state<string | null>(null);
+let testedOrigin = $state<string | null>(initialOriginVerified ? initialOrigin : null);
 
-let previousInput = $state<string | undefined>(undefined);
-
-$effect.pre(() => {
-	if (csrfOriginInput === undefined) {
-		csrfOriginInput = initialOrigin;
-		previousInput = initialOrigin;
-	}
-});
+let previousInput = $state<string>(initialOrigin);
 $effect(() => {
 	if (csrfOriginInput !== previousInput) {
 		previousInput = csrfOriginInput;
-		if (testResult !== 'idle') {
+		if (isDetectedOrigin(csrfOriginInput)) {
+			testResult = 'success';
+			testError = null;
+			testedOrigin = csrfOriginInput;
+		} else if (testResult !== 'idle') {
 			testResult = 'idle';
 			testError = null;
+			testedOrigin = null;
 		}
 	}
 });
