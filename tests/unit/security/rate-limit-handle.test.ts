@@ -70,10 +70,14 @@ describe('rateLimitHandle landing page bucket', () => {
 		}
 
 		expect(blockedResponse?.status).toBe(429);
+		const retryAfterHeader = blockedResponse?.headers.get('Retry-After');
+		expect(retryAfterHeader).toBeTruthy();
+		const retryAfterSeconds = Number(retryAfterHeader);
+		expect(retryAfterSeconds).toBeGreaterThan(0);
 		const body = await blockedResponse?.json();
 		expect(body).toMatchObject({ type: 'failure', status: 429 });
 		expect(parse(body.data)).toEqual({
-			error: 'Too many requests. Please try again in 60 seconds.',
+			error: `Too many requests. Please try again in ${retryAfterSeconds} second${retryAfterSeconds === 1 ? '' : 's'}.`,
 			requiresAuth: false
 		});
 	});

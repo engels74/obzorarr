@@ -270,11 +270,13 @@ function getThemeColors(themeValue: string) {
 				<input type="hidden" name="allowUserControl" value={allowUserControl} />
 				<input type="hidden" name="enabledSlides" value={enabledSlidesString} />
 				<input type="hidden" name="enableFunFacts" value={enableFunFacts} />
-				<input type="hidden" name="funFactFrequency" value={funFactFrequency} />
-				<input type="hidden" name="openaiApiKey" value={openaiApiKey} />
-				<input type="hidden" name="openaiBaseUrl" value={openaiBaseUrl} />
-				<input type="hidden" name="openaiModel" value={openaiModel} />
-				<input type="hidden" name="aiPersona" value={aiPersona} />
+				{#if enableFunFacts}
+					<input type="hidden" name="funFactFrequency" value={funFactFrequency} />
+					<input type="hidden" name="openaiApiKey" value={openaiApiKey} />
+					<input type="hidden" name="openaiBaseUrl" value={openaiBaseUrl} />
+					<input type="hidden" name="openaiModel" value={openaiModel} />
+					<input type="hidden" name="aiPersona" value={aiPersona} />
+				{/if}
 
 				<!-- Carousel Content -->
 				<div class="carousel-content" bind:this={contentRef}>
