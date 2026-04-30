@@ -1,5 +1,6 @@
 <script lang="ts">
 import type { Snippet } from 'svelte';
+import { untrack } from 'svelte';
 import { browser } from '$app/environment';
 import { invalidateAll } from '$app/navigation';
 import SyncLoadingOverlay from '$lib/components/SyncLoadingOverlay.svelte';
@@ -36,7 +37,7 @@ const MIN_LOADING_DISPLAY_MS = 300;
 // ==========================================================================
 
 /** Whether the loading overlay is visible */
-let isLoading = $state(true);
+let isLoading = $state(untrack(() => data.syncStatus?.inProgress ?? false));
 
 /** Timestamp when loading started (for minimum display time calculation) */
 let loadingStartTime = $state(Date.now());
@@ -99,6 +100,7 @@ $effect(() => {
 	// Reset state for fresh effect run
 	loadingStartTime = Date.now();
 	syncCompletionHandled = false;
+	isLoading = syncStatus.inProgress;
 
 	// Create store with initial server data
 	const store = createSyncStatusStore(
@@ -111,18 +113,6 @@ $effect(() => {
 		}
 	);
 	syncStatusStore = store;
-
-	// If no sync in progress, show brief loading then hide
-	if (!syncStatus.inProgress) {
-		// Use setTimeout to ensure we show loading for minimum time
-		setTimeout(async () => {
-			// Only hide if sync hasn't started in the meantime
-			if (!store.inProgress && !syncCompletionHandled) {
-				syncCompletionHandled = true;
-				await hideLoadingWithMinDelay();
-			}
-		}, 0);
-	}
 
 	// Cleanup SSE connection when effect re-runs or component unmounts
 	return () => {

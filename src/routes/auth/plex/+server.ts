@@ -8,6 +8,7 @@ import {
 } from '$lib/server/auth/pin-transactions';
 import { buildPlexOAuthUrl, requestPin } from '$lib/server/auth/plex-oauth';
 import { NotServerMemberError, PinExpiredError, PlexAuthApiError } from '$lib/server/auth/types';
+import { logger } from '$lib/server/logging';
 import type { RequestHandler } from './$types';
 
 const PollRequestSchema = z.object({
@@ -41,13 +42,18 @@ export const GET: RequestHandler = async ({ cookies, url }) => {
 		}
 
 		if (err instanceof PlexAuthApiError) {
-			console.error('Plex OAuth error:', err.message);
+			logger.error('Plex OAuth PIN request failed', 'Auth', {
+				statusCode: err.statusCode,
+				endpoint: err.endpoint
+			});
 			error(502, {
 				message: 'Unable to connect to Plex. Please try again.'
 			});
 		}
 
-		console.error('Unexpected error in PIN request:', err);
+		logger.error('Unexpected error in PIN request', 'Auth', {
+			errorType: err instanceof Error ? err.name : typeof err
+		});
 		error(500, {
 			message: 'An unexpected error occurred.'
 		});
@@ -81,7 +87,10 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		}
 
 		if (err instanceof PlexAuthApiError) {
-			console.error('Plex OAuth error during PIN poll');
+			logger.error('Plex OAuth PIN poll failed', 'Auth', {
+				statusCode: err.statusCode,
+				endpoint: err.endpoint
+			});
 			error(502, {
 				message: 'Unable to connect to Plex. Please try again.'
 			});
@@ -93,7 +102,9 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 			});
 		}
 
-		console.error('Unexpected error in PIN poll');
+		logger.error('Unexpected error in PIN poll', 'Auth', {
+			errorType: err instanceof Error ? err.name : typeof err
+		});
 		error(500, {
 			message: 'An unexpected error occurred.'
 		});

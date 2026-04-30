@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { getApiConfigWithSources } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
 import { users } from '$lib/server/db/schema';
+import { logger } from '$lib/server/logging';
 import { requiresOnboarding } from '$lib/server/onboarding';
 import { requireServerMembership, verifyServerOwnership } from './membership';
 import { clearPinTransaction, getPinTransactionForRequest } from './pin-transactions';
@@ -19,8 +20,6 @@ const COOKIE_OPTIONS = {
 };
 
 export interface CompletedLoginUser {
-	id: number;
-	plexId: number;
 	username: string;
 	isAdmin: boolean;
 }
@@ -110,8 +109,6 @@ export async function createSessionFromPlexToken(
 
 	return {
 		user: {
-			id: userId,
-			plexId: plexUser.id,
 			username: plexUser.username,
 			isAdmin
 		},
@@ -142,7 +139,9 @@ export async function completePlexPinLogin(
 	try {
 		await clearPinTransaction(cookies, transaction.state);
 	} catch (err) {
-		console.error('Failed to clear Plex PIN transaction after successful login:', err);
+		logger.warn('Failed to clear Plex PIN transaction after successful login', 'Auth', {
+			errorType: err instanceof Error ? err.name : typeof err
+		});
 	}
 	return completed;
 }

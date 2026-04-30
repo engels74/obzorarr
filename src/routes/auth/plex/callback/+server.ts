@@ -2,6 +2,7 @@ import { error, json } from '@sveltejs/kit';
 import { z } from 'zod';
 import { createSessionFromPlexToken } from '$lib/server/auth/login-completion';
 import { NotServerMemberError, PlexAuthApiError } from '$lib/server/auth/types';
+import { logger } from '$lib/server/logging';
 import type { RequestHandler } from './$types';
 
 const CallbackRequestSchema = z.object({
@@ -35,7 +36,10 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		}
 
 		if (err instanceof PlexAuthApiError) {
-			console.error('Plex API error during OAuth callback');
+			logger.error('Plex OAuth callback failed', 'Auth', {
+				statusCode: err.statusCode,
+				endpoint: err.endpoint
+			});
 
 			if (err.statusCode === 401) {
 				error(401, {
@@ -48,7 +52,9 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 			});
 		}
 
-		console.error('Unexpected error in OAuth callback');
+		logger.error('Unexpected error in OAuth callback', 'Auth', {
+			errorType: err instanceof Error ? err.name : typeof err
+		});
 		error(500, {
 			message: 'An unexpected error occurred.'
 		});

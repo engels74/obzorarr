@@ -7,6 +7,10 @@ function getConfigForPath(path: string, method: string): RateLimitConfig {
 		return RATE_LIMIT_CONFIGS.landingPage;
 	}
 
+	if (method === 'POST' && path === '/') {
+		return RATE_LIMIT_CONFIGS.landingLookup;
+	}
+
 	if (path === '/auth/plex') {
 		return RATE_LIMIT_CONFIGS.authPoll;
 	}

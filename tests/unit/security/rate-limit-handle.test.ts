@@ -37,14 +37,18 @@ describe('rateLimitHandle landing page bucket', () => {
 		expect(statuses[30]).toBe(429);
 	});
 
-	it('does not throttle POST requests to / under the landingPage bucket', async () => {
-		// POST / is governed by the default bucket (60/min). Issue 31 GETs to exhaust
-		// the landingPage bucket, then POST with the same IP — it should still be 200.
-		for (let i = 0; i < 30; i++) {
-			await invoke(makeEvent('GET', 'https://example.com/'));
+	it('allows up to 10 POST username lookups and blocks the 11th with Retry-After', async () => {
+		const statuses: number[] = [];
+		let blockedResponse: Response | null = null;
+
+		for (let i = 0; i < 11; i++) {
+			const res = await invoke(makeEvent('POST', 'https://example.com/'));
+			statuses.push(res.status);
+			blockedResponse = res;
 		}
 
-		const res = await invoke(makeEvent('POST', 'https://example.com/'));
-		expect(res.status).toBe(200);
+		expect(statuses.slice(0, 10).every((s) => s === 200)).toBe(true);
+		expect(statuses[10]).toBe(429);
+		expect(blockedResponse?.headers.get('Retry-After')).toBeTruthy();
 	});
 });
