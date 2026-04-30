@@ -298,7 +298,7 @@ export const actions: Actions = {
 				allowUserControl: formData.get('allowUserControl'),
 				enabledSlides: formData.get('enabledSlides'),
 				enableFunFacts: formData.get('enableFunFacts'),
-				funFactFrequency: formData.get('funFactFrequency'),
+				funFactFrequency: formData.get('funFactFrequency') ?? undefined,
 				openaiApiKey: formData.get('openaiApiKey') ?? undefined,
 				openaiBaseUrl: formData.get('openaiBaseUrl')?.toString().trim() ?? undefined,
 				openaiModel: formData.get('openaiModel')?.toString().trim() ?? undefined,
