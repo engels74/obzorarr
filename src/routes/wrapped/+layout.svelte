@@ -73,6 +73,10 @@ async function handleSyncComplete(): Promise<void> {
 	// Prevent double handling
 	if (syncCompletionHandled) return;
 	syncCompletionHandled = true;
+	if (!isLoading) {
+		loadingStartTime = Date.now();
+		isLoading = true;
+	}
 
 	try {
 		// Refresh data while overlay is still visible
@@ -125,6 +129,6 @@ const inProgress = $derived(syncStatusStore?.inProgress ?? data.syncStatus?.inPr
 const progress = $derived(syncStatusStore?.progress ?? data.syncStatus?.progress ?? null);
 </script>
 
-<SyncLoadingOverlay visible={isLoading} {progress} syncInProgress={inProgress} />
+<SyncLoadingOverlay visible={isLoading || inProgress} {progress} syncInProgress={inProgress} />
 
 {@render children()}
