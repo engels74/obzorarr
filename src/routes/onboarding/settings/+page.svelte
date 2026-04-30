@@ -228,6 +228,7 @@ function getThemeColors(themeValue: string) {
 			</div>
 
 			<form
+				id="onboarding-settings-form"
 				method="POST"
 				action="?/saveSettings"
 				use:enhance={() => {
@@ -680,6 +681,7 @@ function getThemeColors(themeValue: string) {
 				<!-- Submit button (hidden) -->
 				<button
 					type="submit"
+					form="onboarding-settings-form"
 					class="hidden-submit"
 					disabled={isSubmitting}
 					aria-hidden="true"
@@ -718,13 +720,10 @@ function getThemeColors(themeValue: string) {
 			<!-- Next / Save Button -->
 			{#if isLastSubStep}
 				<button
-					type="button"
+					type="submit"
+					form="onboarding-settings-form"
 					class="btn-nav btn-save"
 					disabled={isSubmitting}
-					onclick={() => {
-						const form = document.querySelector('form[action="?/saveSettings"]') as HTMLFormElement;
-						form?.requestSubmit();
-					}}
 				>
 					{#if isSubmitting}
 						<span class="spinner"></span>
