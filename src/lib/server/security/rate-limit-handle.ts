@@ -54,9 +54,7 @@ export const rateLimitHandle: Handle = async ({ event, resolve }) => {
 			'X-RateLimit-Reset': String(result.resetTime)
 		};
 		const isEnhancedActionRequest =
-			path === '/' &&
-			event.request.method === 'POST' &&
-			event.request.headers.get('x-sveltekit-action') === 'true';
+			event.request.method === 'POST' && event.request.headers.get('x-sveltekit-action') === 'true';
 
 		if (isEnhancedActionRequest) {
 			return applySecurityHeaders(

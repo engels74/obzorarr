@@ -82,3 +82,43 @@ describe('rateLimitHandle landing page bucket', () => {
 		});
 	});
 });
+
+describe('rateLimitHandle enhanced action responses', () => {
+	beforeEach(() => {
+		clearRateLimitStore();
+	});
+
+	it('returns a SvelteKit action failure for enhanced POST actions on non-root routes', async () => {
+		let blockedResponse: Response | null = null;
+
+		for (let i = 0; i < 61; i++) {
+			blockedResponse = await invoke(
+				makeEvent(
+					'POST',
+					'https://example.com/admin/users?/updateUserPermission',
+					'198.51.100.30',
+					{
+						headers: {
+							accept: 'application/json',
+							'content-type': 'application/x-www-form-urlencoded',
+							'x-sveltekit-action': 'true'
+						},
+						body: new URLSearchParams({ userId: '1', role: 'admin' })
+					}
+				)
+			);
+		}
+
+		expect(blockedResponse?.status).toBe(429);
+		const retryAfterHeader = blockedResponse?.headers.get('Retry-After');
+		expect(retryAfterHeader).toBeTruthy();
+		const retryAfterSeconds = Number(retryAfterHeader);
+		expect(retryAfterSeconds).toBeGreaterThan(0);
+		const body = await blockedResponse?.json();
+		expect(body).toMatchObject({ type: 'failure', status: 429 });
+		expect(parse(body.data)).toEqual({
+			error: `Too many requests. Please try again in ${retryAfterSeconds} second${retryAfterSeconds === 1 ? '' : 's'}.`,
+			requiresAuth: false
+		});
+	});
+});
