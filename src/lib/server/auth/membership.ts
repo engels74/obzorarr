@@ -515,6 +515,14 @@ export function messageForMembershipFailure(membership: MembershipResult): strin
 	switch (membership.reason) {
 		case 'not_reachable': {
 			const detail = membership.identityErrorReason ? ` (${membership.identityErrorReason})` : '';
+			// Auth failures will not heal on their own — frame as misconfiguration,
+			// not a transient blip. The detail string already names the specific cause.
+			if (
+				membership.identityErrorReason &&
+				membership.identityErrorReason.toLowerCase().includes('authentication failed')
+			) {
+				return `Could not authenticate with your Plex server${detail}. Verify PLEX_TOKEN is current and still authorized for this server, then try again.`;
+			}
 			return `Temporary connection issue contacting your Plex server. Please try again${detail}. If this keeps happening, verify PLEX_SERVER_URL and PLEX_TOKEN are correct and the server is online.`;
 		}
 		case 'not_in_resources':

@@ -363,6 +363,14 @@ describe('verifyServerMembership', () => {
 		expect(identitySpy).toHaveBeenCalledTimes(1);
 		expect(result.isMember).toBe(false);
 		expect(result.reason).toBe('not_reachable');
+
+		// Copy must reflect a misconfiguration, not a transient blip — auth failures
+		// will not heal on retry.
+		const message = messageForMembershipFailure(result);
+		expect(message).not.toContain('Temporary connection issue');
+		expect(message).not.toContain('Please try again');
+		expect(message).toContain('Could not authenticate');
+		expect(message).toContain('PLEX_TOKEN');
 	});
 
 	it('returns not_reachable when both /identity attempts fail transiently', async () => {
