@@ -400,6 +400,11 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 						customCount = frequency.count;
 					}
 					await update();
+					if (result.type === 'success') {
+						handleFormToast(result.data ?? null);
+					} else if (result.type === 'failure') {
+						handleFormToast(result.data ?? { error: 'Could not save frequency settings' });
+					}
 				};
 			}}
 		>
