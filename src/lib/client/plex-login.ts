@@ -18,8 +18,6 @@ export const LOGIN_TIMEOUT_MS = 5 * 60 * 1000;
 export type PlexLoginContext = 'landing' | 'onboarding';
 
 export interface PlexLoginUser {
-	id?: number;
-	plexId?: number;
 	username?: string;
 	isAdmin: boolean;
 }

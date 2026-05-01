@@ -1,10 +1,15 @@
 import type { Handle } from '@sveltejs/kit';
+import { stringify } from 'devalue';
 import { checkRateLimit, RATE_LIMIT_CONFIGS, type RateLimitConfig } from '$lib/server/ratelimit';
 import { applySecurityHeaders } from './security-headers';
 
 function getConfigForPath(path: string, method: string): RateLimitConfig {
 	if (method === 'GET' && path === '/') {
 		return RATE_LIMIT_CONFIGS.landingPage;
+	}
+
+	if (method === 'POST' && path === '/') {
+		return RATE_LIMIT_CONFIGS.landingLookup;
 	}
 
 	if (path === '/auth/plex') {
@@ -42,6 +47,38 @@ export const rateLimitHandle: Handle = async ({ event, resolve }) => {
 	const result = checkRateLimit(ip, config);
 
 	if (!result.allowed) {
+		const retryAfterSeconds = result.retryAfter ?? 60;
+		const rateLimitHeaders = {
+			'Retry-After': String(retryAfterSeconds),
+			'X-RateLimit-Remaining': '0',
+			'X-RateLimit-Reset': String(result.resetTime)
+		};
+		const isEnhancedActionRequest =
+			event.request.method === 'POST' && event.request.headers.get('x-sveltekit-action') === 'true';
+
+		if (isEnhancedActionRequest) {
+			return applySecurityHeaders(
+				new Response(
+					JSON.stringify({
+						type: 'failure',
+						status: 429,
+						data: stringify({
+							error: `Too many requests. Please try again in ${retryAfterSeconds} second${retryAfterSeconds === 1 ? '' : 's'}.`,
+							requiresAuth: false
+						})
+					}),
+					{
+						status: 429,
+						headers: {
+							'Content-Type': 'application/json',
+							...rateLimitHeaders
+						}
+					}
+				),
+				event.request
+			);
+		}
+
 		const isApiRequest =
 			path.startsWith('/api/') ||
 			(path.startsWith('/auth/') && path !== '/auth/plex/redirect') ||
@@ -54,16 +91,13 @@ export const rateLimitHandle: Handle = async ({ event, resolve }) => {
 					status: 429,
 					headers: {
 						'Content-Type': 'application/json',
-						'Retry-After': String(result.retryAfter ?? 60),
-						'X-RateLimit-Remaining': '0',
-						'X-RateLimit-Reset': String(result.resetTime)
+						...rateLimitHeaders
 					}
 				}),
 				event.request
 			);
 		}
 
-		const retryAfterSeconds = result.retryAfter ?? 60;
 		const htmlBody = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -87,9 +121,7 @@ export const rateLimitHandle: Handle = async ({ event, resolve }) => {
 				status: 429,
 				headers: {
 					'Content-Type': 'text/html; charset=utf-8',
-					'Retry-After': String(retryAfterSeconds),
-					'X-RateLimit-Remaining': '0',
-					'X-RateLimit-Reset': String(result.resetTime)
+					...rateLimitHeaders
 				}
 			}),
 			event.request

@@ -1,6 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { z } from 'zod';
-import { checkRateLimit } from '$lib/server/ratelimit';
 import { getEffectiveShareMode } from '$lib/server/sharing/service';
 import { ShareMode } from '$lib/server/sharing/types';
 import { triggerLiveSyncIfNeeded } from '$lib/server/sync/live-sync';
@@ -25,22 +24,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 export const actions: Actions = {
-	lookupUser: async ({ request, getClientAddress, setHeaders }) => {
-		const ip = getClientAddress();
-
-		const rateLimitResult = checkRateLimit(ip);
-		if (!rateLimitResult.allowed) {
-			if (rateLimitResult.retryAfter != null) {
-				setHeaders({ 'Retry-After': rateLimitResult.retryAfter.toString() });
-			}
-			return fail(429, {
-				error: 'Too many requests. Please try again later.',
-				retryAfter: rateLimitResult.retryAfter,
-				username: '',
-				requiresAuth: false
-			});
-		}
-
+	lookupUser: async ({ request }) => {
 		const formData = await request.formData();
 		const rawUsername = formData.get('username')?.toString() ?? '';
 

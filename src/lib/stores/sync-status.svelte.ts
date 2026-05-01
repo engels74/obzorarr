@@ -9,7 +9,7 @@ interface SimpleProgress {
 }
 
 interface SSEEventData {
-	type: 'connected' | 'update' | 'completed' | 'idle';
+	type: 'connected' | 'update' | 'completed' | 'failed' | 'cancelled' | 'idle';
 	inProgress: boolean;
 	progress: SimpleProgress | null;
 }
@@ -82,7 +82,12 @@ export class SyncStatusStore {
 					if (data.inProgress) {
 						this.wasSyncing = true;
 					}
-				} else if (data.type === 'completed' || data.type === 'idle') {
+				} else if (
+					data.type === 'completed' ||
+					data.type === 'failed' ||
+					data.type === 'cancelled' ||
+					data.type === 'idle'
+				) {
 					if (this.wasSyncing && this.onSyncComplete) {
 						const callback = this.onSyncComplete;
 						setTimeout(async () => {

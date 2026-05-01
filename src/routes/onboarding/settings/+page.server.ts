@@ -97,7 +97,7 @@ const SettingsSchema = z.object({
 		])
 		.optional(),
 	openaiApiKey: z.string().max(512).optional(),
-	openaiBaseUrl: z.string().max(512).url().optional().or(z.literal('')),
+	openaiBaseUrl: z.string().max(512).optional(),
 	openaiModel: z.string().max(100).optional(),
 	aiPersona: AIPersonaSchema.optional()
 });
@@ -298,7 +298,7 @@ export const actions: Actions = {
 				allowUserControl: formData.get('allowUserControl'),
 				enabledSlides: formData.get('enabledSlides'),
 				enableFunFacts: formData.get('enableFunFacts'),
-				funFactFrequency: formData.get('funFactFrequency'),
+				funFactFrequency: formData.get('funFactFrequency') ?? undefined,
 				openaiApiKey: formData.get('openaiApiKey') ?? undefined,
 				openaiBaseUrl: formData.get('openaiBaseUrl')?.toString().trim() ?? undefined,
 				openaiModel: formData.get('openaiModel')?.toString().trim() ?? undefined,
@@ -316,6 +316,14 @@ export const actions: Actions = {
 			const openaiApiKey = data.openaiApiKey?.trim();
 			const openaiBaseUrl = data.openaiBaseUrl?.trim().replace(/\/+$/, '');
 			const openaiModel = data.openaiModel?.trim();
+
+			if (data.enableFunFacts && openaiApiKey && openaiBaseUrl) {
+				try {
+					new URL(openaiBaseUrl);
+				} catch {
+					return fail(400, { error: 'Invalid OpenAI base URL' });
+				}
+			}
 
 			// Save all settings in parallel
 			await Promise.all([
@@ -338,10 +346,10 @@ export const actions: Actions = {
 				data.enableFunFacts && openaiApiKey
 					? setAppSetting(AppSettingsKey.OPENAI_API_KEY, openaiApiKey)
 					: Promise.resolve(),
-				data.enableFunFacts && openaiBaseUrl
+				data.enableFunFacts && openaiApiKey && openaiBaseUrl
 					? setAppSetting(AppSettingsKey.OPENAI_BASE_URL, openaiBaseUrl)
 					: Promise.resolve(),
-				data.enableFunFacts && openaiModel
+				data.enableFunFacts && openaiApiKey && openaiModel
 					? setAppSetting(AppSettingsKey.OPENAI_MODEL, openaiModel)
 					: Promise.resolve(),
 				data.enableFunFacts && data.aiPersona

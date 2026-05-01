@@ -37,6 +37,8 @@ let aiPersona = $state(
 );
 let isTestingAI = $state(false);
 let testAIResult = $state<{ type: 'success' | 'error'; message: string } | null>(null);
+let submitError = $state<string | null>(null);
+let visibleError = $derived(submitError ?? form?.error ?? null);
 
 const aiPersonaOptions = [
 	{ value: 'witty', label: 'Witty', description: 'Clever and humorous' },
@@ -178,7 +180,7 @@ function getThemeColors(themeValue: string) {
 	{#snippet children()}
 		<div class="settings-container">
 			<!-- Error display -->
-			{#if form?.error}
+			{#if visibleError}
 				<div class="error-banner">
 					<svg
 						class="error-icon"
@@ -191,7 +193,7 @@ function getThemeColors(themeValue: string) {
 						<line x1="15" y1="9" x2="9" y2="15" />
 						<line x1="9" y1="9" x2="15" y2="15" />
 					</svg>
-					<span>{form.error}</span>
+					<span>{visibleError}</span>
 				</div>
 			{/if}
 
@@ -233,9 +235,29 @@ function getThemeColors(themeValue: string) {
 				action="?/saveSettings"
 				use:enhance={() => {
 					isSubmitting = true;
-					return async ({ update }) => {
-						await update();
-						isSubmitting = false;
+					submitError = null;
+					return async ({ result, update }) => {
+						try {
+							if (result.type === 'failure') {
+								const payload = result.data as { error?: string } | undefined;
+								const message = payload?.error ?? 'Failed to save settings. Please try again.';
+								submitError = message;
+								handleFormToast({ error: message });
+							} else if (result.type === 'error') {
+								const message =
+									result.error?.message ?? 'Failed to save settings. Please try again.';
+								submitError = message;
+								handleFormToast({ error: message });
+							}
+							await update();
+						} catch (err) {
+							const message =
+								err instanceof Error ? err.message : 'Failed to save settings. Please try again.';
+							submitError = message;
+							handleFormToast({ error: message });
+						} finally {
+							isSubmitting = false;
+						}
 					};
 				}}
 			>
@@ -248,8 +270,8 @@ function getThemeColors(themeValue: string) {
 				<input type="hidden" name="allowUserControl" value={allowUserControl} />
 				<input type="hidden" name="enabledSlides" value={enabledSlidesString} />
 				<input type="hidden" name="enableFunFacts" value={enableFunFacts} />
-				<input type="hidden" name="funFactFrequency" value={funFactFrequency} />
 				{#if enableFunFacts}
+					<input type="hidden" name="funFactFrequency" value={funFactFrequency} />
 					<input type="hidden" name="openaiApiKey" value={openaiApiKey} />
 					<input type="hidden" name="openaiBaseUrl" value={openaiBaseUrl} />
 					<input type="hidden" name="openaiModel" value={openaiModel} />
@@ -352,8 +374,7 @@ function getThemeColors(themeValue: string) {
 												type="radio"
 												name="anonymizationModeRadio"
 												value={option.value}
-												checked={anonymizationMode === option.value}
-												onchange={() => (anonymizationMode = option.value)}
+												bind:group={anonymizationMode}
 											/>
 											<div class="radio-card-content">
 												<div class="radio-indicator">
@@ -379,8 +400,7 @@ function getThemeColors(themeValue: string) {
 												type="radio"
 												name="wrappedLogoModeRadio"
 												value={option.value}
-												checked={wrappedLogoMode === option.value}
-												onchange={() => (wrappedLogoMode = option.value)}
+												bind:group={wrappedLogoMode}
 											/>
 											<div class="radio-card-content">
 												<div class="radio-indicator">
@@ -406,8 +426,7 @@ function getThemeColors(themeValue: string) {
 												type="radio"
 												name="shareModeRadio"
 												value={option.value}
-												checked={defaultShareMode === option.value}
-												onchange={() => (defaultShareMode = option.value)}
+												bind:group={defaultShareMode}
 											/>
 											<div class="radio-card-content">
 												<div class="radio-indicator">
@@ -537,8 +556,7 @@ function getThemeColors(themeValue: string) {
 													type="radio"
 													name="frequencyRadio"
 													value={option.value}
-													checked={funFactFrequency === option.value}
-													onchange={() => (funFactFrequency = option.value)}
+													bind:group={funFactFrequency}
 												/>
 												<span class="frequency-label">{option.label}</span>
 												<span class="frequency-desc">{option.description}</span>
@@ -664,8 +682,7 @@ function getThemeColors(themeValue: string) {
 													type="radio"
 													name="aiPersonaRadio"
 													value={option.value}
-													checked={aiPersona === option.value}
-													onchange={() => (aiPersona = option.value)}
+													bind:group={aiPersona}
 												/>
 												<span class="frequency-label">{option.label}</span>
 												<span class="frequency-desc">{option.description}</span>

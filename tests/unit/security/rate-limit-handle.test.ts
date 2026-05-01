@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
+import { parse } from 'devalue';
 import { clearRateLimitStore } from '$lib/server/ratelimit';
 import { rateLimitHandle } from '$lib/server/security/rate-limit-handle';
 
-function makeEvent(method: string, url: string, ip = '198.51.100.10') {
-	const request = new Request(url, { method });
+function makeEvent(method: string, url: string, ip = '198.51.100.10', init: RequestInit = {}) {
+	const request = new Request(url, { ...init, method });
 	return {
 		request,
 		url: new URL(url),
@@ -37,14 +38,87 @@ describe('rateLimitHandle landing page bucket', () => {
 		expect(statuses[30]).toBe(429);
 	});
 
-	it('does not throttle POST requests to / under the landingPage bucket', async () => {
-		// POST / is governed by the default bucket (60/min). Issue 31 GETs to exhaust
-		// the landingPage bucket, then POST with the same IP — it should still be 200.
-		for (let i = 0; i < 30; i++) {
-			await invoke(makeEvent('GET', 'https://example.com/'));
+	it('allows up to 10 POST username lookups and blocks the 11th with Retry-After', async () => {
+		const statuses: number[] = [];
+		let blockedResponse: Response | null = null;
+
+		for (let i = 0; i < 11; i++) {
+			const res = await invoke(makeEvent('POST', 'https://example.com/'));
+			statuses.push(res.status);
+			blockedResponse = res;
 		}
 
-		const res = await invoke(makeEvent('POST', 'https://example.com/'));
-		expect(res.status).toBe(200);
+		expect(statuses.slice(0, 10).every((s) => s === 200)).toBe(true);
+		expect(statuses[10]).toBe(429);
+		expect(blockedResponse?.headers.get('Retry-After')).toBeTruthy();
+	});
+
+	it('returns a SvelteKit action failure for enhanced POST username lookups', async () => {
+		let blockedResponse: Response | null = null;
+
+		for (let i = 0; i < 11; i++) {
+			blockedResponse = await invoke(
+				makeEvent('POST', 'https://example.com/?/lookupUser', '198.51.100.20', {
+					headers: {
+						accept: 'application/json',
+						'content-type': 'application/x-www-form-urlencoded',
+						'x-sveltekit-action': 'true'
+					},
+					body: new URLSearchParams({ username: 'alice' })
+				})
+			);
+		}
+
+		expect(blockedResponse?.status).toBe(429);
+		const retryAfterHeader = blockedResponse?.headers.get('Retry-After');
+		expect(retryAfterHeader).toBeTruthy();
+		const retryAfterSeconds = Number(retryAfterHeader);
+		expect(retryAfterSeconds).toBeGreaterThan(0);
+		const body = await blockedResponse?.json();
+		expect(body).toMatchObject({ type: 'failure', status: 429 });
+		expect(parse(body.data)).toEqual({
+			error: `Too many requests. Please try again in ${retryAfterSeconds} second${retryAfterSeconds === 1 ? '' : 's'}.`,
+			requiresAuth: false
+		});
+	});
+});
+
+describe('rateLimitHandle enhanced action responses', () => {
+	beforeEach(() => {
+		clearRateLimitStore();
+	});
+
+	it('returns a SvelteKit action failure for enhanced POST actions on non-root routes', async () => {
+		let blockedResponse: Response | null = null;
+
+		for (let i = 0; i < 61; i++) {
+			blockedResponse = await invoke(
+				makeEvent(
+					'POST',
+					'https://example.com/admin/users?/updateUserPermission',
+					'198.51.100.30',
+					{
+						headers: {
+							accept: 'application/json',
+							'content-type': 'application/x-www-form-urlencoded',
+							'x-sveltekit-action': 'true'
+						},
+						body: new URLSearchParams({ userId: '1', role: 'admin' })
+					}
+				)
+			);
+		}
+
+		expect(blockedResponse?.status).toBe(429);
+		const retryAfterHeader = blockedResponse?.headers.get('Retry-After');
+		expect(retryAfterHeader).toBeTruthy();
+		const retryAfterSeconds = Number(retryAfterHeader);
+		expect(retryAfterSeconds).toBeGreaterThan(0);
+		const body = await blockedResponse?.json();
+		expect(body).toMatchObject({ type: 'failure', status: 429 });
+		expect(parse(body.data)).toEqual({
+			error: `Too many requests. Please try again in ${retryAfterSeconds} second${retryAfterSeconds === 1 ? '' : 's'}.`,
+			requiresAuth: false
+		});
 	});
 });

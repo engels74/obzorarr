@@ -1,5 +1,6 @@
 <script lang="ts">
 import type { Snippet } from 'svelte';
+import { untrack } from 'svelte';
 import { browser } from '$app/environment';
 import { invalidateAll } from '$app/navigation';
 import SyncLoadingOverlay from '$lib/components/SyncLoadingOverlay.svelte';
@@ -36,7 +37,7 @@ const MIN_LOADING_DISPLAY_MS = 300;
 // ==========================================================================
 
 /** Whether the loading overlay is visible */
-let isLoading = $state(true);
+let isLoading = $state(untrack(() => data.syncStatus?.inProgress ?? false));
 
 /** Timestamp when loading started (for minimum display time calculation) */
 let loadingStartTime = $state(Date.now());
@@ -72,6 +73,10 @@ async function handleSyncComplete(): Promise<void> {
 	// Prevent double handling
 	if (syncCompletionHandled) return;
 	syncCompletionHandled = true;
+	if (!isLoading) {
+		loadingStartTime = Date.now();
+		isLoading = true;
+	}
 
 	try {
 		// Refresh data while overlay is still visible
@@ -79,6 +84,7 @@ async function handleSyncComplete(): Promise<void> {
 	} finally {
 		// Hide overlay after data refresh (with minimum delay)
 		await hideLoadingWithMinDelay();
+		syncCompletionHandled = false;
 	}
 }
 
@@ -96,9 +102,11 @@ $effect(() => {
 		return;
 	}
 
-	// Reset state for fresh effect run
-	loadingStartTime = Date.now();
-	syncCompletionHandled = false;
+	// Reset state for fresh effect run unless sync completion is coordinating invalidation
+	if (!syncCompletionHandled) {
+		loadingStartTime = Date.now();
+		isLoading = syncStatus.inProgress;
+	}
 
 	// Create store with initial server data
 	const store = createSyncStatusStore(
@@ -112,18 +120,6 @@ $effect(() => {
 	);
 	syncStatusStore = store;
 
-	// If no sync in progress, show brief loading then hide
-	if (!syncStatus.inProgress) {
-		// Use setTimeout to ensure we show loading for minimum time
-		setTimeout(async () => {
-			// Only hide if sync hasn't started in the meantime
-			if (!store.inProgress && !syncCompletionHandled) {
-				syncCompletionHandled = true;
-				await hideLoadingWithMinDelay();
-			}
-		}, 0);
-	}
-
 	// Cleanup SSE connection when effect re-runs or component unmounts
 	return () => {
 		store.disconnect();
@@ -135,6 +131,6 @@ const inProgress = $derived(syncStatusStore?.inProgress ?? data.syncStatus?.inPr
 const progress = $derived(syncStatusStore?.progress ?? data.syncStatus?.progress ?? null);
 </script>
 
-<SyncLoadingOverlay visible={isLoading} {progress} syncInProgress={inProgress} />
+<SyncLoadingOverlay visible={isLoading || inProgress} {progress} syncInProgress={inProgress} />
 
 {@render children()}
