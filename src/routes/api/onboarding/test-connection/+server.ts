@@ -17,10 +17,16 @@ const PLEX_SERVER_HEADERS = {
 	'X-Plex-Version': PLEX_VERSION
 } as const;
 
-const TestConnectionSchema = z.object({
-	url: z.string().url('Invalid URL format'),
-	accessToken: z.string().min(1, 'Access token is required')
-});
+const TestConnectionSchema = z
+	.object({
+		url: z.string().url('Invalid URL format'),
+		accessToken: z.string().min(1).optional(),
+		token: z.string().min(1).optional()
+	})
+	.refine((body) => Boolean(body.accessToken ?? body.token), {
+		message: 'Access token is required',
+		path: ['accessToken']
+	});
 
 const CONNECTION_TIMEOUT_MS = 10000;
 
@@ -44,7 +50,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return json({ success: false, error: errorMessage });
 		}
 
-		const { url, accessToken } = parseResult.data;
+		const { url } = parseResult.data;
+		const accessToken = parseResult.data.accessToken ?? parseResult.data.token;
+		if (!accessToken) {
+			return json({ success: false, error: 'Access token is required' });
+		}
 
 		// Normalize URL - remove trailing slash
 		const normalizedUrl = url.replace(/\/+$/, '');
