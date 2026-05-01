@@ -421,6 +421,13 @@ describe('isTransientIdentityError', () => {
 		expect(isTransientIdentityError('Host unreachable')).toBe(true);
 		expect(isTransientIdentityError('Network unreachable')).toBe(true);
 		expect(isTransientIdentityError('Connection closed unexpectedly')).toBe(true);
+		// "Unable to connect to server" (ECONNREFUSED) and "Server not found"
+		// (ENOTFOUND) reach errorReason when error.message contains only the
+		// lowercase POSIX code — classifyConnectionError's uppercase check
+		// misses, falls through to sanitizeConnectionError which lowercases
+		// before matching.
+		expect(isTransientIdentityError('Unable to connect to server')).toBe(true);
+		expect(isTransientIdentityError('Server not found')).toBe(true);
 	});
 
 	it('does not classify auth or invalid response errors as transient', () => {

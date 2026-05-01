@@ -497,14 +497,19 @@ export function isTransientIdentityError(errorReason: string | null | undefined)
 	// out", "Could not connect to server", "SSL certificate error",
 	// "Connection failed". sanitizeConnectionError additionally surfaces
 	// "Connection was reset" (ECONNRESET), "Host unreachable" (EHOSTUNREACH),
-	// "Network unreachable" (ENETUNREACH), and "Connection closed unexpectedly"
-	// (EPIPE). Server-status fallthrough produces "Server returned 5xx ...".
+	// "Network unreachable" (ENETUNREACH), "Connection closed unexpectedly"
+	// (EPIPE), "Unable to connect to server" (lowercase ECONNREFUSED that
+	// bypasses classifyConnectionError's uppercase check), and "Server not
+	// found" (lowercase ENOTFOUND, same fallthrough). Server-status
+	// fallthrough produces "Server returned 5xx ...".
 	if (reason.includes('timed out') || reason.includes('timeout')) return true;
 	if (reason.includes('could not connect')) return true;
 	if (reason.includes('connection failed') || reason.includes('connection error')) return true;
 	if (reason.includes('connection was reset')) return true;
 	if (reason.includes('connection closed unexpectedly')) return true;
 	if (reason.includes('host unreachable') || reason.includes('network unreachable')) return true;
+	if (reason.includes('unable to connect to server')) return true;
+	if (reason.includes('server not found')) return true;
 	if (reason.includes('ssl') || reason.includes('tls')) return true;
 
 	const serverStatusMatch = reason.match(/server returned (\d{3})/);
