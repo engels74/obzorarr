@@ -495,11 +495,16 @@ export function isTransientIdentityError(errorReason: string | null | undefined)
 	// 5xx responses, timeouts, connection errors, SSL hiccups all classify as
 	// transient. classifyConnectionError surfaces these as "Connection timed
 	// out", "Could not connect to server", "SSL certificate error",
-	// "Connection failed". Server-status fallthrough produces "Server returned
-	// 5xx ...".
+	// "Connection failed". sanitizeConnectionError additionally surfaces
+	// "Connection was reset" (ECONNRESET), "Host unreachable" (EHOSTUNREACH),
+	// "Network unreachable" (ENETUNREACH), and "Connection closed unexpectedly"
+	// (EPIPE). Server-status fallthrough produces "Server returned 5xx ...".
 	if (reason.includes('timed out') || reason.includes('timeout')) return true;
 	if (reason.includes('could not connect')) return true;
 	if (reason.includes('connection failed') || reason.includes('connection error')) return true;
+	if (reason.includes('connection was reset')) return true;
+	if (reason.includes('connection closed unexpectedly')) return true;
+	if (reason.includes('host unreachable') || reason.includes('network unreachable')) return true;
 	if (reason.includes('ssl') || reason.includes('tls')) return true;
 
 	const serverStatusMatch = reason.match(/server returned (\d{3})/);
@@ -522,6 +527,15 @@ export function messageForMembershipFailure(membership: MembershipResult): strin
 				membership.identityErrorReason.toLowerCase().includes('authentication failed')
 			) {
 				return `Could not authenticate with your Plex server${detail}. Verify PLEX_TOKEN is current and still authorized for this server, then try again.`;
+			}
+			// Other non-transient causes (parse failure / unexpected response shape,
+			// non-401/5xx HTTP errors like 404/403) won't heal on retry either —
+			// frame these as misconfiguration of PLEX_SERVER_URL rather than a blip.
+			if (
+				membership.identityErrorReason &&
+				!isTransientIdentityError(membership.identityErrorReason)
+			) {
+				return `Could not reach a valid Plex server at the configured URL${detail}. Verify PLEX_SERVER_URL points to your Plex server (and not a reverse proxy or wrong port), then try again.`;
 			}
 			return `Temporary connection issue contacting your Plex server. Please try again${detail}. If this keeps happening, verify PLEX_SERVER_URL and PLEX_TOKEN are correct and the server is online.`;
 		}

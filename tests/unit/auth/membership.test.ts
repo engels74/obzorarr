@@ -412,6 +412,17 @@ describe('isTransientIdentityError', () => {
 		expect(isTransientIdentityError('Server returned 502 Bad Gateway')).toBe(true);
 	});
 
+	it('classifies OS-level transient network errors emitted by sanitizeConnectionError as transient', () => {
+		// ECONNRESET / EHOSTUNREACH / ENETUNREACH / EPIPE all fall through
+		// classifyConnectionError's explicit branches into sanitizeConnectionError,
+		// which emits these exact strings. They are genuinely transient and should
+		// trigger the 250ms retry rather than the louder misconfiguration copy.
+		expect(isTransientIdentityError('Connection was reset')).toBe(true);
+		expect(isTransientIdentityError('Host unreachable')).toBe(true);
+		expect(isTransientIdentityError('Network unreachable')).toBe(true);
+		expect(isTransientIdentityError('Connection closed unexpectedly')).toBe(true);
+	});
+
 	it('does not classify auth or invalid response errors as transient', () => {
 		expect(
 			isTransientIdentityError(
@@ -425,5 +436,49 @@ describe('isTransientIdentityError', () => {
 		expect(isTransientIdentityError('Server returned 401 Unauthorized')).toBe(false);
 		expect(isTransientIdentityError(null)).toBe(false);
 		expect(isTransientIdentityError(undefined)).toBe(false);
+	});
+});
+
+describe('messageForMembershipFailure', () => {
+	it('uses misconfiguration copy when /identity returned an invalid response shape', () => {
+		// Parse failure (server-identity.service.ts:85) is non-transient: a
+		// reverse proxy returning HTML, the wrong port (e.g. a non-Plex service),
+		// or a misconfigured URL won't heal on retry. The user needs to be told
+		// to verify PLEX_SERVER_URL — not "please try again".
+		const message = messageForMembershipFailure({
+			isMember: false,
+			isOwner: false,
+			reason: 'not_reachable',
+			identityErrorReason: 'The server did not return a valid Plex identity response'
+		});
+
+		expect(message).not.toContain('Temporary connection issue');
+		expect(message).not.toContain('Please try again');
+		expect(message).toContain('PLEX_SERVER_URL');
+		expect(message).toContain('valid Plex server');
+	});
+
+	it('uses misconfiguration copy when /identity returned a non-transient HTTP error (e.g. 404)', () => {
+		const message = messageForMembershipFailure({
+			isMember: false,
+			isOwner: false,
+			reason: 'not_reachable',
+			identityErrorReason: 'Server returned 404 Not Found'
+		});
+
+		expect(message).not.toContain('Temporary connection issue');
+		expect(message).toContain('PLEX_SERVER_URL');
+	});
+
+	it('keeps the temporary-blip copy when identityErrorReason is genuinely transient', () => {
+		const message = messageForMembershipFailure({
+			isMember: false,
+			isOwner: false,
+			reason: 'not_reachable',
+			identityErrorReason: 'Connection timed out - the server may be unreachable'
+		});
+
+		expect(message).toContain('Temporary connection issue');
+		expect(message).toContain('Please try again');
 	});
 });
