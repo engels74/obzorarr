@@ -395,7 +395,20 @@ export async function verifyServerMembership(userToken: string): Promise<Members
 	// a cache-first read could pass the reachability gate below using a stale
 	// id even after the token was revoked or the server went offline (e.g.
 	// during a 15-minute session revalidation that does not pre-refresh).
-	const identityResult = await refreshConfiguredServerMachineId();
+	let identityResult = await refreshConfiguredServerMachineId();
+
+	// Retry once on transient failures (timeouts, connection errors, 5xx). Auth
+	// failures and invalid-response shapes are NOT retried — they will not heal
+	// in 250ms and warrant the louder error copy.
+	if (!identityResult.machineId && isTransientIdentityError(identityResult.errorReason)) {
+		logger.debug(
+			`Retrying /identity after transient failure: ${identityResult.errorReason}`,
+			'Membership'
+		);
+		await new Promise((resolve) => setTimeout(resolve, 250));
+		identityResult = await refreshConfiguredServerMachineId();
+	}
+
 	const configuredMachineIdFromIdentity = identityResult.machineId ?? undefined;
 	logger.debug(
 		`Configured server machineIdentifier: ${identityResult.machineId ?? 'null'} (source: ${
@@ -469,11 +482,40 @@ export async function requireServerMembership(userToken: string): Promise<Member
 	return membership;
 }
 
+export function isTransientIdentityError(errorReason: string | null | undefined): boolean {
+	if (!errorReason) return false;
+	const reason = errorReason.toLowerCase();
+
+	// Auth failures and invalid response shapes are NOT transient — they will
+	// not heal on a 250ms retry and the user needs the misconfiguration copy.
+	if (reason.includes('authentication failed') || reason.includes('invalid plex identity')) {
+		return false;
+	}
+
+	// 5xx responses, timeouts, connection errors, SSL hiccups all classify as
+	// transient. classifyConnectionError surfaces these as "Connection timed
+	// out", "Could not connect to server", "SSL certificate error",
+	// "Connection failed". Server-status fallthrough produces "Server returned
+	// 5xx ...".
+	if (reason.includes('timed out') || reason.includes('timeout')) return true;
+	if (reason.includes('could not connect')) return true;
+	if (reason.includes('connection failed') || reason.includes('connection error')) return true;
+	if (reason.includes('ssl') || reason.includes('tls')) return true;
+
+	const serverStatusMatch = reason.match(/server returned (\d{3})/);
+	if (serverStatusMatch) {
+		const status = Number(serverStatusMatch[1]);
+		return status >= 500 && status < 600;
+	}
+
+	return false;
+}
+
 export function messageForMembershipFailure(membership: MembershipResult): string {
 	switch (membership.reason) {
 		case 'not_reachable': {
 			const detail = membership.identityErrorReason ? ` (${membership.identityErrorReason})` : '';
-			return `Obzorarr could not reach or authenticate with the configured Plex server${detail}. Check that PLEX_SERVER_URL and PLEX_TOKEN are correct and the server is online.`;
+			return `Temporary connection issue contacting your Plex server. Please try again${detail}. If this keeps happening, verify PLEX_SERVER_URL and PLEX_TOKEN are correct and the server is online.`;
 		}
 		case 'not_in_resources':
 			return 'The configured Plex server is not listed under your Plex.tv account. Please sign in with the server owner account.';

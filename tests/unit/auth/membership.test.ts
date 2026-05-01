@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, it, spyOn } from 'bun:test';
 
 import * as settingsService from '$lib/server/admin/settings.service';
-import { verifyServerMembership } from '$lib/server/auth/membership';
+import {
+	isTransientIdentityError,
+	messageForMembershipFailure,
+	verifyServerMembership
+} from '$lib/server/auth/membership';
 import * as serverIdentityService from '$lib/server/plex/server-identity.service';
 
 function createMockResponse(data: unknown, ok = true, status = 200): Response {
@@ -296,5 +300,122 @@ describe('verifyServerMembership', () => {
 		expect(result.isOwner).toBe(false);
 		expect(result.reason).toBe('not_owner');
 		expect(result.configuredMachineId).toBe(MOCK_MACHINE_ID);
+	});
+
+	it('retries /identity once on transient failure and admits membership when the retry succeeds', async () => {
+		configSpy = mockConfiguredUrl('http://plex.local.timo.be:32400');
+		identitySpy = spyOn(serverIdentityService, 'refreshConfiguredServerMachineId')
+			.mockResolvedValueOnce({
+				machineId: null,
+				source: 'unavailable',
+				errorReason: 'Connection timed out - the server may be unreachable'
+			})
+			.mockResolvedValueOnce({
+				machineId: MOCK_MACHINE_ID,
+				source: 'fresh',
+				errorReason: null
+			});
+		fetchSpy = spyOn(global, 'fetch').mockResolvedValue(
+			createMockResponse([
+				{
+					name: 'X.A.N.A.',
+					product: 'Plex Media Server',
+					clientIdentifier: MOCK_MACHINE_ID,
+					owned: true,
+					provides: 'server',
+					connections: [
+						{
+							protocol: 'https',
+							address: '10.0.0.1',
+							port: 32400,
+							uri: `https://10-0-0-1.${MOCK_MACHINE_ID}.plex.direct:32400`,
+							local: false,
+							relay: false
+						}
+					]
+				}
+			])
+		);
+
+		const result = await verifyServerMembership('user-token');
+
+		expect(identitySpy).toHaveBeenCalledTimes(2);
+		expect(result.isMember).toBe(true);
+		expect(result.isOwner).toBe(true);
+		expect(result.configuredMachineId).toBe(MOCK_MACHINE_ID);
+	});
+
+	it('does not retry /identity when the failure is an authentication error', async () => {
+		configSpy = mockConfiguredUrl('http://plex.local.timo.be:32400');
+		identitySpy = spyOn(
+			serverIdentityService,
+			'refreshConfiguredServerMachineId'
+		).mockResolvedValue({
+			machineId: null,
+			source: 'unavailable',
+			errorReason:
+				'Authentication failed - the PLEX_TOKEN may be invalid or no longer authorized for this server'
+		});
+		fetchSpy = spyOn(global, 'fetch').mockResolvedValue(createMockResponse([]));
+
+		const result = await verifyServerMembership('user-token');
+
+		expect(identitySpy).toHaveBeenCalledTimes(1);
+		expect(result.isMember).toBe(false);
+		expect(result.reason).toBe('not_reachable');
+	});
+
+	it('returns not_reachable when both /identity attempts fail transiently', async () => {
+		configSpy = mockConfiguredUrl('http://plex.local.timo.be:32400');
+		identitySpy = spyOn(
+			serverIdentityService,
+			'refreshConfiguredServerMachineId'
+		).mockResolvedValue({
+			machineId: null,
+			source: 'unavailable',
+			errorReason: 'Connection timed out - the server may be unreachable'
+		});
+		fetchSpy = spyOn(global, 'fetch').mockResolvedValue(createMockResponse([]));
+
+		const result = await verifyServerMembership('user-token');
+
+		expect(identitySpy).toHaveBeenCalledTimes(2);
+		expect(result.isMember).toBe(false);
+		expect(result.reason).toBe('not_reachable');
+		expect(result.identityErrorReason).toBe('Connection timed out - the server may be unreachable');
+
+		const message = messageForMembershipFailure(result);
+		expect(message).toContain('Temporary connection issue');
+		expect(message).toContain('Connection timed out');
+	});
+});
+
+describe('isTransientIdentityError', () => {
+	it('classifies timeouts, connection failures, SSL errors, and 5xx as transient', () => {
+		expect(isTransientIdentityError('Connection timed out - the server may be unreachable')).toBe(
+			true
+		);
+		expect(isTransientIdentityError('Could not connect to server - check the URL')).toBe(true);
+		expect(isTransientIdentityError('Connection failed')).toBe(true);
+		expect(
+			isTransientIdentityError('SSL certificate error - check your server configuration')
+		).toBe(true);
+		expect(isTransientIdentityError('Server returned 503 Service Unavailable')).toBe(true);
+		expect(isTransientIdentityError('Server returned 502 Bad Gateway')).toBe(true);
+	});
+
+	it('does not classify auth or invalid response errors as transient', () => {
+		expect(
+			isTransientIdentityError(
+				'Authentication failed - the PLEX_TOKEN may be invalid or no longer authorized for this server'
+			)
+		).toBe(false);
+		expect(
+			isTransientIdentityError('The server did not return a valid Plex identity response')
+		).toBe(false);
+		expect(isTransientIdentityError('Server returned 404 Not Found')).toBe(false);
+		expect(isTransientIdentityError('Server returned 401 Unauthorized')).toBe(false);
+		expect(isTransientIdentityError(null)).toBe(false);
+		expect(isTransientIdentityError(undefined)).toBe(false);
 	});
 });
