@@ -1,7 +1,7 @@
 <script lang="ts">
 import { browser } from '$app/environment';
 import { enhance } from '$app/forms';
-import { goto, replaceState } from '$app/navigation';
+import { afterNavigate, goto, replaceState } from '$app/navigation';
 import Logo from '$lib/components/Logo.svelte';
 import { createPersonalContext } from '$lib/components/slides/messaging-context';
 import {
@@ -68,9 +68,17 @@ let showShareModal = $state(false);
 /** Key for forcing StoryMode remount on restart */
 let storyKey = $state(0);
 
+// SvelteKit's replaceState throws "replaceState() called before router was
+// initialized" if invoked before the first afterNavigate tick. Gate the hash
+// sync on this flag to avoid the error during hydration.
+let routerReady = $state(false);
+afterNavigate(() => {
+	routerReady = true;
+});
+
 // Reflect slide index back into the hash without creating history entries.
 $effect(() => {
-	if (!browser) return;
+	if (!browser || !routerReady) return;
 	const next = `#slide=${currentSlideIndex}`;
 	if (window.location.hash !== next) {
 		const url = new URL(window.location.href);
