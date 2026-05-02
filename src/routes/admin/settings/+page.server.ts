@@ -52,6 +52,7 @@ import {
 	setLogMaxCount,
 	setLogRetentionDays
 } from '$lib/server/logging';
+import { getOriginFromRequest } from '$lib/server/security/csrf-handle';
 import {
 	bulkApplyShareDefaults,
 	getGlobalAllowUserControl,
@@ -748,7 +749,7 @@ export const actions: Actions = requireAdminActions({
 		};
 	},
 
-	updateCsrfOrigin: async ({ request }) => {
+	updateCsrfOrigin: async ({ request, url }) => {
 		const csrfConfig = await getCsrfConfigWithSource();
 		if (csrfConfig.origin.isLocked) {
 			return fail(400, {
@@ -777,7 +778,13 @@ export const actions: Actions = requireAdminActions({
 			// path, query, or fragment — exactly what the CSRF middleware compares against
 			// the browser's Origin header.
 			const normalizedOrigin = parsed.data.csrfOrigin;
-			const requestOrigin = new URL(request.url).origin;
+			// Use the same source-of-truth that csrfHandle compares against (Origin
+			// header, falling back to Referer). Behind a reverse proxy `request.url`
+			// is the immutable raw internal URL — comparing against that would
+			// trigger a spurious mismatch warning even when the operator correctly
+			// matches the public-facing origin. Fall back to `event.url.origin`
+			// (proxy-rewritten by `proxyHandle`) when neither header is present.
+			const requestOrigin = getOriginFromRequest(request) ?? url.origin;
 			const isMismatch = normalizedOrigin.toLowerCase() !== requestOrigin.toLowerCase();
 
 			// Refuse to write a mismatched origin without explicit confirmation: silently

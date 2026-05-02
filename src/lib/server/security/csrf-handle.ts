@@ -13,7 +13,10 @@ const STATE_CHANGING_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
 
 let startupLogged = false;
 
-function getOriginFromRequest(request: Request): string | null {
+// Exported so admin actions (e.g. updateCsrfOrigin) can predict the same
+// origin csrfHandle compares against, rather than rederiving from
+// `request.url` which is the immutable raw URL behind a reverse proxy.
+export function getOriginFromRequest(request: Request): string | null {
 	const origin = request.headers.get('origin');
 	if (origin) return origin;
 

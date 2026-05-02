@@ -22,6 +22,7 @@ function createRequest(opts: {
 	csrfOrigin?: string;
 	confirmMismatch?: boolean;
 	requestUrl?: string;
+	originHeader?: string | null;
 }): Request {
 	const formData = new FormData();
 	if (opts.csrfOrigin !== undefined) {
@@ -30,15 +31,25 @@ function createRequest(opts: {
 	if (opts.confirmMismatch) {
 		formData.set('confirmMismatch', 'true');
 	}
-	return new Request(opts.requestUrl ?? `${ORIGIN}/admin/settings?/updateCsrfOrigin`, {
+	const requestUrl = opts.requestUrl ?? `${ORIGIN}/admin/settings?/updateCsrfOrigin`;
+	const headers: HeadersInit = {};
+	// Default to setting Origin: ORIGIN so tests exercise the same source-of-truth
+	// (browser Origin header) that csrfHandle uses. Pass `originHeader: null` to
+	// omit it explicitly; pass a string to override.
+	if (opts.originHeader !== null) {
+		headers.Origin = opts.originHeader ?? ORIGIN;
+	}
+	return new Request(requestUrl, {
 		method: 'POST',
-		body: formData
+		body: formData,
+		headers
 	});
 }
 
-async function runUpdate(request: Request) {
+async function runUpdate(request: Request, urlOverride?: string) {
 	const action = actions.updateCsrfOrigin as UpdateCsrfOriginAction;
-	return action({ request, locals: adminLocals } as Parameters<UpdateCsrfOriginAction>[0]);
+	const url = new URL(urlOverride ?? request.url);
+	return action({ request, url, locals: adminLocals } as Parameters<UpdateCsrfOriginAction>[0]);
 }
 
 describe('admin updateCsrfOrigin action', () => {
@@ -145,6 +156,47 @@ describe('admin updateCsrfOrigin action', () => {
 		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBeNull();
 
 		await deleteAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED);
+	});
+
+	it('uses the browser Origin header for the mismatch check, not request.url', async () => {
+		// Behind a reverse proxy, request.url is the immutable raw internal URL
+		// (e.g. http://localhost:3000) while the browser's Origin header carries
+		// the public-facing origin (e.g. https://app.example.com). The mismatch
+		// check must use the Origin header so it predicts the same comparison
+		// csrfHandle will perform. Saving the public origin while the request
+		// arrives at the internal URL must NOT trip the lockout warning.
+		const publicOrigin = 'https://app.example.com';
+		const internalUrl = 'http://localhost:3000/admin/settings?/updateCsrfOrigin';
+		const result = await runUpdate(
+			createRequest({
+				csrfOrigin: publicOrigin,
+				requestUrl: internalUrl,
+				originHeader: publicOrigin
+			})
+		);
+
+		expect(result).toEqual({ success: true, message: 'CSRF origin updated' });
+		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBe(publicOrigin);
+	});
+
+	it('falls back to event.url.origin (proxy-rewritten) when Origin/Referer headers are absent', async () => {
+		// proxyHandle rewrites event.url to the public-facing origin. When a
+		// request arrives without Origin or Referer (unusual for a browser POST
+		// but possible), we should use event.url.origin as the fallback rather
+		// than request.url which is the raw internal URL.
+		const publicOrigin = 'https://app.example.com';
+		const internalUrl = 'http://localhost:3000/admin/settings?/updateCsrfOrigin';
+		const result = await runUpdate(
+			createRequest({
+				csrfOrigin: publicOrigin,
+				requestUrl: internalUrl,
+				originHeader: null
+			}),
+			`${publicOrigin}/admin/settings?/updateCsrfOrigin`
+		);
+
+		expect(result).toEqual({ success: true, message: 'CSRF origin updated' });
+		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBe(publicOrigin);
 	});
 
 	it('treats whitespace-only csrfOrigin as a clear request, not invalid input', async () => {
