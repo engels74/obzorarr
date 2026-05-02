@@ -351,9 +351,17 @@ export async function setApiConfigAtomic(opts: {
 			await upsert(key, value);
 		};
 
-		if (opts.values.plexServerUrl && !opts.locks.plexServerUrl) {
+		// PLEX_SERVER_URL is an echoed-back key: a non-undefined submission means the
+		// user touched the field. Both a write (non-empty) and an explicit clear ('')
+		// are credential changes — clearing the URL invalidates the cached machineId
+		// just as much as pointing at a different server, since the next resolution
+		// falls through to env / default which may target a different Plex instance.
+		if (opts.values.plexServerUrl !== undefined && !opts.locks.plexServerUrl) {
 			plexCredentialsChanged = true;
 		}
+		// PLEX_TOKEN is a secret key: writeSecret no-ops on both `undefined` and `''`,
+		// so a non-truthy submission causes no DB change. Flag only when the value
+		// will actually be written.
 		if (opts.values.plexToken && !opts.locks.plexToken) {
 			plexCredentialsChanged = true;
 		}
