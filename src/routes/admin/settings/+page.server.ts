@@ -105,15 +105,23 @@ const PrivacySettingsSchema = z.object({
 //   - Echoed-back keys (openaiModel, openaiBaseUrl) get `.trim()` on the inner
 //     string so whitespace-only inputs become the canonical clear signal `''`,
 //     preserving the user's ability to clear by blanking the field.
+// Trim before the union so whitespace-only inputs (e.g. '   ') collapse to ''
+// and match the literal-empty branch — without preprocess, .trim() on the URL
+// branch would still leave the original untrimmed string for the literal('')
+// check, causing whitespace-only submissions to fail validation instead of
+// being treated as the documented "clear" signal.
+const trimmedUrlOrEmpty = z
+	.preprocess(
+		(v) => (typeof v === 'string' ? v.trim() : v),
+		z.union([z.string().max(512).url('Invalid URL format'), z.literal('')])
+	)
+	.optional();
+
 const ApiConfigSchema = z.object({
-	plexServerUrl: z
-		.union([z.string().trim().max(512).url('Invalid URL format'), z.literal('')])
-		.optional(),
+	plexServerUrl: trimmedUrlOrEmpty,
 	plexToken: optionalTrimmed(512),
 	openaiApiKey: optionalTrimmed(512),
-	openaiBaseUrl: z
-		.union([z.string().trim().max(512).url('Invalid URL format'), z.literal('')])
-		.optional(),
+	openaiBaseUrl: trimmedUrlOrEmpty,
 	openaiModel: z.string().trim().max(100).optional(),
 	apiConfigVersion: z.string()
 });

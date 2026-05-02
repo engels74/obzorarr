@@ -152,6 +152,18 @@ $effect(() => {
 		clearTimeout(copyTimeout);
 	};
 });
+
+// Reset optimistic state when the modal transitions from closed to open
+// so a freshly-loaded shareSettings prop (e.g., token rotated elsewhere) is
+// not shadowed by stale optimistic values from a prior session.
+let prevOpen = false;
+$effect(() => {
+	if (open && !prevOpen) {
+		optimisticMode = null;
+		optimisticShareToken = undefined;
+	}
+	prevOpen = open;
+});
 </script>
 
 <AlertDialog.Root bind:open onOpenChange={handleOpenChange}>
