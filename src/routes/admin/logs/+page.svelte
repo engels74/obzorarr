@@ -220,7 +220,15 @@ function clearFilters() {
 	searchText = '';
 	fromDate = '';
 	toDate = '';
+	// Drop the SSE buffer so previously-filtered events (e.g. captured while an
+	// ERROR-only filter was active) don't leak into the unfiltered view.
+	streamedLogs = [];
+	lastSeenStreamId = 0;
 	goto('/admin/logs', { replaceState: true, invalidateAll: true });
+	if (autoScroll) {
+		disconnectSSE();
+		connectSSE();
+	}
 }
 
 // Connect to SSE stream

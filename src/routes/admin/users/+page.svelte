@@ -306,6 +306,7 @@ function getShareModeLabel(mode: string | null, source: string | null): string {
 		/* Users Table */
 		.users-table-wrapper {
 			overflow-x: auto;
+			max-width: 100%;
 		}
 
 		.users-table {

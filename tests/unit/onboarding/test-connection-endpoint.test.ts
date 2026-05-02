@@ -78,9 +78,77 @@ describe('POST /api/onboarding/test-connection token alias', () => {
 			url: 'http://plex.local:32400'
 		});
 
-		expect(response.status).toBe(200);
+		expect(response.status).toBe(400);
 		const body = (await response.json()) as { success: boolean; error?: string };
 		expect(body.success).toBe(false);
 		expect(body.error).toContain('Access token');
+	});
+
+	it('returns 400 for invalid request schema', async () => {
+		const response = await runPost(adminLocals, { url: 'not-a-url', accessToken: 'abc' });
+		expect(response.status).toBe(400);
+		const body = (await response.json()) as { success: boolean };
+		expect(body.success).toBe(false);
+	});
+
+	it('returns 401 when Plex responds 401', async () => {
+		fetchSpy = spyOn(global, 'fetch').mockResolvedValue(
+			new Response('Unauthorized', { status: 401 })
+		);
+
+		const response = await runPost(adminLocals, {
+			url: 'http://plex.local:32400',
+			accessToken: 'bad'
+		});
+
+		expect(response.status).toBe(401);
+		const body = (await response.json()) as { success: boolean; error?: string };
+		expect(body.success).toBe(false);
+		expect(body.error).toContain('Authentication failed');
+	});
+
+	it('returns 502 for non-OK upstream', async () => {
+		fetchSpy = spyOn(global, 'fetch').mockResolvedValue(new Response('boom', { status: 503 }));
+
+		const response = await runPost(adminLocals, {
+			url: 'http://plex.local:32400',
+			accessToken: 'abc'
+		});
+
+		expect(response.status).toBe(502);
+		const body = (await response.json()) as { success: boolean };
+		expect(body.success).toBe(false);
+	});
+
+	it('returns 502 for non-Plex schema mismatch', async () => {
+		fetchSpy = spyOn(global, 'fetch').mockResolvedValue(
+			new Response(JSON.stringify({ unexpected: true }), {
+				status: 200,
+				headers: { 'Content-Type': 'application/json' }
+			})
+		);
+
+		const response = await runPost(adminLocals, {
+			url: 'http://plex.local:32400',
+			accessToken: 'abc'
+		});
+
+		expect(response.status).toBe(502);
+		const body = (await response.json()) as { success: boolean; error?: string };
+		expect(body.success).toBe(false);
+		expect(body.error).toContain('Plex Media Server');
+	});
+
+	it('returns 502 when fetch throws', async () => {
+		fetchSpy = spyOn(global, 'fetch').mockRejectedValue(new Error('network down'));
+
+		const response = await runPost(adminLocals, {
+			url: 'http://plex.local:32400',
+			accessToken: 'abc'
+		});
+
+		expect(response.status).toBe(502);
+		const body = (await response.json()) as { success: boolean };
+		expect(body.success).toBe(false);
 	});
 });

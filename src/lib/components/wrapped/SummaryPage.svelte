@@ -296,7 +296,7 @@ $effect(() => {
 			flex-direction: column;
 			align-items: center;
 			justify-content: center;
-			padding: 2rem;
+			padding: 2rem 2rem 4rem;
 			background: var(
 				--slide-bg-gradient,
 				linear-gradient(
@@ -307,7 +307,8 @@ $effect(() => {
 			);
 			color: hsl(var(--foreground));
 			position: relative;
-			overflow: hidden;
+			overflow-x: hidden;
+			overflow-y: auto;
 		}
 
 		/* Radial overlay for depth */

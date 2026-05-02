@@ -88,6 +88,14 @@ export async function checkWrappedAccess(
 
 	const globalFloor = await getGlobalDefaultShareMode();
 	const effectiveMode = getMoreRestrictiveMode(settings.mode, globalFloor);
+	const isOwner = currentUser?.id === userId || currentUser?.isAdmin === true;
+
+	// Anti-enumeration: a private-link page accessed without a token by a
+	// non-owner must look identical to a missing share, so the existence of
+	// the underlying user can't be probed via the numeric URL.
+	if (effectiveMode === ShareMode.PRIVATE_LINK && !shareToken && !isOwner) {
+		throw new InvalidShareTokenError();
+	}
 
 	const context: AccessCheckContext = {
 		shareMode: effectiveMode,
@@ -95,7 +103,7 @@ export async function checkWrappedAccess(
 		validToken: settings.shareToken,
 		isAuthenticated: !!currentUser,
 		isServerMember: !!currentUser,
-		isOwner: currentUser?.id === userId || currentUser?.isAdmin === true
+		isOwner
 	};
 
 	const result = checkAccess(context);
@@ -130,7 +138,21 @@ export interface CheckTokenAccessResult {
 	year: number;
 }
 
-export async function checkTokenAccess(token: string): Promise<CheckTokenAccessResult> {
+export interface CheckTokenAccessOptions {
+	token: string;
+	currentUser?: {
+		id: number;
+		plexId: number;
+		isAdmin: boolean;
+	};
+}
+
+export async function checkTokenAccess(
+	input: string | CheckTokenAccessOptions
+): Promise<CheckTokenAccessResult> {
+	const opts: CheckTokenAccessOptions = typeof input === 'string' ? { token: input } : input;
+	const { token, currentUser } = opts;
+
 	const settings = await getShareSettingsByToken(token);
 
 	if (!settings) {
@@ -156,11 +178,19 @@ export async function checkTokenAccess(token: string): Promise<CheckTokenAccessR
 	const effectiveMode = getMoreRestrictiveMode(settings.mode, globalFloor);
 	if (effectiveMode !== ShareMode.PRIVATE_LINK) {
 		// Floor pushed the effective mode above private-link (e.g. private-oauth):
-		// token alone is no longer sufficient, direct the viewer to sign in.
+		// signed-in server members satisfy the auth floor, so the token URL still
+		// resolves for them. Only anonymous visitors are gated.
 		if (ShareModePrivacyLevel[effectiveMode] > ShareModePrivacyLevel[ShareMode.PRIVATE_LINK]) {
-			throw new ShareAccessDeniedError(
-				'This wrapped is visible only to members of this Plex server. Sign in with your Plex account to view.'
-			);
+			if (!currentUser) {
+				throw new ShareAccessDeniedError(
+					'This wrapped is visible only to members of this Plex server. Sign in with your Plex account to view.'
+				);
+			}
+			return {
+				settings: { ...settings, mode: effectiveMode },
+				userId: settings.userId,
+				year: settings.year
+			};
 		}
 		// Both per-user mode and floor are public: the page is public, so the
 		// token is meaningless; treat as a stale link.

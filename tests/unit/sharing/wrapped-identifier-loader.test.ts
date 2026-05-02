@@ -11,7 +11,7 @@ import {
 } from '$lib/server/db/schema';
 import { setGlobalShareDefaults } from '$lib/server/sharing/service';
 import { ShareMode, ShareModeSource } from '$lib/server/sharing/types';
-import { load } from '../../../src/routes/wrapped/[year]/u/[identifier]/+page.server';
+import { actions, load } from '../../../src/routes/wrapped/[year]/u/[identifier]/+page.server';
 
 type LoadArgs = Parameters<typeof load>[0];
 
@@ -166,6 +166,90 @@ describe('wrapped/[year]/u/[identifier] loader: cross-year token isolation', () 
  * Anonymous viewers, authenticated non-owners, and even owners viewing in a
  * widened mode must receive shareToken: null in the payload.
  */
+describe('wrapped/[year]/u/[identifier] loader: identifier validation (F-303)', () => {
+	const USER_ID = 2;
+
+	beforeEach(async () => {
+		await db.delete(shareSettings);
+		await db.delete(appSettings);
+		await db.delete(users);
+		await db.delete(cachedStats);
+		await db.delete(playHistory);
+		await db.delete(slideConfig);
+
+		await seedUser(USER_ID, 100002, 200002);
+		await setGlobalShareDefaults({
+			defaultShareMode: ShareMode.PUBLIC,
+			allowUserControl: false
+		});
+	});
+
+	async function expectStatus(
+		identifier: string,
+		expectedStatus: number,
+		params: { availableYears?: number[] } = {}
+	): Promise<void> {
+		try {
+			await invokeLoad({
+				year: ORIGIN_YEAR,
+				identifier,
+				availableYears: params.availableYears ?? [ORIGIN_YEAR]
+			});
+			expect.unreachable(`Expected status ${expectedStatus} for identifier "${identifier}"`);
+		} catch (err) {
+			const status = (err as { status?: number }).status;
+			expect(status).toBe(expectedStatus);
+		}
+	}
+
+	it('returns 404 for a mangled UUID that parseInt would coerce to a numeric prefix', async () => {
+		await expectStatus('2a155c58-MANGLED-0000-0000-000000000000', 404);
+	});
+
+	it('returns 404 for a numeric-prefixed alphanumeric identifier', async () => {
+		await expectStatus('2abc', 404);
+	});
+
+	it('returns 404 for a whitespace identifier', async () => {
+		await expectStatus(' ', 404);
+		await expectStatus('   ', 404);
+	});
+
+	it('returns 404 for a negative numeric identifier', async () => {
+		await expectStatus('-5', 404);
+	});
+
+	it('resolves a valid numeric identifier to the matching user', async () => {
+		const data = await invokeLoad({
+			year: ORIGIN_YEAR,
+			identifier: String(USER_ID),
+			availableYears: [ORIGIN_YEAR]
+		});
+		expect(data.userId).toBe(USER_ID);
+	});
+
+	it('resolves a valid UUID share token to the matching user', async () => {
+		const VALID_TOKEN = '550e8400-e29b-41d4-a716-446655441234';
+		await setGlobalShareDefaults({
+			defaultShareMode: ShareMode.PRIVATE_LINK,
+			allowUserControl: false
+		});
+		await seedShareSettings({
+			userId: USER_ID,
+			year: ORIGIN_YEAR,
+			mode: ShareMode.PRIVATE_LINK,
+			token: VALID_TOKEN
+		});
+
+		const data = await invokeLoad({
+			year: ORIGIN_YEAR,
+			identifier: VALID_TOKEN,
+			availableYears: [ORIGIN_YEAR]
+		});
+		expect(data.userId).toBe(USER_ID);
+	});
+});
+
 describe('wrapped/[year]/u/[identifier] loader: shareToken payload gating', () => {
 	const USER_ID = 42;
 	const ADMIN_ID = 7;
@@ -293,10 +377,11 @@ describe('wrapped/[year]/u/[identifier] loader: shareToken payload gating', () =
 		expect(data.shareSettings.shareToken).toBe(TOKEN);
 	});
 
-	it('returns null for the owner when the global floor pushes effectiveMode above private-link', async () => {
-		// Stored as private-link/explicit (token preserved through toShareSettings),
-		// but the global floor of private-oauth raises the EFFECTIVE mode above
-		// private-link. The defense-in-depth gate at the loader must still strip.
+	it('exposes the canonical token to the owner even when the floor raises effectiveMode above private-link', async () => {
+		// F-302: when the global floor (private-oauth) raises the effective mode
+		// above the stored private-link, the owner must still see the canonical
+		// share token so the share modal stays stable across reloads. Anonymous
+		// viewers and non-owners are still gated (covered by tests above).
 		await seedShareSettings({
 			userId: USER_ID,
 			year: YEAR,
@@ -320,6 +405,81 @@ describe('wrapped/[year]/u/[identifier] loader: shareToken payload gating', () =
 			}
 		});
 
-		expect(data.shareSettings.shareToken).toBeNull();
+		expect(data.shareSettings.shareToken).toBe(TOKEN);
+	});
+});
+
+/**
+ * Regression test for the resolveUserIdFromIdentifier currentUser-forwarding fix.
+ *
+ * When a signed-in owner/admin invokes updateShareMode or regenerateToken on a
+ * token URL while the global floor has raised the effective mode above
+ * private-link (e.g. private-oauth), the helper used to call
+ * `checkTokenAccess(identifier)` (bare string), which omitted currentUser and
+ * triggered the floor branch's `if (!currentUser)` guard, causing the action
+ * to fail with "Invalid user identifier". The fix forwards locals.user.
+ */
+describe('wrapped/[year]/u/[identifier] actions: token URL + floor-elevated mode', () => {
+	const USER_ID = 42;
+	const TOKEN = '880e8400-e29b-41d4-a716-446655440333';
+	const YEAR = 2024;
+
+	type UpdateShareModeAction = NonNullable<typeof actions.updateShareMode>;
+
+	beforeEach(async () => {
+		await db.delete(shareSettings);
+		await db.delete(appSettings);
+		await db.delete(users);
+		await db.delete(cachedStats);
+		await db.delete(playHistory);
+		await db.delete(slideConfig);
+
+		await seedUser(USER_ID, 100042, 200042);
+		await seedShareSettings({
+			userId: USER_ID,
+			year: YEAR,
+			mode: ShareMode.PRIVATE_LINK,
+			token: TOKEN
+		});
+		await setGlobalShareDefaults({
+			defaultShareMode: ShareMode.PRIVATE_OAUTH,
+			allowUserControl: true
+		});
+	});
+
+	async function invokeUpdateShareMode(params: {
+		identifier: string;
+		mode: (typeof ShareMode)[keyof typeof ShareMode];
+		currentUser?: TestUser;
+	}) {
+		const formData = new FormData();
+		formData.set('mode', params.mode);
+		const request = new Request('https://obzorarr.example/wrapped', {
+			method: 'POST',
+			body: formData
+		});
+		const updateShareMode = actions.updateShareMode as UpdateShareModeAction;
+		return updateShareMode({
+			request,
+			params: { year: String(YEAR), identifier: params.identifier },
+			locals: params.currentUser ? { user: params.currentUser } : {}
+		} as unknown as Parameters<UpdateShareModeAction>[0]);
+	}
+
+	it('owner accessing via token URL with floor-elevated mode resolves successfully (does not 400)', async () => {
+		const result = await invokeUpdateShareMode({
+			identifier: TOKEN,
+			mode: ShareMode.PRIVATE_LINK,
+			currentUser: {
+				id: USER_ID,
+				plexId: 100042,
+				username: `user-${USER_ID}`,
+				isAdmin: false
+			}
+		});
+
+		// Without the fix this would be: { status: 400, data: { error: 'Invalid user identifier' } }
+		const status = (result as { status?: number }).status;
+		expect(status).not.toBe(400);
 	});
 });

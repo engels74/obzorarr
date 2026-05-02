@@ -253,13 +253,18 @@ $effect(() => {
 				>
 					<div class="mode-options" role="radiogroup" aria-labelledby="visibility-label">
 						{#each availableModes as mode}
-							<label class="mode-option" class:active={displayMode === mode}>
+							<label
+								class="mode-option"
+								class:active={displayMode === mode}
+								class:below-floor={isBelowFloor(mode as ShareModeType)}
+								aria-disabled={isBelowFloor(mode as ShareModeType)}
+							>
 								<input
 									type="radio"
 									name="mode"
 									value={mode}
 									checked={displayMode === mode}
-									disabled={isUpdating}
+									disabled={isUpdating || isBelowFloor(mode as ShareModeType)}
 									onchange={(e) => {
 										optimisticMode = mode as ShareModeType;
 										e.currentTarget.form?.requestSubmit();
@@ -473,6 +478,15 @@ $effect(() => {
 		.mode-option.active {
 			border-color: hsl(var(--primary));
 			background-color: hsl(var(--primary) / 0.08);
+		}
+
+		.mode-option.below-floor {
+			opacity: 0.55;
+			cursor: not-allowed;
+		}
+
+		.mode-option.below-floor:hover {
+			background-color: transparent;
 		}
 
 		.mode-option input[type='radio'] {

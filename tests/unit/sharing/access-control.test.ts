@@ -422,6 +422,50 @@ describe('Sharing Access Control', () => {
 					expect(error).toBeInstanceOf(InvalidShareTokenError);
 				}
 			});
+
+			it('throws InvalidShareTokenError (404 anti-enumeration) when private-link is reached without a token by a non-owner', async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_LINK,
+					allowUserControl: false
+				});
+
+				try {
+					await checkWrappedAccess({ userId, year });
+					expect.unreachable('Should have thrown InvalidShareTokenError');
+				} catch (error) {
+					expect(error).toBeInstanceOf(InvalidShareTokenError);
+				}
+			});
+
+			it('does not throw for the owner accessing private-link without a token', async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_LINK,
+					allowUserControl: false
+				});
+
+				const result = await checkWrappedAccess({
+					userId,
+					year,
+					currentUser: { id: userId, plexId: 100, isAdmin: false }
+				});
+
+				expect(result.accessReason).toBe('owner');
+			});
+
+			it('does not throw for an admin accessing private-link without a token', async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_LINK,
+					allowUserControl: false
+				});
+
+				const result = await checkWrappedAccess({
+					userId,
+					year,
+					currentUser: { id: 999, plexId: 999, isAdmin: true }
+				});
+
+				expect(result.accessReason).toBe('owner');
+			});
 		});
 	});
 
@@ -533,7 +577,7 @@ describe('Sharing Access Control', () => {
 		});
 
 		describe('global floor enforcement', () => {
-			it('throws ShareAccessDeniedError when floor is raised to private-oauth', async () => {
+			it('throws ShareAccessDeniedError when floor is raised to private-oauth and viewer is anonymous', async () => {
 				const token = generateShareToken();
 
 				await setGlobalShareDefaults({
@@ -554,6 +598,53 @@ describe('Sharing Access Control', () => {
 				} catch (error) {
 					expect(error).toBeInstanceOf(ShareAccessDeniedError);
 				}
+			});
+
+			it('allows token access when floor is raised to private-oauth and viewer is a signed-in member', async () => {
+				const token = generateShareToken();
+
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_OAUTH,
+					allowUserControl: false
+				});
+				await db.insert(shareSettings).values({
+					userId,
+					year,
+					mode: ShareMode.PRIVATE_LINK,
+					shareToken: token,
+					canUserControl: false
+				});
+
+				const result = await checkTokenAccess({
+					token,
+					currentUser: { id: 999, plexId: 12345, isAdmin: false }
+				});
+
+				expect(result.userId).toBe(userId);
+				expect(result.year).toBe(year);
+			});
+
+			it('allows token access for an admin viewer when floor is raised', async () => {
+				const token = generateShareToken();
+
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_OAUTH,
+					allowUserControl: false
+				});
+				await db.insert(shareSettings).values({
+					userId,
+					year,
+					mode: ShareMode.PRIVATE_LINK,
+					shareToken: token,
+					canUserControl: false
+				});
+
+				const result = await checkTokenAccess({
+					token,
+					currentUser: { id: 7, plexId: 1007, isAdmin: true }
+				});
+
+				expect(result.userId).toBe(userId);
 			});
 
 			it('allows token access when floor is public', async () => {

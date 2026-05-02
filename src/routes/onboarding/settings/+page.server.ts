@@ -288,7 +288,13 @@ export const actions: Actions = {
 		try {
 			const formData = await request.formData();
 
-			// Parse form data
+			// Parse form data. Hidden AI inputs are always rendered (so the form
+			// submits in one click) but emit empty strings when the toggle is off;
+			// coerce those to undefined so optional() and enum() schemas match.
+			const optionalString = (key: string): string | undefined => {
+				const raw = formData.get(key)?.toString().trim();
+				return raw ? raw : undefined;
+			};
 			const rawData = {
 				uiTheme: formData.get('uiTheme'),
 				wrappedTheme: formData.get('wrappedTheme'),
@@ -298,11 +304,11 @@ export const actions: Actions = {
 				allowUserControl: formData.get('allowUserControl'),
 				enabledSlides: formData.get('enabledSlides'),
 				enableFunFacts: formData.get('enableFunFacts'),
-				funFactFrequency: formData.get('funFactFrequency') ?? undefined,
-				openaiApiKey: formData.get('openaiApiKey') ?? undefined,
-				openaiBaseUrl: formData.get('openaiBaseUrl')?.toString().trim() ?? undefined,
-				openaiModel: formData.get('openaiModel')?.toString().trim() ?? undefined,
-				aiPersona: formData.get('aiPersona') ?? undefined
+				funFactFrequency: optionalString('funFactFrequency'),
+				openaiApiKey: optionalString('openaiApiKey'),
+				openaiBaseUrl: optionalString('openaiBaseUrl'),
+				openaiModel: optionalString('openaiModel'),
+				aiPersona: optionalString('aiPersona')
 			};
 
 			// Validate

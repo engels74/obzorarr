@@ -270,13 +270,15 @@ function getThemeColors(themeValue: string) {
 				<input type="hidden" name="allowUserControl" value={allowUserControl} />
 				<input type="hidden" name="enabledSlides" value={enabledSlidesString} />
 				<input type="hidden" name="enableFunFacts" value={enableFunFacts} />
-				{#if enableFunFacts}
-					<input type="hidden" name="funFactFrequency" value={funFactFrequency} />
-					<input type="hidden" name="openaiApiKey" value={openaiApiKey} />
-					<input type="hidden" name="openaiBaseUrl" value={openaiBaseUrl} />
-					<input type="hidden" name="openaiModel" value={openaiModel} />
-					<input type="hidden" name="aiPersona" value={aiPersona} />
-				{/if}
+				<input
+					type="hidden"
+					name="funFactFrequency"
+					value={enableFunFacts ? funFactFrequency : ''}
+				/>
+				<input type="hidden" name="openaiApiKey" value={enableFunFacts ? openaiApiKey : ''} />
+				<input type="hidden" name="openaiBaseUrl" value={enableFunFacts ? openaiBaseUrl : ''} />
+				<input type="hidden" name="openaiModel" value={enableFunFacts ? openaiModel : ''} />
+				<input type="hidden" name="aiPersona" value={enableFunFacts ? aiPersona : ''} />
 
 				<!-- Carousel Content -->
 				<div class="carousel-content" bind:this={contentRef}>
@@ -1191,8 +1193,19 @@ function getThemeColors(themeValue: string) {
 
 		.radio-card input {
 			position: absolute;
-			opacity: 0;
-			pointer-events: none;
+			width: 1px;
+			height: 1px;
+			padding: 0;
+			margin: -1px;
+			overflow: hidden;
+			clip: rect(0, 0, 0, 0);
+			white-space: nowrap;
+			border: 0;
+		}
+
+		.radio-card:focus-within .radio-card-content {
+			outline: 2px solid hsl(var(--primary));
+			outline-offset: 2px;
 		}
 
 		.radio-card-content {
