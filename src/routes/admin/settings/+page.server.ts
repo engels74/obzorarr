@@ -40,6 +40,7 @@ import {
 	type WrappedLogoModeType
 } from '$lib/server/admin/settings.service';
 import { getAvailableYears } from '$lib/server/admin/users.service';
+import { optionalTrimmed } from '$lib/server/admin/zod-helpers';
 import { requireAdminActions } from '$lib/server/auth/guards';
 import { testOpenAIConnection } from '$lib/server/funfacts/test-connection';
 import {
@@ -96,12 +97,24 @@ const PrivacySettingsSchema = z.object({
 //   non-empty = write.
 // The URL-validated fields accept `''` via the literal union so a cleared input
 // passes validation and reaches the service as the clear signal.
+//
+// Whitespace handling:
+//   - Secret keys (plexToken, openaiApiKey) use `optionalTrimmed(...)`: empty,
+//     whitespace-only, and absent all collapse to `undefined` (no-op). Prevents
+//     a stray "  " press from being persisted as the secret.
+//   - Echoed-back keys (openaiModel, openaiBaseUrl) get `.trim()` on the inner
+//     string so whitespace-only inputs become the canonical clear signal `''`,
+//     preserving the user's ability to clear by blanking the field.
 const ApiConfigSchema = z.object({
-	plexServerUrl: z.union([z.string().max(512).url('Invalid URL format'), z.literal('')]).optional(),
-	plexToken: z.string().max(512).optional(),
-	openaiApiKey: z.string().max(512).optional(),
-	openaiBaseUrl: z.union([z.string().max(512).url('Invalid URL format'), z.literal('')]).optional(),
-	openaiModel: z.string().max(100).optional(),
+	plexServerUrl: z
+		.union([z.string().trim().max(512).url('Invalid URL format'), z.literal('')])
+		.optional(),
+	plexToken: optionalTrimmed(512),
+	openaiApiKey: optionalTrimmed(512),
+	openaiBaseUrl: z
+		.union([z.string().trim().max(512).url('Invalid URL format'), z.literal('')])
+		.optional(),
+	openaiModel: z.string().trim().max(100).optional(),
 	apiConfigVersion: z.string()
 });
 
@@ -729,6 +742,7 @@ export const actions: Actions = requireAdminActions({
 
 		const formData = await request.formData();
 		const csrfOrigin = formData.get('csrfOrigin')?.toString() ?? '';
+		const confirmMismatch = formData.get('confirmMismatch')?.toString() === 'true';
 
 		if (csrfOrigin) {
 			const parsed = CsrfOriginSchema.safeParse({ csrfOrigin });
@@ -739,16 +753,30 @@ export const actions: Actions = requireAdminActions({
 				});
 			}
 
+			const normalizedOrigin = csrfOrigin.replace(/\/$/, '');
+			const requestOrigin = new URL(request.url).origin;
+			const isMismatch = normalizedOrigin.toLowerCase() !== requestOrigin.toLowerCase();
+
+			// Refuse to write a mismatched origin without explicit confirmation: silently
+			// persisting a mismatch would lock this browser out of all admin POSTs with
+			// no in-UI recovery path (would require env override or direct DB surgery).
+			if (isMismatch && !confirmMismatch) {
+				return fail(409, {
+					requireConfirmation: true,
+					attemptedOrigin: normalizedOrigin,
+					requestOrigin,
+					csrfMismatchMessage: `Saving "${normalizedOrigin}" while loaded from "${requestOrigin}" will lock this browser out of all admin POST operations. Recovery would require restarting the server with ORIGIN=<correct> env or editing the app_settings table directly. Confirm to proceed anyway.`
+				});
+			}
+
 			try {
-				const normalizedOrigin = csrfOrigin.replace(/\/$/, '');
-				const requestOrigin = new URL(request.url).origin;
 				await setAppSetting(AppSettingsKey.CSRF_ORIGIN, normalizedOrigin);
 
-				if (normalizedOrigin.toLowerCase() !== requestOrigin.toLowerCase()) {
+				if (isMismatch) {
 					return {
 						success: true,
 						warning: true,
-						message: `CSRF origin saved, but it does not match your current origin (${requestOrigin}). You may get locked out of the admin panel.`
+						message: `CSRF origin saved to "${normalizedOrigin}". Your current browser origin is "${requestOrigin}" — you may now be locked out.`
 					};
 				}
 

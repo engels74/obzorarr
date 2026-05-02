@@ -243,6 +243,17 @@ $effect(() => {
 	handleFormToast(form);
 });
 
+// Open the CSRF mismatch confirmation dialog when the server signals it.
+// The fail(409) payload deliberately omits success/error/warning so handleFormToast
+// stays silent — the dialog is the UI response.
+$effect(() => {
+	if (form && 'requireConfirmation' in form && form.requireConfirmation) {
+		const f = form as { attemptedOrigin?: string };
+		pendingCsrfOrigin = f.attemptedOrigin ?? null;
+		csrfMismatchDialogOpen = true;
+	}
+});
+
 // Cache clearing dialog state
 let cacheDialogOpen = $state(false);
 let pendingCacheYear = $state<number | undefined>(undefined);
@@ -460,6 +471,16 @@ let trustProxySource = $state<'env' | 'db' | 'default'>('default');
 let trustProxyLocked = $state(false);
 let isSavingTrustProxy = $state(false);
 
+// CSRF mismatch confirmation dialog state. Server returns fail(409,
+// { requireConfirmation: true, attemptedOrigin, ... }) when the submitted
+// origin doesn't match the request origin; we surface it as a confirm
+// dialog rather than silently writing a value that would lock the user out.
+let csrfMismatchDialogOpen = $state(false);
+let pendingCsrfOrigin = $state<string | null>(null);
+let isConfirmingCsrfMismatch = $state(false);
+let isSavingOpenAI = $state(false);
+let isSavingPlex = $state(false);
+
 // Sync CSRF state from data
 $effect(() => {
 	csrfOriginValue = data.security.originValue;
@@ -538,7 +559,21 @@ const logFieldErrors = $derived(
 						</div>
 					</div>
 
-					<form method="POST" action="?/updateApiConfig" use:enhance class="panel-form">
+					<form
+						method="POST"
+						action="?/updateApiConfig"
+						use:enhance={() => {
+							isSavingPlex = true;
+							return async ({ update }) => {
+								try {
+									await update();
+								} finally {
+									isSavingPlex = false;
+								}
+							};
+						}}
+						class="panel-form"
+					>
 						<input type="hidden" name="apiConfigVersion" value={data.apiConfigVersion} />
 						<div class="form-field">
 							<div class="field-header">
@@ -627,9 +662,14 @@ const logFieldErrors = $derived(
 
 						<div class="plex-actions">
 							{#if !plexServerUrlLocked || !plexTokenLocked}
-								<button type="submit" class="btn-primary">
-									<Check class="btn-icon" />
-									Save Plex Settings
+								<button type="submit" class="btn-primary" disabled={isSavingPlex}>
+									{#if isSavingPlex}
+										<Loader2 class="btn-icon spinning" />
+										Saving…
+									{:else}
+										<Check class="btn-icon" />
+										Save Plex Settings
+									{/if}
 								</button>
 							{/if}
 
@@ -718,7 +758,21 @@ const logFieldErrors = $derived(
 						Configure AI-powered fun facts generation. Leave empty to use predefined templates.
 					</p>
 
-					<form method="POST" action="?/updateApiConfig" use:enhance class="panel-form">
+					<form
+						method="POST"
+						action="?/updateApiConfig"
+						use:enhance={() => {
+							isSavingOpenAI = true;
+							return async ({ update }) => {
+								try {
+									await update();
+								} finally {
+									isSavingOpenAI = false;
+								}
+							};
+						}}
+						class="panel-form"
+					>
 						<input type="hidden" name="apiConfigVersion" value={data.apiConfigVersion} />
 						<div class="form-field">
 							<div class="field-header">
@@ -836,9 +890,14 @@ const logFieldErrors = $derived(
 
 						<div class="panel-actions">
 							{#if !openaiApiKeyLocked || !openaiBaseUrlLocked || !openaiModelLocked}
-								<button type="submit" class="btn-primary">
-									<Check class="btn-icon" />
-									Save OpenAI Settings
+								<button type="submit" class="btn-primary" disabled={isSavingOpenAI}>
+									{#if isSavingOpenAI}
+										<Loader2 class="btn-icon spinning" />
+										Saving…
+									{:else}
+										<Check class="btn-icon" />
+										Save OpenAI Settings
+									{/if}
 								</button>
 							{/if}
 
@@ -1472,8 +1531,13 @@ const logFieldErrors = $derived(
 										use:enhance={() => {
 											isSavingCsrf = true;
 											return async ({ result, update }) => {
-												isSavingCsrf = false;
-												await update({ reset: result.type !== 'failure' });
+												try {
+													// Don't reset the input on failure (incl. fail(409) confirmation
+													// requirement) so the user can confirm without retyping.
+													await update({ reset: result.type !== 'failure' });
+												} finally {
+													isSavingCsrf = false;
+												}
 											};
 										}}
 									>
@@ -2189,6 +2253,53 @@ const logFieldErrors = $derived(
 					{:else}
 						Clear CSRF Origin
 					{/if}
+				</AlertDialog.Action>
+			</form>
+		</AlertDialog.Footer>
+	</AlertDialog.Content>
+</AlertDialog.Root>
+
+<!-- CSRF Mismatch Confirmation Dialog -->
+<AlertDialog.Root bind:open={csrfMismatchDialogOpen}>
+	<AlertDialog.Content>
+		<AlertDialog.Header>
+			<AlertDialog.Title>Confirm risky CSRF change</AlertDialog.Title>
+			<AlertDialog.Description>
+				{(form as { csrfMismatchMessage?: string } | null | undefined)?.csrfMismatchMessage ??
+					'Saving this CSRF origin may lock you out of admin POST operations.'}
+			</AlertDialog.Description>
+		</AlertDialog.Header>
+		<AlertDialog.Footer>
+			<AlertDialog.Cancel
+				disabled={isConfirmingCsrfMismatch}
+				onclick={() => {
+					csrfMismatchDialogOpen = false;
+					pendingCsrfOrigin = null;
+				}}
+			>
+				Cancel
+			</AlertDialog.Cancel>
+			<form
+				method="POST"
+				action="?/updateCsrfOrigin"
+				use:enhance={() => {
+					isConfirmingCsrfMismatch = true;
+					return async ({ update }) => {
+						try {
+							await update({ reset: false });
+						} finally {
+							isConfirmingCsrfMismatch = false;
+							csrfMismatchDialogOpen = false;
+							pendingCsrfOrigin = null;
+						}
+					};
+				}}
+				style="display: contents;"
+			>
+				<input type="hidden" name="csrfOrigin" value={pendingCsrfOrigin ?? ''} />
+				<input type="hidden" name="confirmMismatch" value="true" />
+				<AlertDialog.Action type="submit" disabled={isConfirmingCsrfMismatch}>
+					{isConfirmingCsrfMismatch ? 'Saving…' : 'Save anyway'}
 				</AlertDialog.Action>
 			</form>
 		</AlertDialog.Footer>

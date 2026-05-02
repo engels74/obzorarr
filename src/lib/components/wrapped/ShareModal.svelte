@@ -245,8 +245,11 @@ $effect(() => {
 								await update();
 							} finally {
 								isUpdating = false;
-								optimisticMode = null;
-								optimisticShareToken = undefined;
+								// Intentionally do NOT reset optimisticMode/optimisticShareToken here.
+								// On success: applyShareActionData() set them to the server's value, so
+								// clearing them between this finally and the next $derived re-evaluation
+								// causes a brief all-unchecked render frame for the radio group.
+								// On failure: the else branch above already cleared them inline.
 							}
 						};
 					}}
