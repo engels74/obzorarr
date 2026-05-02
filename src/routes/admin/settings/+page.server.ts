@@ -98,12 +98,12 @@ const ApiConfigSchema = z.object({
 });
 
 const LogSettingsSchema = z.object({
-	retentionDays: z
+	retentionDays: z.coerce
 		.number({ error: 'Retention days must be a number' })
 		.int('Retention days must be a whole number')
 		.min(1, 'Retention days must be at least 1')
 		.max(365, 'Retention days cannot exceed 365'),
-	maxCount: z
+	maxCount: z.coerce
 		.number({ error: 'Max log count must be a number' })
 		.int('Max log count must be a whole number')
 		.min(1000, 'Max log count must be at least 1000')
@@ -556,14 +556,10 @@ export const actions: Actions = requireAdminActions({
 	updateLogSettings: async ({ request }) => {
 		const formData = await request.formData();
 
-		const retentionDaysStr = formData.get('retentionDays')?.toString();
-		const maxCountStr = formData.get('maxCount')?.toString();
-		const debugEnabledStr = formData.get('debugEnabled')?.toString();
-
 		const data = {
-			retentionDays: retentionDaysStr ? Number.parseInt(retentionDaysStr, 10) : Number.NaN,
-			maxCount: maxCountStr ? Number.parseInt(maxCountStr, 10) : Number.NaN,
-			debugEnabled: debugEnabledStr === 'true'
+			retentionDays: formData.get('retentionDays')?.toString(),
+			maxCount: formData.get('maxCount')?.toString(),
+			debugEnabled: formData.get('debugEnabled')?.toString() === 'true'
 		};
 
 		const parsed = LogSettingsSchema.safeParse(data);

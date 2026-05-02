@@ -59,7 +59,7 @@ async function resolveUserIdFromIdentifier(
 	}
 
 	const userId = Number(identifier);
-	return Number.isFinite(userId) && userId > 0 ? userId : null;
+	return Number.isSafeInteger(userId) && userId > 0 ? userId : null;
 }
 
 export const load: PageServerLoad = async ({ params, locals, parent }) => {
@@ -101,7 +101,7 @@ export const load: PageServerLoad = async ({ params, locals, parent }) => {
 			error(404, "We couldn't find a Wrapped page for that link.");
 		}
 		const parsedId = Number(identifier);
-		if (!Number.isFinite(parsedId) || parsedId <= 0) {
+		if (!Number.isSafeInteger(parsedId) || parsedId <= 0) {
 			error(404, "We couldn't find a Wrapped page for that link.");
 		}
 		userId = parsedId;
