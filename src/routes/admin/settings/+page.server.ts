@@ -757,7 +757,11 @@ export const actions: Actions = requireAdminActions({
 		}
 
 		const formData = await request.formData();
-		const csrfOrigin = formData.get('csrfOrigin')?.toString() ?? '';
+		// Trim once at extraction so whitespace-only inputs (e.g. '   ') route to the
+		// clear branch alongside literal '' rather than failing schema validation with
+		// a confusing "Invalid origin URL" 400 — mirrors the trimmedUrlOrEmpty pattern
+		// used for ApiConfigSchema URL fields above.
+		const csrfOrigin = (formData.get('csrfOrigin')?.toString() ?? '').trim();
 		const confirmMismatch = formData.get('confirmMismatch')?.toString() === 'true';
 
 		if (csrfOrigin) {

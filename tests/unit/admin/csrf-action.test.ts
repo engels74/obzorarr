@@ -146,4 +146,18 @@ describe('admin updateCsrfOrigin action', () => {
 
 		await deleteAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED);
 	});
+
+	it('treats whitespace-only csrfOrigin as a clear request, not invalid input', async () => {
+		// Whitespace-only inputs should route to the clear branch (same as '') rather
+		// than failing schema validation with a confusing "Invalid origin URL" 400.
+		await setAppSetting(AppSettingsKey.CSRF_ORIGIN, ORIGIN);
+		await setAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED, 'true');
+
+		const result = await runUpdate(createRequest({ csrfOrigin: '   ' }));
+
+		expect((result as { success: boolean }).success).toBe(true);
+		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBeNull();
+
+		await deleteAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED);
+	});
 });
