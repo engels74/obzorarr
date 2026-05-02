@@ -147,6 +147,14 @@ const CsrfOriginSchema = z.object({
 		.refine((url) => url.startsWith('http://') || url.startsWith('https://'), {
 			message: 'Origin must start with http:// or https://'
 		})
+		.transform((url) => {
+			try {
+				const parsed = new URL(url);
+				return parsed.origin;
+			} catch {
+				return url;
+			}
+		})
 });
 
 const TrustProxySchema = z.object({
@@ -761,7 +769,10 @@ export const actions: Actions = requireAdminActions({
 				});
 			}
 
-			const normalizedOrigin = csrfOrigin.replace(/\/$/, '');
+			// `URL.origin` returns canonical scheme://host[:port] with no trailing slash,
+			// path, query, or fragment — exactly what the CSRF middleware compares against
+			// the browser's Origin header.
+			const normalizedOrigin = parsed.data.csrfOrigin;
 			const requestOrigin = new URL(request.url).origin;
 			const isMismatch = normalizedOrigin.toLowerCase() !== requestOrigin.toLowerCase();
 
