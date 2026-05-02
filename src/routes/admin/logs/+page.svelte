@@ -5,6 +5,7 @@ import { goto, invalidateAll } from '$app/navigation';
 import { page } from '$app/stores';
 import * as AlertDialog from '$lib/components/ui/alert-dialog';
 import type { LogEntry, LogLevelType } from '$lib/server/logging';
+import { toast } from '$lib/services/toast';
 import { handleFormToast } from '$lib/utils/form-toast';
 import type { ActionData, PageData } from './$types';
 
@@ -305,9 +306,14 @@ async function refreshAfterLogMutation(update: () => Promise<void>): Promise<voi
 }
 
 // Copy log entry to clipboard
-function copyLog(log: LogEntry) {
+async function copyLog(log: LogEntry) {
 	const text = `[${new Date(log.timestamp).toISOString()}] [${log.level}] [${log.source ?? 'App'}] ${log.message}`;
-	navigator.clipboard.writeText(text);
+	try {
+		await navigator.clipboard.writeText(text);
+		toast.success('Copied to clipboard');
+	} catch {
+		toast.error('Could not access clipboard');
+	}
 }
 
 // Parse metadata JSON
