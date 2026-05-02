@@ -166,6 +166,90 @@ describe('wrapped/[year]/u/[identifier] loader: cross-year token isolation', () 
  * Anonymous viewers, authenticated non-owners, and even owners viewing in a
  * widened mode must receive shareToken: null in the payload.
  */
+describe('wrapped/[year]/u/[identifier] loader: identifier validation (F-303)', () => {
+	const USER_ID = 2;
+
+	beforeEach(async () => {
+		await db.delete(shareSettings);
+		await db.delete(appSettings);
+		await db.delete(users);
+		await db.delete(cachedStats);
+		await db.delete(playHistory);
+		await db.delete(slideConfig);
+
+		await seedUser(USER_ID, 100002, 200002);
+		await setGlobalShareDefaults({
+			defaultShareMode: ShareMode.PUBLIC,
+			allowUserControl: false
+		});
+	});
+
+	async function expectStatus(
+		identifier: string,
+		expectedStatus: number,
+		params: { availableYears?: number[] } = {}
+	): Promise<void> {
+		try {
+			await invokeLoad({
+				year: ORIGIN_YEAR,
+				identifier,
+				availableYears: params.availableYears ?? [ORIGIN_YEAR]
+			});
+			expect.unreachable(`Expected status ${expectedStatus} for identifier "${identifier}"`);
+		} catch (err) {
+			const status = (err as { status?: number }).status;
+			expect(status).toBe(expectedStatus);
+		}
+	}
+
+	it('returns 404 for a mangled UUID that parseInt would coerce to a numeric prefix', async () => {
+		await expectStatus('2a155c58-MANGLED-0000-0000-000000000000', 404);
+	});
+
+	it('returns 404 for a numeric-prefixed alphanumeric identifier', async () => {
+		await expectStatus('2abc', 404);
+	});
+
+	it('returns 404 for a whitespace identifier', async () => {
+		await expectStatus(' ', 404);
+		await expectStatus('   ', 404);
+	});
+
+	it('returns 404 for a negative numeric identifier', async () => {
+		await expectStatus('-5', 404);
+	});
+
+	it('resolves a valid numeric identifier to the matching user', async () => {
+		const data = await invokeLoad({
+			year: ORIGIN_YEAR,
+			identifier: String(USER_ID),
+			availableYears: [ORIGIN_YEAR]
+		});
+		expect(data.userId).toBe(USER_ID);
+	});
+
+	it('resolves a valid UUID share token to the matching user', async () => {
+		const VALID_TOKEN = '550e8400-e29b-41d4-a716-446655441234';
+		await setGlobalShareDefaults({
+			defaultShareMode: ShareMode.PRIVATE_LINK,
+			allowUserControl: false
+		});
+		await seedShareSettings({
+			userId: USER_ID,
+			year: ORIGIN_YEAR,
+			mode: ShareMode.PRIVATE_LINK,
+			token: VALID_TOKEN
+		});
+
+		const data = await invokeLoad({
+			year: ORIGIN_YEAR,
+			identifier: VALID_TOKEN,
+			availableYears: [ORIGIN_YEAR]
+		});
+		expect(data.userId).toBe(USER_ID);
+	});
+});
+
 describe('wrapped/[year]/u/[identifier] loader: shareToken payload gating', () => {
 	const USER_ID = 42;
 	const ADMIN_ID = 7;
@@ -293,10 +377,11 @@ describe('wrapped/[year]/u/[identifier] loader: shareToken payload gating', () =
 		expect(data.shareSettings.shareToken).toBe(TOKEN);
 	});
 
-	it('returns null for the owner when the global floor pushes effectiveMode above private-link', async () => {
-		// Stored as private-link/explicit (token preserved through toShareSettings),
-		// but the global floor of private-oauth raises the EFFECTIVE mode above
-		// private-link. The defense-in-depth gate at the loader must still strip.
+	it('exposes the canonical token to the owner even when the floor raises effectiveMode above private-link', async () => {
+		// F-302: when the global floor (private-oauth) raises the effective mode
+		// above the stored private-link, the owner must still see the canonical
+		// share token so the share modal stays stable across reloads. Anonymous
+		// viewers and non-owners are still gated (covered by tests above).
 		await seedShareSettings({
 			userId: USER_ID,
 			year: YEAR,
@@ -320,6 +405,6 @@ describe('wrapped/[year]/u/[identifier] loader: shareToken payload gating', () =
 			}
 		});
 
-		expect(data.shareSettings.shareToken).toBeNull();
+		expect(data.shareSettings.shareToken).toBe(TOKEN);
 	});
 });

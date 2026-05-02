@@ -30,8 +30,8 @@ export const UpdateSlideConfigSchema = z.object({
 export type UpdateSlideConfig = z.infer<typeof UpdateSlideConfigSchema>;
 
 export const CreateCustomSlideSchema = z.object({
-	title: z.string().min(1).max(200),
-	content: z.string().min(1).max(10000),
+	title: z.string().trim().min(1).max(200),
+	content: z.string().trim().min(1).max(10000),
 	enabled: z.boolean().default(true),
 	sortOrder: z.number().int().nonnegative(),
 	year: z.number().int().min(2000).max(2100).nullable().optional()
@@ -40,8 +40,8 @@ export const CreateCustomSlideSchema = z.object({
 export type CreateCustomSlide = z.infer<typeof CreateCustomSlideSchema>;
 
 export const UpdateCustomSlideSchema = z.object({
-	title: z.string().min(1).max(200).optional(),
-	content: z.string().min(1).max(10000).optional(),
+	title: z.string().trim().min(1).max(200).optional(),
+	content: z.string().trim().min(1).max(10000).optional(),
 	enabled: z.boolean().optional(),
 	sortOrder: z.number().int().nonnegative().optional(),
 	year: z.number().int().min(2000).max(2100).nullable().optional()

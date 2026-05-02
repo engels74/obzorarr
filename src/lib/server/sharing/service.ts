@@ -31,6 +31,10 @@ export function isValidTokenFormat(token: string): boolean {
 	return uuidV4Regex.test(token);
 }
 
+export function isPureNumericId(value: string): boolean {
+	return /^\d+$/.test(value);
+}
+
 function normalizeShareModeSource(value: string | null): ShareModeSourceType {
 	const parsed = ShareModeSourceSchema.safeParse(value ?? ShareModeSource.EXPLICIT);
 	return parsed.success ? parsed.data : ShareModeSource.EXPLICIT;
@@ -130,12 +134,62 @@ export async function setGlobalShareDefaults(defaults: GlobalShareDefaults): Pro
 	});
 }
 
-export async function bulkApplyUserControl(canUserControl: boolean): Promise<number> {
-	const result = await db
-		.update(shareSettings)
-		.set({ canUserControl })
-		.returning({ id: shareSettings.id });
-	return result.length;
+export async function bulkApplyShareDefaults(): Promise<number> {
+	return db.transaction(async (tx) => {
+		const defaultsResult = await tx
+			.select({ key: appSettings.key, value: appSettings.value })
+			.from(appSettings)
+			.where(eq(appSettings.key, ShareSettingsKey.DEFAULT_SHARE_MODE))
+			.limit(1);
+
+		const allowResult = await tx
+			.select({ value: appSettings.value })
+			.from(appSettings)
+			.where(eq(appSettings.key, ShareSettingsKey.ALLOW_USER_CONTROL))
+			.limit(1);
+
+		const parsedDefault = ShareModeSchema.safeParse(defaultsResult[0]?.value);
+		const defaultMode: ShareModeType = parsedDefault.success
+			? parsedDefault.data
+			: ShareMode.PUBLIC;
+		const allowUserControl = allowResult[0]?.value === 'true';
+
+		const baseUpdate: Record<string, unknown> = {
+			mode: defaultMode,
+			modeSource: ShareModeSource.DEFAULT,
+			canUserControl: allowUserControl
+		};
+
+		if (defaultMode !== ShareMode.PRIVATE_LINK) {
+			baseUpdate.shareToken = null;
+		}
+
+		const updated = await tx.update(shareSettings).set(baseUpdate).returning({
+			id: shareSettings.id,
+			userId: shareSettings.userId,
+			year: shareSettings.year,
+			shareToken: shareSettings.shareToken
+		});
+
+		if (defaultMode === ShareMode.PRIVATE_LINK) {
+			for (const row of updated) {
+				if (!row.shareToken) {
+					await tx
+						.update(shareSettings)
+						.set({ shareToken: generateShareToken() })
+						.where(
+							and(
+								eq(shareSettings.userId, row.userId),
+								eq(shareSettings.year, row.year),
+								isNull(shareSettings.shareToken)
+							)
+						);
+				}
+			}
+		}
+
+		return updated.length;
+	});
 }
 
 export async function getServerWrappedShareMode(): Promise<ShareModeType> {

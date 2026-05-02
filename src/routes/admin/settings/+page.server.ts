@@ -4,6 +4,7 @@ import { env } from '$env/dynamic/private';
 import {
 	AnonymizationMode,
 	type AnonymizationModeType,
+	API_CONFIG_KEYS,
 	AppSettingsKey,
 	type ConfigSource,
 	clearCachedServerMachineId,
@@ -25,6 +26,7 @@ import {
 	PRIVACY_SETTINGS_KEYS,
 	resetCsrfWarningDismissal,
 	setAnonymizationMode,
+	setApiConfigAtomic,
 	setAppSetting,
 	setCachedServerName,
 	setPrivacySettingsAtomic,
@@ -50,7 +52,7 @@ import {
 	setLogRetentionDays
 } from '$lib/server/logging';
 import {
-	bulkApplyUserControl,
+	bulkApplyShareDefaults,
 	getGlobalAllowUserControl,
 	getGlobalDefaultShareMode,
 	getServerWrappedShareMode,
@@ -75,10 +77,6 @@ const GlobalDefaultsSchema = z.object({
 	defaultShareMode: ShareModeSchema,
 	allowUserControl: z.coerce.boolean()
 });
-const BulkUserControlSchema = z.object({
-	canUserControl: z.enum(['true', 'false']).transform((v) => v === 'true')
-});
-
 // Server-wide wrapped only supports public and private-oauth (not private-link)
 const ServerWrappedModeSchema = z.enum(['public', 'private-oauth']);
 
@@ -95,12 +93,21 @@ const ApiConfigSchema = z.object({
 	plexToken: z.string().max(512).optional(),
 	openaiApiKey: z.string().max(512).optional(),
 	openaiBaseUrl: z.string().max(512).url('Invalid URL format').optional().or(z.literal('')),
-	openaiModel: z.string().max(100).optional()
+	openaiModel: z.string().max(100).optional(),
+	apiConfigVersion: z.string()
 });
 
 const LogSettingsSchema = z.object({
-	retentionDays: z.number().min(1).max(365),
-	maxCount: z.number().min(1000).max(1000000),
+	retentionDays: z
+		.number({ error: 'Retention days must be a number' })
+		.int('Retention days must be a whole number')
+		.min(1, 'Retention days must be at least 1')
+		.max(365, 'Retention days cannot exceed 365'),
+	maxCount: z
+		.number({ error: 'Max log count must be a number' })
+		.int('Max log count must be a whole number')
+		.min(1000, 'Max log count must be at least 1000')
+		.max(1000000, 'Max log count cannot exceed 1,000,000'),
 	debugEnabled: z.boolean()
 });
 
@@ -143,7 +150,8 @@ export const load: PageServerLoad = async () => {
 		csrfWarningDismissed,
 		csrfOriginSkippedRaw,
 		trustProxyConfig,
-		privacySettingsUpdatedAt
+		privacySettingsUpdatedAt,
+		apiConfigUpdatedAt
 	] = await Promise.all([
 		getApiConfigWithSources(),
 		getUITheme(),
@@ -161,7 +169,8 @@ export const load: PageServerLoad = async () => {
 		isCsrfWarningDismissed(),
 		getAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED),
 		getTrustProxyConfigWithSource(),
-		getAppSettingsUpdatedAt(PRIVACY_SETTINGS_KEYS)
+		getAppSettingsUpdatedAt(PRIVACY_SETTINGS_KEYS),
+		getAppSettingsUpdatedAt(API_CONFIG_KEYS)
 	]);
 
 	const currentYear = new Date().getFullYear();
@@ -209,6 +218,7 @@ export const load: PageServerLoad = async () => {
 		},
 		serverWrappedShareMode,
 		privacySettingsVersion: privacySettingsUpdatedAt?.toISOString() ?? '',
+		apiConfigVersion: apiConfigUpdatedAt?.toISOString() ?? '',
 		security: {
 			originValue: csrfConfig.origin.value,
 			csrfEnabled: !!csrfConfig.origin.value,
@@ -233,7 +243,8 @@ export const actions: Actions = requireAdminActions({
 			plexToken: formData.get('plexToken')?.toString() ?? '',
 			openaiApiKey: formData.get('openaiApiKey')?.toString() ?? '',
 			openaiBaseUrl: formData.get('openaiBaseUrl')?.toString() ?? '',
-			openaiModel: formData.get('openaiModel')?.toString() ?? ''
+			openaiModel: formData.get('openaiModel')?.toString() ?? '',
+			apiConfigVersion: formData.get('apiConfigVersion')?.toString() ?? ''
 		};
 
 		const parsed = ApiConfigSchema.safeParse(data);
@@ -247,29 +258,33 @@ export const actions: Actions = requireAdminActions({
 		try {
 			const apiConfig = await getApiConfigWithSources();
 
-			// Save each setting (only if provided AND not locked by ENV).
-			// Secret fields (plexToken, openaiApiKey) are blank on load to avoid
-			// leaking via hydration; an empty submission means "no change".
-			if (parsed.data.plexServerUrl && !apiConfig.plex.serverUrl.isLocked) {
-				await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, parsed.data.plexServerUrl);
-				// URL changed — the cached machineId may be stale; next membership
-				// check will re-fetch /identity against the new URL.
+			const result = await setApiConfigAtomic({
+				values: {
+					plexServerUrl: parsed.data.plexServerUrl ?? '',
+					plexToken: parsed.data.plexToken ?? '',
+					openaiApiKey: parsed.data.openaiApiKey ?? '',
+					openaiBaseUrl: parsed.data.openaiBaseUrl ?? '',
+					openaiModel: parsed.data.openaiModel ?? ''
+				},
+				locks: {
+					plexServerUrl: apiConfig.plex.serverUrl.isLocked,
+					plexToken: apiConfig.plex.token.isLocked,
+					openaiApiKey: apiConfig.openai.apiKey.isLocked,
+					openaiBaseUrl: apiConfig.openai.baseUrl.isLocked,
+					openaiModel: apiConfig.openai.model.isLocked
+				},
+				submittedVersion: parsed.data.apiConfigVersion
+			});
+
+			if (result.status === 'conflict') {
+				return fail(409, {
+					conflict: true,
+					error: 'Settings changed in another tab. Reload and try again.'
+				});
+			}
+
+			if (result.plexCredentialsChanged) {
 				await clearCachedServerMachineId();
-			}
-			if (parsed.data.plexToken && !apiConfig.plex.token.isLocked) {
-				await setAppSetting(AppSettingsKey.PLEX_TOKEN, parsed.data.plexToken);
-				// Token changed — the cached machineId was fetched with the old token;
-				// drop it so /identity runs with the new credentials.
-				await clearCachedServerMachineId();
-			}
-			if (parsed.data.openaiApiKey && !apiConfig.openai.apiKey.isLocked) {
-				await setAppSetting(AppSettingsKey.OPENAI_API_KEY, parsed.data.openaiApiKey);
-			}
-			if (parsed.data.openaiBaseUrl && !apiConfig.openai.baseUrl.isLocked) {
-				await setAppSetting(AppSettingsKey.OPENAI_BASE_URL, parsed.data.openaiBaseUrl);
-			}
-			if (parsed.data.openaiModel && !apiConfig.openai.model.isLocked) {
-				await setAppSetting(AppSettingsKey.OPENAI_MODEL, parsed.data.openaiModel);
 			}
 
 			return { success: true, message: 'API configuration updated' };
@@ -546,8 +561,8 @@ export const actions: Actions = requireAdminActions({
 		const debugEnabledStr = formData.get('debugEnabled')?.toString();
 
 		const data = {
-			retentionDays: retentionDaysStr ? parseInt(retentionDaysStr, 10) : 7,
-			maxCount: maxCountStr ? parseInt(maxCountStr, 10) : 50000,
+			retentionDays: retentionDaysStr ? Number.parseInt(retentionDaysStr, 10) : Number.NaN,
+			maxCount: maxCountStr ? Number.parseInt(maxCountStr, 10) : Number.NaN,
 			debugEnabled: debugEnabledStr === 'true'
 		};
 
@@ -601,24 +616,13 @@ export const actions: Actions = requireAdminActions({
 		}
 	},
 
-	bulkApplyUserControl: async ({ request }) => {
-		const formData = await request.formData();
-
-		const parsed = BulkUserControlSchema.safeParse({
-			canUserControl: formData.get('canUserControl')
-		});
-		if (!parsed.success) {
-			return fail(400, {
-				error: 'Invalid input: canUserControl must be "true" or "false"'
-			});
-		}
-
+	bulkApplyShareDefaults: async () => {
 		try {
-			const count = await bulkApplyUserControl(parsed.data.canUserControl);
+			const count = await bulkApplyShareDefaults();
 			return { success: true, message: `Updated ${count} user share records` };
 		} catch (error) {
 			const message =
-				error instanceof Error ? error.message : 'Failed to apply default to existing users';
+				error instanceof Error ? error.message : 'Failed to apply defaults to existing users';
 			return fail(500, { error: message });
 		}
 	},

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'bun:test';
 import { db } from '$lib/server/db/client';
 import { appSettings, shareSettings } from '$lib/server/db/schema';
 import {
+	bulkApplyShareDefaults,
 	deleteShareSettings,
 	generateShareToken,
 	getAllUserShareSettings,
@@ -13,6 +14,7 @@ import {
 	getShareSettingsByToken,
 	getShareSettingsReadOnly,
 	getUserLogoPreference,
+	isPureNumericId,
 	isValidTokenFormat,
 	regenerateShareToken,
 	setGlobalShareDefaults,
@@ -61,6 +63,23 @@ describe('Sharing Service', () => {
 			expect(isValidTokenFormat('not-a-uuid')).toBe(false);
 			expect(isValidTokenFormat('550e8400-e29b-51d4-a716-446655440000')).toBe(false); // Wrong version
 			expect(isValidTokenFormat('550e8400-e29b-41d4')).toBe(false); // Too short
+		});
+
+		it('isPureNumericId accepts non-empty digit strings', () => {
+			expect(isPureNumericId('1')).toBe(true);
+			expect(isPureNumericId('42')).toBe(true);
+			expect(isPureNumericId('1000000')).toBe(true);
+		});
+
+		it('isPureNumericId rejects mixed, signed, or empty strings', () => {
+			expect(isPureNumericId('')).toBe(false);
+			expect(isPureNumericId('2abc')).toBe(false);
+			expect(isPureNumericId('2a155c58-MANGLED-0000-0000-000000000000')).toBe(false);
+			expect(isPureNumericId('-5')).toBe(false);
+			expect(isPureNumericId('+5')).toBe(false);
+			expect(isPureNumericId(' 5')).toBe(false);
+			expect(isPureNumericId('5 ')).toBe(false);
+			expect(isPureNumericId('1.0')).toBe(false);
 		});
 	});
 
@@ -287,6 +306,115 @@ describe('Sharing Service', () => {
 
 				const settings = await getShareSettings(1, 2024);
 				expect(settings?.shareToken).toBe(token);
+			});
+		});
+
+		describe('bulkApplyShareDefaults', () => {
+			it('resets every existing row to the current defaults (PUBLIC + allow=true)', async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PUBLIC,
+					allowUserControl: true
+				});
+
+				await db.insert(shareSettings).values([
+					{
+						userId: 1,
+						year: 2024,
+						mode: ShareMode.PRIVATE_LINK,
+						modeSource: ShareModeSource.EXPLICIT,
+						shareToken: generateShareToken(),
+						canUserControl: false
+					},
+					{
+						userId: 2,
+						year: 2024,
+						mode: ShareMode.PRIVATE_OAUTH,
+						modeSource: ShareModeSource.EXPLICIT,
+						shareToken: null,
+						canUserControl: false
+					}
+				]);
+
+				const count = await bulkApplyShareDefaults();
+				expect(count).toBe(2);
+
+				const rows = await db.select().from(shareSettings);
+				for (const row of rows) {
+					expect(row.mode).toBe(ShareMode.PUBLIC);
+					expect(row.modeSource).toBe(ShareModeSource.DEFAULT);
+					expect(row.canUserControl).toBe(true);
+					expect(row.shareToken).toBeNull();
+				}
+			});
+
+			it('mints a token for every row when default is PRIVATE_LINK', async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_LINK,
+					allowUserControl: false
+				});
+
+				await db.insert(shareSettings).values([
+					{
+						userId: 1,
+						year: 2024,
+						mode: ShareMode.PUBLIC,
+						modeSource: ShareModeSource.EXPLICIT,
+						shareToken: null,
+						canUserControl: true
+					},
+					{
+						userId: 2,
+						year: 2024,
+						mode: ShareMode.PRIVATE_OAUTH,
+						modeSource: ShareModeSource.EXPLICIT,
+						shareToken: null,
+						canUserControl: true
+					}
+				]);
+
+				const count = await bulkApplyShareDefaults();
+				expect(count).toBe(2);
+
+				const rows = await db.select().from(shareSettings);
+				for (const row of rows) {
+					expect(row.mode).toBe(ShareMode.PRIVATE_LINK);
+					expect(row.modeSource).toBe(ShareModeSource.DEFAULT);
+					expect(row.canUserControl).toBe(false);
+					expect(row.shareToken).not.toBeNull();
+					expect(isValidTokenFormat(row.shareToken!)).toBe(true);
+				}
+			});
+
+			it('preserves existing tokens when default is PRIVATE_LINK and the row already has one', async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_LINK,
+					allowUserControl: false
+				});
+
+				const stashedToken = generateShareToken();
+				await db.insert(shareSettings).values({
+					userId: 1,
+					year: 2024,
+					mode: ShareMode.PRIVATE_LINK,
+					modeSource: ShareModeSource.EXPLICIT,
+					shareToken: stashedToken,
+					canUserControl: true
+				});
+
+				await bulkApplyShareDefaults();
+
+				const row = await db.select().from(shareSettings).limit(1);
+				expect(row[0]?.shareToken).toBe(stashedToken);
+			});
+
+			it('returns 0 when there are no share rows', async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PUBLIC,
+					allowUserControl: true
+				});
+
+				const count = await bulkApplyShareDefaults();
+				expect(count).toBe(0);
 			});
 		});
 	});

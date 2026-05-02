@@ -127,6 +127,18 @@ export const PRIVACY_SETTINGS_KEYS = [
 ] as const;
 
 /**
+ * Keys covered by the API configuration panel (Plex + OpenAI connections).
+ * Used for the optimistic-concurrency timestamp on `updateApiConfig`.
+ */
+export const API_CONFIG_KEYS = [
+	AppSettingsKey.PLEX_SERVER_URL,
+	AppSettingsKey.PLEX_TOKEN,
+	AppSettingsKey.OPENAI_API_KEY,
+	AppSettingsKey.OPENAI_BASE_URL,
+	AppSettingsKey.OPENAI_MODEL
+] as const;
+
+/**
  * Atomically validates that the privacy settings have not changed since
  * `submittedVersion` and, if so, writes all four values in a single SQLite
  * transaction. Returns `'conflict'` when the submitted version is stale.
@@ -214,6 +226,104 @@ export async function setPrivacySettingsAtomic(opts: {
 		}
 
 		return 'ok';
+	});
+}
+
+export interface SetApiConfigInput {
+	plexServerUrl: string;
+	plexToken: string;
+	openaiApiKey: string;
+	openaiBaseUrl: string;
+	openaiModel: string;
+}
+
+export interface SetApiConfigLocks {
+	plexServerUrl: boolean;
+	plexToken: boolean;
+	openaiApiKey: boolean;
+	openaiBaseUrl: boolean;
+	openaiModel: boolean;
+}
+
+export interface SetApiConfigResult {
+	status: 'ok' | 'conflict';
+	plexCredentialsChanged: boolean;
+}
+
+/**
+ * Atomically validates that the API config keys have not changed since
+ * `submittedVersion` and, if so, writes any non-empty, non-locked values in a
+ * single SQLite transaction. Returns `'conflict'` when the submitted version
+ * is stale; the caller should run cache-invalidation side effects (e.g.
+ * `clearCachedServerMachineId`) after commit when `plexCredentialsChanged`.
+ */
+export async function setApiConfigAtomic(opts: {
+	values: SetApiConfigInput;
+	locks: SetApiConfigLocks;
+	submittedVersion: string;
+}): Promise<SetApiConfigResult> {
+	return db.transaction(async (tx) => {
+		const rows = await tx
+			.select({ updatedAt: appSettings.updatedAt })
+			.from(appSettings)
+			.where(inArray(appSettings.key, API_CONFIG_KEYS as unknown as string[]));
+
+		if (rows.length > 0) {
+			let maxMs = 0;
+			for (const row of rows) {
+				const t = row.updatedAt.getTime();
+				if (t > maxMs) maxMs = t;
+			}
+			const submittedMs = opts.submittedVersion ? Date.parse(opts.submittedVersion) : Number.NaN;
+			if (Number.isNaN(submittedMs) || submittedMs < maxMs) {
+				return { status: 'conflict', plexCredentialsChanged: false };
+			}
+		}
+
+		const now = new Date();
+		let plexCredentialsChanged = false;
+
+		const writeIfApplicable = async (key: AppSettingsKeyType, value: string, locked: boolean) => {
+			if (!value || locked) return;
+			await tx
+				.insert(appSettings)
+				.values({ key, value, updatedAt: now })
+				.onConflictDoUpdate({
+					target: appSettings.key,
+					set: { value, updatedAt: now }
+				});
+		};
+
+		if (opts.values.plexServerUrl && !opts.locks.plexServerUrl) {
+			plexCredentialsChanged = true;
+		}
+		if (opts.values.plexToken && !opts.locks.plexToken) {
+			plexCredentialsChanged = true;
+		}
+
+		await writeIfApplicable(
+			AppSettingsKey.PLEX_SERVER_URL,
+			opts.values.plexServerUrl,
+			opts.locks.plexServerUrl
+		);
+		await writeIfApplicable(AppSettingsKey.PLEX_TOKEN, opts.values.plexToken, opts.locks.plexToken);
+		await writeIfApplicable(
+			AppSettingsKey.OPENAI_API_KEY,
+			opts.values.openaiApiKey,
+			opts.locks.openaiApiKey
+		);
+		await writeIfApplicable(
+			AppSettingsKey.OPENAI_BASE_URL,
+			opts.values.openaiBaseUrl,
+			opts.locks.openaiBaseUrl
+		);
+		await writeIfApplicable(
+			AppSettingsKey.OPENAI_MODEL,
+			opts.values.openaiModel,
+			opts.locks.openaiModel
+		);
+
+		return { status: 'ok', plexCredentialsChanged };
 	});
 }
 

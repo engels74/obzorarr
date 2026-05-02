@@ -31,6 +31,7 @@ import {
 	isPlexConfigured,
 	resetCsrfWarningDismissal,
 	setAnonymizationMode,
+	setApiConfigAtomic,
 	setAppSetting,
 	setCachedServerName,
 	setCurrentTheme,
@@ -926,6 +927,125 @@ describe('Admin Settings Service', () => {
 				const dismissed = await isCsrfWarningDismissed();
 				expect(dismissed).toBe(false);
 			});
+		});
+	});
+
+	describe('setApiConfigAtomic', () => {
+		const allUnlocked = {
+			plexServerUrl: false,
+			plexToken: false,
+			openaiApiKey: false,
+			openaiBaseUrl: false,
+			openaiModel: false
+		};
+
+		it('writes all provided values when version is fresh', async () => {
+			const result = await setApiConfigAtomic({
+				values: {
+					plexServerUrl: 'http://plex.example.com:32400',
+					plexToken: 'tok-1',
+					openaiApiKey: 'sk-test',
+					openaiBaseUrl: 'https://api.example.com',
+					openaiModel: 'gpt-4o'
+				},
+				locks: allUnlocked,
+				submittedVersion: new Date(Date.now() + 60_000).toISOString()
+			});
+
+			expect(result.status).toBe('ok');
+			expect(result.plexCredentialsChanged).toBe(true);
+			expect(await getAppSetting(AppSettingsKey.PLEX_SERVER_URL)).toBe(
+				'http://plex.example.com:32400'
+			);
+			expect(await getAppSetting(AppSettingsKey.PLEX_TOKEN)).toBe('tok-1');
+			expect(await getAppSetting(AppSettingsKey.OPENAI_API_KEY)).toBe('sk-test');
+			expect(await getAppSetting(AppSettingsKey.OPENAI_BASE_URL)).toBe('https://api.example.com');
+			expect(await getAppSetting(AppSettingsKey.OPENAI_MODEL)).toBe('gpt-4o');
+		});
+
+		it('returns conflict when submitted version is stale', async () => {
+			await setAppSetting(AppSettingsKey.OPENAI_MODEL, 'gpt-4o');
+			const stale = new Date(Date.now() - 60_000).toISOString();
+
+			const result = await setApiConfigAtomic({
+				values: {
+					plexServerUrl: '',
+					plexToken: '',
+					openaiApiKey: '',
+					openaiBaseUrl: '',
+					openaiModel: 'gpt-5-mini'
+				},
+				locks: allUnlocked,
+				submittedVersion: stale
+			});
+
+			expect(result.status).toBe('conflict');
+			expect(await getAppSetting(AppSettingsKey.OPENAI_MODEL)).toBe('gpt-4o');
+		});
+
+		it('returns conflict when submitted version is empty and rows exist', async () => {
+			await setAppSetting(AppSettingsKey.OPENAI_MODEL, 'gpt-4o');
+
+			const result = await setApiConfigAtomic({
+				values: {
+					plexServerUrl: '',
+					plexToken: '',
+					openaiApiKey: '',
+					openaiBaseUrl: '',
+					openaiModel: 'gpt-5-mini'
+				},
+				locks: allUnlocked,
+				submittedVersion: ''
+			});
+
+			expect(result.status).toBe('conflict');
+		});
+
+		it('skips locked fields silently', async () => {
+			const result = await setApiConfigAtomic({
+				values: {
+					plexServerUrl: 'http://plex.example.com:32400',
+					plexToken: 'tok-x',
+					openaiApiKey: 'sk-x',
+					openaiBaseUrl: '',
+					openaiModel: ''
+				},
+				locks: {
+					plexServerUrl: true,
+					plexToken: true,
+					openaiApiKey: false,
+					openaiBaseUrl: false,
+					openaiModel: false
+				},
+				submittedVersion: new Date(Date.now() + 60_000).toISOString()
+			});
+
+			expect(result.status).toBe('ok');
+			expect(result.plexCredentialsChanged).toBe(false);
+			expect(await getAppSetting(AppSettingsKey.PLEX_SERVER_URL)).toBeNull();
+			expect(await getAppSetting(AppSettingsKey.PLEX_TOKEN)).toBeNull();
+			expect(await getAppSetting(AppSettingsKey.OPENAI_API_KEY)).toBe('sk-x');
+		});
+
+		it('treats empty values as no-change', async () => {
+			await setAppSetting(AppSettingsKey.OPENAI_API_KEY, 'sk-existing');
+
+			const result = await setApiConfigAtomic({
+				values: {
+					plexServerUrl: '',
+					plexToken: '',
+					openaiApiKey: '',
+					openaiBaseUrl: '',
+					openaiModel: 'gpt-5-mini'
+				},
+				locks: allUnlocked,
+				submittedVersion: new Date(Date.now() + 60_000).toISOString()
+			});
+
+			expect(result.status).toBe('ok');
+			expect(result.plexCredentialsChanged).toBe(false);
+			expect(await getAppSetting(AppSettingsKey.OPENAI_API_KEY)).toBe('sk-existing');
+			expect(await getAppSetting(AppSettingsKey.OPENAI_MODEL)).toBe('gpt-5-mini');
 		});
 	});
 });

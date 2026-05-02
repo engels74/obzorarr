@@ -11,6 +11,7 @@ import {
 	ensureShareToken,
 	getGlobalDefaultShareMode,
 	getOrCreateShareSettings,
+	isPureNumericId,
 	isValidTokenFormat,
 	regenerateShareToken,
 	updateShareSettings
@@ -53,8 +54,12 @@ async function resolveUserIdFromIdentifier(
 		}
 	}
 
-	const userId = parseInt(identifier, 10);
-	return Number.isNaN(userId) || userId <= 0 ? null : userId;
+	if (!isPureNumericId(identifier)) {
+		return null;
+	}
+
+	const userId = Number(identifier);
+	return Number.isFinite(userId) && userId > 0 ? userId : null;
 }
 
 export const load: PageServerLoad = async ({ params, locals, parent }) => {
@@ -72,7 +77,10 @@ export const load: PageServerLoad = async ({ params, locals, parent }) => {
 	if (isValidTokenFormat(identifier)) {
 		accessedViaToken = true;
 		try {
-			const tokenResult = await checkTokenAccess(identifier);
+			const tokenResult = await checkTokenAccess({
+				token: identifier,
+				currentUser: locals.user
+			});
 			userId = tokenResult.userId;
 
 			// Verify year matches the token's year
@@ -89,8 +97,11 @@ export const load: PageServerLoad = async ({ params, locals, parent }) => {
 			throw err;
 		}
 	} else {
-		const parsedId = parseInt(identifier, 10);
-		if (Number.isNaN(parsedId) || parsedId <= 0) {
+		if (!isPureNumericId(identifier)) {
+			error(404, "We couldn't find a Wrapped page for that link.");
+		}
+		const parsedId = Number(identifier);
+		if (!Number.isFinite(parsedId) || parsedId <= 0) {
 			error(404, "We couldn't find a Wrapped page for that link.");
 		}
 		userId = parsedId;
@@ -168,24 +179,20 @@ export const load: PageServerLoad = async ({ params, locals, parent }) => {
 
 	const globalFloorForUrl = await getGlobalDefaultShareMode();
 	const effectiveModeForUrl = getMoreRestrictiveMode(shareSettings.mode, globalFloorForUrl);
-	// Resolve the share token for the URL, minting one lazily if needed (e.g. when
-	// the global floor raises the effective mode to private-link but the per-user
-	// row was created under a less-restrictive mode and has no token yet).
-	const resolvedShareToken =
-		effectiveModeForUrl === ShareMode.PRIVATE_LINK
-			? (shareSettings.shareToken ?? (await ensureShareToken(userId, year)))
-			: null;
+	const ownerOrAdmin = isOwner || isAdmin;
+	const needsTokenForUrl = effectiveModeForUrl === ShareMode.PRIVATE_LINK;
+	// Owner/admin keep their canonical token even when the floor raises the
+	// effective mode above PRIVATE_LINK, so the share modal stays stable
+	// across reloads. Lazy-mint only when PRIVATE_LINK is actually reachable.
+	const rawTokenForOwner = ownerOrAdmin
+		? (shareSettings.shareToken ?? (needsTokenForUrl ? await ensureShareToken(userId, year) : null))
+		: null;
+	const resolvedShareToken = needsTokenForUrl
+		? (rawTokenForOwner ?? shareSettings.shareToken ?? (await ensureShareToken(userId, year)))
+		: null;
 	const urlIdentifier = resolvedShareToken ?? userId;
 
-	// Only owner/admin sees the raw token, and only when the effective mode is
-	// actually private-link. Anonymous and non-owner viewers never receive it,
-	// even if the row still holds one (defense-in-depth against capture/replay).
-	// Use resolvedShareToken (not the stale shareSettings.shareToken) so that a
-	// freshly-minted token is correctly surfaced to the owner/admin.
-	const exposedShareToken =
-		(isOwner || isAdmin) && effectiveModeForUrl === ShareMode.PRIVATE_LINK
-			? resolvedShareToken
-			: null;
+	const exposedShareToken = ownerOrAdmin ? rawTokenForOwner : null;
 	const signedStats = await signStatsThumbnails(stats, {
 		kind: 'user',
 		year,

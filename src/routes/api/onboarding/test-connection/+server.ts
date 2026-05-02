@@ -47,13 +47,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (!parseResult.success) {
 			const errorMessage = parseResult.error.issues[0]?.message ?? 'Invalid request';
-			return json({ success: false, error: errorMessage });
+			return json({ success: false, error: errorMessage }, { status: 400 });
 		}
 
 		const { url } = parseResult.data;
 		const accessToken = parseResult.data.accessToken ?? parseResult.data.token;
 		if (!accessToken) {
-			return json({ success: false, error: 'Access token is required' });
+			return json({ success: false, error: 'Access token is required' }, { status: 400 });
 		}
 
 		// Normalize URL - remove trailing slash
@@ -78,10 +78,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			// Check for authentication errors
 			if (response.status === 401) {
 				logger.debug('Connection test failed: Authentication failed', 'Onboarding');
-				return json({
-					success: false,
-					error: 'Authentication failed - the access token may be invalid'
-				});
+				return json(
+					{
+						success: false,
+						error: 'Authentication failed - the access token may be invalid'
+					},
+					{ status: 401 }
+				);
 			}
 
 			if (!response.ok) {
@@ -89,10 +92,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					`Connection test failed: ${response.status} ${response.statusText}`,
 					'Onboarding'
 				);
-				return json({
-					success: false,
-					error: `Server returned error: ${response.status} ${response.statusText}`
-				});
+				return json(
+					{
+						success: false,
+						error: `Server returned error: ${response.status} ${response.statusText}`
+					},
+					{ status: 502 }
+				);
 			}
 
 			// Parse and validate response
@@ -101,10 +107,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 			if (!identityResult.success) {
 				logger.debug('Connection test failed: Not a valid Plex server response', 'Onboarding');
-				return json({
-					success: false,
-					error: 'This does not appear to be a Plex Media Server'
-				});
+				return json(
+					{
+						success: false,
+						error: 'This does not appear to be a Plex Media Server'
+					},
+					{ status: 502 }
+				);
 			}
 
 			const { machineIdentifier, friendlyName } = identityResult.data.MediaContainer;
@@ -121,17 +130,23 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			if (fetchError instanceof Error) {
 				const errorMessage = classifyConnectionError(fetchError);
 				logger.debug(`Connection test failed: ${errorMessage}`, 'Onboarding');
-				return json({
-					success: false,
-					error: errorMessage
-				});
+				return json(
+					{
+						success: false,
+						error: errorMessage
+					},
+					{ status: 502 }
+				);
 			}
 
 			logger.debug('Connection test failed: Unknown error', 'Onboarding');
-			return json({
-				success: false,
-				error: 'Connection failed'
-			});
+			return json(
+				{
+					success: false,
+					error: 'Connection failed'
+				},
+				{ status: 502 }
+			);
 		} finally {
 			// Keep the timer armed until after response.json() + parsing complete so
 			// CONNECTION_TIMEOUT_MS caps the whole /identity call, not just the
@@ -148,9 +163,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			`Test connection error: ${err instanceof Error ? err.message : String(err)}`,
 			'Onboarding'
 		);
-		return json({
-			success: false,
-			error: 'An unexpected error occurred'
-		});
+		return json(
+			{
+				success: false,
+				error: 'An unexpected error occurred'
+			},
+			{ status: 500 }
+		);
 	}
 };

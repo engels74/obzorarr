@@ -59,6 +59,21 @@ let editorContent = $state('');
 let editorYear = $state<number | null>(null);
 let editorEnabled = $state(true);
 let previewHtml = $state('');
+let editorTriggerRef: HTMLElement | null = null;
+let editorTitleInputRef: HTMLInputElement | null = $state(null);
+
+$effect(() => {
+	if (!showEditor) return;
+	const handler = (e: KeyboardEvent) => {
+		if (e.key === 'Escape') {
+			e.preventDefault();
+			closeEditor();
+		}
+	};
+	document.addEventListener('keydown', handler);
+	queueMicrotask(() => editorTitleInputRef?.focus());
+	return () => document.removeEventListener('keydown', handler);
+});
 
 // Delete confirmation state
 let deletingSlideId = $state<number | null>(null);
@@ -117,6 +132,7 @@ const unifiedSlides = $derived.by(() => {
 
 // Open editor for new slide
 function openNewEditor() {
+	editorTriggerRef = (document.activeElement as HTMLElement) ?? null;
 	editingSlide = null;
 	editorTitle = '';
 	editorContent = '';
@@ -128,6 +144,7 @@ function openNewEditor() {
 
 // Open editor for existing slide
 function openEditEditor(slide: (typeof data.customSlides)[0]) {
+	editorTriggerRef = (document.activeElement as HTMLElement) ?? null;
 	editingSlide = slide;
 	editorTitle = slide.title;
 	editorContent = slide.content;
@@ -141,6 +158,9 @@ function openEditEditor(slide: (typeof data.customSlides)[0]) {
 function closeEditor() {
 	showEditor = false;
 	editingSlide = null;
+	const trigger = editorTriggerRef;
+	editorTriggerRef = null;
+	queueMicrotask(() => trigger?.focus());
 }
 
 // Handle drag start
@@ -474,8 +494,8 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			<div
 				class="modal"
 				onclick={(e) => e.stopPropagation()}
-				onkeydown={(e) => e.key === 'Escape' && closeEditor()}
 				role="dialog"
+				aria-modal="true"
 				aria-labelledby="editor-title"
 				tabindex="-1"
 			>
@@ -517,6 +537,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 							type="text"
 							id="title"
 							name="title"
+							bind:this={editorTitleInputRef}
 							bind:value={editorTitle}
 							required
 							placeholder="Enter slide title"

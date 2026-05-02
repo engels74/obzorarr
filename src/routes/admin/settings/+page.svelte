@@ -107,33 +107,34 @@ let selectedDefaultShareMode = $state('public');
 let allowUserControl = $state(true);
 let isBulkApplyingUserControl = $state(false);
 
-let bulkApplyUserControlDialogOpen = $state(false);
+let bulkApplyShareDefaultsDialogOpen = $state(false);
 
-async function confirmBulkApplyUserControl() {
-	bulkApplyUserControlDialogOpen = false;
+async function confirmBulkApplyShareDefaults() {
+	bulkApplyShareDefaultsDialogOpen = false;
 	isBulkApplyingUserControl = true;
 
-	const formData = new FormData();
-	formData.append('canUserControl', allowUserControl.toString());
-
 	try {
-		const response = await fetch('?/bulkApplyUserControl', {
+		const response = await fetch('?/bulkApplyShareDefaults', {
 			method: 'POST',
-			body: formData
+			body: new FormData()
 		});
 		const result = deserialize(await response.text());
 
-		if (result.type === 'success' && result.data) {
-			handleFormToast(result.data as { success: boolean; message: string });
+		if (result.type === 'success') {
+			const payload = (result.data ?? {
+				success: true,
+				message: 'Defaults applied to all users.'
+			}) as { success: boolean; message: string };
+			handleFormToast(payload);
 		} else if (result.type === 'failure') {
 			handleFormToast({
-				error: (result.data as { error?: string })?.error ?? 'Failed to apply default.'
+				error: (result.data as { error?: string })?.error ?? 'Failed to apply defaults.'
 			});
 		} else if (result.type === 'error') {
-			handleFormToast({ error: result.error?.message ?? 'Failed to apply default.' });
+			handleFormToast({ error: result.error?.message ?? 'Failed to apply defaults.' });
 		}
 	} catch (error) {
-		const message = error instanceof Error ? error.message : 'Failed to apply default.';
+		const message = error instanceof Error ? error.message : 'Failed to apply defaults.';
 		handleFormToast({ error: message });
 	} finally {
 		isBulkApplyingUserControl = false;
@@ -538,6 +539,7 @@ const logFieldErrors = $derived(
 					</div>
 
 					<form method="POST" action="?/updateApiConfig" use:enhance class="panel-form">
+						<input type="hidden" name="apiConfigVersion" value={data.apiConfigVersion} />
 						<div class="form-field">
 							<div class="field-header">
 								<label for="plexServerUrl">Server URL</label>
@@ -717,6 +719,7 @@ const logFieldErrors = $derived(
 					</p>
 
 					<form method="POST" action="?/updateApiConfig" use:enhance class="panel-form">
+						<input type="hidden" name="apiConfigVersion" value={data.apiConfigVersion} />
 						<div class="form-field">
 							<div class="field-header">
 								<label for="openaiApiKey">API Key</label>
@@ -1342,14 +1345,14 @@ const logFieldErrors = $derived(
 						type="button"
 						class="btn-secondary"
 						disabled={isBulkApplyingUserControl}
-						onclick={() => (bulkApplyUserControlDialogOpen = true)}
+						onclick={() => (bulkApplyShareDefaultsDialogOpen = true)}
 					>
 						{#if isBulkApplyingUserControl}
 							<Loader2 class="btn-icon spinning" />
 							Applying...
 						{:else}
 							<Users class="btn-icon" />
-							Apply current default to all existing users
+							Apply current defaults to all existing users
 						{/if}
 					</button>
 				</section>
@@ -2192,20 +2195,21 @@ const logFieldErrors = $derived(
 	</AlertDialog.Content>
 </AlertDialog.Root>
 
-<AlertDialog.Root bind:open={bulkApplyUserControlDialogOpen}>
+<AlertDialog.Root bind:open={bulkApplyShareDefaultsDialogOpen}>
 	<AlertDialog.Content>
 		<AlertDialog.Header>
-			<AlertDialog.Title>Apply default to all users?</AlertDialog.Title>
+			<AlertDialog.Title>Apply current defaults to all users?</AlertDialog.Title>
 			<AlertDialog.Description>
-				This will overwrite the per-user "can control" setting for every existing user. Future users
-				will still receive the current default.
+				This resets every existing user's share mode and "can control" setting back to the current
+				server defaults. Per-user customizations will be lost. Future users continue to receive
+				the current defaults.
 			</AlertDialog.Description>
 		</AlertDialog.Header>
 		<AlertDialog.Footer>
 			<AlertDialog.Cancel disabled={isBulkApplyingUserControl}>Cancel</AlertDialog.Cancel>
 			<AlertDialog.Action
 				disabled={isBulkApplyingUserControl}
-				onclick={confirmBulkApplyUserControl}
+				onclick={confirmBulkApplyShareDefaults}
 			>
 				{isBulkApplyingUserControl ? 'Applying…' : 'Apply to all users'}
 			</AlertDialog.Action>
