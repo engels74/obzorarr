@@ -294,6 +294,26 @@ export async function setApiConfigAtomic(opts: {
 				});
 		};
 
+		// For fields that are echoed back to the client (URLs, model name), an empty
+		// submission means "user cleared the field" — delete the row so resolveConfigValue
+		// falls through to the env value or the built-in default. For secret fields
+		// (PLEX_TOKEN, OPENAI_API_KEY) we never echo the stored value back, so an empty
+		// submission means "unchanged" and is handled by writeIfApplicable's skip path.
+		const clearIfEmpty = async (key: AppSettingsKeyType, value: string, locked: boolean) => {
+			if (locked) return;
+			if (value) {
+				await tx
+					.insert(appSettings)
+					.values({ key, value, updatedAt: now })
+					.onConflictDoUpdate({
+						target: appSettings.key,
+						set: { value, updatedAt: now }
+					});
+			} else {
+				await tx.delete(appSettings).where(eq(appSettings.key, key));
+			}
+		};
+
 		if (opts.values.plexServerUrl && !opts.locks.plexServerUrl) {
 			plexCredentialsChanged = true;
 		}
@@ -301,7 +321,7 @@ export async function setApiConfigAtomic(opts: {
 			plexCredentialsChanged = true;
 		}
 
-		await writeIfApplicable(
+		await clearIfEmpty(
 			AppSettingsKey.PLEX_SERVER_URL,
 			opts.values.plexServerUrl,
 			opts.locks.plexServerUrl
@@ -312,12 +332,12 @@ export async function setApiConfigAtomic(opts: {
 			opts.values.openaiApiKey,
 			opts.locks.openaiApiKey
 		);
-		await writeIfApplicable(
+		await clearIfEmpty(
 			AppSettingsKey.OPENAI_BASE_URL,
 			opts.values.openaiBaseUrl,
 			opts.locks.openaiBaseUrl
 		);
-		await writeIfApplicable(
+		await clearIfEmpty(
 			AppSettingsKey.OPENAI_MODEL,
 			opts.values.openaiModel,
 			opts.locks.openaiModel
