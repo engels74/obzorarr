@@ -969,10 +969,10 @@ describe('Admin Settings Service', () => {
 
 			const result = await setApiConfigAtomic({
 				values: {
-					plexServerUrl: '',
-					plexToken: '',
-					openaiApiKey: '',
-					openaiBaseUrl: '',
+					plexServerUrl: undefined,
+					plexToken: undefined,
+					openaiApiKey: undefined,
+					openaiBaseUrl: undefined,
 					openaiModel: 'gpt-5-mini'
 				},
 				locks: allUnlocked,
@@ -988,10 +988,10 @@ describe('Admin Settings Service', () => {
 
 			const result = await setApiConfigAtomic({
 				values: {
-					plexServerUrl: '',
-					plexToken: '',
-					openaiApiKey: '',
-					openaiBaseUrl: '',
+					plexServerUrl: undefined,
+					plexToken: undefined,
+					openaiApiKey: undefined,
+					openaiBaseUrl: undefined,
 					openaiModel: 'gpt-5-mini'
 				},
 				locks: allUnlocked,
@@ -1007,8 +1007,8 @@ describe('Admin Settings Service', () => {
 					plexServerUrl: 'http://plex.example.com:32400',
 					plexToken: 'tok-x',
 					openaiApiKey: 'sk-x',
-					openaiBaseUrl: '',
-					openaiModel: ''
+					openaiBaseUrl: undefined,
+					openaiModel: undefined
 				},
 				locks: {
 					plexServerUrl: true,
@@ -1027,15 +1027,16 @@ describe('Admin Settings Service', () => {
 			expect(await getAppSetting(AppSettingsKey.OPENAI_API_KEY)).toBe('sk-x');
 		});
 
-		it('treats empty values as no-change', async () => {
+		it('treats undefined values as no-change (absent fields are not touched)', async () => {
 			await setAppSetting(AppSettingsKey.OPENAI_API_KEY, 'sk-existing');
+			await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, 'http://plex.example.com:32400');
 
 			const result = await setApiConfigAtomic({
 				values: {
-					plexServerUrl: '',
-					plexToken: '',
-					openaiApiKey: '',
-					openaiBaseUrl: '',
+					plexServerUrl: undefined,
+					plexToken: undefined,
+					openaiApiKey: undefined,
+					openaiBaseUrl: undefined,
 					openaiModel: 'gpt-5-mini'
 				},
 				locks: allUnlocked,
@@ -1045,7 +1046,131 @@ describe('Admin Settings Service', () => {
 			expect(result.status).toBe('ok');
 			expect(result.plexCredentialsChanged).toBe(false);
 			expect(await getAppSetting(AppSettingsKey.OPENAI_API_KEY)).toBe('sk-existing');
+			expect(await getAppSetting(AppSettingsKey.PLEX_SERVER_URL)).toBe(
+				'http://plex.example.com:32400'
+			);
 			expect(await getAppSetting(AppSettingsKey.OPENAI_MODEL)).toBe('gpt-5-mini');
+		});
+
+		// Regression: an OpenAI-panel save must not wipe Plex rows. The two panels
+		// are separate <form> elements both targeting `?/updateApiConfig`, so the
+		// submission omits the other panel's inputs entirely (formData.has === false).
+		it('does not touch Plex rows when only OpenAI fields are submitted', async () => {
+			await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, 'http://plex.example.com:32400');
+			await setAppSetting(AppSettingsKey.PLEX_TOKEN, 'plex-secret');
+
+			const result = await setApiConfigAtomic({
+				values: {
+					plexServerUrl: undefined,
+					plexToken: undefined,
+					openaiApiKey: 'sk-new',
+					openaiBaseUrl: 'https://api.example.com',
+					openaiModel: 'gpt-4o'
+				},
+				locks: allUnlocked,
+				submittedVersion: new Date(Date.now() + 60_000).toISOString()
+			});
+
+			expect(result.status).toBe('ok');
+			expect(result.plexCredentialsChanged).toBe(false);
+			expect(await getAppSetting(AppSettingsKey.PLEX_SERVER_URL)).toBe(
+				'http://plex.example.com:32400'
+			);
+			expect(await getAppSetting(AppSettingsKey.PLEX_TOKEN)).toBe('plex-secret');
+			expect(await getAppSetting(AppSettingsKey.OPENAI_API_KEY)).toBe('sk-new');
+			expect(await getAppSetting(AppSettingsKey.OPENAI_MODEL)).toBe('gpt-4o');
+		});
+
+		it('clears echoed-back keys when submitted as empty string', async () => {
+			await setAppSetting(AppSettingsKey.OPENAI_BASE_URL, 'https://api.example.com');
+			await setAppSetting(AppSettingsKey.OPENAI_MODEL, 'gpt-4o');
+
+			const result = await setApiConfigAtomic({
+				values: {
+					plexServerUrl: undefined,
+					plexToken: undefined,
+					openaiApiKey: undefined,
+					openaiBaseUrl: '',
+					openaiModel: ''
+				},
+				locks: allUnlocked,
+				submittedVersion: new Date(Date.now() + 60_000).toISOString()
+			});
+
+			expect(result.status).toBe('ok');
+			expect(await getAppSetting(AppSettingsKey.OPENAI_BASE_URL)).toBeNull();
+			expect(await getAppSetting(AppSettingsKey.OPENAI_MODEL)).toBeNull();
+		});
+
+		it('treats empty string for secret keys as no-op (never clears stored secret)', async () => {
+			await setAppSetting(AppSettingsKey.PLEX_TOKEN, 'plex-secret');
+			await setAppSetting(AppSettingsKey.OPENAI_API_KEY, 'sk-existing');
+
+			const result = await setApiConfigAtomic({
+				values: {
+					plexServerUrl: undefined,
+					plexToken: '',
+					openaiApiKey: '',
+					openaiBaseUrl: undefined,
+					openaiModel: undefined
+				},
+				locks: allUnlocked,
+				submittedVersion: new Date(Date.now() + 60_000).toISOString()
+			});
+
+			expect(result.status).toBe('ok');
+			expect(await getAppSetting(AppSettingsKey.PLEX_TOKEN)).toBe('plex-secret');
+			expect(await getAppSetting(AppSettingsKey.OPENAI_API_KEY)).toBe('sk-existing');
+		});
+
+		// Regression: a clear-only mutation in tab A must advance the OCC version
+		// so that tab B (holding the pre-clear version) cannot resurrect the value.
+		it('advances the OCC version when a clear is the only mutation', async () => {
+			await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, 'http://plex.example.com:32400');
+			await setAppSetting(AppSettingsKey.OPENAI_BASE_URL, 'https://api.example.com');
+
+			const versionBeforeClear = await getAppSettingsUpdatedAt([
+				AppSettingsKey.PLEX_SERVER_URL,
+				AppSettingsKey.PLEX_TOKEN,
+				AppSettingsKey.OPENAI_API_KEY,
+				AppSettingsKey.OPENAI_BASE_URL,
+				AppSettingsKey.OPENAI_MODEL,
+				AppSettingsKey.API_CONFIG_VERSION
+			]);
+
+			// Allow at least 1ms for updatedAt comparison to be meaningful.
+			await new Promise((r) => setTimeout(r, 5));
+
+			// Tab A submits the version it loaded and clears OPENAI_BASE_URL only.
+			const tabA = await setApiConfigAtomic({
+				values: {
+					plexServerUrl: undefined,
+					plexToken: undefined,
+					openaiApiKey: undefined,
+					openaiBaseUrl: '',
+					openaiModel: undefined
+				},
+				locks: allUnlocked,
+				submittedVersion: versionBeforeClear?.toISOString() ?? ''
+			});
+			expect(tabA.status).toBe('ok');
+			expect(await getAppSetting(AppSettingsKey.OPENAI_BASE_URL)).toBeNull();
+
+			// Tab B still holds the pre-clear version. It must now lose OCC.
+			const tabB = await setApiConfigAtomic({
+				values: {
+					plexServerUrl: undefined,
+					plexToken: undefined,
+					openaiApiKey: undefined,
+					openaiBaseUrl: 'https://api.example.com',
+					openaiModel: undefined
+				},
+				locks: allUnlocked,
+				submittedVersion: versionBeforeClear?.toISOString() ?? ''
+			});
+			expect(tabB.status).toBe('conflict');
+			// Tab B's resurrection of the cleared value must NOT have happened.
+			expect(await getAppSetting(AppSettingsKey.OPENAI_BASE_URL)).toBeNull();
 		});
 	});
 });

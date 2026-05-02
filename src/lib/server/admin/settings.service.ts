@@ -11,6 +11,13 @@ export const AppSettingsKey = {
 	OPENAI_API_KEY: 'openai_api_key',
 	OPENAI_BASE_URL: 'openai_base_url',
 	OPENAI_MODEL: 'openai_model',
+	/**
+	 * Bookkeeping marker bumped on every successful `setApiConfigAtomic` mutation
+	 * (write OR clear). Included in `API_CONFIG_KEYS` so the optimistic-concurrency
+	 * version always advances, even when the only mutation was a row deletion.
+	 * Never read as configuration; only its `updatedAt` matters.
+	 */
+	API_CONFIG_VERSION: 'api_config_version',
 	UI_THEME: 'ui_theme',
 	WRAPPED_THEME: 'wrapped_theme',
 	/** @deprecated Use WRAPPED_THEME instead - kept for backward compatibility */
@@ -129,13 +136,19 @@ export const PRIVACY_SETTINGS_KEYS = [
 /**
  * Keys covered by the API configuration panel (Plex + OpenAI connections).
  * Used for the optimistic-concurrency timestamp on `updateApiConfig`.
+ *
+ * `API_CONFIG_VERSION` is a write-only bookkeeping row included so a successful
+ * mutation that *only deletes* config rows still advances `max(updatedAt)` — without
+ * it, a clear in tab A could leave the version unchanged and let stale tab B
+ * resurrect the cleared value while passing the OCC check.
  */
 export const API_CONFIG_KEYS = [
 	AppSettingsKey.PLEX_SERVER_URL,
 	AppSettingsKey.PLEX_TOKEN,
 	AppSettingsKey.OPENAI_API_KEY,
 	AppSettingsKey.OPENAI_BASE_URL,
-	AppSettingsKey.OPENAI_MODEL
+	AppSettingsKey.OPENAI_MODEL,
+	AppSettingsKey.API_CONFIG_VERSION
 ] as const;
 
 /**
@@ -229,12 +242,25 @@ export async function setPrivacySettingsAtomic(opts: {
 	});
 }
 
+/**
+ * Per-field intent for `setApiConfigAtomic`:
+ *  - `undefined` — field was not present in the submitted form (e.g. saved from
+ *    the OpenAI panel which doesn't include Plex fields). The row must NOT be
+ *    touched.
+ *  - `''` — field was present and submitted empty. For echoed-back keys
+ *    (PLEX_SERVER_URL, OPENAI_BASE_URL, OPENAI_MODEL) this clears the row so
+ *    `resolveConfigValue` falls through to env / default. For secret keys
+ *    (PLEX_TOKEN, OPENAI_API_KEY) the value is never echoed to the client, so
+ *    an empty submission means "leave the stored secret alone" — clearing those
+ *    is done via dedicated actions (e.g. `clearOpenaiKey`).
+ *  - non-empty string — write the new value (subject to the lock check).
+ */
 export interface SetApiConfigInput {
-	plexServerUrl: string;
-	plexToken: string;
-	openaiApiKey: string;
-	openaiBaseUrl: string;
-	openaiModel: string;
+	plexServerUrl: string | undefined;
+	plexToken: string | undefined;
+	openaiApiKey: string | undefined;
+	openaiBaseUrl: string | undefined;
+	openaiModel: string | undefined;
 }
 
 export interface SetApiConfigLocks {
@@ -283,8 +309,7 @@ export async function setApiConfigAtomic(opts: {
 		const now = new Date();
 		let plexCredentialsChanged = false;
 
-		const writeIfApplicable = async (key: AppSettingsKeyType, value: string, locked: boolean) => {
-			if (!value || locked) return;
+		const upsert = async (key: AppSettingsKeyType, value: string) => {
 			await tx
 				.insert(appSettings)
 				.values({ key, value, updatedAt: now })
@@ -294,24 +319,36 @@ export async function setApiConfigAtomic(opts: {
 				});
 		};
 
-		// For fields that are echoed back to the client (URLs, model name), an empty
-		// submission means "user cleared the field" — delete the row so resolveConfigValue
-		// falls through to the env value or the built-in default. For secret fields
-		// (PLEX_TOKEN, OPENAI_API_KEY) we never echo the stored value back, so an empty
-		// submission means "unchanged" and is handled by writeIfApplicable's skip path.
-		const clearIfEmpty = async (key: AppSettingsKeyType, value: string, locked: boolean) => {
+		// Secret keys: never echoed back to the client. `undefined` (field absent)
+		// AND `''` (field present but blank) both mean "leave the stored secret
+		// alone" — explicit clearing is done via dedicated actions.
+		const writeSecret = async (
+			key: AppSettingsKeyType,
+			value: string | undefined,
+			locked: boolean
+		) => {
 			if (locked) return;
-			if (value) {
-				await tx
-					.insert(appSettings)
-					.values({ key, value, updatedAt: now })
-					.onConflictDoUpdate({
-						target: appSettings.key,
-						set: { value, updatedAt: now }
-					});
-			} else {
+			if (value === undefined || value === '') return;
+			await upsert(key, value);
+		};
+
+		// Echoed-back keys (URLs, model name): the client renders the current
+		// value into the input. `undefined` (field absent — e.g. saved from a
+		// different panel that doesn't include this field) is a strict no-op.
+		// `''` means "user cleared the field" → delete the row so
+		// resolveConfigValue falls through to env / default.
+		const writeOrClearEchoed = async (
+			key: AppSettingsKeyType,
+			value: string | undefined,
+			locked: boolean
+		) => {
+			if (locked) return;
+			if (value === undefined) return;
+			if (value === '') {
 				await tx.delete(appSettings).where(eq(appSettings.key, key));
+				return;
 			}
+			await upsert(key, value);
 		};
 
 		if (opts.values.plexServerUrl && !opts.locks.plexServerUrl) {
@@ -321,27 +358,33 @@ export async function setApiConfigAtomic(opts: {
 			plexCredentialsChanged = true;
 		}
 
-		await clearIfEmpty(
+		await writeOrClearEchoed(
 			AppSettingsKey.PLEX_SERVER_URL,
 			opts.values.plexServerUrl,
 			opts.locks.plexServerUrl
 		);
-		await writeIfApplicable(AppSettingsKey.PLEX_TOKEN, opts.values.plexToken, opts.locks.plexToken);
-		await writeIfApplicable(
+		await writeSecret(AppSettingsKey.PLEX_TOKEN, opts.values.plexToken, opts.locks.plexToken);
+		await writeSecret(
 			AppSettingsKey.OPENAI_API_KEY,
 			opts.values.openaiApiKey,
 			opts.locks.openaiApiKey
 		);
-		await clearIfEmpty(
+		await writeOrClearEchoed(
 			AppSettingsKey.OPENAI_BASE_URL,
 			opts.values.openaiBaseUrl,
 			opts.locks.openaiBaseUrl
 		);
-		await clearIfEmpty(
+		await writeOrClearEchoed(
 			AppSettingsKey.OPENAI_MODEL,
 			opts.values.openaiModel,
 			opts.locks.openaiModel
 		);
+
+		// Bookkeeping: bump the API_CONFIG_VERSION marker on every successful
+		// transaction so `max(updatedAt)` over API_CONFIG_KEYS strictly advances —
+		// even if the only mutation above was a delete (which would otherwise
+		// leave the version unchanged or regressed, defeating the OCC check).
+		await upsert(AppSettingsKey.API_CONFIG_VERSION, now.toISOString());
 
 		return { status: 'ok', plexCredentialsChanged };
 	});

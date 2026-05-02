@@ -88,11 +88,19 @@ const PrivacySettingsSchema = z.object({
 	settingsVersion: z.string()
 });
 
+// Each value field is `string | undefined`:
+//   undefined = field absent from this submission (e.g. the OpenAI panel saved
+//               and didn't include Plex inputs) → service treats as no-op.
+//   ''        = field present but blank → service either clears (echoed-back
+//               keys) or no-ops (secret keys).
+//   non-empty = write.
+// The URL-validated fields accept `''` via the literal union so a cleared input
+// passes validation and reaches the service as the clear signal.
 const ApiConfigSchema = z.object({
-	plexServerUrl: z.string().max(512).url('Invalid URL format').optional().or(z.literal('')),
+	plexServerUrl: z.union([z.string().max(512).url('Invalid URL format'), z.literal('')]).optional(),
 	plexToken: z.string().max(512).optional(),
 	openaiApiKey: z.string().max(512).optional(),
-	openaiBaseUrl: z.string().max(512).url('Invalid URL format').optional().or(z.literal('')),
+	openaiBaseUrl: z.union([z.string().max(512).url('Invalid URL format'), z.literal('')]).optional(),
 	openaiModel: z.string().max(100).optional(),
 	apiConfigVersion: z.string()
 });
@@ -238,12 +246,20 @@ export const actions: Actions = requireAdminActions({
 	updateApiConfig: async ({ request }) => {
 		const formData = await request.formData();
 
+		// Distinguish "field absent from this submission" from "field submitted blank":
+		// the API config UI has two separate <form> elements (Plex panel, OpenAI panel)
+		// both targeting `?/updateApiConfig`. Saving one panel does NOT include the
+		// other panel's inputs; treating those absent fields as `''` would wipe the
+		// other panel's stored values via the echoed-back-key clear path.
+		const field = (name: string): string | undefined =>
+			formData.has(name) ? (formData.get(name)?.toString() ?? '') : undefined;
+
 		const data = {
-			plexServerUrl: formData.get('plexServerUrl')?.toString() ?? '',
-			plexToken: formData.get('plexToken')?.toString() ?? '',
-			openaiApiKey: formData.get('openaiApiKey')?.toString() ?? '',
-			openaiBaseUrl: formData.get('openaiBaseUrl')?.toString() ?? '',
-			openaiModel: formData.get('openaiModel')?.toString() ?? '',
+			plexServerUrl: field('plexServerUrl'),
+			plexToken: field('plexToken'),
+			openaiApiKey: field('openaiApiKey'),
+			openaiBaseUrl: field('openaiBaseUrl'),
+			openaiModel: field('openaiModel'),
 			apiConfigVersion: formData.get('apiConfigVersion')?.toString() ?? ''
 		};
 
@@ -260,11 +276,11 @@ export const actions: Actions = requireAdminActions({
 
 			const result = await setApiConfigAtomic({
 				values: {
-					plexServerUrl: parsed.data.plexServerUrl ?? '',
-					plexToken: parsed.data.plexToken ?? '',
-					openaiApiKey: parsed.data.openaiApiKey ?? '',
-					openaiBaseUrl: parsed.data.openaiBaseUrl ?? '',
-					openaiModel: parsed.data.openaiModel ?? ''
+					plexServerUrl: parsed.data.plexServerUrl,
+					plexToken: parsed.data.plexToken,
+					openaiApiKey: parsed.data.openaiApiKey,
+					openaiBaseUrl: parsed.data.openaiBaseUrl,
+					openaiModel: parsed.data.openaiModel
 				},
 				locks: {
 					plexServerUrl: apiConfig.plex.serverUrl.isLocked,
