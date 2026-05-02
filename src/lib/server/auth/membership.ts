@@ -14,6 +14,13 @@ import {
 
 const PLEX_TV_URL = 'https://plex.tv';
 
+/**
+ * Delay (ms) before retrying /identity after a transient failure. Exported as a
+ * mutable wrapper so tests can shrink the wait without resorting to fake timers
+ * (bun:test does not currently mock setTimeout — see bun.sh/docs/test/mocks).
+ */
+export const identityRetry = { delayMs: 250 };
+
 const PLEX_TV_HEADERS = {
 	Accept: 'application/json',
 	'X-Plex-Client-Identifier': PLEX_CLIENT_ID,
@@ -405,7 +412,7 @@ export async function verifyServerMembership(userToken: string): Promise<Members
 			`Retrying /identity after transient failure: ${identityResult.errorReason}`,
 			'Membership'
 		);
-		await new Promise((resolve) => setTimeout(resolve, 250));
+		await new Promise((resolve) => setTimeout(resolve, identityRetry.delayMs));
 		identityResult = await refreshConfiguredServerMachineId();
 	}
 
@@ -492,16 +499,23 @@ export function isTransientIdentityError(errorReason: string | null | undefined)
 		return false;
 	}
 
-	// 5xx responses, timeouts, connection errors, SSL hiccups all classify as
-	// transient. classifyConnectionError surfaces these as "Connection timed
-	// out", "Could not connect to server", "SSL certificate error",
-	// "Connection failed". sanitizeConnectionError additionally surfaces
-	// "Connection was reset" (ECONNRESET), "Host unreachable" (EHOSTUNREACH),
-	// "Network unreachable" (ENETUNREACH), "Connection closed unexpectedly"
-	// (EPIPE), "Unable to connect to server" (lowercase ECONNREFUSED that
-	// bypasses classifyConnectionError's uppercase check), and "Server not
-	// found" (lowercase ENOTFOUND, same fallthrough). Server-status
-	// fallthrough produces "Server returned 5xx ...".
+	// SSL/TLS errors are misconfiguration (self-signed cert without trust,
+	// expired cert, hostname mismatch, wrong scheme, reverse-proxy SSL
+	// misconfig) — none of these resolve on a 250ms retry, and the user
+	// needs the targeted PLEX_SERVER_URL copy, not the generic transient
+	// retry message. Fall through to the non-transient branch.
+	if (reason.includes('ssl') || reason.includes('tls')) return false;
+
+	// 5xx responses, timeouts, and connection errors classify as transient.
+	// classifyConnectionError surfaces these as "Connection timed out",
+	// "Could not connect to server", "Connection failed".
+	// sanitizeConnectionError additionally surfaces "Connection was reset"
+	// (ECONNRESET), "Host unreachable" (EHOSTUNREACH), "Network unreachable"
+	// (ENETUNREACH), "Connection closed unexpectedly" (EPIPE), "Unable to
+	// connect to server" (lowercase ECONNREFUSED that bypasses
+	// classifyConnectionError's uppercase check), and "Server not found"
+	// (lowercase ENOTFOUND, same fallthrough). Server-status fallthrough
+	// produces "Server returned 5xx ...".
 	if (reason.includes('timed out') || reason.includes('timeout')) return true;
 	if (reason.includes('could not connect')) return true;
 	if (reason.includes('connection failed') || reason.includes('connection error')) return true;
@@ -510,7 +524,6 @@ export function isTransientIdentityError(errorReason: string | null | undefined)
 	if (reason.includes('host unreachable') || reason.includes('network unreachable')) return true;
 	if (reason.includes('unable to connect to server')) return true;
 	if (reason.includes('server not found')) return true;
-	if (reason.includes('ssl') || reason.includes('tls')) return true;
 
 	const serverStatusMatch = reason.match(/server returned (\d{3})/);
 	if (serverStatusMatch) {

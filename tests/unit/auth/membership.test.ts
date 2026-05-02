@@ -1,7 +1,8 @@
-import { afterEach, describe, expect, it, spyOn } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 
 import * as settingsService from '$lib/server/admin/settings.service';
 import {
+	identityRetry,
 	isTransientIdentityError,
 	messageForMembershipFailure,
 	verifyServerMembership
@@ -48,11 +49,20 @@ describe('verifyServerMembership', () => {
 	let fetchSpy: ReturnType<typeof spyOn>;
 	let configSpy: ReturnType<typeof spyOn>;
 	let identitySpy: ReturnType<typeof spyOn>;
+	const originalIdentityRetryDelayMs = identityRetry.delayMs;
+
+	beforeEach(() => {
+		// Shrink the transient-failure retry delay so retry-path tests don't burn
+		// 250ms of wall-clock each. bun:test does not currently mock setTimeout, so
+		// we mutate the exported wrapper directly instead of using fake timers.
+		identityRetry.delayMs = 0;
+	});
 
 	afterEach(() => {
 		fetchSpy?.mockRestore();
 		configSpy?.mockRestore();
 		identitySpy?.mockRestore();
+		identityRetry.delayMs = originalIdentityRetryDelayMs;
 	});
 
 	it('returns { isMember: false, isOwner: false } when no server matches the configured URL', async () => {
@@ -399,17 +409,24 @@ describe('verifyServerMembership', () => {
 });
 
 describe('isTransientIdentityError', () => {
-	it('classifies timeouts, connection failures, SSL errors, and 5xx as transient', () => {
+	it('classifies timeouts, connection failures, and 5xx as transient', () => {
 		expect(isTransientIdentityError('Connection timed out - the server may be unreachable')).toBe(
 			true
 		);
 		expect(isTransientIdentityError('Could not connect to server - check the URL')).toBe(true);
 		expect(isTransientIdentityError('Connection failed')).toBe(true);
-		expect(
-			isTransientIdentityError('SSL certificate error - check your server configuration')
-		).toBe(true);
 		expect(isTransientIdentityError('Server returned 503 Service Unavailable')).toBe(true);
 		expect(isTransientIdentityError('Server returned 502 Bad Gateway')).toBe(true);
+	});
+
+	it('does not classify SSL/TLS errors as transient (they are misconfiguration)', () => {
+		// Self-signed certs, expired certs, hostname mismatches, and reverse-proxy
+		// SSL misconfigs do not heal on a 250ms retry — the user needs the targeted
+		// PLEX_SERVER_URL copy, not the generic "please try again" blip message.
+		expect(
+			isTransientIdentityError('SSL certificate error - check your server configuration')
+		).toBe(false);
+		expect(isTransientIdentityError('SSL/TLS error')).toBe(false);
 	});
 
 	it('classifies OS-level transient network errors emitted by sanitizeConnectionError as transient', () => {
@@ -475,6 +492,23 @@ describe('messageForMembershipFailure', () => {
 
 		expect(message).not.toContain('Temporary connection issue');
 		expect(message).toContain('PLEX_SERVER_URL');
+	});
+
+	it('uses misconfiguration copy when /identity hit an SSL/TLS error', () => {
+		// SSL errors are configuration (self-signed, expired, hostname mismatch,
+		// wrong scheme, reverse-proxy SSL misconfig) — surface PLEX_SERVER_URL
+		// guidance, not the transient blip copy.
+		const message = messageForMembershipFailure({
+			isMember: false,
+			isOwner: false,
+			reason: 'not_reachable',
+			identityErrorReason: 'SSL certificate error - check your server configuration'
+		});
+
+		expect(message).not.toContain('Temporary connection issue');
+		expect(message).not.toContain('Please try again');
+		expect(message).toContain('PLEX_SERVER_URL');
+		expect(message).toContain('valid Plex server');
 	});
 
 	it('keeps the temporary-blip copy when identityErrorReason is genuinely transient', () => {
