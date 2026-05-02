@@ -40,6 +40,7 @@ import {
 	type WrappedLogoModeType
 } from '$lib/server/admin/settings.service';
 import { getAvailableYears } from '$lib/server/admin/users.service';
+import { optionalTrimmed } from '$lib/server/admin/zod-helpers';
 import { requireAdminActions } from '$lib/server/auth/guards';
 import { testOpenAIConnection } from '$lib/server/funfacts/test-connection';
 import {
@@ -51,6 +52,7 @@ import {
 	setLogMaxCount,
 	setLogRetentionDays
 } from '$lib/server/logging';
+import { getOriginFromRequest } from '$lib/server/security/csrf-handle';
 import {
 	bulkApplyShareDefaults,
 	getGlobalAllowUserControl,
@@ -96,12 +98,32 @@ const PrivacySettingsSchema = z.object({
 //   non-empty = write.
 // The URL-validated fields accept `''` via the literal union so a cleared input
 // passes validation and reaches the service as the clear signal.
+//
+// Whitespace handling:
+//   - Secret keys (plexToken, openaiApiKey) use `optionalTrimmed(...)`: empty,
+//     whitespace-only, and absent all collapse to `undefined` (no-op). Prevents
+//     a stray "  " press from being persisted as the secret.
+//   - Echoed-back keys (openaiModel, openaiBaseUrl) get `.trim()` on the inner
+//     string so whitespace-only inputs become the canonical clear signal `''`,
+//     preserving the user's ability to clear by blanking the field.
+// Trim before the union so whitespace-only inputs (e.g. '   ') collapse to ''
+// and match the literal-empty branch — without preprocess, .trim() on the URL
+// branch would still leave the original untrimmed string for the literal('')
+// check, causing whitespace-only submissions to fail validation instead of
+// being treated as the documented "clear" signal.
+const trimmedUrlOrEmpty = z
+	.preprocess(
+		(v) => (typeof v === 'string' ? v.trim() : v),
+		z.union([z.string().max(512).url('Invalid URL format'), z.literal('')])
+	)
+	.optional();
+
 const ApiConfigSchema = z.object({
-	plexServerUrl: z.union([z.string().max(512).url('Invalid URL format'), z.literal('')]).optional(),
-	plexToken: z.string().max(512).optional(),
-	openaiApiKey: z.string().max(512).optional(),
-	openaiBaseUrl: z.union([z.string().max(512).url('Invalid URL format'), z.literal('')]).optional(),
-	openaiModel: z.string().max(100).optional(),
+	plexServerUrl: trimmedUrlOrEmpty,
+	plexToken: optionalTrimmed(512),
+	openaiApiKey: optionalTrimmed(512),
+	openaiBaseUrl: trimmedUrlOrEmpty,
+	openaiModel: z.string().trim().max(100).optional(),
 	apiConfigVersion: z.string()
 });
 
@@ -125,6 +147,14 @@ const CsrfOriginSchema = z.object({
 		.url('Invalid URL format')
 		.refine((url) => url.startsWith('http://') || url.startsWith('https://'), {
 			message: 'Origin must start with http:// or https://'
+		})
+		.transform((url) => {
+			try {
+				const parsed = new URL(url);
+				return parsed.origin;
+			} catch {
+				return url;
+			}
 		})
 });
 
@@ -719,7 +749,7 @@ export const actions: Actions = requireAdminActions({
 		};
 	},
 
-	updateCsrfOrigin: async ({ request }) => {
+	updateCsrfOrigin: async ({ request, url }) => {
 		const csrfConfig = await getCsrfConfigWithSource();
 		if (csrfConfig.origin.isLocked) {
 			return fail(400, {
@@ -728,7 +758,12 @@ export const actions: Actions = requireAdminActions({
 		}
 
 		const formData = await request.formData();
-		const csrfOrigin = formData.get('csrfOrigin')?.toString() ?? '';
+		// Trim once at extraction so whitespace-only inputs (e.g. '   ') route to the
+		// clear branch alongside literal '' rather than failing schema validation with
+		// a confusing "Invalid origin URL" 400 — mirrors the trimmedUrlOrEmpty pattern
+		// used for ApiConfigSchema URL fields above.
+		const csrfOrigin = (formData.get('csrfOrigin')?.toString() ?? '').trim();
+		const confirmMismatch = formData.get('confirmMismatch')?.toString() === 'true';
 
 		if (csrfOrigin) {
 			const parsed = CsrfOriginSchema.safeParse({ csrfOrigin });
@@ -739,16 +774,39 @@ export const actions: Actions = requireAdminActions({
 				});
 			}
 
+			// `URL.origin` returns canonical scheme://host[:port] with no trailing slash,
+			// path, query, or fragment — exactly what the CSRF middleware compares against
+			// the browser's Origin header.
+			const normalizedOrigin = parsed.data.csrfOrigin;
+			// Use the same source-of-truth that csrfHandle compares against (Origin
+			// header, falling back to Referer). Behind a reverse proxy `request.url`
+			// is the immutable raw internal URL — comparing against that would
+			// trigger a spurious mismatch warning even when the operator correctly
+			// matches the public-facing origin. Fall back to `event.url.origin`
+			// (proxy-rewritten by `proxyHandle`) when neither header is present.
+			const requestOrigin = getOriginFromRequest(request) ?? url.origin;
+			const isMismatch = normalizedOrigin.toLowerCase() !== requestOrigin.toLowerCase();
+
+			// Refuse to write a mismatched origin without explicit confirmation: silently
+			// persisting a mismatch would lock this browser out of all admin POSTs with
+			// no in-UI recovery path (would require env override or direct DB surgery).
+			if (isMismatch && !confirmMismatch) {
+				return fail(409, {
+					requireConfirmation: true,
+					attemptedOrigin: normalizedOrigin,
+					requestOrigin,
+					csrfMismatchMessage: `Saving "${normalizedOrigin}" while loaded from "${requestOrigin}" will lock this browser out of all admin POST operations. Recovery would require restarting the server with ORIGIN=<correct> env or editing the app_settings table directly. Confirm to proceed anyway.`
+				});
+			}
+
 			try {
-				const normalizedOrigin = csrfOrigin.replace(/\/$/, '');
-				const requestOrigin = new URL(request.url).origin;
 				await setAppSetting(AppSettingsKey.CSRF_ORIGIN, normalizedOrigin);
 
-				if (normalizedOrigin.toLowerCase() !== requestOrigin.toLowerCase()) {
+				if (isMismatch) {
 					return {
 						success: true,
 						warning: true,
-						message: `CSRF origin saved, but it does not match your current origin (${requestOrigin}). You may get locked out of the admin panel.`
+						message: `CSRF origin saved to "${normalizedOrigin}". Your current browser origin is "${requestOrigin}" — you may now be locked out.`
 					};
 				}
 

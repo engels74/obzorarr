@@ -152,6 +152,18 @@ $effect(() => {
 		clearTimeout(copyTimeout);
 	};
 });
+
+// Reset optimistic state when the modal transitions from closed to open
+// so a freshly-loaded shareSettings prop (e.g., token rotated elsewhere) is
+// not shadowed by stale optimistic values from a prior session.
+let prevOpen = false;
+$effect(() => {
+	if (open && !prevOpen) {
+		optimisticMode = null;
+		optimisticShareToken = undefined;
+	}
+	prevOpen = open;
+});
 </script>
 
 <AlertDialog.Root bind:open onOpenChange={handleOpenChange}>
@@ -245,8 +257,11 @@ $effect(() => {
 								await update();
 							} finally {
 								isUpdating = false;
-								optimisticMode = null;
-								optimisticShareToken = undefined;
+								// Intentionally do NOT reset optimisticMode/optimisticShareToken here.
+								// On success: applyShareActionData() set them to the server's value, so
+								// clearing them between this finally and the next $derived re-evaluation
+								// causes a brief all-unchecked render frame for the radio group.
+								// On failure: the else branch above already cleared them inline.
 							}
 						};
 					}}

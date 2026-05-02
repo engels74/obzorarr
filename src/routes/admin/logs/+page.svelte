@@ -714,6 +714,7 @@ $effect(() => {
 			max-width: 1200px;
 			margin: 0 auto;
 			padding: 2rem;
+			min-width: 0;
 		}
 
 		.page-header {
@@ -815,7 +816,7 @@ $effect(() => {
 
 		.filters-grid {
 			display: grid;
-			grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+			grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
 			gap: 1rem;
 		}
 
@@ -823,6 +824,7 @@ $effect(() => {
 			display: flex;
 			flex-direction: column;
 			gap: 0.5rem;
+			min-width: 0;
 		}
 
 		.filter-label {
@@ -839,6 +841,8 @@ $effect(() => {
 			border-radius: var(--radius);
 			color: hsl(var(--foreground));
 			font-size: 0.875rem;
+			min-width: 0;
+			width: 100%;
 		}
 
 		.level-checkboxes {
