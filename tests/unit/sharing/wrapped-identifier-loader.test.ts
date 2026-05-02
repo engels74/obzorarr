@@ -11,7 +11,7 @@ import {
 } from '$lib/server/db/schema';
 import { setGlobalShareDefaults } from '$lib/server/sharing/service';
 import { ShareMode, ShareModeSource } from '$lib/server/sharing/types';
-import { load } from '../../../src/routes/wrapped/[year]/u/[identifier]/+page.server';
+import { actions, load } from '../../../src/routes/wrapped/[year]/u/[identifier]/+page.server';
 
 type LoadArgs = Parameters<typeof load>[0];
 
@@ -406,5 +406,80 @@ describe('wrapped/[year]/u/[identifier] loader: shareToken payload gating', () =
 		});
 
 		expect(data.shareSettings.shareToken).toBe(TOKEN);
+	});
+});
+
+/**
+ * Regression test for the resolveUserIdFromIdentifier currentUser-forwarding fix.
+ *
+ * When a signed-in owner/admin invokes updateShareMode or regenerateToken on a
+ * token URL while the global floor has raised the effective mode above
+ * private-link (e.g. private-oauth), the helper used to call
+ * `checkTokenAccess(identifier)` (bare string), which omitted currentUser and
+ * triggered the floor branch's `if (!currentUser)` guard, causing the action
+ * to fail with "Invalid user identifier". The fix forwards locals.user.
+ */
+describe('wrapped/[year]/u/[identifier] actions: token URL + floor-elevated mode', () => {
+	const USER_ID = 42;
+	const TOKEN = '880e8400-e29b-41d4-a716-446655440333';
+	const YEAR = 2024;
+
+	type UpdateShareModeAction = NonNullable<typeof actions.updateShareMode>;
+
+	beforeEach(async () => {
+		await db.delete(shareSettings);
+		await db.delete(appSettings);
+		await db.delete(users);
+		await db.delete(cachedStats);
+		await db.delete(playHistory);
+		await db.delete(slideConfig);
+
+		await seedUser(USER_ID, 100042, 200042);
+		await seedShareSettings({
+			userId: USER_ID,
+			year: YEAR,
+			mode: ShareMode.PRIVATE_LINK,
+			token: TOKEN
+		});
+		await setGlobalShareDefaults({
+			defaultShareMode: ShareMode.PRIVATE_OAUTH,
+			allowUserControl: true
+		});
+	});
+
+	async function invokeUpdateShareMode(params: {
+		identifier: string;
+		mode: (typeof ShareMode)[keyof typeof ShareMode];
+		currentUser?: TestUser;
+	}) {
+		const formData = new FormData();
+		formData.set('mode', params.mode);
+		const request = new Request('https://obzorarr.example/wrapped', {
+			method: 'POST',
+			body: formData
+		});
+		const updateShareMode = actions.updateShareMode as UpdateShareModeAction;
+		return updateShareMode({
+			request,
+			params: { year: String(YEAR), identifier: params.identifier },
+			locals: params.currentUser ? { user: params.currentUser } : {}
+		} as unknown as Parameters<UpdateShareModeAction>[0]);
+	}
+
+	it('owner accessing via token URL with floor-elevated mode resolves successfully (does not 400)', async () => {
+		const result = await invokeUpdateShareMode({
+			identifier: TOKEN,
+			mode: ShareMode.PRIVATE_LINK,
+			currentUser: {
+				id: USER_ID,
+				plexId: 100042,
+				username: `user-${USER_ID}`,
+				isAdmin: false
+			}
+		});
+
+		// Without the fix this would be: { status: 400, data: { error: 'Invalid user identifier' } }
+		const status = (result as { status?: number }).status;
+		expect(status).not.toBe(400);
 	});
 });

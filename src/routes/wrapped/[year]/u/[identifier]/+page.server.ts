@@ -40,11 +40,17 @@ import type { Actions, PageServerLoad } from './$types';
 
 async function resolveUserIdFromIdentifier(
 	identifier: string,
-	year: number
+	year: number,
+	currentUser?: App.Locals['user']
 ): Promise<number | null> {
 	if (isValidTokenFormat(identifier)) {
 		try {
-			const tokenResult = await checkTokenAccess(identifier);
+			// Forward currentUser so floor-elevated token URLs (e.g. global floor
+			// raised above PRIVATE_LINK to PRIVATE_OAUTH) still resolve for signed-in
+			// viewers. Mirrors what `load` does above; without it, the action helpers
+			// would reject any signed-in owner/admin trying to mutate share settings
+			// through a token URL once the floor is raised.
+			const tokenResult = await checkTokenAccess({ token: identifier, currentUser });
 			return tokenResult.year === year ? tokenResult.userId : null;
 		} catch (err) {
 			if (err instanceof InvalidShareTokenError || err instanceof ShareAccessDeniedError) {
@@ -262,7 +268,7 @@ export const actions: Actions = {
 			return fail(400, { error: 'Invalid year' });
 		}
 
-		const userId = await resolveUserIdFromIdentifier(params.identifier, year);
+		const userId = await resolveUserIdFromIdentifier(params.identifier, year, locals.user);
 		if (!userId) {
 			return fail(400, { error: 'Invalid user identifier' });
 		}
@@ -315,7 +321,7 @@ export const actions: Actions = {
 			return fail(400, { error: 'Invalid year' });
 		}
 
-		const userId = await resolveUserIdFromIdentifier(params.identifier, year);
+		const userId = await resolveUserIdFromIdentifier(params.identifier, year, locals.user);
 		if (!userId) {
 			return fail(400, { error: 'Invalid user identifier' });
 		}
