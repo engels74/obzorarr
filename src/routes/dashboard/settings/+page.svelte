@@ -871,6 +871,7 @@ function getLogoModeDescription(): string {
 			padding: 1rem 1.25rem;
 			background: hsl(210 60% 50% / 0.1);
 			border: 1px solid hsl(210 60% 50% / 0.25);
+			border-left: 3px solid hsl(var(--primary));
 			border-radius: var(--radius);
 			margin-bottom: 1rem;
 		}
@@ -886,7 +887,8 @@ function getLogoModeDescription(): string {
 
 		.info-content strong {
 			display: block;
-			font-size: 0.875rem;
+			font-size: 0.9375rem;
+			font-weight: 600;
 			color: hsl(var(--foreground));
 			margin-bottom: 0.25rem;
 		}

@@ -123,12 +123,20 @@ export async function getAppSettingsUpdatedAt(keys: readonly string[]): Promise<
 }
 
 /**
- * Keys covered by the privacy settings panel. Exported so the route can use
- * the same constant for loading the current version timestamp.
+ * Keys covered by the "Server-wide Wrapped" privacy form (anonymization +
+ * server-wide share mode). Each form has its own optimistic-locking version so
+ * a stale value on one form doesn't false-409 the other.
  */
-export const PRIVACY_SETTINGS_KEYS = [
+export const SERVER_WRAPPED_SETTINGS_KEYS = [
 	AppSettingsKey.ANONYMIZATION_MODE,
-	ShareSettingsKey.SERVER_WRAPPED_SHARE_MODE,
+	ShareSettingsKey.SERVER_WRAPPED_SHARE_MODE
+] as const;
+
+/**
+ * Keys covered by the "User Sharing Defaults" privacy form (per-user default
+ * share mode + allow-user-control flag).
+ */
+export const USER_DEFAULTS_SETTINGS_KEYS = [
 	ShareSettingsKey.DEFAULT_SHARE_MODE,
 	ShareSettingsKey.ALLOW_USER_CONTROL
 ] as const;
@@ -152,22 +160,21 @@ export const API_CONFIG_KEYS = [
 ] as const;
 
 /**
- * Atomically validates that the privacy settings have not changed since
- * `submittedVersion` and, if so, writes all four values in a single SQLite
- * transaction. Returns `'conflict'` when the submitted version is stale.
+ * Atomically validates that the "Server-wide Wrapped" settings (anonymization
+ * mode + server-wide share mode) have not changed since `submittedVersion`
+ * and, if so, writes both values in a single SQLite transaction. Returns
+ * `'conflict'` when the submitted version is stale.
  */
-export async function setPrivacySettingsAtomic(opts: {
+export async function setServerWrappedSettingsAtomic(opts: {
 	anonymizationMode: AnonymizationModeType;
 	serverWrappedShareMode: string;
-	defaultShareMode: string;
-	allowUserControl: boolean;
 	submittedVersion: string;
 }): Promise<'ok' | 'conflict'> {
 	return db.transaction(async (tx) => {
 		const rows = await tx
 			.select({ updatedAt: appSettings.updatedAt })
 			.from(appSettings)
-			.where(inArray(appSettings.key, PRIVACY_SETTINGS_KEYS as unknown as string[]));
+			.where(inArray(appSettings.key, SERVER_WRAPPED_SETTINGS_KEYS as unknown as string[]));
 
 		if (rows.length > 0) {
 			let maxMs = 0;
@@ -206,6 +213,41 @@ export async function setPrivacySettingsAtomic(opts: {
 				target: appSettings.key,
 				set: { value: opts.serverWrappedShareMode, updatedAt: now }
 			});
+
+		return 'ok';
+	});
+}
+
+/**
+ * Atomically validates that the "User Sharing Defaults" settings (default
+ * share mode + allow-user-control flag) have not changed since
+ * `submittedVersion` and, if so, writes both values in a single SQLite
+ * transaction. Returns `'conflict'` when the submitted version is stale.
+ */
+export async function setUserDefaultsAtomic(opts: {
+	defaultShareMode: string;
+	allowUserControl: boolean;
+	submittedVersion: string;
+}): Promise<'ok' | 'conflict'> {
+	return db.transaction(async (tx) => {
+		const rows = await tx
+			.select({ updatedAt: appSettings.updatedAt })
+			.from(appSettings)
+			.where(inArray(appSettings.key, USER_DEFAULTS_SETTINGS_KEYS as unknown as string[]));
+
+		if (rows.length > 0) {
+			let maxMs = 0;
+			for (const row of rows) {
+				const t = row.updatedAt.getTime();
+				if (t > maxMs) maxMs = t;
+			}
+			const submittedMs = opts.submittedVersion ? Date.parse(opts.submittedVersion) : Number.NaN;
+			if (Number.isNaN(submittedMs) || submittedMs < maxMs) {
+				return 'conflict';
+			}
+		}
+
+		const now = new Date();
 
 		await tx
 			.insert(appSettings)

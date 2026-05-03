@@ -23,19 +23,21 @@ import {
 	getWrappedLogoMode,
 	getWrappedTheme,
 	isCsrfWarningDismissed,
-	PRIVACY_SETTINGS_KEYS,
 	resetCsrfWarningDismissal,
+	SERVER_WRAPPED_SETTINGS_KEYS,
 	setAnonymizationMode,
 	setApiConfigAtomic,
 	setAppSetting,
 	setCachedServerName,
-	setPrivacySettingsAtomic,
+	setServerWrappedSettingsAtomic,
 	setUITheme,
+	setUserDefaultsAtomic,
 	setWrappedLogoMode,
 	setWrappedTheme,
 	ThemePresets,
 	type ThemePresetType,
 	toSafeConfigValue,
+	USER_DEFAULTS_SETTINGS_KEYS,
 	WrappedLogoMode,
 	type WrappedLogoModeType
 } from '$lib/server/admin/settings.service';
@@ -82,9 +84,13 @@ const GlobalDefaultsSchema = z.object({
 // Server-wide wrapped only supports public and private-oauth (not private-link)
 const ServerWrappedModeSchema = z.enum(['public', 'private-oauth']);
 
-const PrivacySettingsSchema = z.object({
+const ServerWrappedSettingsSchema = z.object({
 	anonymizationMode: AnonymizationSchema,
 	serverWrappedShareMode: ServerWrappedModeSchema,
+	settingsVersion: z.string()
+});
+
+const UserDefaultsSettingsSchema = z.object({
 	defaultShareMode: ShareModeSchema,
 	allowUserControl: z.coerce.boolean(),
 	settingsVersion: z.string()
@@ -188,7 +194,8 @@ export const load: PageServerLoad = async () => {
 		csrfWarningDismissed,
 		csrfOriginSkippedRaw,
 		trustProxyConfig,
-		privacySettingsUpdatedAt,
+		serverWrappedSettingsUpdatedAt,
+		userDefaultsSettingsUpdatedAt,
 		apiConfigUpdatedAt
 	] = await Promise.all([
 		getApiConfigWithSources(),
@@ -207,7 +214,8 @@ export const load: PageServerLoad = async () => {
 		isCsrfWarningDismissed(),
 		getAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED),
 		getTrustProxyConfigWithSource(),
-		getAppSettingsUpdatedAt(PRIVACY_SETTINGS_KEYS),
+		getAppSettingsUpdatedAt(SERVER_WRAPPED_SETTINGS_KEYS),
+		getAppSettingsUpdatedAt(USER_DEFAULTS_SETTINGS_KEYS),
 		getAppSettingsUpdatedAt(API_CONFIG_KEYS)
 	]);
 
@@ -255,7 +263,8 @@ export const load: PageServerLoad = async () => {
 			allowUserControl
 		},
 		serverWrappedShareMode,
-		privacySettingsVersion: privacySettingsUpdatedAt?.toISOString() ?? '',
+		serverWrappedSettingsVersion: serverWrappedSettingsUpdatedAt?.toISOString() ?? '',
+		userDefaultsSettingsVersion: userDefaultsSettingsUpdatedAt?.toISOString() ?? '',
 		apiConfigVersion: apiConfigUpdatedAt?.toISOString() ?? '',
 		security: {
 			originValue: csrfConfig.origin.value,
@@ -690,18 +699,16 @@ export const actions: Actions = requireAdminActions({
 		}
 	},
 
-	updatePrivacySettings: async ({ request }) => {
+	updateServerWrappedSettings: async ({ request }) => {
 		const formData = await request.formData();
 
 		const data = {
 			anonymizationMode: formData.get('anonymizationMode'),
 			serverWrappedShareMode: formData.get('serverWrappedShareMode'),
-			defaultShareMode: formData.get('defaultShareMode'),
-			allowUserControl: formData.get('allowUserControl') === 'true',
 			settingsVersion: formData.get('settingsVersion')?.toString() ?? ''
 		};
 
-		const parsed = PrivacySettingsSchema.safeParse(data);
+		const parsed = ServerWrappedSettingsSchema.safeParse(data);
 		if (!parsed.success) {
 			return fail(400, {
 				error: 'Invalid input',
@@ -710,9 +717,45 @@ export const actions: Actions = requireAdminActions({
 		}
 
 		try {
-			const result = await setPrivacySettingsAtomic({
+			const result = await setServerWrappedSettingsAtomic({
 				anonymizationMode: parsed.data.anonymizationMode as AnonymizationModeType,
 				serverWrappedShareMode: parsed.data.serverWrappedShareMode,
+				submittedVersion: parsed.data.settingsVersion
+			});
+
+			if (result === 'conflict') {
+				return fail(409, {
+					error: 'Settings changed in another tab. Please reload.'
+				});
+			}
+
+			return { success: true, message: 'Server-wide wrapped settings updated' };
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : 'Failed to update server-wide wrapped settings';
+			return fail(500, { error: message });
+		}
+	},
+
+	updateUserDefaults: async ({ request }) => {
+		const formData = await request.formData();
+
+		const data = {
+			defaultShareMode: formData.get('defaultShareMode'),
+			allowUserControl: formData.get('allowUserControl') === 'true',
+			settingsVersion: formData.get('settingsVersion')?.toString() ?? ''
+		};
+
+		const parsed = UserDefaultsSettingsSchema.safeParse(data);
+		if (!parsed.success) {
+			return fail(400, {
+				error: 'Invalid input',
+				fieldErrors: parsed.error.flatten().fieldErrors
+			});
+		}
+
+		try {
+			const result = await setUserDefaultsAtomic({
 				defaultShareMode: parsed.data.defaultShareMode,
 				allowUserControl: parsed.data.allowUserControl,
 				submittedVersion: parsed.data.settingsVersion
@@ -724,9 +767,10 @@ export const actions: Actions = requireAdminActions({
 				});
 			}
 
-			return { success: true, message: 'Privacy settings updated' };
+			return { success: true, message: 'User sharing defaults updated' };
 		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Failed to update privacy settings';
+			const message =
+				error instanceof Error ? error.message : 'Failed to update user sharing defaults';
 			return fail(500, { error: message });
 		}
 	},

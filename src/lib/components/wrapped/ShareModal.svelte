@@ -278,7 +278,7 @@ $effect(() => {
 									type="radio"
 									name="mode"
 									value={mode}
-									checked={displayMode === mode}
+									checked={isUpdating ? optimisticMode === mode : displayMode === mode}
 									disabled={isUpdating || isBelowFloor(mode as ShareModeType)}
 									onchange={(e) => {
 										optimisticMode = mode as ShareModeType;
@@ -323,6 +323,11 @@ $effect(() => {
 						action="?/regenerateToken"
 						use:enhance={() => {
 							isUpdating = true;
+							// Seed optimisticMode with the current mode so the radio group's
+							// `checked={isUpdating ? optimisticMode === mode : ...}` expression
+							// keeps the correct option selected for the round-trip duration.
+							// The regenerate action does not change the mode, so we mirror it.
+							optimisticMode = shareSettings?.mode ?? null;
 							return async ({ result, update }) => {
 								try {
 									if (result.type === 'success') {

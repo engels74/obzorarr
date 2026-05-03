@@ -120,7 +120,7 @@ describe('POST /api/onboarding/test-connection token alias', () => {
 		expect(body.success).toBe(false);
 	});
 
-	it('returns 502 for non-Plex schema mismatch', async () => {
+	it('returns 422 for non-Plex schema mismatch', async () => {
 		fetchSpy = spyOn(global, 'fetch').mockResolvedValue(
 			new Response(JSON.stringify({ unexpected: true }), {
 				status: 200,
@@ -133,13 +133,29 @@ describe('POST /api/onboarding/test-connection token alias', () => {
 			accessToken: 'abc'
 		});
 
-		expect(response.status).toBe(502);
+		expect(response.status).toBe(422);
 		const body = (await response.json()) as { success: boolean; error?: string };
 		expect(body.success).toBe(false);
 		expect(body.error).toContain('Plex Media Server');
 	});
 
-	it('returns 502 when fetch throws', async () => {
+	it('returns 422 when response body is not valid JSON', async () => {
+		fetchSpy = spyOn(global, 'fetch').mockResolvedValue(
+			new Response('<html>Gateway</html>', { status: 200 })
+		);
+
+		const response = await runPost(adminLocals, {
+			url: 'http://plex.local:32400',
+			accessToken: 'abc'
+		});
+
+		expect(response.status).toBe(422);
+		const body = (await response.json()) as { success: boolean; error?: string };
+		expect(body.success).toBe(false);
+		expect(body.error).toContain('Plex Media Server');
+	});
+
+	it('returns 503 when fetch throws', async () => {
 		fetchSpy = spyOn(global, 'fetch').mockRejectedValue(new Error('network down'));
 
 		const response = await runPost(adminLocals, {
@@ -147,7 +163,7 @@ describe('POST /api/onboarding/test-connection token alias', () => {
 			accessToken: 'abc'
 		});
 
-		expect(response.status).toBe(502);
+		expect(response.status).toBe(503);
 		const body = (await response.json()) as { success: boolean };
 		expect(body.success).toBe(false);
 	});

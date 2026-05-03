@@ -81,6 +81,9 @@ export const GET: RequestHandler = async ({ cookies, locals }) => {
 					}
 				}
 
+				// accessToken is intentionally returned so the onboarding UI can populate
+				// the token field. Endpoint is admin-only; the value is the Plex
+				// per-server token, not the user's auth token.
 				return {
 					name: server.name,
 					clientIdentifier: server.clientIdentifier,

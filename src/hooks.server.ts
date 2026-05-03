@@ -207,7 +207,8 @@ const onboardingHandle: Handle = async ({ event, resolve }) => {
 const authorizationHandle: Handle = async ({ event, resolve }) => {
 	if (isAdminRouteId(event.route.id)) {
 		if (!event.locals.user || !event.locals.user.isAdmin) {
-			return redirectResponse(event, '/');
+			const fallback = event.locals.user ? '/dashboard' : '/';
+			return redirectResponse(event, fallback);
 		}
 	}
 

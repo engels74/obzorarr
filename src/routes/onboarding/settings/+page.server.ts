@@ -331,6 +331,13 @@ export const actions: Actions = {
 				}
 			}
 
+			if (data.enableFunFacts && !openaiApiKey) {
+				return fail(400, {
+					error:
+						'OpenAI API key is required when AI Fun Facts is enabled. Add a key or disable the toggle.'
+				});
+			}
+
 			// Save all settings in parallel
 			await Promise.all([
 				// Appearance

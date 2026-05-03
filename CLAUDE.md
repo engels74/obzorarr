@@ -42,7 +42,7 @@ All requests pass through `sequence(...)` in this order:
 
 - **CSRF** is origin-based, configured from DB (`app_settings`) first, then `ORIGIN` env var. SvelteKit's built-in origin check is disabled (`trustedOrigins: ['*']` in `svelte.config.js`) because this app sits behind a reverse proxy; protection comes from the custom `csrfHandle` + SameSite=Lax cookies.
 - **CSP** is set in `svelte.config.js` with `mode: 'nonce'`.
-- **`authorizationHandle`** gates `/admin` to `locals.user.isAdmin`. The root `+page.server.ts` redirects logged-in users to `/admin` or `/dashboard`.
+- **`authorizationHandle`** gates `/admin` to `locals.user.isAdmin`. Non-admins are redirected to `/dashboard` (logged in) or `/` (anonymous). The root `+page.server.ts` redirects logged-in users to `/admin` or `/dashboard`.
 - **`DEV_BYPASS_AUTH`** (dev only) short-circuits auth by creating a hardcoded `DEV_SESSION_ID`. Tuned with `DEV_BYPASS_USER` (empty/`random`/plexId/username) and optional `DEV_PLEX_TOKEN` for onboarding testing. See `src/lib/server/auth/dev-bypass.ts`.
 
 ### Authentication
