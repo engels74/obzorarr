@@ -133,12 +133,12 @@ for (const filePath of files) {
 	let currentPath = filePath;
 	const pathResult = redactedPath(filePath, secrets);
 	if (pathResult.keys.length > 0) {
-		findings.push({ file: filePath, keys: pathResult.keys, type: 'filename' });
 		if (writeChanges) {
 			await mkdir(path.dirname(pathResult.filePath), { recursive: true });
 			await rename(filePath, pathResult.filePath);
 			currentPath = pathResult.filePath;
 		}
+		findings.push({ file: currentPath, keys: pathResult.keys, type: 'filename' });
 	}
 
 	if (!(await isLikelyTextFile(currentPath))) continue;
