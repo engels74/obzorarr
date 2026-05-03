@@ -139,6 +139,22 @@ describe('POST /api/onboarding/test-connection token alias', () => {
 		expect(body.error).toContain('Plex Media Server');
 	});
 
+	it('returns 422 when response body is not valid JSON', async () => {
+		fetchSpy = spyOn(global, 'fetch').mockResolvedValue(
+			new Response('<html>Gateway</html>', { status: 200 })
+		);
+
+		const response = await runPost(adminLocals, {
+			url: 'http://plex.local:32400',
+			accessToken: 'abc'
+		});
+
+		expect(response.status).toBe(422);
+		const body = (await response.json()) as { success: boolean; error?: string };
+		expect(body.success).toBe(false);
+		expect(body.error).toContain('Plex Media Server');
+	});
+
 	it('returns 503 when fetch throws', async () => {
 		fetchSpy = spyOn(global, 'fetch').mockRejectedValue(new Error('network down'));
 
