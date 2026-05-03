@@ -278,7 +278,7 @@ $effect(() => {
 									type="radio"
 									name="mode"
 									value={mode}
-									checked={displayMode === mode}
+									checked={isUpdating ? optimisticMode === mode : displayMode === mode}
 									disabled={isUpdating || isBelowFloor(mode as ShareModeType)}
 									onchange={(e) => {
 										optimisticMode = mode as ShareModeType;

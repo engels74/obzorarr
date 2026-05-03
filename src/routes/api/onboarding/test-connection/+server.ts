@@ -112,7 +112,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 						success: false,
 						error: 'This does not appear to be a Plex Media Server'
 					},
-					{ status: 502 }
+					{ status: 422 }
 				);
 			}
 
@@ -135,7 +135,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 						success: false,
 						error: errorMessage
 					},
-					{ status: 502 }
+					{ status: 503 }
 				);
 			}
 
@@ -145,7 +145,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					success: false,
 					error: 'Connection failed'
 				},
-				{ status: 502 }
+				{ status: 503 }
 			);
 		} finally {
 			// Keep the timer armed until after response.json() + parsing complete so

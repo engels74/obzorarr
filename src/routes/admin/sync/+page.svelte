@@ -627,6 +627,7 @@ async function goToPage(page: number) {
 						class:completed={sync.status === 'completed'}
 						class:failed={sync.status === 'failed'}
 						class:running={sync.status === 'running'}
+						class:cancelled={sync.status === 'cancelled'}
 					>
 						<div class="history-status-indicator">
 							{#if sync.status === 'completed'}
@@ -639,6 +640,12 @@ async function goToPage(page: number) {
 								<svg viewBox="0 0 24 24" fill="currentColor">
 									<path
 										d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-1-7v2h2v-2h-2zm0-8v6h2V7h-2z"
+									/>
+								</svg>
+							{:else if sync.status === 'cancelled'}
+								<svg viewBox="0 0 24 24" fill="currentColor">
+									<path
+										d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"
 									/>
 								</svg>
 							{:else}
@@ -1647,6 +1654,10 @@ async function goToPage(page: number) {
 
 		.history-item.running .history-status-indicator {
 			color: hsl(var(--primary));
+		}
+
+		.history-item.cancelled .history-status-indicator {
+			color: hsl(var(--muted-foreground));
 		}
 
 		.running-indicator {
