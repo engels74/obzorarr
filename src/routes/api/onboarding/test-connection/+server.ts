@@ -101,8 +101,22 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				);
 			}
 
-			// Parse and validate response
-			const data = await response.json();
+			// Parse and validate response. A non-JSON body (e.g. an HTML gateway page
+			// from a non-Plex service) means the endpoint is reachable but is not a
+			// Plex Media Server — surface that as 422, not as a 503 connectivity error.
+			let data: unknown;
+			try {
+				data = await response.json();
+			} catch {
+				logger.debug('Connection test failed: Response body was not valid JSON', 'Onboarding');
+				return json(
+					{
+						success: false,
+						error: 'This does not appear to be a Plex Media Server'
+					},
+					{ status: 422 }
+				);
+			}
 			const identityResult = PlexServerIdentitySchema.safeParse(data);
 
 			if (!identityResult.success) {
