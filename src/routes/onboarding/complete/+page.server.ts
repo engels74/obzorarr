@@ -7,15 +7,13 @@
 
 import { fail, redirect } from '@sveltejs/kit';
 import {
-	AppSettingsKey,
 	getAnonymizationMode,
-	getAppSetting,
+	getApiConfigWithSources,
 	getCachedServerName,
 	getFunFactFrequency,
 	getUITheme,
 	getWrappedLogoMode,
-	getWrappedTheme,
-	hasOpenAIEnvConfig
+	getWrappedTheme
 } from '$lib/server/admin/settings.service';
 import { logger } from '$lib/server/logging';
 import { completeOnboarding } from '$lib/server/onboarding';
@@ -52,8 +50,7 @@ export const load: PageServerLoad = async ({ parent, locals }) => {
 		shareMode,
 		allowUserControl,
 		funFactFrequency,
-		openaiApiKey,
-		openaiBaseUrl
+		apiConfig
 	] = await Promise.all([
 		getCachedServerName(),
 		getUITheme(),
@@ -63,8 +60,7 @@ export const load: PageServerLoad = async ({ parent, locals }) => {
 		getGlobalDefaultShareMode(),
 		getGlobalAllowUserControl(),
 		getFunFactFrequency(),
-		getAppSetting(AppSettingsKey.OPENAI_API_KEY),
-		getAppSetting(AppSettingsKey.OPENAI_BASE_URL)
+		getApiConfigWithSources()
 	]);
 
 	return {
@@ -82,10 +78,9 @@ export const load: PageServerLoad = async ({ parent, locals }) => {
 			logoMode: formatLogoMode(logoMode),
 			shareMode: formatShareMode(shareMode),
 			allowUserControl: allowUserControl ? 'Allowed' : 'Locked by admin',
-			funFacts:
-				hasOpenAIEnvConfig() || openaiApiKey || openaiBaseUrl
-					? formatFunFactFrequency(funFactFrequency)
-					: 'Disabled'
+			funFacts: apiConfig.openai.apiKey.value.trim()
+				? formatFunFactFrequency(funFactFrequency)
+				: 'Disabled'
 		}
 	};
 };

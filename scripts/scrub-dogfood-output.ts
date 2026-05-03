@@ -1,4 +1,4 @@
-import { lstat, readdir, rename, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, readdir, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const SECRET_KEYS = [
@@ -95,7 +95,7 @@ async function isLikelyTextFile(filePath: string): Promise<boolean> {
 }
 
 function redactedPath(filePath: string, secrets: Secret[]): { filePath: string; keys: string[] } {
-	let nextPath = filePath;
+	let nextPath = path.relative(outputRoot, filePath);
 	const found = new Set<string>();
 
 	for (const secret of secrets) {
@@ -104,7 +104,7 @@ function redactedPath(filePath: string, secrets: Secret[]): { filePath: string; 
 		found.add(secret.key);
 	}
 
-	return { filePath: nextPath, keys: [...found] };
+	return { filePath: path.join(outputRoot, nextPath), keys: [...found] };
 }
 
 const envFile = Bun.file(envPath);
@@ -135,6 +135,7 @@ for (const filePath of files) {
 	if (pathResult.keys.length > 0) {
 		findings.push({ file: filePath, keys: pathResult.keys, type: 'filename' });
 		if (writeChanges) {
+			await mkdir(path.dirname(pathResult.filePath), { recursive: true });
 			await rename(filePath, pathResult.filePath);
 			currentPath = pathResult.filePath;
 		}

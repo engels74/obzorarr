@@ -603,21 +603,22 @@ $effect(() => {
 				</table>
 			</div>
 
-			{#if data.hasMore && visibleLogs.length > 0}
-				{@const lastLog = visibleLogs[visibleLogs.length - 1]}
-				{#if lastLog}
-					<div class="load-more">
-						<a
-							href="/admin/logs?cursor={lastLog.id}&{$page.url.searchParams.toString()}"
-							class="load-more-button"
-						>
-							Load More
-						</a>
-					</div>
-				{/if}
+		{/if}
+
+		{#if data.hasMore && data.logs.length > 0}
+			{@const lastLog = data.logs[data.logs.length - 1]}
+			{#if lastLog}
+				<div class="load-more">
+					<a
+						href="/admin/logs?cursor={lastLog.id}&{$page.url.searchParams.toString()}"
+						class="load-more-button"
+					>
+						Load More
+					</a>
+				</div>
 			{/if}
 		{/if}
-	</section>
+		</section>
 
 	<!-- Settings Info -->
 	<section class="section settings-info">

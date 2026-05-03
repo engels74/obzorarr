@@ -57,4 +57,18 @@ describe('onboarding completion summary', () => {
 			funFacts: 'Custom (7)'
 		});
 	});
+
+	it('shows fun facts as disabled when only the OpenAI base URL is configured', async () => {
+		await setFunFactFrequency(FunFactFrequency.MANY);
+		await setAppSetting(AppSettingsKey.OPENAI_BASE_URL, 'https://api.example.com/v1');
+
+		const result = (await load({
+			parent: async () => ({}),
+			locals: adminLocals
+		} as Parameters<typeof load>[0])) as {
+			configSummary: Record<string, string>;
+		};
+
+		expect(result.configSummary.funFacts).toBe('Disabled');
+	});
 });
