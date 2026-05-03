@@ -70,7 +70,7 @@ function redactText(text: string, secrets: Secret[]): { text: string; keys: stri
 }
 
 async function listFiles(dir: string): Promise<string[]> {
-	const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
+	const entries = await readdir(dir, { withFileTypes: true });
 	const files: string[] = [];
 
 	for (const entry of entries) {
