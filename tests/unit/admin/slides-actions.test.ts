@@ -36,7 +36,7 @@ describe('admin slides actions', () => {
 		await db.delete(appSettings);
 	});
 
-	for (const customCount of ['0', '16', '']) {
+	for (const customCount of ['0', '16', '', '1abc', '1.5']) {
 		it(`rejects invalid custom fun fact count ${customCount || '<empty>'}`, async () => {
 			const result = await runSetFunFactFrequency(
 				createFrequencyRequest(FunFactFrequency.CUSTOM, customCount)

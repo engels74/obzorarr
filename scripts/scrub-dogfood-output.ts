@@ -31,6 +31,7 @@ type Secret = {
 	key: (typeof SECRET_KEYS)[number];
 	value: string;
 	placeholder: string;
+	pathPlaceholder: string;
 };
 
 function parseEnv(content: string): Map<string, string> {
@@ -100,7 +101,7 @@ function redactedPath(filePath: string, secrets: Secret[]): { filePath: string; 
 
 	for (const secret of secrets) {
 		if (!nextPath.includes(secret.value)) continue;
-		nextPath = nextPath.split(secret.value).join(secret.placeholder);
+		nextPath = nextPath.split(secret.value).join(secret.pathPlaceholder);
 		found.add(secret.key);
 	}
 
@@ -116,7 +117,7 @@ if (!(await envFile.exists())) {
 const envValues = parseEnv(await envFile.text());
 const secrets = SECRET_KEYS.map((key) => {
 	const value = envValues.get(key)?.trim() ?? '';
-	return value ? { key, value, placeholder: `<${key}>` } : null;
+	return value ? { key, value, placeholder: `<${key}>`, pathPlaceholder: `__${key}__` } : null;
 })
 	.filter((secret): secret is Secret => secret !== null)
 	.sort((a, b) => b.value.length - a.value.length);
