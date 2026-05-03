@@ -52,14 +52,34 @@ const summaryItems = $derived([
 		value: data.configSummary.uiTheme
 	},
 	{
+		icon: 'palette',
+		label: 'Wrapped Theme',
+		value: data.configSummary.wrappedTheme
+	},
+	{
 		icon: 'shield',
 		label: 'Privacy Mode',
 		value: data.configSummary.anonymizationMode
 	},
 	{
+		icon: 'shield',
+		label: 'Logo Mode',
+		value: data.configSummary.logoMode
+	},
+	{
 		icon: 'share',
 		label: 'Default Sharing',
 		value: data.configSummary.shareMode
+	},
+	{
+		icon: 'share',
+		label: 'User Control',
+		value: data.configSummary.allowUserControl
+	},
+	{
+		icon: 'sparkles',
+		label: 'Fun Facts',
+		value: data.configSummary.funFacts
 	}
 ]);
 </script>
@@ -132,6 +152,12 @@ const summaryItems = $derived([
 										<circle cx="18" cy="19" r="3" />
 										<line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
 										<line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+									</svg>
+								{:else if item.icon === 'sparkles'}
+									<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+										<path d="M12 3l1.4 4.2L18 8.6l-4.6 1.4L12 15l-1.4-5L6 8.6l4.6-1.4L12 3z" />
+										<path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8L19 14z" />
+										<path d="M5 14l.8 2.2L8 17l-2.2.8L5 20l-.8-2.2L2 17l2.2-.8L5 14z" />
 									</svg>
 								{/if}
 							</div>

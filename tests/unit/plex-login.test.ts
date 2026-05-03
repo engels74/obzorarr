@@ -1,11 +1,56 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
 import {
 	PIN_STORAGE_KEY,
+	sanitizeCompletedLoginResponse,
 	startPlexLoginPopup,
 	startPlexLoginRedirect
 } from '$lib/client/plex-login';
 
 const originalFetch = globalThis.fetch;
+
+describe('sanitizeCompletedLoginResponse', () => {
+	it('keeps only browser-safe login fields', () => {
+		const sanitized = sanitizeCompletedLoginResponse({
+			user: {
+				id: 1,
+				plexId: 123,
+				username: 'alice',
+				email: 'alice@example.com',
+				isAdmin: true,
+				authToken: 'plex-user-token',
+				services: [{ accessToken: 'service-token' }]
+			},
+			redirectTo: '/admin',
+			authToken: 'raw-auth-token',
+			accessToken: 'raw-access-token',
+			resources: [{ clientIdentifier: 'server-id' }]
+		});
+
+		expect(sanitized).toEqual({
+			user: {
+				username: 'alice',
+				isAdmin: true
+			},
+			redirectTo: '/admin'
+		});
+
+		const responseText = JSON.stringify(sanitized);
+		for (const forbidden of [
+			'authToken',
+			'plexToken',
+			'plexId',
+			'email',
+			'services',
+			'accessToken',
+			'clientIdentifier',
+			'resources',
+			'raw-auth-token',
+			'service-token'
+		]) {
+			expect(responseText).not.toContain(forbidden);
+		}
+	});
+});
 
 interface MemoryStorage {
 	store: Map<string, string>;

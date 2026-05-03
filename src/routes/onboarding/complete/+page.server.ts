@@ -7,14 +7,19 @@
 
 import { fail, redirect } from '@sveltejs/kit';
 import {
+	AppSettingsKey,
 	getAnonymizationMode,
+	getAppSetting,
 	getCachedServerName,
+	getFunFactFrequency,
 	getUITheme,
-	getWrappedTheme
+	getWrappedLogoMode,
+	getWrappedTheme,
+	hasOpenAIEnvConfig
 } from '$lib/server/admin/settings.service';
 import { logger } from '$lib/server/logging';
 import { completeOnboarding } from '$lib/server/onboarding';
-import { getGlobalDefaultShareMode } from '$lib/server/sharing/service';
+import { getGlobalAllowUserControl, getGlobalDefaultShareMode } from '$lib/server/sharing/service';
 import { getPlayHistoryCount, getSyncProgress, isSyncRunning } from '$lib/server/sync';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -38,12 +43,28 @@ export const load: PageServerLoad = async ({ parent, locals }) => {
 	const historyCount = await getPlayHistoryCount();
 
 	// Get configured settings for summary
-	const [serverName, uiTheme, wrappedTheme, anonymizationMode, shareMode] = await Promise.all([
+	const [
+		serverName,
+		uiTheme,
+		wrappedTheme,
+		anonymizationMode,
+		logoMode,
+		shareMode,
+		allowUserControl,
+		funFactFrequency,
+		openaiApiKey,
+		openaiBaseUrl
+	] = await Promise.all([
 		getCachedServerName(),
 		getUITheme(),
 		getWrappedTheme(),
 		getAnonymizationMode(),
-		getGlobalDefaultShareMode()
+		getWrappedLogoMode(),
+		getGlobalDefaultShareMode(),
+		getGlobalAllowUserControl(),
+		getFunFactFrequency(),
+		getAppSetting(AppSettingsKey.OPENAI_API_KEY),
+		getAppSetting(AppSettingsKey.OPENAI_BASE_URL)
 	]);
 
 	return {
@@ -58,7 +79,13 @@ export const load: PageServerLoad = async ({ parent, locals }) => {
 			uiTheme: formatThemeName(uiTheme),
 			wrappedTheme: formatThemeName(wrappedTheme),
 			anonymizationMode: formatAnonymizationMode(anonymizationMode),
-			shareMode: formatShareMode(shareMode)
+			logoMode: formatLogoMode(logoMode),
+			shareMode: formatShareMode(shareMode),
+			allowUserControl: allowUserControl ? 'Allowed' : 'Locked by admin',
+			funFacts:
+				hasOpenAIEnvConfig() || openaiApiKey || openaiBaseUrl
+					? formatFunFactFrequency(funFactFrequency)
+					: 'Disabled'
 		}
 	};
 };
@@ -95,6 +122,20 @@ function formatShareMode(mode: string): string {
 		'private-link': 'Private Link'
 	};
 	return modes[mode] || mode;
+}
+
+function formatLogoMode(mode: string): string {
+	const modes: Record<string, string> = {
+		always_show: 'Always Show',
+		always_hide: 'Always Hide',
+		user_choice: 'User Choice'
+	};
+	return modes[mode] || mode;
+}
+
+function formatFunFactFrequency(config: { mode: string; count: number }): string {
+	if (config.mode === 'custom') return `Custom (${config.count})`;
+	return `${formatThemeName(config.mode)} (${config.count})`;
 }
 
 /**

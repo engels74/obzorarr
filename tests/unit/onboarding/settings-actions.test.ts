@@ -1,4 +1,23 @@
-import { describe, expect, it } from 'bun:test';
+import { beforeEach, describe, expect, it } from 'bun:test';
+import { isRedirect } from '@sveltejs/kit';
+import {
+	AnonymizationMode,
+	AppSettingsKey,
+	FunFactFrequency,
+	getAnonymizationMode,
+	getAppSetting,
+	getFunFactFrequency,
+	getUITheme,
+	getWrappedLogoMode,
+	getWrappedTheme,
+	ThemePresets,
+	WrappedLogoMode
+} from '$lib/server/admin/settings.service';
+import { db } from '$lib/server/db/client';
+import { appSettings, slideConfig } from '$lib/server/db/schema';
+import { getOnboardingStep, OnboardingSteps } from '$lib/server/onboarding';
+import { getGlobalAllowUserControl, getGlobalDefaultShareMode } from '$lib/server/sharing/service';
+import { initializeDefaultSlideConfig } from '$lib/server/slides/config.service';
 import { actions } from '../../../src/routes/onboarding/settings/+page.server';
 
 const ORIGIN = 'http://localhost:5173';
@@ -40,7 +59,25 @@ async function runSaveSettings(request: Request) {
 	} as Parameters<SaveSettingsAction>[0]);
 }
 
+async function expectRedirect(run: () => Promise<unknown>, location: string) {
+	try {
+		await run();
+		throw new Error('Expected action to redirect');
+	} catch (error) {
+		expect(isRedirect(error)).toBe(true);
+		if (!isRedirect(error)) throw error;
+		expect(error.status).toBe(303);
+		expect(error.location).toBe(location);
+	}
+}
+
 describe('onboarding settings actions', () => {
+	beforeEach(async () => {
+		await db.delete(appSettings);
+		await db.delete(slideConfig);
+		await initializeDefaultSlideConfig();
+	});
+
 	it('fails with 400 when enableFunFacts is true and openaiApiKey is missing', async () => {
 		const request = createSettingsRequest({
 			enableFunFacts: 'true',
@@ -59,6 +96,46 @@ describe('onboarding settings actions', () => {
 		});
 		expect((result as { data: { error: string } }).data.error).toContain(
 			'OpenAI API key is required'
+		);
+	});
+
+	it('persists non-default settings before redirecting to completion', async () => {
+		const request = createSettingsRequest({
+			uiTheme: ThemePresets.SUPABASE,
+			wrappedTheme: ThemePresets.DOOM_64,
+			anonymizationMode: AnonymizationMode.HYBRID,
+			logoMode: WrappedLogoMode.USER_CHOICE,
+			defaultShareMode: 'private-link',
+			allowUserControl: 'true',
+			enableFunFacts: 'false'
+		});
+
+		await expectRedirect(() => runSaveSettings(request), '/onboarding/complete');
+
+		expect(await getUITheme()).toBe(ThemePresets.SUPABASE);
+		expect(await getWrappedTheme()).toBe(ThemePresets.DOOM_64);
+		expect(await getAnonymizationMode()).toBe(AnonymizationMode.HYBRID);
+		expect(await getWrappedLogoMode()).toBe(WrappedLogoMode.USER_CHOICE);
+		expect(await getGlobalDefaultShareMode()).toBe('private-link');
+		expect(await getGlobalAllowUserControl()).toBe(true);
+		expect(await getOnboardingStep()).toBe(OnboardingSteps.COMPLETE);
+	});
+
+	it('persists enabled fun fact frequency when AI credentials are supplied', async () => {
+		const request = createSettingsRequest({
+			enableFunFacts: 'true',
+			funFactFrequency: FunFactFrequency.MANY,
+			openaiApiKey: 'test-openai-key',
+			openaiBaseUrl: 'https://api.openai.example/v1',
+			openaiModel: 'test-model'
+		});
+
+		await expectRedirect(() => runSaveSettings(request), '/onboarding/complete');
+
+		expect(await getFunFactFrequency()).toEqual({ mode: FunFactFrequency.MANY, count: 8 });
+		expect(await getAppSetting(AppSettingsKey.OPENAI_API_KEY)).toBe('test-openai-key');
+		expect(await getAppSetting(AppSettingsKey.OPENAI_BASE_URL)).toBe(
+			'https://api.openai.example/v1'
 		);
 	});
 });

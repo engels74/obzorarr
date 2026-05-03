@@ -267,9 +267,9 @@ function getThemeColors(themeValue: string) {
 				<input type="hidden" name="anonymizationMode" value={anonymizationMode} />
 				<input type="hidden" name="logoMode" value={wrappedLogoMode} />
 				<input type="hidden" name="defaultShareMode" value={defaultShareMode} />
-				<input type="hidden" name="allowUserControl" value={allowUserControl} />
+				<input type="hidden" name="allowUserControl" value={allowUserControl ? 'true' : 'false'} />
 				<input type="hidden" name="enabledSlides" value={enabledSlidesString} />
-				<input type="hidden" name="enableFunFacts" value={enableFunFacts} />
+				<input type="hidden" name="enableFunFacts" value={enableFunFacts ? 'true' : 'false'} />
 				<input
 					type="hidden"
 					name="funFactFrequency"

@@ -44,7 +44,6 @@ import { goto } from '$app/navigation';
 import { page } from '$app/stores';
 import * as AlertDialog from '$lib/components/ui/alert-dialog';
 import * as Tabs from '$lib/components/ui/tabs';
-import * as Tooltip from '$lib/components/ui/tooltip';
 import { handleFormToast } from '$lib/utils/form-toast';
 import type { ActionData, PageData } from './$types';
 
@@ -155,6 +154,8 @@ let openaiApiKeyLocked = $state(false);
 let openaiBaseUrlLocked = $state(false);
 let openaiModelLocked = $state(false);
 let csrfOriginLocked = $state(false);
+let csrfHelpOpen = $state(false);
+let trustProxyHelpOpen = $state(false);
 
 // Secret fields: true when a value is stored server-side (DB or ENV).
 // Used to display a placeholder without exposing the raw value.
@@ -1456,37 +1457,23 @@ const logFieldErrors = $derived(
 
 		<!-- Security Tab -->
 		{#if activeTab === 'security'}
-			<Tooltip.Provider delayDuration={200}>
-				<div class="security-content">
+			<div class="security-content">
 					<!-- CSRF Protection Panel -->
 					<section class="panel csrf-panel">
 						<div class="panel-header">
 							<div class="panel-title">
 								<ShieldCheck class="panel-icon security" />
 								<h2>CSRF Protection</h2>
-								<Tooltip.Root>
-									<Tooltip.Trigger>
-										<span
-											role="button"
-											tabindex="0"
-											class="help-trigger"
-											aria-label="Learn how CSRF protection works"
-										>
-											<CircleHelp />
-										</span>
-									</Tooltip.Trigger>
-									<Tooltip.Content side="right" sideOffset={8} class="csrf-tooltip">
-										<div class="csrf-tooltip-inner">
-											<strong>How CSRF Protection Works</strong>
-											<p>
-												When ORIGIN is set, Obzorarr validates that all state-changing requests
-												(POST, PUT, PATCH, DELETE) originate from your domain. Combined with
-												SameSite cookies, this provides robust protection without additional reverse
-												proxy configuration.
-											</p>
-										</div>
-									</Tooltip.Content>
-								</Tooltip.Root>
+								<button
+									type="button"
+									class="help-trigger"
+									aria-label="Learn how CSRF protection works"
+									aria-expanded={csrfHelpOpen}
+									aria-controls="csrf-help-panel"
+									onclick={() => (csrfHelpOpen = !csrfHelpOpen)}
+								>
+									<CircleHelp />
+								</button>
 							</div>
 							<div class="connection-status" class:connected={data.security.csrfEnabled}>
 								<span class="status-dot"></span>
@@ -1499,6 +1486,17 @@ const logFieldErrors = $derived(
 							Cross-Site Request Forgery protection prevents malicious websites from making
 							unauthorized requests on behalf of authenticated users.
 						</p>
+						{#if csrfHelpOpen}
+							<div id="csrf-help-panel" class="security-help-panel">
+								<strong>How CSRF Protection Works</strong>
+								<p>
+									When ORIGIN is set, Obzorarr validates that all state-changing requests
+									(POST, PUT, PATCH, DELETE) originate from your domain. Combined with SameSite
+									cookies, this provides robust protection without additional reverse proxy
+									configuration.
+								</p>
+							</div>
+						{/if}
 
 						<div class="panel-form">
 							<div class="form-field">
@@ -1699,30 +1697,16 @@ const logFieldErrors = $derived(
 							<div class="panel-title">
 								<ShieldCheck class="panel-icon security" />
 								<h2>Reverse Proxy Header Trust</h2>
-								<Tooltip.Root>
-									<Tooltip.Trigger>
-										<span
-											role="button"
-											tabindex="0"
-											class="help-trigger"
-											aria-label="Learn how reverse-proxy header trust works"
-										>
-											<CircleHelp />
-										</span>
-									</Tooltip.Trigger>
-									<Tooltip.Content side="right" sideOffset={8} class="csrf-tooltip">
-										<div class="csrf-tooltip-inner">
-											<strong>How Reverse-Proxy Header Trust Works</strong>
-											<p>
-												When enabled, Obzorarr trusts <code>X-Forwarded-Proto</code> and
-												<code>X-Forwarded-Host</code> from the upstream proxy and uses them to
-												build absolute URLs. Enable ONLY if your reverse proxy strips inbound
-												forwarded headers from clients — otherwise an attacker can poison the
-												app's view of its own host and protocol.
-											</p>
-										</div>
-									</Tooltip.Content>
-								</Tooltip.Root>
+								<button
+									type="button"
+									class="help-trigger"
+									aria-label="Learn how reverse-proxy header trust works"
+									aria-expanded={trustProxyHelpOpen}
+									aria-controls="trust-proxy-help-panel"
+									onclick={() => (trustProxyHelpOpen = !trustProxyHelpOpen)}
+								>
+									<CircleHelp />
+								</button>
 							</div>
 							<div class="connection-status" class:connected={trustProxyValue}>
 								<span class="status-dot"></span>
@@ -1734,6 +1718,18 @@ const logFieldErrors = $derived(
 							Trust <code>X-Forwarded-Proto</code> and <code>X-Forwarded-Host</code> from the
 							upstream reverse proxy. Default: off.
 						</p>
+						{#if trustProxyHelpOpen}
+							<div id="trust-proxy-help-panel" class="security-help-panel">
+								<strong>How Reverse-Proxy Header Trust Works</strong>
+								<p>
+									When enabled, Obzorarr trusts <code>X-Forwarded-Proto</code> and
+									<code>X-Forwarded-Host</code> from the upstream proxy and uses them to build
+									absolute URLs. Enable only if your reverse proxy strips inbound forwarded
+									headers from clients; otherwise an attacker can poison the app's view of its own
+									host and protocol.
+								</p>
+							</div>
+						{/if}
 
 						<div class="panel-form">
 							<div class="form-field">
@@ -1872,8 +1868,7 @@ const logFieldErrors = $derived(
 							</div>
 						{/if}
 					</div>
-				</div>
-			</Tooltip.Provider>
+			</div>
 		{/if}
 
 		<!-- Data Tab -->
@@ -3520,16 +3515,6 @@ const logFieldErrors = $derived(
 			color: hsl(var(--muted-foreground));
 		}
 
-		/* Help Trigger - Whisper-quiet info hint */
-		.panel-title :global([data-slot='tooltip-trigger']) {
-			all: unset;
-			display: inline-flex;
-			align-items: center;
-			vertical-align: middle;
-			margin-left: 0.375rem;
-			cursor: pointer;
-		}
-
 		.help-trigger {
 			all: unset;
 			display: inline-flex;
@@ -3551,6 +3536,28 @@ const logFieldErrors = $derived(
 		.help-trigger :global(svg) {
 			width: 15px;
 			height: 15px;
+		}
+
+		.security-help-panel {
+			margin: 0.75rem 0 1.25rem;
+			padding: 0.875rem 1rem;
+			border: 1px solid hsl(var(--border) / 0.65);
+			border-radius: 8px;
+			background: hsl(var(--muted) / 0.25);
+			color: hsl(var(--muted-foreground));
+			font-size: 0.875rem;
+			line-height: 1.55;
+		}
+
+		.security-help-panel strong {
+			display: block;
+			margin-bottom: 0.35rem;
+			color: hsl(var(--foreground));
+			font-size: 0.875rem;
+		}
+
+		.security-help-panel p {
+			margin: 0;
 		}
 
 		/* Documentation - Compact Collapsible */
