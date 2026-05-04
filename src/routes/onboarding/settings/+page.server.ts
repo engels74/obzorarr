@@ -15,6 +15,7 @@ import {
 	FunFactFrequency,
 	type FunFactFrequencyType,
 	getAnonymizationMode,
+	getApiConfigWithSources,
 	getAppSetting,
 	getFunFactFrequency,
 	getUITheme,
@@ -333,7 +334,11 @@ export const actions: Actions = {
 
 			// Built-in fun-fact templates work without an OpenAI key, so don't block
 			// onboarding here; surface a non-fatal notice on the completion step.
-			const aiKeyMissingNotice = data.enableFunFacts && !openaiApiKey;
+			// Suppress the notice when an effective API key already exists via env
+			// (env overrides DB), since AI is operative regardless of what was posted.
+			const apiConfig = await getApiConfigWithSources();
+			const hasEffectiveApiKey = Boolean(apiConfig.openai.apiKey.value.trim());
+			const aiKeyMissingNotice = data.enableFunFacts && !openaiApiKey && !hasEffectiveApiKey;
 
 			// Save all settings in parallel
 			await Promise.all([

@@ -457,6 +457,34 @@ export async function setApiConfigAtomic(opts: {
 	});
 }
 
+/**
+ * Clears a single API_CONFIG row and advances the `API_CONFIG_VERSION` marker in
+ * the same transaction so `max(updatedAt)` over `API_CONFIG_KEYS` strictly
+ * advances. Without the bump, a clear performed via the dedicated clear-* admin
+ * actions would leave `max(updatedAt)` pinned to the last `setApiConfigAtomic`
+ * write and let a stale tab resurrect the cleared value while still passing
+ * OCC. Use this for admin "clear OpenAI key/model" style actions; the
+ * cross-field write path (`setApiConfigAtomic`) already bumps the version
+ * itself.
+ */
+export async function clearApiConfigKey(key: (typeof API_CONFIG_KEYS)[number]): Promise<void> {
+	await db.transaction(async (tx) => {
+		await tx.delete(appSettings).where(eq(appSettings.key, key));
+		const now = new Date();
+		await tx
+			.insert(appSettings)
+			.values({
+				key: AppSettingsKey.API_CONFIG_VERSION,
+				value: now.toISOString(),
+				updatedAt: now
+			})
+			.onConflictDoUpdate({
+				target: appSettings.key,
+				set: { value: now.toISOString(), updatedAt: now }
+			});
+	});
+}
+
 export async function getOrCreateAppSetting(
 	key: AppSettingsKeyType,
 	createValue: () => string

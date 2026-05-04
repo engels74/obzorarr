@@ -7,6 +7,7 @@ import {
 	API_CONFIG_KEYS,
 	AppSettingsKey,
 	type ConfigSource,
+	clearApiConfigKey,
 	clearCachedServerMachineId,
 	clearPlayHistory,
 	clearStatsCache,
@@ -268,9 +269,16 @@ export const load: PageServerLoad = async () => {
 			allowUserControl
 		},
 		serverWrappedShareMode,
-		serverWrappedSettingsVersion: serverWrappedSettingsUpdatedAt?.toISOString() ?? '',
-		userDefaultsSettingsVersion: userDefaultsSettingsUpdatedAt?.toISOString() ?? '',
-		apiConfigVersion: apiConfigUpdatedAt?.toISOString() ?? '',
+		// Fall back to the epoch when no rows yet exist (fresh install / all-cleared).
+		// The atomic services accept any parseable timestamp on rows.length === 0 and
+		// the Zod `.min(1)` gate requires non-empty — emitting `''` would lock the
+		// admin out of the first save with an irrecoverable 409. The epoch is the
+		// canonical "older than anything" sentinel for OCC purposes.
+		serverWrappedSettingsVersion:
+			serverWrappedSettingsUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
+		userDefaultsSettingsVersion:
+			userDefaultsSettingsUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
+		apiConfigVersion: apiConfigUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
 		security: {
 			originValue: csrfConfig.origin.value,
 			csrfEnabled: !!csrfConfig.origin.value,
@@ -995,7 +1003,12 @@ export const actions: Actions = requireAdminActions({
 		}
 
 		try {
-			await deleteAppSetting(AppSettingsKey.OPENAI_API_KEY);
+			// Use clearApiConfigKey (not deleteAppSetting) so API_CONFIG_VERSION is
+			// bumped in the same transaction. Without the bump, max(updatedAt) over
+			// API_CONFIG_KEYS would not advance, letting a stale tab whose
+			// apiConfigVersion equals that timestamp pass OCC and resurrect the
+			// cleared key via updateApiConfig.
+			await clearApiConfigKey(AppSettingsKey.OPENAI_API_KEY);
 			return { success: true, message: 'OpenAI API key cleared' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to clear OpenAI API key';
@@ -1012,7 +1025,9 @@ export const actions: Actions = requireAdminActions({
 		}
 
 		try {
-			await deleteAppSetting(AppSettingsKey.OPENAI_MODEL);
+			// See clearOpenaiKey above — clearApiConfigKey bumps API_CONFIG_VERSION
+			// so a stale tab cannot resurrect the cleared model name through OCC.
+			await clearApiConfigKey(AppSettingsKey.OPENAI_MODEL);
 			return { success: true, message: 'OpenAI model cleared (will fall back to default)' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to clear OpenAI model';
