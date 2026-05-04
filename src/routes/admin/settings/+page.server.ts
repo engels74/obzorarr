@@ -101,8 +101,8 @@ const UserDefaultsSettingsSchema = z.object({
 // Each value field is `string | undefined`:
 //   undefined = field absent from this submission (e.g. the OpenAI panel saved
 //               and didn't include Plex inputs) → service treats as no-op.
-//   ''        = field present but blank → service either clears (echoed-back
-//               keys) or no-ops (secret keys).
+//   ''        = field present but blank → service clears the echoed-back URL
+//               field, or no-ops for secret keys.
 //   non-empty = write.
 // The URL-validated fields accept `''` via the literal union so a cleared input
 // passes validation and reaches the service as the clear signal.
@@ -111,9 +111,12 @@ const UserDefaultsSettingsSchema = z.object({
 //   - Secret keys (plexToken, openaiApiKey) use `optionalTrimmed(...)`: empty,
 //     whitespace-only, and absent all collapse to `undefined` (no-op). Prevents
 //     a stray "  " press from being persisted as the secret.
-//   - Echoed-back keys (openaiModel, openaiBaseUrl) get `.trim()` on the inner
-//     string so whitespace-only inputs become the canonical clear signal `''`,
-//     preserving the user's ability to clear by blanking the field.
+//   - Echoed-back URL (openaiBaseUrl) gets `.trim()` on the inner string so
+//     whitespace-only inputs become the canonical clear signal `''`, preserving
+//     the user's ability to clear by blanking the field.
+//   - `openaiModel` is the exception: it is also echoed back, but a blank or
+//     whitespace-only submission now fails validation. Clearing must go through
+//     the dedicated `?/clearOpenaiModel` action — see the schema note below.
 // Trim before the union so whitespace-only inputs (e.g. '   ') collapse to ''
 // and match the literal-empty branch — without preprocess, .trim() on the URL
 // branch would still leave the original untrimmed string for the literal('')
