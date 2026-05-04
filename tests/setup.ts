@@ -18,6 +18,7 @@ mock.module('$env/dynamic/private', () => ({
 	env: {
 		PLEX_SERVER_URL: 'http://test-plex-server:32400',
 		PLEX_TOKEN: 'test-plex-token',
+		ENABLE_LIVE_SYNC: 'false',
 		OPENAI_API_KEY: '',
 		OPENAI_API_URL: '',
 		OPENAI_MODEL: ''
