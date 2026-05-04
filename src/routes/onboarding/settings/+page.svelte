@@ -1,6 +1,6 @@
 <script lang="ts">
 import { animate } from 'motion';
-import { untrack } from 'svelte';
+import { tick, untrack } from 'svelte';
 import { deserialize, enhance } from '$app/forms';
 import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
 import { handleFormToast } from '$lib/utils/form-toast';
@@ -39,6 +39,7 @@ let isTestingAI = $state(false);
 let testAIResult = $state<{ type: 'success' | 'error'; message: string } | null>(null);
 let submitError = $state<string | null>(null);
 let apiKeyError = $state<string | null>(null);
+let baseUrlError = $state<string | null>(null);
 let visibleError = $derived(submitError ?? form?.error ?? null);
 
 const aiPersonaOptions = [
@@ -238,21 +239,31 @@ function getThemeColors(themeValue: string) {
 					isSubmitting = true;
 					submitError = null;
 					apiKeyError = null;
+					baseUrlError = null;
 					return async ({ result, update }) => {
 						try {
 							if (result.type === 'failure') {
 								const payload = result.data as { error?: string } | undefined;
 								const message = payload?.error ?? 'Failed to save settings. Please try again.';
 								submitError = message;
-								if (/openai\s*(api\s*key|base\s*url)/i.test(message)) {
-									apiKeyError = message;
+								const isBaseUrlError = /openai\s*base\s*url/i.test(message);
+								const isApiKeyError =
+									!isBaseUrlError && /openai\s*api\s*key/i.test(message);
+								if (isBaseUrlError || isApiKeyError) {
+									if (isBaseUrlError) {
+										baseUrlError = message;
+									} else {
+										apiKeyError = message;
+									}
 									const aiIndex = subSteps.findIndex((s) => s.id === 'ai');
 									if (aiIndex >= 0 && currentSubStep !== aiIndex) {
 										goToSubStep(aiIndex);
 									}
-									queueMicrotask(() => {
-										document.getElementById('onboarding-openai-api-key')?.focus();
-									});
+									await tick();
+									const targetId = isBaseUrlError
+										? 'onboarding-openai-base-url'
+										: 'onboarding-openai-api-key';
+									document.getElementById(targetId)?.focus();
 								}
 								handleFormToast({ error: message });
 							} else if (result.type === 'error') {
@@ -609,11 +620,21 @@ function getThemeColors(themeValue: string) {
 									<input
 										id="onboarding-openai-base-url"
 										class="text-input"
+										class:has-error={Boolean(baseUrlError)}
 										type="url"
 										bind:value={openaiBaseUrl}
 										maxlength="512"
 										placeholder="https://api.openai.com/v1"
+										aria-invalid={baseUrlError ? 'true' : 'false'}
+										aria-describedby={baseUrlError
+											? 'onboarding-openai-base-url-error'
+											: undefined}
 									/>
+									{#if baseUrlError}
+										<p id="onboarding-openai-base-url-error" class="field-error" role="alert">
+											{baseUrlError}
+										</p>
+									{/if}
 								</div>
 
 								<div class="setting-group">
