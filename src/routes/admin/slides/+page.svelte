@@ -1,5 +1,6 @@
 <script lang="ts">
 import type { ActionResult } from '@sveltejs/kit';
+import { untrack } from 'svelte';
 import { deserialize, enhance } from '$app/forms';
 import type { SlideType } from '$lib/components/slides/types';
 import { DEFAULT_SLIDE_ORDER } from '$lib/components/slides/types';
@@ -41,14 +42,21 @@ const SLIDE_NAMES: Record<SlideType, string> = {
 	custom: 'Custom Slide'
 };
 
-// Fun Fact frequency state (synced from server data)
-let selectedFrequencyMode = $state<typeof data.funFactFrequency.mode>('normal');
-let customCount = $state(0);
+// Fun Fact frequency state (synced from server data only when server data changes)
+let selectedFrequencyMode = $state<typeof data.funFactFrequency.mode>(
+	untrack(() => data.funFactFrequency.mode)
+);
+let customCount = $state(untrack(() => data.funFactFrequency.count));
+let syncedFrequencyKey = $state('');
 
-// Sync state from data before DOM updates
-$effect.pre(() => {
+// Avoid resetting the radio while the user is selecting Custom before submit.
+$effect(() => {
+	const frequencyKey = `${data.funFactFrequency.mode}:${data.funFactFrequency.count}`;
+	if (frequencyKey === syncedFrequencyKey) return;
+
 	selectedFrequencyMode = data.funFactFrequency.mode;
 	customCount = data.funFactFrequency.count;
+	syncedFrequencyKey = frequencyKey;
 });
 
 // State for custom slide editor
@@ -423,39 +431,37 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 				};
 			}}
 		>
-			<!-- svelte-ignore a11y_click_events_have_key_events -->
-			<!-- svelte-ignore a11y_no_static_element_interactions -->
-			<div class="frequency-options" onclick={(e) => e.stopPropagation()}>
+			<div class="frequency-options">
 				<label class="frequency-option">
 					<input type="radio" name="mode" value="few" bind:group={selectedFrequencyMode} />
-						<span class="frequency-label">
-							<span class="frequency-name">Few</span>
-							<span class="frequency-desc">2 fun facts</span>
-						</span>
+					<span class="frequency-label">
+						<span class="frequency-name">Few</span>
+						<span class="frequency-desc">2 fun facts</span>
+					</span>
 				</label>
 
 				<label class="frequency-option">
 					<input type="radio" name="mode" value="normal" bind:group={selectedFrequencyMode} />
-						<span class="frequency-label">
-							<span class="frequency-name">Normal</span>
-							<span class="frequency-desc">4 fun facts</span>
-						</span>
+					<span class="frequency-label">
+						<span class="frequency-name">Normal</span>
+						<span class="frequency-desc">4 fun facts</span>
+					</span>
 				</label>
 
 				<label class="frequency-option">
 					<input type="radio" name="mode" value="many" bind:group={selectedFrequencyMode} />
-						<span class="frequency-label">
-							<span class="frequency-name">Many</span>
-							<span class="frequency-desc">8 fun facts</span>
-						</span>
+					<span class="frequency-label">
+						<span class="frequency-name">Many</span>
+						<span class="frequency-desc">8 fun facts</span>
+					</span>
 				</label>
 
 				<label class="frequency-option">
 					<input type="radio" name="mode" value="custom" bind:group={selectedFrequencyMode} />
-						<span class="frequency-label">
-							<span class="frequency-name">Custom</span>
-							<span class="frequency-desc">1-15 fun facts</span>
-						</span>
+					<span class="frequency-label">
+						<span class="frequency-name">Custom</span>
+						<span class="frequency-desc">1-15 fun facts</span>
+					</span>
 				</label>
 			</div>
 

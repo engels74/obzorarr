@@ -77,9 +77,10 @@ const AnonymizationSchema = z.enum(['real', 'anonymous', 'hybrid']);
 const WrappedLogoModeSchema = z.enum(['always_show', 'always_hide', 'user_choice']);
 
 const ShareModeSchema = z.enum(['public', 'private-oauth', 'private-link']);
+const BooleanStringSchema = z.enum(['true', 'false']).transform((value) => value === 'true');
 const GlobalDefaultsSchema = z.object({
 	defaultShareMode: ShareModeSchema,
-	allowUserControl: z.coerce.boolean()
+	allowUserControl: BooleanStringSchema
 });
 // Server-wide wrapped only supports public and private-oauth (not private-link)
 const ServerWrappedModeSchema = z.enum(['public', 'private-oauth']);
@@ -92,7 +93,7 @@ const ServerWrappedSettingsSchema = z.object({
 
 const UserDefaultsSettingsSchema = z.object({
 	defaultShareMode: ShareModeSchema,
-	allowUserControl: z.coerce.boolean(),
+	allowUserControl: BooleanStringSchema,
 	settingsVersion: z.string()
 });
 
@@ -646,7 +647,7 @@ export const actions: Actions = requireAdminActions({
 
 		const data = {
 			defaultShareMode: formData.get('defaultShareMode'),
-			allowUserControl: formData.get('allowUserControl') === 'true'
+			allowUserControl: formData.get('allowUserControl')
 		};
 
 		const parsed = GlobalDefaultsSchema.safeParse(data);
@@ -742,7 +743,7 @@ export const actions: Actions = requireAdminActions({
 
 		const data = {
 			defaultShareMode: formData.get('defaultShareMode'),
-			allowUserControl: formData.get('allowUserControl') === 'true',
+			allowUserControl: formData.get('allowUserControl'),
 			settingsVersion: formData.get('settingsVersion')?.toString() ?? ''
 		};
 

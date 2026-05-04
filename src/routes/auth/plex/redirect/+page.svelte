@@ -1,7 +1,12 @@
 <script lang="ts">
 import { onMount } from 'svelte';
 import { browser } from '$app/environment';
-import { LOGIN_TIMEOUT_MS, PIN_STORAGE_KEY, POLL_INTERVAL_MS } from '$lib/client/plex-login';
+import {
+	LOGIN_TIMEOUT_MS,
+	PIN_STORAGE_KEY,
+	POLL_INTERVAL_MS,
+	sanitizeCompletedLoginResponse
+} from '$lib/client/plex-login';
 import type { PageData } from './$types';
 
 type Status = 'loading' | 'success' | 'error' | 'cancelled';
@@ -104,12 +109,11 @@ async function pollForLogin(
 			throw new Error(errData.message || 'Failed to check authentication status');
 		}
 
-		const result = (await response.json()) as
-			| { pending: true }
-			| { user: { isAdmin: boolean }; redirectTo?: string };
+		const result = (await response.json()) as unknown;
 
-		if ('user' in result && result.user) {
-			return result;
+		const completedLogin = sanitizeCompletedLoginResponse(result);
+		if (completedLogin) {
+			return completedLogin;
 		}
 	}
 

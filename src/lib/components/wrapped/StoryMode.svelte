@@ -1,5 +1,6 @@
 <script lang="ts">
 import { animate } from 'motion';
+import { tick } from 'svelte';
 import { prefersReducedMotion } from 'svelte/motion';
 import type { SlideMessagingContext } from '$lib/components/slides/messaging-context';
 import { createPersonalContext } from '$lib/components/slides/messaging-context';
@@ -38,6 +39,7 @@ let {
 const EDGE_ZONE_PERCENT = 0.15;
 const SWIPE_THRESHOLD = 50;
 const ANIMATION_DURATION = 450;
+type AnimationHandle = { stop: () => void; finished: Promise<void> };
 
 const navigation = createSlideState();
 let initialized = $state(false);
@@ -65,18 +67,15 @@ let showPreviousSlide = $state(false);
 let previousSlideIndex = $state(-1);
 
 let mounted = $state(true);
-let activeEnterAnim: { stop: () => void; finished: Promise<void> } | null = $state(null);
+let activeEnterAnim: AnimationHandle | null = $state(null);
+let activeExitAnim: AnimationHandle | null = $state(null);
 let transitionTimeout: ReturnType<typeof setTimeout> | null = $state(null);
+let transitionToken = 0;
 
 $effect(() => {
 	return () => {
 		mounted = false;
-		if (activeEnterAnim) {
-			activeEnterAnim.stop();
-		}
-		if (transitionTimeout) {
-			clearTimeout(transitionTimeout);
-		}
+		clearTransitionHandles();
 	};
 });
 
@@ -85,6 +84,41 @@ const previousSlide = $derived(previousSlideIndex >= 0 ? slides[previousSlideInd
 
 function emitSlideChange(): void {
 	onSlideChange?.(navigation.currentSlide);
+}
+
+function clearTransitionHandles(): void {
+	if (transitionTimeout) {
+		clearTimeout(transitionTimeout);
+		transitionTimeout = null;
+	}
+	if (activeEnterAnim) {
+		activeEnterAnim.stop();
+		activeEnterAnim = null;
+	}
+	if (activeExitAnim) {
+		activeExitAnim.stop();
+		activeExitAnim = null;
+	}
+}
+
+function startNavigation(direction: 'forward' | 'backward', move: () => boolean): void {
+	if (isTransitioning) return;
+
+	const fromSlide = navigation.currentSlide;
+	previousSlideIndex = fromSlide;
+	showPreviousSlide = true;
+	isTransitioning = true;
+
+	if (!move()) {
+		showPreviousSlide = false;
+		previousSlideIndex = -1;
+		isTransitioning = false;
+		return;
+	}
+
+	const token = ++transitionToken;
+	emitSlideChange();
+	void animateTransition(direction, token);
 }
 
 function goToNext(): void {
@@ -96,36 +130,27 @@ function goToNext(): void {
 		return;
 	}
 
-	previousSlideIndex = navigation.currentSlide;
-	showPreviousSlide = true;
-	isTransitioning = true;
-
-	navigation.goToNext();
-	emitSlideChange();
-	animateTransition('forward');
+	startNavigation('forward', () => navigation.goToNext());
 }
 
 function goToPrevious(): void {
 	if (isTransitioning || !navigation.canGoPrevious) return;
 
-	previousSlideIndex = navigation.currentSlide;
-	showPreviousSlide = true;
-	isTransitioning = true;
-
-	navigation.goToPrevious();
-	emitSlideChange();
-	animateTransition('backward');
+	startNavigation('backward', () => navigation.goToPrevious());
 }
 
-function animateTransition(direction: 'forward' | 'backward'): void {
+async function animateTransition(direction: 'forward' | 'backward', token: number): Promise<void> {
+	navigation.startAnimation();
+	await tick();
+
+	if (!mounted || token !== transitionToken) return;
+
 	const shouldAnimate = !prefersReducedMotion.current;
 
 	if (!shouldAnimate || !currentSlideEl) {
-		finishTransition();
+		finishTransition(token);
 		return;
 	}
-
-	navigation.startAnimation();
 
 	const enterFrom =
 		direction === 'forward' ? 'translateX(80%) scale(0.98)' : 'translateX(-80%) scale(0.98)';
@@ -134,18 +159,11 @@ function animateTransition(direction: 'forward' | 'backward'): void {
 
 	const slideEl = currentSlideEl;
 	if (!slideEl) {
-		finishTransition();
+		finishTransition(token);
 		return;
 	}
 
-	if (activeEnterAnim) {
-		activeEnterAnim.stop();
-		activeEnterAnim = null;
-	}
-	if (transitionTimeout) {
-		clearTimeout(transitionTimeout);
-		transitionTimeout = null;
-	}
+	clearTransitionHandles();
 
 	const enterKeyframes = {
 		opacity: [0, 1],
@@ -170,54 +188,41 @@ function animateTransition(direction: 'forward' | 'backward'): void {
 			opacity: [1, 0],
 			transform: ['translateX(0) scale(1)', exitTo]
 		} as Record<string, unknown>;
-		(animate as (el: Element, kf: Record<string, unknown>, opts: Record<string, unknown>) => void)(
-			prevEl,
-			exitKeyframes,
-			{
-				duration: ANIMATION_DURATION / 1000,
-				easing: EASING_PRESETS.organic
-			}
-		);
+		activeExitAnim = (
+			animate as (
+				el: Element,
+				kf: Record<string, unknown>,
+				opts: Record<string, unknown>
+			) => AnimationHandle
+		)(prevEl, exitKeyframes, {
+			duration: ANIMATION_DURATION / 1000,
+			easing: EASING_PRESETS.organic
+		});
 	}
 
 	transitionTimeout = setTimeout(() => {
-		if (isTransitioning) {
-			finishTransition();
+		if (isTransitioning && token === transitionToken) {
+			finishTransition(token);
 		}
 	}, ANIMATION_DURATION + 100);
 
 	enterAnim.finished
 		.then(() => {
-			if (transitionTimeout) {
-				clearTimeout(transitionTimeout);
-				transitionTimeout = null;
-			}
-			if (mounted && isTransitioning) {
-				finishTransition();
+			if (mounted && isTransitioning && token === transitionToken) {
+				finishTransition(token);
 			}
 		})
 		.catch(() => {
-			if (transitionTimeout) {
-				clearTimeout(transitionTimeout);
-				transitionTimeout = null;
-			}
-			if (mounted && isTransitioning) {
-				finishTransition();
+			if (mounted && isTransitioning && token === transitionToken) {
+				finishTransition(token);
 			}
 		});
 }
 
-function finishTransition(): void {
-	if (!isTransitioning) return;
+function finishTransition(token = transitionToken): void {
+	if (!isTransitioning || token !== transitionToken) return;
 
-	if (transitionTimeout) {
-		clearTimeout(transitionTimeout);
-		transitionTimeout = null;
-	}
-	if (activeEnterAnim) {
-		activeEnterAnim.stop();
-		activeEnterAnim = null;
-	}
+	clearTransitionHandles();
 
 	showPreviousSlide = false;
 	previousSlideIndex = -1;
@@ -304,23 +309,13 @@ function handleKeyDown(event: KeyboardEvent): void {
 		case 'Home':
 			event.preventDefault();
 			if (navigation.currentSlide !== 0) {
-				previousSlideIndex = navigation.currentSlide;
-				showPreviousSlide = true;
-				isTransitioning = true;
-				navigation.goToFirst();
-				emitSlideChange();
-				animateTransition('backward');
+				startNavigation('backward', () => navigation.goToFirst());
 			}
 			break;
 		case 'End':
 			event.preventDefault();
 			if (!navigation.isLast) {
-				previousSlideIndex = navigation.currentSlide;
-				showPreviousSlide = true;
-				isTransitioning = true;
-				navigation.goToLast();
-				emitSlideChange();
-				animateTransition('forward');
+				startNavigation('forward', () => navigation.goToLast());
 			}
 			break;
 	}

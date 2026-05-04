@@ -83,12 +83,22 @@ const filteredStreamedLogs = $derived(
 	})
 );
 
-// Combined logs (filtered streamed + server-filtered)
+function matchesVisibleFilters(log: LogEntry): boolean {
+	if (selectedLevels.length > 0 && !selectedLevels.includes(log.level)) return false;
+	if (selectedSource && log.source !== selectedSource) return false;
+	if (searchText && !log.message.toLowerCase().includes(searchText.toLowerCase())) return false;
+	if (data.filters?.fromTimestamp && log.timestamp < data.filters.fromTimestamp) return false;
+	if (data.filters?.toTimestamp && log.timestamp > data.filters.toTimestamp) return false;
+	return true;
+}
+
+// Combined logs (filtered streamed + server-filtered), then narrowed by live local inputs.
 const allLogs = $derived([...filteredStreamedLogs, ...data.logs]);
+const visibleLogs = $derived(allLogs.filter(matchesVisibleFilters));
 
 const visibleLevelCounts = $derived.by(() => {
 	const counts: Record<LogLevelType, number> = { DEBUG: 0, INFO: 0, WARN: 0, ERROR: 0 };
-	for (const log of allLogs) {
+	for (const log of visibleLogs) {
 		counts[log.level] += 1;
 	}
 	return counts;
@@ -102,7 +112,7 @@ const visibleSources = $derived.by(() => {
 	return Array.from(sources).sort();
 });
 
-const visibleTotalCount = $derived(allLogs.length);
+const visibleTotalCount = $derived(visibleLogs.length);
 
 // Available log levels
 const logLevels: LogLevelType[] = ['DEBUG', 'INFO', 'WARN', 'ERROR'];
@@ -538,7 +548,7 @@ $effect(() => {
 			</span>
 		</div>
 
-		{#if allLogs.length === 0}
+		{#if visibleLogs.length === 0}
 			<p class="empty-message">No logs found matching your filters.</p>
 		{:else}
 			<div class="logs-table-wrapper">
@@ -553,7 +563,7 @@ $effect(() => {
 						</tr>
 					</thead>
 					<tbody>
-						{#each allLogs as log (log.id)}
+						{#each visibleLogs as log (log.id)}
 							<tr class={getLevelClass(log.level)}>
 								<td class="col-time">
 									<span class="time-relative">{formatRelativeTime(log.timestamp)}</span>
@@ -593,21 +603,22 @@ $effect(() => {
 				</table>
 			</div>
 
-			{#if data.hasMore && allLogs.length > 0}
-				{@const lastLog = allLogs[allLogs.length - 1]}
-				{#if lastLog}
-					<div class="load-more">
-						<a
-							href="/admin/logs?cursor={lastLog.id}&{$page.url.searchParams.toString()}"
-							class="load-more-button"
-						>
-							Load More
-						</a>
-					</div>
-				{/if}
+		{/if}
+
+		{#if data.hasMore && data.logs.length > 0}
+			{@const lastLog = data.logs[data.logs.length - 1]}
+			{#if lastLog}
+				<div class="load-more">
+					<a
+						href="/admin/logs?cursor={lastLog.id}&{$page.url.searchParams.toString()}"
+						class="load-more-button"
+					>
+						Load More
+					</a>
+				</div>
 			{/if}
 		{/if}
-	</section>
+		</section>
 
 	<!-- Settings Info -->
 	<section class="section settings-info">

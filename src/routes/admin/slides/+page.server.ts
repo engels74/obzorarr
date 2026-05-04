@@ -333,9 +333,16 @@ export const actions: Actions = requireAdminActions({
 
 		// Parse custom count if provided
 		let customCount: number | undefined;
-		if (mode === FunFactFrequency.CUSTOM && customCountStr) {
-			customCount = parseInt(customCountStr as string, 10);
-			if (Number.isNaN(customCount) || customCount < 1 || customCount > 15) {
+		if (mode === FunFactFrequency.CUSTOM) {
+			if (typeof customCountStr !== 'string') {
+				return fail(400, { error: 'Custom count must be between 1 and 15' });
+			}
+			const customCountToken = customCountStr.trim();
+			if (!/^\d+$/.test(customCountToken)) {
+				return fail(400, { error: 'Custom count must be between 1 and 15' });
+			}
+			customCount = Number(customCountToken);
+			if (!Number.isInteger(customCount) || customCount < 1 || customCount > 15) {
 				return fail(400, { error: 'Custom count must be between 1 and 15' });
 			}
 		}

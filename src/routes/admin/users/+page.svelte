@@ -177,6 +177,84 @@ function getShareModeLabel(mode: string | null, source: string | null): string {
 					</tbody>
 				</table>
 			</div>
+			<div class="mobile-users-list">
+				{#each data.users as user (user.id)}
+					<div class="mobile-user-row">
+						<div class="mobile-user-main">
+							<a href="/wrapped/{data.year}/u/{user.id}" class="user-avatar-link">
+								{#if user.thumb}
+									<img src={user.thumb} alt="" class="user-avatar" />
+								{:else}
+									<span class="user-avatar placeholder">&#9787;</span>
+								{/if}
+							</a>
+							<div class="user-info">
+								<a href="/wrapped/{data.year}/u/{user.id}" class="user-name">
+									{user.username}
+									{#if user.isAdmin}
+										<span class="admin-badge">Admin</span>
+									{/if}
+								</a>
+								{#if user.email}
+									<span class="user-email">{user.email}</span>
+								{/if}
+							</div>
+						</div>
+						<div class="mobile-user-meta">
+							<div class="mobile-meta-item">
+								<span class="mobile-meta-label">Watch Time</span>
+								<span class="watch-time">{formatWatchTime(user.totalWatchTimeMinutes)}</span>
+							</div>
+							<div class="mobile-meta-item">
+								<span class="mobile-meta-label">Share Mode</span>
+								<span
+									class="share-mode"
+									class:public={user.shareModeSource !== 'default' && user.shareMode === 'public'}
+									class:oauth={user.shareModeSource !== 'default' &&
+										user.shareMode === 'private-oauth'}
+									class:link={user.shareModeSource !== 'default' &&
+										user.shareMode === 'private-link'}
+								>
+									{getShareModeLabel(user.shareMode, user.shareModeSource)}
+								</span>
+							</div>
+							<div class="mobile-meta-item">
+								<span class="mobile-meta-label">Can Control</span>
+								<form
+									method="POST"
+									action="?/updateUserPermission"
+									use:enhance
+									class="permission-form"
+								>
+									<input type="hidden" name="userId" value={user.id} />
+									<input type="hidden" name="year" value={data.year} />
+									<input
+										type="hidden"
+										name="canUserControl"
+										value={user.canUserControl ? 'false' : 'true'}
+									/>
+									<button
+										type="submit"
+										class="toggle-button"
+										class:enabled={user.canUserControl}
+										title={user.canUserControl ? 'Click to revoke control' : 'Click to grant control'}
+									>
+										{user.canUserControl ? 'Yes' : 'No'}
+									</button>
+								</form>
+							</div>
+						</div>
+						<a
+							href="/wrapped/{data.year}/u/{user.id}"
+							target="_blank"
+							rel="noopener noreferrer"
+							class="preview-link mobile-preview-link"
+						>
+							Preview Wrapped
+						</a>
+					</div>
+				{/each}
+			</div>
 		{/if}
 	</section>
 
@@ -209,6 +287,7 @@ function getShareModeLabel(mode: string | null, source: string | null): string {
 			max-width: 1000px;
 			margin: 0 auto;
 			padding: 2rem;
+			min-width: 0;
 		}
 
 		.page-header {
@@ -271,6 +350,7 @@ function getShareModeLabel(mode: string | null, source: string | null): string {
 			border-radius: var(--radius);
 			padding: 1.5rem;
 			margin-bottom: 1.5rem;
+			min-width: 0;
 		}
 
 		.section h2 {
@@ -306,7 +386,10 @@ function getShareModeLabel(mode: string | null, source: string | null): string {
 		/* Users Table */
 		.users-table-wrapper {
 			overflow-x: auto;
+			width: 100%;
 			max-width: 100%;
+			min-width: 0;
+			-webkit-overflow-scrolling: touch;
 		}
 
 		.users-table {
@@ -364,6 +447,7 @@ function getShareModeLabel(mode: string | null, source: string | null): string {
 		.user-info {
 			display: flex;
 			flex-direction: column;
+			min-width: 0;
 		}
 
 		.user-name {
@@ -381,6 +465,7 @@ function getShareModeLabel(mode: string | null, source: string | null): string {
 		.user-email {
 			font-size: 0.75rem;
 			color: hsl(var(--muted-foreground));
+			overflow-wrap: anywhere;
 		}
 
 		.admin-badge {
@@ -460,6 +545,64 @@ function getShareModeLabel(mode: string | null, source: string | null): string {
 			text-decoration: underline;
 		}
 
+		.mobile-users-list {
+			display: none;
+		}
+
+		.mobile-user-row {
+			display: flex;
+			flex-direction: column;
+			gap: 0.875rem;
+			padding: 1rem 0;
+			border-bottom: 1px solid hsl(var(--border));
+			min-width: 0;
+		}
+
+		.mobile-user-row:first-child {
+			padding-top: 0;
+		}
+
+		.mobile-user-row:last-child {
+			padding-bottom: 0;
+			border-bottom: 0;
+		}
+
+		.mobile-user-main {
+			display: flex;
+			align-items: center;
+			gap: 0.75rem;
+			min-width: 0;
+		}
+
+		.mobile-user-main .user-info {
+			flex: 1;
+		}
+
+		.mobile-user-meta {
+			display: grid;
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+			gap: 0.75rem;
+			align-items: start;
+		}
+
+		.mobile-meta-item {
+			display: flex;
+			flex-direction: column;
+			gap: 0.35rem;
+			min-width: 0;
+		}
+
+		.mobile-meta-label {
+			color: hsl(var(--muted-foreground));
+			font-size: 0.6875rem;
+			font-weight: 600;
+			text-transform: uppercase;
+		}
+
+		.mobile-preview-link {
+			align-self: flex-start;
+		}
+
 		.empty-message {
 			color: hsl(var(--muted-foreground));
 			text-align: center;
@@ -494,18 +637,41 @@ function getShareModeLabel(mode: string | null, source: string | null): string {
 				padding: 1rem;
 			}
 
-			.users-table {
-				font-size: 0.75rem;
+			.page-header-row {
+				flex-direction: column;
+				align-items: stretch;
 			}
 
-			.users-table th,
-			.users-table td {
-				padding: 0.5rem;
+			.section {
+				padding: 1rem;
+			}
+
+			.users-table-wrapper {
+				display: none;
+			}
+
+			.mobile-users-list {
+				display: block;
 			}
 
 			.user-avatar {
-				width: 28px;
-				height: 28px;
+				width: 32px;
+				height: 32px;
+			}
+
+			.user-name {
+				max-width: 100%;
+				overflow-wrap: anywhere;
+			}
+
+			.legend-item {
+				align-items: flex-start;
+			}
+		}
+
+		@media (max-width: 430px) {
+			.mobile-user-meta {
+				grid-template-columns: 1fr;
 			}
 		}
 </style>

@@ -98,6 +98,30 @@ async function fetchPin(redirectUrl?: string): Promise<PinResponse> {
 	return (await response.json()) as PinResponse;
 }
 
+export function sanitizeCompletedLoginResponse(result: unknown): CompletedLoginResponse | null {
+	if (!result || typeof result !== 'object' || !('user' in result)) return null;
+
+	const raw = result as {
+		user?: { username?: unknown; isAdmin?: unknown };
+		redirectTo?: unknown;
+	};
+	if (!raw.user || typeof raw.user.isAdmin !== 'boolean') return null;
+
+	const sanitized: CompletedLoginResponse = {
+		user: {
+			isAdmin: raw.user.isAdmin
+		}
+	};
+	if (typeof raw.user.username === 'string') {
+		sanitized.user.username = raw.user.username;
+	}
+	if (raw.redirectTo === '/admin' || raw.redirectTo === '/dashboard') {
+		sanitized.redirectTo = raw.redirectTo;
+	}
+
+	return sanitized;
+}
+
 function storePinForRedirect(
 	pinId: number,
 	context: PlexLoginContext,
@@ -192,15 +216,16 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 						return;
 					}
 
-					const result = (await pollResponse.json()) as { pending: true } | CompletedLoginResponse;
+					const result = (await pollResponse.json()) as unknown;
 					if (finished) return;
 
-					if ('user' in result && result.user) {
+					const completedLogin = sanitizeCompletedLoginResponse(result);
+					if (completedLogin) {
 						callbackInProgress = true;
 						cleanup();
 
 						try {
-							await opts.onSuccess(result.user);
+							await opts.onSuccess(completedLogin.user);
 							succeeded = true;
 						} catch (err) {
 							if (cancelled || succeeded || timedOut || pinExpired) return;

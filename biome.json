@@ -66,6 +66,7 @@
 			"**",
 			"!**/build",
 			"!**/.svelte-kit",
+			"!**/.omc",
 			"!**/node_modules",
 			"!**/data",
 			"!**/dogfood-output",
