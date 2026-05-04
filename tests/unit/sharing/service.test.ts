@@ -809,6 +809,48 @@ describe('Sharing Service', () => {
 
 				await expect(regenerateShareToken(userId, year)).rejects.toThrow('private-link mode');
 			});
+
+			// Defense-in-depth regression for ISSUE-004: a row may legitimately be
+			// `private-link` while the floor has been raised to `private-oauth`.
+			// Token rotation must refuse rather than mint a usable URL below the
+			// current floor.
+			it('refuses regeneration when floor is more restrictive than private-link', async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_OAUTH,
+					allowUserControl: true
+				});
+
+				await db.insert(shareSettings).values({
+					userId,
+					year,
+					mode: ShareMode.PRIVATE_LINK,
+					shareToken: generateShareToken(),
+					canUserControl: false
+				});
+
+				await expect(regenerateShareToken(userId, year)).rejects.toBeInstanceOf(
+					PermissionExceededError
+				);
+			});
+
+			it('allows regeneration when floor is at or below private-link', async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PUBLIC,
+					allowUserControl: true
+				});
+
+				const originalToken = generateShareToken();
+				await db.insert(shareSettings).values({
+					userId,
+					year,
+					mode: ShareMode.PRIVATE_LINK,
+					shareToken: originalToken,
+					canUserControl: false
+				});
+
+				const newToken = await regenerateShareToken(userId, year);
+				expect(newToken).not.toBe(originalToken);
+			});
 		});
 
 		describe('getShareSettingsByToken', () => {
@@ -983,15 +1025,38 @@ describe('Sharing Service', () => {
 				expect(updated.mode).toBe(ShareMode.PRIVATE_OAUTH);
 			});
 
-			it('allows admin to bypass privacy floor', async () => {
-				const updated = await updateShareSettings(
-					userId,
-					year,
-					{ mode: ShareMode.PUBLIC },
-					true // isAdmin
-				);
+			// SECURITY: admins must respect the server-wide floor too. To go below
+			// the floor, admins must lower the global default first.
+			it('denies admin setting PUBLIC when floor is PRIVATE_LINK', async () => {
+				await expect(
+					updateShareSettings(userId, year, { mode: ShareMode.PUBLIC }, true)
+				).rejects.toBeInstanceOf(PermissionExceededError);
+			});
 
+			it('denies admin setting PRIVATE_LINK when floor is PRIVATE_OAUTH', async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_OAUTH,
+					allowUserControl: true
+				});
+
+				await expect(
+					updateShareSettings(userId, year, { mode: ShareMode.PRIVATE_LINK }, true)
+				).rejects.toBeInstanceOf(PermissionExceededError);
+			});
+
+			it('admins can still set mode at or above the floor', async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PUBLIC,
+					allowUserControl: true
+				});
+
+				const updated = await updateShareSettings(userId, year, { mode: ShareMode.PUBLIC }, true);
 				expect(updated.mode).toBe(ShareMode.PUBLIC);
+			});
+
+			it('admins can update canUserControl regardless of floor', async () => {
+				const updated = await updateShareSettings(userId, year, { canUserControl: false }, true);
+				expect(updated.canUserControl).toBe(false);
 			});
 		});
 

@@ -38,6 +38,7 @@ let aiPersona = $state(
 let isTestingAI = $state(false);
 let testAIResult = $state<{ type: 'success' | 'error'; message: string } | null>(null);
 let submitError = $state<string | null>(null);
+let apiKeyError = $state<string | null>(null);
 let visibleError = $derived(submitError ?? form?.error ?? null);
 
 const aiPersonaOptions = [
@@ -181,7 +182,7 @@ function getThemeColors(themeValue: string) {
 		<div class="settings-container">
 			<!-- Error display -->
 			{#if visibleError}
-				<div class="error-banner">
+				<div class="error-banner" role="alert" aria-live="polite">
 					<svg
 						class="error-icon"
 						viewBox="0 0 24 24"
@@ -236,12 +237,23 @@ function getThemeColors(themeValue: string) {
 				use:enhance={() => {
 					isSubmitting = true;
 					submitError = null;
+					apiKeyError = null;
 					return async ({ result, update }) => {
 						try {
 							if (result.type === 'failure') {
 								const payload = result.data as { error?: string } | undefined;
 								const message = payload?.error ?? 'Failed to save settings. Please try again.';
 								submitError = message;
+								if (/openai\s*(api\s*key|base\s*url)/i.test(message)) {
+									apiKeyError = message;
+									const aiIndex = subSteps.findIndex((s) => s.id === 'ai');
+									if (aiIndex >= 0 && currentSubStep !== aiIndex) {
+										goToSubStep(aiIndex);
+									}
+									queueMicrotask(() => {
+										document.getElementById('onboarding-openai-api-key')?.focus();
+									});
+								}
 								handleFormToast({ error: message });
 							} else if (result.type === 'error') {
 								const message =
@@ -428,7 +440,8 @@ function getThemeColors(themeValue: string) {
 												type="radio"
 												name="shareModeRadio"
 												value={option.value}
-												bind:group={defaultShareMode}
+												checked={defaultShareMode === option.value}
+												onchange={() => (defaultShareMode = option.value)}
 											/>
 											<div class="radio-card-content">
 												<div class="radio-indicator">
@@ -575,12 +588,20 @@ function getThemeColors(themeValue: string) {
 									<input
 										id="onboarding-openai-api-key"
 										class="text-input"
+										class:has-error={Boolean(apiKeyError)}
 										type="password"
 										bind:value={openaiApiKey}
 										maxlength="512"
 										placeholder="sk-..."
 										autocomplete="off"
+										aria-invalid={apiKeyError ? 'true' : 'false'}
+										aria-describedby={apiKeyError ? 'onboarding-openai-api-key-error' : undefined}
 									/>
+									{#if apiKeyError}
+										<p id="onboarding-openai-api-key-error" class="field-error" role="alert">
+											{apiKeyError}
+										</p>
+									{/if}
 								</div>
 
 								<div class="setting-group">
@@ -1508,6 +1529,16 @@ function getThemeColors(themeValue: string) {
 			outline: none;
 			background: rgba(0, 0, 0, 0.35);
 			border-color: hsl(var(--primary) / 0.5);
+		}
+
+		.text-input.has-error {
+			border-color: rgba(239, 68, 68, 0.6);
+		}
+
+		.field-error {
+			margin: 0.375rem 0 0;
+			font-size: 0.8rem;
+			color: #fca5a5;
 		}
 
 		.test-connection-row {

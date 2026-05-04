@@ -15,7 +15,7 @@ import {
 	updateShareSettings,
 	updateUserLogoPreference
 } from '$lib/server/sharing/service';
-import { meetsPrivacyFloor } from '$lib/server/sharing/types';
+import { PermissionExceededError } from '$lib/server/sharing/types';
 import type { Actions, PageServerLoad } from './$types';
 
 const ShareModeSchema = z.enum(['public', 'private-oauth', 'private-link']);
@@ -115,20 +115,20 @@ export const actions: Actions = {
 				});
 			}
 
-			// Check privacy floor
-			const globalFloor = await getGlobalDefaultShareMode();
-			if (!meetsPrivacyFloor(parsed.data, globalFloor)) {
-				return fail(403, {
-					error: `Cannot set share mode to "${parsed.data}". Server requires at least "${globalFloor}" privacy level.`,
-					action: 'updateShareMode',
-					currentMode: shareSettings.mode
-				});
-			}
-
+			// Floor enforcement is centralized in updateShareSettings (applies to
+			// every caller, admins included). It throws PermissionExceededError
+			// when the submitted mode is below the server-wide floor.
 			await updateShareSettings(userId, currentYear, { mode: parsed.data }, false);
 
 			return { success: true, message: 'Sharing settings updated', action: 'updateShareMode' };
 		} catch (error) {
+			if (error instanceof PermissionExceededError) {
+				return fail(403, {
+					error: error.message,
+					action: 'updateShareMode',
+					currentMode
+				});
+			}
 			const message = error instanceof Error ? error.message : 'Failed to update settings';
 			return fail(500, { error: message, action: 'updateShareMode', currentMode });
 		}
@@ -162,6 +162,9 @@ export const actions: Actions = {
 
 			return { success: true, message: 'Share link regenerated', action: 'regenerateToken' };
 		} catch (error) {
+			if (error instanceof PermissionExceededError) {
+				return fail(403, { error: error.message, action: 'regenerateToken' });
+			}
 			const message = error instanceof Error ? error.message : 'Failed to regenerate token';
 			return fail(500, { error: message, action: 'regenerateToken' });
 		}

@@ -331,12 +331,9 @@ export const actions: Actions = {
 				}
 			}
 
-			if (data.enableFunFacts && !openaiApiKey) {
-				return fail(400, {
-					error:
-						'OpenAI API key is required when AI Fun Facts is enabled. Add a key or disable the toggle.'
-				});
-			}
+			// Built-in fun-fact templates work without an OpenAI key, so don't block
+			// onboarding here; surface a non-fatal notice on the completion step.
+			const aiKeyMissingNotice = data.enableFunFacts && !openaiApiKey;
 
 			// Save all settings in parallel
 			await Promise.all([
@@ -387,7 +384,10 @@ export const actions: Actions = {
 
 			// Advance to completion step
 			await setOnboardingStep(OnboardingSteps.COMPLETE);
-			redirect(303, '/onboarding/complete');
+			redirect(
+				303,
+				aiKeyMissingNotice ? '/onboarding/complete?notice=ai-key-missing' : '/onboarding/complete'
+			);
 		} catch (err) {
 			// Handle redirect (expected)
 			if (

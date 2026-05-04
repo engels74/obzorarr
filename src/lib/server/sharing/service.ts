@@ -353,18 +353,21 @@ export async function updateShareSettings(
 ): Promise<ShareSettings> {
 	const existing = await getOrCreateShareSettings({ userId, year });
 
+	// The privacy floor is a server-wide minimum and applies to every caller —
+	// admins included. Admins who legitimately need to drop below the floor must
+	// raise the global floor first; this prevents silent per-row deviations.
+	if (updates.mode !== undefined) {
+		const globalFloor = await getGlobalDefaultShareMode();
+		if (!meetsPrivacyFloor(updates.mode, globalFloor)) {
+			throw new PermissionExceededError(
+				`Cannot set share mode to "${updates.mode}". Server requires at least "${globalFloor}" privacy level.`
+			);
+		}
+	}
+
 	if (!isAdmin) {
 		if (!existing.canUserControl) {
 			throw new PermissionExceededError('You do not have permission to change share settings.');
-		}
-
-		if (updates.mode !== undefined) {
-			const globalFloor = await getGlobalDefaultShareMode();
-			if (!meetsPrivacyFloor(updates.mode, globalFloor)) {
-				throw new PermissionExceededError(
-					`Cannot set share mode to "${updates.mode}". Server requires at least "${globalFloor}" privacy level.`
-				);
-			}
 		}
 
 		if (updates.canUserControl !== undefined) {
@@ -415,6 +418,19 @@ export async function regenerateShareToken(userId: number, year: number): Promis
 
 	if (settings.mode !== ShareMode.PRIVATE_LINK) {
 		throw new ShareError('Can only regenerate token for private-link mode', 'INVALID_MODE', 400);
+	}
+
+	// Defense-in-depth: if the server-wide floor is more restrictive than
+	// private-link (e.g. private-oauth), refuse to mint a new token even though
+	// the row claims private-link. The row should never be in that state given
+	// the floor check in updateShareSettings, but legacy rows or future code
+	// paths could leave it; we never want to issue a usable share URL below the
+	// current floor.
+	const globalFloor = await getGlobalDefaultShareMode();
+	if (!meetsPrivacyFloor(settings.mode, globalFloor)) {
+		throw new PermissionExceededError(
+			`Cannot regenerate token. Server requires at least "${globalFloor}" privacy level.`
+		);
 	}
 
 	const newToken = generateShareToken();

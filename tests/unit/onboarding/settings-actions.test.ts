@@ -78,25 +78,41 @@ describe('onboarding settings actions', () => {
 		await initializeDefaultSlideConfig();
 	});
 
-	it('fails with 400 when enableFunFacts is true and openaiApiKey is missing', async () => {
+	it('redirects with ai-key-missing notice when enableFunFacts is true and openaiApiKey is missing', async () => {
 		const request = createSettingsRequest({
 			enableFunFacts: 'true',
 			funFactFrequency: 'normal',
+			aiPersona: 'witty',
 			openaiApiKey: '   ' // whitespace-only -> coerced to undefined by optionalString trim
+		});
+
+		await expectRedirect(
+			() => runSaveSettings(request),
+			'/onboarding/complete?notice=ai-key-missing'
+		);
+
+		// Built-in fun-fact related settings still persist (frequency, persona)
+		expect(await getFunFactFrequency()).toEqual({ mode: FunFactFrequency.NORMAL, count: 4 });
+		expect(await getAppSetting(AppSettingsKey.FUN_FACTS_AI_PERSONA)).toBe('witty');
+		// OpenAI key not written when missing
+		expect(await getAppSetting(AppSettingsKey.OPENAI_API_KEY)).toBeNull();
+		expect(await getOnboardingStep()).toBe(OnboardingSteps.COMPLETE);
+	});
+
+	it('still rejects an invalid OpenAI base URL with 400', async () => {
+		const request = createSettingsRequest({
+			enableFunFacts: 'true',
+			funFactFrequency: 'normal',
+			openaiApiKey: 'test-key',
+			openaiBaseUrl: 'not a url'
 		});
 
 		const result = await runSaveSettings(request);
 
 		expect(result).toMatchObject({
 			status: 400,
-			data: {
-				error:
-					'OpenAI API key is required when AI Fun Facts is enabled. Add a key or disable the toggle.'
-			}
+			data: { error: 'Invalid OpenAI base URL' }
 		});
-		expect((result as { data: { error: string } }).data.error).toContain(
-			'OpenAI API key is required'
-		);
 	});
 
 	it('persists non-default settings before redirecting to completion', async () => {

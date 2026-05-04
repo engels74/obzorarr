@@ -120,6 +120,27 @@ const summaryItems = $derived([
 				<p class="completion-subtitle">Your Plex Wrapped is ready to go</p>
 			</div>
 
+			{#if data.notice === 'ai-key-missing'}
+				<div class="completion-notice" class:visible={showContent} role="status">
+					<svg
+						class="notice-icon"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						aria-hidden="true"
+					>
+						<circle cx="12" cy="12" r="10" />
+						<line x1="12" y1="8" x2="12" y2="12" />
+						<line x1="12" y1="16" x2="12.01" y2="16" />
+					</svg>
+					<span>
+						AI Fun Facts is enabled but no OpenAI key was provided. Built-in templates will be used
+						until you add a key in <strong>Admin → Settings → AI</strong>.
+					</span>
+				</div>
+			{/if}
+
 			<!-- Configuration Summary -->
 			<div class="summary-section" class:visible={showContent}>
 				<h3 class="summary-title">Your Configuration</h3>
@@ -408,6 +429,38 @@ const summaryItems = $derived([
 			margin: 0.5rem 0 0;
 			font-size: 1rem;
 			color: rgba(255, 255, 255, 0.6);
+		}
+
+		/* Soft notice (e.g. AI key missing) */
+		.completion-notice {
+			display: flex;
+			align-items: flex-start;
+			gap: 0.75rem;
+			width: 100%;
+			padding: 0.875rem 1rem;
+			margin-bottom: 1rem;
+			background: rgba(234, 179, 8, 0.08);
+			border: 1px solid rgba(234, 179, 8, 0.35);
+			border-radius: 0.5rem;
+			color: rgba(254, 240, 138, 0.95);
+			font-size: 0.875rem;
+			line-height: 1.45;
+			opacity: 0;
+			transform: translateY(8px);
+			transition: opacity 0.5s ease, transform 0.5s ease;
+		}
+
+		.completion-notice.visible {
+			opacity: 1;
+			transform: translateY(0);
+		}
+
+		.completion-notice .notice-icon {
+			flex: none;
+			width: 1.125rem;
+			height: 1.125rem;
+			margin-top: 0.0625rem;
+			color: rgba(234, 179, 8, 0.85);
 		}
 
 		/* Summary Section */

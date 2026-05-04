@@ -41,7 +41,8 @@ describe('onboarding completion summary', () => {
 
 		const result = (await load({
 			parent: async () => ({}),
-			locals: adminLocals
+			locals: adminLocals,
+			url: new URL('http://localhost/onboarding/complete')
 		} as Parameters<typeof load>[0])) as {
 			configSummary: Record<string, string>;
 		};
@@ -58,13 +59,34 @@ describe('onboarding completion summary', () => {
 		});
 	});
 
+	it('passes through ai-key-missing notice when present in url', async () => {
+		const result = (await load({
+			parent: async () => ({}),
+			locals: adminLocals,
+			url: new URL('http://localhost/onboarding/complete?notice=ai-key-missing')
+		} as Parameters<typeof load>[0])) as { notice: string | null };
+
+		expect(result.notice).toBe('ai-key-missing');
+	});
+
+	it('rejects unknown notice values (returns null)', async () => {
+		const result = (await load({
+			parent: async () => ({}),
+			locals: adminLocals,
+			url: new URL('http://localhost/onboarding/complete?notice=evil')
+		} as Parameters<typeof load>[0])) as { notice: string | null };
+
+		expect(result.notice).toBeNull();
+	});
+
 	it('shows fun facts as disabled when only the OpenAI base URL is configured', async () => {
 		await setFunFactFrequency(FunFactFrequency.MANY);
 		await setAppSetting(AppSettingsKey.OPENAI_BASE_URL, 'https://api.example.com/v1');
 
 		const result = (await load({
 			parent: async () => ({}),
-			locals: adminLocals
+			locals: adminLocals,
+			url: new URL('http://localhost/onboarding/complete')
 		} as Parameters<typeof load>[0])) as {
 			configSummary: Record<string, string>;
 		};

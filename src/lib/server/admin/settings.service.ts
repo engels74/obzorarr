@@ -176,14 +176,20 @@ export async function setServerWrappedSettingsAtomic(opts: {
 			.from(appSettings)
 			.where(inArray(appSettings.key, SERVER_WRAPPED_SETTINGS_KEYS as unknown as string[]));
 
+		// Treat a missing/blank submittedVersion as a stale tab regardless of row
+		// count — defends against the fresh-install/all-cleared loophole where the
+		// row-count gate would silently skip OCC.
+		const submittedMs = opts.submittedVersion ? Date.parse(opts.submittedVersion) : Number.NaN;
+		if (Number.isNaN(submittedMs)) {
+			return 'conflict';
+		}
 		if (rows.length > 0) {
 			let maxMs = 0;
 			for (const row of rows) {
 				const t = row.updatedAt.getTime();
 				if (t > maxMs) maxMs = t;
 			}
-			const submittedMs = opts.submittedVersion ? Date.parse(opts.submittedVersion) : Number.NaN;
-			if (Number.isNaN(submittedMs) || submittedMs < maxMs) {
+			if (submittedMs < maxMs) {
 				return 'conflict';
 			}
 		}
@@ -235,14 +241,19 @@ export async function setUserDefaultsAtomic(opts: {
 			.from(appSettings)
 			.where(inArray(appSettings.key, USER_DEFAULTS_SETTINGS_KEYS as unknown as string[]));
 
+		// Treat a missing/blank submittedVersion as a stale tab regardless of row
+		// count — defends against the fresh-install/all-cleared loophole.
+		const submittedMs = opts.submittedVersion ? Date.parse(opts.submittedVersion) : Number.NaN;
+		if (Number.isNaN(submittedMs)) {
+			return 'conflict';
+		}
 		if (rows.length > 0) {
 			let maxMs = 0;
 			for (const row of rows) {
 				const t = row.updatedAt.getTime();
 				if (t > maxMs) maxMs = t;
 			}
-			const submittedMs = opts.submittedVersion ? Date.parse(opts.submittedVersion) : Number.NaN;
-			if (Number.isNaN(submittedMs) || submittedMs < maxMs) {
+			if (submittedMs < maxMs) {
 				return 'conflict';
 			}
 		}
@@ -336,14 +347,20 @@ export async function setApiConfigAtomic(opts: {
 			.from(appSettings)
 			.where(inArray(appSettings.key, API_CONFIG_KEYS as unknown as string[]));
 
+		// Treat a missing/blank submittedVersion as a stale tab regardless of row
+		// count — defends against the fresh-install/all-cleared loophole where the
+		// row-count gate would silently skip OCC.
+		const submittedMs = opts.submittedVersion ? Date.parse(opts.submittedVersion) : Number.NaN;
+		if (Number.isNaN(submittedMs)) {
+			return { status: 'conflict', plexCredentialsChanged: false };
+		}
 		if (rows.length > 0) {
 			let maxMs = 0;
 			for (const row of rows) {
 				const t = row.updatedAt.getTime();
 				if (t > maxMs) maxMs = t;
 			}
-			const submittedMs = opts.submittedVersion ? Date.parse(opts.submittedVersion) : Number.NaN;
-			if (Number.isNaN(submittedMs) || submittedMs < maxMs) {
+			if (submittedMs < maxMs) {
 				return { status: 'conflict', plexCredentialsChanged: false };
 			}
 		}

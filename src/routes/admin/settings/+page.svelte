@@ -986,6 +986,17 @@ const logFieldErrors = $derived(
 							</div>
 						</form>
 					{/if}
+
+					{#if !openaiModelLocked}
+						<form method="POST" action="?/clearOpenaiModel" use:enhance class="panel-form">
+							<div class="panel-actions">
+								<button type="submit" class="btn-destructive">
+									<X class="btn-icon" />
+									Clear OpenAI Model
+								</button>
+							</div>
+						</form>
+					{/if}
 				</section>
 			</div>
 		{/if}

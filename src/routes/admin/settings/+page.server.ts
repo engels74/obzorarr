@@ -88,13 +88,13 @@ const ServerWrappedModeSchema = z.enum(['public', 'private-oauth']);
 const ServerWrappedSettingsSchema = z.object({
 	anonymizationMode: AnonymizationSchema,
 	serverWrappedShareMode: ServerWrappedModeSchema,
-	settingsVersion: z.string()
+	settingsVersion: z.string().min(1, 'Missing settings version (reload the page)')
 });
 
 const UserDefaultsSettingsSchema = z.object({
 	defaultShareMode: ShareModeSchema,
 	allowUserControl: BooleanStringSchema,
-	settingsVersion: z.string()
+	settingsVersion: z.string().min(1, 'Missing settings version (reload the page)')
 });
 
 // Each value field is `string | undefined`:
@@ -130,8 +130,12 @@ const ApiConfigSchema = z.object({
 	plexToken: optionalTrimmed(512),
 	openaiApiKey: optionalTrimmed(512),
 	openaiBaseUrl: trimmedUrlOrEmpty,
-	openaiModel: z.string().trim().max(100).optional(),
-	apiConfigVersion: z.string()
+	// `openaiModel` is echoed back; submitting blank used to silently clear the row,
+	// which made it possible to wipe the active model name from the OpenAI panel.
+	// Require non-empty here. Explicit clearing is done via the dedicated
+	// `?/clearOpenaiModel` action (mirrors `?/clearOpenaiKey`).
+	openaiModel: z.string().trim().min(1, 'Model name is required').max(100).optional(),
+	apiConfigVersion: z.string().min(1, 'Missing api config version (reload the page)')
 });
 
 const LogSettingsSchema = z.object({
@@ -305,9 +309,18 @@ export const actions: Actions = requireAdminActions({
 
 		const parsed = ApiConfigSchema.safeParse(data);
 		if (!parsed.success) {
+			const fieldErrors = parsed.error.flatten().fieldErrors;
+			// Treat a missing/blank apiConfigVersion as a stale tab — recovery is the
+			// same as a real OCC conflict (reload the page).
+			if (fieldErrors.apiConfigVersion?.length) {
+				return fail(409, {
+					conflict: true,
+					error: 'Settings changed in another tab. Reload and try again.'
+				});
+			}
 			return fail(400, {
 				error: 'Invalid input',
-				fieldErrors: parsed.error.flatten().fieldErrors
+				fieldErrors
 			});
 		}
 
@@ -711,9 +724,16 @@ export const actions: Actions = requireAdminActions({
 
 		const parsed = ServerWrappedSettingsSchema.safeParse(data);
 		if (!parsed.success) {
+			const fieldErrors = parsed.error.flatten().fieldErrors;
+			if (fieldErrors.settingsVersion?.length) {
+				return fail(409, {
+					conflict: true,
+					error: 'Settings changed in another tab. Please reload.'
+				});
+			}
 			return fail(400, {
 				error: 'Invalid input',
-				fieldErrors: parsed.error.flatten().fieldErrors
+				fieldErrors
 			});
 		}
 
@@ -749,9 +769,16 @@ export const actions: Actions = requireAdminActions({
 
 		const parsed = UserDefaultsSettingsSchema.safeParse(data);
 		if (!parsed.success) {
+			const fieldErrors = parsed.error.flatten().fieldErrors;
+			if (fieldErrors.settingsVersion?.length) {
+				return fail(409, {
+					conflict: true,
+					error: 'Settings changed in another tab. Please reload.'
+				});
+			}
 			return fail(400, {
 				error: 'Invalid input',
-				fieldErrors: parsed.error.flatten().fieldErrors
+				fieldErrors
 			});
 		}
 
@@ -972,6 +999,23 @@ export const actions: Actions = requireAdminActions({
 			return { success: true, message: 'OpenAI API key cleared' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to clear OpenAI API key';
+			return fail(500, { error: message });
+		}
+	},
+
+	clearOpenaiModel: async () => {
+		const apiConfig = await getApiConfigWithSources();
+		if (apiConfig.openai.model.isLocked) {
+			return fail(400, {
+				error: 'OpenAI model is set via environment variable and cannot be cleared here'
+			});
+		}
+
+		try {
+			await deleteAppSetting(AppSettingsKey.OPENAI_MODEL);
+			return { success: true, message: 'OpenAI model cleared (will fall back to default)' };
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to clear OpenAI model';
 			return fail(500, { error: message });
 		}
 	},
