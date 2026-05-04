@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
+import { env } from '$env/dynamic/private';
 import {
 	AppSettingsKey,
 	getAppSetting,
@@ -199,36 +200,24 @@ describe('admin clearOpenaiModel action', () => {
 	});
 
 	it('returns 400 when model is locked via env', async () => {
-		const { mock } = await import('bun:test');
-		mock.module('$env/dynamic/private', () => ({
-			env: {
-				PLEX_SERVER_URL: 'http://test-plex-server:32400',
-				PLEX_TOKEN: 'test-plex-token',
-				ENABLE_LIVE_SYNC: 'false',
-				OPENAI_API_KEY: '',
-				OPENAI_API_URL: '',
-				OPENAI_MODEL: 'env-locked-model'
-			}
-		}));
-
-		const result = await runClearOpenaiModel();
-		expect(result).toMatchObject({
-			status: 400,
-			data: {
-				error: 'OpenAI model is set via environment variable and cannot be cleared here'
-			}
-		});
-
-		// Restore the default mock for subsequent tests in the file run
-		mock.module('$env/dynamic/private', () => ({
-			env: {
-				PLEX_SERVER_URL: 'http://test-plex-server:32400',
-				PLEX_TOKEN: 'test-plex-token',
-				ENABLE_LIVE_SYNC: 'false',
-				OPENAI_API_KEY: '',
-				OPENAI_API_URL: '',
-				OPENAI_MODEL: ''
-			}
-		}));
+		// $env/dynamic/private is mock.module()-ed at setup time and the underlying
+		// `env` object reference is shared across importers — mutate it in place,
+		// then restore. Replacing the factory via mock.module() does not rebind the
+		// live ESM import already held by settings.service.ts.
+		const dynamicEnv = env as Record<string, string | undefined>;
+		const previous = dynamicEnv.OPENAI_MODEL;
+		dynamicEnv.OPENAI_MODEL = 'env-locked-model';
+		try {
+			const result = await runClearOpenaiModel();
+			expect(result).toMatchObject({
+				status: 400,
+				data: {
+					error: 'OpenAI model is set via environment variable and cannot be cleared here'
+				}
+			});
+		} finally {
+			if (previous === undefined) delete dynamicEnv.OPENAI_MODEL;
+			else dynamicEnv.OPENAI_MODEL = previous;
+		}
 	});
 });
