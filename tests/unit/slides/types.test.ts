@@ -153,22 +153,26 @@ describe('slideErrorToFail', () => {
 		expect(result.body).toEqual({ error: 'Slide could not be saved. Please try again.' });
 	});
 
-	it('maps generic Error to 500 with the error message', () => {
-		const result = slideErrorToFail(new Error('boom'));
+	it('maps generic Error to 500 with a generic message (no leaked detail)', () => {
+		// e.g., a Drizzle/bun:sqlite exception whose message contains constraint
+		// text or table/column names must NOT be forwarded to the client.
+		const result = slideErrorToFail(
+			new Error('UNIQUE constraint failed: custom_slides.sort_order')
+		);
 		expect(result.status).toBe(500);
-		expect(result.body).toEqual({ error: 'boom' });
+		expect(result.body).toEqual({ error: 'An unexpected error occurred' });
 	});
 
-	it('maps non-Error throwables to 500 with Unexpected error', () => {
+	it('maps non-Error throwables to 500 with a generic message', () => {
 		const result = slideErrorToFail('something');
 		expect(result.status).toBe(500);
-		expect(result.body).toEqual({ error: 'Unexpected error' });
+		expect(result.body).toEqual({ error: 'An unexpected error occurred' });
 	});
 
-	it('maps unknown SlideError code to 500', () => {
+	it('maps unknown SlideError code to 500 with a generic message', () => {
 		const result = slideErrorToFail(new SlideError('Unknown failure', 'TOTALLY_NEW_CODE'));
 		expect(result.status).toBe(500);
-		expect(result.body).toEqual({ error: 'Unknown failure' });
+		expect(result.body).toEqual({ error: 'An unexpected error occurred' });
 	});
 });
 

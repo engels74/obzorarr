@@ -1,3 +1,5 @@
+import { logger } from '$lib/server/logging';
+
 export * from '$lib/slides/types';
 
 export class SlideError extends Error {
@@ -39,6 +41,14 @@ export function slideErrorToFail(err: unknown): SlideActionFail {
 				};
 		}
 	}
-	const message = err instanceof Error ? err.message : 'Unexpected error';
-	return { status: 500, body: { error: message } };
+	// Unexpected error (raw Error from drizzle/bun:sqlite, unknown SlideError code,
+	// or a non-Error throwable). Log the original server-side for debugging, but
+	// return a generic message to the client to avoid leaking internals (e.g.,
+	// SQL constraint text, table/column names). Mirrors the contract in
+	// hooks.server.ts handleError, which form actions bypass.
+	const detail = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+	logger.error(`Unexpected slide action error: ${detail}`, 'SlideError', {
+		code: err instanceof SlideError ? err.code : undefined
+	});
+	return { status: 500, body: { error: 'An unexpected error occurred' } };
 }
