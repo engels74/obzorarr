@@ -353,6 +353,16 @@ export async function updateShareSettings(
 ): Promise<ShareSettings> {
 	const existing = await getOrCreateShareSettings({ userId, year });
 
+	if (!isAdmin) {
+		if (!existing.canUserControl) {
+			throw new PermissionExceededError('You do not have permission to change share settings.');
+		}
+
+		if (updates.canUserControl !== undefined) {
+			throw new PermissionExceededError('Only admins can change user control permissions.');
+		}
+	}
+
 	// The privacy floor is a server-wide minimum and applies to every caller —
 	// admins included. Admins who legitimately need to drop below the floor must
 	// raise the global floor first; this prevents silent per-row deviations.
@@ -362,16 +372,6 @@ export async function updateShareSettings(
 			throw new PermissionExceededError(
 				`Cannot set share mode to "${updates.mode}". Server requires at least "${globalFloor}" privacy level.`
 			);
-		}
-	}
-
-	if (!isAdmin) {
-		if (!existing.canUserControl) {
-			throw new PermissionExceededError('You do not have permission to change share settings.');
-		}
-
-		if (updates.canUserControl !== undefined) {
-			throw new PermissionExceededError('Only admins can change user control permissions.');
 		}
 	}
 
