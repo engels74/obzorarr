@@ -494,14 +494,17 @@ export async function setApiConfigAtomic(opts: {
  */
 export async function clearApiConfigKey(key: (typeof API_CONFIG_KEYS)[number]): Promise<void> {
 	await db.transaction(async (tx) => {
-		await tx.delete(appSettings).where(eq(appSettings.key, key));
-
-		// Read `max(updatedAt)` over ALL remaining `API_CONFIG_KEYS` rows inside
-		// the transaction so the bump strictly advances even if the system clock
-		// has regressed (server restart, NTP correction, container drift) AND
-		// even in inconsistent legacy states where another API_CONFIG row carries
-		// a higher `updatedAt` than `API_CONFIG_VERSION`. Mirrors the floor scan
-		// in `setApiConfigAtomic` so both write paths share the same OCC window.
+		// Read `max(updatedAt)` over ALL `API_CONFIG_KEYS` rows BEFORE the DELETE
+		// so the row about to be cleared still contributes to `dbFloorMs`. If we
+		// scanned after deleting, the deleted row's prior `updatedAt` would be
+		// missing from the result set; under a clock regression (NTP step / VM
+		// migration) plus a legacy state where the deleted row held the highest
+		// `updatedAt`, `nextApiConfigVersionDate` could then mint a version below
+		// that prior timestamp, letting a stale tab pass the strict-less-than OCC
+		// check in `setApiConfigAtomic` and resurrect the cleared value. Reading
+		// inside the transaction keeps the floor consistent with concurrent
+		// writers and mirrors the floor scan in `setApiConfigAtomic` so both
+		// write paths share the same OCC window.
 		const rows = await tx
 			.select({ updatedAt: appSettings.updatedAt })
 			.from(appSettings)
@@ -511,6 +514,8 @@ export async function clearApiConfigKey(key: (typeof API_CONFIG_KEYS)[number]): 
 			const t = row.updatedAt.getTime();
 			if (t > dbFloorMs) dbFloorMs = t;
 		}
+
+		await tx.delete(appSettings).where(eq(appSettings.key, key));
 
 		const now = nextApiConfigVersionDate(dbFloorMs);
 		await tx
