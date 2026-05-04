@@ -161,11 +161,12 @@ export const API_CONFIG_KEYS = [
 
 /**
  * Returns a `Date` whose ms value is strictly greater than `dbFloorMs` (the
- * highest existing `updatedAt` over `API_CONFIG_KEYS`, read inside the same
- * transaction). `new Date()` only has ms resolution, so two API_CONFIG writes
- * landing in the same wall-clock millisecond would store identical `updatedAt`
- * timestamps; the OCC check uses strict `<`, so an exact-ms collision lets a
- * stale tab pass and resurrect a value cleared by the first writer.
+ * highest existing `updatedAt` over the OCC key group, read inside the same
+ * transaction). `new Date()` only has ms resolution, so two writes against the
+ * same key group landing in the same wall-clock millisecond would store
+ * identical `updatedAt` timestamps; the OCC check uses strict `<`, so an
+ * exact-ms collision lets a stale tab pass and clobber a value just written by
+ * the first writer.
  *
  * Reading the floor from the DB (rather than only from in-process state) also
  * survives server restarts and backward clock corrections (NTP, container
@@ -175,11 +176,13 @@ export const API_CONFIG_KEYS = [
  * transactions, so within a single process two concurrent writers will each
  * see the other's stored value via the SELECT that produces `dbFloorMs`.
  *
- * Used by the API_CONFIG_VERSION bump in `setApiConfigAtomic` and
- * `clearApiConfigKey` so `max(updatedAt)` over `API_CONFIG_KEYS` strictly
- * advances on every successful mutation.
+ * Used by every atomic write path that participates in OCC (the
+ * API_CONFIG_VERSION bump in `setApiConfigAtomic`/`clearApiConfigKey`, and the
+ * row writes in `setServerWrappedSettingsAtomic`/`setUserDefaultsAtomic`) so
+ * `max(updatedAt)` over each key group strictly advances on every successful
+ * mutation.
  */
-function nextApiConfigVersionDate(dbFloorMs: number): Date {
+function nextOccVersionDate(dbFloorMs: number): Date {
 	return new Date(Math.max(Date.now(), dbFloorMs + 1));
 }
 
@@ -207,18 +210,19 @@ export async function setServerWrappedSettingsAtomic(opts: {
 		if (Number.isNaN(submittedMs)) {
 			return 'conflict';
 		}
-		if (rows.length > 0) {
-			let maxMs = 0;
-			for (const row of rows) {
-				const t = row.updatedAt.getTime();
-				if (t > maxMs) maxMs = t;
-			}
-			if (submittedMs < maxMs) {
-				return 'conflict';
-			}
+		// Compute `maxMs` over the existing rows so the OCC check and the write
+		// timestamp share the same DB floor. With no rows, `maxMs = 0` is fine —
+		// `Date.now()` dominates inside `nextOccVersionDate`.
+		let maxMs = 0;
+		for (const row of rows) {
+			const t = row.updatedAt.getTime();
+			if (t > maxMs) maxMs = t;
+		}
+		if (rows.length > 0 && submittedMs < maxMs) {
+			return 'conflict';
 		}
 
-		const now = new Date();
+		const now = nextOccVersionDate(maxMs);
 
 		await tx
 			.insert(appSettings)
@@ -271,18 +275,19 @@ export async function setUserDefaultsAtomic(opts: {
 		if (Number.isNaN(submittedMs)) {
 			return 'conflict';
 		}
-		if (rows.length > 0) {
-			let maxMs = 0;
-			for (const row of rows) {
-				const t = row.updatedAt.getTime();
-				if (t > maxMs) maxMs = t;
-			}
-			if (submittedMs < maxMs) {
-				return 'conflict';
-			}
+		// Compute `maxMs` over the existing rows so the OCC check and the write
+		// timestamp share the same DB floor. With no rows, `maxMs = 0` is fine —
+		// `Date.now()` dominates inside `nextOccVersionDate`.
+		let maxMs = 0;
+		for (const row of rows) {
+			const t = row.updatedAt.getTime();
+			if (t > maxMs) maxMs = t;
+		}
+		if (rows.length > 0 && submittedMs < maxMs) {
+			return 'conflict';
 		}
 
-		const now = new Date();
+		const now = nextOccVersionDate(maxMs);
 
 		await tx
 			.insert(appSettings)
@@ -380,7 +385,7 @@ export async function setApiConfigAtomic(opts: {
 		}
 		// Compute `maxMs` over the existing rows so the OCC check and the
 		// version bump share the same DB floor. With no rows, `maxMs = 0` is
-		// fine — `Date.now()` dominates inside `nextApiConfigVersionDate`.
+		// fine — `Date.now()` dominates inside `nextOccVersionDate`.
 		let maxMs = 0;
 		for (const row of rows) {
 			const t = row.updatedAt.getTime();
@@ -390,7 +395,7 @@ export async function setApiConfigAtomic(opts: {
 			return { status: 'conflict', plexCredentialsChanged: false };
 		}
 
-		const now = nextApiConfigVersionDate(maxMs);
+		const now = nextOccVersionDate(maxMs);
 		let plexCredentialsChanged = false;
 
 		const upsert = async (key: AppSettingsKeyType, value: string) => {
@@ -499,7 +504,7 @@ export async function clearApiConfigKey(key: (typeof API_CONFIG_KEYS)[number]): 
 		// scanned after deleting, the deleted row's prior `updatedAt` would be
 		// missing from the result set; under a clock regression (NTP step / VM
 		// migration) plus a legacy state where the deleted row held the highest
-		// `updatedAt`, `nextApiConfigVersionDate` could then mint a version below
+		// `updatedAt`, `nextOccVersionDate` could then mint a version below
 		// that prior timestamp, letting a stale tab pass the strict-less-than OCC
 		// check in `setApiConfigAtomic` and resurrect the cleared value. Reading
 		// inside the transaction keeps the floor consistent with concurrent
@@ -517,7 +522,7 @@ export async function clearApiConfigKey(key: (typeof API_CONFIG_KEYS)[number]): 
 
 		await tx.delete(appSettings).where(eq(appSettings.key, key));
 
-		const now = nextApiConfigVersionDate(dbFloorMs);
+		const now = nextOccVersionDate(dbFloorMs);
 		await tx
 			.insert(appSettings)
 			.values({
