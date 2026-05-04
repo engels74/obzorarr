@@ -160,20 +160,27 @@ export const API_CONFIG_KEYS = [
 ] as const;
 
 /**
- * Returns a `Date` whose ms value is strictly greater than every previous call
- * in this process. `new Date()` only has ms resolution, so two API_CONFIG writes
+ * Returns a `Date` whose ms value is strictly greater than `dbFloorMs` (the
+ * highest existing `updatedAt` over `API_CONFIG_KEYS`, read inside the same
+ * transaction). `new Date()` only has ms resolution, so two API_CONFIG writes
  * landing in the same wall-clock millisecond would store identical `updatedAt`
  * timestamps; the OCC check uses strict `<`, so an exact-ms collision lets a
- * stale tab pass and resurrect a value cleared by the first writer. Used by the
- * API_CONFIG_VERSION bump in `setApiConfigAtomic` and `clearApiConfigKey` so
- * `max(updatedAt)` over `API_CONFIG_KEYS` strictly advances on every successful
- * mutation.
+ * stale tab pass and resurrect a value cleared by the first writer.
+ *
+ * Reading the floor from the DB (rather than only from in-process state) also
+ * survives server restarts and backward clock corrections (NTP, container
+ * drift): if `Date.now()` regresses below the persisted `max(updatedAt)`, the
+ * new write would otherwise lower `max(updatedAt)` and reopen the OCC window
+ * for stale tabs holding the previous higher version. SQLite serializes
+ * transactions, so within a single process two concurrent writers will each
+ * see the other's stored value via the SELECT that produces `dbFloorMs`.
+ *
+ * Used by the API_CONFIG_VERSION bump in `setApiConfigAtomic` and
+ * `clearApiConfigKey` so `max(updatedAt)` over `API_CONFIG_KEYS` strictly
+ * advances on every successful mutation.
  */
-let lastApiConfigVersionMs = 0;
-function nextApiConfigVersionDate(): Date {
-	const ms = Math.max(Date.now(), lastApiConfigVersionMs + 1);
-	lastApiConfigVersionMs = ms;
-	return new Date(ms);
+function nextApiConfigVersionDate(dbFloorMs: number): Date {
+	return new Date(Math.max(Date.now(), dbFloorMs + 1));
 }
 
 /**
@@ -371,18 +378,19 @@ export async function setApiConfigAtomic(opts: {
 		if (Number.isNaN(submittedMs)) {
 			return { status: 'conflict', plexCredentialsChanged: false };
 		}
-		if (rows.length > 0) {
-			let maxMs = 0;
-			for (const row of rows) {
-				const t = row.updatedAt.getTime();
-				if (t > maxMs) maxMs = t;
-			}
-			if (submittedMs < maxMs) {
-				return { status: 'conflict', plexCredentialsChanged: false };
-			}
+		// Compute `maxMs` over the existing rows so the OCC check and the
+		// version bump share the same DB floor. With no rows, `maxMs = 0` is
+		// fine — `Date.now()` dominates inside `nextApiConfigVersionDate`.
+		let maxMs = 0;
+		for (const row of rows) {
+			const t = row.updatedAt.getTime();
+			if (t > maxMs) maxMs = t;
+		}
+		if (rows.length > 0 && submittedMs < maxMs) {
+			return { status: 'conflict', plexCredentialsChanged: false };
 		}
 
-		const now = nextApiConfigVersionDate();
+		const now = nextApiConfigVersionDate(maxMs);
 		let plexCredentialsChanged = false;
 
 		const upsert = async (key: AppSettingsKeyType, value: string) => {
@@ -487,7 +495,19 @@ export async function setApiConfigAtomic(opts: {
 export async function clearApiConfigKey(key: (typeof API_CONFIG_KEYS)[number]): Promise<void> {
 	await db.transaction(async (tx) => {
 		await tx.delete(appSettings).where(eq(appSettings.key, key));
-		const now = nextApiConfigVersionDate();
+
+		// Read the current `API_CONFIG_VERSION.updatedAt` inside the transaction
+		// so the bump strictly advances even if the system clock has regressed
+		// since the row was last written (server restart, NTP correction,
+		// container drift).
+		const versionRow = await tx
+			.select({ updatedAt: appSettings.updatedAt })
+			.from(appSettings)
+			.where(eq(appSettings.key, AppSettingsKey.API_CONFIG_VERSION))
+			.limit(1);
+		const dbFloorMs = versionRow[0]?.updatedAt.getTime() ?? 0;
+
+		const now = nextApiConfigVersionDate(dbFloorMs);
 		await tx
 			.insert(appSettings)
 			.values({
