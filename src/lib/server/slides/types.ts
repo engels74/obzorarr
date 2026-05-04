@@ -35,6 +35,9 @@ export function slideErrorToFail(err: unknown): SlideActionFail {
 				return { status: 404, body: { error: err.message } };
 			case 'CREATE_FAILED':
 			case 'UPDATE_FAILED':
+				logger.error(`Slide save failed [${err.code}]: ${err.message}`, 'SlideError', {
+					code: err.code
+				});
 				return {
 					status: 500,
 					body: { error: 'Slide could not be saved. Please try again.' }
