@@ -160,6 +160,23 @@ export const API_CONFIG_KEYS = [
 ] as const;
 
 /**
+ * Returns a `Date` whose ms value is strictly greater than every previous call
+ * in this process. `new Date()` only has ms resolution, so two API_CONFIG writes
+ * landing in the same wall-clock millisecond would store identical `updatedAt`
+ * timestamps; the OCC check uses strict `<`, so an exact-ms collision lets a
+ * stale tab pass and resurrect a value cleared by the first writer. Used by the
+ * API_CONFIG_VERSION bump in `setApiConfigAtomic` and `clearApiConfigKey` so
+ * `max(updatedAt)` over `API_CONFIG_KEYS` strictly advances on every successful
+ * mutation.
+ */
+let lastApiConfigVersionMs = 0;
+function nextApiConfigVersionDate(): Date {
+	const ms = Math.max(Date.now(), lastApiConfigVersionMs + 1);
+	lastApiConfigVersionMs = ms;
+	return new Date(ms);
+}
+
+/**
  * Atomically validates that the "Server-wide Wrapped" settings (anonymization
  * mode + server-wide share mode) have not changed since `submittedVersion`
  * and, if so, writes both values in a single SQLite transaction. Returns
@@ -365,7 +382,7 @@ export async function setApiConfigAtomic(opts: {
 			}
 		}
 
-		const now = new Date();
+		const now = nextApiConfigVersionDate();
 		let plexCredentialsChanged = false;
 
 		const upsert = async (key: AppSettingsKeyType, value: string) => {
@@ -470,7 +487,7 @@ export async function setApiConfigAtomic(opts: {
 export async function clearApiConfigKey(key: (typeof API_CONFIG_KEYS)[number]): Promise<void> {
 	await db.transaction(async (tx) => {
 		await tx.delete(appSettings).where(eq(appSettings.key, key));
-		const now = new Date();
+		const now = nextApiConfigVersionDate();
 		await tx
 			.insert(appSettings)
 			.values({
