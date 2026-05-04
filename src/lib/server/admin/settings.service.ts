@@ -496,16 +496,21 @@ export async function clearApiConfigKey(key: (typeof API_CONFIG_KEYS)[number]): 
 	await db.transaction(async (tx) => {
 		await tx.delete(appSettings).where(eq(appSettings.key, key));
 
-		// Read the current `API_CONFIG_VERSION.updatedAt` inside the transaction
-		// so the bump strictly advances even if the system clock has regressed
-		// since the row was last written (server restart, NTP correction,
-		// container drift).
-		const versionRow = await tx
+		// Read `max(updatedAt)` over ALL remaining `API_CONFIG_KEYS` rows inside
+		// the transaction so the bump strictly advances even if the system clock
+		// has regressed (server restart, NTP correction, container drift) AND
+		// even in inconsistent legacy states where another API_CONFIG row carries
+		// a higher `updatedAt` than `API_CONFIG_VERSION`. Mirrors the floor scan
+		// in `setApiConfigAtomic` so both write paths share the same OCC window.
+		const rows = await tx
 			.select({ updatedAt: appSettings.updatedAt })
 			.from(appSettings)
-			.where(eq(appSettings.key, AppSettingsKey.API_CONFIG_VERSION))
-			.limit(1);
-		const dbFloorMs = versionRow[0]?.updatedAt.getTime() ?? 0;
+			.where(inArray(appSettings.key, API_CONFIG_KEYS as unknown as string[]));
+		let dbFloorMs = 0;
+		for (const row of rows) {
+			const t = row.updatedAt.getTime();
+			if (t > dbFloorMs) dbFloorMs = t;
+		}
 
 		const now = nextApiConfigVersionDate(dbFloorMs);
 		await tx
