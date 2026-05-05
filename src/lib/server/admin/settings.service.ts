@@ -160,6 +160,33 @@ export const API_CONFIG_KEYS = [
 ] as const;
 
 /**
+ * Returns a `Date` whose ms value is strictly greater than `dbFloorMs` (the
+ * highest existing `updatedAt` over the OCC key group, read inside the same
+ * transaction). `new Date()` only has ms resolution, so two writes against the
+ * same key group landing in the same wall-clock millisecond would store
+ * identical `updatedAt` timestamps; the OCC check uses strict `<`, so an
+ * exact-ms collision lets a stale tab pass and clobber a value just written by
+ * the first writer.
+ *
+ * Reading the floor from the DB (rather than only from in-process state) also
+ * survives server restarts and backward clock corrections (NTP, container
+ * drift): if `Date.now()` regresses below the persisted `max(updatedAt)`, the
+ * new write would otherwise lower `max(updatedAt)` and reopen the OCC window
+ * for stale tabs holding the previous higher version. SQLite serializes
+ * transactions, so within a single process two concurrent writers will each
+ * see the other's stored value via the SELECT that produces `dbFloorMs`.
+ *
+ * Used by every atomic write path that participates in OCC (the
+ * API_CONFIG_VERSION bump in `setApiConfigAtomic`/`clearApiConfigKey`, and the
+ * row writes in `setServerWrappedSettingsAtomic`/`setUserDefaultsAtomic`) so
+ * `max(updatedAt)` over each key group strictly advances on every successful
+ * mutation.
+ */
+function nextOccVersionDate(dbFloorMs: number): Date {
+	return new Date(Math.max(Date.now(), dbFloorMs + 1));
+}
+
+/**
  * Atomically validates that the "Server-wide Wrapped" settings (anonymization
  * mode + server-wide share mode) have not changed since `submittedVersion`
  * and, if so, writes both values in a single SQLite transaction. Returns
@@ -176,19 +203,26 @@ export async function setServerWrappedSettingsAtomic(opts: {
 			.from(appSettings)
 			.where(inArray(appSettings.key, SERVER_WRAPPED_SETTINGS_KEYS as unknown as string[]));
 
-		if (rows.length > 0) {
-			let maxMs = 0;
-			for (const row of rows) {
-				const t = row.updatedAt.getTime();
-				if (t > maxMs) maxMs = t;
-			}
-			const submittedMs = opts.submittedVersion ? Date.parse(opts.submittedVersion) : Number.NaN;
-			if (Number.isNaN(submittedMs) || submittedMs < maxMs) {
-				return 'conflict';
-			}
+		// Treat a missing/blank submittedVersion as a stale tab regardless of row
+		// count — defends against the fresh-install/all-cleared loophole where the
+		// row-count gate would silently skip OCC.
+		const submittedMs = opts.submittedVersion ? Date.parse(opts.submittedVersion) : Number.NaN;
+		if (Number.isNaN(submittedMs)) {
+			return 'conflict';
+		}
+		// Compute `maxMs` over the existing rows so the OCC check and the write
+		// timestamp share the same DB floor. With no rows, `maxMs = 0` is fine —
+		// `Date.now()` dominates inside `nextOccVersionDate`.
+		let maxMs = 0;
+		for (const row of rows) {
+			const t = row.updatedAt.getTime();
+			if (t > maxMs) maxMs = t;
+		}
+		if (rows.length > 0 && submittedMs < maxMs) {
+			return 'conflict';
 		}
 
-		const now = new Date();
+		const now = nextOccVersionDate(maxMs);
 
 		await tx
 			.insert(appSettings)
@@ -235,19 +269,25 @@ export async function setUserDefaultsAtomic(opts: {
 			.from(appSettings)
 			.where(inArray(appSettings.key, USER_DEFAULTS_SETTINGS_KEYS as unknown as string[]));
 
-		if (rows.length > 0) {
-			let maxMs = 0;
-			for (const row of rows) {
-				const t = row.updatedAt.getTime();
-				if (t > maxMs) maxMs = t;
-			}
-			const submittedMs = opts.submittedVersion ? Date.parse(opts.submittedVersion) : Number.NaN;
-			if (Number.isNaN(submittedMs) || submittedMs < maxMs) {
-				return 'conflict';
-			}
+		// Treat a missing/blank submittedVersion as a stale tab regardless of row
+		// count — defends against the fresh-install/all-cleared loophole.
+		const submittedMs = opts.submittedVersion ? Date.parse(opts.submittedVersion) : Number.NaN;
+		if (Number.isNaN(submittedMs)) {
+			return 'conflict';
+		}
+		// Compute `maxMs` over the existing rows so the OCC check and the write
+		// timestamp share the same DB floor. With no rows, `maxMs = 0` is fine —
+		// `Date.now()` dominates inside `nextOccVersionDate`.
+		let maxMs = 0;
+		for (const row of rows) {
+			const t = row.updatedAt.getTime();
+			if (t > maxMs) maxMs = t;
+		}
+		if (rows.length > 0 && submittedMs < maxMs) {
+			return 'conflict';
 		}
 
-		const now = new Date();
+		const now = nextOccVersionDate(maxMs);
 
 		await tx
 			.insert(appSettings)
@@ -336,19 +376,26 @@ export async function setApiConfigAtomic(opts: {
 			.from(appSettings)
 			.where(inArray(appSettings.key, API_CONFIG_KEYS as unknown as string[]));
 
-		if (rows.length > 0) {
-			let maxMs = 0;
-			for (const row of rows) {
-				const t = row.updatedAt.getTime();
-				if (t > maxMs) maxMs = t;
-			}
-			const submittedMs = opts.submittedVersion ? Date.parse(opts.submittedVersion) : Number.NaN;
-			if (Number.isNaN(submittedMs) || submittedMs < maxMs) {
-				return { status: 'conflict', plexCredentialsChanged: false };
-			}
+		// Treat a missing/blank submittedVersion as a stale tab regardless of row
+		// count — defends against the fresh-install/all-cleared loophole where the
+		// row-count gate would silently skip OCC.
+		const submittedMs = opts.submittedVersion ? Date.parse(opts.submittedVersion) : Number.NaN;
+		if (Number.isNaN(submittedMs)) {
+			return { status: 'conflict', plexCredentialsChanged: false };
+		}
+		// Compute `maxMs` over the existing rows so the OCC check and the
+		// version bump share the same DB floor. With no rows, `maxMs = 0` is
+		// fine — `Date.now()` dominates inside `nextOccVersionDate`.
+		let maxMs = 0;
+		for (const row of rows) {
+			const t = row.updatedAt.getTime();
+			if (t > maxMs) maxMs = t;
+		}
+		if (rows.length > 0 && submittedMs < maxMs) {
+			return { status: 'conflict', plexCredentialsChanged: false };
 		}
 
-		const now = new Date();
+		const now = nextOccVersionDate(maxMs);
 		let plexCredentialsChanged = false;
 
 		const upsert = async (key: AppSettingsKeyType, value: string) => {
@@ -437,6 +484,56 @@ export async function setApiConfigAtomic(opts: {
 		await upsert(AppSettingsKey.API_CONFIG_VERSION, now.toISOString());
 
 		return { status: 'ok', plexCredentialsChanged };
+	});
+}
+
+/**
+ * Clears a single API_CONFIG row and advances the `API_CONFIG_VERSION` marker in
+ * the same transaction so `max(updatedAt)` over `API_CONFIG_KEYS` strictly
+ * advances. Without the bump, a clear performed via the dedicated clear-* admin
+ * actions would leave `max(updatedAt)` pinned to the last `setApiConfigAtomic`
+ * write and let a stale tab resurrect the cleared value while still passing
+ * OCC. Use this for admin "clear OpenAI key/model" style actions; the
+ * cross-field write path (`setApiConfigAtomic`) already bumps the version
+ * itself.
+ */
+export async function clearApiConfigKey(key: (typeof API_CONFIG_KEYS)[number]): Promise<void> {
+	await db.transaction(async (tx) => {
+		// Read `max(updatedAt)` over ALL `API_CONFIG_KEYS` rows BEFORE the DELETE
+		// so the row about to be cleared still contributes to `dbFloorMs`. If we
+		// scanned after deleting, the deleted row's prior `updatedAt` would be
+		// missing from the result set; under a clock regression (NTP step / VM
+		// migration) plus a legacy state where the deleted row held the highest
+		// `updatedAt`, `nextOccVersionDate` could then mint a version below
+		// that prior timestamp, letting a stale tab pass the strict-less-than OCC
+		// check in `setApiConfigAtomic` and resurrect the cleared value. Reading
+		// inside the transaction keeps the floor consistent with concurrent
+		// writers and mirrors the floor scan in `setApiConfigAtomic` so both
+		// write paths share the same OCC window.
+		const rows = await tx
+			.select({ updatedAt: appSettings.updatedAt })
+			.from(appSettings)
+			.where(inArray(appSettings.key, API_CONFIG_KEYS as unknown as string[]));
+		let dbFloorMs = 0;
+		for (const row of rows) {
+			const t = row.updatedAt.getTime();
+			if (t > dbFloorMs) dbFloorMs = t;
+		}
+
+		await tx.delete(appSettings).where(eq(appSettings.key, key));
+
+		const now = nextOccVersionDate(dbFloorMs);
+		await tx
+			.insert(appSettings)
+			.values({
+				key: AppSettingsKey.API_CONFIG_VERSION,
+				value: now.toISOString(),
+				updatedAt: now
+			})
+			.onConflictDoUpdate({
+				target: appSettings.key,
+				set: { value: now.toISOString(), updatedAt: now }
+			});
 	});
 }
 

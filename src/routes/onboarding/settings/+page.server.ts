@@ -15,6 +15,7 @@ import {
 	FunFactFrequency,
 	type FunFactFrequencyType,
 	getAnonymizationMode,
+	getApiConfigWithSources,
 	getAppSetting,
 	getFunFactFrequency,
 	getUITheme,
@@ -331,12 +332,13 @@ export const actions: Actions = {
 				}
 			}
 
-			if (data.enableFunFacts && !openaiApiKey) {
-				return fail(400, {
-					error:
-						'OpenAI API key is required when AI Fun Facts is enabled. Add a key or disable the toggle.'
-				});
-			}
+			// Built-in fun-fact templates work without an OpenAI key, so don't block
+			// onboarding here; surface a non-fatal notice on the completion step.
+			// Suppress the notice when an effective API key already exists via env
+			// (env overrides DB), since AI is operative regardless of what was posted.
+			const apiConfig = await getApiConfigWithSources();
+			const hasEffectiveApiKey = Boolean(apiConfig.openai.apiKey.value.trim());
+			const aiKeyMissingNotice = data.enableFunFacts && !openaiApiKey && !hasEffectiveApiKey;
 
 			// Save all settings in parallel
 			await Promise.all([
@@ -387,7 +389,10 @@ export const actions: Actions = {
 
 			// Advance to completion step
 			await setOnboardingStep(OnboardingSteps.COMPLETE);
-			redirect(303, '/onboarding/complete');
+			redirect(
+				303,
+				aiKeyMissingNotice ? '/onboarding/complete?notice=ai-key-missing' : '/onboarding/complete'
+			);
 		} catch (err) {
 			// Handle redirect (expected)
 			if (

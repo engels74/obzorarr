@@ -26,6 +26,7 @@ import { renderMarkdownSync } from '$lib/server/slides/renderer';
 import {
 	CreateCustomSlideSchema,
 	SlideTypeSchema,
+	slideErrorToFail,
 	UpdateCustomSlideSchema
 } from '$lib/server/slides/types';
 import type { Actions, PageServerLoad } from './$types';
@@ -160,8 +161,8 @@ export const actions: Actions = requireAdminActions({
 			await toggleCustomSlide(id);
 			return { success: true };
 		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Failed to toggle custom slide';
-			return fail(500, { error: message });
+			const mapped = slideErrorToFail(error);
+			return fail(mapped.status, mapped.body);
 		}
 	},
 
@@ -224,8 +225,8 @@ export const actions: Actions = requireAdminActions({
 			const slide = await createCustomSlide(parsed.data);
 			return { success: true, slide };
 		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Failed to create custom slide';
-			return fail(500, { error: message });
+			const mapped = slideErrorToFail(error);
+			return fail(mapped.status, mapped.body);
 		}
 	},
 
@@ -267,8 +268,8 @@ export const actions: Actions = requireAdminActions({
 			const slide = await updateCustomSlide(id, parsed.data);
 			return { success: true, slide };
 		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Failed to update custom slide';
-			return fail(500, { error: message });
+			const mapped = slideErrorToFail(error);
+			return fail(mapped.status, mapped.body);
 		}
 	},
 
@@ -292,8 +293,8 @@ export const actions: Actions = requireAdminActions({
 			await deleteCustomSlide(id);
 			return { success: true };
 		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Failed to delete custom slide';
-			return fail(500, { error: message });
+			const mapped = slideErrorToFail(error);
+			return fail(mapped.status, mapped.body);
 		}
 	},
 

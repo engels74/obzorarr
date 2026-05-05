@@ -1243,6 +1243,7 @@ $effect(() => {
 		@media (max-width: 768px) {
 			.logs-page {
 				padding: 1rem;
+				min-width: 0;
 			}
 
 			.controls-section {
@@ -1253,6 +1254,11 @@ $effect(() => {
 			.controls-left,
 			.controls-right {
 				justify-content: center;
+			}
+
+			.stats-section {
+				grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+				gap: 0.75rem;
 			}
 
 			.logs-table {
@@ -1275,9 +1281,18 @@ $effect(() => {
 			.col-actions {
 				display: none;
 			}
+
+			.col-message {
+				min-width: 0;
+				word-break: break-word;
+			}
 		}
 
 		@media (max-width: 480px) {
+			.logs-page {
+				padding: 0.75rem;
+			}
+
 			.controls-left,
 			.controls-right {
 				flex-direction: column;
@@ -1292,6 +1307,35 @@ $effect(() => {
 			.inline-form {
 				display: block;
 				width: 100%;
+			}
+
+			.stats-section {
+				grid-template-columns: repeat(2, minmax(0, 1fr));
+				gap: 0.5rem;
+				margin-bottom: 1rem;
+			}
+
+			.stat-card {
+				padding: 0.75rem 0.5rem;
+			}
+
+			.logs-table {
+				font-size: 0.7rem;
+				table-layout: auto;
+			}
+
+			.col-time {
+				width: 72px;
+			}
+
+			.col-level {
+				width: 52px;
+			}
+
+			.col-message {
+				min-width: 140px;
+				word-break: break-word;
+				white-space: normal;
 			}
 		}
 </style>

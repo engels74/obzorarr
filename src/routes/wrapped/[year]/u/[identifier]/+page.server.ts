@@ -354,6 +354,9 @@ export const actions: Actions = {
 				}
 			};
 		} catch (err) {
+			if (err instanceof PermissionExceededError) {
+				return fail(403, { error: err.message });
+			}
 			const message = err instanceof Error ? err.message : 'Failed to regenerate token';
 			return fail(500, { error: message });
 		}

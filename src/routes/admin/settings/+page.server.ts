@@ -7,6 +7,7 @@ import {
 	API_CONFIG_KEYS,
 	AppSettingsKey,
 	type ConfigSource,
+	clearApiConfigKey,
 	clearCachedServerMachineId,
 	clearPlayHistory,
 	clearStatsCache,
@@ -88,20 +89,20 @@ const ServerWrappedModeSchema = z.enum(['public', 'private-oauth']);
 const ServerWrappedSettingsSchema = z.object({
 	anonymizationMode: AnonymizationSchema,
 	serverWrappedShareMode: ServerWrappedModeSchema,
-	settingsVersion: z.string()
+	settingsVersion: z.string().min(1, 'Missing settings version (reload the page)')
 });
 
 const UserDefaultsSettingsSchema = z.object({
 	defaultShareMode: ShareModeSchema,
 	allowUserControl: BooleanStringSchema,
-	settingsVersion: z.string()
+	settingsVersion: z.string().min(1, 'Missing settings version (reload the page)')
 });
 
 // Each value field is `string | undefined`:
 //   undefined = field absent from this submission (e.g. the OpenAI panel saved
 //               and didn't include Plex inputs) → service treats as no-op.
-//   ''        = field present but blank → service either clears (echoed-back
-//               keys) or no-ops (secret keys).
+//   ''        = field present but blank → service clears the echoed-back URL
+//               field, or no-ops for secret keys.
 //   non-empty = write.
 // The URL-validated fields accept `''` via the literal union so a cleared input
 // passes validation and reaches the service as the clear signal.
@@ -110,9 +111,12 @@ const UserDefaultsSettingsSchema = z.object({
 //   - Secret keys (plexToken, openaiApiKey) use `optionalTrimmed(...)`: empty,
 //     whitespace-only, and absent all collapse to `undefined` (no-op). Prevents
 //     a stray "  " press from being persisted as the secret.
-//   - Echoed-back keys (openaiModel, openaiBaseUrl) get `.trim()` on the inner
-//     string so whitespace-only inputs become the canonical clear signal `''`,
-//     preserving the user's ability to clear by blanking the field.
+//   - Echoed-back URL (openaiBaseUrl) gets `.trim()` on the inner string so
+//     whitespace-only inputs become the canonical clear signal `''`, preserving
+//     the user's ability to clear by blanking the field.
+//   - `openaiModel` is the exception: it is also echoed back, but a blank or
+//     whitespace-only submission now fails validation. Clearing must go through
+//     the dedicated `?/clearOpenaiModel` action — see the schema note below.
 // Trim before the union so whitespace-only inputs (e.g. '   ') collapse to ''
 // and match the literal-empty branch — without preprocess, .trim() on the URL
 // branch would still leave the original untrimmed string for the literal('')
@@ -130,8 +134,12 @@ const ApiConfigSchema = z.object({
 	plexToken: optionalTrimmed(512),
 	openaiApiKey: optionalTrimmed(512),
 	openaiBaseUrl: trimmedUrlOrEmpty,
-	openaiModel: z.string().trim().max(100).optional(),
-	apiConfigVersion: z.string()
+	// `openaiModel` is echoed back; submitting blank used to silently clear the row,
+	// which made it possible to wipe the active model name from the OpenAI panel.
+	// Require non-empty here. Explicit clearing is done via the dedicated
+	// `?/clearOpenaiModel` action (mirrors `?/clearOpenaiKey`).
+	openaiModel: z.string().trim().min(1, 'Model name is required').max(100).optional(),
+	apiConfigVersion: z.string().min(1, 'Missing api config version (reload the page)')
 });
 
 const LogSettingsSchema = z.object({
@@ -264,9 +272,16 @@ export const load: PageServerLoad = async () => {
 			allowUserControl
 		},
 		serverWrappedShareMode,
-		serverWrappedSettingsVersion: serverWrappedSettingsUpdatedAt?.toISOString() ?? '',
-		userDefaultsSettingsVersion: userDefaultsSettingsUpdatedAt?.toISOString() ?? '',
-		apiConfigVersion: apiConfigUpdatedAt?.toISOString() ?? '',
+		// Fall back to the epoch when no rows yet exist (fresh install / all-cleared).
+		// The atomic services accept any parseable timestamp on rows.length === 0 and
+		// the Zod `.min(1)` gate requires non-empty — emitting `''` would lock the
+		// admin out of the first save with an irrecoverable 409. The epoch is the
+		// canonical "older than anything" sentinel for OCC purposes.
+		serverWrappedSettingsVersion:
+			serverWrappedSettingsUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
+		userDefaultsSettingsVersion:
+			userDefaultsSettingsUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
+		apiConfigVersion: apiConfigUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
 		security: {
 			originValue: csrfConfig.origin.value,
 			csrfEnabled: !!csrfConfig.origin.value,
@@ -305,9 +320,18 @@ export const actions: Actions = requireAdminActions({
 
 		const parsed = ApiConfigSchema.safeParse(data);
 		if (!parsed.success) {
+			const fieldErrors = parsed.error.flatten().fieldErrors;
+			// Treat a missing/blank apiConfigVersion as a stale tab — recovery is the
+			// same as a real OCC conflict (reload the page).
+			if (fieldErrors.apiConfigVersion?.length) {
+				return fail(409, {
+					conflict: true,
+					error: 'Settings changed in another tab. Reload and try again.'
+				});
+			}
 			return fail(400, {
 				error: 'Invalid input',
-				fieldErrors: parsed.error.flatten().fieldErrors
+				fieldErrors
 			});
 		}
 
@@ -711,9 +735,16 @@ export const actions: Actions = requireAdminActions({
 
 		const parsed = ServerWrappedSettingsSchema.safeParse(data);
 		if (!parsed.success) {
+			const fieldErrors = parsed.error.flatten().fieldErrors;
+			if (fieldErrors.settingsVersion?.length) {
+				return fail(409, {
+					conflict: true,
+					error: 'Settings changed in another tab. Please reload.'
+				});
+			}
 			return fail(400, {
 				error: 'Invalid input',
-				fieldErrors: parsed.error.flatten().fieldErrors
+				fieldErrors
 			});
 		}
 
@@ -749,9 +780,16 @@ export const actions: Actions = requireAdminActions({
 
 		const parsed = UserDefaultsSettingsSchema.safeParse(data);
 		if (!parsed.success) {
+			const fieldErrors = parsed.error.flatten().fieldErrors;
+			if (fieldErrors.settingsVersion?.length) {
+				return fail(409, {
+					conflict: true,
+					error: 'Settings changed in another tab. Please reload.'
+				});
+			}
 			return fail(400, {
 				error: 'Invalid input',
-				fieldErrors: parsed.error.flatten().fieldErrors
+				fieldErrors
 			});
 		}
 
@@ -968,10 +1006,34 @@ export const actions: Actions = requireAdminActions({
 		}
 
 		try {
-			await deleteAppSetting(AppSettingsKey.OPENAI_API_KEY);
+			// Use clearApiConfigKey (not deleteAppSetting) so API_CONFIG_VERSION is
+			// bumped in the same transaction. Without the bump, max(updatedAt) over
+			// API_CONFIG_KEYS would not advance, letting a stale tab whose
+			// apiConfigVersion equals that timestamp pass OCC and resurrect the
+			// cleared key via updateApiConfig.
+			await clearApiConfigKey(AppSettingsKey.OPENAI_API_KEY);
 			return { success: true, message: 'OpenAI API key cleared' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to clear OpenAI API key';
+			return fail(500, { error: message });
+		}
+	},
+
+	clearOpenaiModel: async () => {
+		const apiConfig = await getApiConfigWithSources();
+		if (apiConfig.openai.model.isLocked) {
+			return fail(400, {
+				error: 'OpenAI model is set via environment variable and cannot be cleared here'
+			});
+		}
+
+		try {
+			// See clearOpenaiKey above — clearApiConfigKey bumps API_CONFIG_VERSION
+			// so a stale tab cannot resurrect the cleared model name through OCC.
+			await clearApiConfigKey(AppSettingsKey.OPENAI_MODEL);
+			return { success: true, message: 'OpenAI model cleared (will fall back to default)' };
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to clear OpenAI model';
 			return fail(500, { error: message });
 		}
 	},

@@ -1001,6 +1001,27 @@ describe('Admin Settings Service', () => {
 			expect(result.status).toBe('conflict');
 		});
 
+		// Regression: previously the OCC check was skipped when no API_CONFIG_KEYS
+		// rows existed (fresh install or all keys cleared), letting a write through
+		// with an empty submittedVersion. The check must now reject empty/blank
+		// versions regardless of row count.
+		it('returns conflict when submitted version is empty and rows do NOT exist', async () => {
+			const result = await setApiConfigAtomic({
+				values: {
+					plexServerUrl: undefined,
+					plexToken: undefined,
+					openaiApiKey: undefined,
+					openaiBaseUrl: undefined,
+					openaiModel: 'gpt-5-mini'
+				},
+				locks: allUnlocked,
+				submittedVersion: ''
+			});
+
+			expect(result.status).toBe('conflict');
+			expect(await getAppSetting(AppSettingsKey.OPENAI_MODEL)).toBeNull();
+		});
+
 		it('skips locked fields silently', async () => {
 			const result = await setApiConfigAtomic({
 				values: {

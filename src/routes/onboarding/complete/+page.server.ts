@@ -24,12 +24,13 @@ import type { Actions, PageServerLoad } from './$types';
 /**
  * Load function - marks onboarding complete and provides summary
  */
-export const load: PageServerLoad = async ({ parent, locals }) => {
+export const load: PageServerLoad = async ({ parent, locals, url }) => {
 	if (!locals.user?.isAdmin) {
 		redirect(303, '/onboarding/csrf');
 	}
 
 	const parentData = await parent();
+	const notice = url.searchParams.get('notice');
 
 	await completeOnboarding();
 
@@ -65,6 +66,7 @@ export const load: PageServerLoad = async ({ parent, locals }) => {
 
 	return {
 		...parentData,
+		notice: notice === 'ai-key-missing' ? 'ai-key-missing' : null,
 		syncStatus: {
 			running: syncRunning,
 			progress: syncProgress,
