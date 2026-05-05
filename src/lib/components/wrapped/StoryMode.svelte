@@ -381,6 +381,40 @@ function handleSlideAnimationComplete(): void {}
 		</div>
 	{/if}
 
+	<!-- Mobile navigation arrows -->
+	<div class="nav-arrows" aria-hidden="true">
+		{#if !navigation.isFirst}
+			<button
+				type="button"
+				class="nav-arrow nav-arrow-prev"
+				onclick={(e) => {
+					e.stopPropagation();
+					goToPrevious();
+				}}
+				aria-label="Previous slide"
+			>
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<path d="M15 18l-6-6 6-6" />
+				</svg>
+			</button>
+		{/if}
+		{#if !navigation.isLast}
+			<button
+				type="button"
+				class="nav-arrow nav-arrow-next"
+				onclick={(e) => {
+					e.stopPropagation();
+					goToNext();
+				}}
+				aria-label="Next slide"
+			>
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<path d="M9 18l6-6-6-6" />
+				</svg>
+			</button>
+		{/if}
+	</div>
+
 	<!-- Close button -->
 	{#if onClose}
 		<button
@@ -558,6 +592,59 @@ function handleSlideAnimationComplete(): void {}
 			}
 		}
 
+
+		/* Mobile nav arrows */
+		.nav-arrows {
+			display: none;
+		}
+
+		@media (max-width: 767px) {
+			.nav-arrows {
+				display: flex;
+				justify-content: space-between;
+				position: absolute;
+				top: 50%;
+				left: 0;
+				right: 0;
+				transform: translateY(-50%);
+				z-index: 10;
+				pointer-events: none;
+			}
+
+			.nav-arrow {
+				pointer-events: auto;
+				width: 3rem;
+				height: 3rem;
+				background: rgba(0, 0, 0, 0.5);
+				border: none;
+				border-radius: 50%;
+				color: white;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				cursor: pointer;
+				opacity: 0.7;
+				transition: opacity 0.15s, transform 0.15s;
+			}
+
+			.nav-arrow:hover {
+				opacity: 1;
+				transform: scale(1.1);
+			}
+
+			.nav-arrow-prev {
+				margin-left: 0.5rem;
+			}
+
+			.nav-arrow-next {
+				margin-right: 0.5rem;
+			}
+
+			.nav-arrow svg {
+				width: 1.5rem;
+				height: 1.5rem;
+			}
+		}
 		/* Tablet: medium layout */
 		@media (min-width: 768px) {
 			.slide {

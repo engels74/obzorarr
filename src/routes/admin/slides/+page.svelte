@@ -1,5 +1,4 @@
 <script lang="ts">
-import type { ActionResult } from '@sveltejs/kit';
 import { untrack } from 'svelte';
 import { deserialize, enhance } from '$app/forms';
 import type { SlideType } from '$lib/components/slides/types';
@@ -602,9 +601,15 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 									method: 'POST',
 									body: formData
 								});
-								const result: ActionResult = deserialize(await response.text());
-								if (result.type === 'success' && result.data?.html) {
-									previewHtml = result.data.html as string;
+								const data = (await response.json()) as {
+									success?: boolean;
+									html?: string;
+									error?: string;
+								};
+								if (data.html) {
+									previewHtml = data.html;
+								} else if (data.error) {
+									previewHtml = `<p class="preview-error">${data.error}</p>`;
 								}
 							}}
 						>
