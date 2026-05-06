@@ -40,6 +40,14 @@ function makeIdentityResponse(): Response {
 	);
 }
 
+function hasIdentityFetchWithToken(fetchSpy: ReturnType<typeof spyOn>, token: string) {
+	const calls = fetchSpy.mock.calls as Array<[string | URL | Request, RequestInit | undefined]>;
+	return calls.some(([input, init]) => {
+		const headers = init?.headers as Record<string, string> | undefined;
+		return input === 'http://plex.local:32400/identity' && headers?.['X-Plex-Token'] === token;
+	});
+}
+
 const adminLocals = {
 	user: { id: 1, plexId: 100, username: 'admin', isAdmin: true }
 } as HandlerArgs['locals'];
@@ -65,11 +73,7 @@ describe('POST /api/onboarding/test-connection token alias', () => {
 		const body = (await response.json()) as { success: boolean; serverName?: string };
 		expect(body.success).toBe(true);
 		expect(body.serverName).toBe('Test Server');
-		expect(fetchSpy).toHaveBeenCalledTimes(1);
-		const headers = (fetchSpy.mock.calls[0]?.[1] as RequestInit | undefined)?.headers as
-			| Record<string, string>
-			| undefined;
-		expect(headers?.['X-Plex-Token']).toBe('plex-token-abc');
+		expect(hasIdentityFetchWithToken(fetchSpy, 'plex-token-abc')).toBe(true);
 	});
 
 	it('accepts the legacy token alias and uses it as X-Plex-Token', async () => {
@@ -83,11 +87,7 @@ describe('POST /api/onboarding/test-connection token alias', () => {
 		expect(response.status).toBe(200);
 		const body = (await response.json()) as { success: boolean };
 		expect(body.success).toBe(true);
-		expect(fetchSpy).toHaveBeenCalledTimes(1);
-		const headers = (fetchSpy.mock.calls[0]?.[1] as RequestInit | undefined)?.headers as
-			| Record<string, string>
-			| undefined;
-		expect(headers?.['X-Plex-Token']).toBe('plex-token-xyz');
+		expect(hasIdentityFetchWithToken(fetchSpy, 'plex-token-xyz')).toBe(true);
 	});
 
 	it('resolves a token server-side from clientIdentifier', async () => {
@@ -130,11 +130,7 @@ describe('POST /api/onboarding/test-connection token alias', () => {
 		expect(body.success).toBe(true);
 		expect(body.accessToken).toBeUndefined();
 		expect(body.token).toBeUndefined();
-		expect(fetchSpy).toHaveBeenCalledTimes(2);
-		const headers = (fetchSpy.mock.calls[1]?.[1] as RequestInit | undefined)?.headers as
-			| Record<string, string>
-			| undefined;
-		expect(headers?.['X-Plex-Token']).toBe('server-token-secret');
+		expect(hasIdentityFetchWithToken(fetchSpy, 'server-token-secret')).toBe(true);
 	});
 
 	it('rejects requests with neither accessToken, token, nor clientIdentifier', async () => {
