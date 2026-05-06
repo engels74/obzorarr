@@ -174,7 +174,6 @@ async function navigateAfterTokenRouteUpdate(data: unknown): Promise<boolean> {
 		  }
 		| undefined;
 	const routeIdentifier = currentRouteIdentifier();
-	if (!isTokenIdentifier(routeIdentifier)) return false;
 
 	const nextMode = actionData?.shareSettings?.mode;
 	const nextToken =
@@ -182,7 +181,12 @@ async function navigateAfterTokenRouteUpdate(data: unknown): Promise<boolean> {
 			? actionData.shareSettings.shareToken
 			: actionData?.shareToken;
 
-	if (nextMode && nextMode !== 'private-link' && actionData?.canonicalUrl) {
+	if (
+		nextMode &&
+		nextMode !== 'private-link' &&
+		isTokenIdentifier(routeIdentifier) &&
+		actionData?.canonicalUrl
+	) {
 		await goto(actionData.canonicalUrl, { replaceState: true, invalidateAll: true });
 		return true;
 	}
