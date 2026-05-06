@@ -1,5 +1,6 @@
 <script lang="ts">
 import { enhance } from '$app/forms';
+import { goto } from '$app/navigation';
 import * as AlertDialog from '$lib/components/ui/alert-dialog';
 import { ShareModePrivacyLevel, type ShareModeType } from '$lib/sharing/types';
 
@@ -130,6 +131,7 @@ function applyShareActionData(data: unknown): void {
 		| {
 				shareSettings?: Partial<ShareSettings>;
 				shareToken?: string | null;
+				canonicalUrl?: string;
 		  }
 		| undefined;
 
@@ -144,6 +146,56 @@ function applyShareActionData(data: unknown): void {
 	if (actionData && 'shareToken' in actionData) {
 		optimisticShareToken = actionData.shareToken;
 	}
+}
+
+function currentRouteIdentifier(): string | null {
+	if (typeof window === 'undefined') return null;
+	const match = window.location.pathname.match(/\/u\/([^/]+)$/);
+	return match?.[1] ? decodeURIComponent(match[1]) : null;
+}
+
+function isTokenIdentifier(value: string | null): boolean {
+	return Boolean(
+		value?.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)
+	);
+}
+
+function tokenizedUrl(baseUrl: string, token: string): string {
+	const parts = baseUrl.split('/u/');
+	return parts.length === 2 ? `${parts[0]}/u/${token}` : baseUrl;
+}
+
+async function navigateAfterTokenRouteUpdate(data: unknown): Promise<boolean> {
+	const actionData = data as
+		| {
+				shareSettings?: Partial<ShareSettings>;
+				shareToken?: string | null;
+				canonicalUrl?: string;
+		  }
+		| undefined;
+	const routeIdentifier = currentRouteIdentifier();
+	if (!isTokenIdentifier(routeIdentifier)) return false;
+
+	const nextMode = actionData?.shareSettings?.mode;
+	const nextToken =
+		actionData?.shareSettings && 'shareToken' in actionData.shareSettings
+			? actionData.shareSettings.shareToken
+			: actionData?.shareToken;
+
+	if (nextMode && nextMode !== 'private-link' && actionData?.canonicalUrl) {
+		await goto(actionData.canonicalUrl, { replaceState: true, invalidateAll: true });
+		return true;
+	}
+
+	if (nextMode === 'private-link' && nextToken && nextToken !== routeIdentifier) {
+		await goto(tokenizedUrl(actionData?.canonicalUrl ?? canonicalUrl ?? currentUrl, nextToken), {
+			replaceState: true,
+			invalidateAll: true
+		});
+		return true;
+	}
+
+	return false;
 }
 
 // Cleanup on unmount
@@ -250,6 +302,7 @@ $effect(() => {
 							try {
 								if (result.type === 'success') {
 									applyShareActionData(result.data);
+									if (await navigateAfterTokenRouteUpdate(result.data)) return;
 								} else {
 									optimisticMode = null;
 									optimisticShareToken = undefined;
@@ -332,6 +385,7 @@ $effect(() => {
 								try {
 									if (result.type === 'success') {
 										applyShareActionData(result.data);
+										if (await navigateAfterTokenRouteUpdate(result.data)) return;
 									}
 									await update();
 								} finally {

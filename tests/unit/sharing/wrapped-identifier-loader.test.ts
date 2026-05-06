@@ -335,7 +335,7 @@ describe('wrapped/[year]/u/[identifier] loader: shareToken payload gating', () =
 
 		const data = await invokeLoad({
 			year: YEAR,
-			identifier: String(USER_ID),
+			identifier: TOKEN,
 			availableYears: [YEAR],
 			currentUser: {
 				id: USER_ID,
@@ -346,6 +346,7 @@ describe('wrapped/[year]/u/[identifier] loader: shareToken payload gating', () =
 		});
 
 		expect(data.shareSettings.shareToken).toBe(TOKEN);
+		expect(data.currentUrl).toBe(`/wrapped/${YEAR}/u/${TOKEN}`);
 	});
 
 	it('returns the real token for an admin viewer when effectiveMode === private-link', async () => {
@@ -364,7 +365,7 @@ describe('wrapped/[year]/u/[identifier] loader: shareToken payload gating', () =
 
 		const data = await invokeLoad({
 			year: YEAR,
-			identifier: String(USER_ID),
+			identifier: TOKEN,
 			availableYears: [YEAR],
 			currentUser: {
 				id: ADMIN_ID,
@@ -375,6 +376,37 @@ describe('wrapped/[year]/u/[identifier] loader: shareToken payload gating', () =
 		});
 
 		expect(data.shareSettings.shareToken).toBe(TOKEN);
+		expect(data.currentUrl).toBe(`/wrapped/${YEAR}/u/${TOKEN}`);
+	});
+
+	it('returns 404 when an owner accesses a private-link wrapped via numeric URL', async () => {
+		await setGlobalShareDefaults({
+			defaultShareMode: ShareMode.PRIVATE_LINK,
+			allowUserControl: false
+		});
+		await seedShareSettings({
+			userId: USER_ID,
+			year: YEAR,
+			mode: ShareMode.PRIVATE_LINK,
+			token: TOKEN
+		});
+
+		try {
+			await invokeLoad({
+				year: YEAR,
+				identifier: String(USER_ID),
+				availableYears: [YEAR],
+				currentUser: {
+					id: USER_ID,
+					plexId: 100042,
+					username: `user-${USER_ID}`,
+					isAdmin: false
+				}
+			});
+			expect.unreachable('Expected numeric private-link owner URL to be rejected');
+		} catch (err) {
+			expect((err as { status?: number }).status).toBe(404);
+		}
 	});
 
 	it('exposes the canonical token to the owner even when the floor raises effectiveMode above private-link', async () => {

@@ -90,10 +90,10 @@ export async function checkWrappedAccess(
 	const effectiveMode = getMoreRestrictiveMode(settings.mode, globalFloor);
 	const isOwner = currentUser?.id === userId || currentUser?.isAdmin === true;
 
-	// Anti-enumeration: a private-link page accessed without a token by a
-	// non-owner must look identical to a missing share, so the existence of
-	// the underlying user can't be probed via the numeric URL.
-	if (effectiveMode === ShareMode.PRIVATE_LINK && !shareToken && !isOwner) {
+	// Private-link pages require the token even for owners/admins. Owner/admin
+	// previews should be routed through the tokenized URL instead of bypassing
+	// token enforcement on the numeric URL.
+	if (effectiveMode === ShareMode.PRIVATE_LINK && !shareToken) {
 		throw new InvalidShareTokenError();
 	}
 
@@ -103,7 +103,7 @@ export async function checkWrappedAccess(
 		validToken: settings.shareToken,
 		isAuthenticated: !!currentUser,
 		isServerMember: !!currentUser,
-		isOwner
+		isOwner: effectiveMode === ShareMode.PRIVATE_LINK ? false : isOwner
 	};
 
 	const result = checkAccess(context);

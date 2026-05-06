@@ -101,7 +101,7 @@ function getShareModeLabel(mode: string | null, source: string | null): string {
 							<tr>
 								<td>
 									<div class="user-cell">
-										<a href="/wrapped/{data.year}/u/{user.id}" class="user-avatar-link">
+										<a href={user.wrappedHref} class="user-avatar-link">
 											{#if user.thumb}
 												<img src={user.thumb} alt="" class="user-avatar" />
 											{:else}
@@ -109,7 +109,7 @@ function getShareModeLabel(mode: string | null, source: string | null): string {
 											{/if}
 										</a>
 										<div class="user-info">
-											<a href="/wrapped/{data.year}/u/{user.id}" class="user-name">
+											<a href={user.wrappedHref} class="user-name">
 												{user.username}
 												{#if user.isAdmin}
 													<span class="admin-badge">Admin</span>
@@ -164,7 +164,7 @@ function getShareModeLabel(mode: string | null, source: string | null): string {
 								</td>
 								<td>
 									<a
-										href="/wrapped/{data.year}/u/{user.id}"
+										href={user.wrappedHref}
 										target="_blank"
 										rel="noopener noreferrer"
 										class="preview-link"
@@ -181,7 +181,7 @@ function getShareModeLabel(mode: string | null, source: string | null): string {
 				{#each data.users as user (user.id)}
 					<div class="mobile-user-row">
 						<div class="mobile-user-main">
-							<a href="/wrapped/{data.year}/u/{user.id}" class="user-avatar-link">
+							<a href={user.wrappedHref} class="user-avatar-link">
 								{#if user.thumb}
 									<img src={user.thumb} alt="" class="user-avatar" />
 								{:else}
@@ -189,7 +189,7 @@ function getShareModeLabel(mode: string | null, source: string | null): string {
 								{/if}
 							</a>
 							<div class="user-info">
-								<a href="/wrapped/{data.year}/u/{user.id}" class="user-name">
+								<a href={user.wrappedHref} class="user-name">
 									{user.username}
 									{#if user.isAdmin}
 										<span class="admin-badge">Admin</span>
@@ -245,7 +245,7 @@ function getShareModeLabel(mode: string | null, source: string | null): string {
 							</div>
 						</div>
 						<a
-							href="/wrapped/{data.year}/u/{user.id}"
+							href={user.wrappedHref}
 							target="_blank"
 							rel="noopener noreferrer"
 							class="preview-link mobile-preview-link"

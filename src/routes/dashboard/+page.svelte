@@ -36,7 +36,7 @@ let { data }: Props = $props();
 	</header>
 
 	<div class="cards-container">
-		<a href="/wrapped/{data.currentYear}/u/{data.user.id}" class="wrapped-card personal">
+		<a href={data.wrappedHref} class="wrapped-card personal">
 			<div class="card-glow"></div>
 			<div class="card-badge">
 				<span>Personal</span>

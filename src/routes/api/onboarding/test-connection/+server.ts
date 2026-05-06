@@ -7,6 +7,7 @@ import {
 	PlexServerIdentitySchema
 } from '$lib/server/auth/types';
 import { logger } from '$lib/server/logging';
+import { resolveOwnedServerToken } from '$lib/server/onboarding/plex-server-selection';
 import { classifyConnectionError } from '$lib/server/security';
 import type { RequestHandler } from './$types';
 
@@ -21,16 +22,17 @@ const TestConnectionSchema = z
 	.object({
 		url: z.string().url('Invalid URL format'),
 		accessToken: z.string().min(1).optional(),
-		token: z.string().min(1).optional()
+		token: z.string().min(1).optional(),
+		clientIdentifier: z.string().min(1).optional()
 	})
-	.refine((body) => Boolean(body.accessToken ?? body.token), {
+	.refine((body) => Boolean(body.accessToken ?? body.token ?? body.clientIdentifier), {
 		message: 'Access token is required',
 		path: ['accessToken']
 	});
 
 const CONNECTION_TIMEOUT_MS = 10000;
 
-export const POST: RequestHandler = async ({ request, locals }) => {
+export const POST: RequestHandler = async ({ request, locals, cookies }) => {
 	// Require authenticated admin user
 	if (!locals.user) {
 		error(401, 'Authentication required');
@@ -50,11 +52,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return json({ success: false, error: errorMessage }, { status: 400 });
 		}
 
-		const { url } = parseResult.data;
-		const accessToken = parseResult.data.accessToken ?? parseResult.data.token;
-		if (!accessToken) {
-			return json({ success: false, error: 'Access token is required' }, { status: 400 });
-		}
+		const { url, clientIdentifier } = parseResult.data;
+		const accessToken =
+			parseResult.data.accessToken ??
+			parseResult.data.token ??
+			(await resolveOwnedServerToken({
+				sessionId: cookies.get('session'),
+				clientIdentifier: clientIdentifier!
+			}));
 
 		// Normalize URL - remove trailing slash
 		const normalizedUrl = url.replace(/\/+$/, '');

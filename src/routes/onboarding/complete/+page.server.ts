@@ -8,7 +8,6 @@
 import { fail, redirect } from '@sveltejs/kit';
 import {
 	getAnonymizationMode,
-	getApiConfigWithSources,
 	getCachedServerName,
 	getFunFactFrequency,
 	getUITheme,
@@ -50,8 +49,7 @@ export const load: PageServerLoad = async ({ parent, locals, url }) => {
 		logoMode,
 		shareMode,
 		allowUserControl,
-		funFactFrequency,
-		apiConfig
+		funFactFrequency
 	] = await Promise.all([
 		getCachedServerName(),
 		getUITheme(),
@@ -60,8 +58,7 @@ export const load: PageServerLoad = async ({ parent, locals, url }) => {
 		getWrappedLogoMode(),
 		getGlobalDefaultShareMode(),
 		getGlobalAllowUserControl(),
-		getFunFactFrequency(),
-		getApiConfigWithSources()
+		getFunFactFrequency()
 	]);
 
 	return {
@@ -80,9 +77,7 @@ export const load: PageServerLoad = async ({ parent, locals, url }) => {
 			logoMode: formatLogoMode(logoMode),
 			shareMode: formatShareMode(shareMode),
 			allowUserControl: allowUserControl ? 'Allowed' : 'Locked by admin',
-			funFacts: apiConfig.openai.apiKey.value.trim()
-				? formatFunFactFrequency(funFactFrequency)
-				: 'Disabled'
+			funFacts: formatFunFactFrequency(funFactFrequency)
 		}
 	};
 };

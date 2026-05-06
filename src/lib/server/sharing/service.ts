@@ -488,6 +488,19 @@ export async function ensureShareToken(userId: number, year: number): Promise<st
 	return refreshed[0]?.shareToken ?? newToken;
 }
 
+export async function getOwnerWrappedHref(userId: number, year: number): Promise<string> {
+	const settings = await getOrCreateShareSettings({ userId, year });
+	const globalFloor = await getGlobalDefaultShareMode();
+	const effectiveMode = getMoreRestrictiveMode(settings.mode, globalFloor);
+
+	if (effectiveMode !== ShareMode.PRIVATE_LINK) {
+		return `/wrapped/${year}/u/${userId}`;
+	}
+
+	const token = settings.shareToken ?? (await ensureShareToken(userId, year));
+	return `/wrapped/${year}/u/${token}`;
+}
+
 export async function getShareSettingsByToken(token: string): Promise<ShareSettings | null> {
 	if (!isValidTokenFormat(token)) {
 		return null;

@@ -79,7 +79,7 @@ describe('onboarding completion summary', () => {
 		expect(result.notice).toBeNull();
 	});
 
-	it('shows fun facts as disabled when only the OpenAI base URL is configured', async () => {
+	it('shows the configured fun fact frequency when OpenAI key is missing', async () => {
 		await setFunFactFrequency(FunFactFrequency.MANY);
 		await setAppSetting(AppSettingsKey.OPENAI_BASE_URL, 'https://api.example.com/v1');
 
@@ -91,6 +91,6 @@ describe('onboarding completion summary', () => {
 			configSummary: Record<string, string>;
 		};
 
-		expect(result.configSummary.funFacts).toBe('Disabled');
+		expect(result.configSummary.funFacts).toBe('Many (8)');
 	});
 });

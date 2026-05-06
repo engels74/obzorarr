@@ -62,7 +62,7 @@ let { data }: Props = $props();
 
 		<div class="wrapped-cards">
 			<!-- Personal Wrapped Card -->
-			<a href="/wrapped/{data.currentYear}/u/{data.adminUser.id}" class="showcase-card personal">
+			<a href={data.wrappedHref} class="showcase-card personal">
 				<div class="card-glow"></div>
 				<div class="card-shimmer"></div>
 				<div class="card-content">

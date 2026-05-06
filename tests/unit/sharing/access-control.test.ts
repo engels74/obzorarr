@@ -334,20 +334,20 @@ describe('Sharing Access Control', () => {
 				expect(result.accessReason).toBe('valid_token');
 			});
 
-			it('allows owner access without token', async () => {
+			it('throws InvalidShareTokenError for owner access without token', async () => {
 				const currentUser = { id: userId, plexId: 100, isAdmin: false };
 
-				const result = await checkWrappedAccess({ userId, year, currentUser });
-
-				expect(result.accessReason).toBe('owner');
+				await expect(checkWrappedAccess({ userId, year, currentUser })).rejects.toBeInstanceOf(
+					InvalidShareTokenError
+				);
 			});
 
-			it('allows admin access without token', async () => {
+			it('throws InvalidShareTokenError for admin access without token', async () => {
 				const currentUser = { id: 999, plexId: 999, isAdmin: true };
 
-				const result = await checkWrappedAccess({ userId, year, currentUser });
-
-				expect(result.accessReason).toBe('owner');
+				await expect(checkWrappedAccess({ userId, year, currentUser })).rejects.toBeInstanceOf(
+					InvalidShareTokenError
+				);
 			});
 		});
 
@@ -437,34 +437,34 @@ describe('Sharing Access Control', () => {
 				}
 			});
 
-			it('does not throw for the owner accessing private-link without a token', async () => {
+			it('throws for the owner accessing private-link without a token', async () => {
 				await setGlobalShareDefaults({
 					defaultShareMode: ShareMode.PRIVATE_LINK,
 					allowUserControl: false
 				});
 
-				const result = await checkWrappedAccess({
-					userId,
-					year,
-					currentUser: { id: userId, plexId: 100, isAdmin: false }
-				});
-
-				expect(result.accessReason).toBe('owner');
+				await expect(
+					checkWrappedAccess({
+						userId,
+						year,
+						currentUser: { id: userId, plexId: 100, isAdmin: false }
+					})
+				).rejects.toBeInstanceOf(InvalidShareTokenError);
 			});
 
-			it('does not throw for an admin accessing private-link without a token', async () => {
+			it('throws for an admin accessing private-link without a token', async () => {
 				await setGlobalShareDefaults({
 					defaultShareMode: ShareMode.PRIVATE_LINK,
 					allowUserControl: false
 				});
 
-				const result = await checkWrappedAccess({
-					userId,
-					year,
-					currentUser: { id: 999, plexId: 999, isAdmin: true }
-				});
-
-				expect(result.accessReason).toBe('owner');
+				await expect(
+					checkWrappedAccess({
+						userId,
+						year,
+						currentUser: { id: 999, plexId: 999, isAdmin: true }
+					})
+				).rejects.toBeInstanceOf(InvalidShareTokenError);
 			});
 		});
 	});
