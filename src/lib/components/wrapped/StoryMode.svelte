@@ -382,7 +382,7 @@ function handleSlideAnimationComplete(): void {}
 	{/if}
 
 	<!-- Mobile navigation arrows -->
-	<div class="nav-arrows" aria-hidden="true">
+	<div class="nav-arrows">
 		{#if !navigation.isFirst}
 			<button
 				type="button"

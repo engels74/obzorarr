@@ -286,9 +286,13 @@ async function showCacheConfirmation(year?: number) {
 			method: 'POST',
 			body: formData
 		});
-		const data = (await response.json()) as { success: boolean; count: number; year?: number };
-		if (data.count !== undefined) {
-			pendingCacheCount = data.count;
+		const result = deserialize(await response.text());
+		const payload =
+			result.type === 'success'
+				? ((result.data ?? {}) as { success?: boolean; count?: number; year?: number })
+				: {};
+		if (payload.count !== undefined) {
+			pendingCacheCount = payload.count;
 			cacheDialogOpen = true;
 		} else {
 			handleFormToast({ error: 'Failed to prepare delete preview.' });
@@ -316,11 +320,15 @@ async function getCacheCount(year?: number) {
 			method: 'POST',
 			body: formData
 		});
-		const data = (await response.json()) as { success: boolean; count: number; year?: number };
-		if (data.count !== undefined) {
+		const result = deserialize(await response.text());
+		const payload =
+			result.type === 'success'
+				? ((result.data ?? {}) as { success?: boolean; count?: number; year?: number })
+				: {};
+		if (payload.count !== undefined) {
 			cacheCountResult = {
 				label: year !== undefined ? `${year} cache` : 'All cache',
-				count: data.count
+				count: payload.count
 			};
 		} else {
 			handleFormToast({ error: 'Failed to get cache count.' });
@@ -360,9 +368,13 @@ async function showHistoryConfirmation(year?: number) {
 			method: 'POST',
 			body: formData
 		});
-		const data = (await response.json()) as { success: boolean; count: number; year?: number };
-		if (data.count !== undefined) {
-			pendingHistoryCount = data.count;
+		const result = deserialize(await response.text());
+		const payload =
+			result.type === 'success'
+				? ((result.data ?? {}) as { success?: boolean; count?: number; year?: number })
+				: {};
+		if (payload.count !== undefined) {
+			pendingHistoryCount = payload.count;
 			historyDialogOpen = true;
 		} else {
 			handleFormToast({ error: 'Failed to prepare delete preview.' });
@@ -390,11 +402,15 @@ async function getHistoryCount(year?: number) {
 			method: 'POST',
 			body: formData
 		});
-		const data = (await response.json()) as { success: boolean; count: number; year?: number };
-		if (data.count !== undefined) {
+		const result = deserialize(await response.text());
+		const payload =
+			result.type === 'success'
+				? ((result.data ?? {}) as { success?: boolean; count?: number; year?: number })
+				: {};
+		if (payload.count !== undefined) {
 			historyCountResult = {
 				label: year !== undefined ? `${year} history` : 'All history',
-				count: data.count
+				count: payload.count
 			};
 		} else {
 			handleFormToast({ error: 'Failed to get play history count.' });

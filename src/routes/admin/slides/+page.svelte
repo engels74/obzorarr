@@ -66,6 +66,7 @@ let editorContent = $state('');
 let editorYear = $state<number | null>(null);
 let editorEnabled = $state(true);
 let previewHtml = $state('');
+let previewError = $state('');
 let editorTriggerRef: HTMLElement | null = null;
 let editorTitleInputRef: HTMLInputElement | null = $state(null);
 
@@ -146,6 +147,7 @@ function openNewEditor() {
 	editorYear = null; // Default to "All years"
 	editorEnabled = true;
 	previewHtml = '';
+	previewError = '';
 	showEditor = true;
 }
 
@@ -158,6 +160,7 @@ function openEditEditor(slide: (typeof data.customSlides)[0]) {
 	editorYear = slide.year;
 	editorEnabled = slide.enabled;
 	previewHtml = slide.renderedHtml ?? '';
+	previewError = '';
 	showEditor = true;
 }
 
@@ -601,15 +604,18 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 									method: 'POST',
 									body: formData
 								});
-								const data = (await response.json()) as {
-									success?: boolean;
-									html?: string;
-									error?: string;
-								};
-								if (data.html) {
-									previewHtml = data.html;
-								} else if (data.error) {
-									previewHtml = `<p class="preview-error">${data.error}</p>`;
+								const result = deserialize(await response.text());
+								if (result.type === 'success') {
+									const data = (result.data ?? {}) as { html?: string };
+									previewHtml = data.html ?? '';
+									previewError = data.html ? '' : 'Failed to render Markdown';
+								} else if (result.type === 'failure') {
+									const data = (result.data ?? {}) as { error?: string };
+									previewHtml = '';
+									previewError = data.error ?? 'Failed to render Markdown';
+								} else if (result.type === 'error') {
+									previewHtml = '';
+									previewError = result.error?.message ?? 'Failed to render Markdown';
 								}
 							}}
 						>
@@ -620,6 +626,8 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 							{#if previewHtml}
 								<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 								{@html previewHtml}
+							{:else if previewError}
+								<p class="preview-error">{previewError}</p>
 							{:else}
 								<p class="preview-placeholder">Click "Update Preview" to see rendered Markdown</p>
 							{/if}
