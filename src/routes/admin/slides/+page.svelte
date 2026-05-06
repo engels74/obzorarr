@@ -600,22 +600,29 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 							onclick={async () => {
 								const formData = new FormData();
 								formData.append('content', editorContent);
-								const response = await fetch('?/previewMarkdown', {
-									method: 'POST',
-									body: formData
-								});
-								const result = deserialize(await response.text());
-								if (result.type === 'success') {
-									const data = (result.data ?? {}) as { html?: string };
-									previewHtml = data.html ?? '';
-									previewError = data.html ? '' : 'Failed to render Markdown';
-								} else if (result.type === 'failure') {
-									const data = (result.data ?? {}) as { error?: string };
+
+								try {
+									const response = await fetch('?/previewMarkdown', {
+										method: 'POST',
+										body: formData
+									});
+									const result = deserialize(await response.text());
+									if (result.type === 'success') {
+										const data = (result.data ?? {}) as { html?: string };
+										previewHtml = data.html ?? '';
+										previewError = data.html ? '' : 'Failed to render Markdown';
+									} else if (result.type === 'failure') {
+										const data = (result.data ?? {}) as { error?: string };
+										previewHtml = '';
+										previewError = data.error ?? 'Failed to render Markdown';
+									} else if (result.type === 'error') {
+										previewHtml = '';
+										previewError = result.error?.message ?? 'Failed to render Markdown';
+									}
+								} catch (error) {
+									console.error('Failed to render Markdown preview:', error);
 									previewHtml = '';
-									previewError = data.error ?? 'Failed to render Markdown';
-								} else if (result.type === 'error') {
-									previewHtml = '';
-									previewError = result.error?.message ?? 'Failed to render Markdown';
+									previewError = 'Failed to render Markdown';
 								}
 							}}
 						>
