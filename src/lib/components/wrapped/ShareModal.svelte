@@ -150,8 +150,14 @@ function applyShareActionData(data: unknown): void {
 
 function currentRouteIdentifier(): string | null {
 	if (typeof window === 'undefined') return null;
-	const match = window.location.pathname.match(/\/u\/([^/]+)$/);
-	return match?.[1] ? decodeURIComponent(match[1]) : null;
+	const match = window.location.pathname.match(/\/u\/([^/]+)\/?$/);
+	if (!match?.[1]) return null;
+
+	try {
+		return decodeURIComponent(match[1]);
+	} catch {
+		return null;
+	}
 }
 
 function isTokenIdentifier(value: string | null): boolean {
