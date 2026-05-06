@@ -287,19 +287,15 @@ async function showCacheConfirmation(year?: number) {
 			body: formData
 		});
 		const result = deserialize(await response.text());
-
-		if (result.type === 'success' && result.data) {
-			const data = result.data as { success: boolean; count: number; year?: number };
-			pendingCacheCount = data.count;
+		const payload =
+			result.type === 'success'
+				? ((result.data ?? {}) as { success?: boolean; count?: number; year?: number })
+				: {};
+		if (payload.count !== undefined) {
+			pendingCacheCount = payload.count;
 			cacheDialogOpen = true;
-		} else if (result.type === 'failure') {
-			handleFormToast({
-				error: (result.data as { error?: string })?.error ?? 'Failed to prepare delete preview.'
-			});
-		} else if (result.type === 'error') {
-			handleFormToast({
-				error: result.error?.message ?? 'Failed to prepare delete preview.'
-			});
+		} else {
+			handleFormToast({ error: 'Failed to prepare delete preview.' });
 		}
 	} catch (error) {
 		console.error('Failed to get cache count:', error);
@@ -325,17 +321,17 @@ async function getCacheCount(year?: number) {
 			body: formData
 		});
 		const result = deserialize(await response.text());
-
-		if (result.type === 'success' && result.data) {
-			const data = result.data as { success: boolean; count: number; year?: number };
+		const payload =
+			result.type === 'success'
+				? ((result.data ?? {}) as { success?: boolean; count?: number; year?: number })
+				: {};
+		if (payload.count !== undefined) {
 			cacheCountResult = {
 				label: year !== undefined ? `${year} cache` : 'All cache',
-				count: data.count
+				count: payload.count
 			};
-		} else if (result.type === 'failure') {
-			handleFormToast({
-				error: (result.data as { error?: string })?.error ?? 'Failed to get cache count.'
-			});
+		} else {
+			handleFormToast({ error: 'Failed to get cache count.' });
 		}
 	} catch (error) {
 		console.error('Failed to get cache count:', error);
@@ -373,19 +369,15 @@ async function showHistoryConfirmation(year?: number) {
 			body: formData
 		});
 		const result = deserialize(await response.text());
-
-		if (result.type === 'success' && result.data) {
-			const data = result.data as { success: boolean; count: number; year?: number };
-			pendingHistoryCount = data.count;
+		const payload =
+			result.type === 'success'
+				? ((result.data ?? {}) as { success?: boolean; count?: number; year?: number })
+				: {};
+		if (payload.count !== undefined) {
+			pendingHistoryCount = payload.count;
 			historyDialogOpen = true;
-		} else if (result.type === 'failure') {
-			handleFormToast({
-				error: (result.data as { error?: string })?.error ?? 'Failed to prepare delete preview.'
-			});
-		} else if (result.type === 'error') {
-			handleFormToast({
-				error: result.error?.message ?? 'Failed to prepare delete preview.'
-			});
+		} else {
+			handleFormToast({ error: 'Failed to prepare delete preview.' });
 		}
 	} catch (error) {
 		console.error('Failed to get history count:', error);
@@ -411,17 +403,17 @@ async function getHistoryCount(year?: number) {
 			body: formData
 		});
 		const result = deserialize(await response.text());
-
-		if (result.type === 'success' && result.data) {
-			const data = result.data as { success: boolean; count: number; year?: number };
+		const payload =
+			result.type === 'success'
+				? ((result.data ?? {}) as { success?: boolean; count?: number; year?: number })
+				: {};
+		if (payload.count !== undefined) {
 			historyCountResult = {
 				label: year !== undefined ? `${year} history` : 'All history',
-				count: data.count
+				count: payload.count
 			};
-		} else if (result.type === 'failure') {
-			handleFormToast({
-				error: (result.data as { error?: string })?.error ?? 'Failed to get play history count.'
-			});
+		} else {
+			handleFormToast({ error: 'Failed to get play history count.' });
 		}
 	} catch (error) {
 		console.error('Failed to get history count:', error);

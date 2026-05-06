@@ -26,6 +26,7 @@ let { data, form }: { data: PageData; form: ActionData } = $props();
 
 // Username lookup state
 let username = $state('');
+let usernameTouched = $state(false);
 let isLookingUp = $state(false);
 
 // Sync username from form response (preserves user input on error)
@@ -172,6 +173,7 @@ function handleCancelRedirect(): void {
 							autocomplete="off"
 							autocapitalize="off"
 							spellcheck="false"
+							onblur={() => (usernameTouched = true)}
 						/>
 						<button type="submit" class="view-button" disabled={isLookingUp || !username.trim()}>
 							{#if isLookingUp}
@@ -191,6 +193,12 @@ function handleCancelRedirect(): void {
 									Sign in now
 								</button>
 							{/if}
+						</p>
+					{/if}
+
+					{#if usernameTouched && username.trim() === '' && username.length > 0}
+						<p class="error-message" role="alert">
+							Username cannot be empty or whitespace only.
 						</p>
 					{/if}
 				</form>

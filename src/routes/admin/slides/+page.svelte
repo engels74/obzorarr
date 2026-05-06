@@ -1,5 +1,4 @@
 <script lang="ts">
-import type { ActionResult } from '@sveltejs/kit';
 import { untrack } from 'svelte';
 import { deserialize, enhance } from '$app/forms';
 import type { SlideType } from '$lib/components/slides/types';
@@ -67,6 +66,8 @@ let editorContent = $state('');
 let editorYear = $state<number | null>(null);
 let editorEnabled = $state(true);
 let previewHtml = $state('');
+let previewError = $state('');
+let previewRendered = $state(false);
 let editorTriggerRef: HTMLElement | null = null;
 let editorTitleInputRef: HTMLInputElement | null = $state(null);
 
@@ -147,6 +148,8 @@ function openNewEditor() {
 	editorYear = null; // Default to "All years"
 	editorEnabled = true;
 	previewHtml = '';
+	previewError = '';
+	previewRendered = false;
 	showEditor = true;
 }
 
@@ -159,6 +162,8 @@ function openEditEditor(slide: (typeof data.customSlides)[0]) {
 	editorYear = slide.year;
 	editorEnabled = slide.enabled;
 	previewHtml = slide.renderedHtml ?? '';
+	previewError = '';
+	previewRendered = typeof slide.renderedHtml === 'string';
 	showEditor = true;
 }
 
@@ -598,13 +603,33 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 							onclick={async () => {
 								const formData = new FormData();
 								formData.append('content', editorContent);
-								const response = await fetch('?/previewMarkdown', {
-									method: 'POST',
-									body: formData
-								});
-								const result: ActionResult = deserialize(await response.text());
-								if (result.type === 'success' && result.data?.html) {
-									previewHtml = result.data.html as string;
+
+								try {
+									const response = await fetch('?/previewMarkdown', {
+										method: 'POST',
+										body: formData
+									});
+									const result = deserialize(await response.text());
+									if (result.type === 'success') {
+										const data = (result.data ?? {}) as { html?: string };
+										previewHtml = data.html ?? '';
+										previewRendered = typeof data.html === 'string';
+										previewError = previewRendered ? '' : 'Failed to render Markdown';
+									} else if (result.type === 'failure') {
+										const data = (result.data ?? {}) as { error?: string };
+										previewHtml = '';
+										previewRendered = false;
+										previewError = data.error ?? 'Failed to render Markdown';
+									} else if (result.type === 'error') {
+										previewHtml = '';
+										previewRendered = false;
+										previewError = result.error?.message ?? 'Failed to render Markdown';
+									}
+								} catch (error) {
+									console.error('Failed to render Markdown preview:', error);
+									previewHtml = '';
+									previewRendered = false;
+									previewError = 'Failed to render Markdown';
 								}
 							}}
 						>
@@ -612,7 +637,9 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 						</button>
 
 						<div class="preview-content">
-							{#if previewHtml}
+							{#if previewError}
+								<p class="preview-error">{previewError}</p>
+							{:else if previewRendered}
 								<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 								{@html previewHtml}
 							{:else}
