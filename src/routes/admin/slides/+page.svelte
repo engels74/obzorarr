@@ -67,6 +67,7 @@ let editorYear = $state<number | null>(null);
 let editorEnabled = $state(true);
 let previewHtml = $state('');
 let previewError = $state('');
+let previewRendered = $state(false);
 let editorTriggerRef: HTMLElement | null = null;
 let editorTitleInputRef: HTMLInputElement | null = $state(null);
 
@@ -148,6 +149,7 @@ function openNewEditor() {
 	editorEnabled = true;
 	previewHtml = '';
 	previewError = '';
+	previewRendered = false;
 	showEditor = true;
 }
 
@@ -161,6 +163,7 @@ function openEditEditor(slide: (typeof data.customSlides)[0]) {
 	editorEnabled = slide.enabled;
 	previewHtml = slide.renderedHtml ?? '';
 	previewError = '';
+	previewRendered = typeof slide.renderedHtml === 'string';
 	showEditor = true;
 }
 
@@ -610,18 +613,22 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 									if (result.type === 'success') {
 										const data = (result.data ?? {}) as { html?: string };
 										previewHtml = data.html ?? '';
-										previewError = data.html ? '' : 'Failed to render Markdown';
+										previewRendered = typeof data.html === 'string';
+										previewError = previewRendered ? '' : 'Failed to render Markdown';
 									} else if (result.type === 'failure') {
 										const data = (result.data ?? {}) as { error?: string };
 										previewHtml = '';
+										previewRendered = false;
 										previewError = data.error ?? 'Failed to render Markdown';
 									} else if (result.type === 'error') {
 										previewHtml = '';
+										previewRendered = false;
 										previewError = result.error?.message ?? 'Failed to render Markdown';
 									}
 								} catch (error) {
 									console.error('Failed to render Markdown preview:', error);
 									previewHtml = '';
+									previewRendered = false;
 									previewError = 'Failed to render Markdown';
 								}
 							}}
@@ -630,11 +637,11 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 						</button>
 
 						<div class="preview-content">
-							{#if previewHtml}
+							{#if previewError}
+								<p class="preview-error">{previewError}</p>
+							{:else if previewRendered}
 								<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 								{@html previewHtml}
-							{:else if previewError}
-								<p class="preview-error">{previewError}</p>
 							{:else}
 								<p class="preview-placeholder">Click "Update Preview" to see rendered Markdown</p>
 							{/if}
