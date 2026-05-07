@@ -108,10 +108,7 @@ const shareModeLabels: Record<string, string> = {
 // Generate share URL
 function getShareUrl(): string {
 	const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-	if (data.shareSettings.mode === 'private-link' && data.shareSettings.shareToken) {
-		return `${baseUrl}/wrapped/${data.currentYear}/u/${data.shareSettings.shareToken}`;
-	}
-	return `${baseUrl}/wrapped/${data.currentYear}/u/${data.user.id}`;
+	return `${baseUrl}${data.wrappedHref}`;
 }
 
 // Copy to clipboard
@@ -535,7 +532,7 @@ function getLogoModeDescription(): string {
 				</div>
 
 				<div class="account-actions">
-					<a href="/wrapped/{data.currentYear}/u/{data.user.id}" class="view-wrapped-link">
+					<a href={data.wrappedHref} class="view-wrapped-link">
 						View My {data.currentYear} Wrapped →
 					</a>
 				</div>

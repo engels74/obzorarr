@@ -72,6 +72,7 @@ describe('GET /api/onboarding/servers', () => {
 					provides: 'server',
 					owned: true,
 					clientIdentifier: 'abc123',
+					accessToken: 'server-token-secret',
 					connections: [
 						{
 							protocol: 'https',
@@ -113,6 +114,9 @@ describe('GET /api/onboarding/servers', () => {
 						name: string;
 						clientIdentifier: string;
 						bestConnectionUrl: string | null;
+						accessToken?: string;
+						authToken?: string;
+						token?: string;
 					}>;
 				};
 
@@ -123,6 +127,10 @@ describe('GET /api/onboarding/servers', () => {
 				expect(first.name).toBe('Home Server');
 				expect(first.clientIdentifier).toBe('abc123');
 				expect(first.bestConnectionUrl).toBe(publicUri);
+				expect(first.accessToken).toBeUndefined();
+				expect(first.authToken).toBeUndefined();
+				expect(first.token).toBeUndefined();
+				expect(JSON.stringify(body)).not.toContain('server-token-secret');
 			} finally {
 				getSessionPlexTokenSpy.mockRestore();
 				fetchSpy.mockRestore();

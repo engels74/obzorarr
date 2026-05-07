@@ -14,6 +14,7 @@ import {
 	PlexServerIdentitySchema
 } from '$lib/server/auth/types';
 import { logger } from '$lib/server/logging';
+import { resolveOwnedServerToken } from '$lib/server/onboarding/plex-server-selection';
 import { classifyConnectionError } from '$lib/server/security';
 import type { RequestHandler } from './$types';
 
@@ -26,11 +27,17 @@ const PLEX_SERVER_HEADERS = {
 
 const CONNECTION_TIMEOUT_MS = 15000;
 
-const SelectServerSchema = z.object({
-	serverUrl: z.string().url('Invalid server URL'),
-	accessToken: z.string().min(1, 'Access token is required'),
-	serverName: z.string().min(1, 'Server name is required')
-});
+const SelectServerSchema = z
+	.object({
+		serverUrl: z.string().url('Invalid server URL'),
+		accessToken: z.string().min(1, 'Access token is required').optional(),
+		clientIdentifier: z.string().min(1).optional(),
+		serverName: z.string().min(1, 'Server name is required')
+	})
+	.refine((body) => Boolean(body.accessToken ?? body.clientIdentifier), {
+		message: 'Access token is required',
+		path: ['accessToken']
+	});
 
 interface ConnectionTestResult {
 	success: boolean;
@@ -87,7 +94,7 @@ async function testConnection(url: string, accessToken: string): Promise<Connect
 	}
 }
 
-export const POST: RequestHandler = async ({ request, locals }) => {
+export const POST: RequestHandler = async ({ request, locals, cookies }) => {
 	if (!locals.user) {
 		error(401, 'Authentication required');
 	}
@@ -105,7 +112,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			error(400, errorMessage);
 		}
 
-		const { serverUrl, accessToken, serverName } = parseResult.data;
+		const { serverUrl, serverName, clientIdentifier } = parseResult.data;
+		const accessToken =
+			parseResult.data.accessToken ??
+			(await resolveOwnedServerToken({
+				sessionId: cookies.get('session'),
+				clientIdentifier: clientIdentifier!
+			}));
 
 		logger.debug(`Testing connection to: ${serverUrl}`, 'Onboarding');
 		const testResult = await testConnection(serverUrl, accessToken);

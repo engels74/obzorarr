@@ -259,7 +259,7 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 			</div>
 
 			<div class="wrapped-grid">
-				<a href="/wrapped/{data.year}/u/{data.adminUser.id}" class="wrapped-card personal">
+				<a href={data.wrappedHref} class="wrapped-card personal">
 					<div class="wrapped-card-glow"></div>
 					<div class="wrapped-icon-wrap">
 						<Star class="wrapped-icon" />

@@ -316,7 +316,7 @@ function handleLogoToggle(): void {
 		bind:open={showShareModal}
 		onOpenChange={(v) => (showShareModal = v)}
 		currentUrl={data.currentUrl}
-		canonicalUrl={`/wrapped/${data.year}/u/${data.userId}`}
+		canonicalUrl={data.canonicalUrl}
 		shareSettings={data.shareSettings}
 		isOwner={data.isOwner}
 		isAdmin={data.isAdmin}

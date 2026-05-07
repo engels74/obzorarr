@@ -6,6 +6,7 @@ import {
 	updateUserSharePermission
 } from '$lib/server/admin/users.service';
 import { requireAdminActions } from '$lib/server/auth/guards';
+import { getOwnerWrappedHref } from '$lib/server/sharing/service';
 import type { Actions, PageServerLoad } from './$types';
 
 const UpdateUserPermissionSchema = z.object({
@@ -27,8 +28,8 @@ export const load: PageServerLoad = async ({ url }) => {
 		getAvailableYears()
 	]);
 
-	return {
-		users: users.map((u) => ({
+	const usersWithHref = await Promise.all(
+		users.map(async (u) => ({
 			id: u.id,
 			plexId: u.plexId,
 			username: u.username,
@@ -38,8 +39,13 @@ export const load: PageServerLoad = async ({ url }) => {
 			totalWatchTimeMinutes: u.totalWatchTimeMinutes,
 			shareMode: u.shareMode,
 			shareModeSource: u.shareModeSource,
-			canUserControl: u.canUserControl
-		})),
+			canUserControl: u.canUserControl,
+			wrappedHref: await getOwnerWrappedHref(u.id, year)
+		}))
+	);
+
+	return {
+		users: usersWithHref,
 		year,
 		availableYears
 	};

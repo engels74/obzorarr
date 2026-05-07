@@ -41,7 +41,6 @@ let servers = $state<
 		name: string;
 		clientIdentifier: string;
 		owned: boolean;
-		accessToken: string | null;
 		bestConnectionUrl?: string;
 		publicAddress?: string;
 		connections?: Array<{ uri: string; local: boolean; relay: boolean }>;
@@ -275,7 +274,7 @@ async function handleConnectionSelect(
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
 				serverUrl: connection.uri,
-				accessToken: server.accessToken,
+				clientIdentifier: server.clientIdentifier,
 				serverName: server.name
 			})
 		});
@@ -386,7 +385,7 @@ async function testCustomConnection(server: (typeof servers)[0]) {
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
 				url: customUrl,
-				accessToken: server.accessToken
+				clientIdentifier: server.clientIdentifier
 			})
 		});
 

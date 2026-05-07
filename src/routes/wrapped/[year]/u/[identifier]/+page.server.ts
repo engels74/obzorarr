@@ -11,6 +11,7 @@ import {
 	ensureShareToken,
 	getGlobalDefaultShareMode,
 	getOrCreateShareSettings,
+	getOwnerWrappedHref,
 	isPureNumericId,
 	isValidTokenFormat,
 	regenerateShareToken,
@@ -196,7 +197,9 @@ export const load: PageServerLoad = async ({ params, locals, parent }) => {
 	const resolvedShareToken = needsTokenForUrl
 		? (rawTokenForOwner ?? shareSettings.shareToken ?? (await ensureShareToken(userId, year)))
 		: null;
-	const urlIdentifier = resolvedShareToken ?? userId;
+	const currentUrl = ownerOrAdmin
+		? await getOwnerWrappedHref(userId, year)
+		: `/wrapped/${year}/u/${accessedViaToken ? identifier : (resolvedShareToken ?? userId)}`;
 
 	const exposedShareToken = ownerOrAdmin ? rawTokenForOwner : null;
 	const signedStats = await signStatsThumbnails(stats, {
@@ -229,7 +232,8 @@ export const load: PageServerLoad = async ({ params, locals, parent }) => {
 		isAdmin,
 		isLoggedIn: !!locals.user,
 		globalFloor: globalFloorForUrl,
-		currentUrl: `/wrapped/${year}/u/${urlIdentifier}`,
+		currentUrl,
+		canonicalUrl: `/wrapped/${year}/u/${userId}`,
 		yearIdentifiers
 	};
 };
@@ -294,6 +298,7 @@ export const actions: Actions = {
 			);
 			return {
 				success: true,
+				canonicalUrl: `/wrapped/${year}/u/${userId}`,
 				shareSettings: {
 					mode: updated.mode,
 					storedMode: updated.storedMode,
@@ -344,6 +349,7 @@ export const actions: Actions = {
 			const newToken = await regenerateShareToken(userId, year);
 			return {
 				success: true,
+				canonicalUrl: `/wrapped/${year}/u/${userId}`,
 				shareToken: newToken,
 				shareSettings: {
 					mode: settings.mode,

@@ -1,16 +1,31 @@
 import { afterEach, describe, expect, it, spyOn } from 'bun:test';
+import * as sessionModule from '$lib/server/auth/session';
 import { POST } from '../../../src/routes/api/onboarding/test-connection/+server';
 
 type HandlerArgs = Parameters<typeof POST>[0];
 
-function runPost(locals: HandlerArgs['locals'], body: unknown): ReturnType<typeof POST> {
+function makeCookies(sessionId?: string): HandlerArgs['cookies'] {
+	return {
+		get: (name: string) => (sessionId && name === 'session' ? sessionId : undefined),
+		getAll: () => [],
+		set: () => undefined,
+		delete: () => undefined,
+		serialize: () => ''
+	} as unknown as HandlerArgs['cookies'];
+}
+
+function runPost(
+	locals: HandlerArgs['locals'],
+	body: unknown,
+	sessionId?: string
+): ReturnType<typeof POST> {
 	const request = new Request('http://localhost/api/onboarding/test-connection', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify(body)
 	});
 
-	return POST({ request, locals } as unknown as HandlerArgs);
+	return POST({ request, locals, cookies: makeCookies(sessionId) } as unknown as HandlerArgs);
 }
 
 function makeIdentityResponse(): Response {
@@ -25,15 +40,25 @@ function makeIdentityResponse(): Response {
 	);
 }
 
+function hasIdentityFetchWithToken(fetchSpy: ReturnType<typeof spyOn>, token: string) {
+	const calls = fetchSpy.mock.calls as Array<[string | URL | Request, RequestInit | undefined]>;
+	return calls.some(([input, init]) => {
+		const headers = init?.headers as Record<string, string> | undefined;
+		return input === 'http://plex.local:32400/identity' && headers?.['X-Plex-Token'] === token;
+	});
+}
+
 const adminLocals = {
 	user: { id: 1, plexId: 100, username: 'admin', isAdmin: true }
 } as HandlerArgs['locals'];
 
 describe('POST /api/onboarding/test-connection token alias', () => {
 	let fetchSpy: ReturnType<typeof spyOn>;
+	let getSessionPlexTokenSpy: ReturnType<typeof spyOn>;
 
 	afterEach(() => {
 		fetchSpy?.mockRestore();
+		getSessionPlexTokenSpy?.mockRestore();
 	});
 
 	it('accepts the canonical accessToken field', async () => {
@@ -48,11 +73,7 @@ describe('POST /api/onboarding/test-connection token alias', () => {
 		const body = (await response.json()) as { success: boolean; serverName?: string };
 		expect(body.success).toBe(true);
 		expect(body.serverName).toBe('Test Server');
-		expect(fetchSpy).toHaveBeenCalledTimes(1);
-		const headers = (fetchSpy.mock.calls[0]?.[1] as RequestInit | undefined)?.headers as
-			| Record<string, string>
-			| undefined;
-		expect(headers?.['X-Plex-Token']).toBe('plex-token-abc');
+		expect(hasIdentityFetchWithToken(fetchSpy, 'plex-token-abc')).toBe(true);
 	});
 
 	it('accepts the legacy token alias and uses it as X-Plex-Token', async () => {
@@ -66,14 +87,53 @@ describe('POST /api/onboarding/test-connection token alias', () => {
 		expect(response.status).toBe(200);
 		const body = (await response.json()) as { success: boolean };
 		expect(body.success).toBe(true);
-		expect(fetchSpy).toHaveBeenCalledTimes(1);
-		const headers = (fetchSpy.mock.calls[0]?.[1] as RequestInit | undefined)?.headers as
-			| Record<string, string>
-			| undefined;
-		expect(headers?.['X-Plex-Token']).toBe('plex-token-xyz');
+		expect(hasIdentityFetchWithToken(fetchSpy, 'plex-token-xyz')).toBe(true);
 	});
 
-	it('rejects requests with neither accessToken nor token', async () => {
+	it('resolves a token server-side from clientIdentifier', async () => {
+		getSessionPlexTokenSpy = spyOn(sessionModule, 'getSessionPlexToken').mockResolvedValue(
+			'admin-session-token'
+		);
+		fetchSpy = spyOn(global, 'fetch')
+			.mockResolvedValueOnce(
+				new Response(
+					JSON.stringify([
+						{
+							name: 'Home Server',
+							product: 'Plex Media Server',
+							provides: 'server',
+							owned: true,
+							clientIdentifier: 'abc123',
+							accessToken: 'server-token-secret'
+						}
+					]),
+					{ status: 200, headers: { 'Content-Type': 'application/json' } }
+				)
+			)
+			.mockResolvedValueOnce(makeIdentityResponse());
+
+		const response = await runPost(
+			adminLocals,
+			{
+				url: 'http://plex.local:32400',
+				clientIdentifier: 'abc123'
+			},
+			'test-session-id'
+		);
+
+		expect(response.status).toBe(200);
+		const body = (await response.json()) as {
+			success: boolean;
+			accessToken?: string;
+			token?: string;
+		};
+		expect(body.success).toBe(true);
+		expect(body.accessToken).toBeUndefined();
+		expect(body.token).toBeUndefined();
+		expect(hasIdentityFetchWithToken(fetchSpy, 'server-token-secret')).toBe(true);
+	});
+
+	it('rejects requests with neither accessToken, token, nor clientIdentifier', async () => {
 		const response = await runPost(adminLocals, {
 			url: 'http://plex.local:32400'
 		});
