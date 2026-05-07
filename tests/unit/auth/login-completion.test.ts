@@ -159,6 +159,35 @@ describe('createSessionFromPlexToken', () => {
 		).rejects.toBeInstanceOf(OnboardingClaimRequiredError);
 	});
 
+	it('propagates unexpected setup claim renewal errors during fresh onboarding', async () => {
+		const unexpectedError = new Error('claim storage failed');
+
+		spies.push(
+			spyOn(onboarding, 'requiresOnboarding').mockResolvedValue(true),
+			spyOn(settingsService, 'getApiConfigWithSources').mockResolvedValue({
+				plex: {
+					serverUrl: { value: '', source: 'default', isLocked: false },
+					token: { value: '', source: 'default', isLocked: false }
+				},
+				openai: {
+					apiKey: { value: '', source: 'default', isLocked: false },
+					baseUrl: { value: 'https://api.openai.com/v1', source: 'default', isLocked: false },
+					model: { value: 'gpt-5-mini', source: 'default', isLocked: false }
+				}
+			}),
+			spyOn(onboarding, 'requireActiveOnboardingClaim').mockRejectedValue(unexpectedError)
+		);
+
+		const { createSessionFromPlexToken } = await import('$lib/server/auth/login-completion');
+		try {
+			await createSessionFromPlexToken('secret-auth-token', createCookies());
+			throw new Error('Expected setup claim renewal to fail');
+		} catch (err) {
+			expect(err).toBe(unexpectedError);
+			expect(err).not.toBeInstanceOf(OnboardingClaimRequiredError);
+		}
+	});
+
 	it('allows first-admin creation during fresh onboarding with an active setup claim', async () => {
 		spies.push(
 			spyOn(onboarding, 'requiresOnboarding').mockResolvedValue(true),

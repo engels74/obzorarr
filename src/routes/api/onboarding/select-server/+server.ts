@@ -16,7 +16,7 @@ import {
 	PlexServerIdentitySchema
 } from '$lib/server/auth/types';
 import { logger } from '$lib/server/logging';
-import { requireActiveOnboardingClaim } from '$lib/server/onboarding';
+import { OnboardingClaimRequiredError, requireActiveOnboardingClaim } from '$lib/server/onboarding';
 import { resolveOwnedServerToken } from '$lib/server/onboarding/plex-server-selection';
 import { classifyConnectionError } from '$lib/server/security';
 import {
@@ -113,7 +113,10 @@ export const POST: RequestHandler = async ({ request, locals, cookies }) => {
 	try {
 		await requireActiveOnboardingClaim(cookies);
 	} catch (err) {
-		error(403, err instanceof Error ? err.message : 'Setup claim required');
+		if (err instanceof OnboardingClaimRequiredError) {
+			error(403, err.message);
+		}
+		throw err;
 	}
 
 	try {

@@ -10,6 +10,7 @@ import { logger } from '$lib/server/logging';
 import {
 	getOnboardingStep,
 	isOnboardingComplete,
+	OnboardingClaimRequiredError,
 	OnboardingSteps,
 	requireActiveOnboardingClaim,
 	setOnboardingStep
@@ -113,9 +114,10 @@ export const actions: Actions = {
 		try {
 			await requireActiveOnboardingClaim(cookies);
 		} catch (err) {
-			return fail(403, {
-				testError: err instanceof Error ? err.message : 'Setup claim required'
-			});
+			if (err instanceof OnboardingClaimRequiredError) {
+				return fail(403, { testError: err.message });
+			}
+			throw err;
 		}
 
 		const formData = await request.formData();
@@ -150,7 +152,10 @@ export const actions: Actions = {
 		try {
 			await requireActiveOnboardingClaim(cookies);
 		} catch (err) {
-			return fail(403, { error: err instanceof Error ? err.message : 'Setup claim required' });
+			if (err instanceof OnboardingClaimRequiredError) {
+				return fail(403, { error: err.message });
+			}
+			throw err;
 		}
 
 		if (!isSameOriginOnboardingAction(request, url)) {
@@ -200,7 +205,10 @@ export const actions: Actions = {
 		try {
 			await requireActiveOnboardingClaim(cookies);
 		} catch (err) {
-			return fail(403, { error: err instanceof Error ? err.message : 'Setup claim required' });
+			if (err instanceof OnboardingClaimRequiredError) {
+				return fail(403, { error: err.message });
+			}
+			throw err;
 		}
 
 		if (!isSameOriginOnboardingAction(request, url)) {

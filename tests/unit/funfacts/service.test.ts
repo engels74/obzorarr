@@ -612,6 +612,19 @@ describe('getFunFactsConfig', () => {
 		expect(config.aiTimeoutMs).toBe(10000);
 	});
 
+	it('uses defaults when an invalid base URL is configured without an API key', async () => {
+		await db.insert(appSettings).values({
+			key: AppSettingsKey.OPENAI_BASE_URL,
+			value: 'http://localhost:11434/v1'
+		});
+
+		const config = await getFunFactsConfig();
+
+		expect(config.aiEnabled).toBe(false);
+		expect(config.openaiApiKey).toBeUndefined();
+		expect(config.openaiBaseUrl).toBe('https://api.openai.com/v1');
+	});
+
 	it('returns aiEnabled true when API key is set', async () => {
 		await db.insert(appSettings).values({
 			key: AppSettingsKey.OPENAI_API_KEY,
@@ -873,6 +886,30 @@ describe('generateFunFacts', () => {
 		const facts = await generateFunFacts(stats, { count: 3, preferAI: false });
 
 		expect(facts).toHaveLength(3);
+	});
+
+	it('uses templates when the OpenAI base URL is invalid regardless of AI preference', async () => {
+		const warnMock = spyOn(console, 'warn').mockImplementation(() => {});
+		fetchMock = spyOn(globalThis, 'fetch').mockImplementation((() => {
+			throw new Error('AI generation should not be called');
+		}) as unknown as typeof fetch);
+
+		try {
+			await db.insert(appSettings).values([
+				{ key: AppSettingsKey.OPENAI_API_KEY, value: 'sk-test' },
+				{ key: AppSettingsKey.OPENAI_BASE_URL, value: 'https://user:pass@example.com/v1' }
+			]);
+
+			const stats = createMockUserStats();
+			const aiPreferredFacts = await generateFunFacts(stats, { count: 3 });
+			const templatesOnlyFacts = await generateFunFacts(stats, { count: 3, preferAI: false });
+
+			expect(aiPreferredFacts).toHaveLength(3);
+			expect(templatesOnlyFacts).toHaveLength(3);
+			expect(fetchMock).not.toHaveBeenCalled();
+		} finally {
+			warnMock.mockRestore();
+		}
 	});
 
 	it('falls back to templates when AI fails', async () => {

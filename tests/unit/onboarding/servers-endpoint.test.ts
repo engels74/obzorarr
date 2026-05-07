@@ -7,7 +7,8 @@ import { appSettings } from '$lib/server/db/schema';
 import {
 	claimOnboardingInstance,
 	clearBootstrapToken,
-	createBootstrapToken
+	createBootstrapToken,
+	ONBOARDING_CLAIM_REQUIRED_MESSAGE
 } from '$lib/server/onboarding/bootstrap';
 import { GET } from '../../../src/routes/api/onboarding/servers/+server';
 
@@ -25,11 +26,27 @@ function makeCookies(sessionId?: string): HandlerArgs['cookies'] {
 	} as unknown as HandlerArgs['cookies'];
 }
 
-function runGet(locals: HandlerArgs['locals'], sessionId?: string): ReturnType<typeof GET> {
+function runGet(
+	locals: HandlerArgs['locals'],
+	sessionId?: string,
+	cookies: HandlerArgs['cookies'] = makeCookies(sessionId)
+): ReturnType<typeof GET> {
 	return GET({
-		cookies: makeCookies(sessionId),
+		cookies,
 		locals
 	} as unknown as HandlerArgs);
+}
+
+function makeThrowingClaimCookies(errorToThrow: Error): HandlerArgs['cookies'] {
+	return {
+		get: () => {
+			throw errorToThrow;
+		},
+		getAll: () => [],
+		set: () => {},
+		delete: () => {},
+		serialize: () => ''
+	} as unknown as HandlerArgs['cookies'];
 }
 
 function createPlexResourcesResponse(resources: unknown[]): Response {
@@ -78,6 +95,37 @@ describe('GET /api/onboarding/servers', () => {
 			if (!isHttpError(err)) throw err;
 			expect(err.status).toBe(403);
 			expect(err.body.message).toBe('Only server owners can configure Obzorarr');
+		}
+	});
+
+	it('returns the expected claim-required error when setup claim is missing', async () => {
+		const locals = {
+			user: { id: 1, plexId: 100, username: 'admin', isAdmin: true }
+		} as HandlerArgs['locals'];
+
+		try {
+			await runGet(locals, 'test-session-id');
+			expect.unreachable('Expected error to be thrown');
+		} catch (err) {
+			expect(isHttpError(err)).toBe(true);
+			if (!isHttpError(err)) throw err;
+			expect(err.status).toBe(403);
+			expect(err.body.message).toBe(ONBOARDING_CLAIM_REQUIRED_MESSAGE);
+		}
+	});
+
+	it('propagates unexpected claim errors for centralized sanitization', async () => {
+		const locals = {
+			user: { id: 1, plexId: 100, username: 'admin', isAdmin: true }
+		} as HandlerArgs['locals'];
+		const unexpected = new Error('raw database path should stay server-side');
+
+		try {
+			await runGet(locals, 'test-session-id', makeThrowingClaimCookies(unexpected));
+			expect.unreachable('Expected unexpected claim error to be thrown');
+		} catch (err) {
+			expect(isHttpError(err)).toBe(false);
+			expect(err).toBe(unexpected);
 		}
 	});
 

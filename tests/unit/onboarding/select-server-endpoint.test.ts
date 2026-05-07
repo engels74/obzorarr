@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import type { Cookies } from '@sveltejs/kit';
+import { isHttpError } from '@sveltejs/kit';
 import {
 	AppSettingsKey,
 	getAppSetting,
@@ -11,7 +12,8 @@ import { appSettings } from '$lib/server/db/schema';
 import {
 	claimOnboardingInstance,
 	clearBootstrapToken,
-	createBootstrapToken
+	createBootstrapToken,
+	ONBOARDING_CLAIM_REQUIRED_MESSAGE
 } from '$lib/server/onboarding/bootstrap';
 import { POST } from '../../../src/routes/api/onboarding/select-server/+server';
 
@@ -45,6 +47,35 @@ function runPost(body: unknown, sessionId?: string): ReturnType<typeof POST> {
 		locals: adminLocals,
 		cookies: makeCookies(sessionId)
 	} as unknown as HandlerArgs);
+}
+
+function runPostWithCookies(
+	body: unknown,
+	cookies: HandlerArgs['cookies']
+): ReturnType<typeof POST> {
+	const request = new Request('http://localhost/api/onboarding/select-server', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(body)
+	});
+
+	return POST({
+		request,
+		locals: adminLocals,
+		cookies
+	} as unknown as HandlerArgs);
+}
+
+function makeThrowingClaimCookies(errorToThrow: Error): HandlerArgs['cookies'] {
+	return {
+		get: () => {
+			throw errorToThrow;
+		},
+		getAll: () => [],
+		set: () => {},
+		delete: () => {},
+		serialize: () => ''
+	} as unknown as HandlerArgs['cookies'];
 }
 
 function makeIdentityResponse(): Response {
@@ -138,5 +169,42 @@ describe('POST /api/onboarding/select-server', () => {
 		const body = (await response.json()) as { success: boolean };
 		expect(body.success).toBe(true);
 		expect(await getAppSetting(AppSettingsKey.PLEX_TOKEN)).toBe('legacy-token');
+	});
+
+	it('returns the expected claim-required error when setup claim is missing', async () => {
+		claimValues = new Map();
+
+		try {
+			await runPost({
+				serverUrl: 'https://plex.example.com:32400',
+				accessToken: 'legacy-token',
+				serverName: 'Legacy Server'
+			});
+			expect.unreachable('Expected error to be thrown');
+		} catch (err) {
+			expect(isHttpError(err)).toBe(true);
+			if (!isHttpError(err)) throw err;
+			expect(err.status).toBe(403);
+			expect(err.body.message).toBe(ONBOARDING_CLAIM_REQUIRED_MESSAGE);
+		}
+	});
+
+	it('propagates unexpected claim errors for centralized sanitization', async () => {
+		const unexpected = new Error('raw database path should stay server-side');
+
+		try {
+			await runPostWithCookies(
+				{
+					serverUrl: 'https://plex.example.com:32400',
+					accessToken: 'legacy-token',
+					serverName: 'Legacy Server'
+				},
+				makeThrowingClaimCookies(unexpected)
+			);
+			expect.unreachable('Expected unexpected claim error to be thrown');
+		} catch (err) {
+			expect(isHttpError(err)).toBe(false);
+			expect(err).toBe(unexpected);
+		}
 	});
 });

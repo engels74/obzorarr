@@ -33,6 +33,16 @@ function createCookies() {
 
 let cookies: ReturnType<typeof createCookies>;
 
+function createThrowingClaimCookies(errorToThrow: Error): ReturnType<typeof createCookies> {
+	return {
+		get: () => {
+			throw errorToThrow;
+		},
+		set: () => undefined,
+		delete: () => undefined
+	} as unknown as ReturnType<typeof createCookies>;
+}
+
 function createFormRequest(csrfOrigin: string, origin = ORIGIN, requestBase = ORIGIN): Request {
 	const formData = new FormData();
 	formData.set('csrfOrigin', csrfOrigin);
@@ -285,6 +295,24 @@ describe('onboarding CSRF actions', () => {
 
 		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED)).toBeNull();
 		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBe(ORIGIN);
+	});
+
+	it('propagates unexpected claim errors for centralized sanitization', async () => {
+		const unexpected = new Error('raw database path should stay server-side');
+		cookies = createThrowingClaimCookies(unexpected);
+
+		for (const run of [
+			() => runTestOrigin(createFormRequest(ORIGIN)),
+			() => runSaveOrigin(createFormRequest(ORIGIN)),
+			() => runSkipCsrf(createFormRequest('not-a-url'))
+		]) {
+			try {
+				await run();
+				expect.unreachable('Expected unexpected claim error to be thrown');
+			} catch (err) {
+				expect(err).toBe(unexpected);
+			}
+		}
 	});
 
 	describe('onboarding-step guard', () => {

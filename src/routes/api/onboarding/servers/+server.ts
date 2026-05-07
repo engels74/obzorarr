@@ -7,7 +7,7 @@ import {
 } from '$lib/server/auth/membership';
 import { getSessionPlexToken } from '$lib/server/auth/session';
 import { logger } from '$lib/server/logging';
-import { requireActiveOnboardingClaim } from '$lib/server/onboarding';
+import { OnboardingClaimRequiredError, requireActiveOnboardingClaim } from '$lib/server/onboarding';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ cookies, locals }) => {
@@ -20,7 +20,10 @@ export const GET: RequestHandler = async ({ cookies, locals }) => {
 	try {
 		await requireActiveOnboardingClaim(cookies);
 	} catch (err) {
-		error(403, err instanceof Error ? err.message : 'Setup claim required');
+		if (err instanceof OnboardingClaimRequiredError) {
+			error(403, err.message);
+		}
+		throw err;
 	}
 
 	const sessionId = cookies.get('session');

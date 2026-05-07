@@ -3,7 +3,10 @@ import {
 	getApiConfigWithSources,
 	getAppSetting
 } from '$lib/server/admin/settings.service';
-import { normalizeOpenAIBaseUrl } from '$lib/server/security/credentialed-url';
+import {
+	CredentialedUrlError,
+	normalizeOpenAIBaseUrl
+} from '$lib/server/security/credentialed-url';
 import type { ServerStats, Stats, UserStats } from '$lib/server/stats/types';
 import { isUserStats } from '$lib/server/stats/types';
 import { buildEnhancedPrompt, enrichContext } from './ai';
@@ -20,6 +23,28 @@ import type {
 } from './types';
 import { AIGenerationError } from './types';
 
+const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1';
+const DEFAULT_OPENAI_MODEL = 'gpt-5-mini';
+
+function resolveOpenAIBaseUrl(rawBaseUrl: string): {
+	baseUrl: string;
+	isValid: boolean;
+	error?: CredentialedUrlError;
+} {
+	if (!rawBaseUrl) {
+		return { baseUrl: DEFAULT_OPENAI_BASE_URL, isValid: true };
+	}
+
+	try {
+		return { baseUrl: normalizeOpenAIBaseUrl(rawBaseUrl), isValid: true };
+	} catch (error) {
+		if (error instanceof CredentialedUrlError) {
+			return { baseUrl: DEFAULT_OPENAI_BASE_URL, isValid: false, error };
+		}
+		throw error;
+	}
+}
+
 export async function getFunFactsConfig(): Promise<FunFactsConfig> {
 	const [apiConfig, persona] = await Promise.all([
 		getApiConfigWithSources(),
@@ -28,14 +53,23 @@ export async function getFunFactsConfig(): Promise<FunFactsConfig> {
 
 	const apiKey = apiConfig.openai.apiKey.value.trim();
 	const rawBaseUrl = apiConfig.openai.baseUrl.value.trim();
-	const baseUrl = rawBaseUrl ? normalizeOpenAIBaseUrl(rawBaseUrl) : '';
+	const {
+		baseUrl,
+		isValid: isBaseUrlValid,
+		error: baseUrlError
+	} = resolveOpenAIBaseUrl(rawBaseUrl);
 	const model = apiConfig.openai.model.value.trim();
+	const aiEnabled = Boolean(apiKey && isBaseUrlValid);
+
+	if (apiKey && baseUrlError) {
+		console.warn('Invalid OpenAI base URL configured; AI fun facts are disabled:', baseUrlError);
+	}
 
 	return {
-		aiEnabled: Boolean(apiKey),
-		openaiApiKey: apiKey || undefined,
-		openaiBaseUrl: baseUrl || 'https://api.openai.com/v1',
-		openaiModel: model || 'gpt-5-mini',
+		aiEnabled,
+		openaiApiKey: aiEnabled ? apiKey : undefined,
+		openaiBaseUrl: baseUrl,
+		openaiModel: model || DEFAULT_OPENAI_MODEL,
 		maxAIRetries: 2,
 		aiTimeoutMs: 10000,
 		aiPersona: (persona as AIPersona) ?? 'witty'
@@ -333,8 +367,8 @@ export async function generateWithAI(
 	const persona = config.aiPersona ?? 'witty';
 	const { system: systemPrompt, user: userPrompt } = buildEnhancedPrompt(context, count, persona);
 	const maxRetries = config.maxAIRetries ?? 2;
-	const baseUrl = normalizeOpenAIBaseUrl(config.openaiBaseUrl ?? 'https://api.openai.com/v1');
-	const model = config.openaiModel ?? 'gpt-5-mini';
+	const baseUrl = normalizeOpenAIBaseUrl(config.openaiBaseUrl ?? DEFAULT_OPENAI_BASE_URL);
+	const model = config.openaiModel ?? DEFAULT_OPENAI_MODEL;
 
 	let lastError: Error | null = null;
 
