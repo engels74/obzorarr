@@ -93,6 +93,15 @@ describe('POST /api/onboarding/test-connection token alias', () => {
 	let fetchSpy: ReturnType<typeof spyOn>;
 	let getSessionPlexTokenSpy: ReturnType<typeof spyOn>;
 
+	beforeEach(async () => {
+		await db.delete(appSettings);
+		clearBootstrapToken();
+		claimValues = new Map();
+		const cookies = makeCookies();
+		const token = createBootstrapToken();
+		expect(await claimOnboardingInstance(cookies as unknown as Cookies, token)).toBe('claimed');
+	});
+
 	afterEach(() => {
 		fetchSpy?.mockRestore();
 		getSessionPlexTokenSpy?.mockRestore();
@@ -308,12 +317,4 @@ describe('POST /api/onboarding/test-connection token alias', () => {
 		const body = (await response.json()) as { success: boolean };
 		expect(body.success).toBe(false);
 	});
-});
-beforeEach(async () => {
-	await db.delete(appSettings);
-	clearBootstrapToken();
-	claimValues = new Map();
-	const cookies = makeCookies();
-	const token = createBootstrapToken();
-	expect(await claimOnboardingInstance(cookies as unknown as Cookies, token)).toBe('claimed');
 });
