@@ -50,12 +50,12 @@ export const load: PageServerLoad = async ({ parent }) => {
 };
 
 export const actions: Actions = {
-	verifyAdmin: async ({ locals, cookies }) => {
+	verifyAdmin: async ({ locals, cookies, url }) => {
 		if (!locals.user) {
 			return fail(401, { error: 'Please sign in with Plex first' });
 		}
 		try {
-			await requireActiveOnboardingClaim(cookies);
+			await requireActiveOnboardingClaim(cookies, { requestUrl: url });
 		} catch (err) {
 			if (err instanceof OnboardingClaimRequiredError) {
 				return fail(403, { error: err.message });
@@ -126,12 +126,12 @@ export const actions: Actions = {
 		}
 	},
 
-	continueAfterServerSelection: async ({ locals, cookies }) => {
+	continueAfterServerSelection: async ({ locals, cookies, url }) => {
 		if (!locals.user) {
 			return fail(401, { error: 'Please sign in with Plex first' });
 		}
 		try {
-			await requireActiveOnboardingClaim(cookies);
+			await requireActiveOnboardingClaim(cookies, { requestUrl: url });
 		} catch (err) {
 			if (err instanceof OnboardingClaimRequiredError) {
 				return fail(403, { error: err.message });
@@ -151,12 +151,12 @@ export const actions: Actions = {
 		redirect(303, '/onboarding/sync');
 	},
 
-	forceManualSelection: async ({ locals, cookies }) => {
+	forceManualSelection: async ({ locals, cookies, url }) => {
 		if (!locals.user) {
 			return fail(401, { error: 'Please sign in with Plex first' });
 		}
 		try {
-			await requireActiveOnboardingClaim(cookies);
+			await requireActiveOnboardingClaim(cookies, { requestUrl: url });
 		} catch (err) {
 			if (err instanceof OnboardingClaimRequiredError) {
 				return fail(403, { error: err.message });
@@ -192,12 +192,12 @@ export const actions: Actions = {
 		});
 	},
 
-	confirmOwnershipOverride: async ({ locals, cookies }) => {
+	confirmOwnershipOverride: async ({ locals, cookies, url }) => {
 		if (!locals.user) {
 			return fail(401, { error: 'Please sign in with Plex first' });
 		}
 		try {
-			await requireActiveOnboardingClaim(cookies);
+			await requireActiveOnboardingClaim(cookies, { requestUrl: url });
 		} catch (err) {
 			if (err instanceof OnboardingClaimRequiredError) {
 				return fail(403, { error: err.message });

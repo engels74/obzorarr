@@ -10,7 +10,7 @@ const CallbackRequestSchema = z.object({
 	authToken: z.string().min(1, 'Auth token is required')
 });
 
-export const POST: RequestHandler = async ({ request, cookies }) => {
+export const POST: RequestHandler = async ({ request, cookies, url }) => {
 	let body: unknown;
 	try {
 		body = await request.json();
@@ -28,7 +28,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 	const { authToken } = parseResult.data;
 
 	try {
-		return json(await createSessionFromPlexToken(authToken, cookies));
+		return json(await createSessionFromPlexToken(authToken, cookies, { requestUrl: url }));
 	} catch (err) {
 		if (err instanceof NotServerMemberError) {
 			error(403, {

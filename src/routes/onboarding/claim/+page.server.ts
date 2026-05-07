@@ -11,11 +11,11 @@ export const load: PageServerLoad = async ({ parent }) => {
 };
 
 export const actions: Actions = {
-	claimInstance: async ({ request, cookies }) => {
+	claimInstance: async ({ request, cookies, url }) => {
 		const formData = await request.formData();
 		const token = formData.get('token')?.toString().trim() ?? '';
 
-		const result = await claimOnboardingInstance(cookies, token);
+		const result = await claimOnboardingInstance(cookies, token, { requestUrl: url });
 		switch (result) {
 			case 'claimed':
 			case 'renewed':

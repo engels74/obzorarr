@@ -33,12 +33,12 @@ export const load: PageServerLoad = async ({ parent }) => {
 };
 
 export const actions: Actions = {
-	startSync: async ({ locals, cookies }) => {
+	startSync: async ({ locals, cookies, url }) => {
 		if (!locals.user?.isAdmin) {
 			return fail(403, { error: 'Admin access required' });
 		}
 		try {
-			await requireActiveOnboardingClaim(cookies);
+			await requireActiveOnboardingClaim(cookies, { requestUrl: url });
 		} catch (err) {
 			if (err instanceof OnboardingClaimRequiredError) {
 				return fail(403, { error: err.message });
@@ -71,12 +71,12 @@ export const actions: Actions = {
 		}
 	},
 
-	cancelSync: async ({ locals, cookies }) => {
+	cancelSync: async ({ locals, cookies, url }) => {
 		if (!locals.user?.isAdmin) {
 			return fail(403, { error: 'Admin access required' });
 		}
 		try {
-			await requireActiveOnboardingClaim(cookies);
+			await requireActiveOnboardingClaim(cookies, { requestUrl: url });
 		} catch (err) {
 			if (err instanceof OnboardingClaimRequiredError) {
 				return fail(403, { error: err.message });
@@ -93,12 +93,12 @@ export const actions: Actions = {
 		return { success: true, message: 'Sync cancelled' };
 	},
 
-	continue: async ({ locals, cookies }) => {
+	continue: async ({ locals, cookies, url }) => {
 		if (!locals.user?.isAdmin) {
 			return fail(403, { error: 'Admin access required' });
 		}
 		try {
-			await requireActiveOnboardingClaim(cookies);
+			await requireActiveOnboardingClaim(cookies, { requestUrl: url });
 		} catch (err) {
 			if (err instanceof OnboardingClaimRequiredError) {
 				return fail(403, { error: err.message });

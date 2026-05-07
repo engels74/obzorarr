@@ -102,7 +102,7 @@ async function testConnection(url: string, accessToken: string): Promise<Connect
 	}
 }
 
-export const POST: RequestHandler = async ({ request, locals, cookies }) => {
+export const POST: RequestHandler = async ({ request, locals, cookies, url }) => {
 	if (!locals.user) {
 		error(401, 'Authentication required');
 	}
@@ -111,7 +111,7 @@ export const POST: RequestHandler = async ({ request, locals, cookies }) => {
 		error(403, 'Only server owners can configure Obzorarr');
 	}
 	try {
-		await requireActiveOnboardingClaim(cookies);
+		await requireActiveOnboardingClaim(cookies, { requestUrl: url });
 	} catch (err) {
 		if (err instanceof OnboardingClaimRequiredError) {
 			error(403, err.message);

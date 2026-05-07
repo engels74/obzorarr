@@ -10,7 +10,7 @@ import { logger } from '$lib/server/logging';
 import { OnboardingClaimRequiredError, requireActiveOnboardingClaim } from '$lib/server/onboarding';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ cookies, locals }) => {
+export const GET: RequestHandler = async ({ cookies, locals, url }) => {
 	if (!locals.user) {
 		error(401, 'Authentication required');
 	}
@@ -18,7 +18,7 @@ export const GET: RequestHandler = async ({ cookies, locals }) => {
 		error(403, 'Only server owners can configure Obzorarr');
 	}
 	try {
-		await requireActiveOnboardingClaim(cookies);
+		await requireActiveOnboardingClaim(cookies, { requestUrl: url });
 	} catch (err) {
 		if (err instanceof OnboardingClaimRequiredError) {
 			error(403, err.message);

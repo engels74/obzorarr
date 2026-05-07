@@ -107,12 +107,12 @@ export const load: PageServerLoad = async ({ request, parent }) => {
 };
 
 export const actions: Actions = {
-	testOrigin: async ({ request, cookies }) => {
+	testOrigin: async ({ request, cookies, url }) => {
 		if (!(await isOnboardingCsrfStep())) {
 			return fail(403, { testError: 'Not allowed at this onboarding stage' });
 		}
 		try {
-			await requireActiveOnboardingClaim(cookies);
+			await requireActiveOnboardingClaim(cookies, { requestUrl: url });
 		} catch (err) {
 			if (err instanceof OnboardingClaimRequiredError) {
 				return fail(403, { testError: err.message });
@@ -150,7 +150,7 @@ export const actions: Actions = {
 			return fail(403, { error: 'Not allowed at this onboarding stage' });
 		}
 		try {
-			await requireActiveOnboardingClaim(cookies);
+			await requireActiveOnboardingClaim(cookies, { requestUrl: url });
 		} catch (err) {
 			if (err instanceof OnboardingClaimRequiredError) {
 				return fail(403, { error: err.message });
@@ -203,7 +203,7 @@ export const actions: Actions = {
 			return fail(403, { error: 'Not allowed at this onboarding stage' });
 		}
 		try {
-			await requireActiveOnboardingClaim(cookies);
+			await requireActiveOnboardingClaim(cookies, { requestUrl: url });
 		} catch (err) {
 			if (err instanceof OnboardingClaimRequiredError) {
 				return fail(403, { error: err.message });

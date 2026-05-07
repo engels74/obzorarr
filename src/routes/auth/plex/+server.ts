@@ -61,7 +61,7 @@ export const GET: RequestHandler = async ({ cookies, url }) => {
 	}
 };
 
-export const POST: RequestHandler = async ({ request, cookies }) => {
+export const POST: RequestHandler = async ({ request, cookies, url }) => {
 	let body: unknown;
 	try {
 		body = await request.json();
@@ -79,7 +79,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 	const { pinId } = parseResult.data;
 
 	try {
-		return json(await completePlexPinLogin(pinId, cookies));
+		return json(await completePlexPinLogin(pinId, cookies, { requestUrl: url }));
 	} catch (err) {
 		if (err instanceof PinExpiredError) {
 			error(401, {

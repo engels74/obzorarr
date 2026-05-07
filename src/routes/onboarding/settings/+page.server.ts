@@ -290,12 +290,12 @@ export const actions: Actions = {
 	/**
 	 * Save all settings and continue to completion
 	 */
-	saveSettings: async ({ request, locals, cookies }) => {
+	saveSettings: async ({ request, locals, cookies, url }) => {
 		if (!locals.user?.isAdmin) {
 			return fail(403, { error: 'Admin access required' });
 		}
 		try {
-			await requireActiveOnboardingClaim(cookies);
+			await requireActiveOnboardingClaim(cookies, { requestUrl: url });
 		} catch (err) {
 			if (err instanceof OnboardingClaimRequiredError) {
 				return fail(403, { error: err.message });
@@ -442,12 +442,12 @@ export const actions: Actions = {
 	/**
 	 * Skip settings (use defaults) and continue
 	 */
-	skipSettings: async ({ locals, cookies }) => {
+	skipSettings: async ({ locals, cookies, url }) => {
 		if (!locals.user?.isAdmin) {
 			return fail(403, { error: 'Admin access required' });
 		}
 		try {
-			await requireActiveOnboardingClaim(cookies);
+			await requireActiveOnboardingClaim(cookies, { requestUrl: url });
 		} catch (err) {
 			if (err instanceof OnboardingClaimRequiredError) {
 				return fail(403, { error: err.message });
@@ -469,12 +469,12 @@ export const actions: Actions = {
 	 * Test OpenAI connection using values submitted from the form.
 	 * Does not fall back to stored values — onboarding submits fresh input.
 	 */
-	testAIConnection: async ({ request, locals, cookies }) => {
+	testAIConnection: async ({ request, locals, cookies, url }) => {
 		if (!locals.user?.isAdmin) {
 			return fail(403, { error: 'Admin access required' });
 		}
 		try {
-			await requireActiveOnboardingClaim(cookies);
+			await requireActiveOnboardingClaim(cookies, { requestUrl: url });
 		} catch (err) {
 			if (err instanceof OnboardingClaimRequiredError) {
 				return fail(403, { error: err.message });

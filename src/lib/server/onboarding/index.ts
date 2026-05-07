@@ -10,6 +10,7 @@ export {
 	isBootstrapTokenExpired,
 	ONBOARDING_CLAIM_COOKIE,
 	ONBOARDING_CLAIM_REQUIRED_MESSAGE,
+	type OnboardingClaimCookieContext,
 	OnboardingClaimRequiredError,
 	printOnboardingBootstrapBanner,
 	renewOnboardingClaim,

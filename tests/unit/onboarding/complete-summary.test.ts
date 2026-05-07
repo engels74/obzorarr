@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import type { Cookies } from '@sveltejs/kit';
+import { type Cookies, isRedirect } from '@sveltejs/kit';
 import {
 	AnonymizationMode,
 	AppSettingsKey,
@@ -28,10 +28,13 @@ const adminLocals = {
 	user: { id: 1, plexId: 1, username: 'admin', isAdmin: true }
 } as unknown as App.Locals;
 
-function createCookies(): Cookies {
+function createCookies(errorToThrow?: Error): Cookies {
 	const values = new Map<string, string>();
 	return {
-		get: (name: string) => values.get(name),
+		get: (name: string) => {
+			if (errorToThrow) throw errorToThrow;
+			return values.get(name);
+		},
 		set: (name: string, value: string) => values.set(name, value),
 		delete: (name: string) => values.delete(name)
 	} as unknown as Cookies;
@@ -50,6 +53,39 @@ describe('onboarding completion summary', () => {
 		await db.delete(appSettings);
 		await db.delete(playHistory);
 		await db.delete(syncStatus);
+	});
+
+	it('redirects to claim when the active onboarding claim is missing', async () => {
+		try {
+			await load({
+				parent: async () => ({}),
+				locals: adminLocals,
+				url: new URL('http://localhost/onboarding/complete'),
+				cookies: createCookies()
+			} as Parameters<typeof load>[0]);
+			expect.unreachable('Expected missing onboarding claim to redirect');
+		} catch (err) {
+			expect(isRedirect(err)).toBe(true);
+			if (!isRedirect(err)) throw err;
+			expect(err.status).toBe(303);
+			expect(err.location).toBe('/onboarding/claim');
+		}
+	});
+
+	it('propagates unexpected onboarding claim failures', async () => {
+		const unexpected = new Error('unexpected claim cookie failure');
+
+		try {
+			await load({
+				parent: async () => ({}),
+				locals: adminLocals,
+				url: new URL('http://localhost/onboarding/complete'),
+				cookies: createCookies(unexpected)
+			} as Parameters<typeof load>[0]);
+			expect.unreachable('Expected unexpected claim error to be thrown');
+		} catch (err) {
+			expect(err).toBe(unexpected);
+		}
 	});
 
 	it('reflects the persisted onboarding configuration', async () => {

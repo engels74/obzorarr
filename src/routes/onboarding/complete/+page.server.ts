@@ -18,6 +18,7 @@ import { logger } from '$lib/server/logging';
 import {
 	clearOnboardingClaimCookie,
 	completeOnboarding,
+	OnboardingClaimRequiredError,
 	requireActiveOnboardingClaim
 } from '$lib/server/onboarding';
 import { getGlobalAllowUserControl, getGlobalDefaultShareMode } from '$lib/server/sharing/service';
@@ -33,9 +34,12 @@ export const load: PageServerLoad = async ({ parent, locals, url, cookies }) => 
 	}
 
 	try {
-		await requireActiveOnboardingClaim(cookies);
-	} catch {
-		redirect(303, '/onboarding/claim');
+		await requireActiveOnboardingClaim(cookies, { requestUrl: url });
+	} catch (err) {
+		if (err instanceof OnboardingClaimRequiredError) {
+			redirect(303, '/onboarding/claim');
+		}
+		throw err;
 	}
 
 	const parentData = await parent();

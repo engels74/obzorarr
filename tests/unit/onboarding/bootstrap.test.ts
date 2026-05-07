@@ -18,11 +18,19 @@ import {
 
 function createCookies() {
 	const values = new Map<string, string>();
+	const options = new Map<string, { secure?: boolean }>();
 	return {
 		get: (name: string) => values.get(name),
-		set: (name: string, value: string) => values.set(name, value),
-		delete: (name: string) => values.delete(name),
-		values
+		set: (name: string, value: string, nextOptions: { secure?: boolean } = {}) => {
+			values.set(name, value);
+			options.set(name, nextOptions);
+		},
+		delete: (name: string) => {
+			values.delete(name);
+			options.delete(name);
+		},
+		values,
+		options
 	};
 }
 
@@ -82,6 +90,14 @@ describe('onboarding bootstrap token and claim', () => {
 		expect(printedSetupUrls(consoleInfoSpy)).toEqual(['/onboarding/claim']);
 	});
 
+	it('prints only one valid bootstrap token when banner calls race', async () => {
+		await Promise.all(Array.from({ length: 5 }, () => printOnboardingBootstrapBanner()));
+
+		const tokens = printedBootstrapTokens(consoleInfoSpy);
+		expect(tokens).toHaveLength(1);
+		expect(validateBootstrapToken(tokens[0] ?? '')).toBe(true);
+	});
+
 	it('prints a replacement token after the current banner token expires', async () => {
 		await printOnboardingBootstrapBanner();
 		const firstToken = printedBootstrapTokens(consoleInfoSpy)[0] ?? '';
@@ -110,6 +126,32 @@ describe('onboarding bootstrap token and claim', () => {
 		expect(rawProof).toBeTruthy();
 		expect(storedHash).toBeTruthy();
 		expect(storedHash).not.toBe(rawProof);
+	});
+
+	it('sets a non-secure claim cookie for HTTP request URLs', async () => {
+		const cookies = createCookies();
+		const token = createBootstrapToken();
+
+		expect(
+			await claimOnboardingInstance(cookies as unknown as Cookies, token, {
+				requestUrl: new URL('http://example.com/onboarding/claim')
+			})
+		).toBe('claimed');
+
+		expect(cookies.options.get(ONBOARDING_CLAIM_COOKIE)?.secure).toBe(false);
+	});
+
+	it('sets a secure claim cookie for HTTPS request URLs', async () => {
+		const cookies = createCookies();
+		const token = createBootstrapToken();
+
+		expect(
+			await claimOnboardingInstance(cookies as unknown as Cookies, token, {
+				requestUrl: new URL('https://example.com/onboarding/claim')
+			})
+		).toBe('claimed');
+
+		expect(cookies.options.get(ONBOARDING_CLAIM_COOKIE)?.secure).toBe(true);
 	});
 
 	it('rejects a competing claimant while the claim is active', async () => {

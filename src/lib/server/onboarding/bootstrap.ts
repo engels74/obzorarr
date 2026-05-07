@@ -25,6 +25,11 @@ interface BootstrapToken {
 
 let activeBootstrapToken: BootstrapToken | null = null;
 let bannerPrinted = false;
+let bootstrapBannerPromise: Promise<void> | null = null;
+
+export interface OnboardingClaimCookieContext {
+	requestUrl?: URL;
+}
 
 export class OnboardingClaimRequiredError extends Error {
 	constructor(message = ONBOARDING_CLAIM_REQUIRED_MESSAGE) {
@@ -65,6 +70,7 @@ export function createBootstrapToken(ttlMs = BOOTSTRAP_TOKEN_TTL_MS): string {
 export function clearBootstrapToken(): void {
 	activeBootstrapToken = null;
 	bannerPrinted = false;
+	bootstrapBannerPromise = null;
 }
 
 export function isBootstrapTokenExpired(): boolean {
@@ -95,11 +101,18 @@ export function validateBootstrapToken(candidate: string): boolean {
 	return timingSafeEqualString(candidate, activeBootstrapToken.value);
 }
 
-export async function printOnboardingBootstrapBanner(): Promise<void> {
+function getOrCreateBootstrapToken(): string {
+	if (activeBootstrapToken && !isBootstrapTokenExpired()) {
+		return activeBootstrapToken.value;
+	}
+	return createBootstrapToken();
+}
+
+async function printBootstrapBanner(): Promise<void> {
 	if (bannerPrinted && !isBootstrapTokenExpired()) return;
 	if ((await getAppSetting(AppSettingsKey.ONBOARDING_COMPLETED)) === 'true') return;
 
-	const token = createBootstrapToken();
+	const token = getOrCreateBootstrapToken();
 	const origin = await getCsrfOrigin();
 	const setupUrl = origin ? `${origin.replace(/\/+$/, '')}/onboarding/claim` : '/onboarding/claim';
 
@@ -110,6 +123,20 @@ export async function printOnboardingBootstrapBanner(): Promise<void> {
 	console.info('This token expires in 15 minutes and is not stored.');
 	console.info('');
 	bannerPrinted = true;
+}
+
+export async function printOnboardingBootstrapBanner(): Promise<void> {
+	if (bannerPrinted && !isBootstrapTokenExpired()) return;
+
+	if (!bootstrapBannerPromise) {
+		bootstrapBannerPromise = printBootstrapBanner();
+	}
+
+	try {
+		await bootstrapBannerPromise;
+	} finally {
+		bootstrapBannerPromise = null;
+	}
 }
 
 async function sha256Hex(value: string): Promise<string> {
@@ -127,11 +154,21 @@ function createClaimProof(): string {
 		.join('');
 }
 
-function setClaimCookie(cookies: Cookies, proof: string): void {
+function shouldSecureClaimCookie(context: OnboardingClaimCookieContext = {}): boolean {
+	if (dev) return false;
+	if (context.requestUrl) return context.requestUrl.protocol === 'https:';
+	return true;
+}
+
+function setClaimCookie(
+	cookies: Cookies,
+	proof: string,
+	context: OnboardingClaimCookieContext = {}
+): void {
 	cookies.set(ONBOARDING_CLAIM_COOKIE, proof, {
 		path: '/',
 		httpOnly: true,
-		secure: !dev,
+		secure: shouldSecureClaimCookie(context),
 		sameSite: 'strict',
 		maxAge: CLAIM_TTL_SECONDS
 	});
@@ -173,26 +210,33 @@ export async function hasActiveOnboardingClaim(cookies: Cookies): Promise<boolea
 	return timingSafeEqualString(cookieHash, storedHash);
 }
 
-export async function renewOnboardingClaim(cookies: Cookies): Promise<boolean> {
+export async function renewOnboardingClaim(
+	cookies: Cookies,
+	context: OnboardingClaimCookieContext = {}
+): Promise<boolean> {
 	const proof = cookies.get(ONBOARDING_CLAIM_COOKIE);
 	if (!proof || !(await hasActiveOnboardingClaim(cookies))) return false;
 
 	await setAppSetting(AppSettingsKey.ONBOARDING_CLAIMED_AT, String(Date.now()));
-	setClaimCookie(cookies, proof);
+	setClaimCookie(cookies, proof, context);
 	return true;
 }
 
-export async function requireActiveOnboardingClaim(cookies: Cookies): Promise<void> {
-	if (!(await renewOnboardingClaim(cookies))) {
+export async function requireActiveOnboardingClaim(
+	cookies: Cookies,
+	context: OnboardingClaimCookieContext = {}
+): Promise<void> {
+	if (!(await renewOnboardingClaim(cookies, context))) {
 		throw new OnboardingClaimRequiredError();
 	}
 }
 
 export async function claimOnboardingInstance(
 	cookies: Cookies,
-	token: string
+	token: string,
+	context: OnboardingClaimCookieContext = {}
 ): Promise<'claimed' | 'renewed' | 'already-claimed' | 'invalid-token'> {
-	if (await renewOnboardingClaim(cookies)) {
+	if (await renewOnboardingClaim(cookies, context)) {
 		return 'renewed';
 	}
 
@@ -210,7 +254,7 @@ export async function claimOnboardingInstance(
 		setAppSetting(AppSettingsKey.ONBOARDING_CLAIM_PROOF_HASH, await sha256Hex(proof)),
 		setAppSetting(AppSettingsKey.ONBOARDING_CLAIMED_AT, String(Date.now()))
 	]);
-	setClaimCookie(cookies, proof);
+	setClaimCookie(cookies, proof, context);
 	return 'claimed';
 }
 
