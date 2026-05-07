@@ -547,11 +547,18 @@ function handleCsrfWarningDismissed() {
 
 			.sidebar {
 				transform: translateX(-100%);
-				transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+				visibility: hidden;
+				pointer-events: none;
+				transition:
+					transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+					visibility 0s linear 0.3s;
 			}
 
 			.sidebar.open {
 				transform: translateX(0);
+				visibility: visible;
+				pointer-events: auto;
+				transition-delay: 0s;
 			}
 
 			.main-content {

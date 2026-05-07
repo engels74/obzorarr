@@ -77,6 +77,10 @@ describe('admin UI source regressions', () => {
 		);
 		expect(source).toContain('inert={sidebarHiddenFromMobile}');
 		expect(source).toContain("aria-hidden={sidebarHiddenFromMobile ? 'true' : undefined}");
+		expect(source).toContain('visibility: hidden;');
+		expect(source).toContain('pointer-events: none;');
+		expect(source).toContain('visibility: visible;');
+		expect(source).toContain('pointer-events: auto;');
 	});
 
 	it('guards wrapped story transitions against stale rapid navigation', async () => {
