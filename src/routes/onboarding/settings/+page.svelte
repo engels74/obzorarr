@@ -333,6 +333,7 @@ function getThemeColors(themeValue: string) {
 											type="button"
 											class="theme-swatch"
 											class:selected={uiTheme === option.value}
+											aria-pressed={uiTheme === option.value}
 											onclick={() => (uiTheme = option.value)}
 											style="--swatch-primary: {colors.primary}; --swatch-accent: {colors.accent}; --swatch-bg: {colors.bg}"
 										>
@@ -358,6 +359,7 @@ function getThemeColors(themeValue: string) {
 											type="button"
 											class="theme-swatch"
 											class:selected={wrappedTheme === option.value}
+											aria-pressed={wrappedTheme === option.value}
 											onclick={() => (wrappedTheme = option.value)}
 											style="--swatch-primary: {colors.primary}; --swatch-accent: {colors.accent}; --swatch-bg: {colors.bg}"
 										>

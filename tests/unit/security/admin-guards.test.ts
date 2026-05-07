@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'bun:test';
 import { isAdminRouteId, requireAdminAction } from '$lib/server/auth/guards';
 
+async function readSource(path: string): Promise<string> {
+	return Bun.file(path).text();
+}
+
 describe('admin auth guards', () => {
 	it('identifies decoded admin route ids instead of relying on raw pathnames', () => {
 		expect(isAdminRouteId('/admin')).toBe(true);
@@ -18,5 +22,12 @@ describe('admin auth guards', () => {
 		expect(
 			requireAdminAction({ user: { id: 1, plexId: 1, username: 'u', isAdmin: true } })
 		).toBeNull();
+	});
+
+	it('keeps logged-in non-admin admin-route probes redirected to dashboard', async () => {
+		const source = await readSource('src/hooks.server.ts');
+
+		expect(source).toContain("const fallback = event.locals.user ? '/dashboard' : '/';");
+		expect(source).toContain('return redirectResponse(event, fallback);');
 	});
 });

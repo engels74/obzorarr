@@ -46,7 +46,9 @@ let selectedFrequencyMode = $state<typeof data.funFactFrequency.mode>(
 	untrack(() => data.funFactFrequency.mode)
 );
 let customCount = $state(untrack(() => data.funFactFrequency.count));
-let syncedFrequencyKey = $state('');
+let syncedFrequencyKey = $state(
+	untrack(() => `${data.funFactFrequency.mode}:${data.funFactFrequency.count}`)
+);
 
 // Avoid resetting the radio while the user is selecting Custom before submit.
 $effect(() => {
@@ -431,6 +433,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 						const frequency = result.data.funFactFrequency as typeof data.funFactFrequency;
 						selectedFrequencyMode = frequency.mode;
 						customCount = frequency.count;
+						syncedFrequencyKey = `${frequency.mode}:${frequency.count}`;
 					}
 					await update();
 				};
