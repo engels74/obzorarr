@@ -7,7 +7,7 @@ import {
 } from '$lib/server/plex/server-identity.service';
 
 const MOCK_MACHINE_ID = 'a'.repeat(32);
-const MOCK_URL = 'http://plex.example.com:32400';
+const MOCK_URL = 'https://plex.example.com:32400';
 const MOCK_TOKEN = 'plex-token';
 
 function createMockResponse(data: unknown, ok = true, status = 200): Response {

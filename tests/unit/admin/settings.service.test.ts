@@ -706,7 +706,7 @@ describe('Admin Settings Service', () => {
 				const config = await getApiConfigWithSources();
 
 				// Plex values come from env (test setup mocks PLEX_SERVER_URL and PLEX_TOKEN)
-				expect(config.plex.serverUrl.value).toBe('http://test-plex-server:32400');
+				expect(config.plex.serverUrl.value).toBe('https://test-plex-server:32400');
 				expect(config.plex.serverUrl.source).toBe('env');
 				expect(config.plex.serverUrl.isLocked).toBe(true);
 				expect(config.plex.token.value).toBe('test-plex-token');
@@ -746,7 +746,7 @@ describe('Admin Settings Service', () => {
 				const config = await getApiConfigWithSources();
 
 				// Plex settings should come from ENV (test setup mocks these)
-				expect(config.plex.serverUrl.value).toBe('http://test-plex-server:32400');
+				expect(config.plex.serverUrl.value).toBe('https://test-plex-server:32400');
 				expect(config.plex.serverUrl.source).toBe('env');
 				expect(config.plex.serverUrl.isLocked).toBe(true);
 				expect(config.plex.token.value).toBe('test-plex-token');

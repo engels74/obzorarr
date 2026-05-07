@@ -1,15 +1,25 @@
-import { afterEach, describe, expect, it, spyOn } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
+import type { Cookies } from '@sveltejs/kit';
 import * as sessionModule from '$lib/server/auth/session';
+import { db } from '$lib/server/db/client';
+import { appSettings } from '$lib/server/db/schema';
+import {
+	claimOnboardingInstance,
+	clearBootstrapToken,
+	createBootstrapToken
+} from '$lib/server/onboarding/bootstrap';
 import { POST } from '../../../src/routes/api/onboarding/test-connection/+server';
 
 type HandlerArgs = Parameters<typeof POST>[0];
 
+let claimValues = new Map<string, string>();
+
 function makeCookies(sessionId?: string): HandlerArgs['cookies'] {
 	return {
-		get: (name: string) => (sessionId && name === 'session' ? sessionId : undefined),
+		get: (name: string) => (sessionId && name === 'session' ? sessionId : claimValues.get(name)),
 		getAll: () => [],
-		set: () => undefined,
-		delete: () => undefined,
+		set: (name: string, value: string) => claimValues.set(name, value),
+		delete: (name: string) => claimValues.delete(name),
 		serialize: () => ''
 	} as unknown as HandlerArgs['cookies'];
 }
@@ -66,6 +76,7 @@ describe('POST /api/onboarding/test-connection token alias', () => {
 
 		const response = await runPost(adminLocals, {
 			url: 'http://plex.local:32400',
+			allowInsecureLocalHttp: true,
 			accessToken: 'plex-token-abc'
 		});
 
@@ -81,6 +92,7 @@ describe('POST /api/onboarding/test-connection token alias', () => {
 
 		const response = await runPost(adminLocals, {
 			url: 'http://plex.local:32400',
+			allowInsecureLocalHttp: true,
 			token: 'plex-token-xyz'
 		});
 
@@ -116,6 +128,7 @@ describe('POST /api/onboarding/test-connection token alias', () => {
 			adminLocals,
 			{
 				url: 'http://plex.local:32400',
+				allowInsecureLocalHttp: true,
 				clientIdentifier: 'abc123'
 			},
 			'test-session-id'
@@ -158,6 +171,7 @@ describe('POST /api/onboarding/test-connection token alias', () => {
 
 		const response = await runPost(adminLocals, {
 			url: 'http://plex.local:32400',
+			allowInsecureLocalHttp: true,
 			accessToken: 'bad'
 		});
 
@@ -172,6 +186,7 @@ describe('POST /api/onboarding/test-connection token alias', () => {
 
 		const response = await runPost(adminLocals, {
 			url: 'http://plex.local:32400',
+			allowInsecureLocalHttp: true,
 			accessToken: 'abc'
 		});
 
@@ -190,6 +205,7 @@ describe('POST /api/onboarding/test-connection token alias', () => {
 
 		const response = await runPost(adminLocals, {
 			url: 'http://plex.local:32400',
+			allowInsecureLocalHttp: true,
 			accessToken: 'abc'
 		});
 
@@ -206,6 +222,7 @@ describe('POST /api/onboarding/test-connection token alias', () => {
 
 		const response = await runPost(adminLocals, {
 			url: 'http://plex.local:32400',
+			allowInsecureLocalHttp: true,
 			accessToken: 'abc'
 		});
 
@@ -220,6 +237,7 @@ describe('POST /api/onboarding/test-connection token alias', () => {
 
 		const response = await runPost(adminLocals, {
 			url: 'http://plex.local:32400',
+			allowInsecureLocalHttp: true,
 			accessToken: 'abc'
 		});
 
@@ -227,4 +245,12 @@ describe('POST /api/onboarding/test-connection token alias', () => {
 		const body = (await response.json()) as { success: boolean };
 		expect(body.success).toBe(false);
 	});
+});
+beforeEach(async () => {
+	await db.delete(appSettings);
+	clearBootstrapToken();
+	claimValues = new Map();
+	const cookies = makeCookies();
+	const token = createBootstrapToken();
+	expect(await claimOnboardingInstance(cookies as unknown as Cookies, token)).toBe('claimed');
 });

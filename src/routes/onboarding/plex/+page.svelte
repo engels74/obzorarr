@@ -55,6 +55,7 @@ let serverSaved = $state(false);
 
 let showCustomUrl = $state(false);
 let customUrl = $state('');
+let plexAllowInsecureLocalHttp = $state(false);
 let isTestingCustomUrl = $state(false);
 let customUrlTestResult = $state<{
 	success: boolean;
@@ -274,6 +275,7 @@ async function handleConnectionSelect(
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
 				serverUrl: connection.uri,
+				allowInsecureLocalHttp: plexAllowInsecureLocalHttp,
 				clientIdentifier: server.clientIdentifier,
 				serverName: server.name
 			})
@@ -385,6 +387,7 @@ async function testCustomConnection(server: (typeof servers)[0]) {
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
 				url: customUrl,
+				allowInsecureLocalHttp: plexAllowInsecureLocalHttp,
 				clientIdentifier: server.clientIdentifier
 			})
 		});
@@ -420,8 +423,13 @@ function toggleCustomUrl() {
 	showCustomUrl = !showCustomUrl;
 	if (!showCustomUrl) {
 		customUrl = '';
+		plexAllowInsecureLocalHttp = false;
 		customUrlTestResult = null;
 	}
+}
+
+function isHttpUrl(url: string): boolean {
+	return url.trim().toLowerCase().startsWith('http://');
 }
 
 function isValidUrl(url: string): boolean {
@@ -762,6 +770,16 @@ function formatServerUrl(url: string | null): string {
 									{#if isExpanded && connections.length > 0}
 										<div class="connections-panel">
 											<p class="connections-label">Select a connection</p>
+											{#if connections.some((connection) => isHttpUrl(connection.uri))}
+												<label class="insecure-http-toggle">
+													<input
+														type="checkbox"
+														bind:checked={plexAllowInsecureLocalHttp}
+														disabled={isSavingServer}
+													/>
+													<span>Allow insecure local HTTP Plex connection</span>
+												</label>
+											{/if}
 											<Tooltip.Provider>
 												<div class="connections-list">
 													{#each connections as connection (connection.uri)}
@@ -962,6 +980,17 @@ function formatServerUrl(url: string | null): string {
 															{/if}
 														</button>
 													</div>
+
+													{#if isHttpUrl(customUrl)}
+														<label class="insecure-http-toggle custom">
+															<input
+																type="checkbox"
+																bind:checked={plexAllowInsecureLocalHttp}
+																disabled={isTestingCustomUrl || isSavingServer}
+															/>
+															<span>Allow insecure local HTTP Plex connection</span>
+														</label>
+													{/if}
 
 													<!-- Status Display -->
 													{#if customUrlTestResult}
@@ -1651,6 +1680,25 @@ function formatServerUrl(url: string | null): string {
 			color: rgba(255, 255, 255, 0.5);
 			text-transform: uppercase;
 			letter-spacing: 0.05em;
+		}
+
+		.insecure-http-toggle {
+			display: flex;
+			align-items: center;
+			gap: 0.625rem;
+			margin: 0 0 0.875rem;
+			font-size: 0.8125rem;
+			color: rgba(255, 255, 255, 0.78);
+		}
+
+		.insecure-http-toggle.custom {
+			margin: 0.75rem 0 0;
+		}
+
+		.insecure-http-toggle input {
+			width: 1rem;
+			height: 1rem;
+			accent-color: hsl(var(--primary));
 		}
 
 		.connections-list {

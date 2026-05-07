@@ -7,7 +7,12 @@ import type { MembershipResult } from '$lib/server/auth/types';
 import { db } from '$lib/server/db/client';
 import { sessions, users } from '$lib/server/db/schema';
 import { logger } from '$lib/server/logging';
-import { isOnboardingComplete, OnboardingSteps, setOnboardingStep } from '$lib/server/onboarding';
+import {
+	isOnboardingComplete,
+	OnboardingSteps,
+	requireActiveOnboardingClaim,
+	setOnboardingStep
+} from '$lib/server/onboarding';
 import {
 	fetchServerIdentity,
 	refreshConfiguredServerMachineId
@@ -47,6 +52,11 @@ export const actions: Actions = {
 	verifyAdmin: async ({ locals, cookies }) => {
 		if (!locals.user) {
 			return fail(401, { error: 'Please sign in with Plex first' });
+		}
+		try {
+			await requireActiveOnboardingClaim(cookies);
+		} catch (err) {
+			return fail(403, { error: err instanceof Error ? err.message : 'Setup claim required' });
 		}
 
 		const sessionId = cookies.get('session');
@@ -112,9 +122,14 @@ export const actions: Actions = {
 		}
 	},
 
-	continueAfterServerSelection: async ({ locals }) => {
+	continueAfterServerSelection: async ({ locals, cookies }) => {
 		if (!locals.user) {
 			return fail(401, { error: 'Please sign in with Plex first' });
+		}
+		try {
+			await requireActiveOnboardingClaim(cookies);
+		} catch (err) {
+			return fail(403, { error: err instanceof Error ? err.message : 'Setup claim required' });
 		}
 
 		if (!locals.user.isAdmin) {
@@ -129,9 +144,14 @@ export const actions: Actions = {
 		redirect(303, '/onboarding/sync');
 	},
 
-	forceManualSelection: async ({ locals }) => {
+	forceManualSelection: async ({ locals, cookies }) => {
 		if (!locals.user) {
 			return fail(401, { error: 'Please sign in with Plex first' });
+		}
+		try {
+			await requireActiveOnboardingClaim(cookies);
+		} catch (err) {
+			return fail(403, { error: err instanceof Error ? err.message : 'Setup claim required' });
 		}
 
 		if (!locals.user.isAdmin) {
@@ -165,6 +185,11 @@ export const actions: Actions = {
 	confirmOwnershipOverride: async ({ locals, cookies }) => {
 		if (!locals.user) {
 			return fail(401, { error: 'Please sign in with Plex first' });
+		}
+		try {
+			await requireActiveOnboardingClaim(cookies);
+		} catch (err) {
+			return fail(403, { error: err instanceof Error ? err.message : 'Setup claim required' });
 		}
 
 		if (await isOnboardingComplete()) {

@@ -6,6 +6,12 @@ import * as plexOauth from '$lib/server/auth/plex-oauth';
 import { db } from '$lib/server/db/client';
 import { sessions, users } from '$lib/server/db/schema';
 import * as onboarding from '$lib/server/onboarding';
+import {
+	claimOnboardingInstance,
+	clearBootstrapToken,
+	createBootstrapToken,
+	OnboardingClaimRequiredError
+} from '$lib/server/onboarding/bootstrap';
 
 interface CookieCall {
 	name: string;
@@ -40,6 +46,7 @@ describe('createSessionFromPlexToken', () => {
 	beforeEach(async () => {
 		await db.delete(sessions);
 		await db.delete(users);
+		clearBootstrapToken();
 
 		spies = [
 			spyOn(settingsService, 'getApiConfigWithSources').mockResolvedValue({
@@ -128,5 +135,60 @@ describe('createSessionFromPlexToken', () => {
 		}
 		expect(responseText).not.toContain('secret-auth-token');
 		expect(responseText).not.toContain('plex-user-token-from-profile');
+	});
+
+	it('rejects first-admin creation during fresh onboarding without an active setup claim', async () => {
+		spies.push(
+			spyOn(onboarding, 'requiresOnboarding').mockResolvedValue(true),
+			spyOn(settingsService, 'getApiConfigWithSources').mockResolvedValue({
+				plex: {
+					serverUrl: { value: '', source: 'default', isLocked: false },
+					token: { value: '', source: 'default', isLocked: false }
+				},
+				openai: {
+					apiKey: { value: '', source: 'default', isLocked: false },
+					baseUrl: { value: 'https://api.openai.com/v1', source: 'default', isLocked: false },
+					model: { value: 'gpt-5-mini', source: 'default', isLocked: false }
+				}
+			})
+		);
+
+		const { createSessionFromPlexToken } = await import('$lib/server/auth/login-completion');
+		await expect(
+			createSessionFromPlexToken('secret-auth-token', createCookies())
+		).rejects.toBeInstanceOf(OnboardingClaimRequiredError);
+	});
+
+	it('allows first-admin creation during fresh onboarding with an active setup claim', async () => {
+		spies.push(
+			spyOn(onboarding, 'requiresOnboarding').mockResolvedValue(true),
+			spyOn(settingsService, 'getApiConfigWithSources').mockResolvedValue({
+				plex: {
+					serverUrl: { value: '', source: 'default', isLocked: false },
+					token: { value: '', source: 'default', isLocked: false }
+				},
+				openai: {
+					apiKey: { value: '', source: 'default', isLocked: false },
+					baseUrl: { value: 'https://api.openai.com/v1', source: 'default', isLocked: false },
+					model: { value: 'gpt-5-mini', source: 'default', isLocked: false }
+				}
+			}),
+			spyOn(membership, 'verifyServerOwnership').mockResolvedValue({
+				isOwner: true,
+				serverName: 'Owned Plex'
+			})
+		);
+
+		const cookies = createCookies();
+		const token = createBootstrapToken();
+		expect(await claimOnboardingInstance(cookies, token)).toBe('claimed');
+
+		const { createSessionFromPlexToken } = await import('$lib/server/auth/login-completion');
+		const result = await createSessionFromPlexToken('secret-auth-token', cookies);
+
+		expect(result).toEqual({
+			user: { username: 'alice', isAdmin: true },
+			redirectTo: '/admin'
+		});
 	});
 });

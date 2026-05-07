@@ -4,7 +4,11 @@ import { getApiConfigWithSources } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
 import { users } from '$lib/server/db/schema';
 import { logger } from '$lib/server/logging';
-import { requiresOnboarding } from '$lib/server/onboarding';
+import {
+	OnboardingClaimRequiredError,
+	requireActiveOnboardingClaim,
+	requiresOnboarding
+} from '$lib/server/onboarding';
 import { requireServerMembership, verifyServerOwnership } from './membership';
 import { clearPinTransaction, getPinTransactionForRequest } from './pin-transactions';
 import { checkPinStatus, getPlexUserInfo } from './plex-oauth';
@@ -45,6 +49,12 @@ export async function createSessionFromPlexToken(
 	let accountId: number;
 
 	if (isOnboarding && !hasServerConfigured) {
+		try {
+			await requireActiveOnboardingClaim(cookies);
+		} catch {
+			throw new OnboardingClaimRequiredError();
+		}
+
 		const ownership = await verifyServerOwnership(authToken);
 
 		if (!ownership.isOwner) {

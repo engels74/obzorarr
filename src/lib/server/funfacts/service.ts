@@ -3,6 +3,7 @@ import {
 	getApiConfigWithSources,
 	getAppSetting
 } from '$lib/server/admin/settings.service';
+import { normalizeOpenAIBaseUrl } from '$lib/server/security/credentialed-url';
 import type { ServerStats, Stats, UserStats } from '$lib/server/stats/types';
 import { isUserStats } from '$lib/server/stats/types';
 import { buildEnhancedPrompt, enrichContext } from './ai';
@@ -26,7 +27,8 @@ export async function getFunFactsConfig(): Promise<FunFactsConfig> {
 	]);
 
 	const apiKey = apiConfig.openai.apiKey.value.trim();
-	const baseUrl = apiConfig.openai.baseUrl.value.trim().replace(/\/+$/, '');
+	const rawBaseUrl = apiConfig.openai.baseUrl.value.trim();
+	const baseUrl = rawBaseUrl ? normalizeOpenAIBaseUrl(rawBaseUrl) : '';
 	const model = apiConfig.openai.model.value.trim();
 
 	return {
@@ -331,7 +333,7 @@ export async function generateWithAI(
 	const persona = config.aiPersona ?? 'witty';
 	const { system: systemPrompt, user: userPrompt } = buildEnhancedPrompt(context, count, persona);
 	const maxRetries = config.maxAIRetries ?? 2;
-	const baseUrl = config.openaiBaseUrl ?? 'https://api.openai.com/v1';
+	const baseUrl = normalizeOpenAIBaseUrl(config.openaiBaseUrl ?? 'https://api.openai.com/v1');
 	const model = config.openaiModel ?? 'gpt-5-mini';
 
 	let lastError: Error | null = null;

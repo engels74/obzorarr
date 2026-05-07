@@ -11,6 +11,7 @@ import {
 	getOnboardingStep,
 	isOnboardingComplete,
 	OnboardingSteps,
+	requireActiveOnboardingClaim,
 	setOnboardingStep
 } from '$lib/server/onboarding';
 import type { Actions, PageServerLoad } from './$types';
@@ -105,9 +106,16 @@ export const load: PageServerLoad = async ({ request, parent }) => {
 };
 
 export const actions: Actions = {
-	testOrigin: async ({ request }) => {
+	testOrigin: async ({ request, cookies }) => {
 		if (!(await isOnboardingCsrfStep())) {
 			return fail(403, { testError: 'Not allowed at this onboarding stage' });
+		}
+		try {
+			await requireActiveOnboardingClaim(cookies);
+		} catch (err) {
+			return fail(403, {
+				testError: err instanceof Error ? err.message : 'Setup claim required'
+			});
 		}
 
 		const formData = await request.formData();
@@ -135,9 +143,18 @@ export const actions: Actions = {
 		return { testSuccess: true, testedOrigin: result.data.csrfOrigin };
 	},
 
-	saveOrigin: async ({ request }) => {
+	saveOrigin: async ({ request, cookies, url }) => {
 		if (!(await isOnboardingCsrfStep())) {
 			return fail(403, { error: 'Not allowed at this onboarding stage' });
+		}
+		try {
+			await requireActiveOnboardingClaim(cookies);
+		} catch (err) {
+			return fail(403, { error: err instanceof Error ? err.message : 'Setup claim required' });
+		}
+
+		if (!isSameOriginOnboardingAction(request, url)) {
+			return fail(403, { error: 'CSRF origin must be submitted from this Obzorarr origin' });
 		}
 
 		const csrfConfig = await getCsrfConfigWithSource();
@@ -176,9 +193,14 @@ export const actions: Actions = {
 		redirect(303, '/onboarding/plex');
 	},
 
-	skipCsrf: async ({ request, url }) => {
+	skipCsrf: async ({ request, cookies, url }) => {
 		if (!(await isOnboardingCsrfStep())) {
 			return fail(403, { error: 'Not allowed at this onboarding stage' });
+		}
+		try {
+			await requireActiveOnboardingClaim(cookies);
+		} catch (err) {
+			return fail(403, { error: err instanceof Error ? err.message : 'Setup claim required' });
 		}
 
 		if (!isSameOriginOnboardingAction(request, url)) {

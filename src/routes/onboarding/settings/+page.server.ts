@@ -36,7 +36,15 @@ import {
 import { testOpenAIConnection } from '$lib/server/funfacts/test-connection';
 import { AIPersonaSchema } from '$lib/server/funfacts/types';
 import { logger } from '$lib/server/logging';
-import { OnboardingSteps, setOnboardingStep } from '$lib/server/onboarding';
+import {
+	OnboardingSteps,
+	requireActiveOnboardingClaim,
+	setOnboardingStep
+} from '$lib/server/onboarding';
+import {
+	CredentialedUrlError,
+	normalizeOpenAIBaseUrl
+} from '$lib/server/security/credentialed-url';
 import {
 	getGlobalAllowUserControl,
 	getGlobalDefaultShareMode,
@@ -281,9 +289,14 @@ export const actions: Actions = {
 	/**
 	 * Save all settings and continue to completion
 	 */
-	saveSettings: async ({ request, locals }) => {
+	saveSettings: async ({ request, locals, cookies }) => {
 		if (!locals.user?.isAdmin) {
 			return fail(403, { error: 'Admin access required' });
+		}
+		try {
+			await requireActiveOnboardingClaim(cookies);
+		} catch (err) {
+			return fail(403, { error: err instanceof Error ? err.message : 'Setup claim required' });
 		}
 
 		try {
@@ -321,14 +334,19 @@ export const actions: Actions = {
 
 			const data = parseResult.data;
 			const openaiApiKey = data.openaiApiKey?.trim();
-			const openaiBaseUrl = data.openaiBaseUrl?.trim().replace(/\/+$/, '');
+			let openaiBaseUrl = data.openaiBaseUrl?.trim().replace(/\/+$/, '');
 			const openaiModel = data.openaiModel?.trim();
 
 			if (data.enableFunFacts && openaiApiKey && openaiBaseUrl) {
 				try {
-					new URL(openaiBaseUrl);
-				} catch {
-					return fail(400, { error: 'Invalid OpenAI base URL' });
+					openaiBaseUrl = normalizeOpenAIBaseUrl(openaiBaseUrl);
+				} catch (err) {
+					return fail(400, {
+						error:
+							err instanceof CredentialedUrlError && err.message !== 'Invalid URL format'
+								? err.message
+								: 'Invalid OpenAI base URL'
+					});
 				}
 			}
 
@@ -420,9 +438,14 @@ export const actions: Actions = {
 	/**
 	 * Skip settings (use defaults) and continue
 	 */
-	skipSettings: async ({ locals }) => {
+	skipSettings: async ({ locals, cookies }) => {
 		if (!locals.user?.isAdmin) {
 			return fail(403, { error: 'Admin access required' });
+		}
+		try {
+			await requireActiveOnboardingClaim(cookies);
+		} catch (err) {
+			return fail(403, { error: err instanceof Error ? err.message : 'Setup claim required' });
 		}
 
 		logger.info(
@@ -439,9 +462,14 @@ export const actions: Actions = {
 	 * Test OpenAI connection using values submitted from the form.
 	 * Does not fall back to stored values — onboarding submits fresh input.
 	 */
-	testAIConnection: async ({ request, locals }) => {
+	testAIConnection: async ({ request, locals, cookies }) => {
 		if (!locals.user?.isAdmin) {
 			return fail(403, { error: 'Admin access required' });
+		}
+		try {
+			await requireActiveOnboardingClaim(cookies);
+		} catch (err) {
+			return fail(403, { error: err instanceof Error ? err.message : 'Setup claim required' });
 		}
 
 		const formData = await request.formData();

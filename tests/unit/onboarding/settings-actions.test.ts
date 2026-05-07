@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
+import type { Cookies } from '@sveltejs/kit';
 import { isRedirect } from '@sveltejs/kit';
 import {
 	AnonymizationMode,
@@ -16,6 +17,11 @@ import {
 import { db } from '$lib/server/db/client';
 import { appSettings, slideConfig } from '$lib/server/db/schema';
 import { getOnboardingStep, OnboardingSteps } from '$lib/server/onboarding';
+import {
+	claimOnboardingInstance,
+	clearBootstrapToken,
+	createBootstrapToken
+} from '$lib/server/onboarding/bootstrap';
 import { getGlobalAllowUserControl, getGlobalDefaultShareMode } from '$lib/server/sharing/service';
 import { initializeDefaultSlideConfig } from '$lib/server/slides/config.service';
 import { actions } from '../../../src/routes/onboarding/settings/+page.server';
@@ -26,6 +32,17 @@ type SaveSettingsAction = NonNullable<typeof actions.saveSettings>;
 const adminLocals = {
 	user: { id: 1, plexId: 1, username: 'admin', isAdmin: true }
 } as unknown as App.Locals;
+
+let cookies: Cookies;
+
+function createCookies(): Cookies {
+	const values = new Map<string, string>();
+	return {
+		get: (name: string) => values.get(name),
+		set: (name: string, value: string) => values.set(name, value),
+		delete: (name: string) => values.delete(name)
+	} as unknown as Cookies;
+}
 
 function createSettingsRequest(overrides: Record<string, string> = {}): Request {
 	const formData = new FormData();
@@ -55,6 +72,7 @@ async function runSaveSettings(request: Request) {
 	return saveSettings({
 		request,
 		locals: adminLocals,
+		cookies,
 		url: new URL(request.url)
 	} as Parameters<SaveSettingsAction>[0]);
 }
@@ -75,6 +93,10 @@ describe('onboarding settings actions', () => {
 	beforeEach(async () => {
 		await db.delete(appSettings);
 		await db.delete(slideConfig);
+		clearBootstrapToken();
+		cookies = createCookies();
+		const token = createBootstrapToken();
+		expect(await claimOnboardingInstance(cookies, token)).toBe('claimed');
 		await initializeDefaultSlideConfig();
 	});
 

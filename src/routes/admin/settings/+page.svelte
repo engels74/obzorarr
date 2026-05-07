@@ -81,6 +81,7 @@ let { data, form }: { data: PageData; form: ActionData } = $props();
 // Local form state (initialized and synced via $effect)
 let plexServerUrl = $state('');
 let plexToken = $state('');
+let plexAllowInsecureLocalHttp = $state(false);
 let openaiApiKey = $state('');
 let openaiBaseUrl = $state('');
 let openaiModel = $state('');
@@ -171,10 +172,14 @@ const storedPlexServerUrl = $derived(data.settings.plexServerUrl.value);
 const plexUrlChanged = $derived(
 	(plexServerUrl ?? '').replace(/\/+$/, '') !== (storedPlexServerUrl ?? '').replace(/\/+$/, '')
 );
+const showPlexInsecureLocalHttp = $derived(
+	plexServerUrl.trim().toLowerCase().startsWith('http://')
+);
 
 // Sync local state with data (initial load and after form submission)
 $effect(() => {
 	plexServerUrl = data.settings.plexServerUrl.value;
+	plexAllowInsecureLocalHttp = data.settings.plexAllowInsecureLocalHttp;
 	// Secret fields are never hydrated with the raw value; blank input = no change.
 	plexToken = '';
 	openaiApiKey = '';
@@ -601,6 +606,18 @@ const logFieldErrors = $derived(
 							{/if}
 						</div>
 
+						{#if showPlexInsecureLocalHttp && !plexServerUrlLocked}
+							<label class="checkbox-row">
+								<input
+									type="checkbox"
+									name="plexAllowInsecureLocalHttp"
+									value="true"
+									bind:checked={plexAllowInsecureLocalHttp}
+								/>
+								<span>Allow insecure local HTTP Plex connection</span>
+							</label>
+						{/if}
+
 						<div class="form-field">
 							<div class="field-header">
 								<label for="plexToken">Authentication Token</label>
@@ -678,6 +695,10 @@ const logFieldErrors = $derived(
 									const formData = new FormData();
 									formData.set('plexServerUrl', plexServerUrl);
 									formData.set('plexToken', plexToken);
+									formData.set(
+										'plexAllowInsecureLocalHttp',
+										plexAllowInsecureLocalHttp ? 'true' : 'false'
+									);
 									try {
 										const response = await fetch('?/testPlexConnection', {
 											method: 'POST',
@@ -2650,6 +2671,21 @@ const logFieldErrors = $derived(
 			font-size: 0.75rem;
 			color: hsl(var(--muted-foreground));
 			margin-top: 0.375rem;
+		}
+
+		.checkbox-row {
+			display: flex;
+			align-items: center;
+			gap: 0.625rem;
+			margin: -0.25rem 0 1rem;
+			font-size: 0.8125rem;
+			color: hsl(var(--foreground));
+		}
+
+		.checkbox-row input {
+			width: 1rem;
+			height: 1rem;
+			accent-color: hsl(var(--primary));
 		}
 
 		.field-error {

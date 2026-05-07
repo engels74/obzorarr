@@ -39,6 +39,7 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 	const serverName = hasEnvConfigValue ? await getServerName() : null;
 
 	const steps: { id: OnboardingStep; label: string }[] = [
+		{ id: OnboardingSteps.CLAIM, label: 'Claim' },
 		{ id: OnboardingSteps.CSRF, label: 'Security' },
 		{ id: OnboardingSteps.PLEX, label: 'Connect' },
 		{ id: OnboardingSteps.SYNC, label: 'Sync' },

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
+import type { Cookies } from '@sveltejs/kit';
 import { isRedirect } from '@sveltejs/kit';
 import {
 	AppSettingsKey,
@@ -9,6 +10,11 @@ import {
 import { db } from '$lib/server/db/client';
 import { appSettings } from '$lib/server/db/schema';
 import { getOnboardingStep, OnboardingSteps, setOnboardingStep } from '$lib/server/onboarding';
+import {
+	claimOnboardingInstance,
+	clearBootstrapToken,
+	createBootstrapToken
+} from '$lib/server/onboarding/bootstrap';
 import { actions } from '../../../src/routes/onboarding/csrf/+page.server';
 
 const ORIGIN = 'http://localhost:5173';
@@ -16,11 +22,22 @@ type SaveOriginAction = NonNullable<typeof actions.saveOrigin>;
 type SkipCsrfAction = NonNullable<typeof actions.skipCsrf>;
 type TestOriginAction = NonNullable<typeof actions.testOrigin>;
 
-function createFormRequest(csrfOrigin: string, origin = ORIGIN): Request {
+function createCookies() {
+	const values = new Map<string, string>();
+	return {
+		get: (name: string) => values.get(name),
+		set: (name: string, value: string) => values.set(name, value),
+		delete: (name: string) => values.delete(name)
+	};
+}
+
+let cookies: ReturnType<typeof createCookies>;
+
+function createFormRequest(csrfOrigin: string, origin = ORIGIN, requestBase = ORIGIN): Request {
 	const formData = new FormData();
 	formData.set('csrfOrigin', csrfOrigin);
 
-	return new Request(`${ORIGIN}/onboarding/csrf`, {
+	return new Request(`${requestBase}/onboarding/csrf`, {
 		method: 'POST',
 		headers: { origin },
 		body: formData
@@ -43,17 +60,25 @@ function createFormRequestWithRefererOnly(
 
 async function runSaveOrigin(request: Request) {
 	const saveOrigin = actions.saveOrigin as SaveOriginAction;
-	return saveOrigin({ request } as Parameters<SaveOriginAction>[0]);
+	return saveOrigin({
+		request,
+		cookies,
+		url: new URL(request.url)
+	} as unknown as Parameters<SaveOriginAction>[0]);
 }
 
 async function runTestOrigin(request: Request) {
 	const testOrigin = actions.testOrigin as TestOriginAction;
-	return testOrigin({ request } as Parameters<TestOriginAction>[0]);
+	return testOrigin({ request, cookies } as unknown as Parameters<TestOriginAction>[0]);
 }
 
 async function runSkipCsrf(request: Request) {
 	const skipCsrf = actions.skipCsrf as SkipCsrfAction;
-	return skipCsrf({ request, url: new URL(request.url) } as Parameters<SkipCsrfAction>[0]);
+	return skipCsrf({
+		request,
+		cookies,
+		url: new URL(request.url)
+	} as unknown as Parameters<SkipCsrfAction>[0]);
 }
 
 async function expectRedirect(run: () => Promise<unknown>, location: string) {
@@ -71,6 +96,11 @@ async function expectRedirect(run: () => Promise<unknown>, location: string) {
 describe('onboarding CSRF actions', () => {
 	beforeEach(async () => {
 		await db.delete(appSettings);
+		clearBootstrapToken();
+		cookies = createCookies();
+		const token = createBootstrapToken();
+		expect(await claimOnboardingInstance(cookies as unknown as Cookies, token)).toBe('claimed');
+		await setOnboardingStep(OnboardingSteps.CSRF);
 	});
 
 	it('test origin succeeds when the submitted origin matches the browser origin', async () => {
@@ -148,7 +178,10 @@ describe('onboarding CSRF actions', () => {
 
 	it('saves a matching CSRF origin when the browser origin has an explicit default port', async () => {
 		await expectRedirect(
-			() => runSaveOrigin(createFormRequest('https://example.com', 'https://example.com:443')),
+			() =>
+				runSaveOrigin(
+					createFormRequest('https://example.com', 'https://example.com:443', 'https://example.com')
+				),
 			'/onboarding/plex'
 		);
 
@@ -186,6 +219,19 @@ describe('onboarding CSRF actions', () => {
 				error:
 					'Origin mismatch: browser sends "http://localhost:5173" but you configured "https://example.com"'
 			}
+		});
+		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBeNull();
+		expect(await getOnboardingStep()).toBe(OnboardingSteps.CSRF);
+	});
+
+	it('saveOrigin rejects cross-origin submissions without persisting the submitted origin', async () => {
+		const result = await runSaveOrigin(
+			createFormRequest('https://evil.example', 'https://evil.example')
+		);
+
+		expect(result).toEqual({
+			status: 403,
+			data: { error: 'CSRF origin must be submitted from this Obzorarr origin' }
 		});
 		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBeNull();
 		expect(await getOnboardingStep()).toBe(OnboardingSteps.CSRF);

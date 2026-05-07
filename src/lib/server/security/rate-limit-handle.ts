@@ -24,6 +24,10 @@ function getConfigForPath(path: string, method: string): RateLimitConfig {
 		return RATE_LIMIT_CONFIGS.default;
 	}
 
+	if (method === 'POST' && path === '/onboarding/claim') {
+		return RATE_LIMIT_CONFIGS.onboardingClaim;
+	}
+
 	if (path.startsWith('/auth/')) {
 		return RATE_LIMIT_CONFIGS.auth;
 	}

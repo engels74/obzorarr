@@ -1,6 +1,10 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { logger } from '$lib/server/logging';
-import { OnboardingSteps, setOnboardingStep } from '$lib/server/onboarding';
+import {
+	OnboardingSteps,
+	requireActiveOnboardingClaim,
+	setOnboardingStep
+} from '$lib/server/onboarding';
 import {
 	getPlayHistoryCount,
 	getSyncProgress,
@@ -28,9 +32,14 @@ export const load: PageServerLoad = async ({ parent }) => {
 };
 
 export const actions: Actions = {
-	startSync: async ({ locals }) => {
+	startSync: async ({ locals, cookies }) => {
 		if (!locals.user?.isAdmin) {
 			return fail(403, { error: 'Admin access required' });
+		}
+		try {
+			await requireActiveOnboardingClaim(cookies);
+		} catch (err) {
+			return fail(403, { error: err instanceof Error ? err.message : 'Setup claim required' });
 		}
 
 		try {
@@ -58,9 +67,14 @@ export const actions: Actions = {
 		}
 	},
 
-	cancelSync: async ({ locals }) => {
+	cancelSync: async ({ locals, cookies }) => {
 		if (!locals.user?.isAdmin) {
 			return fail(403, { error: 'Admin access required' });
+		}
+		try {
+			await requireActiveOnboardingClaim(cookies);
+		} catch (err) {
+			return fail(403, { error: err instanceof Error ? err.message : 'Setup claim required' });
 		}
 
 		const cancelled = cancelSync();
@@ -72,9 +86,14 @@ export const actions: Actions = {
 		return { success: true, message: 'Sync cancelled' };
 	},
 
-	continue: async ({ locals }) => {
+	continue: async ({ locals, cookies }) => {
 		if (!locals.user?.isAdmin) {
 			return fail(403, { error: 'Admin access required' });
+		}
+		try {
+			await requireActiveOnboardingClaim(cookies);
+		} catch (err) {
+			return fail(403, { error: err instanceof Error ? err.message : 'Setup claim required' });
 		}
 
 		logger.info('Onboarding: Proceeding to settings (sync may still be running)', 'Onboarding');

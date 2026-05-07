@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createSessionFromPlexToken } from '$lib/server/auth/login-completion';
 import { NotServerMemberError, PlexAuthApiError } from '$lib/server/auth/types';
 import { logger } from '$lib/server/logging';
+import { OnboardingClaimRequiredError } from '$lib/server/onboarding';
 import type { RequestHandler } from './$types';
 
 const CallbackRequestSchema = z.object({
@@ -30,6 +31,12 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		return json(await createSessionFromPlexToken(authToken, cookies));
 	} catch (err) {
 		if (err instanceof NotServerMemberError) {
+			error(403, {
+				message: err.message
+			});
+		}
+
+		if (err instanceof OnboardingClaimRequiredError) {
 			error(403, {
 				message: err.message
 			});
