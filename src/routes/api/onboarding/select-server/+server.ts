@@ -4,7 +4,6 @@ import {
 	AppSettingsKey,
 	clearCachedServerMachineId,
 	deleteAppSetting,
-	isPlexInsecureLocalHttpAllowed,
 	setAppSetting,
 	setCachedServerMachineId,
 	setCachedServerName
@@ -20,6 +19,7 @@ import { OnboardingClaimRequiredError, requireActiveOnboardingClaim } from '$lib
 import { resolveOwnedServerToken } from '$lib/server/onboarding/plex-server-selection';
 import { classifyConnectionError } from '$lib/server/security';
 import {
+	envAllowsInsecureLocalPlexHttp,
 	normalizePlexServerUrl,
 	shouldPersistPlexInsecureLocalHttpOptIn
 } from '$lib/server/security/credentialed-url';
@@ -129,12 +129,12 @@ export const POST: RequestHandler = async ({ request, locals, cookies }) => {
 		}
 
 		const { serverName, clientIdentifier } = parseResult.data;
+		const allowInsecureLocalHttp =
+			parseResult.data.allowInsecureLocalHttp === true || envAllowsInsecureLocalPlexHttp();
 		let serverUrl: string;
 		try {
 			serverUrl = normalizePlexServerUrl(parseResult.data.serverUrl, {
-				allowInsecureLocalHttp:
-					parseResult.data.allowInsecureLocalHttp === true ||
-					(await isPlexInsecureLocalHttpAllowed())
+				allowInsecureLocalHttp
 			});
 		} catch (err) {
 			return json(

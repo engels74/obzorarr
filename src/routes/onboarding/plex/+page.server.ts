@@ -9,6 +9,7 @@ import { sessions, users } from '$lib/server/db/schema';
 import { logger } from '$lib/server/logging';
 import {
 	isOnboardingComplete,
+	OnboardingClaimRequiredError,
 	OnboardingSteps,
 	requireActiveOnboardingClaim,
 	setOnboardingStep
@@ -56,7 +57,10 @@ export const actions: Actions = {
 		try {
 			await requireActiveOnboardingClaim(cookies);
 		} catch (err) {
-			return fail(403, { error: err instanceof Error ? err.message : 'Setup claim required' });
+			if (err instanceof OnboardingClaimRequiredError) {
+				return fail(403, { error: err.message });
+			}
+			throw err;
 		}
 
 		const sessionId = cookies.get('session');
@@ -129,7 +133,10 @@ export const actions: Actions = {
 		try {
 			await requireActiveOnboardingClaim(cookies);
 		} catch (err) {
-			return fail(403, { error: err instanceof Error ? err.message : 'Setup claim required' });
+			if (err instanceof OnboardingClaimRequiredError) {
+				return fail(403, { error: err.message });
+			}
+			throw err;
 		}
 
 		if (!locals.user.isAdmin) {
@@ -151,7 +158,10 @@ export const actions: Actions = {
 		try {
 			await requireActiveOnboardingClaim(cookies);
 		} catch (err) {
-			return fail(403, { error: err instanceof Error ? err.message : 'Setup claim required' });
+			if (err instanceof OnboardingClaimRequiredError) {
+				return fail(403, { error: err.message });
+			}
+			throw err;
 		}
 
 		if (!locals.user.isAdmin) {
@@ -189,7 +199,10 @@ export const actions: Actions = {
 		try {
 			await requireActiveOnboardingClaim(cookies);
 		} catch (err) {
-			return fail(403, { error: err instanceof Error ? err.message : 'Setup claim required' });
+			if (err instanceof OnboardingClaimRequiredError) {
+				return fail(403, { error: err.message });
+			}
+			throw err;
 		}
 
 		if (await isOnboardingComplete()) {

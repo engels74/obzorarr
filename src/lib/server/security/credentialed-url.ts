@@ -46,6 +46,27 @@ function parseIpv4(hostname: string): number[] | null {
 	return octets;
 }
 
+function isIpv6Literal(hostname: string): boolean {
+	if (!hostname.includes(':')) return false;
+
+	try {
+		new URL(`http://[${hostname}]`);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+function isIpv6UniqueLocal(hostname: string): boolean {
+	if (!isIpv6Literal(hostname)) return false;
+
+	const firstHextet = /^([0-9a-f]{1,4}):/i.exec(hostname)?.[1];
+	if (!firstHextet) return false;
+
+	const value = Number.parseInt(firstHextet, 16);
+	return value >= 0xfc00 && value <= 0xfdff;
+}
+
 export function isLocalOrPrivateHost(hostname: string): boolean {
 	const host = hostname.toLowerCase().replace(/^\[|\]$/g, '');
 
@@ -65,7 +86,7 @@ export function isLocalOrPrivateHost(hostname: string): boolean {
 	}
 
 	if (host === '::1') return true;
-	if (host.startsWith('fc') || host.startsWith('fd')) return true;
+	if (isIpv6UniqueLocal(host)) return true;
 	if (/^fe[89ab][0-9a-f]?:/i.test(host)) return true;
 
 	return false;

@@ -37,6 +37,7 @@ import { testOpenAIConnection } from '$lib/server/funfacts/test-connection';
 import { AIPersonaSchema } from '$lib/server/funfacts/types';
 import { logger } from '$lib/server/logging';
 import {
+	OnboardingClaimRequiredError,
 	OnboardingSteps,
 	requireActiveOnboardingClaim,
 	setOnboardingStep
@@ -296,7 +297,10 @@ export const actions: Actions = {
 		try {
 			await requireActiveOnboardingClaim(cookies);
 		} catch (err) {
-			return fail(403, { error: err instanceof Error ? err.message : 'Setup claim required' });
+			if (err instanceof OnboardingClaimRequiredError) {
+				return fail(403, { error: err.message });
+			}
+			throw err;
 		}
 
 		try {
@@ -445,7 +449,10 @@ export const actions: Actions = {
 		try {
 			await requireActiveOnboardingClaim(cookies);
 		} catch (err) {
-			return fail(403, { error: err instanceof Error ? err.message : 'Setup claim required' });
+			if (err instanceof OnboardingClaimRequiredError) {
+				return fail(403, { error: err.message });
+			}
+			throw err;
 		}
 
 		logger.info(
@@ -469,7 +476,10 @@ export const actions: Actions = {
 		try {
 			await requireActiveOnboardingClaim(cookies);
 		} catch (err) {
-			return fail(403, { error: err instanceof Error ? err.message : 'Setup claim required' });
+			if (err instanceof OnboardingClaimRequiredError) {
+				return fail(403, { error: err.message });
+			}
+			throw err;
 		}
 
 		const formData = await request.formData();

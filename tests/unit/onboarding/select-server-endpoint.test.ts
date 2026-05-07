@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import type { Cookies } from '@sveltejs/kit';
 import { isHttpError } from '@sveltejs/kit';
+import { env } from '$env/dynamic/private';
 import {
 	AppSettingsKey,
 	getAppSetting,
-	getCachedServerName
+	getCachedServerName,
+	setAppSetting
 } from '$lib/server/admin/settings.service';
 import * as sessionModule from '$lib/server/auth/session';
 import { db } from '$lib/server/db/client';
@@ -169,6 +171,34 @@ describe('POST /api/onboarding/select-server', () => {
 		const body = (await response.json()) as { success: boolean };
 		expect(body.success).toBe(true);
 		expect(await getAppSetting(AppSettingsKey.PLEX_TOKEN)).toBe('legacy-token');
+	});
+
+	it('rejects unchecked local HTTP URLs instead of relying on stored opt-in', async () => {
+		const dynamicEnv = env as Record<string, string | undefined>;
+		const previousAllowInsecure = dynamicEnv.PLEX_ALLOW_INSECURE_LOCAL_HTTP;
+		dynamicEnv.PLEX_ALLOW_INSECURE_LOCAL_HTTP = undefined;
+
+		try {
+			await setAppSetting(AppSettingsKey.PLEX_ALLOW_INSECURE_LOCAL_HTTP, 'true');
+			fetchSpy = spyOn(global, 'fetch').mockResolvedValue(makeIdentityResponse());
+
+			const response = await runPost({
+				serverUrl: 'http://plex.local:32400',
+				allowInsecureLocalHttp: false,
+				accessToken: 'legacy-token',
+				serverName: 'Legacy Server'
+			});
+
+			expect(response.status).toBe(400);
+			const body = (await response.json()) as { success: boolean; error?: string };
+			expect(body).toEqual({
+				success: false,
+				error: 'HTTP Plex URLs require a local/private host and explicit local HTTP opt-in.'
+			});
+			expect(await getAppSetting(AppSettingsKey.PLEX_ALLOW_INSECURE_LOCAL_HTTP)).toBe('true');
+		} finally {
+			dynamicEnv.PLEX_ALLOW_INSECURE_LOCAL_HTTP = previousAllowInsecure;
+		}
 	});
 
 	it('returns the expected claim-required error when setup claim is missing', async () => {

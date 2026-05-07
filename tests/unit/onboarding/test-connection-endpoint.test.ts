@@ -1,12 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
-import type { Cookies } from '@sveltejs/kit';
+import { type Cookies, isHttpError } from '@sveltejs/kit';
 import * as sessionModule from '$lib/server/auth/session';
 import { db } from '$lib/server/db/client';
 import { appSettings } from '$lib/server/db/schema';
 import {
 	claimOnboardingInstance,
 	clearBootstrapToken,
-	createBootstrapToken
+	createBootstrapToken,
+	ONBOARDING_CLAIM_REQUIRED_MESSAGE
 } from '$lib/server/onboarding/bootstrap';
 import { POST } from '../../../src/routes/api/onboarding/test-connection/+server';
 
@@ -36,6 +37,32 @@ function runPost(
 	});
 
 	return POST({ request, locals, cookies: makeCookies(sessionId) } as unknown as HandlerArgs);
+}
+
+function runPostWithCookies(
+	locals: HandlerArgs['locals'],
+	body: unknown,
+	cookies: HandlerArgs['cookies']
+): ReturnType<typeof POST> {
+	const request = new Request('http://localhost/api/onboarding/test-connection', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(body)
+	});
+
+	return POST({ request, locals, cookies } as unknown as HandlerArgs);
+}
+
+function makeThrowingClaimCookies(errorToThrow: Error): HandlerArgs['cookies'] {
+	return {
+		get: () => {
+			throw errorToThrow;
+		},
+		getAll: () => [],
+		set: () => {},
+		delete: () => {},
+		serialize: () => ''
+	} as unknown as HandlerArgs['cookies'];
 }
 
 function makeIdentityResponse(): Response {
@@ -69,6 +96,42 @@ describe('POST /api/onboarding/test-connection token alias', () => {
 	afterEach(() => {
 		fetchSpy?.mockRestore();
 		getSessionPlexTokenSpy?.mockRestore();
+	});
+
+	it('returns the expected claim-required error when setup claim is missing', async () => {
+		claimValues = new Map();
+
+		try {
+			await runPost(adminLocals, {
+				url: 'https://plex.example.com:32400',
+				accessToken: 'abc'
+			});
+			expect.unreachable('Expected error to be thrown');
+		} catch (err) {
+			expect(isHttpError(err)).toBe(true);
+			if (!isHttpError(err)) throw err;
+			expect(err.status).toBe(403);
+			expect(err.body.message).toBe(ONBOARDING_CLAIM_REQUIRED_MESSAGE);
+		}
+	});
+
+	it('propagates unexpected claim errors for centralized sanitization', async () => {
+		const unexpected = new Error('raw database path should stay server-side');
+
+		try {
+			await runPostWithCookies(
+				adminLocals,
+				{
+					url: 'https://plex.example.com:32400',
+					accessToken: 'abc'
+				},
+				makeThrowingClaimCookies(unexpected)
+			);
+			expect.unreachable('Expected unexpected claim error to be thrown');
+		} catch (err) {
+			expect(isHttpError(err)).toBe(false);
+			expect(err).toBe(unexpected);
+		}
 	});
 
 	it('accepts the canonical accessToken field', async () => {
