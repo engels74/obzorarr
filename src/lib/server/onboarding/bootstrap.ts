@@ -70,6 +70,7 @@ export function isBootstrapTokenExpired(): boolean {
 	if (!activeBootstrapToken) return true;
 	if (Date.now() >= activeBootstrapToken.expiresAt) {
 		activeBootstrapToken = null;
+		bannerPrinted = false;
 		return true;
 	}
 	return false;
@@ -94,9 +95,8 @@ export function validateBootstrapToken(candidate: string): boolean {
 }
 
 export async function printOnboardingBootstrapBanner(origin?: string): Promise<void> {
-	if (bannerPrinted || (await getAppSetting(AppSettingsKey.ONBOARDING_COMPLETED)) === 'true')
-		return;
-	bannerPrinted = true;
+	if (bannerPrinted && !isBootstrapTokenExpired()) return;
+	if ((await getAppSetting(AppSettingsKey.ONBOARDING_COMPLETED)) === 'true') return;
 
 	const token = createBootstrapToken();
 	const setupUrl = origin ? `${origin.replace(/\/+$/, '')}/onboarding/claim` : '/onboarding/claim';
@@ -107,6 +107,7 @@ export async function printOnboardingBootstrapBanner(origin?: string): Promise<v
 	console.info(`Bootstrap token: ${token}`);
 	console.info('This token expires in 15 minutes and is not stored.');
 	console.info('');
+	bannerPrinted = true;
 }
 
 async function sha256Hex(value: string): Promise<string> {

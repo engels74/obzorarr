@@ -61,7 +61,6 @@ const COOKIE_OPTIONS = {
 
 let devBypassLogged = false;
 let settingsConflictsCleared = false;
-let bootstrapBannerChecked = false;
 
 const initializationHandle: Handle = async ({ event, resolve }) => {
 	if (!settingsConflictsCleared) {
@@ -79,14 +78,11 @@ const initializationHandle: Handle = async ({ event, resolve }) => {
 			logger.error(`Failed to clear conflicting DB settings: ${errorMessage}`, 'Startup');
 		}
 	}
-	if (!bootstrapBannerChecked) {
-		bootstrapBannerChecked = true;
-		try {
-			await printOnboardingBootstrapBanner(event.url.origin);
-		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			logger.error(`Failed to prepare onboarding bootstrap token: ${errorMessage}`, 'Startup');
-		}
+	try {
+		await printOnboardingBootstrapBanner(event.url.origin);
+	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		logger.error(`Failed to prepare onboarding bootstrap token: ${errorMessage}`, 'Startup');
 	}
 	return resolve(event);
 };
