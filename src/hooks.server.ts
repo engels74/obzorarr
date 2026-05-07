@@ -79,7 +79,7 @@ const initializationHandle: Handle = async ({ event, resolve }) => {
 		}
 	}
 	try {
-		await printOnboardingBootstrapBanner(event.url.origin);
+		await printOnboardingBootstrapBanner();
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		logger.error(`Failed to prepare onboarding bootstrap token: ${errorMessage}`, 'Startup');

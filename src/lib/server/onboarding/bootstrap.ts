@@ -4,6 +4,7 @@ import {
 	AppSettingsKey,
 	deleteAppSetting,
 	getAppSetting,
+	getCsrfOrigin,
 	setAppSetting
 } from '$lib/server/admin/settings.service';
 
@@ -94,11 +95,12 @@ export function validateBootstrapToken(candidate: string): boolean {
 	return timingSafeEqualString(candidate, activeBootstrapToken.value);
 }
 
-export async function printOnboardingBootstrapBanner(origin?: string): Promise<void> {
+export async function printOnboardingBootstrapBanner(): Promise<void> {
 	if (bannerPrinted && !isBootstrapTokenExpired()) return;
 	if ((await getAppSetting(AppSettingsKey.ONBOARDING_COMPLETED)) === 'true') return;
 
 	const token = createBootstrapToken();
+	const origin = await getCsrfOrigin();
 	const setupUrl = origin ? `${origin.replace(/\/+$/, '')}/onboarding/claim` : '/onboarding/claim';
 
 	console.info('');

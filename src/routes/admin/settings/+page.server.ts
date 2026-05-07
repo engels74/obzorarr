@@ -58,6 +58,7 @@ import {
 } from '$lib/server/logging';
 import {
 	CredentialedUrlError,
+	envAllowsInsecureLocalPlexHttp,
 	normalizeOpenAIBaseUrl,
 	normalizePlexServerUrl
 } from '$lib/server/security/credentialed-url';
@@ -364,7 +365,7 @@ export const actions: Actions = requireAdminActions({
 				try {
 					values.plexServerUrl = normalizePlexServerUrl(values.plexServerUrl, {
 						allowInsecureLocalHttp:
-							values.plexAllowInsecureLocalHttp || (await isPlexInsecureLocalHttpAllowed())
+							values.plexAllowInsecureLocalHttp || envAllowsInsecureLocalPlexHttp()
 					});
 				} catch (err) {
 					return fail(400, {

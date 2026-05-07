@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import type { Cookies } from '@sveltejs/kit';
-import { AppSettingsKey, getAppSetting } from '$lib/server/admin/settings.service';
+import { AppSettingsKey, getAppSetting, setAppSetting } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
 import { appSettings } from '$lib/server/db/schema';
 import {
@@ -33,6 +33,13 @@ function printedBootstrapTokens(consoleInfoSpy: ReturnType<typeof spyOn>): strin
 		.map((message) => message.replace('Bootstrap token: ', ''));
 }
 
+function printedSetupUrls(consoleInfoSpy: ReturnType<typeof spyOn>): string[] {
+	return (consoleInfoSpy.mock.calls as Array<[unknown]>)
+		.map(([message]) => String(message))
+		.filter((message) => message.startsWith('Setup URL: '))
+		.map((message) => message.replace('Setup URL: ', ''));
+}
+
 describe('onboarding bootstrap token and claim', () => {
 	let consoleInfoSpy: ReturnType<typeof spyOn>;
 
@@ -59,13 +66,29 @@ describe('onboarding bootstrap token and claim', () => {
 		expect(validateBootstrapToken(token)).toBe(false);
 	});
 
+	it('prints the configured CSRF origin for the setup URL', async () => {
+		await setAppSetting(AppSettingsKey.CSRF_ORIGIN, 'https://trusted.example.com');
+
+		await printOnboardingBootstrapBanner();
+
+		expect(printedSetupUrls(consoleInfoSpy)).toEqual([
+			'https://trusted.example.com/onboarding/claim'
+		]);
+	});
+
+	it('prints a relative setup URL when no trusted origin is configured', async () => {
+		await printOnboardingBootstrapBanner();
+
+		expect(printedSetupUrls(consoleInfoSpy)).toEqual(['/onboarding/claim']);
+	});
+
 	it('prints a replacement token after the current banner token expires', async () => {
-		await printOnboardingBootstrapBanner('http://localhost');
+		await printOnboardingBootstrapBanner();
 		const firstToken = printedBootstrapTokens(consoleInfoSpy)[0] ?? '';
 		expect(validateBootstrapToken(firstToken)).toBe(true);
 
 		createBootstrapToken(0);
-		await printOnboardingBootstrapBanner('http://localhost');
+		await printOnboardingBootstrapBanner();
 
 		const tokens = printedBootstrapTokens(consoleInfoSpy);
 		const replacementToken = tokens[1] ?? '';
