@@ -113,6 +113,19 @@ describe('onboarding bootstrap token and claim', () => {
 		expect(validateBootstrapToken(replacementToken)).toBe(true);
 	});
 
+	it('caches completed onboarding after claim cleanup resets banner state', async () => {
+		await printOnboardingBootstrapBanner();
+		expect(printedBootstrapTokens(consoleInfoSpy)).toHaveLength(1);
+		await setAppSetting(AppSettingsKey.ONBOARDING_COMPLETED, 'true');
+		await clearOnboardingClaim();
+
+		await printOnboardingBootstrapBanner();
+		await db.delete(appSettings);
+		await printOnboardingBootstrapBanner();
+
+		expect(printedBootstrapTokens(consoleInfoSpy)).toHaveLength(1);
+	});
+
 	it('stores only the claim proof hash and renews the same claimant', async () => {
 		const cookies = createCookies();
 		const token = createBootstrapToken();

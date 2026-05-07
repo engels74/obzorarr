@@ -26,6 +26,7 @@ interface BootstrapToken {
 let activeBootstrapToken: BootstrapToken | null = null;
 let bannerPrinted = false;
 let bootstrapBannerPromise: Promise<void> | null = null;
+let onboardingCompletedCached = false;
 
 export interface OnboardingClaimCookieContext {
 	requestUrl?: URL;
@@ -71,6 +72,7 @@ export function clearBootstrapToken(): void {
 	activeBootstrapToken = null;
 	bannerPrinted = false;
 	bootstrapBannerPromise = null;
+	onboardingCompletedCached = false;
 }
 
 export function isBootstrapTokenExpired(): boolean {
@@ -109,8 +111,13 @@ function getOrCreateBootstrapToken(): string {
 }
 
 async function printBootstrapBanner(): Promise<void> {
+	if (onboardingCompletedCached) return;
 	if (bannerPrinted && !isBootstrapTokenExpired()) return;
-	if ((await getAppSetting(AppSettingsKey.ONBOARDING_COMPLETED)) === 'true') return;
+	if ((await getAppSetting(AppSettingsKey.ONBOARDING_COMPLETED)) === 'true') {
+		onboardingCompletedCached = true;
+		activeBootstrapToken = null;
+		return;
+	}
 
 	const token = getOrCreateBootstrapToken();
 	const origin = await getCsrfOrigin();
@@ -126,6 +133,7 @@ async function printBootstrapBanner(): Promise<void> {
 }
 
 export async function printOnboardingBootstrapBanner(): Promise<void> {
+	if (onboardingCompletedCached) return;
 	if (bannerPrinted && !isBootstrapTokenExpired()) return;
 
 	if (!bootstrapBannerPromise) {

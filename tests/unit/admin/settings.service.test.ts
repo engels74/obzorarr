@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
+import { env } from '$env/dynamic/private';
 import {
 	AnonymizationMode,
 	AppSettingsKey,
@@ -22,6 +23,7 @@ import {
 	getCurrentTheme,
 	getDefaultYear,
 	getFunFactFrequency,
+	getPlexConfig,
 	getUITheme,
 	getWrappedLogoMode,
 	getWrappedTheme,
@@ -771,6 +773,49 @@ describe('Admin Settings Service', () => {
 			});
 		});
 
+		describe('getPlexConfig', () => {
+			it('treats local HTTP Plex URL without opt-in as not configured', async () => {
+				const dynamicEnv = env as Record<string, string | undefined>;
+				const previousPlexServerUrl = dynamicEnv.PLEX_SERVER_URL;
+				const previousAllowInsecure = dynamicEnv.PLEX_ALLOW_INSECURE_LOCAL_HTTP;
+				dynamicEnv.PLEX_SERVER_URL = '';
+				dynamicEnv.PLEX_ALLOW_INSECURE_LOCAL_HTTP = undefined;
+
+				try {
+					await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, 'http://192.168.1.10:32400');
+
+					const config = await getPlexConfig();
+
+					expect(config.serverUrl).toBe('');
+					expect(config.token).toBe('test-plex-token');
+				} finally {
+					dynamicEnv.PLEX_SERVER_URL = previousPlexServerUrl;
+					dynamicEnv.PLEX_ALLOW_INSECURE_LOCAL_HTTP = previousAllowInsecure;
+				}
+			});
+
+			it('treats public HTTP Plex URL as not configured even with opt-in', async () => {
+				const dynamicEnv = env as Record<string, string | undefined>;
+				const previousPlexServerUrl = dynamicEnv.PLEX_SERVER_URL;
+				const previousAllowInsecure = dynamicEnv.PLEX_ALLOW_INSECURE_LOCAL_HTTP;
+				dynamicEnv.PLEX_SERVER_URL = '';
+				dynamicEnv.PLEX_ALLOW_INSECURE_LOCAL_HTTP = undefined;
+
+				try {
+					await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, 'http://plex.example.com:32400');
+					await setAppSetting(AppSettingsKey.PLEX_ALLOW_INSECURE_LOCAL_HTTP, 'true');
+
+					const config = await getPlexConfig();
+
+					expect(config.serverUrl).toBe('');
+					expect(config.token).toBe('test-plex-token');
+				} finally {
+					dynamicEnv.PLEX_SERVER_URL = previousPlexServerUrl;
+					dynamicEnv.PLEX_ALLOW_INSECURE_LOCAL_HTTP = previousAllowInsecure;
+				}
+			});
+		});
+
 		describe('clearConflictingDbSettings', () => {
 			it('clears DB settings when ENV values exist', async () => {
 				// Plex env vars ARE set in test setup, so these DB values should be cleared
@@ -828,6 +873,25 @@ describe('Admin Settings Service', () => {
 				// Test setup mocks PLEX_SERVER_URL and PLEX_TOKEN via env
 				const configured = await isPlexConfigured();
 				expect(configured).toBe(true);
+			});
+
+			it('returns false when stored Plex URL fails policy validation', async () => {
+				const dynamicEnv = env as Record<string, string | undefined>;
+				const previousPlexServerUrl = dynamicEnv.PLEX_SERVER_URL;
+				const previousAllowInsecure = dynamicEnv.PLEX_ALLOW_INSECURE_LOCAL_HTTP;
+				dynamicEnv.PLEX_SERVER_URL = '';
+				dynamicEnv.PLEX_ALLOW_INSECURE_LOCAL_HTTP = undefined;
+
+				try {
+					await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, 'http://192.168.1.10:32400');
+
+					const configured = await isPlexConfigured();
+
+					expect(configured).toBe(false);
+				} finally {
+					dynamicEnv.PLEX_SERVER_URL = previousPlexServerUrl;
+					dynamicEnv.PLEX_ALLOW_INSECURE_LOCAL_HTTP = previousAllowInsecure;
+				}
 			});
 		});
 	});

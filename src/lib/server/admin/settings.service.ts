@@ -3,6 +3,7 @@ import { env } from '$env/dynamic/private';
 import { db } from '$lib/server/db/client';
 import { appSettings, cachedStats, playHistory, shareSettings } from '$lib/server/db/schema';
 import {
+	CredentialedUrlError,
 	envAllowsInsecureLocalPlexHttp,
 	normalizePlexServerUrl,
 	shouldPersistPlexInsecureLocalHttpOptIn
@@ -940,11 +941,16 @@ export interface PlexConfig {
  */
 export async function getPlexConfig(): Promise<PlexConfig> {
 	const config = await getApiConfigWithSources();
-	const serverUrl = config.plex.serverUrl.value
-		? normalizePlexServerUrl(config.plex.serverUrl.value, {
+	let serverUrl = '';
+	if (config.plex.serverUrl.value) {
+		try {
+			serverUrl = normalizePlexServerUrl(config.plex.serverUrl.value, {
 				allowInsecureLocalHttp: await isPlexInsecureLocalHttpAllowed()
-			})
-		: '';
+			});
+		} catch (err) {
+			if (!(err instanceof CredentialedUrlError)) throw err;
+		}
+	}
 	return {
 		serverUrl,
 		token: config.plex.token.value
