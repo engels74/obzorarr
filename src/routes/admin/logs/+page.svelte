@@ -93,7 +93,18 @@ function matchesVisibleFilters(log: LogEntry): boolean {
 }
 
 // Combined logs (filtered streamed + server-filtered), then narrowed by live local inputs.
-const allLogs = $derived([...filteredStreamedLogs, ...data.logs]);
+const allLogs = $derived.by(() => {
+	const seen = new Set<number>();
+	const merged: LogEntry[] = [];
+
+	for (const log of [...filteredStreamedLogs, ...data.logs]) {
+		if (seen.has(log.id)) continue;
+		seen.add(log.id);
+		merged.push(log);
+	}
+
+	return merged;
+});
 const visibleLogs = $derived(allLogs.filter(matchesVisibleFilters));
 
 const visibleLevelCounts = $derived.by(() => {
@@ -503,15 +514,29 @@ $effect(() => {
 				action={exportAction}
 				use:enhance={() => {
 					return async ({ result }) => {
-						if (result.type === 'success' && result.data?.exportData) {
+						if (result.type === 'success' && typeof result.data?.exportData === 'string') {
 							const blob = new Blob([result.data.exportData as string], { type: 'application/json' });
 							const url = URL.createObjectURL(blob);
 							const a = document.createElement('a');
 							a.href = url;
 							a.download = (result.data.exportFilename as string) || 'logs-export.json';
+							document.body.append(a);
 							a.click();
-							setTimeout(() => URL.revokeObjectURL(url), 100);
+							a.remove();
+							setTimeout(() => URL.revokeObjectURL(url), 1000);
+							return;
 						}
+
+						if (result.type === 'failure') {
+							const message =
+								typeof result.data?.error === 'string'
+									? result.data.error
+									: 'Failed to export logs';
+							toast.error(message);
+							return;
+						}
+
+						toast.error('Failed to export logs');
 					};
 				}}
 				class="inline-form"

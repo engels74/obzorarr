@@ -409,6 +409,37 @@ describe('wrapped/[year]/u/[identifier] loader: shareToken payload gating', () =
 		}
 	});
 
+	it('returns 404 when an admin accesses a private-link wrapped via numeric URL', async () => {
+		await setGlobalShareDefaults({
+			defaultShareMode: ShareMode.PRIVATE_LINK,
+			allowUserControl: false
+		});
+		await seedShareSettings({
+			userId: USER_ID,
+			year: YEAR,
+			mode: ShareMode.PRIVATE_LINK,
+			token: TOKEN
+		});
+		await seedUser(ADMIN_ID, 100008, 200008);
+
+		try {
+			await invokeLoad({
+				year: YEAR,
+				identifier: String(USER_ID),
+				availableYears: [YEAR],
+				currentUser: {
+					id: ADMIN_ID,
+					plexId: 100008,
+					username: `user-${ADMIN_ID}`,
+					isAdmin: true
+				}
+			});
+			expect.unreachable('Expected numeric private-link admin URL to be rejected');
+		} catch (err) {
+			expect((err as { status?: number }).status).toBe(404);
+		}
+	});
+
 	it('exposes the canonical token to the owner even when the floor raises effectiveMode above private-link', async () => {
 		// F-302: when the global floor (private-oauth) raises the effective mode
 		// above the stored private-link, the owner must still see the canonical

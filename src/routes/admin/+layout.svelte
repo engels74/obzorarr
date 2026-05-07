@@ -12,6 +12,7 @@ import User from '@lucide/svelte/icons/user';
 import Users from '@lucide/svelte/icons/users';
 import X from '@lucide/svelte/icons/x';
 import type { Component, Snippet } from 'svelte';
+import { browser } from '$app/environment';
 import { enhance } from '$app/forms';
 import { invalidateAll } from '$app/navigation';
 import { page } from '$app/stores';
@@ -58,7 +59,23 @@ const isActive = $derived((href: string) => {
 
 // Mobile sidebar state
 let sidebarOpen = $state(false);
+let isMobileSidebar = $state(false);
+let sidebarHiddenFromMobile = $derived(isMobileSidebar && !sidebarOpen);
 let adminAvatarError = $state(false);
+
+$effect(() => {
+	if (!browser) return;
+
+	const query = window.matchMedia('(max-width: 768px)');
+	const syncMobileState = () => {
+		isMobileSidebar = query.matches;
+	};
+
+	syncMobileState();
+	query.addEventListener('change', syncMobileState);
+
+	return () => query.removeEventListener('change', syncMobileState);
+});
 
 // Reset avatar error when thumb URL changes so a new URL gets a fresh load attempt
 $effect(() => {
@@ -125,7 +142,12 @@ function handleCsrfWarningDismissed() {
 	{/if}
 
 	<!-- Sidebar -->
-	<aside class="sidebar" class:open={sidebarOpen}>
+	<aside
+		class="sidebar"
+		class:open={sidebarOpen}
+		inert={sidebarHiddenFromMobile}
+		aria-hidden={sidebarHiddenFromMobile ? 'true' : undefined}
+	>
 		<div class="sidebar-header">
 			<div class="sidebar-branding">
 				<Logo size="md" />
@@ -525,11 +547,18 @@ function handleCsrfWarningDismissed() {
 
 			.sidebar {
 				transform: translateX(-100%);
-				transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+				visibility: hidden;
+				pointer-events: none;
+				transition:
+					transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+					visibility 0s linear 0.3s;
 			}
 
 			.sidebar.open {
 				transform: translateX(0);
+				visibility: visible;
+				pointer-events: auto;
+				transition-delay: 0s;
 			}
 
 			.main-content {

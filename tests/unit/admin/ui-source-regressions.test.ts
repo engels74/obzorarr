@@ -8,11 +8,24 @@ describe('admin UI source regressions', () => {
 	it('uses the effective visible log collection for empty filtered results', async () => {
 		const source = await readSource('src/routes/admin/logs/+page.svelte');
 
+		expect(source).toContain('const allLogs = $derived.by(() => {');
+		expect(source).toContain('const seen = new Set<number>();');
+		expect(source).toContain('if (seen.has(log.id)) continue;');
 		expect(source).toContain(
 			'const visibleLogs = $derived(allLogs.filter(matchesVisibleFilters));'
 		);
 		expect(source).toContain('{#if visibleLogs.length === 0}');
 		expect(source).not.toContain('{#if allLogs.length === 0}');
+	});
+
+	it('exports logs through a temporary document anchor and reports failures', async () => {
+		const source = await readSource('src/routes/admin/logs/+page.svelte');
+
+		expect(source).toContain('document.body.append(a);');
+		expect(source).toContain('a.click();');
+		expect(source).toContain('a.remove();');
+		expect(source).toContain('setTimeout(() => URL.revokeObjectURL(url), 1000);');
+		expect(source).toContain("toast.error('Failed to export logs');");
 	});
 
 	it('renders security help as real disclosure buttons', async () => {
@@ -38,8 +51,36 @@ describe('admin UI source regressions', () => {
 		const source = await readSource('src/routes/admin/slides/+page.svelte');
 
 		expect(source).toContain('syncedFrequencyKey');
+		expect(source).toContain(
+			'untrack(() => `$' + '{data.funFactFrequency.mode}:$' + '{data.funFactFrequency.count}`)'
+		);
 		expect(source).toContain('frequencyKey === syncedFrequencyKey');
+		expect(source).toContain(
+			'syncedFrequencyKey = `$' + '{frequency.mode}:$' + '{frequency.count}`;'
+		);
 		expect(source).not.toContain('class="frequency-options" onclick');
+	});
+
+	it('marks onboarding theme swatches as pressed when selected', async () => {
+		const source = await readSource('src/routes/onboarding/settings/+page.svelte');
+
+		expect(source).toContain('aria-pressed={uiTheme === option.value}');
+		expect(source).toContain('aria-pressed={wrappedTheme === option.value}');
+	});
+
+	it('removes the closed mobile admin sidebar from the accessibility tree and tab order', async () => {
+		const source = await readSource('src/routes/admin/+layout.svelte');
+
+		expect(source).toContain("window.matchMedia('(max-width: 768px)')");
+		expect(source).toContain(
+			'let sidebarHiddenFromMobile = $derived(isMobileSidebar && !sidebarOpen);'
+		);
+		expect(source).toContain('inert={sidebarHiddenFromMobile}');
+		expect(source).toContain("aria-hidden={sidebarHiddenFromMobile ? 'true' : undefined}");
+		expect(source).toContain('visibility: hidden;');
+		expect(source).toContain('pointer-events: none;');
+		expect(source).toContain('visibility: visible;');
+		expect(source).toContain('pointer-events: auto;');
 	});
 
 	it('guards wrapped story transitions against stale rapid navigation', async () => {
