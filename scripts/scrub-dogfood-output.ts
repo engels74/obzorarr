@@ -178,7 +178,7 @@ async function main(): Promise<void> {
 		const result = redactText(original, secrets);
 		if (result.keys.length === 0) continue;
 
-		findings.push({ file: currentPath, keys: result.keys, type: 'content' });
+		findings.push({ file: pathResult.filePath, keys: result.keys, type: 'content' });
 		if (writeChanges) {
 			await writeFile(currentPath, result.text);
 		}

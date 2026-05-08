@@ -77,12 +77,16 @@ describe('scrub dogfood output script', () => {
 	});
 
 	it('reports redacted filenames during dry run', async () => {
-		await writeFile(join(outputRoot, 'report-env-plex-token.md'), 'No configured secrets here');
+		await writeFile(
+			join(outputRoot, 'report-env-plex-token.md'),
+			'Configured token: env-plex-token'
+		);
 
 		const result = await runScrub();
 
 		expect(result.exitCode).toBe(1);
 		expect(result.stdout).toContain('Found filename secret(s) PLEX_TOKEN');
+		expect(result.stdout).toContain('Found content secret(s) PLEX_TOKEN');
 		expect(result.stdout).toContain('report-__PLEX_TOKEN__.md');
 		expect(result.stdout).not.toContain('report-env-plex-token.md');
 		expect(result.stdout).not.toContain('env-plex-token');
