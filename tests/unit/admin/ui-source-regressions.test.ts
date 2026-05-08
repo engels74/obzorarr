@@ -118,7 +118,9 @@ describe('admin UI source regressions', () => {
 	it('keeps the open mobile admin drawer header self-contained', async () => {
 		const source = await readSource('src/routes/admin/+layout.svelte');
 
-		expect(source).toContain('class="mobile-header" class:sidebar-open={sidebarOpen}');
+		expect(source).toMatch(
+			/<header\b(?=[^>]*\bclass="[^"]*\bmobile-header\b[^"]*")(?=[^>]*\bclass:sidebar-open=\{sidebarOpen\})[^>]*>/
+		);
 		expect(source).toContain('aria-label="Close navigation"');
 		expect(source).toContain('class="sidebar-close-button"');
 		expect(source).toContain('.mobile-header.sidebar-open');
