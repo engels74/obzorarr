@@ -4,8 +4,10 @@ import {
 	AppSettingsKey,
 	getAppSetting,
 	getAppSettingsUpdatedAt,
+	getWrappedLogoMode,
 	setAppSetting,
-	USER_DEFAULTS_SETTINGS_KEYS
+	USER_DEFAULTS_SETTINGS_KEYS,
+	WrappedLogoMode
 } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
 import { appSettings } from '$lib/server/db/schema';
@@ -16,6 +18,7 @@ type UpdateUserDefaultsAction = NonNullable<typeof actions.updateUserDefaults>;
 type UpdateApiConfigAction = NonNullable<typeof actions.updateApiConfig>;
 type ClearOpenaiModelAction = NonNullable<typeof actions.clearOpenaiModel>;
 type UpdateTrustProxyAction = NonNullable<typeof actions.updateTrustProxy>;
+type UpdateWrappedLogoModeAction = NonNullable<typeof actions.updateWrappedLogoMode>;
 
 const adminLocals = {
 	user: { id: 1, plexId: 1, username: 'admin', isAdmin: true }
@@ -357,4 +360,42 @@ describe('admin updateTrustProxy action', () => {
 			restoreTrustProxyEnv();
 		}
 	});
+});
+
+describe('admin updateWrappedLogoMode action', () => {
+	beforeEach(async () => {
+		await db.delete(appSettings);
+	});
+
+	function createWrappedLogoModeRequest(logoMode: string): Request {
+		const formData = new FormData();
+		formData.set('logoMode', logoMode);
+
+		return new Request('http://localhost/admin/settings?/updateWrappedLogoMode', {
+			method: 'POST',
+			body: formData
+		});
+	}
+
+	async function runUpdateWrappedLogoMode(request: Request) {
+		const handler = actions.updateWrappedLogoMode as UpdateWrappedLogoModeAction;
+		return handler({ request, locals: adminLocals } as Parameters<UpdateWrappedLogoModeAction>[0]);
+	}
+
+	for (const logoMode of [
+		WrappedLogoMode.ALWAYS_SHOW,
+		WrappedLogoMode.ALWAYS_HIDE,
+		WrappedLogoMode.USER_CHOICE
+	]) {
+		it(`persists logo mode ${logoMode}`, async () => {
+			await expect(
+				runUpdateWrappedLogoMode(createWrappedLogoModeRequest(logoMode))
+			).resolves.toMatchObject({
+				success: true,
+				message: 'Logo visibility mode updated'
+			});
+
+			expect(await getWrappedLogoMode()).toBe(logoMode);
+		});
+	}
 });

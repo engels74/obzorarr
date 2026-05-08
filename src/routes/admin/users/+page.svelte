@@ -100,16 +100,16 @@ function getShareModeLabel(mode: string | null, source: string | null): string {
 						{#each data.users as user (user.id)}
 							<tr>
 								<td>
-									<div class="user-cell">
-										<a href={user.wrappedHref} class="user-avatar-link">
-											{#if user.thumb}
-												<img src={user.thumb} alt="" class="user-avatar" />
-											{:else}
-												<span class="user-avatar placeholder">&#9787;</span>
-											{/if}
-										</a>
-										<div class="user-info">
-											<a href={user.wrappedHref} class="user-name">
+										<div class="user-cell">
+											<span class="user-avatar-link" aria-hidden="true">
+												{#if user.thumb}
+													<img src={user.thumb} alt="" class="user-avatar" />
+												{:else}
+													<span class="user-avatar placeholder">&#9787;</span>
+												{/if}
+											</span>
+											<div class="user-info">
+												<a href={user.wrappedHref} class="user-name">
 												{user.username}
 												{#if user.isAdmin}
 													<span class="admin-badge">Admin</span>
@@ -179,17 +179,17 @@ function getShareModeLabel(mode: string | null, source: string | null): string {
 			</div>
 			<div class="mobile-users-list">
 				{#each data.users as user (user.id)}
-					<div class="mobile-user-row">
-						<div class="mobile-user-main">
-							<a href={user.wrappedHref} class="user-avatar-link">
-								{#if user.thumb}
-									<img src={user.thumb} alt="" class="user-avatar" />
-								{:else}
-									<span class="user-avatar placeholder">&#9787;</span>
-								{/if}
-							</a>
-							<div class="user-info">
-								<a href={user.wrappedHref} class="user-name">
+							<div class="mobile-user-row">
+							<div class="mobile-user-main">
+								<span class="user-avatar-link" aria-hidden="true">
+									{#if user.thumb}
+										<img src={user.thumb} alt="" class="user-avatar" />
+									{:else}
+										<span class="user-avatar placeholder">&#9787;</span>
+									{/if}
+								</span>
+								<div class="user-info">
+									<a href={user.wrappedHref} class="user-name">
 									{user.username}
 									{#if user.isAdmin}
 										<span class="admin-badge">Admin</span>
@@ -423,10 +423,15 @@ function getShareModeLabel(mode: string | null, source: string | null): string {
 			gap: 0.75rem;
 		}
 
-		.user-avatar-link,
-		.user-name {
-			text-decoration: none;
-		}
+			.user-avatar-link,
+			.user-name {
+				text-decoration: none;
+			}
+
+			.user-avatar-link {
+				display: inline-flex;
+				flex: 0 0 auto;
+			}
 
 		.user-avatar {
 			width: 36px;

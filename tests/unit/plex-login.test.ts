@@ -53,6 +53,76 @@ describe('sanitizeCompletedLoginResponse', () => {
 			expect(responseText).not.toContain(forbidden);
 		}
 	});
+
+	it('strips provider auth payload fields from AUTH_COMPLETE-shaped responses', () => {
+		const sanitized = sanitizeCompletedLoginResponse({
+			type: 'AUTH_COMPLETE',
+			authToken: 'plex-auth-token',
+			token: 'provider-token',
+			secret: 'provider-secret',
+			user: {
+				id: 7,
+				uuid: 'raw-plex-uuid',
+				plexId: '123456',
+				username: 'owner',
+				email: 'owner@example.com',
+				isAdmin: false,
+				authToken: 'nested-auth-token',
+				services: [
+					{
+						identifier: 'server-resource',
+						token: 'service-token',
+						secret: 'service-secret'
+					}
+				]
+			},
+			resources: [
+				{
+					name: 'Plex Server',
+					clientIdentifier: 'server-client-id',
+					accessToken: 'server-access-token'
+				}
+			],
+			redirectTo: '/dashboard'
+		});
+
+		expect(sanitized).toEqual({
+			user: {
+				username: 'owner',
+				isAdmin: false
+			},
+			redirectTo: '/dashboard'
+		});
+
+		const responseText = JSON.stringify(sanitized);
+		for (const forbidden of [
+			'AUTH_COMPLETE',
+			'authToken',
+			'token',
+			'secret',
+			'email',
+			'services',
+			'plexId',
+			'uuid',
+			'id',
+			'resources',
+			'clientIdentifier',
+			'accessToken',
+			'plex-auth-token',
+			'provider-token',
+			'provider-secret',
+			'nested-auth-token',
+			'service-token',
+			'service-secret',
+			'server-access-token',
+			'server-client-id',
+			'owner@example.com',
+			'123456',
+			'raw-plex-uuid'
+		]) {
+			expect(responseText).not.toContain(forbidden);
+		}
+	});
 });
 
 interface MemoryStorage {

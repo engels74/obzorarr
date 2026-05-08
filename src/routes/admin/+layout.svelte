@@ -110,7 +110,7 @@ function handleCsrfWarningDismissed() {
 
 <div class="admin-layout">
 	<!-- Mobile header -->
-	<header class="mobile-header">
+		<header class="mobile-header" class:sidebar-open={sidebarOpen}>
 		<button
 			type="button"
 			class="menu-button"
@@ -148,15 +148,23 @@ function handleCsrfWarningDismissed() {
 		inert={sidebarHiddenFromMobile}
 		aria-hidden={sidebarHiddenFromMobile ? 'true' : undefined}
 	>
-		<div class="sidebar-header">
-			<div class="sidebar-branding">
-				<Logo size="md" />
-				<div class="sidebar-text">
-					<h2 class="sidebar-title">Obzorarr</h2>
-					<span class="sidebar-subtitle">Admin Panel</span>
+			<div class="sidebar-header">
+				<div class="sidebar-branding">
+					<Logo size="md" />
+					<div class="sidebar-text">
+						<h2 class="sidebar-title">Obzorarr</h2>
+						<span class="sidebar-subtitle">Admin Panel</span>
+					</div>
 				</div>
+				<button
+					type="button"
+					class="sidebar-close-button"
+					onclick={closeSidebar}
+					aria-label="Close navigation"
+				>
+					<X class="sidebar-close-icon" />
+				</button>
 			</div>
-		</div>
 
 		<nav class="sidebar-nav" aria-label="Admin navigation">
 			<ul class="nav-list">
@@ -312,38 +320,76 @@ function handleCsrfWarningDismissed() {
 			z-index: 50;
 		}
 
-		.sidebar-header {
-			padding: 1.25rem 1.5rem;
-			border-bottom: 1px solid hsl(var(--border) / 0.5);
-		}
+			.sidebar-header {
+				padding: 1.25rem 1.5rem;
+				border-bottom: 1px solid hsl(var(--border) / 0.5);
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 0.75rem;
+				min-width: 0;
+			}
 
-		.sidebar-branding {
-			display: flex;
-			align-items: center;
-			gap: 0.75rem;
-		}
+			.sidebar-branding {
+				display: flex;
+				align-items: center;
+				gap: 0.75rem;
+				flex: 1;
+				min-width: 0;
+			}
 
-		.sidebar-text {
-			display: flex;
-			flex-direction: column;
-		}
+			.sidebar-text {
+				display: flex;
+				flex-direction: column;
+				min-width: 0;
+			}
 
-		.sidebar-title {
-			font-size: 1.25rem;
-			font-weight: 700;
+			.sidebar-title {
+				font-size: 1.25rem;
+				font-weight: 700;
 			color: hsl(var(--primary));
-			margin: 0;
-			line-height: 1.2;
-			letter-spacing: -0.01em;
-		}
+				margin: 0;
+				line-height: 1.2;
+				letter-spacing: 0;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+			}
 
-		.sidebar-subtitle {
-			font-size: 0.6875rem;
-			color: hsl(var(--muted-foreground));
-			text-transform: uppercase;
-			letter-spacing: 0.08em;
-			margin-top: 0.125rem;
-		}
+			.sidebar-subtitle {
+				font-size: 0.6875rem;
+				color: hsl(var(--muted-foreground));
+				text-transform: uppercase;
+				letter-spacing: 0.08em;
+				margin-top: 0.125rem;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+			}
+
+			.sidebar-close-button {
+				display: none;
+				align-items: center;
+				justify-content: center;
+				width: 2.25rem;
+				height: 2.25rem;
+				flex: 0 0 2.25rem;
+				background: transparent;
+				border: 1px solid hsl(var(--border) / 0.6);
+				color: hsl(var(--foreground));
+				cursor: pointer;
+				border-radius: 0.5rem;
+				transition: all 0.2s ease;
+			}
+
+			.sidebar-close-button:hover {
+				background: hsl(var(--muted));
+			}
+
+			.sidebar-close-button :global(.sidebar-close-icon) {
+				width: 1rem;
+				height: 1rem;
+			}
 
 		.sidebar-nav {
 			flex: 1;
@@ -537,13 +583,18 @@ function handleCsrfWarningDismissed() {
 		   main-content left margin, so content fills the viewport without horizontal
 		   scroll at smaller widths. */
 		@media (max-width: 768px) {
-			.mobile-header {
-				display: flex;
-			}
+				.mobile-header {
+					display: flex;
+				}
 
-			.sidebar-overlay {
-				display: block;
-			}
+				.mobile-header.sidebar-open {
+					visibility: hidden;
+					pointer-events: none;
+				}
+
+				.sidebar-overlay {
+					display: block;
+				}
 
 			.sidebar {
 				transform: translateX(-100%);
@@ -554,12 +605,16 @@ function handleCsrfWarningDismissed() {
 					visibility 0s linear 0.3s;
 			}
 
-			.sidebar.open {
-				transform: translateX(0);
-				visibility: visible;
-				pointer-events: auto;
-				transition-delay: 0s;
-			}
+				.sidebar.open {
+					transform: translateX(0);
+					visibility: visible;
+					pointer-events: auto;
+					transition-delay: 0s;
+				}
+
+				.sidebar-close-button {
+					display: flex;
+				}
 
 			.main-content {
 				margin-left: 0;

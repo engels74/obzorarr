@@ -39,6 +39,7 @@ import Users from '@lucide/svelte/icons/users';
 import VenetianMask from '@lucide/svelte/icons/venetian-mask';
 import X from '@lucide/svelte/icons/x';
 import Zap from '@lucide/svelte/icons/zap';
+import { type Component, untrack } from 'svelte';
 import { deserialize, enhance } from '$app/forms';
 import { goto } from '$app/navigation';
 import { page } from '$app/stores';
@@ -77,6 +78,7 @@ function selectTab(value: TabValue) {
  */
 
 let { data, form }: { data: PageData; form: ActionData } = $props();
+type WrappedLogoModeValue = PageData['wrappedLogoOptions'][number]['value'];
 
 // Local form state (initialized and synced via $effect)
 let plexServerUrl = $state('');
@@ -90,7 +92,8 @@ let showOpenaiKey = $state(false);
 let selectedUITheme = $state('');
 let selectedWrappedTheme = $state('');
 let selectedAnonymization = $state('');
-let selectedWrappedLogoMode = $state('');
+let selectedWrappedLogoMode = $state<WrappedLogoModeValue>(untrack(() => data.wrappedLogoMode));
+let syncedWrappedLogoMode = $state<WrappedLogoModeValue>(untrack(() => data.wrappedLogoMode));
 let isTesting = $state(false);
 let testConnectionResult = $state<{ type: 'success' | 'error'; message: string } | null>(null);
 let isTestingAI = $state(false);
@@ -200,13 +203,20 @@ $effect(() => {
 	selectedUITheme = data.uiTheme;
 	selectedWrappedTheme = data.wrappedTheme;
 	selectedAnonymization = data.anonymizationMode;
-	selectedWrappedLogoMode = data.wrappedLogoMode;
 	logRetentionDays = data.logSettings.retentionDays;
 	logMaxCount = data.logSettings.maxCount;
 	logDebugEnabled = data.logSettings.debugEnabled;
 	selectedServerWrappedMode = data.serverWrappedShareMode;
 	selectedDefaultShareMode = data.globalDefaults.defaultShareMode;
 	allowUserControl = data.globalDefaults.allowUserControl;
+});
+
+$effect(() => {
+	const serverWrappedLogoMode = data.wrappedLogoMode;
+	if (serverWrappedLogoMode === syncedWrappedLogoMode) return;
+
+	selectedWrappedLogoMode = serverWrappedLogoMode;
+	syncedWrappedLogoMode = serverWrappedLogoMode;
 });
 
 // Source label helper
@@ -238,11 +248,21 @@ const anonymizationDescriptions: Record<string, string> = {
 };
 
 // Wrapped logo mode descriptions
-const wrappedLogoDescriptions: Record<string, string> = {
+const wrappedLogoDescriptions: Record<WrappedLogoModeValue, string> = {
 	always_show: 'Logo always visible on wrapped pages',
 	always_hide: 'Logo hidden on all wrapped pages',
 	user_choice: 'Users can toggle logo visibility'
 };
+
+const wrappedLogoIcons: Record<WrappedLogoModeValue, Component> = {
+	always_show: Image,
+	always_hide: ImageOff,
+	user_choice: ToggleRight
+};
+
+function selectWrappedLogoMode(mode: WrappedLogoModeValue): void {
+	selectedWrappedLogoMode = mode;
+}
 
 // Show toast notifications for form responses
 $effect(() => {
@@ -1120,74 +1140,37 @@ const logFieldErrors = $derived(
 						Control logo visibility on Year in Review slideshow pages.
 					</p>
 
-					<form method="POST" action="?/updateWrappedLogoMode" use:enhance>
-						<div class="option-cards">
-							<label
-								class="option-card"
-								class:selected={selectedWrappedLogoMode === 'always_show'}
-							>
-								<input
-									type="radio"
-									name="logoMode"
-									value="always_show"
-									bind:group={selectedWrappedLogoMode}
-								/>
-								<div class="option-icon">
-									<Image />
-								</div>
-								<div class="option-content">
-									<span class="option-title">Always Show</span>
-									<span class="option-desc">{wrappedLogoDescriptions.always_show}</span>
-								</div>
-								{#if selectedWrappedLogoMode === 'always_show'}
-									<div class="option-check"><Check /></div>
-								{/if}
-							</label>
-
-							<label
-								class="option-card"
-								class:selected={selectedWrappedLogoMode === 'always_hide'}
-							>
-								<input
-									type="radio"
-									name="logoMode"
-									value="always_hide"
-									bind:group={selectedWrappedLogoMode}
-								/>
-								<div class="option-icon">
-									<ImageOff />
-								</div>
-								<div class="option-content">
-									<span class="option-title">Always Hide</span>
-									<span class="option-desc">{wrappedLogoDescriptions.always_hide}</span>
-								</div>
-								{#if selectedWrappedLogoMode === 'always_hide'}
-									<div class="option-check"><Check /></div>
-								{/if}
-							</label>
-
-							<label
-								class="option-card"
-								class:selected={selectedWrappedLogoMode === 'user_choice'}
-							>
-								<input
-									type="radio"
-									name="logoMode"
-									value="user_choice"
-									bind:group={selectedWrappedLogoMode}
-								/>
-								<div class="option-icon">
-									<ToggleRight />
-								</div>
-								<div class="option-content">
-									<span class="option-title">User Choice</span>
-									<span class="option-desc">{wrappedLogoDescriptions.user_choice}</span>
-								</div>
-								{#if selectedWrappedLogoMode === 'user_choice'}
-									<div class="option-check"><Check /></div>
-								{/if}
-							</label>
-						</div>
+						<form method="POST" action="?/updateWrappedLogoMode" use:enhance>
+							<div class="option-cards">
+								{#each data.wrappedLogoOptions as option}
+									{@const optionId = `wrapped-logo-mode-${option.value}`}
+									{@const LogoModeIcon = wrappedLogoIcons[option.value] ?? ToggleRight}
+									<label
+										for={optionId}
+										class="option-card"
+										class:selected={selectedWrappedLogoMode === option.value}
+									>
+										<input
+											id={optionId}
+											type="radio"
+											name="logoMode"
+											value={option.value}
+											checked={selectedWrappedLogoMode === option.value}
+											onchange={() => selectWrappedLogoMode(option.value)}
+										/>
+										<div class="option-icon">
+											<LogoModeIcon />
+										</div>
+										<div class="option-content">
+											<span class="option-title">{option.label}</span>
+											<span class="option-desc">{wrappedLogoDescriptions[option.value]}</span>
+										</div>
+										{#if selectedWrappedLogoMode === option.value}
+											<div class="option-check"><Check /></div>
+										{/if}
+									</label>
+								{/each}
+							</div>
 						<div class="panel-actions">
 							<button type="submit" class="btn-primary">
 								<Image class="btn-icon" />
