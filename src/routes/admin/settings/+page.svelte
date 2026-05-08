@@ -1140,7 +1140,18 @@ const logFieldErrors = $derived(
 						Control logo visibility on Year in Review slideshow pages.
 					</p>
 
-						<form method="POST" action="?/updateWrappedLogoMode" use:enhance>
+						<form
+							method="POST"
+							action="?/updateWrappedLogoMode"
+							use:enhance={() => {
+								return async ({ result, update }) => {
+									await update();
+									if (result.type === 'failure') {
+										selectedWrappedLogoMode = syncedWrappedLogoMode;
+									}
+								};
+							}}
+						>
 							<div class="option-cards">
 								{#each data.wrappedLogoOptions as option}
 									{@const optionId = `wrapped-logo-mode-${option.value}`}

@@ -11,7 +11,7 @@ import Settings from '@lucide/svelte/icons/settings';
 import User from '@lucide/svelte/icons/user';
 import Users from '@lucide/svelte/icons/users';
 import X from '@lucide/svelte/icons/x';
-import type { Component, Snippet } from 'svelte';
+import { type Component, type Snippet, tick } from 'svelte';
 import { browser } from '$app/environment';
 import { enhance } from '$app/forms';
 import { invalidateAll } from '$app/navigation';
@@ -62,6 +62,7 @@ let sidebarOpen = $state(false);
 let isMobileSidebar = $state(false);
 let sidebarHiddenFromMobile = $derived(isMobileSidebar && !sidebarOpen);
 let adminAvatarError = $state(false);
+let sidebarCloseButton: HTMLButtonElement | undefined;
 
 $effect(() => {
 	if (!browser) return;
@@ -94,8 +95,13 @@ $effect(() => {
 	}
 });
 
-function toggleSidebar() {
+async function toggleSidebar() {
 	sidebarOpen = !sidebarOpen;
+
+	if (sidebarOpen && isMobileSidebar) {
+		await tick();
+		sidebarCloseButton?.focus();
+	}
 }
 
 function closeSidebar() {
@@ -159,6 +165,7 @@ function handleCsrfWarningDismissed() {
 				<button
 					type="button"
 					class="sidebar-close-button"
+					bind:this={sidebarCloseButton}
 					onclick={closeSidebar}
 					aria-label="Close navigation"
 				>

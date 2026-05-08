@@ -126,7 +126,7 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain('pointer-events: none;');
 		expect(source).toContain('min-width: 0;');
 		expect(source).toContain('text-overflow: ellipsis;');
-		expect(source).not.toContain('</a>\n\t\t\t\t\t\t\t</a>');
+		expect(source).not.toMatch(/<a\b[^>]*>(?:(?!<\/a>).)*<a\b/s);
 	});
 
 	it('renders user avatars as decorative non-link artwork', async () => {
