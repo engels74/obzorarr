@@ -367,9 +367,9 @@ describe('admin updateWrappedLogoMode action', () => {
 		await db.delete(appSettings);
 	});
 
-	function createWrappedLogoModeRequest(logoMode: string): Request {
+	function createWrappedLogoModeRequest(logoMode?: string): Request {
 		const formData = new FormData();
-		formData.set('logoMode', logoMode);
+		if (logoMode !== undefined) formData.set('logoMode', logoMode);
 
 		return new Request('http://localhost/admin/settings?/updateWrappedLogoMode', {
 			method: 'POST',
@@ -398,4 +398,32 @@ describe('admin updateWrappedLogoMode action', () => {
 			expect(await getWrappedLogoMode()).toBe(logoMode);
 		});
 	}
+
+	it('rejects invalid logo mode without persisting a change', async () => {
+		await setAppSetting(AppSettingsKey.WRAPPED_LOGO_MODE, WrappedLogoMode.ALWAYS_HIDE);
+
+		const result = await runUpdateWrappedLogoMode(createWrappedLogoModeRequest('invalid'));
+
+		expect(result).toMatchObject({
+			status: 400,
+			data: {
+				error: 'Invalid logo mode'
+			}
+		});
+		expect(await getWrappedLogoMode()).toBe(WrappedLogoMode.ALWAYS_HIDE);
+	});
+
+	it('rejects missing logo mode without persisting a change', async () => {
+		await setAppSetting(AppSettingsKey.WRAPPED_LOGO_MODE, WrappedLogoMode.ALWAYS_HIDE);
+
+		const result = await runUpdateWrappedLogoMode(createWrappedLogoModeRequest());
+
+		expect(result).toMatchObject({
+			status: 400,
+			data: {
+				error: 'Invalid logo mode'
+			}
+		});
+		expect(await getWrappedLogoMode()).toBe(WrappedLogoMode.ALWAYS_HIDE);
+	});
 });

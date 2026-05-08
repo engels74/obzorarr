@@ -62,6 +62,7 @@ let sidebarOpen = $state(false);
 let isMobileSidebar = $state(false);
 let sidebarHiddenFromMobile = $derived(isMobileSidebar && !sidebarOpen);
 let adminAvatarError = $state(false);
+let mobileMenuButton: HTMLButtonElement | undefined;
 let sidebarCloseButton: HTMLButtonElement | undefined;
 
 $effect(() => {
@@ -104,8 +105,13 @@ async function toggleSidebar() {
 	}
 }
 
-function closeSidebar() {
+async function closeSidebar() {
 	sidebarOpen = false;
+
+	if (isMobileSidebar) {
+		await tick();
+		mobileMenuButton?.focus();
+	}
 }
 
 function handleCsrfWarningDismissed() {
@@ -120,6 +126,7 @@ function handleCsrfWarningDismissed() {
 		<button
 			type="button"
 			class="menu-button"
+			bind:this={mobileMenuButton}
 			onclick={toggleSidebar}
 			aria-label="Toggle navigation"
 		>
