@@ -82,6 +82,10 @@ describe('admin UI source regressions', () => {
 
 		expect(source).toContain('function trapEditorFocus(event: KeyboardEvent)');
 		expect(source).toContain("if (event.key !== 'Tab') return;");
+		expect(source).toContain('!event.shiftKey &&');
+		expect(source).toContain(
+			'(activeElement === last || !editorModalRef?.contains(activeElement))'
+		);
 		expect(source).toContain('bind:this={editorTitleInputRef}');
 		expect(source).toContain('queueMicrotask(() => editorTitleInputRef?.focus());');
 		expect(source).toContain('queueMicrotask(() => trigger?.focus());');

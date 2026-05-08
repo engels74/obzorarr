@@ -107,7 +107,10 @@ function trapEditorFocus(event: KeyboardEvent) {
 	if (event.shiftKey && (activeElement === first || !editorModalRef?.contains(activeElement))) {
 		event.preventDefault();
 		last?.focus();
-	} else if (!event.shiftKey && activeElement === last) {
+	} else if (
+		!event.shiftKey &&
+		(activeElement === last || !editorModalRef?.contains(activeElement))
+	) {
 		event.preventDefault();
 		first?.focus();
 	}
