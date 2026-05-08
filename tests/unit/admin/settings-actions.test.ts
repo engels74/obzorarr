@@ -302,6 +302,32 @@ describe('admin updateTrustProxy action', () => {
 		}
 	});
 
+	it('rejects malformed risk confirmation with a specific validation message', async () => {
+		try {
+			const formData = new FormData();
+			formData.set('enabled', 'true');
+			formData.set('confirmRisk', 'false');
+
+			const result = await runUpdateTrustProxy(
+				new Request('http://localhost/admin/settings?/updateTrustProxy', {
+					method: 'POST',
+					body: formData
+				})
+			);
+
+			expect(result).toMatchObject({
+				status: 400,
+				data: {
+					error:
+						'Invalid input: enabled must be "true" or "false"; confirmRisk must be "true" when provided'
+				}
+			});
+			expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBeNull();
+		} finally {
+			restoreTrustProxyEnv();
+		}
+	});
+
 	it('persists trust_proxy=true when enabling with risk confirmation', async () => {
 		try {
 			const result = await runUpdateTrustProxy(createTrustProxyRequest(true, true));

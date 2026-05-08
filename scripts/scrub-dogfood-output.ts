@@ -169,7 +169,7 @@ async function main(): Promise<void> {
 				await rename(filePath, pathResult.filePath);
 				currentPath = pathResult.filePath;
 			}
-			findings.push({ file: currentPath, keys: pathResult.keys, type: 'filename' });
+			findings.push({ file: pathResult.filePath, keys: pathResult.keys, type: 'filename' });
 		}
 
 		if (!(await isLikelyTextFile(currentPath))) continue;

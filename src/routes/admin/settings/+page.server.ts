@@ -1117,7 +1117,10 @@ export const actions: Actions = requireAdminActions({
 			confirmRisk: formData.get('confirmRisk') ?? undefined
 		});
 		if (!parsed.success) {
-			return fail(400, { error: 'Invalid input: enabled must be "true" or "false"' });
+			return fail(400, {
+				error:
+					'Invalid input: enabled must be "true" or "false"; confirmRisk must be "true" when provided'
+			});
 		}
 		const enabled = parsed.data.enabled;
 		if (enabled && parsed.data.confirmRisk !== 'true') {
