@@ -1145,9 +1145,12 @@ const logFieldErrors = $derived(
 							action="?/updateWrappedLogoMode"
 							use:enhance={() => {
 								return async ({ result, update }) => {
-									await update();
-									if (result.type === 'failure' || result.type === 'error') {
-										selectedWrappedLogoMode = syncedWrappedLogoMode;
+									try {
+										await update();
+									} finally {
+										if (result.type === 'failure' || result.type === 'error') {
+											selectedWrappedLogoMode = syncedWrappedLogoMode;
+										}
 									}
 								};
 							}}
