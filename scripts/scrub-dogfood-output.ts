@@ -23,8 +23,16 @@ const TEXT_EXTENSIONS = new Set([
 	'.yml'
 ]);
 
-const envPath = path.resolve(process.cwd(), process.env.DOGFOOD_ENV_PATH ?? '.env');
-const outputRoot = path.resolve(process.cwd(), process.env.DOGFOOD_OUTPUT_ROOT ?? 'dogfood-output');
+function resolveConfiguredPath(envKey: string, fallback: string): string {
+	const configuredPath = process.env[envKey];
+	return path.resolve(
+		process.cwd(),
+		configuredPath === '' || configuredPath === undefined ? fallback : configuredPath
+	);
+}
+
+const envPath = resolveConfiguredPath('DOGFOOD_ENV_PATH', '.env');
+const outputRoot = resolveConfiguredPath('DOGFOOD_OUTPUT_ROOT', 'dogfood-output');
 const writeChanges = Bun.argv.includes('--write');
 
 type Secret = {
@@ -139,12 +147,13 @@ function redactedPath(filePath: string, secrets: Secret[]): { filePath: string; 
 
 async function main(): Promise<void> {
 	const envFile = Bun.file(envPath);
-	if (!(await envFile.exists())) {
-		console.error('No .env file found; cannot compare dogfood artifacts against runtime secrets.');
-		process.exit(1);
+	const hasEnvFile = await envFile.exists();
+	const envValues = hasEnvFile ? parseEnv(await envFile.text()) : new Map<string, string>();
+
+	if (!hasEnvFile) {
+		console.warn('No .env file found; continuing with dynamic redactions only.');
 	}
 
-	const envValues = parseEnv(await envFile.text());
 	const secrets = SECRET_KEYS.map((key) => {
 		const value = envValues.get(key)?.trim() ?? '';
 		return value ? { key, value, placeholder: `<${key}>`, pathPlaceholder: `__${key}__` } : null;
@@ -152,7 +161,7 @@ async function main(): Promise<void> {
 		.filter((secret): secret is Secret => secret !== null)
 		.sort((a, b) => b.value.length - a.value.length);
 
-	if (secrets.length === 0) {
+	if (hasEnvFile && secrets.length === 0) {
 		console.warn('No configured secret values found in .env; continuing with dynamic redactions.');
 	}
 
