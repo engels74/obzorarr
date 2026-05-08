@@ -93,7 +93,7 @@ describe('createSessionFromPlexToken', () => {
 				email: 'alice@example.com',
 				thumb: 'https://plex.example/avatar.png',
 				authToken: 'plex-user-token-from-profile',
-				services: [{ identifier: 'metadata-provider' }]
+				services: [{ identifier: 'metadata-provider', secret: 'service-secret' }]
 			})
 		];
 	});
@@ -122,6 +122,8 @@ describe('createSessionFromPlexToken', () => {
 		const responseText = JSON.stringify(result);
 		for (const forbidden of [
 			'authToken',
+			'token',
+			'secret',
 			'plexToken',
 			'plexId',
 			'email',
@@ -135,6 +137,7 @@ describe('createSessionFromPlexToken', () => {
 		}
 		expect(responseText).not.toContain('secret-auth-token');
 		expect(responseText).not.toContain('plex-user-token-from-profile');
+		expect(responseText).not.toContain('service-secret');
 	});
 
 	it('rejects first-admin creation during fresh onboarding without an active setup claim', async () => {

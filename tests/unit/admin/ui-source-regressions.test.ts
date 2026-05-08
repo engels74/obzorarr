@@ -38,6 +38,22 @@ describe('admin UI source regressions', () => {
 		expect(source).not.toContain('role="button"');
 	});
 
+	it('labels mobile settings tab buttons and exposes their active state', async () => {
+		const source = await readSource('src/routes/admin/settings/+page.svelte');
+
+		expect(source).toContain('aria-label={`Open $' + '{tab.label} settings`}');
+		expect(source).toContain('aria-pressed={activeTab === tab.value}');
+		expect(source).toContain("aria-current={activeTab === tab.value ? 'page' : undefined}");
+	});
+
+	it('requires confirmation before enabling reverse-proxy header trust', async () => {
+		const source = await readSource('src/routes/admin/settings/+page.svelte');
+
+		expect(source).toContain('bind:open={trustProxyConfirmDialogOpen}');
+		expect(source).toContain('name="confirmRisk" value="true"');
+		expect(source).toContain('Enable reverse-proxy header trust?');
+	});
+
 	it('keeps the users table desktop-only and renders a mobile list', async () => {
 		const source = await readSource('src/routes/admin/users/+page.svelte');
 
@@ -59,6 +75,18 @@ describe('admin UI source regressions', () => {
 			'syncedFrequencyKey = `$' + '{frequency.mode}:$' + '{frequency.count}`;'
 		);
 		expect(source).not.toContain('class="frequency-options" onclick');
+	});
+
+	it('traps focus in the custom slide modal and marks page content inert', async () => {
+		const source = await readSource('src/routes/admin/slides/+page.svelte');
+
+		expect(source).toContain('function trapEditorFocus(event: KeyboardEvent)');
+		expect(source).toContain("if (event.key !== 'Tab') return;");
+		expect(source).toContain('bind:this={editorTitleInputRef}');
+		expect(source).toContain('queueMicrotask(() => editorTitleInputRef?.focus());');
+		expect(source).toContain('queueMicrotask(() => trigger?.focus());');
+		expect(source).toContain('inert={showEditor}');
+		expect(source).toContain("aria-hidden={showEditor ? 'true' : undefined}");
 	});
 
 	it('marks onboarding theme swatches as pressed when selected', async () => {

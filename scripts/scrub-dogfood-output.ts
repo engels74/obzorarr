@@ -23,8 +23,8 @@ const TEXT_EXTENSIONS = new Set([
 	'.yml'
 ]);
 
-const envPath = path.resolve(process.cwd(), '.env');
-const outputRoot = path.resolve(process.cwd(), 'dogfood-output');
+const envPath = path.resolve(process.cwd(), process.env.DOGFOOD_ENV_PATH ?? '.env');
+const outputRoot = path.resolve(process.cwd(), process.env.DOGFOOD_OUTPUT_ROOT ?? 'dogfood-output');
 const writeChanges = Bun.argv.includes('--write');
 
 type Secret = {
@@ -33,6 +33,8 @@ type Secret = {
 	placeholder: string;
 	pathPlaceholder: string;
 };
+
+type RedactionResult = { text: string; keys: string[] };
 
 function parseEnv(content: string): Map<string, string> {
 	const values = new Map<string, string>();
@@ -56,7 +58,30 @@ function parseEnv(content: string): Map<string, string> {
 	return values;
 }
 
-function redactText(text: string, secrets: Secret[]): { text: string; keys: string[] } {
+function redactDynamicDogfoodSecrets(text: string): RedactionResult {
+	let redacted = text;
+	const found = new Set<string>();
+
+	const bootstrapTokenPattern = /Bootstrap token:\s+[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}/gi;
+	if (bootstrapTokenPattern.test(redacted)) {
+		redacted = redacted.replace(bootstrapTokenPattern, 'Bootstrap token: <BOOTSTRAP_TOKEN>');
+		found.add('BOOTSTRAP_TOKEN');
+	}
+
+	const claimCookiePatterns: Array<[RegExp, string]> = [
+		[/(\bobzorarr_onboarding_claim=)[^;\s"'`]+/g, '$1<ONBOARDING_CLAIM_COOKIE>'],
+		[/(["']obzorarr_onboarding_claim["']\s*:\s*["'])[^"']+(["'])/g, '$1<ONBOARDING_CLAIM_COOKIE>$2']
+	];
+	for (const [pattern, replacement] of claimCookiePatterns) {
+		if (!pattern.test(redacted)) continue;
+		redacted = redacted.replace(pattern, replacement);
+		found.add('ONBOARDING_CLAIM_COOKIE');
+	}
+
+	return { text: redacted, keys: [...found] };
+}
+
+function redactText(text: string, secrets: Secret[]): RedactionResult {
 	let redacted = text;
 	const found = new Set<string>();
 
@@ -65,6 +90,10 @@ function redactText(text: string, secrets: Secret[]): { text: string; keys: stri
 		redacted = redacted.split(secret.value).join(secret.placeholder);
 		found.add(secret.key);
 	}
+
+	const dynamicResult = redactDynamicDogfoodSecrets(redacted);
+	redacted = dynamicResult.text;
+	for (const key of dynamicResult.keys) found.add(key);
 
 	return { text: redacted, keys: [...found] };
 }
@@ -108,64 +137,70 @@ function redactedPath(filePath: string, secrets: Secret[]): { filePath: string; 
 	return { filePath: path.join(outputRoot, nextPath), keys: [...found] };
 }
 
-const envFile = Bun.file(envPath);
-if (!(await envFile.exists())) {
-	console.error('No .env file found; cannot compare dogfood artifacts against runtime secrets.');
-	process.exit(1);
-}
+async function main(): Promise<void> {
+	const envFile = Bun.file(envPath);
+	if (!(await envFile.exists())) {
+		console.error('No .env file found; cannot compare dogfood artifacts against runtime secrets.');
+		process.exit(1);
+	}
 
-const envValues = parseEnv(await envFile.text());
-const secrets = SECRET_KEYS.map((key) => {
-	const value = envValues.get(key)?.trim() ?? '';
-	return value ? { key, value, placeholder: `<${key}>`, pathPlaceholder: `__${key}__` } : null;
-})
-	.filter((secret): secret is Secret => secret !== null)
-	.sort((a, b) => b.value.length - a.value.length);
+	const envValues = parseEnv(await envFile.text());
+	const secrets = SECRET_KEYS.map((key) => {
+		const value = envValues.get(key)?.trim() ?? '';
+		return value ? { key, value, placeholder: `<${key}>`, pathPlaceholder: `__${key}__` } : null;
+	})
+		.filter((secret): secret is Secret => secret !== null)
+		.sort((a, b) => b.value.length - a.value.length);
 
-if (secrets.length === 0) {
-	console.error('No configured secret values found in .env.');
-	process.exit(1);
-}
+	if (secrets.length === 0) {
+		console.error('No configured secret values found in .env.');
+		process.exit(1);
+	}
 
-const files = await listFiles(outputRoot);
-const findings: Array<{ file: string; keys: string[]; type: 'content' | 'filename' }> = [];
+	const files = await listFiles(outputRoot);
+	const findings: Array<{ file: string; keys: string[]; type: 'content' | 'filename' }> = [];
 
-for (const filePath of files) {
-	let currentPath = filePath;
-	const pathResult = redactedPath(filePath, secrets);
-	if (pathResult.keys.length > 0) {
-		if (writeChanges) {
-			await mkdir(path.dirname(pathResult.filePath), { recursive: true });
-			await rename(filePath, pathResult.filePath);
-			currentPath = pathResult.filePath;
+	for (const filePath of files) {
+		let currentPath = filePath;
+		const pathResult = redactedPath(filePath, secrets);
+		if (pathResult.keys.length > 0) {
+			if (writeChanges) {
+				await mkdir(path.dirname(pathResult.filePath), { recursive: true });
+				await rename(filePath, pathResult.filePath);
+				currentPath = pathResult.filePath;
+			}
+			findings.push({ file: currentPath, keys: pathResult.keys, type: 'filename' });
 		}
-		findings.push({ file: currentPath, keys: pathResult.keys, type: 'filename' });
+
+		if (!(await isLikelyTextFile(currentPath))) continue;
+
+		const original = await Bun.file(currentPath).text();
+		const result = redactText(original, secrets);
+		if (result.keys.length === 0) continue;
+
+		findings.push({ file: currentPath, keys: result.keys, type: 'content' });
+		if (writeChanges) {
+			await writeFile(currentPath, result.text);
+		}
 	}
 
-	if (!(await isLikelyTextFile(currentPath))) continue;
+	if (findings.length === 0) {
+		console.log('No configured .env secrets found in dogfood-output text artifacts or filenames.');
+		process.exit(0);
+	}
 
-	const original = await Bun.file(currentPath).text();
-	const result = redactText(original, secrets);
-	if (result.keys.length === 0) continue;
+	for (const finding of findings) {
+		console.log(
+			`${writeChanges ? 'Redacted' : 'Found'} ${finding.type} secret(s) ${finding.keys.join(', ')} in ${path.relative(process.cwd(), finding.file)}`
+		);
+	}
 
-	findings.push({ file: currentPath, keys: result.keys, type: 'content' });
-	if (writeChanges) {
-		await writeFile(currentPath, result.text);
+	if (!writeChanges) {
+		console.error('Run `bun run dogfood:scrub -- --write` to redact text artifacts.');
+		process.exit(1);
 	}
 }
 
-if (findings.length === 0) {
-	console.log('No configured .env secrets found in dogfood-output text artifacts or filenames.');
-	process.exit(0);
-}
-
-for (const finding of findings) {
-	console.log(
-		`${writeChanges ? 'Redacted' : 'Found'} ${finding.type} secret(s) ${finding.keys.join(', ')} in ${path.relative(process.cwd(), finding.file)}`
-	);
-}
-
-if (!writeChanges) {
-	console.error('Run `bun run dogfood:scrub -- --write` to redact text artifacts.');
-	process.exit(1);
+if (import.meta.main) {
+	await main();
 }

@@ -185,7 +185,8 @@ const CsrfOriginSchema = z.object({
 });
 
 const TrustProxySchema = z.object({
-	enabled: z.enum(['true', 'false']).transform((v) => v === 'true')
+	enabled: z.enum(['true', 'false']).transform((v) => v === 'true'),
+	confirmRisk: z.enum(['true']).optional()
 });
 
 interface SettingValue {
@@ -1111,11 +1112,19 @@ export const actions: Actions = requireAdminActions({
 		}
 
 		const formData = await request.formData();
-		const parsed = TrustProxySchema.safeParse({ enabled: formData.get('enabled') });
+		const parsed = TrustProxySchema.safeParse({
+			enabled: formData.get('enabled'),
+			confirmRisk: formData.get('confirmRisk') ?? undefined
+		});
 		if (!parsed.success) {
 			return fail(400, { error: 'Invalid input: enabled must be "true" or "false"' });
 		}
 		const enabled = parsed.data.enabled;
+		if (enabled && parsed.data.confirmRisk !== 'true') {
+			return fail(400, {
+				error: 'Confirm the reverse-proxy header trust risk before enabling TRUST_PROXY.'
+			});
+		}
 
 		try {
 			await setAppSetting(AppSettingsKey.TRUST_PROXY, enabled ? 'true' : 'false');
