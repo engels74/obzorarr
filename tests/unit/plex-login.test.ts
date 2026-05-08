@@ -104,7 +104,6 @@ describe('sanitizeCompletedLoginResponse', () => {
 			'services',
 			'plexId',
 			'uuid',
-			'id',
 			'resources',
 			'clientIdentifier',
 			'accessToken',
