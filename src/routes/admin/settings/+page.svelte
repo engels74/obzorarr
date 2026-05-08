@@ -468,6 +468,8 @@ let trustProxyValue = $state(false);
 let trustProxySource = $state<'env' | 'db' | 'default'>('default');
 let trustProxyLocked = $state(false);
 let isSavingTrustProxy = $state(false);
+let trustProxyConfirmDialogOpen = $state(false);
+let isConfirmingTrustProxy = $state(false);
 
 // CSRF mismatch confirmation dialog state. Server returns fail(409,
 // { requireConfirmation: true, attemptedOrigin, ... }) when the submitted
@@ -524,6 +526,9 @@ const logFieldErrors = $derived(
 				type="button"
 				class="tab-button"
 				class:active={activeTab === tab.value}
+				aria-label={`Open ${tab.label} settings`}
+				aria-pressed={activeTab === tab.value}
+				aria-current={activeTab === tab.value ? 'page' : undefined}
 				onclick={() => selectTab(tab.value)}
 			>
 				<tab.icon class="tab-icon" />
@@ -1785,48 +1790,49 @@ const logFieldErrors = $derived(
 
 							{#if !trustProxyLocked}
 								<div class="csrf-actions">
-									<form
-										method="POST"
-										action="?/updateTrustProxy"
-										use:enhance={() => {
-											isSavingTrustProxy = true;
-											return async ({ result, update }) => {
-												isSavingTrustProxy = false;
-												if (result.type === 'success' || result.type === 'failure') {
-													handleFormToast(
-														result.data as {
-															success?: boolean;
-															message?: string;
-															error?: string;
-														}
-													);
-												}
-												await update({ reset: false });
-											};
-										}}
-									>
-										<input
-											type="hidden"
-											name="enabled"
-											value={trustProxyValue ? 'false' : 'true'}
-										/>
-										<button
-											type="submit"
-											class={trustProxyValue ? 'btn-destructive' : 'btn-primary'}
-											disabled={isSavingTrustProxy}
+									{#if trustProxyValue}
+										<form
+											method="POST"
+											action="?/updateTrustProxy"
+											use:enhance={() => {
+												isSavingTrustProxy = true;
+												return async ({ result, update }) => {
+													isSavingTrustProxy = false;
+													if (result.type === 'success' || result.type === 'failure') {
+														handleFormToast(
+															result.data as {
+																success?: boolean;
+																message?: string;
+																error?: string;
+															}
+														);
+													}
+													await update({ reset: false });
+												};
+											}}
 										>
-											{#if isSavingTrustProxy}
-												<Loader2 class="btn-icon spinning" />
-												Saving...
-											{:else if trustProxyValue}
-												<ShieldAlert class="btn-icon" />
-												Disable Header Trust
-											{:else}
-												<ShieldCheck class="btn-icon" />
-												Enable Header Trust
-											{/if}
+											<input type="hidden" name="enabled" value="false" />
+											<button type="submit" class="btn-destructive" disabled={isSavingTrustProxy}>
+												{#if isSavingTrustProxy}
+													<Loader2 class="btn-icon spinning" />
+													Saving...
+												{:else}
+													<ShieldAlert class="btn-icon" />
+													Disable Header Trust
+												{/if}
+											</button>
+										</form>
+									{:else}
+										<button
+											type="button"
+											class="btn-primary"
+											disabled={isConfirmingTrustProxy}
+											onclick={() => (trustProxyConfirmDialogOpen = true)}
+										>
+											<ShieldCheck class="btn-icon" />
+											Enable Header Trust
 										</button>
-									</form>
+									{/if}
 								</div>
 							{/if}
 						</div>
@@ -2347,6 +2353,55 @@ const logFieldErrors = $derived(
 				<input type="hidden" name="confirmMismatch" value="true" />
 				<AlertDialog.Action type="submit" disabled={isConfirmingCsrfMismatch}>
 					{isConfirmingCsrfMismatch ? 'Saving…' : 'Save anyway'}
+				</AlertDialog.Action>
+			</form>
+		</AlertDialog.Footer>
+	</AlertDialog.Content>
+</AlertDialog.Root>
+
+<!-- Reverse Proxy Header Trust Confirmation Dialog -->
+<AlertDialog.Root bind:open={trustProxyConfirmDialogOpen}>
+	<AlertDialog.Content>
+		<AlertDialog.Header>
+			<AlertDialog.Title>Enable reverse-proxy header trust?</AlertDialog.Title>
+			<AlertDialog.Description>
+				Only enable this when your upstream proxy strips client-supplied
+				<code>X-Forwarded-*</code> headers before forwarding requests to Obzorarr. If those
+				headers can reach Obzorarr from clients, attackers can spoof the host or protocol used for
+				security decisions and generated URLs.
+			</AlertDialog.Description>
+		</AlertDialog.Header>
+		<AlertDialog.Footer>
+			<AlertDialog.Cancel disabled={isConfirmingTrustProxy}>Cancel</AlertDialog.Cancel>
+			<form
+				method="POST"
+				action="?/updateTrustProxy"
+				use:enhance={() => {
+					isConfirmingTrustProxy = true;
+					return async ({ result, update }) => {
+						try {
+							if (result.type === 'success' || result.type === 'failure') {
+								handleFormToast(
+									result.data as {
+										success?: boolean;
+										message?: string;
+										error?: string;
+									}
+								);
+							}
+							await update({ reset: false });
+						} finally {
+							isConfirmingTrustProxy = false;
+							trustProxyConfirmDialogOpen = false;
+						}
+					};
+				}}
+				style="display: contents;"
+			>
+				<input type="hidden" name="enabled" value="true" />
+				<input type="hidden" name="confirmRisk" value="true" />
+				<AlertDialog.Action type="submit" disabled={isConfirmingTrustProxy}>
+					{isConfirmingTrustProxy ? 'Enabling...' : 'Enable header trust'}
 				</AlertDialog.Action>
 			</form>
 		</AlertDialog.Footer>

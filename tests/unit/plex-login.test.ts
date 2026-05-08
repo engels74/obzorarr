@@ -18,7 +18,7 @@ describe('sanitizeCompletedLoginResponse', () => {
 				email: 'alice@example.com',
 				isAdmin: true,
 				authToken: 'plex-user-token',
-				services: [{ accessToken: 'service-token' }]
+				services: [{ accessToken: 'service-token', secret: 'service-secret' }]
 			},
 			redirectTo: '/admin',
 			authToken: 'raw-auth-token',
@@ -37,6 +37,8 @@ describe('sanitizeCompletedLoginResponse', () => {
 		const responseText = JSON.stringify(sanitized);
 		for (const forbidden of [
 			'authToken',
+			'token',
+			'secret',
 			'plexToken',
 			'plexId',
 			'email',
@@ -45,7 +47,8 @@ describe('sanitizeCompletedLoginResponse', () => {
 			'clientIdentifier',
 			'resources',
 			'raw-auth-token',
-			'service-token'
+			'service-token',
+			'service-secret'
 		]) {
 			expect(responseText).not.toContain(forbidden);
 		}

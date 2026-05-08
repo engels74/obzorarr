@@ -7,6 +7,7 @@ import {
 import {
 	getOnboardingStep,
 	getStepNumber,
+	hasActiveOnboardingClaim,
 	isOnboardingComplete,
 	type OnboardingStep,
 	OnboardingSteps
@@ -14,7 +15,7 @@ import {
 import { getServerName } from '$lib/server/plex/server-name.service';
 import type { LayoutServerLoad } from './$types';
 
-export const load: LayoutServerLoad = async ({ locals, url }) => {
+export const load: LayoutServerLoad = async ({ cookies, locals, url }) => {
 	const isComplete = await isOnboardingComplete();
 	if (isComplete) {
 		redirect(303, locals.user?.isAdmin ? '/admin' : '/');
@@ -22,17 +23,26 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 
 	const currentStep = await getOnboardingStep();
 	const requestedPath = url.pathname;
+	const isClaimPath = requestedPath === '/onboarding/claim';
+	const hasActiveClaim = await hasActiveOnboardingClaim(cookies);
+
+	if (!hasActiveClaim && !isClaimPath) {
+		redirect(303, '/onboarding/claim');
+	}
 
 	const isOnCompleteWithoutAdmin =
 		currentStep === OnboardingSteps.COMPLETE && !locals.user?.isAdmin;
 
 	if (
+		hasActiveClaim &&
 		!isOnCompleteWithoutAdmin &&
 		requestedPath !== '/onboarding' &&
 		!requestedPath.startsWith(`/onboarding/${currentStep}`)
 	) {
 		redirect(303, `/onboarding/${currentStep}`);
 	}
+
+	const displayedStep = !hasActiveClaim && isClaimPath ? OnboardingSteps.CLAIM : currentStep;
 
 	const [apiConfig, uiTheme] = await Promise.all([getApiConfigWithSources(), getUITheme()]);
 	const hasEnvConfigValue = hasPlexEnvConfig();
@@ -49,8 +59,8 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 
 	return {
 		steps,
-		currentStep,
-		currentStepIndex: getStepNumber(currentStep) - 1,
+		currentStep: displayedStep,
+		currentStepIndex: getStepNumber(displayedStep) - 1,
 		totalSteps: steps.length,
 		isAuthenticated: !!locals.user,
 		isAdmin: locals.user?.isAdmin ?? false,

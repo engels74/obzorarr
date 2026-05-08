@@ -15,6 +15,7 @@ import { actions } from '../../../src/routes/admin/settings/+page.server';
 type UpdateUserDefaultsAction = NonNullable<typeof actions.updateUserDefaults>;
 type UpdateApiConfigAction = NonNullable<typeof actions.updateApiConfig>;
 type ClearOpenaiModelAction = NonNullable<typeof actions.clearOpenaiModel>;
+type UpdateTrustProxyAction = NonNullable<typeof actions.updateTrustProxy>;
 
 const adminLocals = {
 	user: { id: 1, plexId: 1, username: 'admin', isAdmin: true }
@@ -249,6 +250,111 @@ describe('admin clearOpenaiModel action', () => {
 		} finally {
 			if (previous === undefined) delete dynamicEnv.OPENAI_MODEL;
 			else dynamicEnv.OPENAI_MODEL = previous;
+		}
+	});
+});
+
+describe('admin updateTrustProxy action', () => {
+	let previousTrustProxyEnv: string | undefined;
+
+	beforeEach(async () => {
+		await db.delete(appSettings);
+		const dynamicEnv = env as Record<string, string | undefined>;
+		previousTrustProxyEnv = dynamicEnv.TRUST_PROXY;
+		delete dynamicEnv.TRUST_PROXY;
+	});
+
+	function restoreTrustProxyEnv() {
+		const dynamicEnv = env as Record<string, string | undefined>;
+		if (previousTrustProxyEnv === undefined) delete dynamicEnv.TRUST_PROXY;
+		else dynamicEnv.TRUST_PROXY = previousTrustProxyEnv;
+	}
+
+	function createTrustProxyRequest(enabled: boolean, confirmRisk?: boolean): Request {
+		const formData = new FormData();
+		formData.set('enabled', enabled ? 'true' : 'false');
+		if (confirmRisk) formData.set('confirmRisk', 'true');
+
+		return new Request('http://localhost/admin/settings?/updateTrustProxy', {
+			method: 'POST',
+			body: formData
+		});
+	}
+
+	async function runUpdateTrustProxy(request: Request) {
+		const handler = actions.updateTrustProxy as UpdateTrustProxyAction;
+		return handler({ request, locals: adminLocals } as Parameters<UpdateTrustProxyAction>[0]);
+	}
+
+	it('rejects enabling TRUST_PROXY without explicit risk confirmation', async () => {
+		try {
+			const result = await runUpdateTrustProxy(createTrustProxyRequest(true));
+
+			expect(result).toMatchObject({
+				status: 400,
+				data: {
+					error: 'Confirm the reverse-proxy header trust risk before enabling TRUST_PROXY.'
+				}
+			});
+			expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBeNull();
+		} finally {
+			restoreTrustProxyEnv();
+		}
+	});
+
+	it('rejects malformed risk confirmation with a specific validation message', async () => {
+		try {
+			const formData = new FormData();
+			formData.set('enabled', 'true');
+			formData.set('confirmRisk', 'false');
+
+			const result = await runUpdateTrustProxy(
+				new Request('http://localhost/admin/settings?/updateTrustProxy', {
+					method: 'POST',
+					body: formData
+				})
+			);
+
+			expect(result).toMatchObject({
+				status: 400,
+				data: {
+					error:
+						'Invalid input: enabled must be "true" or "false"; confirmRisk must be "true" when provided'
+				}
+			});
+			expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBeNull();
+		} finally {
+			restoreTrustProxyEnv();
+		}
+	});
+
+	it('persists trust_proxy=true when enabling with risk confirmation', async () => {
+		try {
+			const result = await runUpdateTrustProxy(createTrustProxyRequest(true, true));
+
+			expect(result).toMatchObject({
+				success: true,
+				message: 'Reverse-proxy header trust enabled.'
+			});
+			expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBe('true');
+		} finally {
+			restoreTrustProxyEnv();
+		}
+	});
+
+	it('allows disabling TRUST_PROXY without risk confirmation', async () => {
+		try {
+			await setAppSetting(AppSettingsKey.TRUST_PROXY, 'true');
+
+			const result = await runUpdateTrustProxy(createTrustProxyRequest(false));
+
+			expect(result).toMatchObject({
+				success: true,
+				message: 'Reverse-proxy header trust disabled.'
+			});
+			expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBe('false');
+		} finally {
+			restoreTrustProxyEnv();
 		}
 	});
 });

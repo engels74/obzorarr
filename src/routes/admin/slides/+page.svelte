@@ -72,6 +72,49 @@ let previewError = $state('');
 let previewRendered = $state(false);
 let editorTriggerRef: HTMLElement | null = null;
 let editorTitleInputRef: HTMLInputElement | null = $state(null);
+let editorModalRef: HTMLElement | null = $state(null);
+
+const FOCUSABLE_SELECTOR = [
+	'a[href]',
+	'button:not([disabled])',
+	'input:not([disabled])',
+	'select:not([disabled])',
+	'textarea:not([disabled])',
+	'[tabindex]:not([tabindex="-1"])'
+].join(',');
+
+function getEditorFocusableElements(): HTMLElement[] {
+	if (!editorModalRef) return [];
+	return Array.from(editorModalRef.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+		(element) => element.tabIndex >= 0 && element.getClientRects().length > 0
+	);
+}
+
+function trapEditorFocus(event: KeyboardEvent) {
+	if (event.key !== 'Tab') return;
+
+	const focusableElements = getEditorFocusableElements();
+	if (focusableElements.length === 0) {
+		event.preventDefault();
+		editorModalRef?.focus();
+		return;
+	}
+
+	const first = focusableElements[0];
+	const last = focusableElements.at(-1);
+	const activeElement = document.activeElement;
+
+	if (event.shiftKey && (activeElement === first || !editorModalRef?.contains(activeElement))) {
+		event.preventDefault();
+		last?.focus();
+	} else if (
+		!event.shiftKey &&
+		(activeElement === last || !editorModalRef?.contains(activeElement))
+	) {
+		event.preventDefault();
+		first?.focus();
+	}
+}
 
 $effect(() => {
 	if (!showEditor) return;
@@ -79,7 +122,9 @@ $effect(() => {
 		if (e.key === 'Escape') {
 			e.preventDefault();
 			closeEditor();
+			return;
 		}
+		trapEditorFocus(e);
 	};
 	document.addEventListener('keydown', handler);
 	queueMicrotask(() => editorTitleInputRef?.focus());
@@ -232,6 +277,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 </script>
 
 <div class="admin-container">
+	<div class="admin-page-content" inert={showEditor} aria-hidden={showEditor ? 'true' : undefined}>
 	<header class="admin-header">
 		<h1>Slide Configuration</h1>
 		<p class="subtitle">Manage slides for Year in Review presentations</p>
@@ -496,10 +542,11 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 				class="save-frequency-button"
 				disabled={selectedFrequencyMode === 'custom' && (customCount < 1 || customCount > 15)}
 			>
-				Save Frequency Settings
-			</button>
-		</form>
+			Save Frequency Settings
+		</button>
+	</form>
 	</section>
+	</div>
 
 	<!-- Custom Slide Editor Modal -->
 	{#if showEditor}
@@ -512,6 +559,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 				aria-modal="true"
 				aria-labelledby="editor-title"
 				tabindex="-1"
+				bind:this={editorModalRef}
 			>
 				<header class="modal-header">
 					<h2 id="editor-title">
