@@ -115,6 +115,64 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain('pointer-events: auto;');
 	});
 
+	it('keeps the open mobile admin drawer header self-contained', async () => {
+		const source = await readSource('src/routes/admin/+layout.svelte');
+
+		expect(source).toMatch(
+			/<header\b(?=[^>]*\bclass="[^"]*\bmobile-header\b[^"]*")(?=[^>]*\bclass:sidebar-open=\{sidebarOpen\})[^>]*>/
+		);
+		expect(source).toContain('aria-label="Close navigation"');
+		expect(source).toContain('class="sidebar-close-button"');
+		expect(source).toContain('.mobile-header.sidebar-open');
+		expect(source).toContain('visibility: hidden;');
+		expect(source).toContain('pointer-events: none;');
+		expect(source).toContain('min-width: 0;');
+		expect(source).toContain('text-overflow: ellipsis;');
+		expect(source).not.toMatch(/<a\b[^>]*>(?:(?!<\/a>).)*<a\b/s);
+	});
+
+	it('renders user avatars as decorative non-link artwork', async () => {
+		const source = await readSource('src/routes/admin/users/+page.svelte');
+
+		expect(source).toContain('<span class="user-avatar-link" aria-hidden="true">');
+		expect(source).not.toContain('<a href={user.wrappedHref} class="user-avatar-link">');
+		expect(source).toContain('<img src={user.thumb} alt="" class="user-avatar" />');
+		expect(source).toContain('<a href={user.wrappedHref} class="user-name">');
+		expect(source).toContain('class="preview-link"');
+	});
+
+	it('updates wrapped logo mode selection explicitly without resetting local clicks', async () => {
+		const source = await readSource('src/routes/admin/settings/+page.svelte');
+
+		expect(source).toContain(
+			'let selectedWrappedLogoMode = $state<WrappedLogoModeValue>(untrack(() => data.wrappedLogoMode));'
+		);
+		expect(source).toContain(
+			'let syncedWrappedLogoMode = $state<WrappedLogoModeValue>(untrack(() => data.wrappedLogoMode));'
+		);
+		expect(source).toContain('if (serverWrappedLogoMode === syncedWrappedLogoMode) return;');
+		expect(source).toContain('function selectWrappedLogoMode(mode: WrappedLogoModeValue): void');
+		expect(source).toContain('{#each data.wrappedLogoOptions as option}');
+		expect(source).toContain('for={optionId}');
+		expect(source).toContain('name="logoMode"');
+		expect(source).toContain('checked={selectedWrappedLogoMode === option.value}');
+		expect(source).toContain('onchange={() => selectWrappedLogoMode(option.value)}');
+		expect(source).not.toContain('bind:group={selectedWrappedLogoMode}');
+	});
+
+	it('does not log Plex auth payloads from app-owned browser auth code', async () => {
+		const sources = await Promise.all([
+			readSource('src/lib/client/plex-login.ts'),
+			readSource('src/routes/auth/plex/redirect/+page.svelte')
+		]);
+
+		for (const source of sources) {
+			expect(source).not.toContain('console.log');
+			expect(source).not.toContain('console.debug');
+			expect(source).not.toContain('console.info');
+		}
+	});
+
 	it('guards wrapped story transitions against stale rapid navigation', async () => {
 		const source = await readSource('src/lib/components/wrapped/StoryMode.svelte');
 
