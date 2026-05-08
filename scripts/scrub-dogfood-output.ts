@@ -153,8 +153,7 @@ async function main(): Promise<void> {
 		.sort((a, b) => b.value.length - a.value.length);
 
 	if (secrets.length === 0) {
-		console.error('No configured secret values found in .env.');
-		process.exit(1);
+		console.warn('No configured secret values found in .env; continuing with dynamic redactions.');
 	}
 
 	const files = await listFiles(outputRoot);

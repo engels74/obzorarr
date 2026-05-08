@@ -106,6 +106,30 @@ describe('scrub dogfood output script', () => {
 		expect(redacted).not.toContain('json-claim-secret');
 	});
 
+	it('redacts dynamic secrets when no configured .env secret values exist', async () => {
+		await writeFile(envPath, 'OTHER=value');
+		await writeFile(
+			reportPath,
+			[
+				'Bootstrap token: abcd-ef12-3456',
+				'Cookie: obzorarr_onboarding_claim=claim-cookie-secret; Path=/',
+				'JSON cookie: "obzorarr_onboarding_claim":"json-claim-secret"'
+			].join('\n')
+		);
+
+		const result = await runScrub(true);
+
+		expect(result.exitCode).toBe(0);
+		expect(result.stdout).toContain('Redacted content secret(s)');
+
+		const redacted = await readFile(reportPath, 'utf8');
+		expect(redacted).toContain('Bootstrap token: <BOOTSTRAP_TOKEN>');
+		expect(redacted).toContain('obzorarr_onboarding_claim=<ONBOARDING_CLAIM_COOKIE>');
+		expect(redacted).toContain('"obzorarr_onboarding_claim":"<ONBOARDING_CLAIM_COOKIE>"');
+		expect(redacted).not.toContain('claim-cookie-secret');
+		expect(redacted).not.toContain('json-claim-secret');
+	});
+
 	it('leaves no configured .env secret values in text artifacts after --write', async () => {
 		await runScrub(true);
 
