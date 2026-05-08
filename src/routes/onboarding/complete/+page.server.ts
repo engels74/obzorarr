@@ -15,7 +15,12 @@ import {
 	getWrappedTheme
 } from '$lib/server/admin/settings.service';
 import { logger } from '$lib/server/logging';
-import { completeOnboarding } from '$lib/server/onboarding';
+import {
+	clearOnboardingClaimCookie,
+	completeOnboarding,
+	OnboardingClaimRequiredError,
+	requireActiveOnboardingClaim
+} from '$lib/server/onboarding';
 import { getGlobalAllowUserControl, getGlobalDefaultShareMode } from '$lib/server/sharing/service';
 import { getPlayHistoryCount, getSyncProgress, isSyncRunning } from '$lib/server/sync';
 import type { Actions, PageServerLoad } from './$types';
@@ -23,15 +28,25 @@ import type { Actions, PageServerLoad } from './$types';
 /**
  * Load function - marks onboarding complete and provides summary
  */
-export const load: PageServerLoad = async ({ parent, locals, url }) => {
+export const load: PageServerLoad = async ({ parent, locals, url, cookies }) => {
 	if (!locals.user?.isAdmin) {
-		redirect(303, '/onboarding/csrf');
+		redirect(303, '/onboarding/claim');
+	}
+
+	try {
+		await requireActiveOnboardingClaim(cookies, { requestUrl: url });
+	} catch (err) {
+		if (err instanceof OnboardingClaimRequiredError) {
+			redirect(303, '/onboarding/claim');
+		}
+		throw err;
 	}
 
 	const parentData = await parent();
 	const notice = url.searchParams.get('notice');
 
 	await completeOnboarding();
+	clearOnboardingClaimCookie(cookies);
 
 	logger.info(`Onboarding completed by ${locals.user?.username || 'unknown'}`, 'Onboarding');
 

@@ -1,12 +1,22 @@
 import { beforeEach, describe, expect, it, spyOn } from 'bun:test';
+import type { Cookies } from '@sveltejs/kit';
+import { isHttpError } from '@sveltejs/kit';
+import { env } from '$env/dynamic/private';
 import {
 	AppSettingsKey,
 	getAppSetting,
-	getCachedServerName
+	getCachedServerName,
+	setAppSetting
 } from '$lib/server/admin/settings.service';
 import * as sessionModule from '$lib/server/auth/session';
 import { db } from '$lib/server/db/client';
 import { appSettings } from '$lib/server/db/schema';
+import {
+	claimOnboardingInstance,
+	clearBootstrapToken,
+	createBootstrapToken,
+	ONBOARDING_CLAIM_REQUIRED_MESSAGE
+} from '$lib/server/onboarding/bootstrap';
 import { POST } from '../../../src/routes/api/onboarding/select-server/+server';
 
 type HandlerArgs = Parameters<typeof POST>[0];
@@ -15,12 +25,14 @@ const adminLocals = {
 	user: { id: 1, plexId: 100, username: 'admin', isAdmin: true }
 } as HandlerArgs['locals'];
 
+let claimValues = new Map<string, string>();
+
 function makeCookies(sessionId?: string): HandlerArgs['cookies'] {
 	return {
-		get: (name: string) => (sessionId && name === 'session' ? sessionId : undefined),
+		get: (name: string) => (sessionId && name === 'session' ? sessionId : claimValues.get(name)),
 		getAll: () => [],
-		set: () => undefined,
-		delete: () => undefined,
+		set: (name: string, value: string) => claimValues.set(name, value),
+		delete: (name: string) => claimValues.delete(name),
 		serialize: () => ''
 	} as unknown as HandlerArgs['cookies'];
 }
@@ -37,6 +49,35 @@ function runPost(body: unknown, sessionId?: string): ReturnType<typeof POST> {
 		locals: adminLocals,
 		cookies: makeCookies(sessionId)
 	} as unknown as HandlerArgs);
+}
+
+function runPostWithCookies(
+	body: unknown,
+	cookies: HandlerArgs['cookies']
+): ReturnType<typeof POST> {
+	const request = new Request('http://localhost/api/onboarding/select-server', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(body)
+	});
+
+	return POST({
+		request,
+		locals: adminLocals,
+		cookies
+	} as unknown as HandlerArgs);
+}
+
+function makeThrowingClaimCookies(errorToThrow: Error): HandlerArgs['cookies'] {
+	return {
+		get: () => {
+			throw errorToThrow;
+		},
+		getAll: () => [],
+		set: () => {},
+		delete: () => {},
+		serialize: () => ''
+	} as unknown as HandlerArgs['cookies'];
 }
 
 function makeIdentityResponse(): Response {
@@ -57,6 +98,11 @@ describe('POST /api/onboarding/select-server', () => {
 
 	beforeEach(async () => {
 		await db.delete(appSettings);
+		clearBootstrapToken();
+		claimValues = new Map();
+		const cookies = makeCookies();
+		const token = createBootstrapToken();
+		expect(await claimOnboardingInstance(cookies as unknown as Cookies, token)).toBe('claimed');
 		fetchSpy?.mockRestore();
 		getSessionPlexTokenSpy?.mockRestore();
 	});
@@ -86,6 +132,7 @@ describe('POST /api/onboarding/select-server', () => {
 		const response = await runPost(
 			{
 				serverUrl: 'http://plex.local:32400',
+				allowInsecureLocalHttp: true,
 				clientIdentifier: 'abc123',
 				serverName: 'Home Server'
 			},
@@ -115,6 +162,7 @@ describe('POST /api/onboarding/select-server', () => {
 
 		const response = await runPost({
 			serverUrl: 'http://plex.local:32400',
+			allowInsecureLocalHttp: true,
 			accessToken: 'legacy-token',
 			serverName: 'Legacy Server'
 		});
@@ -123,5 +171,70 @@ describe('POST /api/onboarding/select-server', () => {
 		const body = (await response.json()) as { success: boolean };
 		expect(body.success).toBe(true);
 		expect(await getAppSetting(AppSettingsKey.PLEX_TOKEN)).toBe('legacy-token');
+	});
+
+	it('rejects unchecked local HTTP URLs instead of relying on stored opt-in', async () => {
+		const dynamicEnv = env as Record<string, string | undefined>;
+		const previousAllowInsecure = dynamicEnv.PLEX_ALLOW_INSECURE_LOCAL_HTTP;
+		dynamicEnv.PLEX_ALLOW_INSECURE_LOCAL_HTTP = undefined;
+
+		try {
+			await setAppSetting(AppSettingsKey.PLEX_ALLOW_INSECURE_LOCAL_HTTP, 'true');
+			fetchSpy = spyOn(global, 'fetch').mockResolvedValue(makeIdentityResponse());
+
+			const response = await runPost({
+				serverUrl: 'http://plex.local:32400',
+				allowInsecureLocalHttp: false,
+				accessToken: 'legacy-token',
+				serverName: 'Legacy Server'
+			});
+
+			expect(response.status).toBe(400);
+			const body = (await response.json()) as { success: boolean; error?: string };
+			expect(body).toEqual({
+				success: false,
+				error: 'HTTP Plex URLs require a local/private host and explicit local HTTP opt-in.'
+			});
+			expect(await getAppSetting(AppSettingsKey.PLEX_ALLOW_INSECURE_LOCAL_HTTP)).toBe('true');
+		} finally {
+			dynamicEnv.PLEX_ALLOW_INSECURE_LOCAL_HTTP = previousAllowInsecure;
+		}
+	});
+
+	it('returns the expected claim-required error when setup claim is missing', async () => {
+		claimValues = new Map();
+
+		try {
+			await runPost({
+				serverUrl: 'https://plex.example.com:32400',
+				accessToken: 'legacy-token',
+				serverName: 'Legacy Server'
+			});
+			expect.unreachable('Expected error to be thrown');
+		} catch (err) {
+			expect(isHttpError(err)).toBe(true);
+			if (!isHttpError(err)) throw err;
+			expect(err.status).toBe(403);
+			expect(err.body.message).toBe(ONBOARDING_CLAIM_REQUIRED_MESSAGE);
+		}
+	});
+
+	it('propagates unexpected claim errors for centralized sanitization', async () => {
+		const unexpected = new Error('raw database path should stay server-side');
+
+		try {
+			await runPostWithCookies(
+				{
+					serverUrl: 'https://plex.example.com:32400',
+					accessToken: 'legacy-token',
+					serverName: 'Legacy Server'
+				},
+				makeThrowingClaimCookies(unexpected)
+			);
+			expect.unreachable('Expected unexpected claim error to be thrown');
+		} catch (err) {
+			expect(isHttpError(err)).toBe(false);
+			expect(err).toBe(unexpected);
+		}
 	});
 });

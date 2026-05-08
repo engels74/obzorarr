@@ -1,3 +1,8 @@
+import {
+	CredentialedUrlError,
+	normalizeOpenAIBaseUrl
+} from '$lib/server/security/credentialed-url';
+
 const DEFAULT_BASE_URL = 'https://api.openai.com/v1';
 const DEFAULT_MODEL = 'gpt-5-mini';
 const TIMEOUT_MS = 10_000;
@@ -16,7 +21,15 @@ export async function testOpenAIConnection(
 		return { success: false, error: 'API key is required' };
 	}
 
-	const resolvedBaseUrl = (baseUrl?.trim() || DEFAULT_BASE_URL).replace(/\/+$/, '');
+	let resolvedBaseUrl: string;
+	try {
+		resolvedBaseUrl = normalizeOpenAIBaseUrl(baseUrl?.trim() || DEFAULT_BASE_URL);
+	} catch (err) {
+		return {
+			success: false,
+			error: err instanceof CredentialedUrlError ? err.message : 'Invalid OpenAI base URL'
+		};
+	}
 	const resolvedModel = model?.trim() || DEFAULT_MODEL;
 
 	const controller = new AbortController();

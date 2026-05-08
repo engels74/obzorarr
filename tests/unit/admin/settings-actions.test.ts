@@ -171,6 +171,37 @@ describe('admin updateApiConfig schema hardening', () => {
 			data: { conflict: true }
 		});
 	});
+
+	it('rejects unchecked local HTTP Plex URL instead of relying on stored opt-in', async () => {
+		const dynamicEnv = env as Record<string, string | undefined>;
+		const previousPlexServerUrl = dynamicEnv.PLEX_SERVER_URL;
+		const previousAllowInsecure = dynamicEnv.PLEX_ALLOW_INSECURE_LOCAL_HTTP;
+		dynamicEnv.PLEX_SERVER_URL = '';
+		dynamicEnv.PLEX_ALLOW_INSECURE_LOCAL_HTTP = undefined;
+
+		try {
+			await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, 'http://192.168.1.10:32400');
+			await setAppSetting(AppSettingsKey.PLEX_ALLOW_INSECURE_LOCAL_HTTP, 'true');
+
+			const result = await runUpdateApiConfig(
+				createApiConfigRequest({
+					plexServerUrl: 'http://192.168.1.10:32400',
+					apiConfigVersion: new Date(Date.now() + 60_000).toISOString()
+				})
+			);
+
+			expect(result).toMatchObject({
+				status: 400,
+				data: {
+					error: 'HTTP Plex URLs require a local/private host and explicit local HTTP opt-in.'
+				}
+			});
+			expect(await getAppSetting(AppSettingsKey.PLEX_ALLOW_INSECURE_LOCAL_HTTP)).toBe('true');
+		} finally {
+			dynamicEnv.PLEX_SERVER_URL = previousPlexServerUrl;
+			dynamicEnv.PLEX_ALLOW_INSECURE_LOCAL_HTTP = previousAllowInsecure;
+		}
+	});
 });
 
 describe('admin clearOpenaiModel action', () => {

@@ -9,6 +9,7 @@ import {
 import { buildPlexOAuthUrl, requestPin } from '$lib/server/auth/plex-oauth';
 import { NotServerMemberError, PinExpiredError, PlexAuthApiError } from '$lib/server/auth/types';
 import { logger } from '$lib/server/logging';
+import { OnboardingClaimRequiredError } from '$lib/server/onboarding';
 import type { RequestHandler } from './$types';
 
 const PollRequestSchema = z.object({
@@ -60,7 +61,7 @@ export const GET: RequestHandler = async ({ cookies, url }) => {
 	}
 };
 
-export const POST: RequestHandler = async ({ request, cookies }) => {
+export const POST: RequestHandler = async ({ request, cookies, url }) => {
 	let body: unknown;
 	try {
 		body = await request.json();
@@ -78,7 +79,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 	const { pinId } = parseResult.data;
 
 	try {
-		return json(await completePlexPinLogin(pinId, cookies));
+		return json(await completePlexPinLogin(pinId, cookies, { requestUrl: url }));
 	} catch (err) {
 		if (err instanceof PinExpiredError) {
 			error(401, {
@@ -97,6 +98,12 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		}
 
 		if (err instanceof NotServerMemberError) {
+			error(403, {
+				message: err.message
+			});
+		}
+
+		if (err instanceof OnboardingClaimRequiredError) {
 			error(403, {
 				message: err.message
 			});

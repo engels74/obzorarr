@@ -1,6 +1,11 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { logger } from '$lib/server/logging';
-import { OnboardingSteps, setOnboardingStep } from '$lib/server/onboarding';
+import {
+	OnboardingClaimRequiredError,
+	OnboardingSteps,
+	requireActiveOnboardingClaim,
+	setOnboardingStep
+} from '$lib/server/onboarding';
 import {
 	getPlayHistoryCount,
 	getSyncProgress,
@@ -28,9 +33,17 @@ export const load: PageServerLoad = async ({ parent }) => {
 };
 
 export const actions: Actions = {
-	startSync: async ({ locals }) => {
+	startSync: async ({ locals, cookies, url }) => {
 		if (!locals.user?.isAdmin) {
 			return fail(403, { error: 'Admin access required' });
+		}
+		try {
+			await requireActiveOnboardingClaim(cookies, { requestUrl: url });
+		} catch (err) {
+			if (err instanceof OnboardingClaimRequiredError) {
+				return fail(403, { error: err.message });
+			}
+			throw err;
 		}
 
 		try {
@@ -58,9 +71,17 @@ export const actions: Actions = {
 		}
 	},
 
-	cancelSync: async ({ locals }) => {
+	cancelSync: async ({ locals, cookies, url }) => {
 		if (!locals.user?.isAdmin) {
 			return fail(403, { error: 'Admin access required' });
+		}
+		try {
+			await requireActiveOnboardingClaim(cookies, { requestUrl: url });
+		} catch (err) {
+			if (err instanceof OnboardingClaimRequiredError) {
+				return fail(403, { error: err.message });
+			}
+			throw err;
 		}
 
 		const cancelled = cancelSync();
@@ -72,9 +93,17 @@ export const actions: Actions = {
 		return { success: true, message: 'Sync cancelled' };
 	},
 
-	continue: async ({ locals }) => {
+	continue: async ({ locals, cookies, url }) => {
 		if (!locals.user?.isAdmin) {
 			return fail(403, { error: 'Admin access required' });
+		}
+		try {
+			await requireActiveOnboardingClaim(cookies, { requestUrl: url });
+		} catch (err) {
+			if (err instanceof OnboardingClaimRequiredError) {
+				return fail(403, { error: err.message });
+			}
+			throw err;
 		}
 
 		logger.info('Onboarding: Proceeding to settings (sync may still be running)', 'Onboarding');

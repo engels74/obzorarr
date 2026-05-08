@@ -1,5 +1,6 @@
 import { error, json } from '@sveltejs/kit';
 import { z } from 'zod';
+import { isPlexInsecureLocalHttpAllowed } from '$lib/server/admin/settings.service';
 import {
 	PLEX_CLIENT_ID,
 	PLEX_PRODUCT,
@@ -7,8 +8,10 @@ import {
 	PlexServerIdentitySchema
 } from '$lib/server/auth/types';
 import { logger } from '$lib/server/logging';
+import { OnboardingClaimRequiredError, requireActiveOnboardingClaim } from '$lib/server/onboarding';
 import { resolveOwnedServerToken } from '$lib/server/onboarding/plex-server-selection';
 import { classifyConnectionError } from '$lib/server/security';
+import { normalizePlexServerUrl } from '$lib/server/security/credentialed-url';
 import type { RequestHandler } from './$types';
 
 const PLEX_SERVER_HEADERS = {
@@ -23,6 +26,7 @@ const TestConnectionSchema = z
 		url: z.string().url('Invalid URL format'),
 		accessToken: z.string().min(1).optional(),
 		token: z.string().min(1).optional(),
+		allowInsecureLocalHttp: z.boolean().optional(),
 		clientIdentifier: z.string().min(1).optional()
 	})
 	.refine((body) => Boolean(body.accessToken ?? body.token ?? body.clientIdentifier), {
@@ -32,7 +36,7 @@ const TestConnectionSchema = z
 
 const CONNECTION_TIMEOUT_MS = 10000;
 
-export const POST: RequestHandler = async ({ request, locals, cookies }) => {
+export const POST: RequestHandler = async ({ request, locals, cookies, url }) => {
 	// Require authenticated admin user
 	if (!locals.user) {
 		error(401, 'Authentication required');
@@ -40,6 +44,14 @@ export const POST: RequestHandler = async ({ request, locals, cookies }) => {
 
 	if (!locals.user.isAdmin) {
 		error(403, 'Only server owners can configure Obzorarr');
+	}
+	try {
+		await requireActiveOnboardingClaim(cookies, { requestUrl: url });
+	} catch (err) {
+		if (err instanceof OnboardingClaimRequiredError) {
+			error(403, err.message);
+		}
+		throw err;
 	}
 
 	try {
@@ -52,7 +64,23 @@ export const POST: RequestHandler = async ({ request, locals, cookies }) => {
 			return json({ success: false, error: errorMessage }, { status: 400 });
 		}
 
-		const { url, clientIdentifier } = parseResult.data;
+		const { clientIdentifier } = parseResult.data;
+		let url: string;
+		try {
+			url = normalizePlexServerUrl(parseResult.data.url, {
+				allowInsecureLocalHttp:
+					parseResult.data.allowInsecureLocalHttp === true ||
+					(await isPlexInsecureLocalHttpAllowed())
+			});
+		} catch (err) {
+			return json(
+				{
+					success: false,
+					error: err instanceof Error ? err.message : 'Invalid Plex server URL'
+				},
+				{ status: 400 }
+			);
+		}
 		const accessToken =
 			parseResult.data.accessToken ??
 			parseResult.data.token ??

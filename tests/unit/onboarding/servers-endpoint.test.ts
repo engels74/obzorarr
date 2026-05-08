@@ -1,25 +1,52 @@
 import { afterEach, describe, expect, it, spyOn } from 'bun:test';
+import type { Cookies } from '@sveltejs/kit';
 import { isHttpError } from '@sveltejs/kit';
 import * as sessionModule from '$lib/server/auth/session';
+import { db } from '$lib/server/db/client';
+import { appSettings } from '$lib/server/db/schema';
+import {
+	claimOnboardingInstance,
+	clearBootstrapToken,
+	createBootstrapToken,
+	ONBOARDING_CLAIM_REQUIRED_MESSAGE
+} from '$lib/server/onboarding/bootstrap';
 import { GET } from '../../../src/routes/api/onboarding/servers/+server';
 
 type HandlerArgs = Parameters<typeof GET>[0];
 
+let claimValues = new Map<string, string>();
+
 function makeCookies(sessionId?: string): HandlerArgs['cookies'] {
 	return {
-		get: (name: string) => (sessionId && name === 'session' ? sessionId : undefined),
+		get: (name: string) => (sessionId && name === 'session' ? sessionId : claimValues.get(name)),
 		getAll: () => [],
-		set: () => undefined,
-		delete: () => undefined,
+		set: (name: string, value: string) => claimValues.set(name, value),
+		delete: (name: string) => claimValues.delete(name),
 		serialize: () => ''
 	} as unknown as HandlerArgs['cookies'];
 }
 
-function runGet(locals: HandlerArgs['locals'], sessionId?: string): ReturnType<typeof GET> {
+function runGet(
+	locals: HandlerArgs['locals'],
+	sessionId?: string,
+	cookies: HandlerArgs['cookies'] = makeCookies(sessionId)
+): ReturnType<typeof GET> {
 	return GET({
-		cookies: makeCookies(sessionId),
+		cookies,
 		locals
 	} as unknown as HandlerArgs);
+}
+
+function makeThrowingClaimCookies(errorToThrow: Error): HandlerArgs['cookies'] {
+	return {
+		get: () => {
+			throw errorToThrow;
+		},
+		getAll: () => [],
+		set: () => {},
+		delete: () => {},
+		serialize: () => ''
+	} as unknown as HandlerArgs['cookies'];
 }
 
 function createPlexResourcesResponse(resources: unknown[]): Response {
@@ -30,6 +57,15 @@ function createPlexResourcesResponse(resources: unknown[]): Response {
 }
 
 describe('GET /api/onboarding/servers', () => {
+	async function createClaim(): Promise<void> {
+		await db.delete(appSettings);
+		clearBootstrapToken();
+		claimValues = new Map();
+		const cookies = makeCookies();
+		const token = createBootstrapToken();
+		expect(await claimOnboardingInstance(cookies as unknown as Cookies, token)).toBe('claimed');
+	}
+
 	afterEach(() => {
 		// bun:test's spyOn returns a spy that we reset by restoring the original
 		// module bindings; recreating spies per-test keeps state isolated.
@@ -62,8 +98,40 @@ describe('GET /api/onboarding/servers', () => {
 		}
 	});
 
+	it('returns the expected claim-required error when setup claim is missing', async () => {
+		const locals = {
+			user: { id: 1, plexId: 100, username: 'admin', isAdmin: true }
+		} as HandlerArgs['locals'];
+
+		try {
+			await runGet(locals, 'test-session-id');
+			expect.unreachable('Expected error to be thrown');
+		} catch (err) {
+			expect(isHttpError(err)).toBe(true);
+			if (!isHttpError(err)) throw err;
+			expect(err.status).toBe(403);
+			expect(err.body.message).toBe(ONBOARDING_CLAIM_REQUIRED_MESSAGE);
+		}
+	});
+
+	it('propagates unexpected claim errors for centralized sanitization', async () => {
+		const locals = {
+			user: { id: 1, plexId: 100, username: 'admin', isAdmin: true }
+		} as HandlerArgs['locals'];
+		const unexpected = new Error('raw database path should stay server-side');
+
+		try {
+			await runGet(locals, 'test-session-id', makeThrowingClaimCookies(unexpected));
+			expect.unreachable('Expected unexpected claim error to be thrown');
+		} catch (err) {
+			expect(isHttpError(err)).toBe(false);
+			expect(err).toBe(unexpected);
+		}
+	});
+
 	describe('happy path — authenticated admin', () => {
 		it('returns servers list built from Plex resources', async () => {
+			await createClaim();
 			const publicUri = 'https://plex.example.plex.direct:32400';
 			const resources = [
 				{

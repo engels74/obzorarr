@@ -16,7 +16,7 @@ process.env.DATABASE_PATH = ':memory:';
 // Mock SvelteKit's $env/dynamic/private module for tests
 mock.module('$env/dynamic/private', () => ({
 	env: {
-		PLEX_SERVER_URL: 'http://test-plex-server:32400',
+		PLEX_SERVER_URL: 'https://test-plex-server:32400',
 		PLEX_TOKEN: 'test-plex-token',
 		ENABLE_LIVE_SYNC: 'false',
 		OPENAI_API_KEY: '',
@@ -27,7 +27,7 @@ mock.module('$env/dynamic/private', () => ({
 
 // Mock SvelteKit's $env/static/private module for tests
 mock.module('$env/static/private', () => ({
-	PLEX_SERVER_URL: 'http://test-plex-server:32400',
+	PLEX_SERVER_URL: 'https://test-plex-server:32400',
 	PLEX_TOKEN: 'test-plex-token'
 }));
 

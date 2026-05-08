@@ -24,6 +24,7 @@ import {
 	getWrappedLogoMode,
 	getWrappedTheme,
 	isCsrfWarningDismissed,
+	isPlexInsecureLocalHttpAllowed,
 	resetCsrfWarningDismissal,
 	SERVER_WRAPPED_SETTINGS_KEYS,
 	setAnonymizationMode,
@@ -55,6 +56,12 @@ import {
 	setLogMaxCount,
 	setLogRetentionDays
 } from '$lib/server/logging';
+import {
+	CredentialedUrlError,
+	envAllowsInsecureLocalPlexHttp,
+	normalizeOpenAIBaseUrl,
+	normalizePlexServerUrl
+} from '$lib/server/security/credentialed-url';
 import { getOriginFromRequest } from '$lib/server/security/csrf-handle';
 import {
 	bulkApplyShareDefaults,
@@ -132,6 +139,10 @@ const trimmedUrlOrEmpty = z
 const ApiConfigSchema = z.object({
 	plexServerUrl: trimmedUrlOrEmpty,
 	plexToken: optionalTrimmed(512),
+	plexAllowInsecureLocalHttp: z
+		.enum(['true', 'false'])
+		.optional()
+		.transform((v) => v === 'true'),
 	openaiApiKey: optionalTrimmed(512),
 	openaiBaseUrl: trimmedUrlOrEmpty,
 	// `openaiModel` is echoed back; submitting blank used to silently clear the row,
@@ -203,6 +214,7 @@ export const load: PageServerLoad = async () => {
 		csrfWarningDismissed,
 		csrfOriginSkippedRaw,
 		trustProxyConfig,
+		plexAllowInsecureLocalHttp,
 		serverWrappedSettingsUpdatedAt,
 		userDefaultsSettingsUpdatedAt,
 		apiConfigUpdatedAt
@@ -223,6 +235,7 @@ export const load: PageServerLoad = async () => {
 		isCsrfWarningDismissed(),
 		getAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED),
 		getTrustProxyConfigWithSource(),
+		isPlexInsecureLocalHttpAllowed(),
 		getAppSettingsUpdatedAt(SERVER_WRAPPED_SETTINGS_KEYS),
 		getAppSettingsUpdatedAt(USER_DEFAULTS_SETTINGS_KEYS),
 		getAppSettingsUpdatedAt(API_CONFIG_KEYS)
@@ -234,6 +247,7 @@ export const load: PageServerLoad = async () => {
 		settings: {
 			plexServerUrl: apiConfig.plex.serverUrl as SettingValue,
 			plexToken: toSafeConfigValue(apiConfig.plex.token) satisfies SafeSettingValue,
+			plexAllowInsecureLocalHttp,
 			openaiApiKey: toSafeConfigValue(apiConfig.openai.apiKey) satisfies SafeSettingValue,
 			openaiBaseUrl: apiConfig.openai.baseUrl as SettingValue,
 			openaiModel: apiConfig.openai.model as SettingValue
@@ -312,6 +326,7 @@ export const actions: Actions = requireAdminActions({
 		const data = {
 			plexServerUrl: field('plexServerUrl'),
 			plexToken: field('plexToken'),
+			plexAllowInsecureLocalHttp: field('plexAllowInsecureLocalHttp'),
 			openaiApiKey: field('openaiApiKey'),
 			openaiBaseUrl: field('openaiBaseUrl'),
 			openaiModel: field('openaiModel'),
@@ -337,15 +352,40 @@ export const actions: Actions = requireAdminActions({
 
 		try {
 			const apiConfig = await getApiConfigWithSources();
+			const values = {
+				plexServerUrl: parsed.data.plexServerUrl,
+				plexToken: parsed.data.plexToken,
+				plexAllowInsecureLocalHttp: parsed.data.plexAllowInsecureLocalHttp,
+				openaiApiKey: parsed.data.openaiApiKey,
+				openaiBaseUrl: parsed.data.openaiBaseUrl,
+				openaiModel: parsed.data.openaiModel
+			};
+
+			if (values.plexServerUrl && !apiConfig.plex.serverUrl.isLocked) {
+				try {
+					values.plexServerUrl = normalizePlexServerUrl(values.plexServerUrl, {
+						allowInsecureLocalHttp:
+							values.plexAllowInsecureLocalHttp || envAllowsInsecureLocalPlexHttp()
+					});
+				} catch (err) {
+					return fail(400, {
+						error: err instanceof CredentialedUrlError ? err.message : 'Invalid Plex server URL'
+					});
+				}
+			}
+
+			if (values.openaiBaseUrl && !apiConfig.openai.baseUrl.isLocked) {
+				try {
+					values.openaiBaseUrl = normalizeOpenAIBaseUrl(values.openaiBaseUrl);
+				} catch (err) {
+					return fail(400, {
+						error: err instanceof CredentialedUrlError ? err.message : 'Invalid OpenAI base URL'
+					});
+				}
+			}
 
 			const result = await setApiConfigAtomic({
-				values: {
-					plexServerUrl: parsed.data.plexServerUrl,
-					plexToken: parsed.data.plexToken,
-					openaiApiKey: parsed.data.openaiApiKey,
-					openaiBaseUrl: parsed.data.openaiBaseUrl,
-					openaiModel: parsed.data.openaiModel
-				},
+				values,
 				locks: {
 					plexServerUrl: apiConfig.plex.serverUrl.isLocked,
 					plexToken: apiConfig.plex.token.isLocked,
@@ -378,6 +418,7 @@ export const actions: Actions = requireAdminActions({
 		const formData = await request.formData();
 		const submittedUrl = formData.get('plexServerUrl')?.toString() ?? '';
 		const submittedToken = formData.get('plexToken')?.toString() ?? '';
+		const allowInsecureLocalHttp = formData.get('plexAllowInsecureLocalHttp') === 'true';
 
 		// The client never echoes the stored token back (to avoid hydration leaks),
 		// so a missing token field is the normal case. We fall back to the stored
@@ -386,12 +427,12 @@ export const actions: Actions = requireAdminActions({
 		// host (SSRF / secret exfil).
 		const apiConfig = await getApiConfigWithSources();
 		const storedUrl = apiConfig.plex.serverUrl.value;
-		const plexServerUrl = submittedUrl || storedUrl;
+		let plexServerUrl = submittedUrl || storedUrl;
 
 		// Normalise both URLs for comparison (strip trailing slashes).
 		const normalise = (u: string) => u.replace(/\/+$/, '');
 		const urlMatchesStored =
-			plexServerUrl && storedUrl && normalise(plexServerUrl) === normalise(storedUrl);
+			Boolean(plexServerUrl && storedUrl) && normalise(plexServerUrl) === normalise(storedUrl);
 
 		// Allow token fallback only when the URL hasn't changed from what is stored.
 		const plexToken = submittedToken || (urlMatchesStored ? apiConfig.plex.token.value : '');
@@ -404,6 +445,17 @@ export const actions: Actions = requireAdminActions({
 		}
 		if (!plexToken) {
 			return fail(400, { error: 'A Plex token is required to test the server connection' });
+		}
+
+		try {
+			plexServerUrl = normalizePlexServerUrl(plexServerUrl, {
+				allowInsecureLocalHttp:
+					allowInsecureLocalHttp || (urlMatchesStored && (await isPlexInsecureLocalHttpAllowed()))
+			});
+		} catch (err) {
+			return fail(400, {
+				error: err instanceof CredentialedUrlError ? err.message : 'Invalid Plex server URL'
+			});
 		}
 
 		try {

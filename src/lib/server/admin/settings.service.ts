@@ -2,12 +2,19 @@ import { and, between, eq, inArray, sql } from 'drizzle-orm';
 import { env } from '$env/dynamic/private';
 import { db } from '$lib/server/db/client';
 import { appSettings, cachedStats, playHistory, shareSettings } from '$lib/server/db/schema';
+import {
+	CredentialedUrlError,
+	envAllowsInsecureLocalPlexHttp,
+	normalizePlexServerUrl,
+	shouldPersistPlexInsecureLocalHttpOptIn
+} from '$lib/server/security/credentialed-url';
 import { ShareMode, ShareModeSource, ShareSettingsKey } from '$lib/server/sharing/types';
 import { createYearFilter } from '$lib/server/stats/utils';
 
 export const AppSettingsKey = {
 	PLEX_SERVER_URL: 'plex_server_url',
 	PLEX_TOKEN: 'plex_token',
+	PLEX_ALLOW_INSECURE_LOCAL_HTTP: 'plex_allow_insecure_local_http',
 	OPENAI_API_KEY: 'openai_api_key',
 	OPENAI_BASE_URL: 'openai_base_url',
 	OPENAI_MODEL: 'openai_model',
@@ -35,6 +42,9 @@ export const AppSettingsKey = {
 	ENABLE_LIVE_SYNC: 'enable_live_sync',
 	ONBOARDING_COMPLETED: 'onboarding_completed',
 	ONBOARDING_CURRENT_STEP: 'onboarding_current_step',
+	ONBOARDING_CLAIMED: 'onboarding_claimed',
+	ONBOARDING_CLAIM_PROOF_HASH: 'onboarding_claim_proof_hash',
+	ONBOARDING_CLAIMED_AT: 'onboarding_claimed_at',
 	CSRF_ORIGIN: 'csrf_origin',
 	CSRF_ORIGIN_SKIPPED: 'csrf_origin_skipped',
 	CSRF_WARNING_DISMISSED: 'csrf_warning_dismissed',
@@ -153,6 +163,7 @@ export const USER_DEFAULTS_SETTINGS_KEYS = [
 export const API_CONFIG_KEYS = [
 	AppSettingsKey.PLEX_SERVER_URL,
 	AppSettingsKey.PLEX_TOKEN,
+	AppSettingsKey.PLEX_ALLOW_INSECURE_LOCAL_HTTP,
 	AppSettingsKey.OPENAI_API_KEY,
 	AppSettingsKey.OPENAI_BASE_URL,
 	AppSettingsKey.OPENAI_MODEL,
@@ -340,6 +351,7 @@ export async function setUserDefaultsAtomic(opts: {
 export interface SetApiConfigInput {
 	plexServerUrl: string | undefined;
 	plexToken: string | undefined;
+	plexAllowInsecureLocalHttp?: boolean;
 	openaiApiKey: string | undefined;
 	openaiBaseUrl: string | undefined;
 	openaiModel: string | undefined;
@@ -460,6 +472,22 @@ export async function setApiConfigAtomic(opts: {
 			opts.values.plexServerUrl,
 			opts.locks.plexServerUrl
 		);
+		if (opts.values.plexServerUrl !== undefined && !opts.locks.plexServerUrl) {
+			if (opts.values.plexServerUrl === '') {
+				await tx
+					.delete(appSettings)
+					.where(eq(appSettings.key, AppSettingsKey.PLEX_ALLOW_INSECURE_LOCAL_HTTP));
+			} else if (
+				opts.values.plexAllowInsecureLocalHttp &&
+				shouldPersistPlexInsecureLocalHttpOptIn(opts.values.plexServerUrl)
+			) {
+				await upsert(AppSettingsKey.PLEX_ALLOW_INSECURE_LOCAL_HTTP, 'true');
+			} else {
+				await tx
+					.delete(appSettings)
+					.where(eq(appSettings.key, AppSettingsKey.PLEX_ALLOW_INSECURE_LOCAL_HTTP));
+			}
+		}
 		await writeSecret(AppSettingsKey.PLEX_TOKEN, opts.values.plexToken, opts.locks.plexToken);
 		await writeSecret(
 			AppSettingsKey.OPENAI_API_KEY,
@@ -896,6 +924,11 @@ export function hasOpenAIEnvConfig(): boolean {
 	return Boolean(env.OPENAI_API_KEY || env.OPENAI_API_URL || env.OPENAI_MODEL);
 }
 
+export async function isPlexInsecureLocalHttpAllowed(): Promise<boolean> {
+	if (envAllowsInsecureLocalPlexHttp()) return true;
+	return (await getAppSetting(AppSettingsKey.PLEX_ALLOW_INSECURE_LOCAL_HTTP)) === 'true';
+}
+
 export interface PlexConfig {
 	serverUrl: string;
 	token: string;
@@ -908,8 +941,18 @@ export interface PlexConfig {
  */
 export async function getPlexConfig(): Promise<PlexConfig> {
 	const config = await getApiConfigWithSources();
+	let serverUrl = '';
+	if (config.plex.serverUrl.value) {
+		try {
+			serverUrl = normalizePlexServerUrl(config.plex.serverUrl.value, {
+				allowInsecureLocalHttp: await isPlexInsecureLocalHttpAllowed()
+			});
+		} catch (err) {
+			if (!(err instanceof CredentialedUrlError)) throw err;
+		}
+	}
 	return {
-		serverUrl: config.plex.serverUrl.value,
+		serverUrl,
 		token: config.plex.token.value
 	};
 }

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
+import { type Cookies, isRedirect } from '@sveltejs/kit';
 import {
 	AnonymizationMode,
 	AppSettingsKey,
@@ -15,6 +16,11 @@ import {
 } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
 import { appSettings, playHistory, syncStatus } from '$lib/server/db/schema';
+import {
+	claimOnboardingInstance,
+	clearBootstrapToken,
+	createBootstrapToken
+} from '$lib/server/onboarding/bootstrap';
 import { setGlobalShareDefaults } from '$lib/server/sharing/service';
 import { load } from '../../../src/routes/onboarding/complete/+page.server';
 
@@ -22,11 +28,64 @@ const adminLocals = {
 	user: { id: 1, plexId: 1, username: 'admin', isAdmin: true }
 } as unknown as App.Locals;
 
+function createCookies(errorToThrow?: Error): Cookies {
+	const values = new Map<string, string>();
+	return {
+		get: (name: string) => {
+			if (errorToThrow) throw errorToThrow;
+			return values.get(name);
+		},
+		set: (name: string, value: string) => values.set(name, value),
+		delete: (name: string) => values.delete(name)
+	} as unknown as Cookies;
+}
+
+async function createClaimedCookies(): Promise<Cookies> {
+	clearBootstrapToken();
+	const cookies = createCookies();
+	const token = createBootstrapToken();
+	expect(await claimOnboardingInstance(cookies, token)).toBe('claimed');
+	return cookies;
+}
+
 describe('onboarding completion summary', () => {
 	beforeEach(async () => {
 		await db.delete(appSettings);
 		await db.delete(playHistory);
 		await db.delete(syncStatus);
+	});
+
+	it('redirects to claim when the active onboarding claim is missing', async () => {
+		try {
+			await load({
+				parent: async () => ({}),
+				locals: adminLocals,
+				url: new URL('http://localhost/onboarding/complete'),
+				cookies: createCookies()
+			} as Parameters<typeof load>[0]);
+			expect.unreachable('Expected missing onboarding claim to redirect');
+		} catch (err) {
+			expect(isRedirect(err)).toBe(true);
+			if (!isRedirect(err)) throw err;
+			expect(err.status).toBe(303);
+			expect(err.location).toBe('/onboarding/claim');
+		}
+	});
+
+	it('propagates unexpected onboarding claim failures', async () => {
+		const unexpected = new Error('unexpected claim cookie failure');
+
+		try {
+			await load({
+				parent: async () => ({}),
+				locals: adminLocals,
+				url: new URL('http://localhost/onboarding/complete'),
+				cookies: createCookies(unexpected)
+			} as Parameters<typeof load>[0]);
+			expect.unreachable('Expected unexpected claim error to be thrown');
+		} catch (err) {
+			expect(err).toBe(unexpected);
+		}
 	});
 
 	it('reflects the persisted onboarding configuration', async () => {
@@ -42,7 +101,8 @@ describe('onboarding completion summary', () => {
 		const result = (await load({
 			parent: async () => ({}),
 			locals: adminLocals,
-			url: new URL('http://localhost/onboarding/complete')
+			url: new URL('http://localhost/onboarding/complete'),
+			cookies: await createClaimedCookies()
 		} as Parameters<typeof load>[0])) as {
 			configSummary: Record<string, string>;
 		};
@@ -63,7 +123,8 @@ describe('onboarding completion summary', () => {
 		const result = (await load({
 			parent: async () => ({}),
 			locals: adminLocals,
-			url: new URL('http://localhost/onboarding/complete?notice=ai-key-missing')
+			url: new URL('http://localhost/onboarding/complete?notice=ai-key-missing'),
+			cookies: await createClaimedCookies()
 		} as Parameters<typeof load>[0])) as { notice: string | null };
 
 		expect(result.notice).toBe('ai-key-missing');
@@ -73,7 +134,8 @@ describe('onboarding completion summary', () => {
 		const result = (await load({
 			parent: async () => ({}),
 			locals: adminLocals,
-			url: new URL('http://localhost/onboarding/complete?notice=evil')
+			url: new URL('http://localhost/onboarding/complete?notice=evil'),
+			cookies: await createClaimedCookies()
 		} as Parameters<typeof load>[0])) as { notice: string | null };
 
 		expect(result.notice).toBeNull();
@@ -86,7 +148,8 @@ describe('onboarding completion summary', () => {
 		const result = (await load({
 			parent: async () => ({}),
 			locals: adminLocals,
-			url: new URL('http://localhost/onboarding/complete')
+			url: new URL('http://localhost/onboarding/complete'),
+			cookies: await createClaimedCookies()
 		} as Parameters<typeof load>[0])) as {
 			configSummary: Record<string, string>;
 		};

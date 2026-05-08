@@ -2,6 +2,7 @@ import {
 	clearCachedServerMachineId,
 	getApiConfigWithSources,
 	getCachedServerMachineId,
+	isPlexInsecureLocalHttpAllowed,
 	setCachedServerMachineId
 } from '$lib/server/admin/settings.service';
 import {
@@ -11,6 +12,7 @@ import {
 	PlexServerIdentitySchema
 } from '$lib/server/auth/types';
 import { logger } from '$lib/server/logging';
+import { normalizePlexServerUrl } from '$lib/server/security/credentialed-url';
 import { classifyConnectionError } from '$lib/server/security/error-sanitizer';
 
 const PLEX_SERVER_HEADERS = {
@@ -40,7 +42,17 @@ export async function fetchServerIdentity(
 		return { identity: null, errorReason: 'Plex server URL or token is not configured' };
 	}
 
-	const normalizedUrl = serverUrl.replace(/\/+$/, '');
+	let normalizedUrl: string;
+	try {
+		normalizedUrl = normalizePlexServerUrl(serverUrl, {
+			allowInsecureLocalHttp: await isPlexInsecureLocalHttpAllowed()
+		});
+	} catch (err) {
+		return {
+			identity: null,
+			errorReason: err instanceof Error ? err.message : 'Invalid Plex server URL'
+		};
+	}
 	const endpoint = `${normalizedUrl}/identity`;
 
 	const controller = new AbortController();

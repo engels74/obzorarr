@@ -19,7 +19,11 @@ import {
 } from '$lib/server/auth/session';
 import { SESSION_DURATION_MS } from '$lib/server/auth/types';
 import { logger } from '$lib/server/logging';
-import { getOnboardingStep, requiresOnboarding } from '$lib/server/onboarding';
+import {
+	getOnboardingStep,
+	printOnboardingBootstrapBanner,
+	requiresOnboarding
+} from '$lib/server/onboarding';
 import {
 	applySecurityHeaders,
 	csrfHandle,
@@ -73,6 +77,12 @@ const initializationHandle: Handle = async ({ event, resolve }) => {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			logger.error(`Failed to clear conflicting DB settings: ${errorMessage}`, 'Startup');
 		}
+	}
+	try {
+		await printOnboardingBootstrapBanner();
+	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		logger.error(`Failed to prepare onboarding bootstrap token: ${errorMessage}`, 'Startup');
 	}
 	return resolve(event);
 };

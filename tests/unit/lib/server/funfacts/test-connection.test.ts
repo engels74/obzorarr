@@ -86,6 +86,19 @@ describe('testOpenAIConnection', () => {
 		expect(JSON.parse(captured.body ?? '{}').model).toBe('gpt-4o-mini');
 	});
 
+	it('rejects HTTP baseUrl without calling fetch', async () => {
+		let fetchCalled = false;
+		globalThis.fetch = mock(async () => {
+			fetchCalled = true;
+			return new Response(null, { status: 200 });
+		}) as unknown as typeof fetch;
+
+		const result = await testOpenAIConnection('sk-test', 'http://custom.example.com/v1');
+
+		expect(result).toEqual({ success: false, error: 'OpenAI base URL must use HTTPS.' });
+		expect(fetchCalled).toBe(false);
+	});
+
 	it('maps 401 to authentication error', async () => {
 		globalThis.fetch = mock(async () => {
 			return new Response('Unauthorized', { status: 401, statusText: 'Unauthorized' });

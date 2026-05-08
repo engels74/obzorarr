@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
 	AppSettingsKey,
 	clearCachedServerMachineId,
+	deleteAppSetting,
 	setAppSetting,
 	setCachedServerMachineId,
 	setCachedServerName
@@ -14,8 +15,14 @@ import {
 	PlexServerIdentitySchema
 } from '$lib/server/auth/types';
 import { logger } from '$lib/server/logging';
+import { OnboardingClaimRequiredError, requireActiveOnboardingClaim } from '$lib/server/onboarding';
 import { resolveOwnedServerToken } from '$lib/server/onboarding/plex-server-selection';
 import { classifyConnectionError } from '$lib/server/security';
+import {
+	envAllowsInsecureLocalPlexHttp,
+	normalizePlexServerUrl,
+	shouldPersistPlexInsecureLocalHttpOptIn
+} from '$lib/server/security/credentialed-url';
 import type { RequestHandler } from './$types';
 
 const PLEX_SERVER_HEADERS = {
@@ -31,6 +38,7 @@ const SelectServerSchema = z
 	.object({
 		serverUrl: z.string().url('Invalid server URL'),
 		accessToken: z.string().min(1, 'Access token is required').optional(),
+		allowInsecureLocalHttp: z.boolean().optional(),
 		clientIdentifier: z.string().min(1).optional(),
 		serverName: z.string().min(1, 'Server name is required')
 	})
@@ -94,13 +102,21 @@ async function testConnection(url: string, accessToken: string): Promise<Connect
 	}
 }
 
-export const POST: RequestHandler = async ({ request, locals, cookies }) => {
+export const POST: RequestHandler = async ({ request, locals, cookies, url }) => {
 	if (!locals.user) {
 		error(401, 'Authentication required');
 	}
 
 	if (!locals.user.isAdmin) {
 		error(403, 'Only server owners can configure Obzorarr');
+	}
+	try {
+		await requireActiveOnboardingClaim(cookies, { requestUrl: url });
+	} catch (err) {
+		if (err instanceof OnboardingClaimRequiredError) {
+			error(403, err.message);
+		}
+		throw err;
 	}
 
 	try {
@@ -112,7 +128,23 @@ export const POST: RequestHandler = async ({ request, locals, cookies }) => {
 			error(400, errorMessage);
 		}
 
-		const { serverUrl, serverName, clientIdentifier } = parseResult.data;
+		const { serverName, clientIdentifier } = parseResult.data;
+		const allowInsecureLocalHttp =
+			parseResult.data.allowInsecureLocalHttp === true || envAllowsInsecureLocalPlexHttp();
+		let serverUrl: string;
+		try {
+			serverUrl = normalizePlexServerUrl(parseResult.data.serverUrl, {
+				allowInsecureLocalHttp
+			});
+		} catch (err) {
+			return json(
+				{
+					success: false,
+					error: err instanceof Error ? err.message : 'Invalid Plex server URL'
+				},
+				{ status: 400 }
+			);
+		}
 		const accessToken =
 			parseResult.data.accessToken ??
 			(await resolveOwnedServerToken({
@@ -133,6 +165,14 @@ export const POST: RequestHandler = async ({ request, locals, cookies }) => {
 
 		await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, serverUrl);
 		await setAppSetting(AppSettingsKey.PLEX_TOKEN, accessToken);
+		if (
+			parseResult.data.allowInsecureLocalHttp === true &&
+			shouldPersistPlexInsecureLocalHttpOptIn(serverUrl)
+		) {
+			await setAppSetting(AppSettingsKey.PLEX_ALLOW_INSECURE_LOCAL_HTTP, 'true');
+		} else {
+			await deleteAppSetting(AppSettingsKey.PLEX_ALLOW_INSECURE_LOCAL_HTTP);
+		}
 		await setCachedServerName(serverName);
 		if (testResult.machineIdentifier) {
 			await setCachedServerMachineId(testResult.machineIdentifier);

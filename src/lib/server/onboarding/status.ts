@@ -5,8 +5,10 @@ import {
 	getAppSetting,
 	setAppSetting
 } from '$lib/server/admin/settings.service';
+import { clearOnboardingClaim } from './bootstrap';
 
 export const OnboardingSteps = {
+	CLAIM: 'claim',
 	CSRF: 'csrf',
 	PLEX: 'plex',
 	SYNC: 'sync',
@@ -40,7 +42,7 @@ export async function getOnboardingStep(): Promise<OnboardingStep> {
 		return step as OnboardingStep;
 	}
 
-	return OnboardingSteps.CSRF;
+	return OnboardingSteps.CLAIM;
 }
 
 export async function setOnboardingStep(step: OnboardingStep): Promise<void> {
@@ -50,6 +52,7 @@ export async function setOnboardingStep(step: OnboardingStep): Promise<void> {
 export async function completeOnboarding(): Promise<void> {
 	await setAppSetting(AppSettingsKey.ONBOARDING_COMPLETED, 'true');
 	await deleteAppSetting(AppSettingsKey.ONBOARDING_CURRENT_STEP);
+	await clearOnboardingClaim();
 	// Do NOT clear CSRF_ORIGIN_SKIPPED here. If the user skipped CSRF origin
 	// configuration during onboarding (no ORIGIN configured), clearing this flag
 	// would hard-lock the install: every POST to /admin/settings would return 403
@@ -60,6 +63,7 @@ export async function completeOnboarding(): Promise<void> {
 export async function resetOnboarding(): Promise<void> {
 	await deleteAppSetting(AppSettingsKey.ONBOARDING_COMPLETED);
 	await deleteAppSetting(AppSettingsKey.ONBOARDING_CURRENT_STEP);
+	await clearOnboardingClaim();
 }
 
 export async function isPlexConfigured(): Promise<boolean> {
@@ -83,6 +87,7 @@ export async function getOnboardingStatus(): Promise<OnboardingStatus> {
 
 export function getStepNumber(step: OnboardingStep): number {
 	const stepOrder: OnboardingStep[] = [
+		OnboardingSteps.CLAIM,
 		OnboardingSteps.CSRF,
 		OnboardingSteps.PLEX,
 		OnboardingSteps.SYNC,
@@ -94,6 +99,7 @@ export function getStepNumber(step: OnboardingStep): number {
 
 export function getNextStep(currentStep: OnboardingStep): OnboardingStep | null {
 	const stepOrder: OnboardingStep[] = [
+		OnboardingSteps.CLAIM,
 		OnboardingSteps.CSRF,
 		OnboardingSteps.PLEX,
 		OnboardingSteps.SYNC,
@@ -109,6 +115,7 @@ export function getNextStep(currentStep: OnboardingStep): OnboardingStep | null 
 
 export function getPreviousStep(currentStep: OnboardingStep): OnboardingStep | null {
 	const stepOrder: OnboardingStep[] = [
+		OnboardingSteps.CLAIM,
 		OnboardingSteps.CSRF,
 		OnboardingSteps.PLEX,
 		OnboardingSteps.SYNC,

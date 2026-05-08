@@ -10,7 +10,9 @@ import { logger } from '$lib/server/logging';
 import {
 	getOnboardingStep,
 	isOnboardingComplete,
+	OnboardingClaimRequiredError,
 	OnboardingSteps,
+	requireActiveOnboardingClaim,
 	setOnboardingStep
 } from '$lib/server/onboarding';
 import type { Actions, PageServerLoad } from './$types';
@@ -105,9 +107,17 @@ export const load: PageServerLoad = async ({ request, parent }) => {
 };
 
 export const actions: Actions = {
-	testOrigin: async ({ request }) => {
+	testOrigin: async ({ request, cookies, url }) => {
 		if (!(await isOnboardingCsrfStep())) {
 			return fail(403, { testError: 'Not allowed at this onboarding stage' });
+		}
+		try {
+			await requireActiveOnboardingClaim(cookies, { requestUrl: url });
+		} catch (err) {
+			if (err instanceof OnboardingClaimRequiredError) {
+				return fail(403, { testError: err.message });
+			}
+			throw err;
 		}
 
 		const formData = await request.formData();
@@ -135,9 +145,21 @@ export const actions: Actions = {
 		return { testSuccess: true, testedOrigin: result.data.csrfOrigin };
 	},
 
-	saveOrigin: async ({ request }) => {
+	saveOrigin: async ({ request, cookies, url }) => {
 		if (!(await isOnboardingCsrfStep())) {
 			return fail(403, { error: 'Not allowed at this onboarding stage' });
+		}
+		try {
+			await requireActiveOnboardingClaim(cookies, { requestUrl: url });
+		} catch (err) {
+			if (err instanceof OnboardingClaimRequiredError) {
+				return fail(403, { error: err.message });
+			}
+			throw err;
+		}
+
+		if (!isSameOriginOnboardingAction(request, url)) {
+			return fail(403, { error: 'CSRF origin must be submitted from this Obzorarr origin' });
 		}
 
 		const csrfConfig = await getCsrfConfigWithSource();
@@ -176,9 +198,17 @@ export const actions: Actions = {
 		redirect(303, '/onboarding/plex');
 	},
 
-	skipCsrf: async ({ request, url }) => {
+	skipCsrf: async ({ request, cookies, url }) => {
 		if (!(await isOnboardingCsrfStep())) {
 			return fail(403, { error: 'Not allowed at this onboarding stage' });
+		}
+		try {
+			await requireActiveOnboardingClaim(cookies, { requestUrl: url });
+		} catch (err) {
+			if (err instanceof OnboardingClaimRequiredError) {
+				return fail(403, { error: err.message });
+			}
+			throw err;
 		}
 
 		if (!isSameOriginOnboardingAction(request, url)) {

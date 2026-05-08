@@ -4,7 +4,11 @@ import { getApiConfigWithSources } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
 import { users } from '$lib/server/db/schema';
 import { logger } from '$lib/server/logging';
-import { requiresOnboarding } from '$lib/server/onboarding';
+import {
+	type OnboardingClaimCookieContext,
+	requireActiveOnboardingClaim,
+	requiresOnboarding
+} from '$lib/server/onboarding';
 import { requireServerMembership, verifyServerOwnership } from './membership';
 import { clearPinTransaction, getPinTransactionForRequest } from './pin-transactions';
 import { checkPinStatus, getPlexUserInfo } from './plex-oauth';
@@ -33,7 +37,8 @@ export type PinLoginResult = { pending: true } | CompletedLogin;
 
 export async function createSessionFromPlexToken(
 	authToken: string,
-	cookies: Cookies
+	cookies: Cookies,
+	context: OnboardingClaimCookieContext = {}
 ): Promise<CompletedLogin> {
 	const plexUser = await getPlexUserInfo(authToken);
 
@@ -45,6 +50,8 @@ export async function createSessionFromPlexToken(
 	let accountId: number;
 
 	if (isOnboarding && !hasServerConfigured) {
+		await requireActiveOnboardingClaim(cookies, context);
+
 		const ownership = await verifyServerOwnership(authToken);
 
 		if (!ownership.isOwner) {
@@ -118,7 +125,8 @@ export async function createSessionFromPlexToken(
 
 export async function completePlexPinLogin(
 	pinId: number,
-	cookies: Cookies
+	cookies: Cookies,
+	context: OnboardingClaimCookieContext = {}
 ): Promise<PinLoginResult> {
 	const transaction = await getPinTransactionForRequest(pinId, cookies);
 	if (!transaction) {
@@ -135,7 +143,7 @@ export async function completePlexPinLogin(
 		return { pending: true };
 	}
 
-	const completed = await createSessionFromPlexToken(pinStatus.authToken, cookies);
+	const completed = await createSessionFromPlexToken(pinStatus.authToken, cookies, context);
 	try {
 		await clearPinTransaction(cookies, transaction.state);
 	} catch (err) {
