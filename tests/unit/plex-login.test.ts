@@ -60,6 +60,7 @@ describe('sanitizeCompletedLoginResponse', () => {
 			authToken: 'plex-auth-token',
 			token: 'provider-token',
 			secret: 'provider-secret',
+			clientIdentifier: 'root-client-id',
 			user: {
 				id: 7,
 				uuid: 'raw-plex-uuid',
@@ -80,6 +81,7 @@ describe('sanitizeCompletedLoginResponse', () => {
 				{
 					name: 'Plex Server',
 					clientIdentifier: 'server-client-id',
+					machineIdentifier: 'server-machine-id',
 					accessToken: 'server-access-token'
 				}
 			],
@@ -106,15 +108,18 @@ describe('sanitizeCompletedLoginResponse', () => {
 			'uuid',
 			'resources',
 			'clientIdentifier',
+			'machineIdentifier',
 			'accessToken',
 			'plex-auth-token',
 			'provider-token',
 			'provider-secret',
 			'nested-auth-token',
+			'root-client-id',
 			'service-token',
 			'service-secret',
 			'server-access-token',
 			'server-client-id',
+			'server-machine-id',
 			'owner@example.com',
 			'123456',
 			'raw-plex-uuid'

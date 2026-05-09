@@ -174,6 +174,21 @@ describe('Logging Service', () => {
 				expect(result.logs[0]?.message).toContain('Warning');
 			});
 
+			it('treats whitespace-only search like no search', async () => {
+				const unfiltered = await queryLogs();
+				const result = await queryLogs({ search: '   ' });
+
+				expect(result.totalCount).toBe(unfiltered.totalCount);
+				expect(result.logs.map((log) => log.id)).toEqual(unfiltered.logs.map((log) => log.id));
+			});
+
+			it('trims search text before filtering', async () => {
+				const result = await queryLogs({ search: ' Warning ' });
+
+				expect(result.logs).toHaveLength(1);
+				expect(result.logs[0]?.message).toContain('Warning');
+			});
+
 			it('filters by time range', async () => {
 				const now = Date.now();
 				const before = now - 1000;
