@@ -28,6 +28,25 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain("toast.error('Failed to export logs');");
 	});
 
+	it('normalizes admin log search before URL and local filtering', async () => {
+		const clientSource = await readSource('src/routes/admin/logs/+page.svelte');
+		const serverSource = await readSource('src/routes/admin/logs/+page.server.ts');
+
+		expect(clientSource).toContain('let normalizedSearchText = $derived(searchText.trim());');
+		expect(clientSource).toContain(
+			'let normalizedSearchLower = $derived(normalizedSearchText.toLowerCase());'
+		);
+		expect(clientSource).toContain('const search = (overrides?.search ?? searchText).trim();');
+		expect(clientSource).toContain(
+			'if (normalizedSearchLower && !log.message.toLowerCase().includes(normalizedSearchLower))'
+		);
+		expect(serverSource).toContain('function normalizeSearchParam(search: string | null)');
+		expect(serverSource).toContain('const normalized = search?.trim();');
+		expect(serverSource).toContain(
+			"const search = normalizeSearchParam(url.searchParams.get('search'));"
+		);
+	});
+
 	it('renders security help as real disclosure buttons', async () => {
 		const source = await readSource('src/routes/admin/settings/+page.svelte');
 

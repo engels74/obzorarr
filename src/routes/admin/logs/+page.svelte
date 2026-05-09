@@ -34,6 +34,8 @@ let searchText = $state('');
 $effect.pre(() => {
 	searchText = data.filters?.search ?? '';
 });
+let normalizedSearchText = $derived(searchText.trim());
+let normalizedSearchLower = $derived(normalizedSearchText.toLowerCase());
 
 // Date range filter state
 let fromDate = $state('');
@@ -76,7 +78,8 @@ const filteredStreamedLogs = $derived(
 	streamedLogs.filter((log) => {
 		if (selectedLevels.length > 0 && !selectedLevels.includes(log.level)) return false;
 		if (selectedSource && log.source !== selectedSource) return false;
-		if (searchText && !log.message.toLowerCase().includes(searchText.toLowerCase())) return false;
+		if (normalizedSearchLower && !log.message.toLowerCase().includes(normalizedSearchLower))
+			return false;
 		if (data.filters?.fromTimestamp && log.timestamp < data.filters.fromTimestamp) return false;
 		if (data.filters?.toTimestamp && log.timestamp > data.filters.toTimestamp) return false;
 		return true;
@@ -86,7 +89,8 @@ const filteredStreamedLogs = $derived(
 function matchesVisibleFilters(log: LogEntry): boolean {
 	if (selectedLevels.length > 0 && !selectedLevels.includes(log.level)) return false;
 	if (selectedSource && log.source !== selectedSource) return false;
-	if (searchText && !log.message.toLowerCase().includes(searchText.toLowerCase())) return false;
+	if (normalizedSearchLower && !log.message.toLowerCase().includes(normalizedSearchLower))
+		return false;
 	if (data.filters?.fromTimestamp && log.timestamp < data.filters.fromTimestamp) return false;
 	if (data.filters?.toTimestamp && log.timestamp > data.filters.toTimestamp) return false;
 	return true;
@@ -174,7 +178,7 @@ const exportAction = $derived.by(() => {
 function applyFilters(overrides?: { levels?: LogLevelType[]; search?: string; source?: string }) {
 	const params = new URLSearchParams();
 	const levels = overrides?.levels ?? selectedLevels;
-	const search = overrides?.search ?? searchText;
+	const search = (overrides?.search ?? searchText).trim();
 	const source = overrides?.source ?? selectedSource;
 
 	if (levels.length > 0) {

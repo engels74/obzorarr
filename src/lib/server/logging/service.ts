@@ -32,6 +32,7 @@ export async function insertLogsBatch(entries: NewLogEntry[]): Promise<void> {
 
 export async function queryLogs(options: LogQueryOptions = {}): Promise<LogQueryResult> {
 	const { levels, search, source, fromTimestamp, toTimestamp, cursor, limit = 100 } = options;
+	const normalizedSearch = search?.trim();
 
 	const conditions = [];
 
@@ -54,8 +55,8 @@ export async function queryLogs(options: LogQueryOptions = {}): Promise<LogQuery
 		conditions.push(lt(logs.id, cursor));
 	}
 
-	if (search) {
-		conditions.push(like(logs.message, `%${search}%`));
+	if (normalizedSearch) {
+		conditions.push(like(logs.message, `%${normalizedSearch}%`));
 	}
 
 	const whereClause = conditions.length > 0 ? and(...conditions) : undefined;

@@ -101,6 +101,8 @@ async function fetchPin(redirectUrl?: string): Promise<PinResponse> {
 export function sanitizeCompletedLoginResponse(result: unknown): CompletedLoginResponse | null {
 	if (!result || typeof result !== 'object' || !('user' in result)) return null;
 
+	// Obzorarr cannot redact Plex-hosted auth page console output, so this keeps
+	// every app-owned browser response limited to session-safe fields.
 	const raw = result as {
 		user?: { username?: unknown; isAdmin?: unknown };
 		redirectTo?: unknown;

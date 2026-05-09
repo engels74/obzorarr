@@ -55,6 +55,11 @@ const CursorSchema = z
 		return Number.isNaN(parsed) ? undefined : parsed;
 	});
 
+function normalizeSearchParam(search: string | null): string | undefined {
+	const normalized = search?.trim();
+	return normalized ? normalized : undefined;
+}
+
 export const load: PageServerLoad = async ({ url }) => {
 	// Initialize retention scheduler if not already configured
 	if (!isRetentionSchedulerConfigured()) {
@@ -62,7 +67,7 @@ export const load: PageServerLoad = async ({ url }) => {
 	}
 
 	const levelsParam = url.searchParams.get('levels');
-	const search = url.searchParams.get('search') || undefined;
+	const search = normalizeSearchParam(url.searchParams.get('search'));
 	const source = url.searchParams.get('source') || undefined;
 	const fromParam = url.searchParams.get('from');
 	const toParam = url.searchParams.get('to');
@@ -155,7 +160,7 @@ export const actions: Actions = requireAdminActions({
 
 	exportLogs: async ({ url }) => {
 		const levelsParam = url.searchParams.get('levels');
-		const search = url.searchParams.get('search') || undefined;
+		const search = normalizeSearchParam(url.searchParams.get('search'));
 		const source = url.searchParams.get('source') || undefined;
 		const fromParam = url.searchParams.get('from');
 		const toParam = url.searchParams.get('to');
