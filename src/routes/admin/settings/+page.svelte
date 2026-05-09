@@ -52,6 +52,77 @@ import type { ActionData, PageData } from './$types';
 const validTabs = ['connections', 'appearance', 'privacy', 'security', 'data', 'system'] as const;
 type TabValue = (typeof validTabs)[number];
 
+type ConfigSource = 'env' | 'db' | 'default';
+type ForwardedHeaderName =
+	| 'forwarded'
+	| 'x-forwarded-for'
+	| 'x-forwarded-host'
+	| 'x-forwarded-proto'
+	| 'x-real-ip';
+type ForwardedPairStatus = 'missing' | 'partial' | 'invalid' | 'usable';
+type RecommendationAction =
+	| 'enable'
+	| 'leave-disabled'
+	| 'review-proxy'
+	| 'appears-working'
+	| 'unable-to-determine'
+	| 'env-controlled';
+
+interface OriginDiagnostic {
+	origin: string | null;
+	isValid: boolean;
+}
+
+interface ConfiguredOriginDiagnostic extends OriginDiagnostic {
+	source: ConfigSource;
+	isConfigured: boolean;
+	isLocked: boolean;
+}
+
+interface ReverseProxyDiagnostic {
+	trustProxy: {
+		enabled: boolean;
+		source: ConfigSource;
+		isLocked: boolean;
+	};
+	origins: {
+		rawApp: string | null;
+		effectiveApp: string | null;
+		browser: OriginDiagnostic;
+		configuredPublic: ConfiguredOriginDiagnostic;
+	};
+	forwardedHeaders: {
+		present: ForwardedHeaderName[];
+		pair: {
+			status: ForwardedPairStatus;
+			isUsable: boolean;
+			protoPresent: boolean;
+			hostPresent: boolean;
+		};
+	};
+	sourceAddress: {
+		category:
+			| 'loopback'
+			| 'private-lan'
+			| 'docker/private-range'
+			| 'tailscale/cgnat'
+			| 'link-local'
+			| 'public'
+			| 'unknown';
+	};
+	originComparison: {
+		browserMatchesRawApp: boolean | null;
+		browserMatchesEffectiveApp: boolean | null;
+		forwardedPairMatchesBrowser: boolean | null;
+	};
+	recommendation: {
+		action: RecommendationAction;
+		summary: string;
+	};
+	reasons: string[];
+	safetyNotice: string;
+}
+
 // Active tab state - initialized from URL params if available
 let activeTab = $state<TabValue>('connections');
 
@@ -305,6 +376,13 @@ $effect(() => {
 	}
 });
 
+$effect(() => {
+	if (activeTab !== 'security' || trustProxyDiagnosticAutoRunStarted) return;
+
+	trustProxyDiagnosticAutoRunStarted = true;
+	void runTrustProxyDiagnostic();
+});
+
 // Cache clearing dialog state
 let cacheDialogOpen = $state(false);
 let pendingCacheYear = $state<number | undefined>(undefined);
@@ -515,6 +593,10 @@ let trustProxyLocked = $state(false);
 let isSavingTrustProxy = $state(false);
 let trustProxyConfirmDialogOpen = $state(false);
 let isConfirmingTrustProxy = $state(false);
+let isCheckingTrustProxyDiagnostic = $state(false);
+let trustProxyDiagnosticAutoRunStarted = $state(false);
+let trustProxyDiagnostic = $state<ReverseProxyDiagnostic | null>(null);
+let trustProxyDiagnosticError = $state<string | null>(null);
 
 // CSRF mismatch confirmation dialog state. Server returns fail(409,
 // { requireConfirmation: true, attemptedOrigin, ... }) when the submitted
@@ -544,6 +626,87 @@ $effect(() => {
 function detectCurrentUrl() {
 	if (typeof window !== 'undefined') {
 		csrfOriginValue = window.location.origin;
+	}
+}
+
+function formatOrigin(origin: string | null): string {
+	return origin ?? 'Not available';
+}
+
+function formatComparison(value: boolean | null): string {
+	if (value === true) return 'Matches';
+	if (value === false) return 'Does not match';
+	return 'Unknown';
+}
+
+function getForwardedPairLabel(status: ForwardedPairStatus): string {
+	switch (status) {
+		case 'usable':
+			return 'Usable proto and host pair';
+		case 'partial':
+			return 'Partial proto/host pair';
+		case 'invalid':
+			return 'Invalid proto/host pair';
+		default:
+			return 'No proto/host pair';
+	}
+}
+
+function getRecommendationLabel(action: RecommendationAction): string {
+	switch (action) {
+		case 'enable':
+			return 'Enable';
+		case 'leave-disabled':
+			return 'Leave disabled';
+		case 'review-proxy':
+			return 'Review proxy setup';
+		case 'appears-working':
+			return 'Already enabled';
+		case 'env-controlled':
+			return 'Already controlled by environment';
+		default:
+			return 'Unable to determine safely';
+	}
+}
+
+function getTrustProxySourceLabel(source: ConfigSource): string {
+	return source === 'env' ? 'environment' : source === 'db' ? 'database' : 'default';
+}
+
+async function runTrustProxyDiagnostic() {
+	if (isCheckingTrustProxyDiagnostic) return;
+
+	isCheckingTrustProxyDiagnostic = true;
+	trustProxyDiagnosticError = null;
+
+	try {
+		const browserOrigin = typeof window === 'undefined' ? '' : window.location.origin;
+		const params = new URLSearchParams();
+		if (browserOrigin) params.set('browserOrigin', browserOrigin);
+
+		const query = params.toString();
+		const response = await fetch(
+			`/api/security/reverse-proxy-diagnostic${query ? `?${query}` : ''}`,
+			{
+				headers: { Accept: 'application/json' }
+			}
+		);
+		const payload = await response.json();
+
+		if (!response.ok) {
+			trustProxyDiagnostic = null;
+			trustProxyDiagnosticError =
+				(payload as { error?: string }).error ?? 'Unable to run the diagnostic.';
+			return;
+		}
+
+		trustProxyDiagnostic = payload as ReverseProxyDiagnostic;
+	} catch (error) {
+		trustProxyDiagnostic = null;
+		trustProxyDiagnosticError =
+			error instanceof Error ? error.message : 'Unable to run the diagnostic.';
+	} finally {
+		isCheckingTrustProxyDiagnostic = false;
 	}
 }
 
@@ -1918,8 +2081,9 @@ const logFieldErrors = $derived(
 						</div>
 
 						<p class="panel-description">
-							Trust <code>X-Forwarded-Proto</code> and <code>X-Forwarded-Host</code> from the
-							upstream reverse proxy. Default: off.
+							Use this when Obzorarr is behind a trusted proxy and the app needs to understand
+							the public protocol and host your browser used. The diagnostic is read-only and
+							never changes <code>TRUST_PROXY</code> by itself.
 						</p>
 						{#if trustProxyHelpOpen}
 							<div id="trust-proxy-help-panel" class="security-help-panel">
@@ -1930,6 +2094,11 @@ const logFieldErrors = $derived(
 									absolute URLs. Enable only if your reverse proxy strips inbound forwarded
 									headers from clients; otherwise an attacker can poison the app's view of its own
 									host and protocol.
+								</p>
+								<p>
+									This commonly matters for Nginx Proxy Manager, Nginx, Caddy, Traefik, Pangolin,
+									Tailscale/headscale, Docker bridge or host networking, LAN/private IP access,
+									and localhost setups where the browser URL differs from Obzorarr's internal URL.
 								</p>
 							</div>
 						{/if}
@@ -1951,14 +2120,164 @@ const logFieldErrors = $derived(
 								</div>
 								{#if trustProxyLocked}
 									<span class="field-hint env-hint">
-										This value is set via TRUST_PROXY environment variable and cannot be changed
-										here.
+										This value is set by the <code>TRUST_PROXY</code> environment variable. Change
+										it in your environment, container, or compose configuration; the UI cannot
+										override it.
 									</span>
 								{:else}
 									<span class="field-hint">
-										Enable only if your reverse proxy strips inbound <code>X-Forwarded-*</code>
-										headers from clients. Environment variable takes priority over database.
+										Leave this disabled for direct localhost or LAN access unless a trusted proxy
+										sits in front of Obzorarr. Enable only if that proxy strips visitor-supplied
+										<code>X-Forwarded-*</code> headers before forwarding requests.
 									</span>
+								{/if}
+							</div>
+
+							<div class="trust-proxy-diagnostic">
+								<div class="diagnostic-header">
+									<div>
+										<h3>Connection Diagnostic</h3>
+										<p>
+											Compare the browser URL with what Obzorarr sees and with sanitized forwarded
+											header signals.
+										</p>
+									</div>
+									<button
+										type="button"
+										class="btn-secondary"
+										onclick={runTrustProxyDiagnostic}
+										disabled={isCheckingTrustProxyDiagnostic}
+									>
+										{#if isCheckingTrustProxyDiagnostic}
+											<Loader2 class="btn-icon spinning" />
+											Checking...
+										{:else}
+											<RefreshCw class="btn-icon" />
+											Check again
+										{/if}
+									</button>
+								</div>
+
+								{#if trustProxyLocked}
+									<div class="diagnostic-env-lock">
+										<Lock class="diagnostic-inline-icon" />
+										<span>
+											<code>TRUST_PROXY</code> is locked by the environment and is currently
+											{trustProxyValue ? 'enabled' : 'disabled'}. Update your environment or
+											container configuration to change it.
+										</span>
+									</div>
+								{/if}
+
+								{#if isCheckingTrustProxyDiagnostic && !trustProxyDiagnostic}
+									<div class="diagnostic-empty">
+										<Loader2 class="btn-icon spinning" />
+										Checking the current request path...
+									</div>
+								{:else if trustProxyDiagnosticError}
+									<div class="diagnostic-error">
+										<AlertTriangle class="diagnostic-inline-icon" />
+										<span>{trustProxyDiagnosticError}</span>
+									</div>
+								{:else if trustProxyDiagnostic}
+									<div class="diagnostic-result-grid">
+										<section class="diagnostic-group">
+											<h4>What your browser used</h4>
+											<dl>
+												<div>
+													<dt>Browser origin</dt>
+													<dd>{formatOrigin(trustProxyDiagnostic.origins.browser.origin)}</dd>
+												</div>
+												<div>
+													<dt>Configured public origin</dt>
+													<dd>
+														{formatOrigin(trustProxyDiagnostic.origins.configuredPublic.origin)}
+														<span class="diagnostic-muted">
+															({getTrustProxySourceLabel(
+																trustProxyDiagnostic.origins.configuredPublic.source
+															)})
+														</span>
+													</dd>
+												</div>
+											</dl>
+										</section>
+
+										<section class="diagnostic-group">
+											<h4>What Obzorarr sees</h4>
+											<dl>
+												<div>
+													<dt>Raw app origin</dt>
+													<dd>{formatOrigin(trustProxyDiagnostic.origins.rawApp)}</dd>
+												</div>
+												<div>
+													<dt>Effective app origin</dt>
+													<dd>{formatOrigin(trustProxyDiagnostic.origins.effectiveApp)}</dd>
+												</div>
+												<div>
+													<dt>Source category</dt>
+													<dd>{trustProxyDiagnostic.sourceAddress.category}</dd>
+												</div>
+												<div>
+													<dt>Browser vs effective</dt>
+													<dd>
+														{formatComparison(
+															trustProxyDiagnostic.originComparison.browserMatchesEffectiveApp
+														)}
+													</dd>
+												</div>
+											</dl>
+										</section>
+
+										<section class="diagnostic-group">
+											<h4>Forwarded headers detected</h4>
+											<dl>
+												<div>
+													<dt>Header names</dt>
+													<dd>
+														{trustProxyDiagnostic.forwardedHeaders.present.length > 0
+															? trustProxyDiagnostic.forwardedHeaders.present.join(', ')
+															: 'None detected'}
+													</dd>
+												</div>
+												<div>
+													<dt>Proto and host pair</dt>
+													<dd>
+														{getForwardedPairLabel(
+															trustProxyDiagnostic.forwardedHeaders.pair.status
+														)}
+													</dd>
+												</div>
+												<div>
+													<dt>Pair matches browser</dt>
+													<dd>
+														{formatComparison(
+															trustProxyDiagnostic.originComparison.forwardedPairMatchesBrowser
+														)}
+													</dd>
+												</div>
+											</dl>
+										</section>
+
+										<section class="diagnostic-group diagnostic-recommendation">
+											<h4>Recommendation</h4>
+											<div class="recommendation-label">
+												{getRecommendationLabel(trustProxyDiagnostic.recommendation.action)}
+											</div>
+											<p>{trustProxyDiagnostic.recommendation.summary}</p>
+											{#if trustProxyDiagnostic.reasons.length > 0}
+												<ul>
+													{#each trustProxyDiagnostic.reasons as reason}
+														<li>{reason}</li>
+													{/each}
+												</ul>
+											{/if}
+											<p class="safety-notice">{trustProxyDiagnostic.safetyNotice}</p>
+										</section>
+									</div>
+								{:else}
+									<div class="diagnostic-empty">
+										Open the Security tab to run a diagnostic, or use Check again.
+									</div>
 								{/if}
 							</div>
 
@@ -3895,7 +4214,161 @@ const logFieldErrors = $derived(
 		}
 
 		.security-help-panel p {
+			margin: 0 0 0.625rem;
+		}
+
+		.security-help-panel p:last-child {
+			margin-bottom: 0;
+		}
+
+		.trust-proxy-diagnostic {
+			margin-top: 1.25rem;
+			padding: 1rem;
+			border: 1px solid hsl(var(--border) / 0.7);
+			border-radius: 8px;
+			background: hsl(var(--muted) / 0.16);
+		}
+
+		.diagnostic-header {
+			display: flex;
+			align-items: flex-start;
+			justify-content: space-between;
+			gap: 1rem;
+			margin-bottom: 1rem;
+		}
+
+		.diagnostic-header h3 {
 			margin: 0;
+			color: hsl(var(--foreground));
+			font-size: 0.9375rem;
+			font-weight: 600;
+		}
+
+		.diagnostic-header p {
+			margin: 0.25rem 0 0;
+			color: hsl(var(--muted-foreground));
+			font-size: 0.8125rem;
+			line-height: 1.45;
+		}
+
+		.diagnostic-env-lock,
+		.diagnostic-error,
+		.diagnostic-empty {
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+			margin-bottom: 1rem;
+			padding: 0.75rem 0.875rem;
+			border-radius: 8px;
+			font-size: 0.8125rem;
+			line-height: 1.45;
+		}
+
+		.diagnostic-env-lock {
+			border: 1px solid hsl(210 60% 35% / 0.45);
+			background: hsl(210 60% 50% / 0.08);
+			color: hsl(210 60% 70%);
+		}
+
+		.diagnostic-error {
+			border: 1px solid hsl(0 70% 40% / 0.45);
+			background: hsl(0 70% 45% / 0.12);
+			color: hsl(0 70% 72%);
+		}
+
+		.diagnostic-empty {
+			margin-bottom: 0;
+			border: 1px dashed hsl(var(--border) / 0.7);
+			background: hsl(var(--background) / 0.35);
+			color: hsl(var(--muted-foreground));
+		}
+
+		.diagnostic-inline-icon {
+			width: 15px;
+			height: 15px;
+			flex: 0 0 auto;
+		}
+
+		.diagnostic-result-grid {
+			display: grid;
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: 0.875rem;
+		}
+
+		.diagnostic-group {
+			padding: 0.875rem;
+			border: 1px solid hsl(var(--border) / 0.55);
+			border-radius: 8px;
+			background: hsl(var(--background) / 0.4);
+		}
+
+		.diagnostic-group h4 {
+			margin: 0 0 0.75rem;
+			color: hsl(var(--foreground));
+			font-size: 0.8125rem;
+			font-weight: 600;
+		}
+
+		.diagnostic-group dl {
+			display: grid;
+			gap: 0.625rem;
+			margin: 0;
+		}
+
+		.diagnostic-group dt {
+			color: hsl(var(--muted-foreground));
+			font-size: 0.6875rem;
+			font-weight: 600;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+		}
+
+		.diagnostic-group dd {
+			margin: 0.125rem 0 0;
+			color: hsl(var(--foreground));
+			font-size: 0.8125rem;
+			line-height: 1.45;
+			overflow-wrap: anywhere;
+		}
+
+		.diagnostic-muted {
+			color: hsl(var(--muted-foreground));
+		}
+
+		.diagnostic-recommendation {
+			border-color: hsl(145 70% 45% / 0.35);
+			background: hsl(145 70% 35% / 0.1);
+		}
+
+		.recommendation-label {
+			display: inline-flex;
+			margin-bottom: 0.5rem;
+			padding: 0.25rem 0.625rem;
+			border-radius: 999px;
+			background: hsl(145 60% 24%);
+			color: hsl(145 70% 72%);
+			font-size: 0.75rem;
+			font-weight: 700;
+		}
+
+		.diagnostic-recommendation p {
+			margin: 0 0 0.625rem;
+			color: hsl(var(--foreground));
+			font-size: 0.8125rem;
+			line-height: 1.5;
+		}
+
+		.diagnostic-recommendation ul {
+			margin: 0 0 0.625rem;
+			padding-left: 1.1rem;
+			color: hsl(var(--muted-foreground));
+			font-size: 0.78125rem;
+			line-height: 1.45;
+		}
+
+		.diagnostic-recommendation .safety-notice {
+			margin-bottom: 0;
+			color: hsl(45 90% 72%);
 		}
 
 		/* Documentation - Compact Collapsible */
@@ -4060,6 +4533,14 @@ const logFieldErrors = $derived(
 			.option-cards.three-col {
 				grid-template-columns: repeat(2, 1fr);
 			}
+
+			.diagnostic-header {
+				flex-direction: column;
+			}
+
+			.diagnostic-result-grid {
+				grid-template-columns: 1fr;
+			}
 		}
 
 		@media (max-width: 480px) {
@@ -4102,6 +4583,10 @@ const logFieldErrors = $derived(
 			.openai-maintenance-actions,
 			.openai-maintenance-form,
 			.openai-maintenance-form button {
+				width: 100%;
+			}
+
+			.diagnostic-header button {
 				width: 100%;
 			}
 		}
