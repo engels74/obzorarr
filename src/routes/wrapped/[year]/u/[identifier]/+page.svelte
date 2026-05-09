@@ -202,11 +202,7 @@ function handleLogoToggle(): void {
 							showLogoOverride = null;
 						}
 						await update();
-						if (result.type === 'success' && typeof payload?.showLogo === 'boolean') {
-							showLogoOverride = payload.showLogo;
-						} else {
-							showLogoOverride = null;
-						}
+						showLogoOverride = null;
 					};
 				}}
 			>
