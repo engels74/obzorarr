@@ -99,6 +99,21 @@ describe('Logger', () => {
 			expect(debugLog).toBeUndefined();
 		});
 
+		it('does not print debug messages when debug is disabled', async () => {
+			const originalDebug = console.debug;
+			const calls: string[] = [];
+			console.debug = mock((message: string) => {
+				calls.push(message);
+			}) as typeof console.debug;
+
+			try {
+				await logger.debug('Debug message when disabled', 'Debug');
+				expect(calls).toEqual([]);
+			} finally {
+				console.debug = originalDebug;
+			}
+		});
+
 		it('persists when debug is enabled', async () => {
 			// Enable debug logging
 			await db.insert(appSettings).values({
@@ -114,6 +129,39 @@ describe('Logger', () => {
 			const debugLog = result.find((l) => l.message === 'Debug message when enabled');
 			expect(debugLog).toBeDefined();
 			expect(debugLog?.level).toBe(LogLevel.DEBUG);
+		});
+
+		it('redacts secrets before printing and persisting debug logs', async () => {
+			await db.insert(appSettings).values({
+				key: LogSettingsKey.DEBUG_ENABLED,
+				value: 'true'
+			});
+			logger.clearDebugCache();
+
+			const originalDebug = console.debug;
+			const calls: string[] = [];
+			console.debug = mock((message: string) => {
+				calls.push(message);
+			}) as typeof console.debug;
+
+			try {
+				await logger.debug(
+					'GET https://user:pass@example.com/?X-Plex-Token=secret Authorization: Bearer secret Cookie: session=secret',
+					'Debug',
+					{ url: 'https://example.com/?token=secret' }
+				);
+				await logger.forceFlush();
+			} finally {
+				console.debug = originalDebug;
+			}
+
+			const result = await db.select().from(logs);
+			const debugLog = result.find((l) => l.level === LogLevel.DEBUG);
+			expect(debugLog?.message).toContain('<redacted>');
+			expect(debugLog?.message).not.toContain('secret');
+			expect(debugLog?.message).not.toContain('user:pass');
+			expect(calls[0]).toBe(`[Debug] ${debugLog?.message}`);
+			expect(debugLog?.metadata).not.toContain('secret');
 		});
 
 		it('caches debug enabled setting', async () => {

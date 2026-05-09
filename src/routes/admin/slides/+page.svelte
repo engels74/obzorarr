@@ -1220,6 +1220,8 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			overflow-y: auto;
 			font-size: 0.875rem;
 			line-height: 1.6;
+			overflow-wrap: anywhere;
+			word-break: break-word;
 		}
 
 		.preview-placeholder {

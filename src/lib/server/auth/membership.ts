@@ -1,5 +1,11 @@
 import { getApiConfigWithSources } from '$lib/server/admin/settings.service';
 import { logger } from '$lib/server/logging';
+import {
+	fingerprintPlexIdentifier,
+	formatPlexConnectionDiagnostic,
+	formatPlexResourceDiagnostic,
+	formatPlexUrlDiagnostic
+} from '$lib/server/plex/diagnostics';
 import { refreshConfiguredServerMachineId } from '$lib/server/plex/server-identity.service';
 import {
 	type MembershipResult,
@@ -307,7 +313,9 @@ function findConfiguredServer(
 		);
 		if (serverByConfiguredId) {
 			logger.debug(
-				`Matched server by /identity machineIdentifier: ${configuredMachineIdFromIdentity} -> ${serverByConfiguredId.name}`,
+				`Matched server by /identity machineIdentifier hash=${fingerprintPlexIdentifier(
+					configuredMachineIdFromIdentity
+				)} serverHash=${fingerprintPlexIdentifier(serverByConfiguredId.clientIdentifier)}`,
 				'Membership'
 			);
 			return serverByConfiguredId;
@@ -323,7 +331,9 @@ function findConfiguredServer(
 		);
 		if (serverByMachineId) {
 			logger.debug(
-				`Matched server by machineId: ${configuredMachineId} -> ${serverByMachineId.name}`,
+				`Matched server by plex.direct machine hash=${fingerprintPlexIdentifier(
+					configuredMachineId
+				)} serverHash=${fingerprintPlexIdentifier(serverByMachineId.clientIdentifier)}`,
 				'Membership'
 			);
 			return serverByMachineId;
@@ -333,9 +343,11 @@ function findConfiguredServer(
 		// This handles cases where the machineId in the URL differs from clientIdentifier
 		const serverByIp = servers.find((s) => matchesByIpAndPort(configuredUrl, s.connections));
 		if (serverByIp) {
-			const extracted = extractPlexDirectIpAndPort(configuredUrl);
 			logger.debug(
-				`Matched server by IP address from .plex.direct URL: ${extracted?.ip} -> ${serverByIp.name}`,
+				`Matched server by IP/port from plex.direct diagnostic=${formatPlexUrlDiagnostic(
+					configuredUrl,
+					'default'
+				)} serverHash=${fingerprintPlexIdentifier(serverByIp.clientIdentifier)}`,
 				'Membership'
 			);
 			return serverByIp;
@@ -346,7 +358,10 @@ function findConfiguredServer(
 		const serverByPlainHost = servers.find((s) => matchesPlainHost(configuredUrl, s));
 		if (serverByPlainHost) {
 			logger.debug(
-				`Matched server by plain host/port: ${configuredUrl} -> ${serverByPlainHost.name}`,
+				`Matched server by plain host/port diagnostic=${formatPlexUrlDiagnostic(
+					configuredUrl,
+					'default'
+				)} serverHash=${fingerprintPlexIdentifier(serverByPlainHost.clientIdentifier)}`,
 				'Membership'
 			);
 			return serverByPlainHost;
@@ -375,20 +390,20 @@ export async function verifyServerMembership(userToken: string): Promise<Members
 
 	// Debug logging to help diagnose membership issues
 	logger.debug(
-		`Configured PLEX_SERVER_URL: ${configuredUrl} (source: ${apiConfig.plex.serverUrl.source})`,
+		`Configured PLEX_SERVER_URL diagnostic=${formatPlexUrlDiagnostic(
+			configuredUrl,
+			apiConfig.plex.serverUrl.source
+		)}`,
 		'Membership'
 	);
 	logger.debug(`Found ${servers.length} server(s) accessible to user`, 'Membership');
 
-	for (const server of servers) {
-		logger.debug(
-			`Server: ${server.name} | clientIdentifier: ${server.clientIdentifier} | owned: ${server.owned}`,
-			'Membership'
-		);
+	for (const [index, server] of servers.entries()) {
+		logger.debug(`Server resource: ${formatPlexResourceDiagnostic(server, index)}`, 'Membership');
 		if (server.connections) {
 			for (const conn of server.connections) {
 				logger.debug(
-					`  - Connection URI: ${conn.uri} | local: ${conn.local} | relay: ${conn.relay}`,
+					`  - Connection: ${formatPlexConnectionDiagnostic(conn, 'default')}`,
 					'Membership'
 				);
 			}
@@ -418,9 +433,11 @@ export async function verifyServerMembership(userToken: string): Promise<Members
 
 	const configuredMachineIdFromIdentity = identityResult.machineId ?? undefined;
 	logger.debug(
-		`Configured server machineIdentifier: ${identityResult.machineId ?? 'null'} (source: ${
-			identityResult.source
-		}${identityResult.errorReason ? `, reason: ${identityResult.errorReason}` : ''})`,
+		`Configured server machineIdentifier hash=${fingerprintPlexIdentifier(
+			identityResult.machineId
+		)} source=${identityResult.source}${
+			identityResult.errorReason ? ` reason=${identityResult.errorReason}` : ''
+		}`,
 		'Membership'
 	);
 
@@ -458,7 +475,9 @@ export async function verifyServerMembership(userToken: string): Promise<Members
 	}
 
 	logger.debug(
-		`Matched server: ${configuredServer.name} | isOwner: ${configuredServer.owned}`,
+		`Matched server hash=${fingerprintPlexIdentifier(configuredServer.clientIdentifier)} isOwner=${
+			configuredServer.owned
+		}`,
 		'Membership'
 	);
 
@@ -586,7 +605,10 @@ export function selectBestConnection(server: PlexResource): string | undefined {
 		(c) => c.uri.includes('.plex.direct') && !c.local && !c.relay
 	);
 	if (publicPlexDirect) {
-		logger.debug(`Selected public .plex.direct connection: ${publicPlexDirect.uri}`, 'Membership');
+		logger.debug(
+			`Selected public plex.direct connection: ${formatPlexConnectionDiagnostic(publicPlexDirect)}`,
+			'Membership'
+		);
 		return publicPlexDirect.uri;
 	}
 
@@ -595,28 +617,40 @@ export function selectBestConnection(server: PlexResource): string | undefined {
 		(c) => c.uri.includes('.plex.direct') && c.local && !c.relay
 	);
 	if (localPlexDirect) {
-		logger.debug(`Selected local .plex.direct connection: ${localPlexDirect.uri}`, 'Membership');
+		logger.debug(
+			`Selected local plex.direct connection: ${formatPlexConnectionDiagnostic(localPlexDirect)}`,
+			'Membership'
+		);
 		return localPlexDirect.uri;
 	}
 
 	// Priority 3: Find public (non-local, non-relay) connection
 	const publicConnection = connections.find((c) => !c.local && !c.relay);
 	if (publicConnection) {
-		logger.debug(`Selected public connection: ${publicConnection.uri}`, 'Membership');
+		logger.debug(
+			`Selected public connection: ${formatPlexConnectionDiagnostic(publicConnection)}`,
+			'Membership'
+		);
 		return publicConnection.uri;
 	}
 
 	// Priority 4: Find local (non-relay) connection as fallback
 	const localConnection = connections.find((c) => c.local && !c.relay);
 	if (localConnection) {
-		logger.debug(`Selected local connection: ${localConnection.uri}`, 'Membership');
+		logger.debug(
+			`Selected local connection: ${formatPlexConnectionDiagnostic(localConnection)}`,
+			'Membership'
+		);
 		return localConnection.uri;
 	}
 
 	// Last resort: use any available connection
 	const anyConnection = connections[0];
 	if (anyConnection) {
-		logger.debug(`Selected fallback connection: ${anyConnection.uri}`, 'Membership');
+		logger.debug(
+			`Selected fallback connection: ${formatPlexConnectionDiagnostic(anyConnection)}`,
+			'Membership'
+		);
 		return anyConnection.uri;
 	}
 
@@ -658,7 +692,10 @@ export function generatePlexDirectUrl(
 	}
 
 	const url = `https://${ipWithDashes}.${machineId}.plex.direct:${port}`;
-	logger.debug(`Generated .plex.direct URL: ${url}`, 'Membership');
+	logger.debug(
+		`Generated plex.direct URL diagnostic=${formatPlexUrlDiagnostic(url, 'default')}`,
+		'Membership'
+	);
 
 	return url;
 }
@@ -673,11 +710,8 @@ export async function verifyServerOwnership(userToken: string): Promise<Ownershi
 	// Debug logging
 	logger.debug(`Found ${servers.length} server(s) accessible to user`, 'Membership');
 
-	for (const server of servers) {
-		logger.debug(
-			`Server: ${server.name} | clientIdentifier: ${server.clientIdentifier} | owned: ${server.owned}`,
-			'Membership'
-		);
+	for (const [index, server] of servers.entries()) {
+		logger.debug(`Server resource: ${formatPlexResourceDiagnostic(server, index)}`, 'Membership');
 	}
 
 	// Find the first server that the user owns
@@ -703,7 +737,9 @@ export async function verifyServerOwnership(userToken: string): Promise<Ownershi
 	}
 
 	logger.debug(
-		`Found owned server: ${ownedServer.name} | bestConnection: ${bestConnectionUrl}`,
+		`Found owned server hash=${fingerprintPlexIdentifier(
+			ownedServer.clientIdentifier
+		)} bestConnection=${bestConnectionUrl ? formatPlexUrlDiagnostic(bestConnectionUrl, 'default') : 'none'}`,
 		'Membership'
 	);
 

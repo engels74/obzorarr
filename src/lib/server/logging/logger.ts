@@ -1,3 +1,4 @@
+import { redactLogMessage, redactLogMetadata } from './redactor';
 import { insertLogsBatch, isDebugEnabled } from './service';
 import { LogLevel, type NewLogEntry } from './types';
 
@@ -16,28 +17,38 @@ class Logger {
 		// Check if debug is enabled (with caching)
 		const debugEnabled = await this.isDebugEnabled();
 		if (!debugEnabled) {
-			// Still output to console for development
-			console.debug(`[${source ?? 'App'}] ${message}`);
 			return;
 		}
 
-		this.addToBuffer({ level: LogLevel.DEBUG, message, source, metadata });
-		console.debug(`[${source ?? 'App'}] ${message}`);
+		const entry = this.sanitizeEntry({ level: LogLevel.DEBUG, message, source, metadata });
+		this.addToBuffer(entry);
+		console.debug(`[${source ?? 'App'}] ${entry.message}`);
 	}
 
 	info(message: string, source?: string, metadata?: Record<string, unknown>): void {
-		this.addToBuffer({ level: LogLevel.INFO, message, source, metadata });
-		console.log(`[${source ?? 'App'}] ${message}`);
+		const entry = this.sanitizeEntry({ level: LogLevel.INFO, message, source, metadata });
+		this.addToBuffer(entry);
+		console.log(`[${source ?? 'App'}] ${entry.message}`);
 	}
 
 	warn(message: string, source?: string, metadata?: Record<string, unknown>): void {
-		this.addToBuffer({ level: LogLevel.WARN, message, source, metadata });
-		console.warn(`[${source ?? 'App'}] ${message}`);
+		const entry = this.sanitizeEntry({ level: LogLevel.WARN, message, source, metadata });
+		this.addToBuffer(entry);
+		console.warn(`[${source ?? 'App'}] ${entry.message}`);
 	}
 
 	error(message: string, source?: string, metadata?: Record<string, unknown>): void {
-		this.addToBuffer({ level: LogLevel.ERROR, message, source, metadata });
-		console.error(`[${source ?? 'App'}] ${message}`);
+		const entry = this.sanitizeEntry({ level: LogLevel.ERROR, message, source, metadata });
+		this.addToBuffer(entry);
+		console.error(`[${source ?? 'App'}] ${entry.message}`);
+	}
+
+	private sanitizeEntry(entry: NewLogEntry): NewLogEntry {
+		return {
+			...entry,
+			message: redactLogMessage(entry.message),
+			metadata: entry.metadata ? redactLogMetadata(entry.metadata) : undefined
+		};
 	}
 
 	private addToBuffer(entry: NewLogEntry): void {

@@ -191,9 +191,22 @@ function handleLogoToggle(): void {
 				action="?/toggleLogo"
 				use:enhance={() => {
 					handleLogoToggle();
-					return async () => {
-						// Form submitted - reset override so server value takes precedence
-						showLogoOverride = null;
+					return async ({ result, update }) => {
+						let payload: { showLogo?: boolean } | undefined;
+						if (result.type === 'success') {
+							payload = result.data as { showLogo?: boolean } | undefined;
+							if (typeof payload?.showLogo === 'boolean') {
+								showLogoOverride = payload.showLogo;
+							}
+						} else {
+							showLogoOverride = null;
+						}
+						await update();
+						if (result.type === 'success' && typeof payload?.showLogo === 'boolean') {
+							showLogoOverride = payload.showLogo;
+						} else {
+							showLogoOverride = null;
+						}
 					};
 				}}
 			>

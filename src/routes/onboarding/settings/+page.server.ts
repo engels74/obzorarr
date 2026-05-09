@@ -341,7 +341,7 @@ export const actions: Actions = {
 			let openaiBaseUrl = data.openaiBaseUrl?.trim().replace(/\/+$/, '');
 			const openaiModel = data.openaiModel?.trim();
 
-			if (data.enableFunFacts && openaiApiKey && openaiBaseUrl) {
+			if (data.enableFunFacts && openaiBaseUrl) {
 				try {
 					openaiBaseUrl = normalizeOpenAIBaseUrl(openaiBaseUrl);
 				} catch (err) {
@@ -383,7 +383,7 @@ export const actions: Actions = {
 				data.enableFunFacts && openaiApiKey
 					? setAppSetting(AppSettingsKey.OPENAI_API_KEY, openaiApiKey)
 					: Promise.resolve(),
-				data.enableFunFacts && openaiApiKey && openaiBaseUrl
+				data.enableFunFacts && openaiBaseUrl
 					? setAppSetting(AppSettingsKey.OPENAI_BASE_URL, openaiBaseUrl)
 					: Promise.resolve(),
 				data.enableFunFacts && openaiApiKey && openaiModel

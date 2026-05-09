@@ -1,4 +1,5 @@
 <script lang="ts">
+import { untrack } from 'svelte';
 import { enhance } from '$app/forms';
 import { goto } from '$app/navigation';
 import * as AlertDialog from '$lib/components/ui/alert-dialog';
@@ -44,13 +45,11 @@ function isBelowFloor(mode: ShareModeType): boolean {
 let copied = $state(false);
 let copyTimeout: ReturnType<typeof setTimeout> | undefined;
 let isUpdating = $state(false);
-let optimisticMode = $state<ShareModeType | null>(null);
-let optimisticShareToken = $state<string | null | undefined>(undefined);
+let localMode = $state<ShareModeType>(untrack(() => shareSettings?.mode ?? 'public'));
+let localShareToken = $state<string | null | undefined>(untrack(() => shareSettings?.shareToken));
 
-const displayMode = $derived(optimisticMode ?? shareSettings?.mode);
-const displayShareToken = $derived(
-	optimisticShareToken === undefined ? shareSettings?.shareToken : optimisticShareToken
-);
+const displayMode = $derived(localMode);
+const displayShareToken = $derived(localShareToken);
 
 // Computed URL based on mode
 const shareUrl = $derived.by(() => {
@@ -136,16 +135,21 @@ function applyShareActionData(data: unknown): void {
 		| undefined;
 
 	if (actionData?.shareSettings?.mode) {
-		optimisticMode = actionData.shareSettings.mode;
+		localMode = actionData.shareSettings.mode;
 	}
 
 	if (actionData?.shareSettings && 'shareToken' in actionData.shareSettings) {
-		optimisticShareToken = actionData.shareSettings.shareToken;
+		localShareToken = actionData.shareSettings.shareToken;
 	}
 
 	if (actionData && 'shareToken' in actionData) {
-		optimisticShareToken = actionData.shareToken;
+		localShareToken = actionData.shareToken;
 	}
+}
+
+function restoreLocalShareState(): void {
+	localMode = shareSettings?.mode ?? 'public';
+	localShareToken = shareSettings?.shareToken;
 }
 
 function currentRouteIdentifier(): string | null {
@@ -216,15 +220,21 @@ $effect(() => {
 });
 
 // Reset optimistic state when the modal transitions from closed to open
-// so a freshly-loaded shareSettings prop (e.g., token rotated elsewhere) is
-// not shadowed by stale optimistic values from a prior session.
+// so a freshly-loaded shareSettings prop (e.g., token rotated elsewhere) is used.
 let prevOpen = false;
 $effect(() => {
 	if (open && !prevOpen) {
-		optimisticMode = null;
-		optimisticShareToken = undefined;
+		restoreLocalShareState();
 	}
 	prevOpen = open;
+});
+
+let lastShareSettings = untrack(() => shareSettings);
+$effect(() => {
+	if (!isUpdating && shareSettings !== lastShareSettings) {
+		lastShareSettings = shareSettings;
+		restoreLocalShareState();
+	}
 });
 </script>
 
@@ -314,17 +324,11 @@ $effect(() => {
 									applyShareActionData(result.data);
 									if (await navigateAfterTokenRouteUpdate(result.data)) return;
 								} else {
-									optimisticMode = null;
-									optimisticShareToken = undefined;
+									restoreLocalShareState();
 								}
 								await update();
 							} finally {
 								isUpdating = false;
-								// Intentionally do NOT reset optimisticMode/optimisticShareToken here.
-								// On success: applyShareActionData() set them to the server's value, so
-								// clearing them between this finally and the next $derived re-evaluation
-								// causes a brief all-unchecked render frame for the radio group.
-								// On failure: the else branch above already cleared them inline.
 							}
 						};
 					}}
@@ -341,10 +345,10 @@ $effect(() => {
 									type="radio"
 									name="mode"
 									value={mode}
-									checked={isUpdating ? optimisticMode === mode : displayMode === mode}
+									checked={displayMode === mode}
 									disabled={isUpdating || isBelowFloor(mode as ShareModeType)}
 									onchange={(e) => {
-										optimisticMode = mode as ShareModeType;
+										localMode = mode as ShareModeType;
 										e.currentTarget.form?.requestSubmit();
 									}}
 								/>
@@ -386,16 +390,13 @@ $effect(() => {
 						action="?/regenerateToken"
 						use:enhance={() => {
 							isUpdating = true;
-							// Seed optimisticMode with the current mode so the radio group's
-							// `checked={isUpdating ? optimisticMode === mode : ...}` expression
-							// keeps the correct option selected for the round-trip duration.
-							// The regenerate action does not change the mode, so we mirror it.
-							optimisticMode = shareSettings?.mode ?? null;
 							return async ({ result, update }) => {
 								try {
 									if (result.type === 'success') {
 										applyShareActionData(result.data);
 										if (await navigateAfterTokenRouteUpdate(result.data)) return;
+									} else {
+										restoreLocalShareState();
 									}
 									await update();
 								} finally {
