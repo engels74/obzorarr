@@ -51,12 +51,13 @@ function isValidForwardedProto(value: string): value is ForwardedProto {
 // different host than intended. Specifically:
 //   @  - userinfo delimiter: "trusted@evil.com" -> hostname is evil.com
 //   /  - path delimiter: "evil.com/path" passes through to pathname
+//   \  - backslash path delimiter: "evil.com\path" passes through to pathname
 //   ?  - query delimiter: "evil.com?x=1" passes through to search
 //   #  - fragment delimiter: "evil.com#foo" passes through to hash
 // IPv6 literals like "[::1]:8443" are NOT rejected because they contain no
 // delimiter characters from the banned set.
 function isSafeForwardedHost(value: string): boolean {
-	return value.length > 0 && !/[\r\n\s@/?#]/.test(value);
+	return value.length > 0 && !/[\r\n\s@/\\?#]/.test(value);
 }
 
 export function getForwardedHeaderNamesPresent(headers: HeaderReader): ForwardedHeaderName[] {

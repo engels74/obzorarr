@@ -238,6 +238,19 @@ describe('proxyHandle', () => {
 			expect(rewrittenUrl.host).toBe('localhost:5173');
 		});
 
+		it('rejects a forwarded host containing \\ (backslash path delimiter)', async () => {
+			const { rewrittenUrl } = await invokeWithRawHeaders({
+				url: 'http://localhost:5173/p',
+				headerLookup: (name) => {
+					if (name === 'x-forwarded-proto') return 'https';
+					if (name === 'x-forwarded-host') return 'evil.com\\injected';
+					return null;
+				}
+			});
+
+			expect(rewrittenUrl.host).toBe('localhost:5173');
+		});
+
 		it('rejects a forwarded host containing ? (query delimiter)', async () => {
 			const { rewrittenUrl } = await invokeWithRawHeaders({
 				url: 'http://localhost:5173/p',

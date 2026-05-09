@@ -67,8 +67,21 @@ let reverseProxyDiagnostic = $state<ReverseProxyDiagnosticView | null>(null);
 let diagnosticStatus = $state<'idle' | 'checking' | 'success' | 'failure'>('idle');
 let diagnosticError = $state<string | null>(null);
 let hasRunInitialDiagnostic = $state(false);
+let hasRefreshedAfterTrustProxySuccess = $state(false);
 
 function updateDiagnosticFromActionForm() {
+	if (form?.trustProxySuccess) {
+		diagnosticError = null;
+		if (!hasRefreshedAfterTrustProxySuccess) {
+			hasRefreshedAfterTrustProxySuccess = true;
+			hasRunInitialDiagnostic = true;
+			void runDiagnostic();
+		}
+		return;
+	}
+	if (hasRefreshedAfterTrustProxySuccess) {
+		hasRefreshedAfterTrustProxySuccess = false;
+	}
 	if (form?.reverseProxyDiagnostic) {
 		reverseProxyDiagnostic = form.reverseProxyDiagnostic as ReverseProxyDiagnosticView;
 		diagnosticStatus = 'success';
