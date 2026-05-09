@@ -713,7 +713,7 @@ const logFieldErrors = $derived(
 							{/if}
 						</div>
 
-						<div class="plex-actions">
+						<div class="panel-actions plex-actions">
 							{#if !plexServerUrlLocked || !plexTokenLocked}
 								<button type="submit" class="btn-primary" disabled={isSavingPlex}>
 									{#if isSavingPlex}
@@ -1072,7 +1072,7 @@ const logFieldErrors = $derived(
 						Color theme for dashboard, admin pages, and all non-wrapped pages.
 					</p>
 
-					<form method="POST" action="?/updateUITheme" use:enhance>
+					<form method="POST" action="?/updateUITheme" use:enhance class="panel-form">
 						<div class="theme-grid">
 							{#each data.themeOptions as theme}
 								<label class="theme-card" class:selected={selectedUITheme === theme.value}>
@@ -1115,7 +1115,7 @@ const logFieldErrors = $derived(
 						Color theme for Year in Review slideshow pages at /wrapped/*.
 					</p>
 
-					<form method="POST" action="?/updateWrappedTheme" use:enhance>
+					<form method="POST" action="?/updateWrappedTheme" use:enhance class="panel-form">
 						<div class="theme-grid">
 							{#each data.themeOptions as theme}
 								<label class="theme-card" class:selected={selectedWrappedTheme === theme.value}>
@@ -1158,56 +1158,57 @@ const logFieldErrors = $derived(
 						Control logo visibility on Year in Review slideshow pages.
 					</p>
 
-						<form
-							method="POST"
-							action="?/updateWrappedLogoMode"
-							use:enhance={() => {
-								return async ({ result, update }) => {
-									try {
-										if (result.type === 'success') {
-											syncedWrappedLogoMode = selectedWrappedLogoMode;
-											await update({ invalidateAll: true });
-										} else {
-											await update();
-										}
-									} finally {
-										if (result.type === 'failure' || result.type === 'error') {
-											selectedWrappedLogoMode = syncedWrappedLogoMode;
-										}
+					<form
+						method="POST"
+						action="?/updateWrappedLogoMode"
+						use:enhance={() => {
+							return async ({ result, update }) => {
+								try {
+									if (result.type === 'success') {
+										syncedWrappedLogoMode = selectedWrappedLogoMode;
+										await update({ invalidateAll: true });
+									} else {
+										await update();
 									}
-								};
-							}}
-						>
-							<div class="option-cards">
-								{#each data.wrappedLogoOptions as option}
-									{@const optionId = `wrapped-logo-mode-${option.value}`}
-									{@const LogoModeIcon = wrappedLogoIcons[option.value] ?? ToggleRight}
-									<label
-										for={optionId}
-										class="option-card"
-										class:selected={selectedWrappedLogoMode === option.value}
-									>
-										<input
-											id={optionId}
-											type="radio"
-											name="logoMode"
-											value={option.value}
-											checked={selectedWrappedLogoMode === option.value}
-											onchange={() => selectWrappedLogoMode(option.value)}
-										/>
-										<div class="option-icon">
-											<LogoModeIcon />
-										</div>
-										<div class="option-content">
-											<span class="option-title">{option.label}</span>
-											<span class="option-desc">{wrappedLogoDescriptions[option.value]}</span>
-										</div>
-										{#if selectedWrappedLogoMode === option.value}
-											<div class="option-check"><Check /></div>
-										{/if}
-									</label>
-								{/each}
-							</div>
+								} finally {
+									if (result.type === 'failure' || result.type === 'error') {
+										selectedWrappedLogoMode = syncedWrappedLogoMode;
+									}
+								}
+							};
+						}}
+						class="panel-form"
+					>
+						<div class="option-cards">
+							{#each data.wrappedLogoOptions as option}
+								{@const optionId = `wrapped-logo-mode-${option.value}`}
+								{@const LogoModeIcon = wrappedLogoIcons[option.value] ?? ToggleRight}
+								<label
+									for={optionId}
+									class="option-card"
+									class:selected={selectedWrappedLogoMode === option.value}
+								>
+									<input
+										id={optionId}
+										type="radio"
+										name="logoMode"
+										value={option.value}
+										checked={selectedWrappedLogoMode === option.value}
+										onchange={() => selectWrappedLogoMode(option.value)}
+									/>
+									<div class="option-icon">
+										<LogoModeIcon />
+									</div>
+									<div class="option-content">
+										<span class="option-title">{option.label}</span>
+										<span class="option-desc">{wrappedLogoDescriptions[option.value]}</span>
+									</div>
+									{#if selectedWrappedLogoMode === option.value}
+										<div class="option-check"><Check /></div>
+									{/if}
+								</label>
+							{/each}
+						</div>
 						<div class="panel-actions">
 							<button type="submit" class="btn-primary">
 								<Image class="btn-icon" />
@@ -1507,20 +1508,22 @@ const logFieldErrors = $derived(
 						</div>
 						<input type="hidden" name="allowUserControl" value={allowUserControl.toString()} />
 
-						<button
-							type="button"
-							class="btn-secondary"
-							disabled={isBulkApplyingUserControl}
-							onclick={() => (bulkApplyShareDefaultsDialogOpen = true)}
-						>
-							{#if isBulkApplyingUserControl}
-								<Loader2 class="btn-icon spinning" />
-								Applying...
-							{:else}
-								<Users class="btn-icon" />
-								Apply current defaults to all existing users
-							{/if}
-						</button>
+						<div class="panel-actions secondary-actions">
+							<button
+								type="button"
+								class="btn-secondary"
+								disabled={isBulkApplyingUserControl}
+								onclick={() => (bulkApplyShareDefaultsDialogOpen = true)}
+							>
+								{#if isBulkApplyingUserControl}
+									<Loader2 class="btn-icon spinning" />
+									Applying...
+								{:else}
+									<Users class="btn-icon" />
+									Apply current defaults to all existing users
+								{/if}
+							</button>
+						</div>
 					</section>
 
 					<!-- Save Button (User defaults) -->
@@ -1628,7 +1631,15 @@ const logFieldErrors = $derived(
 							<p class="csrf-actions-caption">
 								Warning-reset controls appear when a CSRF warning is active.
 							</p>
-							<div class="csrf-actions">
+							{#if csrfOriginLocked}
+								<div class="panel-info">
+									<span class="info-text">
+										CSRF origin is managed via environment variables
+									</span>
+								</div>
+							{/if}
+
+							<div class="panel-actions csrf-actions">
 								{#if !csrfOriginLocked}
 									<form
 										method="POST"
@@ -1839,7 +1850,7 @@ const logFieldErrors = $derived(
 							</div>
 
 							{#if !trustProxyLocked}
-								<div class="csrf-actions">
+								<div class="panel-actions csrf-actions">
 									{#if trustProxyValue}
 										<form
 											method="POST"
@@ -1883,6 +1894,12 @@ const logFieldErrors = $derived(
 											Enable Header Trust
 										</button>
 									{/if}
+								</div>
+							{:else}
+								<div class="panel-info">
+									<span class="info-text">
+										Reverse proxy header trust is managed via environment variables
+									</span>
 								</div>
 							{/if}
 						</div>
@@ -1981,7 +1998,7 @@ const logFieldErrors = $derived(
 					</h3>
 					<p class="subsection-hint">Force recalculation of statistics by clearing the cache.</p>
 
-					<div class="action-buttons">
+					<div class="panel-actions action-buttons">
 						{#each data.availableYears as year}
 							<button
 								type="button"
@@ -2072,7 +2089,7 @@ const logFieldErrors = $derived(
 						Permanently remove viewing history for a specific year or all years.
 					</p>
 
-					<div class="action-buttons danger">
+					<div class="panel-actions action-buttons danger">
 						{#each data.availableYears as year}
 							<button
 								type="button"
@@ -2639,19 +2656,18 @@ const logFieldErrors = $derived(
 		}
 
 		.panel-actions {
+			display: flex;
+			justify-content: flex-end;
+			align-items: center;
+			gap: 0.75rem;
+			flex-wrap: wrap;
 			margin-top: 1.25rem;
 			padding-top: 1rem;
 			border-top: 1px solid hsl(var(--border) / 0.5);
 		}
 
 		.plex-actions {
-			display: flex;
-			gap: 0.75rem;
-			align-items: center;
-			flex-wrap: wrap;
-			margin-top: 1.25rem;
-			padding-top: 1rem;
-			border-top: 1px solid hsl(var(--border) / 0.5);
+			justify-content: flex-end;
 		}
 
 		.panel-badge {
@@ -2984,6 +3000,12 @@ const logFieldErrors = $derived(
 			transform: translateY(-1px);
 		}
 
+		.btn-primary:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+			transform: none;
+		}
+
 		.btn-secondary {
 			display: inline-flex;
 			align-items: center;
@@ -3094,15 +3116,10 @@ const logFieldErrors = $derived(
 			padding-bottom: 0;
 		}
 
-		.theme-panel .panel-actions {
-			padding: 0 1.25rem 1.25rem;
-		}
-
 		.theme-grid {
 			display: grid;
 			grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
 			gap: 0.875rem;
-			padding: 1.25rem;
 		}
 
 		.theme-card {
@@ -3347,6 +3364,11 @@ const logFieldErrors = $derived(
 			padding: 0 1.25rem;
 		}
 
+		.privacy-panel .secondary-actions {
+			justify-content: flex-start;
+			margin: 1.25rem;
+		}
+
 		/* ===== Toggle Option ===== */
 		.toggle-option {
 			margin: 1rem 1.25rem;
@@ -3471,14 +3493,12 @@ const logFieldErrors = $derived(
 
 		/* ===== Action Buttons ===== */
 		.action-buttons {
-			display: flex;
-			flex-wrap: wrap;
-			gap: 0.5rem;
-			padding: 0 1.25rem 1.25rem;
+			justify-content: flex-start;
+			padding: 1rem 1.25rem 1.25rem;
 		}
 
 		.action-buttons.danger {
-			padding-top: 0;
+			padding-top: 1rem;
 		}
 
 		/* ===== Danger Panel ===== */
@@ -3622,11 +3642,8 @@ const logFieldErrors = $derived(
 
 		/* CSRF actions layout */
 		.csrf-actions {
-			display: flex;
-			gap: 0.75rem;
-			align-items: center;
-			flex-wrap: wrap;
-			margin-top: 0.5rem;
+			justify-content: flex-start;
+			margin-top: 1rem;
 		}
 
 		.csrf-actions-caption {
