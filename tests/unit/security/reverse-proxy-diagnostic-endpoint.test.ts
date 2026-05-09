@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import { isHttpError } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { AppSettingsKey, setAppSetting } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
@@ -52,27 +51,19 @@ describe('GET /api/security/reverse-proxy-diagnostic', () => {
 	});
 
 	it('rejects anonymous requests with 401', async () => {
-		try {
-			await runGet({ locals: {} as HandlerArgs['locals'] });
-			expect.unreachable('Expected error to be thrown');
-		} catch (err) {
-			expect(isHttpError(err)).toBe(true);
-			if (!isHttpError(err)) throw err;
-			expect(err.status).toBe(401);
-			expect(err.body.message).toBe('Unauthorized');
-		}
+		const response = await runGet({ locals: {} as HandlerArgs['locals'] });
+
+		expect(response.status).toBe(401);
+		expect(response.headers.get('Cache-Control')).toBe('no-store');
+		expect(await response.json()).toEqual({ message: 'Unauthorized' });
 	});
 
 	it('rejects non-admin requests with 403', async () => {
-		try {
-			await runGet({ locals: userLocals });
-			expect.unreachable('Expected error to be thrown');
-		} catch (err) {
-			expect(isHttpError(err)).toBe(true);
-			if (!isHttpError(err)) throw err;
-			expect(err.status).toBe(403);
-			expect(err.body.message).toBe('Admin access required');
-		}
+		const response = await runGet({ locals: userLocals });
+
+		expect(response.status).toBe(403);
+		expect(response.headers.get('Cache-Control')).toBe('no-store');
+		expect(await response.json()).toEqual({ message: 'Admin access required' });
 	});
 
 	it('returns the sanitized diagnostic payload for admins', async () => {
@@ -181,17 +172,13 @@ describe('GET /api/security/reverse-proxy-diagnostic', () => {
 	});
 
 	it('rejects structurally abusive browserOrigin values', async () => {
-		try {
-			await runGet({
-				requestUrl: `http://internal.local/api/security/reverse-proxy-diagnostic?browserOrigin=${'a'.repeat(2049)}`
-			});
-			expect.unreachable('Expected error to be thrown');
-		} catch (err) {
-			expect(isHttpError(err)).toBe(true);
-			if (!isHttpError(err)) throw err;
-			expect(err.status).toBe(400);
-			expect(err.body.message).toBe('browserOrigin is too long');
-		}
+		const response = await runGet({
+			requestUrl: `http://internal.local/api/security/reverse-proxy-diagnostic?browserOrigin=${'a'.repeat(2049)}`
+		});
+
+		expect(response.status).toBe(400);
+		expect(response.headers.get('Cache-Control')).toBe('no-store');
+		expect(await response.json()).toEqual({ message: 'browserOrigin is too long' });
 	});
 
 	it('does not expose raw secrets, forwarded values, source IPs, or query strings', async () => {

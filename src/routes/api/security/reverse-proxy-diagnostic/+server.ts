@@ -1,4 +1,4 @@
-import { error, json } from '@sveltejs/kit';
+import { json } from '@sveltejs/kit';
 import { checkRateLimit } from '$lib/server/ratelimit';
 import { createReverseProxyDiagnostic } from '$lib/server/security/reverse-proxy-diagnostic';
 import type { RequestHandler } from './$types';
@@ -10,19 +10,23 @@ const RATE_LIMIT = {
 };
 
 const MAX_BROWSER_ORIGIN_LENGTH = 2048;
+const NO_STORE_HEADERS = { 'Cache-Control': 'no-store' };
 
 export const GET: RequestHandler = async ({ getClientAddress, locals, request, url }) => {
 	if (!locals.user) {
-		throw error(401, 'Unauthorized');
+		return json({ message: 'Unauthorized' }, { status: 401, headers: NO_STORE_HEADERS });
 	}
 
 	if (!locals.user.isAdmin) {
-		throw error(403, 'Admin access required');
+		return json({ message: 'Admin access required' }, { status: 403, headers: NO_STORE_HEADERS });
 	}
 
 	const browserOrigin = url.searchParams.get('browserOrigin');
 	if (browserOrigin && browserOrigin.length > MAX_BROWSER_ORIGIN_LENGTH) {
-		throw error(400, 'browserOrigin is too long');
+		return json(
+			{ message: 'browserOrigin is too long' },
+			{ status: 400, headers: NO_STORE_HEADERS }
+		);
 	}
 
 	const rateLimit = checkRateLimit(`${locals.user.id}:${getClientAddress()}`, RATE_LIMIT);

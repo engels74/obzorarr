@@ -59,7 +59,13 @@ type ForwardedHeaderName =
 	| 'x-forwarded-host'
 	| 'x-forwarded-proto'
 	| 'x-real-ip';
-type ForwardedPairStatus = 'missing' | 'partial' | 'invalid' | 'usable';
+type ForwardedPairStatus =
+	| 'missing'
+	| 'partial'
+	| 'invalid-proto'
+	| 'unsafe-host'
+	| 'invalid-host'
+	| 'usable';
 type RecommendationAction =
 	| 'enable'
 	| 'leave-disabled'
@@ -645,7 +651,9 @@ function getForwardedPairLabel(status: ForwardedPairStatus): string {
 			return 'Usable proto and host pair';
 		case 'partial':
 			return 'Partial proto/host pair';
-		case 'invalid':
+		case 'invalid-proto':
+		case 'unsafe-host':
+		case 'invalid-host':
 			return 'Invalid proto/host pair';
 		default:
 			return 'No proto/host pair';
