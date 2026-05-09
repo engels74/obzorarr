@@ -54,11 +54,11 @@ type TabValue = (typeof validTabs)[number];
 
 type ConfigSource = 'env' | 'db' | 'default';
 type ForwardedHeaderName =
-	| 'forwarded'
-	| 'x-forwarded-for'
-	| 'x-forwarded-host'
-	| 'x-forwarded-proto'
-	| 'x-real-ip';
+	| 'Forwarded'
+	| 'X-Forwarded-For'
+	| 'X-Forwarded-Host'
+	| 'X-Forwarded-Proto'
+	| 'X-Real-IP';
 type ForwardedPairStatus =
 	| 'missing'
 	| 'partial'
@@ -73,6 +73,10 @@ type RecommendationAction =
 	| 'appears-working'
 	| 'unable-to-determine'
 	| 'env-controlled';
+type DiagnosticErrorPayload = {
+	error?: string;
+	message?: string;
+};
 
 interface OriginDiagnostic {
 	origin: string | null;
@@ -702,9 +706,10 @@ async function runTrustProxyDiagnostic() {
 		const payload = await response.json();
 
 		if (!response.ok) {
+			const diagnosticError = payload as DiagnosticErrorPayload;
 			trustProxyDiagnostic = null;
 			trustProxyDiagnosticError =
-				(payload as { error?: string }).error ?? 'Unable to run the diagnostic.';
+				diagnosticError.error ?? diagnosticError.message ?? 'Unable to run the diagnostic.';
 			return;
 		}
 
