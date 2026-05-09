@@ -184,6 +184,11 @@ const plexUrlChanged = $derived(
 const showPlexInsecureLocalHttp = $derived(
 	plexServerUrl.trim().toLowerCase().startsWith('http://')
 );
+const showClearOpenaiKey = $derived(
+	openaiApiKeySource === 'db' && openaiApiKeyHasValue && !openaiApiKeyLocked
+);
+const showResetOpenaiModel = $derived(openaiModelSource === 'db' && !openaiModelLocked);
+const showOpenaiMaintenanceActions = $derived(showClearOpenaiKey || showResetOpenaiModel);
 
 // Sync local state with data (initial load and after form submission)
 $effect(() => {
@@ -1038,26 +1043,44 @@ const logFieldErrors = $derived(
 						{/if}
 					</form>
 
-					{#if !openaiApiKeyLocked}
-						<form method="POST" action="?/clearOpenaiKey" use:enhance class="panel-form">
-							<div class="panel-actions">
-								<button type="submit" class="btn-destructive">
-									<X class="btn-icon" />
-									Clear OpenAI API Key
-								</button>
+					{#if showOpenaiMaintenanceActions}
+						<div class="openai-maintenance-row">
+							<div class="openai-maintenance-copy">
+								<span class="maintenance-title">Stored overrides</span>
+								<span class="maintenance-description">
+									Remove saved OpenAI values to fall back to defaults or environment settings.
+								</span>
 							</div>
-						</form>
-					{/if}
+							<div class="openai-maintenance-actions">
+								{#if showClearOpenaiKey}
+									<form
+										method="POST"
+										action="?/clearOpenaiKey"
+										use:enhance
+										class="openai-maintenance-form"
+									>
+										<button type="submit" class="btn-destructive">
+											<Trash2 class="btn-icon" />
+											Clear API Key
+										</button>
+									</form>
+								{/if}
 
-					{#if !openaiModelLocked}
-						<form method="POST" action="?/clearOpenaiModel" use:enhance class="panel-form">
-							<div class="panel-actions">
-								<button type="submit" class="btn-destructive">
-									<X class="btn-icon" />
-									Clear OpenAI Model
-								</button>
+								{#if showResetOpenaiModel}
+									<form
+										method="POST"
+										action="?/clearOpenaiModel"
+										use:enhance
+										class="openai-maintenance-form"
+									>
+										<button type="submit" class="btn-secondary">
+											<RefreshCw class="btn-icon" />
+											Reset Model
+										</button>
+									</form>
+								{/if}
 							</div>
-						</form>
+						</div>
 					{/if}
 				</section>
 			</div>
@@ -3207,6 +3230,50 @@ const logFieldErrors = $derived(
 			font-weight: 600;
 		}
 
+		.openai-maintenance-row {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 1rem;
+			margin: 0 1.25rem 1.25rem;
+			padding: 0.875rem 1rem;
+			background: hsl(var(--muted) / 0.35);
+			border: 1px solid hsl(var(--border));
+			border-radius: 10px;
+		}
+
+		.openai-maintenance-copy {
+			display: flex;
+			flex-direction: column;
+			gap: 0.25rem;
+			min-width: 0;
+		}
+
+		.maintenance-title {
+			font-size: 0.8125rem;
+			font-weight: 600;
+			color: hsl(var(--foreground));
+		}
+
+		.maintenance-description {
+			font-size: 0.75rem;
+			line-height: 1.4;
+			color: hsl(var(--muted-foreground));
+		}
+
+		.openai-maintenance-actions {
+			display: flex;
+			flex-wrap: wrap;
+			justify-content: flex-end;
+			gap: 0.5rem;
+			flex-shrink: 0;
+		}
+
+		.openai-maintenance-form {
+			display: inline-flex;
+			margin: 0;
+		}
+
 		.spinning {
 			animation: spin 1s linear infinite;
 		}
@@ -3975,6 +4042,15 @@ const logFieldErrors = $derived(
 				grid-template-columns: 1fr;
 			}
 
+			.openai-maintenance-row {
+				align-items: flex-start;
+				flex-direction: column;
+			}
+
+			.openai-maintenance-actions {
+				justify-content: flex-start;
+			}
+
 			.theme-grid {
 				grid-template-columns: repeat(2, 1fr);
 			}
@@ -4021,6 +4097,12 @@ const logFieldErrors = $derived(
 			.option-check {
 				position: static;
 				margin-left: auto;
+			}
+
+			.openai-maintenance-actions,
+			.openai-maintenance-form,
+			.openai-maintenance-form button {
+				width: 100%;
 			}
 		}
 
