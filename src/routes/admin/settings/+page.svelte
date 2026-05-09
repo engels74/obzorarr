@@ -520,6 +520,10 @@ let pendingCsrfOrigin = $state<string | null>(null);
 let isConfirmingCsrfMismatch = $state(false);
 let isSavingOpenAI = $state(false);
 let isSavingPlex = $state(false);
+let isSavingUITheme = $state(false);
+let isSavingWrappedTheme = $state(false);
+let isSavingWrappedLogoMode = $state(false);
+let isSavingLogSettings = $state(false);
 
 // Sync CSRF state from data
 $effect(() => {
@@ -1074,7 +1078,21 @@ const logFieldErrors = $derived(
 						Color theme for dashboard, admin pages, and all non-wrapped pages.
 					</p>
 
-					<form method="POST" action="?/updateUITheme" use:enhance class="panel-form">
+					<form
+						method="POST"
+						action="?/updateUITheme"
+						use:enhance={() => {
+							isSavingUITheme = true;
+							return async ({ update }) => {
+								try {
+									await update();
+								} finally {
+									isSavingUITheme = false;
+								}
+							};
+						}}
+						class="panel-form"
+					>
 						<div class="theme-grid">
 							{#each data.themeOptions as theme}
 								<label class="theme-card" class:selected={selectedUITheme === theme.value}>
@@ -1097,9 +1115,14 @@ const logFieldErrors = $derived(
 							{/each}
 						</div>
 						<div class="panel-actions">
-							<button type="submit" class="btn-primary">
-								<Palette class="btn-icon" />
-								Apply UI Theme
+							<button type="submit" class="btn-primary" disabled={isSavingUITheme}>
+								{#if isSavingUITheme}
+									<Loader2 class="btn-icon spinning" />
+									Saving…
+								{:else}
+									<Palette class="btn-icon" />
+									Save UI Theme
+								{/if}
 							</button>
 						</div>
 					</form>
@@ -1117,7 +1140,21 @@ const logFieldErrors = $derived(
 						Color theme for Year in Review slideshow pages at /wrapped/*.
 					</p>
 
-					<form method="POST" action="?/updateWrappedTheme" use:enhance class="panel-form">
+					<form
+						method="POST"
+						action="?/updateWrappedTheme"
+						use:enhance={() => {
+							isSavingWrappedTheme = true;
+							return async ({ update }) => {
+								try {
+									await update();
+								} finally {
+									isSavingWrappedTheme = false;
+								}
+							};
+						}}
+						class="panel-form"
+					>
 						<div class="theme-grid">
 							{#each data.themeOptions as theme}
 								<label class="theme-card" class:selected={selectedWrappedTheme === theme.value}>
@@ -1140,9 +1177,14 @@ const logFieldErrors = $derived(
 							{/each}
 						</div>
 						<div class="panel-actions">
-							<button type="submit" class="btn-primary">
-								<Sparkles class="btn-icon" />
-								Apply Wrapped Theme
+							<button type="submit" class="btn-primary" disabled={isSavingWrappedTheme}>
+								{#if isSavingWrappedTheme}
+									<Loader2 class="btn-icon spinning" />
+									Saving…
+								{:else}
+									<Sparkles class="btn-icon" />
+									Save Wrapped Theme
+								{/if}
 							</button>
 						</div>
 					</form>
@@ -1164,6 +1206,7 @@ const logFieldErrors = $derived(
 						method="POST"
 						action="?/updateWrappedLogoMode"
 						use:enhance={() => {
+							isSavingWrappedLogoMode = true;
 							return async ({ result, update }) => {
 								try {
 									if (result.type === 'success') {
@@ -1176,6 +1219,7 @@ const logFieldErrors = $derived(
 									if (result.type === 'failure' || result.type === 'error') {
 										selectedWrappedLogoMode = syncedWrappedLogoMode;
 									}
+									isSavingWrappedLogoMode = false;
 								}
 							};
 						}}
@@ -1212,9 +1256,14 @@ const logFieldErrors = $derived(
 							{/each}
 						</div>
 						<div class="panel-actions">
-							<button type="submit" class="btn-primary">
-								<Image class="btn-icon" />
-								Apply Logo Mode
+							<button type="submit" class="btn-primary" disabled={isSavingWrappedLogoMode}>
+								{#if isSavingWrappedLogoMode}
+									<Loader2 class="btn-icon spinning" />
+									Saving…
+								{:else}
+									<Image class="btn-icon" />
+									Save Logo Mode
+								{/if}
 							</button>
 						</div>
 					</form>
@@ -1899,17 +1948,20 @@ const logFieldErrors = $derived(
 											use:enhance={() => {
 												isSavingTrustProxy = true;
 												return async ({ result, update }) => {
-													isSavingTrustProxy = false;
-													if (result.type === 'success' || result.type === 'failure') {
-														handleFormToast(
-															result.data as {
-																success?: boolean;
-																message?: string;
-																error?: string;
-															}
-														);
+													try {
+														if (result.type === 'success' || result.type === 'failure') {
+															handleFormToast(
+																result.data as {
+																	success?: boolean;
+																	message?: string;
+																	error?: string;
+																}
+															);
+														}
+														await update({ reset: false });
+													} finally {
+														isSavingTrustProxy = false;
 													}
-													await update({ reset: false });
 												};
 											}}
 										>
@@ -2211,7 +2263,21 @@ const logFieldErrors = $derived(
 					</div>
 					<p class="panel-description">Configure log retention and debug settings.</p>
 
-					<form method="POST" action="?/updateLogSettings" use:enhance class="panel-form">
+					<form
+						method="POST"
+						action="?/updateLogSettings"
+						use:enhance={() => {
+							isSavingLogSettings = true;
+							return async ({ update }) => {
+								try {
+									await update();
+								} finally {
+									isSavingLogSettings = false;
+								}
+							};
+						}}
+						class="panel-form"
+					>
 						<div class="form-row">
 							<div class="form-field">
 								<div class="field-header">
@@ -2279,9 +2345,14 @@ const logFieldErrors = $derived(
 						<input type="hidden" name="debugEnabled" value={logDebugEnabled.toString()} />
 
 						<div class="panel-actions">
-							<button type="submit" class="btn-primary">
-								<Check class="btn-icon" />
-								Save Logging Settings
+							<button type="submit" class="btn-primary" disabled={isSavingLogSettings}>
+								{#if isSavingLogSettings}
+									<Loader2 class="btn-icon spinning" />
+									Saving…
+								{:else}
+									<Check class="btn-icon" />
+									Save Logging Settings
+								{/if}
 							</button>
 						</div>
 					</form>
