@@ -160,6 +160,27 @@ describe('admin UI source regressions', () => {
 		expect(source).not.toContain('bind:group={selectedWrappedLogoMode}');
 	});
 
+	it('uses real onboarding privacy field names for submitted controls', async () => {
+		const source = await readSource('src/routes/onboarding/settings/+page.svelte');
+
+		expect(source).toContain('name="logoMode"');
+		expect(source).toContain('name="defaultShareMode"');
+		expect(source).toContain('name="allowUserControl"');
+		expect(source).not.toContain('name="wrappedLogoModeRadio"');
+		expect(source).not.toContain('name="shareModeRadio"');
+	});
+
+	it('keeps share modal radios checked from local state while updating', async () => {
+		const source = await readSource('src/lib/components/wrapped/ShareModal.svelte');
+
+		expect(source).toContain('let localMode = $state<ShareModeType>');
+		expect(source).toContain('let localShareToken = $state<string | null | undefined>');
+		expect(source).toContain('checked={displayMode === mode}');
+		expect(source).toContain('localMode = mode as ShareModeType;');
+		expect(source).not.toContain('checked={isUpdating ?');
+		expect(source).not.toContain('optimisticMode');
+	});
+
 	it('does not log Plex auth payloads from app-owned browser auth code', async () => {
 		const sources = await Promise.all([
 			readSource('src/lib/client/plex-login.ts'),

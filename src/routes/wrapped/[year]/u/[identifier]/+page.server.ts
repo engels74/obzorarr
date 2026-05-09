@@ -255,7 +255,7 @@ export const actions: Actions = {
 
 		try {
 			await setUserLogoPreference(locals.user.id, year, showLogo);
-			return { success: true };
+			return { success: true, showLogo };
 		} catch (err) {
 			const message = err instanceof Error ? err.message : 'Failed to update preference';
 			return fail(500, { error: message });

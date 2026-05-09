@@ -425,7 +425,7 @@ function getThemeColors(themeValue: string) {
 										<label class="radio-card" class:selected={wrappedLogoMode === option.value}>
 											<input
 												type="radio"
-												name="wrappedLogoModeRadio"
+												name="logoMode"
 												value={option.value}
 												bind:group={wrappedLogoMode}
 											/>
@@ -451,7 +451,7 @@ function getThemeColors(themeValue: string) {
 										<label class="radio-card" class:selected={defaultShareMode === option.value}>
 											<input
 												type="radio"
-												name="shareModeRadio"
+												name="defaultShareMode"
 												value={option.value}
 												checked={defaultShareMode === option.value}
 												onchange={() => (defaultShareMode = option.value)}
@@ -488,6 +488,15 @@ function getThemeColors(themeValue: string) {
 									>
 										<span class="toggle-knob"></span>
 									</button>
+									<input
+										type="checkbox"
+										name="allowUserControl"
+										value="true"
+										bind:checked={allowUserControl}
+										class="sr-only"
+										tabindex="-1"
+										aria-hidden="true"
+									/>
 								</label>
 							</div>
 						</div>

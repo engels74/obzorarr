@@ -131,6 +131,8 @@ $effect(() => {
 			color: hsl(var(--foreground));
 			text-align: left;
 			width: 100%;
+			overflow-wrap: anywhere;
+			word-break: break-word;
 		}
 
 		/* Markdown styling */

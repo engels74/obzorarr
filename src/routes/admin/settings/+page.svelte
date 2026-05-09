@@ -41,7 +41,7 @@ import X from '@lucide/svelte/icons/x';
 import Zap from '@lucide/svelte/icons/zap';
 import { type Component, untrack } from 'svelte';
 import { deserialize, enhance } from '$app/forms';
-import { goto } from '$app/navigation';
+import { goto, invalidateAll } from '$app/navigation';
 import { page } from '$app/stores';
 import * as AlertDialog from '$lib/components/ui/alert-dialog';
 import * as Tabs from '$lib/components/ui/tabs';
@@ -108,6 +108,10 @@ let logDebugEnabled = $state(false);
 let selectedServerWrappedMode = $state('public');
 let selectedDefaultShareMode = $state('public');
 let allowUserControl = $state(true);
+let syncedAnonymization = $state('');
+let syncedServerWrappedMode = $state('public');
+let syncedDefaultShareMode = $state('public');
+let syncedAllowUserControl = $state(true);
 let isBulkApplyingUserControl = $state(false);
 
 let bulkApplyShareDefaultsDialogOpen = $state(false);
@@ -209,6 +213,10 @@ $effect(() => {
 	selectedServerWrappedMode = data.serverWrappedShareMode;
 	selectedDefaultShareMode = data.globalDefaults.defaultShareMode;
 	allowUserControl = data.globalDefaults.allowUserControl;
+	syncedAnonymization = data.anonymizationMode;
+	syncedServerWrappedMode = data.serverWrappedShareMode;
+	syncedDefaultShareMode = data.globalDefaults.defaultShareMode;
+	syncedAllowUserControl = data.globalDefaults.allowUserControl;
 });
 
 $effect(() => {
@@ -262,6 +270,16 @@ const wrappedLogoIcons: Record<WrappedLogoModeValue, Component> = {
 
 function selectWrappedLogoMode(mode: WrappedLogoModeValue): void {
 	selectedWrappedLogoMode = mode;
+}
+
+function restoreServerWrappedSettings(): void {
+	selectedAnonymization = syncedAnonymization;
+	selectedServerWrappedMode = syncedServerWrappedMode;
+}
+
+function restoreUserDefaults(): void {
+	selectedDefaultShareMode = syncedDefaultShareMode;
+	allowUserControl = syncedAllowUserControl;
 }
 
 // Show toast notifications for form responses
@@ -1146,7 +1164,12 @@ const logFieldErrors = $derived(
 							use:enhance={() => {
 								return async ({ result, update }) => {
 									try {
-										await update();
+										if (result.type === 'success') {
+											syncedWrappedLogoMode = selectedWrappedLogoMode;
+											await update({ invalidateAll: true });
+										} else {
+											await update();
+										}
 									} finally {
 										if (result.type === 'failure' || result.type === 'error') {
 											selectedWrappedLogoMode = syncedWrappedLogoMode;
@@ -1200,7 +1223,22 @@ const logFieldErrors = $derived(
 		{#if activeTab === 'privacy'}
 			<div class="privacy-content">
 				<!-- Form 1: Server-wide Wrapped (anonymization + server-wide share mode) -->
-				<form method="POST" action="?/updateServerWrappedSettings" use:enhance>
+				<form
+					method="POST"
+					action="?/updateServerWrappedSettings"
+					use:enhance={() => {
+						return async ({ result, update }) => {
+							if (result.type === 'success') {
+								await update({ invalidateAll: true });
+								await invalidateAll();
+								return;
+							}
+
+							restoreServerWrappedSettings();
+							await update();
+						};
+					}}
+				>
 					<input
 						type="hidden"
 						name="settingsVersion"
@@ -1352,7 +1390,22 @@ const logFieldErrors = $derived(
 				</form>
 
 				<!-- Form 2: User Sharing Defaults (defaultShareMode + allowUserControl) -->
-				<form method="POST" action="?/updateUserDefaults" use:enhance>
+				<form
+					method="POST"
+					action="?/updateUserDefaults"
+					use:enhance={() => {
+						return async ({ result, update }) => {
+							if (result.type === 'success') {
+								await update({ invalidateAll: true });
+								await invalidateAll();
+								return;
+							}
+
+							restoreUserDefaults();
+							await update();
+						};
+					}}
+				>
 					<input
 						type="hidden"
 						name="settingsVersion"

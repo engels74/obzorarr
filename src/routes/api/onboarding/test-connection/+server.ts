@@ -10,6 +10,7 @@ import {
 import { logger } from '$lib/server/logging';
 import { OnboardingClaimRequiredError, requireActiveOnboardingClaim } from '$lib/server/onboarding';
 import { resolveOwnedServerToken } from '$lib/server/onboarding/plex-server-selection';
+import { fingerprintPlexIdentifier, formatPlexUrlDiagnostic } from '$lib/server/plex/diagnostics';
 import { classifyConnectionError } from '$lib/server/security';
 import { normalizePlexServerUrl } from '$lib/server/security/credentialed-url';
 import type { RequestHandler } from './$types';
@@ -93,7 +94,10 @@ export const POST: RequestHandler = async ({ request, locals, cookies, url }) =>
 		const normalizedUrl = url.replace(/\/+$/, '');
 		const endpoint = `${normalizedUrl}/identity`;
 
-		logger.debug(`Testing connection to: ${endpoint}`, 'Onboarding');
+		logger.debug(
+			`Testing connection diagnostic=${formatPlexUrlDiagnostic(endpoint, 'default')}`,
+			'Onboarding'
+		);
 
 		// Create abort controller for timeout
 		const controller = new AbortController();
@@ -166,7 +170,12 @@ export const POST: RequestHandler = async ({ request, locals, cookies, url }) =>
 			const { machineIdentifier, friendlyName } = identityResult.data.MediaContainer;
 			const serverName = friendlyName || 'Plex Media Server';
 
-			logger.info(`Connection test successful: ${serverName} (${machineIdentifier})`, 'Onboarding');
+			logger.info(
+				`Connection test successful serverNameHash=${fingerprintPlexIdentifier(
+					serverName
+				)} machineHash=${fingerprintPlexIdentifier(machineIdentifier)}`,
+				'Onboarding'
+			);
 
 			return json({
 				success: true,

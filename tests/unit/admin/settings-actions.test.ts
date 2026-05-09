@@ -176,6 +176,30 @@ describe('admin updateApiConfig schema hardening', () => {
 		});
 	});
 
+	it.each([
+		['http://api.openai.example/v1', 'OpenAI base URL must use HTTPS.'],
+		[
+			'https://user:pass@api.openai.example/v1',
+			'Configured base URLs must not include credentials.'
+		],
+		[
+			'https://api.openai.example/v1?token=abc',
+			'Configured base URLs must not include query strings or fragments.'
+		],
+		[
+			'https://api.openai.example/v1#models',
+			'Configured base URLs must not include query strings or fragments.'
+		]
+	])('rejects unsafe OpenAI base URL %s with no API key submitted', async (openaiBaseUrl, error) => {
+		const result = await runUpdateApiConfig(createApiConfigRequest({ openaiBaseUrl }));
+
+		expect(result).toMatchObject({
+			status: 400,
+			data: { error }
+		});
+		expect(await getAppSetting(AppSettingsKey.OPENAI_BASE_URL)).toBeNull();
+	});
+
 	it('rejects unchecked local HTTP Plex URL instead of relying on stored opt-in', async () => {
 		const dynamicEnv = env as Record<string, string | undefined>;
 		const previousPlexServerUrl = dynamicEnv.PLEX_SERVER_URL;

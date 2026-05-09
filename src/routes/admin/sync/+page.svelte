@@ -564,6 +564,8 @@ async function goToPage(page: number) {
 							placeholder="0 0 * * *"
 							class="cron-input"
 							class:cron-input-error={cronError}
+							aria-invalid={cronError ? 'true' : 'false'}
+							aria-describedby={cronError ? 'cronExpression-error' : undefined}
 						/>
 						<button type="submit" class="cron-update-btn" disabled={!!cronError} aria-label="Update schedule">
 							<svg
@@ -579,7 +581,7 @@ async function goToPage(page: number) {
 					</div>
 
 					{#if cronError}
-						<span class="cron-error">{cronError}</span>
+						<span id="cronExpression-error" class="cron-error" role="alert">{cronError}</span>
 					{/if}
 
 					<div class="cron-presets">

@@ -121,19 +121,34 @@ describe('onboarding settings actions', () => {
 		expect(await getOnboardingStep()).toBe(OnboardingSteps.COMPLETE);
 	});
 
-	it('still rejects an invalid OpenAI base URL with 400', async () => {
+	it.each([
+		['not a url', 'Invalid OpenAI base URL'],
+		['http://api.openai.example/v1', 'OpenAI base URL must use HTTPS.'],
+		[
+			'https://user:pass@api.openai.example/v1',
+			'Configured base URLs must not include credentials.'
+		],
+		[
+			'https://api.openai.example/v1?token=abc',
+			'Configured base URLs must not include query strings or fragments.'
+		],
+		[
+			'https://api.openai.example/v1#models',
+			'Configured base URLs must not include query strings or fragments.'
+		]
+	])('rejects OpenAI base URL %s even when the API key is blank', async (openaiBaseUrl, error) => {
 		const request = createSettingsRequest({
 			enableFunFacts: 'true',
 			funFactFrequency: 'normal',
-			openaiApiKey: 'test-key',
-			openaiBaseUrl: 'not a url'
+			openaiApiKey: '',
+			openaiBaseUrl
 		});
 
 		const result = await runSaveSettings(request);
 
 		expect(result).toMatchObject({
 			status: 400,
-			data: { error: 'Invalid OpenAI base URL' }
+			data: { error }
 		});
 	});
 

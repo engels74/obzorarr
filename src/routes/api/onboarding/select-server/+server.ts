@@ -17,6 +17,7 @@ import {
 import { logger } from '$lib/server/logging';
 import { OnboardingClaimRequiredError, requireActiveOnboardingClaim } from '$lib/server/onboarding';
 import { resolveOwnedServerToken } from '$lib/server/onboarding/plex-server-selection';
+import { fingerprintPlexIdentifier, formatPlexUrlDiagnostic } from '$lib/server/plex/diagnostics';
 import { classifyConnectionError } from '$lib/server/security';
 import {
 	envAllowsInsecureLocalPlexHttp,
@@ -152,11 +153,19 @@ export const POST: RequestHandler = async ({ request, locals, cookies, url }) =>
 				clientIdentifier: clientIdentifier!
 			}));
 
-		logger.debug(`Testing connection to: ${serverUrl}`, 'Onboarding');
+		logger.debug(
+			`Testing connection diagnostic=${formatPlexUrlDiagnostic(serverUrl, 'default')}`,
+			'Onboarding'
+		);
 		const testResult = await testConnection(serverUrl, accessToken);
 
 		if (!testResult.success) {
-			logger.warn(`Connection test failed for ${serverUrl}: ${testResult.error}`, 'Onboarding');
+			logger.warn(
+				`Connection test failed diagnostic=${formatPlexUrlDiagnostic(serverUrl, 'default')} error=${
+					testResult.error
+				}`,
+				'Onboarding'
+			);
 			return json({
 				success: false,
 				error: testResult.error
@@ -182,7 +191,12 @@ export const POST: RequestHandler = async ({ request, locals, cookies, url }) =>
 			await clearCachedServerMachineId();
 		}
 
-		logger.info(`Onboarding: Server configured - ${serverName} (${serverUrl})`, 'Onboarding');
+		logger.info(
+			`Onboarding: Server configured serverNameHash=${fingerprintPlexIdentifier(
+				serverName
+			)} diagnostic=${formatPlexUrlDiagnostic(serverUrl, 'db')}`,
+			'Onboarding'
+		);
 
 		return json({
 			success: true,

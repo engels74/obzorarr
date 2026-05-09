@@ -14,6 +14,7 @@ import {
 	requireActiveOnboardingClaim,
 	setOnboardingStep
 } from '$lib/server/onboarding';
+import { fingerprintPlexIdentifier, formatPlexUrlDiagnostic } from '$lib/server/plex/diagnostics';
 import {
 	fetchServerIdentity,
 	refreshConfiguredServerMachineId
@@ -268,7 +269,12 @@ export const actions: Actions = {
 				membership.configuredMachineId.toLowerCase();
 			if (!matches) {
 				logger.warn(
-					`Onboarding: Admin override denied for ${configuredUrl} user=${locals.user.username} reason=${directProbe.errorReason ?? 'machine_id_mismatch'}`,
+					`Onboarding: Admin override denied diagnostic=${formatPlexUrlDiagnostic(
+						configuredUrl,
+						apiConfig.plex.serverUrl.source
+					)} userHash=${fingerprintPlexIdentifier(locals.user.username)} reason=${
+						directProbe.errorReason ?? 'machine_id_mismatch'
+					}`,
 					'Onboarding'
 				);
 				return fail(403, {
@@ -285,7 +291,12 @@ export const actions: Actions = {
 		});
 
 		logger.warn(
-			`Onboarding: Admin override used for ${configuredUrl} machineId=${membership.configuredMachineId ?? 'unknown'} user=${locals.user.username}`,
+			`Onboarding: Admin override used diagnostic=${formatPlexUrlDiagnostic(
+				configuredUrl,
+				apiConfig.plex.serverUrl.source
+			)} machineHash=${fingerprintPlexIdentifier(
+				membership.configuredMachineId
+			)} userHash=${fingerprintPlexIdentifier(locals.user.username)}`,
 			'Onboarding'
 		);
 
