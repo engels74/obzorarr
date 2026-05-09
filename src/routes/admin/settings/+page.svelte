@@ -1381,8 +1381,8 @@ const logFieldErrors = $derived(
 					</section>
 
 					<!-- Sticky Save Button (Server settings) -->
-					<div class="sticky-save">
-						<button type="submit" class="btn-primary btn-large">
+					<div class="panel-actions">
+						<button type="submit" class="btn-primary">
 							<Shield class="btn-icon" />
 							Save Server Settings
 						</button>
@@ -1524,8 +1524,8 @@ const logFieldErrors = $derived(
 					</section>
 
 					<!-- Sticky Save Button (User defaults) -->
-					<div class="sticky-save">
-						<button type="submit" class="btn-primary btn-large">
+					<div class="panel-actions">
+						<button type="submit" class="btn-primary">
 							<Shield class="btn-icon" />
 							Save User Defaults
 						</button>
