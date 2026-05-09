@@ -8,6 +8,43 @@ import type { ActionData, PageData } from './$types';
 
 let { data, form }: { data: PageData; form: ActionData } = $props();
 
+type ReverseProxyDiagnosticView = {
+	trustProxy: {
+		enabled: boolean;
+		source: 'env' | 'db' | 'default';
+		isLocked: boolean;
+	};
+	forwardedHeaders: {
+		present: string[];
+		pair: {
+			status: string;
+			isUsable: boolean;
+			protoPresent: boolean;
+			hostPresent: boolean;
+		};
+	};
+	sourceAddress: {
+		category: string;
+	};
+	originComparison: {
+		browserMatchesRawApp: boolean | null;
+		browserMatchesEffectiveApp: boolean | null;
+		forwardedPairMatchesBrowser: boolean | null;
+	};
+	recommendation: {
+		action:
+			| 'enable'
+			| 'leave-disabled'
+			| 'review-proxy'
+			| 'appears-working'
+			| 'unable-to-determine'
+			| 'env-controlled';
+		summary: string;
+	};
+	reasons: string[];
+	safetyNotice: string;
+};
+
 function getInitialOrigin(): string {
 	return data.csrfConfig.value || data.detection.detectedOrigin;
 }
@@ -25,6 +62,23 @@ let testResult = $state<'idle' | 'testing' | 'success' | 'failure'>(
 );
 let testError = $state<string | null>(null);
 let testedOrigin = $state<string | null>(initialOriginVerified ? initialOrigin : null);
+let browserOrigin = $state<string>('');
+let reverseProxyDiagnostic = $state<ReverseProxyDiagnosticView | null>(null);
+let diagnosticStatus = $state<'idle' | 'checking' | 'success' | 'failure'>('idle');
+let diagnosticError = $state<string | null>(null);
+let hasRunInitialDiagnostic = $state(false);
+
+function updateDiagnosticFromActionForm() {
+	if (form?.reverseProxyDiagnostic) {
+		reverseProxyDiagnostic = form.reverseProxyDiagnostic as ReverseProxyDiagnosticView;
+		diagnosticStatus = 'success';
+		diagnosticError = null;
+	}
+	if (form?.diagnosticError) {
+		diagnosticStatus = 'failure';
+		diagnosticError = form.diagnosticError;
+	}
+}
 
 let previousInput = $state<string>(initialOrigin);
 $effect(() => {
@@ -40,6 +94,56 @@ $effect(() => {
 			testedOrigin = null;
 		}
 	}
+});
+
+async function runDiagnostic() {
+	if (diagnosticStatus === 'checking') return;
+
+	browserOrigin = window.location.origin;
+	diagnosticStatus = 'checking';
+	diagnosticError = null;
+
+	const formData = new FormData();
+	formData.set('browserOrigin', browserOrigin);
+
+	try {
+		const response = await fetch('?/diagnoseReverseProxy', {
+			method: 'POST',
+			body: formData
+		});
+		const text = await response.text();
+		const result: ActionResult = deserialize(text);
+
+		if (result.type === 'success') {
+			const payload = result.data as
+				| { reverseProxyDiagnostic?: ReverseProxyDiagnosticView }
+				| undefined;
+			if (payload?.reverseProxyDiagnostic) {
+				reverseProxyDiagnostic = payload.reverseProxyDiagnostic;
+				diagnosticStatus = 'success';
+			} else {
+				diagnosticStatus = 'failure';
+				diagnosticError = 'Diagnostic response was incomplete';
+			}
+		} else if (result.type === 'failure') {
+			diagnosticStatus = 'failure';
+			const payload = result.data as { diagnosticError?: string } | undefined;
+			diagnosticError = payload?.diagnosticError ?? 'Diagnostic failed';
+		} else {
+			diagnosticStatus = 'failure';
+			diagnosticError = 'Unexpected diagnostic response';
+		}
+	} catch {
+		diagnosticStatus = 'failure';
+		diagnosticError = 'Network error - could not complete diagnostic';
+	}
+}
+
+$effect(() => {
+	updateDiagnosticFromActionForm();
+	if (hasRunInitialDiagnostic) return;
+	hasRunInitialDiagnostic = true;
+	void runDiagnostic();
 });
 
 async function runTest() {
@@ -120,6 +224,39 @@ $effect(() => {
 function useDetectedOrigin() {
 	csrfOriginInput = data.detection.detectedOrigin;
 }
+
+function getForwardedPairLabel(status: string): string {
+	switch (status) {
+		case 'usable':
+			return 'Forwarded scheme and host look usable';
+		case 'missing':
+			return 'No forwarded scheme/host pair detected';
+		case 'partial':
+			return 'Forwarded scheme/host pair is incomplete';
+		case 'invalid-proto':
+		case 'unsafe-host':
+		case 'invalid-host':
+			return 'Forwarded scheme/host pair is invalid';
+		default:
+			return 'Forwarded scheme/host pair needs review';
+	}
+}
+
+function getRecommendationTone(
+	action: ReverseProxyDiagnosticView['recommendation']['action']
+): string {
+	if (action === 'enable' || action === 'appears-working') return 'success';
+	if (action === 'leave-disabled') return 'neutral';
+	return 'warning';
+}
+
+function canEnableTrustProxy(): boolean {
+	return (
+		diagnosticStatus === 'success' &&
+		reverseProxyDiagnostic?.recommendation.action === 'enable' &&
+		!reverseProxyDiagnostic.trustProxy.isLocked
+	);
+}
 </script>
 
 <OnboardingCard title="Security Settings" subtitle="Configure CSRF protection for your application">
@@ -192,10 +329,131 @@ function useDetectedOrigin() {
 					<span class="detection-value origin">{data.detection.detectedOrigin}</span>
 				</div>
 			</div>
-		</div>
+			</div>
 
-		{#if data.csrfConfig.isLocked}
-			<div class="preconfigured-card animate-item">
+			<div class="diagnostic-card animate-item">
+				<div class="diagnostic-header">
+					<div>
+						<span class="diagnostic-eyebrow">Reverse Proxy Header Trust</span>
+						<h3>Connection safety check</h3>
+					</div>
+					<button
+						type="button"
+						class="diagnostic-check-btn"
+						onclick={runDiagnostic}
+						disabled={diagnosticStatus === 'checking'}
+					>
+						{#if diagnosticStatus === 'checking'}
+							<span class="spinner small"></span>
+							Checking...
+						{:else}
+							Check again
+						{/if}
+					</button>
+				</div>
+
+				{#if diagnosticStatus === 'checking' && !reverseProxyDiagnostic}
+					<div class="diagnostic-loading">
+						<span class="spinner"></span>
+						<span>Checking whether Obzorarr should trust proxy headers...</span>
+					</div>
+				{:else if diagnosticStatus === 'failure'}
+					<div class="test-result error">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<circle cx="12" cy="12" r="10" />
+							<line x1="15" y1="9" x2="9" y2="15" stroke-linecap="round" />
+							<line x1="9" y1="9" x2="15" y2="15" stroke-linecap="round" />
+						</svg>
+						<span>{diagnosticError ?? 'Diagnostic failed'}</span>
+					</div>
+				{/if}
+
+				{#if reverseProxyDiagnostic}
+					<div
+						class="diagnostic-recommendation {getRecommendationTone(
+							reverseProxyDiagnostic.recommendation.action
+						)}"
+					>
+						<span class="recommendation-title">
+							{reverseProxyDiagnostic.recommendation.summary}
+						</span>
+						<ul>
+							{#each reverseProxyDiagnostic.reasons as reason}
+								<li>{reason}</li>
+							{/each}
+						</ul>
+					</div>
+
+					<div class="diagnostic-facts">
+						<div>
+							<span class="fact-label">Forwarded headers</span>
+							<span class="fact-value">
+								{getForwardedPairLabel(reverseProxyDiagnostic.forwardedHeaders.pair.status)}
+							</span>
+						</div>
+						<div>
+							<span class="fact-label">Signals present</span>
+							<span class="fact-value">
+								{reverseProxyDiagnostic.forwardedHeaders.present.length > 0
+									? reverseProxyDiagnostic.forwardedHeaders.present.join(', ')
+									: 'None'}
+							</span>
+						</div>
+						<div>
+							<span class="fact-label">Current setting</span>
+							<span class="fact-value">
+								{reverseProxyDiagnostic.trustProxy.enabled ? 'Enabled' : 'Disabled'}
+								{#if reverseProxyDiagnostic.trustProxy.isLocked}
+									<span class="inline-badge">ENV</span>
+								{/if}
+							</span>
+						</div>
+					</div>
+
+					<p class="diagnostic-safety">{reverseProxyDiagnostic.safetyNotice}</p>
+
+					{#if reverseProxyDiagnostic.recommendation.action === 'env-controlled'}
+						<p class="diagnostic-safety">
+							Change <code>TRUST_PROXY</code> in your environment or container configuration,
+							then restart Obzorarr.
+						</p>
+					{:else if canEnableTrustProxy()}
+						<form method="POST" action="?/enableTrustProxy" class="trust-proxy-enable-form">
+							<input type="hidden" name="browserOrigin" value={browserOrigin} />
+							<label class="risk-confirmation">
+								<input type="checkbox" name="confirmRisk" value="true" required />
+								<span>
+									I confirm my reverse proxy strips visitor-supplied forwarding headers before
+									requests reach Obzorarr.
+								</span>
+							</label>
+							<button type="submit" class="enable-trust-btn">Enable Header Trust</button>
+						</form>
+					{/if}
+
+					{#if form?.trustProxySuccess}
+						<div class="test-result success">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<circle cx="12" cy="12" r="10" />
+								<path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round" />
+							</svg>
+							<span>{form.trustProxyMessage ?? 'Reverse-proxy header trust enabled.'}</span>
+						</div>
+					{:else if form?.trustProxyError}
+						<div class="test-result error">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+								<circle cx="12" cy="12" r="10" />
+								<line x1="15" y1="9" x2="9" y2="15" stroke-linecap="round" />
+								<line x1="9" y1="9" x2="15" y2="15" stroke-linecap="round" />
+							</svg>
+							<span>{form.trustProxyError}</span>
+						</div>
+					{/if}
+				{/if}
+			</div>
+
+			{#if data.csrfConfig.isLocked}
+				<div class="preconfigured-card animate-item">
 				<div class="preconfigured-icon">
 					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
 						<path
@@ -518,6 +776,219 @@ function useDetectedOrigin() {
 			font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
 			font-size: 0.8rem;
 			color: rgba(255, 255, 255, 0.7);
+		}
+
+		/* Reverse Proxy Diagnostic */
+		.diagnostic-card {
+			display: flex;
+			flex-direction: column;
+			gap: 1rem;
+			padding: 1rem 1.25rem;
+			background: rgba(255, 255, 255, 0.035);
+			border: 1px solid rgba(255, 255, 255, 0.09);
+			border-radius: 12px;
+		}
+
+		.diagnostic-header {
+			display: flex;
+			align-items: flex-start;
+			justify-content: space-between;
+			gap: 1rem;
+		}
+
+		.diagnostic-eyebrow {
+			display: block;
+			margin-bottom: 0.25rem;
+			font-size: 0.65rem;
+			font-weight: 600;
+			text-transform: uppercase;
+			letter-spacing: 0.06em;
+			color: rgba(255, 255, 255, 0.45);
+		}
+
+		.diagnostic-header h3 {
+			margin: 0;
+			font-size: 1rem;
+			line-height: 1.3;
+			color: rgba(255, 255, 255, 0.94);
+		}
+
+		.diagnostic-check-btn,
+		.enable-trust-btn {
+			flex-shrink: 0;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			gap: 0.375rem;
+			padding: 0.5rem 0.75rem;
+			border-radius: 6px;
+			font-size: 0.75rem;
+			font-weight: 600;
+			cursor: pointer;
+			transition:
+				background 0.2s,
+				border-color 0.2s,
+				opacity 0.2s;
+		}
+
+		.diagnostic-check-btn {
+			background: rgba(59, 130, 246, 0.08);
+			border: 1px solid rgba(59, 130, 246, 0.18);
+			color: hsl(217, 91%, 68%);
+		}
+
+		.diagnostic-check-btn:hover:not(:disabled) {
+			background: rgba(59, 130, 246, 0.14);
+			border-color: rgba(59, 130, 246, 0.28);
+		}
+
+		.diagnostic-check-btn:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+		}
+
+		.diagnostic-loading {
+			display: flex;
+			align-items: center;
+			gap: 0.75rem;
+			font-size: 0.85rem;
+			color: rgba(255, 255, 255, 0.55);
+		}
+
+		.diagnostic-recommendation {
+			padding: 0.875rem 1rem;
+			border-radius: 10px;
+			border: 1px solid rgba(255, 255, 255, 0.1);
+		}
+
+		.diagnostic-recommendation.success {
+			background: rgba(34, 197, 94, 0.09);
+			border-color: rgba(34, 197, 94, 0.22);
+		}
+
+		.diagnostic-recommendation.warning {
+			background: rgba(245, 158, 11, 0.09);
+			border-color: rgba(245, 158, 11, 0.22);
+		}
+
+		.diagnostic-recommendation.neutral {
+			background: rgba(255, 255, 255, 0.04);
+		}
+
+		.recommendation-title {
+			display: block;
+			margin-bottom: 0.5rem;
+			font-size: 0.9rem;
+			font-weight: 600;
+			color: rgba(255, 255, 255, 0.92);
+		}
+
+		.diagnostic-recommendation ul {
+			margin: 0;
+			padding-left: 1rem;
+			color: rgba(255, 255, 255, 0.6);
+			font-size: 0.8rem;
+			line-height: 1.45;
+		}
+
+		.diagnostic-facts {
+			display: grid;
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+			gap: 0.75rem;
+		}
+
+		.diagnostic-facts > div {
+			display: flex;
+			flex-direction: column;
+			gap: 0.25rem;
+			min-width: 0;
+			padding: 0.75rem;
+			background: rgba(255, 255, 255, 0.035);
+			border: 1px solid rgba(255, 255, 255, 0.07);
+			border-radius: 8px;
+		}
+
+		.fact-label {
+			font-size: 0.65rem;
+			font-weight: 600;
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+			color: rgba(255, 255, 255, 0.38);
+		}
+
+		.fact-value {
+			display: flex;
+			align-items: center;
+			gap: 0.375rem;
+			min-width: 0;
+			font-size: 0.8rem;
+			line-height: 1.35;
+			color: rgba(255, 255, 255, 0.72);
+			overflow-wrap: anywhere;
+		}
+
+		.inline-badge {
+			display: inline-flex;
+			align-items: center;
+			padding: 0.1rem 0.35rem;
+			border-radius: 4px;
+			background: rgba(34, 197, 94, 0.14);
+			border: 1px solid rgba(34, 197, 94, 0.25);
+			color: hsl(142, 71%, 60%);
+			font-size: 0.6rem;
+			font-weight: 700;
+			letter-spacing: 0.05em;
+		}
+
+		.diagnostic-safety {
+			margin: 0;
+			font-size: 0.8rem;
+			line-height: 1.5;
+			color: rgba(255, 255, 255, 0.52);
+		}
+
+		.diagnostic-safety code {
+			font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+			font-size: 0.76rem;
+			background: rgba(255, 255, 255, 0.08);
+			padding: 0.125rem 0.35rem;
+			border-radius: 4px;
+			color: rgba(255, 255, 255, 0.72);
+		}
+
+		.trust-proxy-enable-form {
+			display: flex;
+			flex-direction: column;
+			gap: 0.75rem;
+			margin: 0;
+			padding-top: 0.125rem;
+		}
+
+		.risk-confirmation {
+			display: flex;
+			align-items: flex-start;
+			gap: 0.625rem;
+			font-size: 0.78rem;
+			line-height: 1.45;
+			color: rgba(255, 255, 255, 0.62);
+		}
+
+		.risk-confirmation input {
+			flex-shrink: 0;
+			margin-top: 0.15rem;
+			accent-color: hsl(217, 91%, 60%);
+		}
+
+		.enable-trust-btn {
+			width: fit-content;
+			background: rgba(34, 197, 94, 0.12);
+			border: 1px solid rgba(34, 197, 94, 0.28);
+			color: hsl(142, 71%, 58%);
+		}
+
+		.enable-trust-btn:hover {
+			background: rgba(34, 197, 94, 0.18);
+			border-color: rgba(34, 197, 94, 0.38);
 		}
 
 		/* Preconfigured Card */
@@ -1119,6 +1590,20 @@ function useDetectedOrigin() {
 				flex-direction: column;
 				align-items: flex-start;
 				gap: 0.25rem;
+			}
+
+			.diagnostic-header {
+				flex-direction: column;
+				align-items: stretch;
+			}
+
+			.diagnostic-check-btn,
+			.enable-trust-btn {
+				width: 100%;
+			}
+
+			.diagnostic-facts {
+				grid-template-columns: 1fr;
 			}
 
 			.preconfigured-card {

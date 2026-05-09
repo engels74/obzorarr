@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import type { Cookies } from '@sveltejs/kit';
 import { isRedirect } from '@sveltejs/kit';
+import { env } from '$env/dynamic/private';
 import {
 	AppSettingsKey,
 	deleteAppSetting,
@@ -21,6 +22,12 @@ const ORIGIN = 'http://localhost:5173';
 type SaveOriginAction = NonNullable<typeof actions.saveOrigin>;
 type SkipCsrfAction = NonNullable<typeof actions.skipCsrf>;
 type TestOriginAction = NonNullable<typeof actions.testOrigin>;
+type DiagnoseReverseProxyAction = NonNullable<typeof actions.diagnoseReverseProxy>;
+type EnableTrustProxyAction = NonNullable<typeof actions.enableTrustProxy>;
+
+function envRecord(): Record<string, string | undefined> {
+	return env as Record<string, string | undefined>;
+}
 
 function createCookies() {
 	const values = new Map<string, string>();
@@ -32,6 +39,7 @@ function createCookies() {
 }
 
 let cookies: ReturnType<typeof createCookies>;
+let previousTrustProxyEnv: string | undefined;
 
 function createThrowingClaimCookies(errorToThrow: Error): ReturnType<typeof createCookies> {
 	return {
@@ -50,6 +58,42 @@ function createFormRequest(csrfOrigin: string, origin = ORIGIN, requestBase = OR
 	return new Request(`${requestBase}/onboarding/csrf`, {
 		method: 'POST',
 		headers: { origin },
+		body: formData
+	});
+}
+
+function createReverseProxyDiagnosticRequest(
+	browserOrigin = 'https://wrapped.example.com',
+	requestBase = 'http://internal.local',
+	headers: Record<string, string> = {}
+): Request {
+	const formData = new FormData();
+	formData.set('browserOrigin', browserOrigin);
+
+	return new Request(`${requestBase}/onboarding/csrf`, {
+		method: 'POST',
+		headers: {
+			origin: browserOrigin,
+			'x-forwarded-proto': 'https',
+			'x-forwarded-host': 'wrapped.example.com',
+			...headers
+		},
+		body: formData
+	});
+}
+
+function createEnableTrustProxyRequest(confirmRisk = true): Request {
+	const formData = new FormData();
+	formData.set('browserOrigin', 'https://wrapped.example.com');
+	if (confirmRisk) formData.set('confirmRisk', 'true');
+
+	return new Request('http://internal.local/onboarding/csrf', {
+		method: 'POST',
+		headers: {
+			origin: 'https://wrapped.example.com',
+			'x-forwarded-proto': 'https',
+			'x-forwarded-host': 'wrapped.example.com'
+		},
 		body: formData
 	});
 }
@@ -91,6 +135,26 @@ async function runSkipCsrf(request: Request) {
 	} as unknown as Parameters<SkipCsrfAction>[0]);
 }
 
+async function runDiagnoseReverseProxy(request: Request) {
+	const diagnoseReverseProxy = actions.diagnoseReverseProxy as DiagnoseReverseProxyAction;
+	return diagnoseReverseProxy({
+		request,
+		cookies,
+		url: new URL(request.url),
+		getClientAddress: () => '172.18.0.2'
+	} as unknown as Parameters<DiagnoseReverseProxyAction>[0]);
+}
+
+async function runEnableTrustProxy(request: Request) {
+	const enableTrustProxy = actions.enableTrustProxy as EnableTrustProxyAction;
+	return enableTrustProxy({
+		request,
+		cookies,
+		url: new URL(request.url),
+		getClientAddress: () => '172.18.0.2'
+	} as unknown as Parameters<EnableTrustProxyAction>[0]);
+}
+
 async function expectRedirect(run: () => Promise<unknown>, location: string) {
 	try {
 		await run();
@@ -105,12 +169,19 @@ async function expectRedirect(run: () => Promise<unknown>, location: string) {
 
 describe('onboarding CSRF actions', () => {
 	beforeEach(async () => {
+		previousTrustProxyEnv = envRecord().TRUST_PROXY;
+		delete envRecord().TRUST_PROXY;
 		await db.delete(appSettings);
 		clearBootstrapToken();
 		cookies = createCookies();
 		const token = createBootstrapToken();
 		expect(await claimOnboardingInstance(cookies as unknown as Cookies, token)).toBe('claimed');
 		await setOnboardingStep(OnboardingSteps.CSRF);
+	});
+
+	afterEach(() => {
+		if (previousTrustProxyEnv === undefined) delete envRecord().TRUST_PROXY;
+		else envRecord().TRUST_PROXY = previousTrustProxyEnv;
 	});
 
 	it('test origin succeeds when the submitted origin matches the browser origin', async () => {
@@ -288,6 +359,133 @@ describe('onboarding CSRF actions', () => {
 		expect(await getOnboardingStep()).toBe(OnboardingSteps.CSRF);
 	});
 
+	it('runs a read-only reverse proxy diagnostic without persisting TRUST_PROXY', async () => {
+		const result = await runDiagnoseReverseProxy(createReverseProxyDiagnosticRequest());
+
+		expect(result).toMatchObject({
+			reverseProxyDiagnostic: {
+				trustProxy: {
+					enabled: false,
+					source: 'default',
+					isLocked: false
+				},
+				recommendation: {
+					action: 'enable'
+				}
+			}
+		});
+		expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBeNull();
+		expect(await getOnboardingStep()).toBe(OnboardingSteps.CSRF);
+	});
+
+	it('does not expose raw forwarded header values in the onboarding diagnostic payload', async () => {
+		const result = await runDiagnoseReverseProxy(
+			createReverseProxyDiagnosticRequest('https://wrapped.example.com', 'http://internal.local', {
+				cookie: 'session=secret-cookie',
+				authorization: 'Bearer secret-authorization',
+				'x-forwarded-host': 'wrapped.example.com',
+				'x-forwarded-for': '203.0.113.77',
+				'x-real-ip': '198.51.100.88',
+				forwarded: 'for=hidden-client;proto=https;host=hidden.example'
+			})
+		);
+
+		const serialized = JSON.stringify(result);
+		expect(serialized).not.toContain('secret-cookie');
+		expect(serialized).not.toContain('secret-authorization');
+		expect(serialized).not.toContain('203.0.113.77');
+		expect(serialized).not.toContain('198.51.100.88');
+		expect(serialized).not.toContain('hidden-client');
+		expect(serialized).not.toContain('hidden.example');
+	});
+
+	it('rejects enabling TRUST_PROXY without explicit risk confirmation', async () => {
+		const result = await runEnableTrustProxy(createEnableTrustProxyRequest(false));
+
+		expect(result).toEqual({
+			status: 400,
+			data: {
+				trustProxyError: 'Confirm the reverse-proxy header trust risk before enabling TRUST_PROXY.'
+			}
+		});
+		expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBeNull();
+	});
+
+	it('rejects enabling TRUST_PROXY when environment controlled', async () => {
+		envRecord().TRUST_PROXY = 'true';
+
+		const result = await runEnableTrustProxy(createEnableTrustProxyRequest(true));
+
+		expect(result).toEqual({
+			status: 400,
+			data: {
+				trustProxyError:
+					'TRUST_PROXY is set via environment variable and must be changed in your environment or container configuration.'
+			}
+		});
+		expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBeNull();
+	});
+
+	it('rejects enabling TRUST_PROXY when the request origin differs from the submitted browser origin', async () => {
+		const formData = new FormData();
+		formData.set('browserOrigin', 'https://wrapped.example.com');
+		formData.set('confirmRisk', 'true');
+		const mismatchedRequest = new Request('http://internal.local/onboarding/csrf', {
+			method: 'POST',
+			headers: {
+				origin: 'https://other.example.com',
+				'x-forwarded-proto': 'https',
+				'x-forwarded-host': 'wrapped.example.com'
+			},
+			body: formData
+		});
+
+		const mismatchedResult = await runEnableTrustProxy(mismatchedRequest);
+
+		expect(mismatchedResult).toEqual({
+			status: 403,
+			data: {
+				trustProxyError: 'Reverse proxy header trust must be enabled from this browser origin'
+			}
+		});
+		expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBeNull();
+	});
+
+	it('persists TRUST_PROXY only after confirmation and a current enable recommendation', async () => {
+		const result = await runEnableTrustProxy(createEnableTrustProxyRequest(true));
+
+		expect(result).toEqual({
+			trustProxySuccess: true,
+			trustProxyMessage: 'Reverse-proxy header trust enabled.'
+		});
+		expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBe('true');
+		expect(await getOnboardingStep()).toBe(OnboardingSteps.CSRF);
+	});
+
+	it('rejects enabling TRUST_PROXY when the current diagnostic does not recommend it', async () => {
+		const result = await runEnableTrustProxy(
+			new Request(`${ORIGIN}/onboarding/csrf`, {
+				method: 'POST',
+				headers: { origin: ORIGIN },
+				body: (() => {
+					const formData = new FormData();
+					formData.set('browserOrigin', ORIGIN);
+					formData.set('confirmRisk', 'true');
+					return formData;
+				})()
+			})
+		);
+
+		expect(result).toEqual({
+			status: 400,
+			data: {
+				trustProxyError:
+					'The current diagnostic does not recommend enabling reverse proxy header trust.'
+			}
+		});
+		expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBeNull();
+	});
+
 	it('saveOrigin clears CSRF_ORIGIN_SKIPPED on success', async () => {
 		await setAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED, 'true');
 
@@ -304,7 +502,9 @@ describe('onboarding CSRF actions', () => {
 		for (const run of [
 			() => runTestOrigin(createFormRequest(ORIGIN)),
 			() => runSaveOrigin(createFormRequest(ORIGIN)),
-			() => runSkipCsrf(createFormRequest('not-a-url'))
+			() => runSkipCsrf(createFormRequest('not-a-url')),
+			() => runDiagnoseReverseProxy(createReverseProxyDiagnosticRequest()),
+			() => runEnableTrustProxy(createEnableTrustProxyRequest(true))
 		]) {
 			try {
 				await run();
@@ -361,6 +561,30 @@ describe('onboarding CSRF actions', () => {
 				data: { error: 'Not allowed at this onboarding stage' }
 			});
 			expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED)).toBeNull();
+		});
+
+		it('diagnoseReverseProxy returns 403 when current step is past CSRF', async () => {
+			await setOnboardingStep(OnboardingSteps.PLEX);
+
+			const result = await runDiagnoseReverseProxy(createReverseProxyDiagnosticRequest());
+
+			expect(result).toEqual({
+				status: 403,
+				data: { diagnosticError: 'Not allowed at this onboarding stage' }
+			});
+			expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBeNull();
+		});
+
+		it('enableTrustProxy returns 403 when onboarding is complete', async () => {
+			await setAppSetting(AppSettingsKey.ONBOARDING_COMPLETED, 'true');
+
+			const result = await runEnableTrustProxy(createEnableTrustProxyRequest(true));
+
+			expect(result).toEqual({
+				status: 403,
+				data: { trustProxyError: 'Not allowed at this onboarding stage' }
+			});
+			expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBeNull();
 		});
 	});
 });
