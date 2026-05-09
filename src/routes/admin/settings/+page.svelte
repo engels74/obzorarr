@@ -112,6 +112,8 @@ let syncedAnonymization = $state('');
 let syncedServerWrappedMode = $state('public');
 let syncedDefaultShareMode = $state('public');
 let syncedAllowUserControl = $state(true);
+let isSavingServerWrappedSettings = $state(false);
+let isSavingUserDefaults = $state(false);
 let isBulkApplyingUserControl = $state(false);
 
 let bulkApplyShareDefaultsDialogOpen = $state(false);
@@ -1224,189 +1226,207 @@ const logFieldErrors = $derived(
 		{#if activeTab === 'privacy'}
 			<div class="privacy-content">
 				<!-- Form 1: Server-wide Wrapped (anonymization + server-wide share mode) -->
-				<form
-					method="POST"
-					action="?/updateServerWrappedSettings"
-					use:enhance={() => {
-						return async ({ result, update }) => {
-							if (result.type === 'success') {
-								await update({ invalidateAll: true });
-								await invalidateAll();
-								return;
-							}
+					<form
+						method="POST"
+						action="?/updateServerWrappedSettings"
+						use:enhance={() => {
+							isSavingServerWrappedSettings = true;
+							return async ({ result, update }) => {
+								try {
+									if (result.type === 'success') {
+										await update({ invalidateAll: true });
+										await invalidateAll();
+										return;
+									}
 
-							restoreServerWrappedSettings();
-							await update();
-						};
-					}}
-				>
+									restoreServerWrappedSettings();
+									await update();
+								} finally {
+									isSavingServerWrappedSettings = false;
+								}
+							};
+						}}
+					>
 					<input
 						type="hidden"
 						name="settingsVersion"
 						value={data.serverWrappedSettingsVersion}
 					/>
 
-					<!-- User Identity Section -->
-					<section class="panel privacy-panel">
-						<div class="panel-header">
-							<div class="panel-title">
-								<Users class="panel-icon" />
-								<h2>User Identity</h2>
+						<section class="panel privacy-panel">
+							<div class="panel-header">
+								<div class="panel-title">
+									<Shield class="panel-icon" />
+									<h2>Server-Wide Privacy</h2>
+								</div>
 							</div>
-						</div>
-						<p class="panel-description">
-							Control how usernames appear in server-wide statistics.
-						</p>
+							<p class="panel-description">
+								These settings are saved together for the shared server wrapped experience.
+							</p>
 
-						<h3 class="subsection-title">
-							<VenetianMask class="subsection-icon" />
-							Anonymization Mode
-						</h3>
+							<div class="panel-form privacy-form-body">
+								<div class="privacy-setting-group">
+									<h3 class="subsection-title">
+										<VenetianMask class="subsection-icon" />
+										User Identity
+									</h3>
+									<p class="subsection-hint">Control how usernames appear in server-wide statistics.</p>
 
-						<div class="option-cards">
-							<label class="option-card" class:selected={selectedAnonymization === 'real'}>
-								<input
-									type="radio"
-									name="anonymizationMode"
-									value="real"
-									bind:group={selectedAnonymization}
-								/>
-								<div class="option-icon">
-									<UserCheck />
-								</div>
-								<div class="option-content">
-									<span class="option-title">Real Names</span>
-									<span class="option-desc">{anonymizationDescriptions.real}</span>
-								</div>
-								{#if selectedAnonymization === 'real'}
-									<div class="option-check"><Check /></div>
-								{/if}
-							</label>
+									<div class="option-cards">
+										<label class="option-card" class:selected={selectedAnonymization === 'real'}>
+											<input
+												type="radio"
+												name="anonymizationMode"
+												value="real"
+												bind:group={selectedAnonymization}
+											/>
+											<div class="option-icon">
+												<UserCheck />
+											</div>
+											<div class="option-content">
+												<span class="option-title">Real Names</span>
+												<span class="option-desc">{anonymizationDescriptions.real}</span>
+											</div>
+											{#if selectedAnonymization === 'real'}
+												<div class="option-check"><Check /></div>
+											{/if}
+										</label>
 
-							<label class="option-card" class:selected={selectedAnonymization === 'anonymous'}>
-								<input
-									type="radio"
-									name="anonymizationMode"
-									value="anonymous"
-									bind:group={selectedAnonymization}
-								/>
-								<div class="option-icon">
-									<VenetianMask />
-								</div>
-								<div class="option-content">
-									<span class="option-title">Anonymous</span>
-									<span class="option-desc">{anonymizationDescriptions.anonymous}</span>
-								</div>
-								{#if selectedAnonymization === 'anonymous'}
-									<div class="option-check"><Check /></div>
-								{/if}
-							</label>
+										<label class="option-card" class:selected={selectedAnonymization === 'anonymous'}>
+											<input
+												type="radio"
+												name="anonymizationMode"
+												value="anonymous"
+												bind:group={selectedAnonymization}
+											/>
+											<div class="option-icon">
+												<VenetianMask />
+											</div>
+											<div class="option-content">
+												<span class="option-title">Anonymous</span>
+												<span class="option-desc">{anonymizationDescriptions.anonymous}</span>
+											</div>
+											{#if selectedAnonymization === 'anonymous'}
+												<div class="option-check"><Check /></div>
+											{/if}
+										</label>
 
-							<label class="option-card" class:selected={selectedAnonymization === 'hybrid'}>
-								<input
-									type="radio"
-									name="anonymizationMode"
-									value="hybrid"
-									bind:group={selectedAnonymization}
-								/>
-								<div class="option-icon">
-									<Users />
+										<label class="option-card" class:selected={selectedAnonymization === 'hybrid'}>
+											<input
+												type="radio"
+												name="anonymizationMode"
+												value="hybrid"
+												bind:group={selectedAnonymization}
+											/>
+											<div class="option-icon">
+												<Users />
+											</div>
+											<div class="option-content">
+												<span class="option-title">Hybrid</span>
+												<span class="option-desc">{anonymizationDescriptions.hybrid}</span>
+											</div>
+											{#if selectedAnonymization === 'hybrid'}
+												<div class="option-check"><Check /></div>
+											{/if}
+										</label>
+									</div>
 								</div>
-								<div class="option-content">
-									<span class="option-title">Hybrid</span>
-									<span class="option-desc">{anonymizationDescriptions.hybrid}</span>
-								</div>
-								{#if selectedAnonymization === 'hybrid'}
-									<div class="option-check"><Check /></div>
-								{/if}
-							</label>
-						</div>
-					</section>
 
-					<!-- Server-Wide Wrapped Access Section -->
-					<section class="panel privacy-panel">
-						<div class="panel-header">
-							<div class="panel-title">
-								<Server class="panel-icon" />
-								<h2>Server-Wide Wrapped Access</h2>
+								<div class="privacy-setting-group">
+									<h3 class="subsection-title">
+										<Server class="subsection-icon" />
+										Server-Wide Wrapped Access
+									</h3>
+									<p class="subsection-hint">
+										Control who can access the server-wide Year in Review at <code
+											>/wrapped/{data.currentYear}</code
+										>.
+									</p>
+
+									<div class="option-cards two-col">
+										<label
+											class="option-card"
+											class:selected={selectedServerWrappedMode === 'public'}
+										>
+											<input
+												type="radio"
+												name="serverWrappedShareMode"
+												value="public"
+												bind:group={selectedServerWrappedMode}
+											/>
+											<div class="option-icon">
+												<Globe />
+											</div>
+											<div class="option-content">
+												<span class="option-title">Public</span>
+												<span class="option-desc">Anyone can view</span>
+											</div>
+											{#if selectedServerWrappedMode === 'public'}
+												<div class="option-check"><Check /></div>
+											{/if}
+										</label>
+
+										<label
+											class="option-card"
+											class:selected={selectedServerWrappedMode === 'private-oauth'}
+										>
+											<input
+												type="radio"
+												name="serverWrappedShareMode"
+												value="private-oauth"
+												bind:group={selectedServerWrappedMode}
+											/>
+											<div class="option-icon">
+												<Lock />
+											</div>
+											<div class="option-content">
+												<span class="option-title">Private OAuth</span>
+												<span class="option-desc">Server members only</span>
+											</div>
+											{#if selectedServerWrappedMode === 'private-oauth'}
+												<div class="option-check"><Check /></div>
+											{/if}
+										</label>
+									</div>
+								</div>
+
+								<div class="panel-actions">
+									<button type="submit" class="btn-primary" disabled={isSavingServerWrappedSettings}>
+										{#if isSavingServerWrappedSettings}
+											<Loader2 class="btn-icon spinning" />
+											Saving…
+										{:else}
+											<Shield class="btn-icon" />
+											Save Server Settings
+										{/if}
+									</button>
+								</div>
 							</div>
-						</div>
-						<p class="panel-description">
-							Control who can access the server-wide Year in Review at <code
-								>/wrapped/{data.currentYear}</code
-							>.
-						</p>
+						</section>
+					</form>
 
-						<div class="option-cards two-col">
-							<label class="option-card" class:selected={selectedServerWrappedMode === 'public'}>
-								<input
-									type="radio"
-									name="serverWrappedShareMode"
-									value="public"
-									bind:group={selectedServerWrappedMode}
-								/>
-								<div class="option-icon">
-									<Globe />
-								</div>
-								<div class="option-content">
-									<span class="option-title">Public</span>
-									<span class="option-desc">Anyone can view</span>
-								</div>
-								{#if selectedServerWrappedMode === 'public'}
-									<div class="option-check"><Check /></div>
-								{/if}
-							</label>
-
-							<label
-								class="option-card"
-								class:selected={selectedServerWrappedMode === 'private-oauth'}
-							>
-								<input
-									type="radio"
-									name="serverWrappedShareMode"
-									value="private-oauth"
-									bind:group={selectedServerWrappedMode}
-								/>
-								<div class="option-icon">
-									<Lock />
-								</div>
-								<div class="option-content">
-									<span class="option-title">Private OAuth</span>
-									<span class="option-desc">Server members only</span>
-								</div>
-								{#if selectedServerWrappedMode === 'private-oauth'}
-									<div class="option-check"><Check /></div>
-								{/if}
-							</label>
-						</div>
-					</section>
-
-					<!-- Save Button (Server settings) -->
-					<div class="panel-actions">
-						<button type="submit" class="btn-primary">
-							<Shield class="btn-icon" />
-							Save Server Settings
-						</button>
-					</div>
-				</form>
-
-				<!-- Form 2: User Sharing Defaults (defaultShareMode + allowUserControl) -->
+					<!-- Form 2: User Sharing Defaults (defaultShareMode + allowUserControl) -->
 				<form
-					method="POST"
-					action="?/updateUserDefaults"
-					use:enhance={() => {
-						return async ({ result, update }) => {
-							if (result.type === 'success') {
-								await update({ invalidateAll: true });
-								await invalidateAll();
-								return;
-							}
+						method="POST"
+						action="?/updateUserDefaults"
+						use:enhance={() => {
+							isSavingUserDefaults = true;
+							return async ({ result, update }) => {
+								try {
+									if (result.type === 'success') {
+										await update({ invalidateAll: true });
+										await invalidateAll();
+										return;
+									}
 
-							restoreUserDefaults();
-							await update();
-						};
-					}}
-				>
+									restoreUserDefaults();
+									await update();
+								} finally {
+									isSavingUserDefaults = false;
+								}
+							};
+						}}
+					>
 					<input
 						type="hidden"
 						name="settingsVersion"
@@ -1421,121 +1441,142 @@ const logFieldErrors = $derived(
 								<h2>User Sharing Defaults</h2>
 							</div>
 						</div>
+							<p class="panel-description">
+								Minimum privacy level for user wrapped pages. Users cannot choose less restrictive
+								settings.
+							</p>
+
+							<div class="panel-form privacy-form-body">
+								<div class="option-cards three-col">
+									<label class="option-card" class:selected={selectedDefaultShareMode === 'public'}>
+										<input
+											type="radio"
+											name="defaultShareMode"
+											value="public"
+											bind:group={selectedDefaultShareMode}
+										/>
+										<div class="option-icon">
+											<Globe />
+										</div>
+										<div class="option-content">
+											<span class="option-title">Public</span>
+											<span class="option-desc">Least restrictive</span>
+										</div>
+										{#if selectedDefaultShareMode === 'public'}
+											<div class="option-check"><Check /></div>
+										{/if}
+									</label>
+
+									<label
+										class="option-card"
+										class:selected={selectedDefaultShareMode === 'private-link'}
+									>
+										<input
+											type="radio"
+											name="defaultShareMode"
+											value="private-link"
+											bind:group={selectedDefaultShareMode}
+										/>
+										<div class="option-icon">
+											<Link />
+										</div>
+										<div class="option-content">
+											<span class="option-title">Private Link</span>
+											<span class="option-desc">Secret share link</span>
+										</div>
+										{#if selectedDefaultShareMode === 'private-link'}
+											<div class="option-check"><Check /></div>
+										{/if}
+									</label>
+
+									<label
+										class="option-card"
+										class:selected={selectedDefaultShareMode === 'private-oauth'}
+									>
+										<input
+											type="radio"
+											name="defaultShareMode"
+											value="private-oauth"
+											bind:group={selectedDefaultShareMode}
+										/>
+										<div class="option-icon">
+											<Lock />
+										</div>
+										<div class="option-content">
+											<span class="option-title">Private OAuth</span>
+											<span class="option-desc">Most restrictive</span>
+										</div>
+										{#if selectedDefaultShareMode === 'private-oauth'}
+											<div class="option-check"><Check /></div>
+										{/if}
+									</label>
+								</div>
+
+								<!-- User Control Toggle -->
+								<div class="toggle-option">
+									<label class="toggle-label">
+										<input
+											type="checkbox"
+											name="allowUserControlCheckbox"
+											bind:checked={allowUserControl}
+										/>
+										<span class="toggle-switch"></span>
+										<span class="toggle-text">Allow users to control their own sharing settings</span>
+									</label>
+									<p class="toggle-hint">
+										When enabled, users can adjust privacy but cannot go below the minimum set above.
+									</p>
+								</div>
+								<input type="hidden" name="allowUserControl" value={allowUserControl.toString()} />
+
+								<div class="panel-actions">
+									<button type="submit" class="btn-primary" disabled={isSavingUserDefaults}>
+										{#if isSavingUserDefaults}
+											<Loader2 class="btn-icon spinning" />
+											Saving…
+										{:else}
+											<Shield class="btn-icon" />
+											Save User Defaults
+										{/if}
+									</button>
+								</div>
+							</div>
+						</section>
+					</form>
+
+					<section class="panel privacy-panel privacy-bulk-panel">
+						<div class="panel-header">
+							<div class="panel-title">
+								<Users class="panel-icon" />
+								<h2>Apply Defaults to Existing Users</h2>
+							</div>
+						</div>
 						<p class="panel-description">
-							Minimum privacy level for user wrapped pages. Users cannot choose less restrictive
-							settings.
+							Reset existing user sharing records to the current defaults above. Future users receive
+							these defaults automatically.
 						</p>
 
-						<div class="option-cards three-col">
-							<label class="option-card" class:selected={selectedDefaultShareMode === 'public'}>
-								<input
-									type="radio"
-									name="defaultShareMode"
-									value="public"
-									bind:group={selectedDefaultShareMode}
-								/>
-								<div class="option-icon">
-									<Globe />
-								</div>
-								<div class="option-content">
-									<span class="option-title">Public</span>
-									<span class="option-desc">Least restrictive</span>
-								</div>
-								{#if selectedDefaultShareMode === 'public'}
-									<div class="option-check"><Check /></div>
-								{/if}
-							</label>
-
-							<label
-								class="option-card"
-								class:selected={selectedDefaultShareMode === 'private-link'}
-							>
-								<input
-									type="radio"
-									name="defaultShareMode"
-									value="private-link"
-									bind:group={selectedDefaultShareMode}
-								/>
-								<div class="option-icon">
-									<Link />
-								</div>
-								<div class="option-content">
-									<span class="option-title">Private Link</span>
-									<span class="option-desc">Secret share link</span>
-								</div>
-								{#if selectedDefaultShareMode === 'private-link'}
-									<div class="option-check"><Check /></div>
-								{/if}
-							</label>
-
-							<label
-								class="option-card"
-								class:selected={selectedDefaultShareMode === 'private-oauth'}
-							>
-								<input
-									type="radio"
-									name="defaultShareMode"
-									value="private-oauth"
-									bind:group={selectedDefaultShareMode}
-								/>
-								<div class="option-icon">
-									<Lock />
-								</div>
-								<div class="option-content">
-									<span class="option-title">Private OAuth</span>
-									<span class="option-desc">Most restrictive</span>
-								</div>
-								{#if selectedDefaultShareMode === 'private-oauth'}
-									<div class="option-check"><Check /></div>
-								{/if}
-							</label>
-						</div>
-
-						<!-- User Control Toggle -->
-						<div class="toggle-option">
-							<label class="toggle-label">
-								<input
-									type="checkbox"
-									name="allowUserControlCheckbox"
-									bind:checked={allowUserControl}
-								/>
-								<span class="toggle-switch"></span>
-								<span class="toggle-text">Allow users to control their own sharing settings</span>
-							</label>
-							<p class="toggle-hint">
-								When enabled, users can adjust privacy but cannot go below the minimum set above.
-							</p>
-						</div>
-						<input type="hidden" name="allowUserControl" value={allowUserControl.toString()} />
-
-						<div class="panel-actions secondary-actions">
-							<button
-								type="button"
-								class="btn-secondary"
-								disabled={isBulkApplyingUserControl}
-								onclick={() => (bulkApplyShareDefaultsDialogOpen = true)}
-							>
-								{#if isBulkApplyingUserControl}
-									<Loader2 class="btn-icon spinning" />
-									Applying...
-								{:else}
-									<Users class="btn-icon" />
-									Apply current defaults to all existing users
-								{/if}
-							</button>
+						<div class="panel-form privacy-form-body">
+							<div class="panel-actions secondary-actions">
+								<button
+									type="button"
+									class="btn-secondary"
+									disabled={isBulkApplyingUserControl}
+									onclick={() => (bulkApplyShareDefaultsDialogOpen = true)}
+								>
+									{#if isBulkApplyingUserControl}
+										<Loader2 class="btn-icon spinning" />
+										Applying...
+									{:else}
+										<Users class="btn-icon" />
+										Apply current defaults to all existing users
+									{/if}
+								</button>
+							</div>
 						</div>
 					</section>
-
-					<!-- Save Button (User defaults) -->
-					<div class="panel-actions">
-						<button type="submit" class="btn-primary">
-							<Shield class="btn-icon" />
-							Save User Defaults
-						</button>
-					</div>
-				</form>
-			</div>
-		{/if}
+				</div>
+			{/if}
 
 		<!-- Security Tab -->
 		{#if activeTab === 'security'}
@@ -3359,15 +3400,37 @@ const logFieldErrors = $derived(
 			font-size: 0.75rem;
 		}
 
-		/* Privacy panel option cards need padding */
-		.privacy-panel .option-cards {
-			padding: 0 1.25rem;
-		}
+			.privacy-form-body {
+				display: flex;
+				flex-direction: column;
+				gap: 1.25rem;
+			}
 
-		.privacy-panel .secondary-actions {
-			justify-content: flex-start;
-			margin: 1.25rem;
-		}
+			.privacy-setting-group + .privacy-setting-group {
+				padding-top: 1.25rem;
+				border-top: 1px solid hsl(var(--border) / 0.5);
+			}
+
+			.privacy-form-body .subsection-title {
+				margin: 0 0 0.5rem;
+				padding: 0;
+			}
+
+			.privacy-form-body .subsection-hint {
+				margin: 0 0 1rem;
+				padding: 0;
+			}
+
+			.privacy-form-body .toggle-option {
+				margin: 0;
+			}
+
+			.privacy-bulk-panel .secondary-actions {
+				justify-content: flex-start;
+				margin-top: 0;
+				padding-top: 0;
+				border-top: 0;
+			}
 
 		/* ===== Toggle Option ===== */
 		.toggle-option {
