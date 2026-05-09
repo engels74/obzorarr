@@ -1380,7 +1380,7 @@ const logFieldErrors = $derived(
 						</div>
 					</section>
 
-					<!-- Sticky Save Button (Server settings) -->
+					<!-- Save Button (Server settings) -->
 					<div class="panel-actions">
 						<button type="submit" class="btn-primary">
 							<Shield class="btn-icon" />
@@ -1523,7 +1523,7 @@ const logFieldErrors = $derived(
 						</button>
 					</section>
 
-					<!-- Sticky Save Button (User defaults) -->
+					<!-- Save Button (User defaults) -->
 					<div class="panel-actions">
 						<button type="submit" class="btn-primary">
 							<Shield class="btn-icon" />
@@ -3064,11 +3064,6 @@ const logFieldErrors = $derived(
 			cursor: not-allowed;
 		}
 
-		.btn-large {
-			padding: 0.875rem 2rem;
-			font-size: 1rem;
-		}
-
 		.btn-icon {
 			width: 16px;
 			height: 16px;
@@ -3426,25 +3421,6 @@ const logFieldErrors = $derived(
 			font-size: 0.75rem;
 			color: hsl(var(--muted-foreground));
 			margin: 0.5rem 0 0 3.25rem;
-		}
-
-		/* ===== Sticky Save ===== */
-		.sticky-save {
-			position: sticky;
-			bottom: 1rem;
-			display: flex;
-			justify-content: center;
-			padding: 1rem;
-			background: hsl(var(--card) / 0.95);
-			backdrop-filter: blur(8px);
-			border-radius: 12px;
-			border: 1px solid hsl(var(--border));
-			margin-top: 1rem;
-		}
-
-		.sticky-save .btn-primary {
-			width: 100%;
-			max-width: 400px;
 		}
 
 		/* ===== Years Display ===== */
