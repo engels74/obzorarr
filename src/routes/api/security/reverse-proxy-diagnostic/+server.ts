@@ -29,7 +29,8 @@ export const GET: RequestHandler = async ({ getClientAddress, locals, request, u
 		);
 	}
 
-	const rateLimit = checkRateLimit(`${locals.user.id}:${getClientAddress()}`, RATE_LIMIT);
+	const sourceAddress = getClientAddress();
+	const rateLimit = checkRateLimit(`${locals.user.id}:${sourceAddress}`, RATE_LIMIT);
 	if (!rateLimit.allowed) {
 		return json(
 			{ error: 'Too many diagnostic requests' },
@@ -50,7 +51,7 @@ export const GET: RequestHandler = async ({ getClientAddress, locals, request, u
 		rawAppUrl: request.url,
 		effectiveAppUrl: url,
 		browserOrigin,
-		sourceAddress: getClientAddress()
+		sourceAddress
 	});
 
 	return json(diagnostic, {

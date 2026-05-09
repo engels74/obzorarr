@@ -63,6 +63,8 @@ function isSubmittedBrowserOriginAction(request: Request, browserOrigin: string)
 	return requestOrigin !== null && originsMatch(requestOrigin, browserOrigin);
 }
 
+const MAX_BROWSER_ORIGIN_LENGTH = 2048;
+
 const CsrfOriginSchema = z.object({
 	csrfOrigin: z
 		.string()
@@ -85,6 +87,7 @@ const BrowserOriginSchema = z.object({
 	browserOrigin: z
 		.string()
 		.min(1, 'Browser origin is required')
+		.max(MAX_BROWSER_ORIGIN_LENGTH, 'browserOrigin is too long')
 		.url('Browser origin is invalid')
 		.refine((url) => url.startsWith('http://') || url.startsWith('https://'), {
 			message: 'Browser origin must start with http:// or https://'

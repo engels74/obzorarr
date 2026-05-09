@@ -19,6 +19,7 @@ import {
 import { actions } from '../../../src/routes/onboarding/csrf/+page.server';
 
 const ORIGIN = 'http://localhost:5173';
+const OVERSIZED_BROWSER_ORIGIN = `https://wrapped.example.com/${'a'.repeat(2049)}`;
 type SaveOriginAction = NonNullable<typeof actions.saveOrigin>;
 type SkipCsrfAction = NonNullable<typeof actions.skipCsrf>;
 type TestOriginAction = NonNullable<typeof actions.testOrigin>;
@@ -378,6 +379,19 @@ describe('onboarding CSRF actions', () => {
 		expect(await getOnboardingStep()).toBe(OnboardingSteps.CSRF);
 	});
 
+	it('rejects structurally abusive reverse proxy diagnostic browser origins', async () => {
+		const result = await runDiagnoseReverseProxy(
+			createReverseProxyDiagnosticRequest(OVERSIZED_BROWSER_ORIGIN)
+		);
+
+		expect(result).toEqual({
+			status: 400,
+			data: { diagnosticError: 'browserOrigin is too long' }
+		});
+		expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBeNull();
+		expect(await getOnboardingStep()).toBe(OnboardingSteps.CSRF);
+	});
+
 	it('does not expose raw forwarded header values in the onboarding diagnostic payload', async () => {
 		const result = await runDiagnoseReverseProxy(
 			createReverseProxyDiagnosticRequest('https://wrapped.example.com', 'http://internal.local', {
@@ -401,6 +415,32 @@ describe('onboarding CSRF actions', () => {
 
 	it('rejects enabling TRUST_PROXY without explicit risk confirmation', async () => {
 		const result = await runEnableTrustProxy(createEnableTrustProxyRequest(false));
+
+		expect(result).toEqual({
+			status: 400,
+			data: {
+				trustProxyError: 'Confirm the reverse-proxy header trust risk before enabling TRUST_PROXY.'
+			}
+		});
+		expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBeNull();
+	});
+
+	it('rejects enabling TRUST_PROXY with a structurally abusive browser origin', async () => {
+		const formData = new FormData();
+		formData.set('browserOrigin', OVERSIZED_BROWSER_ORIGIN);
+		formData.set('confirmRisk', 'true');
+
+		const result = await runEnableTrustProxy(
+			new Request('http://internal.local/onboarding/csrf', {
+				method: 'POST',
+				headers: {
+					origin: 'https://wrapped.example.com',
+					'x-forwarded-proto': 'https',
+					'x-forwarded-host': 'wrapped.example.com'
+				},
+				body: formData
+			})
+		);
 
 		expect(result).toEqual({
 			status: 400,
