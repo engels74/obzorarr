@@ -206,6 +206,9 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain(
 			'(activeElement === last || !sidebarElement?.contains(activeElement))'
 		);
+		expect(source).toContain('if (focusableElements.length === 0) {');
+		expect(source).toContain('sidebarElement?.focus();');
+		expect(source).toMatch(/<aside[\s\S]*tabindex="-1"[\s\S]*bind:this=\{sidebarElement\}/);
 		expect(source).toContain('onkeydown={trapSidebarFocus}');
 		expect(source).toContain('bind:this={sidebarElement}');
 		expect(source).toContain('function handleWindowKeydown(event: KeyboardEvent)');
@@ -273,9 +276,10 @@ describe('admin UI source regressions', () => {
 			expect(source).toContain('!event.ctrlKey');
 			expect(source).toContain('!event.shiftKey');
 			expect(source).toContain('!event.altKey');
-			expect(source).toContain('void goto(href);');
 		}
 
+		expect(layoutSource).toContain('void goto(href, { keepFocus: shouldRestoreFocus });');
+		expect(dashboardSource).toContain('void goto(href);');
 		expect(layoutSource).toContain('href={item.href}');
 		expect(layoutSource).toContain('onclick={handleAdminNavigation}');
 		expect(dashboardSource).toContain('href="/admin/settings" class="action-card"');

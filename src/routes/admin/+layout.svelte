@@ -240,6 +240,7 @@ function handleCsrfWarningDismissed() {
 		inert={sidebarHiddenFromMobile}
 		aria-hidden={sidebarHiddenFromMobile ? 'true' : undefined}
 		onkeydown={trapSidebarFocus}
+		tabindex="-1"
 		bind:this={sidebarElement}
 	>
 			<div class="sidebar-header">
