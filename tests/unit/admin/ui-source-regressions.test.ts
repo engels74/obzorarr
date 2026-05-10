@@ -73,6 +73,65 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain('Enable reverse-proxy header trust?');
 	});
 
+	it('auto-runs the reverse-proxy diagnostic once on the security tab', async () => {
+		const source = await readSource('src/routes/admin/settings/+page.svelte');
+
+		expect(source).toContain('let isCheckingTrustProxyDiagnostic = $state(false);');
+		expect(source).toContain('let trustProxyDiagnosticAutoRunStarted = $state(false);');
+		expect(source).toContain(
+			"if (activeTab !== 'security' || trustProxyDiagnosticAutoRunStarted) return;"
+		);
+		expect(source).toContain('trustProxyDiagnosticAutoRunStarted = true;');
+		expect(source).toContain('void runTrustProxyDiagnostic();');
+	});
+
+	it('guards duplicate reverse-proxy diagnostic requests and exposes a manual check', async () => {
+		const source = await readSource('src/routes/admin/settings/+page.svelte');
+
+		expect(source).toContain('async function runTrustProxyDiagnostic()');
+		expect(source).toContain('if (isCheckingTrustProxyDiagnostic) return;');
+		expect(source).toContain('/api/security/reverse-proxy-diagnostic');
+		expect(source).toContain("params.set('browserOrigin', browserOrigin);");
+		expect(source).toContain('Check again');
+		expect(source).toContain('disabled={isCheckingTrustProxyDiagnostic}');
+		expect(source).toContain('What your browser used');
+		expect(source).toContain('What Obzorarr sees');
+		expect(source).toContain('Forwarded headers detected');
+		expect(source).toContain('Recommendation');
+	});
+
+	it('keeps the diagnostic read-only while preserving the explicit enable flow', async () => {
+		const source = await readSource('src/routes/admin/settings/+page.svelte');
+		const diagnosticFunction = source.match(
+			/async function runTrustProxyDiagnostic\(\) \{[\s\S]*?\n\}/
+		)?.[0];
+
+		expect(diagnosticFunction).toBeDefined();
+		expect(diagnosticFunction).not.toContain('?/updateTrustProxy');
+		expect(source).toContain('bind:open={trustProxyConfirmDialogOpen}');
+		expect(source).toContain('name="confirmRisk" value="true"');
+	});
+
+	it('explains env-locked reverse-proxy trust and common setup examples', async () => {
+		const source = await readSource('src/routes/admin/settings/+page.svelte');
+
+		expect(source).toContain('Change');
+		expect(source).toContain('it in your environment, container, or compose configuration');
+		expect(source).toContain('Update your environment or');
+		expect(source).toContain('container configuration to change it.');
+		expect(source).toContain('Already controlled by environment');
+		expect(source).toContain('Nginx Proxy Manager');
+		expect(source).toContain('Nginx');
+		expect(source).toContain('Caddy');
+		expect(source).toContain('Traefik');
+		expect(source).toContain('Pangolin');
+		expect(source).toContain('Tailscale/headscale');
+		expect(source).toContain('Docker bridge or host networking');
+		expect(source).toContain('LAN/private IP access');
+		expect(source).toContain('localhost setups');
+		expect(source).toContain('strips visitor-supplied');
+	});
+
 	it('keeps the users table desktop-only and renders a mobile list', async () => {
 		const source = await readSource('src/routes/admin/users/+page.svelte');
 
