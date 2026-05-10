@@ -340,6 +340,9 @@ describe('admin UI source regressions', () => {
 		expect(storyModeSource).toContain('.story-mode:focus-visible');
 		expect(storyModeSource).toContain('inset 0 0 0 3px #ffffff');
 		expect(storyModeSource).toContain('inset 0 0 0 6px var(--primary, #dc2626)');
+		expect(storyModeSource).toContain('class="focus-ring" aria-hidden="true"');
+		expect(storyModeSource).toContain('.story-mode:focus-visible .focus-ring');
+		expect(storyModeSource).toContain('z-index: 100;');
 	});
 
 	it('guards wrapped story transitions against stale rapid navigation', async () => {

@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import { db } from '$lib/server/db/client';
 import { appSettings, logs } from '$lib/server/db/schema';
-import { LogLevel } from '$lib/server/logging';
+import { LogLevel, stopLogRetentionScheduler } from '$lib/server/logging';
 import { actions, load } from '../../../src/routes/admin/logs/+page.server';
 
 type ExportLogsAction = NonNullable<typeof actions.exportLogs>;
@@ -47,6 +47,10 @@ describe('admin logs page load/actions', () => {
 	beforeEach(async () => {
 		await db.delete(logs);
 		await db.delete(appSettings);
+	});
+
+	afterEach(() => {
+		stopLogRetentionScheduler();
 	});
 
 	it('exportLogs returns valid JSON for the filtered result set', async () => {

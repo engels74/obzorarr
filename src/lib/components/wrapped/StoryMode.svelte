@@ -431,6 +431,8 @@ function handleSlideAnimationComplete(): void {}
 			</svg>
 		</button>
 	{/if}
+
+	<div class="focus-ring" aria-hidden="true"></div>
 </div>
 
 <style>
@@ -456,10 +458,22 @@ function handleSlideAnimationComplete(): void {}
 
 		.story-mode:focus-visible {
 			outline: none;
+		}
+
+		.focus-ring {
+			position: absolute;
+			inset: 0;
+			z-index: 100;
+			pointer-events: none;
+			opacity: 0;
 			box-shadow:
 				inset 0 0 0 3px #ffffff,
 				inset 0 0 0 6px var(--primary, #dc2626),
 				inset 0 0 0 9px rgba(0, 0, 0, 0.85);
+		}
+
+		.story-mode:focus-visible .focus-ring {
+			opacity: 1;
 		}
 
 		/* Noise texture layer - covers entire viewport */
