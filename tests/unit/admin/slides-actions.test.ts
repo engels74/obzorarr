@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { FunFactFrequency, getFunFactFrequency } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
-import { appSettings, customSlides } from '$lib/server/db/schema';
+import { appSettings, customSlides, slideConfig } from '$lib/server/db/schema';
 import {
 	getSlideConfigByType,
 	initializeDefaultSlideConfig
@@ -126,6 +126,7 @@ describe('admin slides actions', () => {
 	beforeEach(async () => {
 		await db.delete(appSettings);
 		await db.delete(customSlides);
+		await db.delete(slideConfig);
 	});
 
 	for (const customCount of ['0', '16', '', '1abc', '1.5']) {
