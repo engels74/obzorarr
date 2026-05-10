@@ -13,6 +13,13 @@ let token = $state('');
 			<KeyRound size={36} strokeWidth={1.75} />
 		</div>
 
+		<p class="claim-help">
+			Only one browser can claim setup at a time. Active claims expire after 10 minutes,
+			and bootstrap tokens expire after 15 minutes. If another browser already claimed
+			setup, wait for it to expire and use the current console token, or restart the
+			server to print a new banner.
+		</p>
+
 		<div class="field">
 			<label for="bootstrap-token">Bootstrap token</label>
 			<input
@@ -62,6 +69,13 @@ let token = $state('');
 		display: flex;
 		flex-direction: column;
 		gap: 0.5rem;
+	}
+
+	.claim-help {
+		margin: 0;
+		color: hsl(var(--muted-foreground));
+		font-size: 0.875rem;
+		line-height: 1.5;
 	}
 
 	label {

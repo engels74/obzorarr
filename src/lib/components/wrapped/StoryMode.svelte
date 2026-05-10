@@ -454,6 +454,14 @@ function handleSlideAnimationComplete(): void {}
 			-webkit-user-select: none;
 		}
 
+		.story-mode:focus-visible {
+			outline: none;
+			box-shadow:
+				inset 0 0 0 3px #ffffff,
+				inset 0 0 0 6px var(--primary, #dc2626),
+				inset 0 0 0 9px rgba(0, 0, 0, 0.85);
+		}
+
 		/* Noise texture layer - covers entire viewport */
 		.story-mode::before {
 			content: '';

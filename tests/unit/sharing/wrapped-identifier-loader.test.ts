@@ -11,9 +11,11 @@ import {
 } from '$lib/server/db/schema';
 import { setGlobalShareDefaults } from '$lib/server/sharing/service';
 import { ShareMode, ShareModeSource } from '$lib/server/sharing/types';
+import { load as loadServerWrapped } from '../../../src/routes/wrapped/[year]/+page.server';
 import { actions, load } from '../../../src/routes/wrapped/[year]/u/[identifier]/+page.server';
 
 type LoadArgs = Parameters<typeof load>[0];
+type ServerLoadArgs = Parameters<typeof loadServerWrapped>[0];
 
 /**
  * Regression tests for private-link cross-year token leak.
@@ -86,6 +88,47 @@ async function invokeLoad(params: {
 	} as unknown as LoadArgs);
 	return result as LoadData;
 }
+
+async function expectLoadStatus(
+	params: {
+		year: number;
+		identifier: string;
+		availableYears?: number[];
+		currentUser?: TestUser;
+	},
+	expectedStatus: number
+): Promise<void> {
+	try {
+		await invokeLoad({
+			year: params.year,
+			identifier: params.identifier,
+			availableYears: params.availableYears ?? [params.year],
+			currentUser: params.currentUser
+		});
+		expect.unreachable(`Expected status ${expectedStatus} for ${params.year}/${params.identifier}`);
+	} catch (err) {
+		expect((err as { status?: number }).status).toBe(expectedStatus);
+	}
+}
+
+async function expectServerWrappedStatus(year: string, expectedStatus: number): Promise<void> {
+	try {
+		await loadServerWrapped({
+			params: { year },
+			locals: {}
+		} as unknown as ServerLoadArgs);
+		expect.unreachable(`Expected server wrapped status ${expectedStatus} for ${year}`);
+	} catch (err) {
+		expect((err as { status?: number }).status).toBe(expectedStatus);
+	}
+}
+
+describe('wrapped/[year] loader: year bounds', () => {
+	it('returns 404 for years outside the supported range', async () => {
+		await expectServerWrappedStatus('1999', 404);
+		await expectServerWrappedStatus('2101', 404);
+	});
+});
 
 describe('wrapped/[year]/u/[identifier] loader: cross-year token isolation', () => {
 	const USER_ID = 42;
@@ -217,6 +260,30 @@ describe('wrapped/[year]/u/[identifier] loader: identifier validation (F-303)', 
 
 	it('returns 404 for a negative numeric identifier', async () => {
 		await expectStatus('-5', 404);
+	});
+
+	it('returns 404 for a private-link numeric URL without a token', async () => {
+		await setGlobalShareDefaults({
+			defaultShareMode: ShareMode.PRIVATE_LINK,
+			allowUserControl: false
+		});
+		await seedShareSettings({
+			userId: USER_ID,
+			year: ORIGIN_YEAR,
+			mode: ShareMode.PRIVATE_LINK,
+			token: '550e8400-e29b-41d4-a716-446655441111'
+		});
+
+		await expectStatus(String(USER_ID), 404);
+	});
+
+	it('returns 404 for a well-formed but unknown private-link token', async () => {
+		await setGlobalShareDefaults({
+			defaultShareMode: ShareMode.PRIVATE_LINK,
+			allowUserControl: false
+		});
+
+		await expectStatus('550e8400-e29b-41d4-a716-446655449999', 404);
 	});
 
 	it('resolves a valid numeric identifier to the matching user', async () => {
@@ -544,5 +611,70 @@ describe('wrapped/[year]/u/[identifier] actions: token URL + floor-elevated mode
 		// Without the fix this would be: { status: 400, data: { error: 'Invalid user identifier' } }
 		const status = (result as { status?: number }).status;
 		expect(status).not.toBe(400);
+	});
+});
+
+describe('wrapped/[year]/u/[identifier] actions: token regeneration', () => {
+	const USER_ID = 77;
+	const YEAR = 2024;
+	const OLD_TOKEN = '990e8400-e29b-41d4-a716-446655440444';
+	type RegenerateTokenAction = NonNullable<typeof actions.regenerateToken>;
+
+	beforeEach(async () => {
+		await db.delete(shareSettings);
+		await db.delete(appSettings);
+		await db.delete(users);
+		await db.delete(cachedStats);
+		await db.delete(playHistory);
+		await db.delete(slideConfig);
+
+		await seedUser(USER_ID, 100077, 200077);
+		await seedShareSettings({
+			userId: USER_ID,
+			year: YEAR,
+			mode: ShareMode.PRIVATE_LINK,
+			token: OLD_TOKEN
+		});
+		await db
+			.update(shareSettings)
+			.set({ canUserControl: true })
+			.where(and(eq(shareSettings.userId, USER_ID), eq(shareSettings.year, YEAR)));
+		await setGlobalShareDefaults({
+			defaultShareMode: ShareMode.PRIVATE_LINK,
+			allowUserControl: true
+		});
+	});
+
+	async function invokeRegenerate() {
+		const regenerateToken = actions.regenerateToken as RegenerateTokenAction;
+		return regenerateToken({
+			params: { year: String(YEAR), identifier: String(USER_ID) },
+			locals: {
+				user: {
+					id: USER_ID,
+					plexId: 100077,
+					username: `user-${USER_ID}`,
+					isAdmin: false
+				}
+			}
+		} as unknown as Parameters<RegenerateTokenAction>[0]);
+	}
+
+	it('invalidates old private-link tokens after regeneration', async () => {
+		const result = await invokeRegenerate();
+		const newToken = (result as { shareToken?: string }).shareToken;
+
+		expect(result).toMatchObject({ success: true });
+		expect(newToken).toBeDefined();
+		expect(newToken).not.toBe(OLD_TOKEN);
+
+		await expectLoadStatus({ year: YEAR, identifier: OLD_TOKEN }, 404);
+
+		const data = await invokeLoad({
+			year: YEAR,
+			identifier: newToken ?? '',
+			availableYears: [YEAR]
+		});
+		expect(data.userId).toBe(USER_ID);
 	});
 });

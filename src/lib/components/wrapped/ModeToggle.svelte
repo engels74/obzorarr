@@ -98,8 +98,12 @@ function handleKeyDown(event: KeyboardEvent): void {
 		}
 
 		.mode-toggle:focus-visible {
-			outline: 2px solid var(--primary, #dc2626);
-			outline-offset: 2px;
+			outline: 3px solid #ffffff;
+			outline-offset: 3px;
+			border-color: #ffffff;
+			box-shadow:
+				0 0 0 6px rgba(0, 0, 0, 0.85),
+				0 0 0 8px var(--primary, #dc2626);
 		}
 
 		.mode-toggle:active {

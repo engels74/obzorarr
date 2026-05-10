@@ -2,6 +2,10 @@ import { beforeEach, describe, expect, it } from 'bun:test';
 import { FunFactFrequency, getFunFactFrequency } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
 import { appSettings, customSlides } from '$lib/server/db/schema';
+import {
+	getSlideConfigByType,
+	initializeDefaultSlideConfig
+} from '$lib/server/slides/config.service';
 import { actions } from '../../../src/routes/admin/slides/+page.server';
 
 type SetFunFactFrequencyAction = NonNullable<typeof actions.setFunFactFrequency>;
@@ -9,6 +13,7 @@ type CreateCustomAction = NonNullable<typeof actions.createCustom>;
 type UpdateCustomAction = NonNullable<typeof actions.updateCustom>;
 type DeleteCustomAction = NonNullable<typeof actions.deleteCustom>;
 type ToggleCustomSlideAction = NonNullable<typeof actions.toggleCustomSlide>;
+type ReorderAction = NonNullable<typeof actions.reorder>;
 
 const adminLocals = {
 	user: { id: 1, plexId: 1, username: 'admin', isAdmin: true }
@@ -66,6 +71,17 @@ function buildIdRequest(action: string, id: string): Request {
 	});
 }
 
+function buildReorderRequest(
+	order: Array<{ type: 'builtin' | 'custom'; id: string | number }>
+): Request {
+	const formData = new FormData();
+	formData.set('order', JSON.stringify(order));
+	return new Request('http://localhost/admin/slides?/reorder', {
+		method: 'POST',
+		body: formData
+	});
+}
+
 async function runCreateCustom(request: Request) {
 	const handler = actions.createCustom as CreateCustomAction;
 	return handler({
@@ -96,6 +112,14 @@ async function runToggleCustomSlide(request: Request) {
 		request,
 		locals: adminLocals
 	} as Parameters<ToggleCustomSlideAction>[0]);
+}
+
+async function runReorder(request: Request) {
+	const handler = actions.reorder as ReorderAction;
+	return handler({
+		request,
+		locals: adminLocals
+	} as Parameters<ReorderAction>[0]);
 }
 
 describe('admin slides actions', () => {
@@ -237,6 +261,40 @@ describe('admin slides actions', () => {
 				status: 404,
 				data: { error: expect.stringContaining('not found') }
 			});
+		});
+	});
+
+	describe('reorder', () => {
+		it('persists unified built-in and custom slide order', async () => {
+			await initializeDefaultSlideConfig();
+			const insertResult = await db
+				.insert(customSlides)
+				.values({
+					title: 'Custom recap',
+					content: 'Custom content',
+					enabled: true,
+					sortOrder: 99,
+					year: null
+				})
+				.returning();
+			const customId = insertResult[0]?.id;
+			expect(customId).toBeDefined();
+
+			const result = await runReorder(
+				buildReorderRequest([
+					{ type: 'custom', id: customId ?? 0 },
+					{ type: 'builtin', id: 'genres' },
+					{ type: 'builtin', id: 'total-time' }
+				])
+			);
+
+			expect(result).toMatchObject({ success: true });
+
+			const customRows = await db.select().from(customSlides);
+			const customRow = customRows.find((row) => row.id === customId);
+			expect(customRow?.sortOrder).toBe(0);
+			expect((await getSlideConfigByType('genres'))?.sortOrder).toBe(1);
+			expect((await getSlideConfigByType('total-time'))?.sortOrder).toBe(2);
 		});
 	});
 });
