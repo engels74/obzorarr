@@ -193,6 +193,27 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain('pointer-events: auto;');
 	});
 
+	it('traps focus in the open mobile admin drawer and marks page content inert', async () => {
+		const source = await readSource('src/routes/admin/+layout.svelte');
+
+		expect(source).toContain(
+			'let mainContentHiddenFromMobile = $derived(isMobileSidebar && sidebarOpen);'
+		);
+		expect(source).toContain('function trapSidebarFocus(event: KeyboardEvent)');
+		expect(source).toContain(
+			"if (!isMobileSidebar || !sidebarOpen || event.key !== 'Tab') return;"
+		);
+		expect(source).toContain(
+			'(activeElement === last || !sidebarElement?.contains(activeElement))'
+		);
+		expect(source).toContain('onkeydown={trapSidebarFocus}');
+		expect(source).toContain('bind:this={sidebarElement}');
+		expect(source).toContain('function handleWindowKeydown(event: KeyboardEvent)');
+		expect(source).toContain('void closeSidebar();');
+		expect(source).toContain('inert={mainContentHiddenFromMobile}');
+		expect(source).toContain("aria-hidden={mainContentHiddenFromMobile ? 'true' : undefined}");
+	});
+
 	it('keeps the open mobile admin drawer header self-contained', async () => {
 		const source = await readSource('src/routes/admin/+layout.svelte');
 
@@ -215,8 +236,63 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain('<span class="user-avatar-link" aria-hidden="true">');
 		expect(source).not.toContain('<a href={user.wrappedHref} class="user-avatar-link">');
 		expect(source).toContain('<img src={user.thumb} alt="" class="user-avatar" />');
+		expect(source).toContain('{#if user.hasWatchHistory}');
 		expect(source).toContain('<a href={user.wrappedHref} class="user-name">');
 		expect(source).toContain('class="preview-link"');
+	});
+
+	it('does not render wrapped links for admin users without watch history', async () => {
+		const [clientSource, serverSource] = await Promise.all([
+			readSource('src/routes/admin/users/+page.svelte'),
+			readSource('src/routes/admin/users/+page.server.ts')
+		]);
+
+		expect(serverSource).toContain('totalPlays: u.totalPlays');
+		expect(serverSource).toContain('hasWatchHistory: u.hasWatchHistory');
+		expect(clientSource).toContain("if (minutes === 0) return '0h';");
+		expect(clientSource).toContain("if (minutes > 0 && minutes < 60) return '<1h';");
+		expect(clientSource).toContain('{#if user.hasWatchHistory}');
+		expect(clientSource).toContain('<span class="preview-link unavailable">No Wrapped yet</span>');
+		expect(clientSource).toContain(
+			'<span class="preview-link unavailable mobile-preview-link">No Wrapped yet</span>'
+		);
+		expect(clientSource).toContain('.preview-link.unavailable');
+	});
+
+	it('uses client navigation for unmodified admin links while preserving real hrefs', async () => {
+		const [layoutSource, dashboardSource] = await Promise.all([
+			readSource('src/routes/admin/+layout.svelte'),
+			readSource('src/routes/admin/+page.svelte')
+		]);
+
+		for (const source of [layoutSource, dashboardSource]) {
+			expect(source).toContain('import { goto');
+			expect(source).toContain('function shouldUseClientNavigation');
+			expect(source).toContain('event.button === 0');
+			expect(source).toContain('!event.metaKey');
+			expect(source).toContain('!event.ctrlKey');
+			expect(source).toContain('!event.shiftKey');
+			expect(source).toContain('!event.altKey');
+			expect(source).toContain('void goto(href);');
+		}
+
+		expect(layoutSource).toContain('href={item.href}');
+		expect(layoutSource).toContain('onclick={handleAdminNavigation}');
+		expect(dashboardSource).toContain('href="/admin/settings" class="action-card"');
+		expect(dashboardSource).toContain('onclick={handleAdminNavigation}');
+	});
+
+	it('stacks the slide order header controls on narrow screens', async () => {
+		const source = await readSource('src/routes/admin/slides/+page.svelte');
+
+		expect(source).toContain('class="section-title-content"');
+		expect(source).toContain('.section-title-content');
+		expect(source).toContain('min-width: 0;');
+		expect(source).toContain('@media (max-width: 430px)');
+		expect(source).toContain('flex-direction: column;');
+		expect(source).toContain('align-items: stretch;');
+		expect(source).toContain('width: 100%;');
+		expect(source).toContain('justify-content: center;');
 	});
 
 	it('updates wrapped logo mode selection explicitly without resetting local clicks', async () => {

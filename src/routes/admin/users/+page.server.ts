@@ -37,6 +37,8 @@ export const load: PageServerLoad = async ({ url }) => {
 			thumb: u.thumb,
 			isAdmin: u.isAdmin,
 			totalWatchTimeMinutes: u.totalWatchTimeMinutes,
+			totalPlays: u.totalPlays,
+			hasWatchHistory: u.hasWatchHistory,
 			shareMode: u.shareMode,
 			shareModeSource: u.shareModeSource,
 			canUserControl: u.canUserControl,

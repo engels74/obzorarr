@@ -18,6 +18,8 @@ export interface UserWithStats {
 	isAdmin: boolean;
 	createdAt: Date | null;
 	totalWatchTimeMinutes: number;
+	totalPlays: number;
+	hasWatchHistory: boolean;
 	shareMode: ShareModeType | null;
 	shareModeSource: ShareModeSourceType | null;
 	canUserControl: boolean;
@@ -54,7 +56,8 @@ export async function getAllUsersWithStats(year: number): Promise<UserWithStats[
 	const watchTimeByUser = await db
 		.select({
 			accountId: playHistory.accountId,
-			totalDuration: sql<number>`coalesce(sum(${playHistory.duration}), 0)`
+			totalDuration: sql<number>`coalesce(sum(${playHistory.duration}), 0)`,
+			totalPlays: sql<number>`count(*)`
 		})
 		.from(playHistory)
 		.where(between(playHistory.viewedAt, yearStart, yearEnd))
@@ -65,9 +68,12 @@ export async function getAllUsersWithStats(year: number): Promise<UserWithStats[
 		.from(shareSettings)
 		.where(eq(shareSettings.year, year));
 
-	const watchTimeMap = new Map<number, number>();
+	const watchTimeMap = new Map<number, { totalDuration: number; totalPlays: number }>();
 	for (const wt of watchTimeByUser) {
-		watchTimeMap.set(wt.accountId, wt.totalDuration);
+		watchTimeMap.set(wt.accountId, {
+			totalDuration: wt.totalDuration,
+			totalPlays: wt.totalPlays
+		});
 	}
 
 	const shareSettingsMap = new Map<
@@ -85,10 +91,8 @@ export async function getAllUsersWithStats(year: number): Promise<UserWithStats[
 	return allUsers.map((user) => {
 		// Try accountId first (matches playHistory.accountId), then fall back to plexId
 		// This handles the accountId/plexId mismatch for server owners
-		const watchTimeSeconds =
-			(user.accountId !== null ? watchTimeMap.get(user.accountId) : undefined) ??
-			watchTimeMap.get(user.plexId) ??
-			0;
+		const stats = (user.accountId !== null ? watchTimeMap.get(user.accountId) : undefined) ??
+			watchTimeMap.get(user.plexId) ?? { totalDuration: 0, totalPlays: 0 };
 		const settings = shareSettingsMap.get(user.id);
 
 		return {
@@ -99,7 +103,9 @@ export async function getAllUsersWithStats(year: number): Promise<UserWithStats[
 			thumb: user.thumb,
 			isAdmin: user.isAdmin ?? false,
 			createdAt: user.createdAt,
-			totalWatchTimeMinutes: Math.round(watchTimeSeconds / 60),
+			totalWatchTimeMinutes: Math.round(stats.totalDuration / 60),
+			totalPlays: stats.totalPlays,
+			hasWatchHistory: stats.totalPlays > 0,
 			shareMode: settings?.mode ?? null,
 			shareModeSource: settings?.modeSource ?? null,
 			canUserControl: settings?.canUserControl ?? false
