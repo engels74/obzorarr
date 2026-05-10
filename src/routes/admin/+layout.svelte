@@ -11,7 +11,7 @@ import Settings from '@lucide/svelte/icons/settings';
 import User from '@lucide/svelte/icons/user';
 import Users from '@lucide/svelte/icons/users';
 import X from '@lucide/svelte/icons/x';
-import { type Component, type Snippet } from 'svelte';
+import { type Component, type Snippet, tick } from 'svelte';
 import { browser } from '$app/environment';
 import { enhance } from '$app/forms';
 import { goto, invalidateAll } from '$app/navigation';
@@ -88,10 +88,9 @@ $effect(() => {
 	return () => query.removeEventListener('change', syncMobileState);
 });
 
-function focusAfterRender(selector: string) {
-	requestAnimationFrame(() => {
-		setTimeout(() => document.querySelector<HTMLElement>(selector)?.focus(), 0);
-	});
+async function focusAfterRender(selector: string) {
+	await tick();
+	document.querySelector<HTMLElement>(selector)?.focus();
 }
 
 // Reset avatar error when thumb URL changes so a new URL gets a fresh load attempt
@@ -115,13 +114,13 @@ function toggleSidebar() {
 	sidebarOpen = !sidebarOpen;
 
 	if (sidebarOpen) {
-		focusAfterRender('.sidebar-close-button');
+		void focusAfterRender('.sidebar-close-button');
 	}
 }
 
 function closeSidebar() {
 	sidebarOpen = false;
-	focusAfterRender('.menu-button');
+	void focusAfterRender('.menu-button');
 }
 
 function shouldUseClientNavigation(event: MouseEvent, anchor: HTMLAnchorElement): boolean {
@@ -135,7 +134,7 @@ function shouldUseClientNavigation(event: MouseEvent, anchor: HTMLAnchorElement)
 	);
 }
 
-function handleAdminNavigation(event: MouseEvent) {
+async function handleAdminNavigation(event: MouseEvent) {
 	const anchor = event.currentTarget;
 	if (!(anchor instanceof HTMLAnchorElement) || !shouldUseClientNavigation(event, anchor)) {
 		return;
@@ -145,11 +144,12 @@ function handleAdminNavigation(event: MouseEvent) {
 	if (!href) return;
 
 	event.preventDefault();
-	if (isMobileSidebar) {
+	const shouldRestoreFocus = isMobileSidebar;
+	if (shouldRestoreFocus) {
 		sidebarOpen = false;
-		focusAfterRender('.menu-button');
+		await focusAfterRender('.menu-button');
 	}
-	void goto(href);
+	void goto(href, { keepFocus: shouldRestoreFocus });
 }
 
 function getSidebarFocusableElements(): HTMLElement[] {
