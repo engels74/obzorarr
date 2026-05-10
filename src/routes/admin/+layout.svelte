@@ -147,6 +147,7 @@ function handleAdminNavigation(event: MouseEvent) {
 	event.preventDefault();
 	if (isMobileSidebar) {
 		sidebarOpen = false;
+		focusAfterRender('.menu-button');
 	}
 	void goto(href);
 }
