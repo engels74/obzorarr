@@ -259,6 +259,21 @@ describe('admin UI source regressions', () => {
 		expect(source).not.toContain('optimisticMode');
 	});
 
+	it('disables share modes that are more permissive than the server privacy floor', async () => {
+		const [shareModalSource, dashboardSource] = await Promise.all([
+			readSource('src/lib/components/wrapped/ShareModal.svelte'),
+			readSource('src/routes/dashboard/settings/+page.svelte')
+		]);
+
+		for (const source of [shareModalSource, dashboardSource]) {
+			expect(source).toContain('class:below-floor={isBelowFloor');
+			expect(source).toContain('aria-disabled={isBelowFloor');
+			expect(source).toContain('disabled={');
+			expect(source).toContain('isBelowFloor');
+			expect(source).toContain('floor-note');
+		}
+	});
+
 	it('does not log Plex auth payloads from app-owned browser auth code', async () => {
 		const sources = await Promise.all([
 			readSource('src/lib/client/plex-login.ts'),
@@ -270,6 +285,64 @@ describe('admin UI source regressions', () => {
 			expect(source).not.toContain('console.debug');
 			expect(source).not.toContain('console.info');
 		}
+	});
+
+	it('explains bootstrap and claim expiry on the onboarding claim page', async () => {
+		const source = await readSource('src/routes/onboarding/claim/+page.svelte');
+
+		expect(source).toContain('Active claims expire after 10 minutes');
+		expect(source).toContain('bootstrap tokens expire after 15 minutes');
+		expect(source).toContain('use the current console token');
+		expect(source).toContain('restart the');
+		expect(source).toContain('server to print a new banner');
+	});
+
+	it('renders invalid cron feedback inline while disabling schedule save', async () => {
+		const source = await readSource('src/routes/admin/sync/+page.svelte');
+
+		expect(source).toContain('const cronError = $derived(validateCron(cronExpression));');
+		expect(source).toContain("aria-invalid={cronError ? 'true' : 'false'}");
+		expect(source).toContain("aria-describedby={cronError ? 'cronExpression-error' : undefined}");
+		expect(source).toContain('disabled={!!cronError}');
+		expect(source).toContain('id="cronExpression-error"');
+		expect(source).toContain('class="cron-error"');
+		expect(source).toContain('role="alert"');
+	});
+
+	it('wires Clear All Logs through a visible confirmation dialog', async () => {
+		const source = await readSource('src/routes/admin/logs/+page.svelte');
+
+		expect(source).toContain('let clearLogsDialogOpen = $state(false);');
+		expect(source).toContain('onclick={() => (clearLogsDialogOpen = true)}');
+		expect(source).toContain('<AlertDialog.Root bind:open={clearLogsDialogOpen}>');
+		expect(source).toContain('<AlertDialog.Title>Clear all logs?</AlertDialog.Title>');
+		expect(source).toContain(
+			'<AlertDialog.Cancel disabled={isClearingLogs}>Cancel</AlertDialog.Cancel>'
+		);
+		expect(source).toContain('action="?/clearLogs"');
+		expect(source).toContain('isClearingLogs = true;');
+		expect(source).toContain('await refreshAfterLogMutation(update);');
+		expect(source).toContain('clearLogsDialogOpen = false;');
+		expect(source).toContain("{isClearingLogs ? 'Clearing");
+	});
+
+	it('keeps wrapped keyboard focus visible on the mode toggle and StoryMode container', async () => {
+		const [modeToggleSource, storyModeSource] = await Promise.all([
+			readSource('src/lib/components/wrapped/ModeToggle.svelte'),
+			readSource('src/lib/components/wrapped/StoryMode.svelte')
+		]);
+
+		expect(modeToggleSource).toContain('.mode-toggle:focus-visible');
+		expect(modeToggleSource).toContain('outline: 3px solid #ffffff;');
+		expect(modeToggleSource).toContain('box-shadow:');
+		expect(modeToggleSource).toContain('0 0 0 8px var(--primary, #dc2626);');
+		expect(storyModeSource).toContain('tabindex="0"');
+		expect(storyModeSource).toContain('.story-mode:focus-visible');
+		expect(storyModeSource).toContain('inset 0 0 0 3px #ffffff');
+		expect(storyModeSource).toContain('inset 0 0 0 6px var(--primary, #dc2626)');
+		expect(storyModeSource).toContain('class="focus-ring" aria-hidden="true"');
+		expect(storyModeSource).toContain('.story-mode:focus-visible .focus-ring');
+		expect(storyModeSource).toContain('z-index: 100;');
 	});
 
 	it('guards wrapped story transitions against stale rapid navigation', async () => {
