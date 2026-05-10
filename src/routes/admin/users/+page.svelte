@@ -21,8 +21,10 @@ $effect(() => {
 
 // Format watch time as hours
 function formatWatchTime(minutes: number): string {
+	if (minutes === 0) return '0h';
+	if (minutes > 0 && minutes < 60) return '<1h';
+
 	const hours = Math.round(minutes / 60);
-	if (hours < 1) return '<1h';
 	if (hours >= 24) {
 		const days = (hours / 24).toFixed(1);
 		return `${days}d`;
@@ -109,12 +111,21 @@ function getShareModeLabel(mode: string | null, source: string | null): string {
 												{/if}
 											</span>
 											<div class="user-info">
-												<a href={user.wrappedHref} class="user-name">
+												{#if user.hasWatchHistory}
+													<a href={user.wrappedHref} class="user-name">
+														{user.username}
+														{#if user.isAdmin}
+															<span class="admin-badge">Admin</span>
+														{/if}
+													</a>
+												{:else}
+													<span class="user-name">
 												{user.username}
 												{#if user.isAdmin}
 													<span class="admin-badge">Admin</span>
 												{/if}
-											</a>
+											</span>
+												{/if}
 											{#if user.email}
 												<span class="user-email">{user.email}</span>
 											{/if}
@@ -163,14 +174,18 @@ function getShareModeLabel(mode: string | null, source: string | null): string {
 									</form>
 								</td>
 								<td>
-									<a
-										href={user.wrappedHref}
-										target="_blank"
-										rel="noopener noreferrer"
-										class="preview-link"
-									>
-										Preview Wrapped
-									</a>
+									{#if user.hasWatchHistory}
+										<a
+											href={user.wrappedHref}
+											target="_blank"
+											rel="noopener noreferrer"
+											class="preview-link"
+										>
+											Preview Wrapped
+										</a>
+									{:else}
+										<span class="preview-link unavailable">No Wrapped yet</span>
+									{/if}
 								</td>
 							</tr>
 						{/each}
@@ -189,12 +204,21 @@ function getShareModeLabel(mode: string | null, source: string | null): string {
 									{/if}
 								</span>
 								<div class="user-info">
-									<a href={user.wrappedHref} class="user-name">
+									{#if user.hasWatchHistory}
+										<a href={user.wrappedHref} class="user-name">
+											{user.username}
+											{#if user.isAdmin}
+												<span class="admin-badge">Admin</span>
+											{/if}
+										</a>
+									{:else}
+										<span class="user-name">
 									{user.username}
 									{#if user.isAdmin}
 										<span class="admin-badge">Admin</span>
 									{/if}
-								</a>
+								</span>
+									{/if}
 								{#if user.email}
 									<span class="user-email">{user.email}</span>
 								{/if}
@@ -244,14 +268,18 @@ function getShareModeLabel(mode: string | null, source: string | null): string {
 								</form>
 							</div>
 						</div>
-						<a
-							href={user.wrappedHref}
-							target="_blank"
-							rel="noopener noreferrer"
-							class="preview-link mobile-preview-link"
-						>
-							Preview Wrapped
-						</a>
+						{#if user.hasWatchHistory}
+							<a
+								href={user.wrappedHref}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="preview-link mobile-preview-link"
+							>
+								Preview Wrapped
+							</a>
+						{:else}
+							<span class="preview-link unavailable mobile-preview-link">No Wrapped yet</span>
+						{/if}
 					</div>
 				{/each}
 			</div>
@@ -463,7 +491,7 @@ function getShareModeLabel(mode: string | null, source: string | null): string {
 			gap: 0.5rem;
 		}
 
-		.user-name:hover {
+		.user-name[href]:hover {
 			color: hsl(var(--primary));
 		}
 
@@ -548,6 +576,15 @@ function getShareModeLabel(mode: string | null, source: string | null): string {
 
 		.preview-link:hover {
 			text-decoration: underline;
+		}
+
+		.preview-link.unavailable {
+			color: hsl(var(--muted-foreground));
+			cursor: default;
+		}
+
+		.preview-link.unavailable:hover {
+			text-decoration: none;
 		}
 
 		.mobile-users-list {

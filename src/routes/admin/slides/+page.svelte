@@ -1,4 +1,5 @@
 <script lang="ts">
+import Plus from '@lucide/svelte/icons/plus';
 import { untrack } from 'svelte';
 import { deserialize, enhance } from '$app/forms';
 import type { SlideType } from '$lib/components/slides/types';
@@ -286,26 +287,14 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 	<!-- Slide Order Section -->
 	<section class="section">
 		<div class="section-header">
-			<div>
+			<div class="section-title-content">
 				<h2>Slide Order</h2>
 				<p class="section-description">
 					Drag and drop to reorder. Toggle to enable or disable slides.
 				</p>
 			</div>
 			<button type="button" class="add-button" onclick={openNewEditor}>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					width="16"
-					height="16"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-				>
-					<path d="M12 5v14M5 12h14" />
-				</svg>
+				<Plus class="add-button-icon" />
 				Add Custom Slide
 			</button>
 		</div>
@@ -757,6 +746,10 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			margin-bottom: 1rem;
 		}
 
+		.section-title-content {
+			min-width: 0;
+		}
+
 		.section-header h2 {
 			margin: 0 0 0.25rem;
 		}
@@ -1001,7 +994,9 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			transform: translateY(-1px);
 		}
 
-		.add-button svg {
+		.add-button :global(.add-button-icon) {
+			width: 1rem;
+			height: 1rem;
 			flex-shrink: 0;
 		}
 
@@ -1432,5 +1427,17 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 
 		.save-frequency-button:hover {
 			opacity: 0.9;
+		}
+
+		@media (max-width: 430px) {
+			.section-header {
+				flex-direction: column;
+				align-items: stretch;
+			}
+
+			.add-button {
+				width: 100%;
+				justify-content: center;
+			}
 		}
 </style>

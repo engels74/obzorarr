@@ -14,7 +14,7 @@ import X from '@lucide/svelte/icons/x';
 import { type Component, type Snippet, tick } from 'svelte';
 import { browser } from '$app/environment';
 import { enhance } from '$app/forms';
-import { invalidateAll } from '$app/navigation';
+import { goto, invalidateAll } from '$app/navigation';
 import { page } from '$app/stores';
 import Logo from '$lib/components/Logo.svelte';
 import CsrfWarningBanner from '$lib/components/security/CsrfWarningBanner.svelte';
@@ -61,9 +61,18 @@ const isActive = $derived((href: string) => {
 let sidebarOpen = $state(false);
 let isMobileSidebar = $state(false);
 let sidebarHiddenFromMobile = $derived(isMobileSidebar && !sidebarOpen);
+let mainContentHiddenFromMobile = $derived(isMobileSidebar && sidebarOpen);
 let adminAvatarError = $state(false);
-let mobileMenuButton: HTMLButtonElement | undefined;
-let sidebarCloseButton: HTMLButtonElement | undefined;
+let sidebarElement = $state<HTMLElement | undefined>();
+
+const FOCUSABLE_SELECTOR = [
+	'a[href]',
+	'button:not([disabled])',
+	'input:not([disabled])',
+	'select:not([disabled])',
+	'textarea:not([disabled])',
+	'[tabindex]:not([tabindex="-1"])'
+].join(',');
 
 $effect(() => {
 	if (!browser) return;
@@ -78,6 +87,11 @@ $effect(() => {
 
 	return () => query.removeEventListener('change', syncMobileState);
 });
+
+async function focusAfterRender(selector: string) {
+	await tick();
+	document.querySelector<HTMLElement>(selector)?.focus();
+}
 
 // Reset avatar error when thumb URL changes so a new URL gets a fresh load attempt
 $effect(() => {
@@ -96,21 +110,85 @@ $effect(() => {
 	}
 });
 
-async function toggleSidebar() {
+function toggleSidebar() {
 	sidebarOpen = !sidebarOpen;
 
-	if (sidebarOpen && isMobileSidebar) {
-		await tick();
-		sidebarCloseButton?.focus();
+	if (sidebarOpen) {
+		void focusAfterRender('.sidebar-close-button');
 	}
 }
 
-async function closeSidebar() {
+function closeSidebar() {
 	sidebarOpen = false;
+	void focusAfterRender('.menu-button');
+}
 
-	if (isMobileSidebar) {
-		await tick();
-		mobileMenuButton?.focus();
+function shouldUseClientNavigation(event: MouseEvent, anchor: HTMLAnchorElement): boolean {
+	return (
+		event.button === 0 &&
+		!event.metaKey &&
+		!event.ctrlKey &&
+		!event.shiftKey &&
+		!event.altKey &&
+		(!anchor.target || anchor.target === '_self')
+	);
+}
+
+async function handleAdminNavigation(event: MouseEvent) {
+	const anchor = event.currentTarget;
+	if (!(anchor instanceof HTMLAnchorElement) || !shouldUseClientNavigation(event, anchor)) {
+		return;
+	}
+
+	const href = anchor.getAttribute('href');
+	if (!href) return;
+
+	event.preventDefault();
+	const shouldRestoreFocus = isMobileSidebar;
+	if (shouldRestoreFocus) {
+		sidebarOpen = false;
+		await focusAfterRender('.menu-button');
+	}
+	void goto(href, { keepFocus: shouldRestoreFocus });
+}
+
+function getSidebarFocusableElements(): HTMLElement[] {
+	if (!sidebarElement) return [];
+	return Array.from(sidebarElement.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+		(element) => element.tabIndex >= 0 && element.getClientRects().length > 0
+	);
+}
+
+function trapSidebarFocus(event: KeyboardEvent) {
+	if (!isMobileSidebar || !sidebarOpen || event.key !== 'Tab') return;
+
+	const focusableElements = getSidebarFocusableElements();
+	if (focusableElements.length === 0) {
+		event.preventDefault();
+		sidebarElement?.focus();
+		return;
+	}
+
+	const first = focusableElements[0];
+	const last = focusableElements.at(-1);
+	const activeElement = document.activeElement;
+
+	if (event.shiftKey && (activeElement === first || !sidebarElement?.contains(activeElement))) {
+		event.preventDefault();
+		last?.focus();
+	} else if (
+		!event.shiftKey &&
+		(activeElement === last || !sidebarElement?.contains(activeElement))
+	) {
+		event.preventDefault();
+		first?.focus();
+	}
+}
+
+function handleWindowKeydown(event: KeyboardEvent) {
+	if (isMobileSidebar && sidebarOpen && event.key === 'Escape') {
+		event.preventDefault();
+		void closeSidebar();
 	}
 }
 
@@ -120,13 +198,14 @@ function handleCsrfWarningDismissed() {
 }
 </script>
 
+<svelte:window onkeydown={handleWindowKeydown} />
+
 <div class="admin-layout">
 	<!-- Mobile header -->
 		<header class="mobile-header" class:sidebar-open={sidebarOpen}>
 		<button
 			type="button"
 			class="menu-button"
-			bind:this={mobileMenuButton}
 			onclick={toggleSidebar}
 			aria-label="Toggle navigation"
 		>
@@ -160,6 +239,9 @@ function handleCsrfWarningDismissed() {
 		class:open={sidebarOpen}
 		inert={sidebarHiddenFromMobile}
 		aria-hidden={sidebarHiddenFromMobile ? 'true' : undefined}
+		onkeydown={trapSidebarFocus}
+		tabindex="-1"
+		bind:this={sidebarElement}
 	>
 			<div class="sidebar-header">
 				<div class="sidebar-branding">
@@ -172,7 +254,6 @@ function handleCsrfWarningDismissed() {
 				<button
 					type="button"
 					class="sidebar-close-button"
-					bind:this={sidebarCloseButton}
 					onclick={closeSidebar}
 					aria-label="Close navigation"
 				>
@@ -190,7 +271,7 @@ function handleCsrfWarningDismissed() {
 							class="nav-link"
 							class:active
 							aria-current={active ? 'page' : undefined}
-							onclick={closeSidebar}
+							onclick={handleAdminNavigation}
 						>
 							<span class="nav-icon-wrap" class:active>
 								<item.icon class="nav-icon" />
@@ -242,7 +323,11 @@ function handleCsrfWarningDismissed() {
 	</aside>
 
 	<!-- Main content -->
-	<main class="main-content">
+	<main
+		class="main-content"
+		inert={mainContentHiddenFromMobile}
+		aria-hidden={mainContentHiddenFromMobile ? 'true' : undefined}
+	>
 		{#if showCsrfWarning}
 			<CsrfWarningBanner onDismiss={handleCsrfWarningDismissed} />
 		{/if}

@@ -15,6 +15,7 @@ import Settings from '@lucide/svelte/icons/settings';
 import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
 import Star from '@lucide/svelte/icons/star';
 import Users from '@lucide/svelte/icons/users';
+import { goto } from '$app/navigation';
 import { formatDuration } from '$lib/utils/format';
 import type { PageData } from './$types';
 
@@ -60,6 +61,30 @@ function formatRelativeTime(isoDate: string | null): string {
 function formatDate(isoDate: string | null): string {
 	if (!isoDate) return 'N/A';
 	return new Date(isoDate).toLocaleString();
+}
+
+function shouldUseClientNavigation(event: MouseEvent, anchor: HTMLAnchorElement): boolean {
+	return (
+		event.button === 0 &&
+		!event.metaKey &&
+		!event.ctrlKey &&
+		!event.shiftKey &&
+		!event.altKey &&
+		(!anchor.target || anchor.target === '_self')
+	);
+}
+
+function handleAdminNavigation(event: MouseEvent) {
+	const anchor = event.currentTarget;
+	if (!(anchor instanceof HTMLAnchorElement) || !shouldUseClientNavigation(event, anchor)) {
+		return;
+	}
+
+	const href = anchor.getAttribute('href');
+	if (!href) return;
+
+	event.preventDefault();
+	void goto(href);
 }
 
 // Stats configuration with icons and colors
@@ -155,7 +180,7 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 					<RefreshCw class="section-icon" />
 					<h2>Sync Status</h2>
 				</div>
-				<a href="/admin/sync" class="section-link">
+				<a href="/admin/sync" class="section-link" onclick={handleAdminNavigation}>
 					<span>Manage</span>
 					<ArrowRight class="h-4 w-4" />
 				</a>
@@ -252,14 +277,14 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 					<Star class="section-icon text-amber-400" />
 					<h2>Wrapped</h2>
 				</div>
-				<a href="/admin/wrapped" class="section-link">
+				<a href="/admin/wrapped" class="section-link" onclick={handleAdminNavigation}>
 					<span>View All</span>
 					<ArrowRight class="h-4 w-4" />
 				</a>
 			</div>
 
 			<div class="wrapped-grid">
-				<a href={data.wrappedHref} class="wrapped-card personal">
+				<a href={data.wrappedHref} class="wrapped-card personal" onclick={handleAdminNavigation}>
 					<div class="wrapped-card-glow"></div>
 					<div class="wrapped-icon-wrap">
 						<Star class="wrapped-icon" />
@@ -268,7 +293,7 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 					<ArrowRight class="wrapped-arrow" />
 				</a>
 
-				<a href="/wrapped/{data.year}" class="wrapped-card server">
+				<a href="/wrapped/{data.year}" class="wrapped-card server" onclick={handleAdminNavigation}>
 					<div class="wrapped-card-glow"></div>
 					<div class="wrapped-icon-wrap">
 						<Server class="wrapped-icon" />
@@ -277,7 +302,7 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 					<ArrowRight class="wrapped-arrow" />
 				</a>
 
-				<a href="/admin/slides" class="wrapped-card config">
+				<a href="/admin/slides" class="wrapped-card config" onclick={handleAdminNavigation}>
 					<div class="wrapped-card-glow"></div>
 					<div class="wrapped-icon-wrap">
 						<SlidersHorizontal class="wrapped-icon" />
@@ -294,7 +319,7 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 		<h2 class="actions-title">Quick Actions</h2>
 
 		<div class="actions-grid">
-			<a href="/admin/sync" class="action-card">
+			<a href="/admin/sync" class="action-card" onclick={handleAdminNavigation}>
 				<div class="action-icon-wrap">
 					<RefreshCw class="action-icon" />
 				</div>
@@ -305,7 +330,7 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 				<ArrowRight class="action-arrow" />
 			</a>
 
-			<a href="/admin/users" class="action-card">
+			<a href="/admin/users" class="action-card" onclick={handleAdminNavigation}>
 				<div class="action-icon-wrap">
 					<Users class="action-icon" />
 				</div>
@@ -316,7 +341,7 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 				<ArrowRight class="action-arrow" />
 			</a>
 
-			<a href="/admin/settings" class="action-card">
+			<a href="/admin/settings" class="action-card" onclick={handleAdminNavigation}>
 				<div class="action-icon-wrap">
 					<Settings class="action-icon" />
 				</div>
