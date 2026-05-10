@@ -88,6 +88,7 @@ function updateDiagnosticFromActionForm() {
 		diagnosticError = null;
 	}
 	if (form?.diagnosticError) {
+		reverseProxyDiagnostic = null;
 		diagnosticStatus = 'failure';
 		diagnosticError = form.diagnosticError;
 	}
@@ -113,6 +114,7 @@ async function runDiagnostic() {
 	if (diagnosticStatus === 'checking') return;
 
 	browserOrigin = window.location.origin;
+	reverseProxyDiagnostic = null;
 	diagnosticStatus = 'checking';
 	diagnosticError = null;
 
