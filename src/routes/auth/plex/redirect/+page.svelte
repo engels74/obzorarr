@@ -43,10 +43,10 @@ onMount(async () => {
 
 		if (!loginResult) {
 			status = 'cancelled';
-			sessionStorage.removeItem(PIN_STORAGE_KEY);
+			removeRedirectPinData();
 			return;
 		}
-		sessionStorage.removeItem(PIN_STORAGE_KEY);
+		removeRedirectPinData();
 
 		status = 'success';
 
@@ -57,7 +57,7 @@ onMount(async () => {
 
 		window.location.href = targetUrl;
 	} catch (err) {
-		sessionStorage.removeItem(PIN_STORAGE_KEY);
+		removeRedirectPinData();
 		status = 'error';
 		errorMessage = err instanceof Error ? err.message : 'Authentication failed';
 	}
@@ -94,8 +94,14 @@ async function pollForLogin(
 	return null;
 }
 
+function removeRedirectPinData(): void {
+	try {
+		sessionStorage.removeItem(PIN_STORAGE_KEY);
+	} catch {}
+}
+
 function handleRetry(): void {
-	sessionStorage.removeItem(PIN_STORAGE_KEY);
+	removeRedirectPinData();
 	window.location.href = '/';
 }
 </script>
