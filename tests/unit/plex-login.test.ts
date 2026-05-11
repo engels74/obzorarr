@@ -153,6 +153,12 @@ function createSessionStorage(): MemoryStorage {
 	};
 }
 
+function createConsoleRecorder(consoleCalls: string[]) {
+	return mock((...messages: unknown[]) => {
+		consoleCalls.push(messages.map((message) => Bun.inspect(message, { depth: 10 })).join(' '));
+	});
+}
+
 interface MockLocation {
 	origin: string;
 	href: string;
@@ -193,6 +199,8 @@ describe('startPlexLoginRedirect', () => {
 	let originalConsoleLog: typeof console.log;
 	let originalConsoleDebug: typeof console.debug;
 	let originalConsoleInfo: typeof console.info;
+	let originalConsoleWarn: typeof console.warn;
+	let originalConsoleError: typeof console.error;
 	let consoleCalls: string[];
 
 	beforeEach(() => {
@@ -203,12 +211,14 @@ describe('startPlexLoginRedirect', () => {
 		originalConsoleLog = console.log;
 		originalConsoleDebug = console.debug;
 		originalConsoleInfo = console.info;
-		const recordConsole = mock((message: unknown) => {
-			consoleCalls.push(String(message));
-		});
+		originalConsoleWarn = console.warn;
+		originalConsoleError = console.error;
+		const recordConsole = createConsoleRecorder(consoleCalls);
 		console.log = recordConsole as typeof console.log;
 		console.debug = recordConsole as typeof console.debug;
 		console.info = recordConsole as typeof console.info;
+		console.warn = recordConsole as typeof console.warn;
+		console.error = recordConsole as typeof console.error;
 	});
 
 	afterEach(() => {
@@ -216,6 +226,8 @@ describe('startPlexLoginRedirect', () => {
 		console.log = originalConsoleLog;
 		console.debug = originalConsoleDebug;
 		console.info = originalConsoleInfo;
+		console.warn = originalConsoleWarn;
+		console.error = originalConsoleError;
 	});
 
 	it('fetches PIN with same-origin redirectUrl, persists pin to sessionStorage, navigates to authUrl', async () => {
@@ -439,6 +451,8 @@ describe('startPlexLoginPopup', () => {
 	let originalConsoleLog: typeof console.log;
 	let originalConsoleDebug: typeof console.debug;
 	let originalConsoleInfo: typeof console.info;
+	let originalConsoleWarn: typeof console.warn;
+	let originalConsoleError: typeof console.error;
 	let consoleCalls: string[];
 
 	beforeEach(() => {
@@ -446,12 +460,14 @@ describe('startPlexLoginPopup', () => {
 		originalConsoleLog = console.log;
 		originalConsoleDebug = console.debug;
 		originalConsoleInfo = console.info;
-		const recordConsole = mock((message: unknown) => {
-			consoleCalls.push(String(message));
-		});
+		originalConsoleWarn = console.warn;
+		originalConsoleError = console.error;
+		const recordConsole = createConsoleRecorder(consoleCalls);
 		console.log = recordConsole as typeof console.log;
 		console.debug = recordConsole as typeof console.debug;
 		console.info = recordConsole as typeof console.info;
+		console.warn = recordConsole as typeof console.warn;
+		console.error = recordConsole as typeof console.error;
 	});
 
 	afterEach(() => {
@@ -459,6 +475,8 @@ describe('startPlexLoginPopup', () => {
 		console.log = originalConsoleLog;
 		console.debug = originalConsoleDebug;
 		console.info = originalConsoleInfo;
+		console.warn = originalConsoleWarn;
+		console.error = originalConsoleError;
 	});
 
 	it('ignores stale poll failures once login completion has started', async () => {
