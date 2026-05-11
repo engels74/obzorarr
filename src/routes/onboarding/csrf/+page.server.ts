@@ -187,8 +187,6 @@ export const load: PageServerLoad = async ({ request, parent }) => {
 };
 
 export const actions: Actions = {
-	default: saveCsrfOrigin,
-
 	testOrigin: async ({ request, cookies, url }) => {
 		const guardResult = await requireOnboardingCsrfAction(cookies, url, 'testError');
 		if (guardResult) return guardResult;

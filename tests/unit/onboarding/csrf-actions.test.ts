@@ -27,7 +27,6 @@ const ORIGIN = 'http://localhost:5173';
 const OVERSIZED_BROWSER_ORIGIN = `https://wrapped.example.com/${'a'.repeat(2049)}`;
 type SaveOriginAction = NonNullable<typeof actions.saveOrigin>;
 type SaveAction = NonNullable<typeof actions.save>;
-type DefaultAction = NonNullable<typeof actions.default>;
 type SkipCsrfAction = NonNullable<typeof actions.skipCsrf>;
 type TestOriginAction = NonNullable<typeof actions.testOrigin>;
 type DiagnoseReverseProxyAction = NonNullable<typeof actions.diagnoseReverseProxy>;
@@ -138,15 +137,6 @@ async function runSave(request: Request) {
 	} as unknown as Parameters<SaveAction>[0]);
 }
 
-async function runDefault(request: Request) {
-	const defaultAction = actions.default as DefaultAction;
-	return defaultAction({
-		request,
-		cookies,
-		url: new URL(request.url)
-	} as unknown as Parameters<DefaultAction>[0]);
-}
-
 async function runTestOrigin(request: Request) {
 	const testOrigin = actions.testOrigin as TestOriginAction;
 	return testOrigin({ request, cookies } as unknown as Parameters<TestOriginAction>[0]);
@@ -208,6 +198,17 @@ describe('onboarding CSRF actions', () => {
 	afterEach(() => {
 		if (previousTrustProxyEnv === undefined) delete envRecord().TRUST_PROXY;
 		else envRecord().TRUST_PROXY = previousTrustProxyEnv;
+	});
+
+	it('does not export a default action alongside named actions', () => {
+		expect('default' in actions).toBe(false);
+		expect(actions.default).toBeUndefined();
+		expect(typeof actions.testOrigin).toBe('function');
+		expect(typeof actions.save).toBe('function');
+		expect(typeof actions.saveOrigin).toBe('function');
+		expect(typeof actions.skipCsrf).toBe('function');
+		expect(typeof actions.diagnoseReverseProxy).toBe('function');
+		expect(typeof actions.enableTrustProxy).toBe('function');
 	});
 
 	it('test origin succeeds when the submitted origin matches the browser origin', async () => {
@@ -290,21 +291,10 @@ describe('onboarding CSRF actions', () => {
 		expect(await getOnboardingStep()).toBe(OnboardingSteps.PLEX);
 	});
 
-	it('saves a matching CSRF origin through the default action', async () => {
-		await expectRedirect(() => runDefault(createFormRequest(ORIGIN)), '/onboarding/plex');
-
-		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBe(ORIGIN);
-		expect(await getOnboardingStep()).toBe(OnboardingSteps.PLEX);
-	});
-
-	it('returns setup-claim-required for save aliases without an active claim', async () => {
+	it('returns setup-claim-required for the save alias without an active claim', async () => {
 		cookies = createCookies();
 
 		expect(await runSave(createFormRequest(ORIGIN))).toEqual({
-			status: 403,
-			data: { error: ONBOARDING_CLAIM_REQUIRED_MESSAGE }
-		});
-		expect(await runDefault(createFormRequest(ORIGIN))).toEqual({
 			status: 403,
 			data: { error: ONBOARDING_CLAIM_REQUIRED_MESSAGE }
 		});
