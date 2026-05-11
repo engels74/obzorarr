@@ -1,5 +1,6 @@
 import { redirect } from '@sveltejs/kit';
-import { markPinCallbackVerified } from '$lib/server/auth/pin-transactions';
+import { verifyPinCallback } from '$lib/server/auth/pin-transactions';
+import { requiresOnboarding } from '$lib/server/onboarding';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ cookies, locals, request, url }) => {
@@ -19,13 +20,22 @@ export const load: PageServerLoad = async ({ cookies, locals, request, url }) =>
 	const fromPlex = refererOrigin === 'https://app.plex.tv';
 	const fromSameOrigin = refererOrigin === url.origin.toLowerCase();
 
-	// Allow missing/empty referer; sessionStorage PIN check on the client is the real gate.
+	// Allow missing/empty referer; callback state verification below gates the redirect flow.
 	if (referer && !fromPlex && !fromSameOrigin) {
 		redirect(303, '/');
 	}
 
+	const verifiedPin = await verifyPinCallback(cookies, url.searchParams.get('state'));
+
 	return {
 		flow: url.searchParams.get('flow') === 'popup' ? 'popup' : 'redirect',
-		stateVerified: await markPinCallbackVerified(cookies, url.searchParams.get('state'))
+		stateVerified: verifiedPin !== null,
+		serverPinFallback: verifiedPin
+			? {
+					pinId: verifiedPin.pinId,
+					expiresAt: verifiedPin.expiresAt.toISOString(),
+					context: (await requiresOnboarding()) ? 'onboarding' : 'landing'
+				}
+			: null
 	};
 };

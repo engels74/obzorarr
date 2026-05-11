@@ -1,6 +1,13 @@
-import { describe, expect, it } from 'bun:test';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import type { Cookies } from '@sveltejs/kit';
-import { ONBOARDING_CLAIM_REQUIRED_MESSAGE } from '$lib/server/onboarding/bootstrap';
+import { db } from '$lib/server/db/client';
+import { appSettings } from '$lib/server/db/schema';
+import {
+	claimOnboardingInstance,
+	clearBootstrapToken,
+	createBootstrapToken,
+	ONBOARDING_CLAIM_REQUIRED_MESSAGE
+} from '$lib/server/onboarding/bootstrap';
 import { actions as plexActions } from '../../../src/routes/onboarding/plex/+page.server';
 import { actions as settingsActions } from '../../../src/routes/onboarding/settings/+page.server';
 import { actions as syncActions } from '../../../src/routes/onboarding/sync/+page.server';
@@ -9,6 +16,12 @@ type Action = (event: unknown) => Promise<unknown>;
 
 const adminLocals = {
 	user: { id: 1, plexId: 1, username: 'admin', isAdmin: true }
+} as unknown as App.Locals;
+
+const anonymousLocals = {} as App.Locals;
+
+const nonAdminLocals = {
+	user: { id: 2, plexId: 2, username: 'user', isAdmin: false }
 } as unknown as App.Locals;
 
 const claimCheckedActions = [
@@ -24,20 +37,38 @@ const claimCheckedActions = [
 	['sync.continue', syncActions.continue]
 ] as const;
 
+const adminRequiredActions = [
+	['settings.saveSettings', settingsActions.saveSettings],
+	['settings.skipSettings', settingsActions.skipSettings],
+	['settings.testAIConnection', settingsActions.testAIConnection],
+	['sync.startSync', syncActions.startSync],
+	['sync.cancelSync', syncActions.cancelSync],
+	['sync.continue', syncActions.continue]
+] as const;
+
 function makeCookies(errorToThrow?: Error): Cookies {
+	const values = new Map<string, string>();
 	return {
 		get: () => {
 			if (errorToThrow) throw errorToThrow;
-			return undefined;
+			return values.get('obzorarr_onboarding_claim');
 		},
 		getAll: () => [],
-		set: () => {},
-		delete: () => {},
+		set: (name: string, value: string) => {
+			values.set(name, value);
+		},
+		delete: (name: string) => {
+			values.delete(name);
+		},
 		serialize: () => ''
 	} as unknown as Cookies;
 }
 
-async function runAction(action: unknown, cookies: Cookies): Promise<unknown> {
+async function runAction(
+	action: unknown,
+	cookies: Cookies,
+	locals: App.Locals = adminLocals
+): Promise<unknown> {
 	const request = new Request('http://localhost/onboarding', {
 		method: 'POST',
 		body: new FormData()
@@ -45,13 +76,18 @@ async function runAction(action: unknown, cookies: Cookies): Promise<unknown> {
 
 	return (action as Action)({
 		request,
-		locals: adminLocals,
+		locals,
 		cookies,
 		url: new URL(request.url)
 	});
 }
 
 describe('onboarding page action claim checks', () => {
+	beforeEach(async () => {
+		await db.delete(appSettings);
+		clearBootstrapToken();
+	});
+
 	for (const [name, action] of claimCheckedActions) {
 		it(`${name} returns the expected claim-required failure`, async () => {
 			const result = await runAction(action, makeCookies());
@@ -71,6 +107,26 @@ describe('onboarding page action claim checks', () => {
 			} catch (err) {
 				expect(err).toBe(unexpected);
 			}
+		});
+	}
+
+	for (const [name, action] of adminRequiredActions) {
+		it(`${name} preserves the admin failure after a valid setup claim`, async () => {
+			const cookies = makeCookies();
+			const token = createBootstrapToken();
+			expect(await claimOnboardingInstance(cookies, token)).toBe('claimed');
+
+			const anonymousResult = await runAction(action, cookies, anonymousLocals);
+			expect(anonymousResult).toMatchObject({
+				status: 403,
+				data: { error: 'Admin access required' }
+			});
+
+			const nonAdminResult = await runAction(action, cookies, nonAdminLocals);
+			expect(nonAdminResult).toMatchObject({
+				status: 403,
+				data: { error: 'Admin access required' }
+			});
 		});
 	}
 });

@@ -10,7 +10,12 @@ import {
 } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
 import { appSettings } from '$lib/server/db/schema';
-import { getOnboardingStep, OnboardingSteps, setOnboardingStep } from '$lib/server/onboarding';
+import {
+	getOnboardingStep,
+	ONBOARDING_CLAIM_REQUIRED_MESSAGE,
+	OnboardingSteps,
+	setOnboardingStep
+} from '$lib/server/onboarding';
 import {
 	claimOnboardingInstance,
 	clearBootstrapToken,
@@ -21,6 +26,8 @@ import { actions } from '../../../src/routes/onboarding/csrf/+page.server';
 const ORIGIN = 'http://localhost:5173';
 const OVERSIZED_BROWSER_ORIGIN = `https://wrapped.example.com/${'a'.repeat(2049)}`;
 type SaveOriginAction = NonNullable<typeof actions.saveOrigin>;
+type SaveAction = NonNullable<typeof actions.save>;
+type DefaultAction = NonNullable<typeof actions.default>;
 type SkipCsrfAction = NonNullable<typeof actions.skipCsrf>;
 type TestOriginAction = NonNullable<typeof actions.testOrigin>;
 type DiagnoseReverseProxyAction = NonNullable<typeof actions.diagnoseReverseProxy>;
@@ -120,6 +127,24 @@ async function runSaveOrigin(request: Request) {
 		cookies,
 		url: new URL(request.url)
 	} as unknown as Parameters<SaveOriginAction>[0]);
+}
+
+async function runSave(request: Request) {
+	const save = actions.save as SaveAction;
+	return save({
+		request,
+		cookies,
+		url: new URL(request.url)
+	} as unknown as Parameters<SaveAction>[0]);
+}
+
+async function runDefault(request: Request) {
+	const defaultAction = actions.default as DefaultAction;
+	return defaultAction({
+		request,
+		cookies,
+		url: new URL(request.url)
+	} as unknown as Parameters<DefaultAction>[0]);
 }
 
 async function runTestOrigin(request: Request) {
@@ -256,6 +281,33 @@ describe('onboarding CSRF actions', () => {
 
 		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBe(ORIGIN);
 		expect(await getOnboardingStep()).toBe(OnboardingSteps.PLEX);
+	});
+
+	it('saves a matching CSRF origin through the save alias', async () => {
+		await expectRedirect(() => runSave(createFormRequest(ORIGIN)), '/onboarding/plex');
+
+		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBe(ORIGIN);
+		expect(await getOnboardingStep()).toBe(OnboardingSteps.PLEX);
+	});
+
+	it('saves a matching CSRF origin through the default action', async () => {
+		await expectRedirect(() => runDefault(createFormRequest(ORIGIN)), '/onboarding/plex');
+
+		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBe(ORIGIN);
+		expect(await getOnboardingStep()).toBe(OnboardingSteps.PLEX);
+	});
+
+	it('returns setup-claim-required for save aliases without an active claim', async () => {
+		cookies = createCookies();
+
+		expect(await runSave(createFormRequest(ORIGIN))).toEqual({
+			status: 403,
+			data: { error: ONBOARDING_CLAIM_REQUIRED_MESSAGE }
+		});
+		expect(await runDefault(createFormRequest(ORIGIN))).toEqual({
+			status: 403,
+			data: { error: ONBOARDING_CLAIM_REQUIRED_MESSAGE }
+		});
 	});
 
 	it('saves a matching CSRF origin when the browser origin has an explicit default port', async () => {
