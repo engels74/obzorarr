@@ -283,6 +283,21 @@ function formatSlideLabel(slideType: string): string {
 	return labels[slideType] || slideType;
 }
 
+async function requireOnboardingSettingsClaim(
+	cookies: Parameters<NonNullable<Actions['saveSettings']>>[0]['cookies'],
+	url: URL
+) {
+	try {
+		await requireActiveOnboardingClaim(cookies, { requestUrl: url });
+	} catch (err) {
+		if (err instanceof OnboardingClaimRequiredError) {
+			return fail(403, { error: err.message });
+		}
+		throw err;
+	}
+	return null;
+}
+
 /**
  * Form actions
  */
@@ -291,16 +306,11 @@ export const actions: Actions = {
 	 * Save all settings and continue to completion
 	 */
 	saveSettings: async ({ request, locals, cookies, url }) => {
+		const guardResult = await requireOnboardingSettingsClaim(cookies, url);
+		if (guardResult) return guardResult;
+
 		if (!locals.user?.isAdmin) {
 			return fail(403, { error: 'Admin access required' });
-		}
-		try {
-			await requireActiveOnboardingClaim(cookies, { requestUrl: url });
-		} catch (err) {
-			if (err instanceof OnboardingClaimRequiredError) {
-				return fail(403, { error: err.message });
-			}
-			throw err;
 		}
 
 		try {
@@ -443,16 +453,11 @@ export const actions: Actions = {
 	 * Skip settings (use defaults) and continue
 	 */
 	skipSettings: async ({ locals, cookies, url }) => {
+		const guardResult = await requireOnboardingSettingsClaim(cookies, url);
+		if (guardResult) return guardResult;
+
 		if (!locals.user?.isAdmin) {
 			return fail(403, { error: 'Admin access required' });
-		}
-		try {
-			await requireActiveOnboardingClaim(cookies, { requestUrl: url });
-		} catch (err) {
-			if (err instanceof OnboardingClaimRequiredError) {
-				return fail(403, { error: err.message });
-			}
-			throw err;
 		}
 
 		logger.info(
@@ -470,16 +475,11 @@ export const actions: Actions = {
 	 * Does not fall back to stored values — onboarding submits fresh input.
 	 */
 	testAIConnection: async ({ request, locals, cookies, url }) => {
+		const guardResult = await requireOnboardingSettingsClaim(cookies, url);
+		if (guardResult) return guardResult;
+
 		if (!locals.user?.isAdmin) {
 			return fail(403, { error: 'Admin access required' });
-		}
-		try {
-			await requireActiveOnboardingClaim(cookies, { requestUrl: url });
-		} catch (err) {
-			if (err instanceof OnboardingClaimRequiredError) {
-				return fail(403, { error: err.message });
-			}
-			throw err;
 		}
 
 		const formData = await request.formData();

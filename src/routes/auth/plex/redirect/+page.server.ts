@@ -1,5 +1,6 @@
 import { redirect } from '@sveltejs/kit';
-import { markPinCallbackVerified } from '$lib/server/auth/pin-transactions';
+import { verifyPinCallback } from '$lib/server/auth/pin-transactions';
+import { requiresOnboarding } from '$lib/server/onboarding';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ cookies, locals, request, url }) => {
@@ -24,8 +25,17 @@ export const load: PageServerLoad = async ({ cookies, locals, request, url }) =>
 		redirect(303, '/');
 	}
 
+	const verifiedPin = await verifyPinCallback(cookies, url.searchParams.get('state'));
+
 	return {
 		flow: url.searchParams.get('flow') === 'popup' ? 'popup' : 'redirect',
-		stateVerified: await markPinCallbackVerified(cookies, url.searchParams.get('state'))
+		stateVerified: verifiedPin !== null,
+		serverPinFallback: verifiedPin
+			? {
+					pinId: verifiedPin.pinId,
+					expiresAt: verifiedPin.expiresAt.toISOString(),
+					context: (await requiresOnboarding()) ? 'onboarding' : 'landing'
+				}
+			: null
 	};
 };

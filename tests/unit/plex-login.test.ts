@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
 import {
 	PIN_STORAGE_KEY,
+	resolveRedirectPinData,
 	sanitizeCompletedLoginResponse,
 	startPlexLoginPopup,
 	startPlexLoginRedirect
@@ -296,6 +297,50 @@ describe('startPlexLoginRedirect', () => {
 		expect(receivedError).toBe('Plex unreachable');
 		expect(location.href).toBe(originalHref);
 		expect(sessionStorage.getItem(PIN_STORAGE_KEY)).toBeNull();
+	});
+});
+
+describe('resolveRedirectPinData', () => {
+	it('prefers sessionStorage PIN data over the server fallback', () => {
+		const storage = createSessionStorage();
+		storage.setItem(
+			PIN_STORAGE_KEY,
+			JSON.stringify({ pinId: 111, createdAt: 1000, context: 'landing' })
+		);
+
+		expect(
+			resolveRedirectPinData(
+				storage,
+				{ pinId: 222, expiresAt: new Date(60_000).toISOString(), context: 'onboarding' },
+				2000
+			)
+		).toEqual({ pinId: 111, createdAt: 1000, context: 'landing' });
+	});
+
+	it('uses the server fallback when sessionStorage is absent', () => {
+		const storage = createSessionStorage();
+
+		expect(
+			resolveRedirectPinData(
+				storage,
+				{ pinId: 222, expiresAt: new Date(60_000).toISOString(), context: 'onboarding' },
+				2000
+			)
+		).toEqual({ pinId: 222, createdAt: 2000, context: 'onboarding' });
+	});
+
+	it('does not use the server fallback when stored PIN data is invalid', () => {
+		const storage = createSessionStorage();
+		storage.setItem(PIN_STORAGE_KEY, '{bad-json');
+
+		expect(() =>
+			resolveRedirectPinData(
+				storage,
+				{ pinId: 222, expiresAt: new Date(60_000).toISOString(), context: 'onboarding' },
+				2000
+			)
+		).toThrow('Invalid authentication data. Please try again.');
+		expect(storage.getItem(PIN_STORAGE_KEY)).toBeNull();
 	});
 });
 

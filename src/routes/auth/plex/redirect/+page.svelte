@@ -1,10 +1,12 @@
 <script lang="ts">
 import { onMount } from 'svelte';
 import { browser } from '$app/environment';
+import type { ServerPinFallback } from '$lib/client/plex-login';
 import {
 	LOGIN_TIMEOUT_MS,
 	PIN_STORAGE_KEY,
 	POLL_INTERVAL_MS,
+	resolveRedirectPinData,
 	sanitizeCompletedLoginResponse
 } from '$lib/client/plex-login';
 import type { PageData } from './$types';
@@ -16,13 +18,6 @@ let errorMessage = $state<string | null>(null);
 let { data }: { data: PageData } = $props();
 
 const MAX_POLL_ATTEMPTS = Math.floor(LOGIN_TIMEOUT_MS / POLL_INTERVAL_MS);
-const PIN_MAX_AGE_MS = 15 * 60 * 1000;
-
-interface StoredPinData {
-	pinId: number;
-	createdAt: number;
-	context: 'landing' | 'onboarding';
-}
 
 onMount(async () => {
 	if (!browser) return;
@@ -39,32 +34,11 @@ onMount(async () => {
 		return;
 	}
 
-	const storedData = sessionStorage.getItem(PIN_STORAGE_KEY);
-	if (!storedData) {
-		status = 'error';
-		errorMessage = 'No pending authentication found. Please try again.';
-		return;
-	}
-
-	let pinData: StoredPinData;
 	try {
-		pinData = JSON.parse(storedData);
-	} catch {
-		sessionStorage.removeItem(PIN_STORAGE_KEY);
-		status = 'error';
-		errorMessage = 'Invalid authentication data. Please try again.';
-		return;
-	}
-
-	const pinAge = Date.now() - pinData.createdAt;
-	if (pinAge > PIN_MAX_AGE_MS) {
-		sessionStorage.removeItem(PIN_STORAGE_KEY);
-		status = 'error';
-		errorMessage = 'Authentication session expired. Please try again.';
-		return;
-	}
-
-	try {
+		const pinData = resolveRedirectPinData(
+			sessionStorage,
+			data.serverPinFallback as ServerPinFallback | null
+		);
 		const loginResult = await pollForLogin(pinData.pinId);
 
 		if (!loginResult) {

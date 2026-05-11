@@ -15,6 +15,11 @@ interface PinTransaction {
 	callbackVerified: boolean;
 }
 
+export interface VerifiedPinCallback {
+	pinId: number;
+	expiresAt: Date;
+}
+
 const COOKIE_OPTIONS = {
 	path: '/',
 	httpOnly: true,
@@ -76,24 +81,34 @@ export function appendPinStateToForwardUrl(
 	return parsed.toString();
 }
 
-export async function markPinCallbackVerified(
+export async function verifyPinCallback(
 	cookies: Cookies,
 	state: string | null
-): Promise<boolean> {
+): Promise<VerifiedPinCallback | null> {
 	await pruneExpired();
 
 	const cookieState = cookies.get(PIN_STATE_COOKIE);
 	if (!state || !cookieState || state !== cookieState) {
-		return false;
+		return null;
 	}
 
 	const updated = await db
 		.update(pinTransactions)
 		.set({ callbackVerified: true })
 		.where(eq(pinTransactions.state, state))
-		.returning({ state: pinTransactions.state });
+		.returning({
+			pinId: pinTransactions.pinId,
+			expiresAt: pinTransactions.expiresAt
+		});
 
-	return updated.length > 0;
+	return updated[0] ?? null;
+}
+
+export async function markPinCallbackVerified(
+	cookies: Cookies,
+	state: string | null
+): Promise<boolean> {
+	return (await verifyPinCallback(cookies, state)) !== null;
 }
 
 export async function getPinTransactionForRequest(

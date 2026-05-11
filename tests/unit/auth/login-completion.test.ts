@@ -3,8 +3,9 @@ import type { Cookies } from '@sveltejs/kit';
 import * as settingsService from '$lib/server/admin/settings.service';
 import * as membership from '$lib/server/auth/membership';
 import * as plexOauth from '$lib/server/auth/plex-oauth';
+import { NotServerMemberError } from '$lib/server/auth/types';
 import { db } from '$lib/server/db/client';
-import { sessions, users } from '$lib/server/db/schema';
+import { appSettings, sessions, users } from '$lib/server/db/schema';
 import * as onboarding from '$lib/server/onboarding';
 import {
 	claimOnboardingInstance,
@@ -44,6 +45,7 @@ describe('createSessionFromPlexToken', () => {
 	let spies: Array<{ mockRestore(): void }> = [];
 
 	beforeEach(async () => {
+		await db.delete(appSettings);
 		await db.delete(sessions);
 		await db.delete(users);
 		clearBootstrapToken();
@@ -160,6 +162,63 @@ describe('createSessionFromPlexToken', () => {
 		await expect(
 			createSessionFromPlexToken('secret-auth-token', createCookies())
 		).rejects.toBeInstanceOf(OnboardingClaimRequiredError);
+	});
+
+	it('rejects configured-Plex onboarding login without an active setup claim', async () => {
+		spies.push(spyOn(onboarding, 'requiresOnboarding').mockResolvedValue(true));
+
+		const { createSessionFromPlexToken } = await import('$lib/server/auth/login-completion');
+
+		await expect(
+			createSessionFromPlexToken('secret-auth-token', createCookies())
+		).rejects.toBeInstanceOf(OnboardingClaimRequiredError);
+		expect(await db.select().from(sessions)).toHaveLength(0);
+	});
+
+	it('rejects configured-Plex onboarding login for non-owners before creating a session', async () => {
+		spies.push(spyOn(onboarding, 'requiresOnboarding').mockResolvedValue(true));
+
+		const cookies = createCookies();
+		const token = createBootstrapToken();
+		expect(await claimOnboardingInstance(cookies, token)).toBe('claimed');
+
+		const { createSessionFromPlexToken } = await import('$lib/server/auth/login-completion');
+
+		try {
+			await createSessionFromPlexToken('secret-auth-token', cookies);
+			expect.unreachable('Expected non-owner onboarding login to be rejected');
+		} catch (err) {
+			expect(err).toBeInstanceOf(NotServerMemberError);
+			expect((err as Error).message).toBe(
+				'Only the server owner can configure Obzorarr. Please sign in with the server owner account.'
+			);
+		}
+		expect(await db.select().from(sessions)).toHaveLength(0);
+		expect(await db.select().from(users)).toHaveLength(0);
+	});
+
+	it('allows configured-Plex onboarding login for the server owner', async () => {
+		spies.push(
+			spyOn(onboarding, 'requiresOnboarding').mockResolvedValue(true),
+			spyOn(membership, 'requireServerMembership').mockResolvedValue({
+				isMember: true,
+				isOwner: true,
+				serverName: 'Test Plex'
+			})
+		);
+
+		const cookies = createCookies();
+		const token = createBootstrapToken();
+		expect(await claimOnboardingInstance(cookies, token)).toBe('claimed');
+
+		const { createSessionFromPlexToken } = await import('$lib/server/auth/login-completion');
+		const result = await createSessionFromPlexToken('secret-auth-token', cookies);
+
+		expect(result).toEqual({
+			user: { username: 'alice', isAdmin: true },
+			redirectTo: '/admin'
+		});
+		expect(await db.select().from(sessions)).toHaveLength(1);
 	});
 
 	it('propagates unexpected setup claim renewal errors during fresh onboarding', async () => {

@@ -15,6 +15,21 @@ import {
 import { cancelSync } from '$lib/server/sync/progress';
 import type { Actions, PageServerLoad } from './$types';
 
+async function requireOnboardingSyncClaim(
+	cookies: Parameters<NonNullable<Actions['startSync']>>[0]['cookies'],
+	url: URL
+) {
+	try {
+		await requireActiveOnboardingClaim(cookies, { requestUrl: url });
+	} catch (err) {
+		if (err instanceof OnboardingClaimRequiredError) {
+			return fail(403, { error: err.message });
+		}
+		throw err;
+	}
+	return null;
+}
+
 export const load: PageServerLoad = async ({ parent }) => {
 	const parentData = await parent();
 
@@ -34,16 +49,11 @@ export const load: PageServerLoad = async ({ parent }) => {
 
 export const actions: Actions = {
 	startSync: async ({ locals, cookies, url }) => {
+		const guardResult = await requireOnboardingSyncClaim(cookies, url);
+		if (guardResult) return guardResult;
+
 		if (!locals.user?.isAdmin) {
 			return fail(403, { error: 'Admin access required' });
-		}
-		try {
-			await requireActiveOnboardingClaim(cookies, { requestUrl: url });
-		} catch (err) {
-			if (err instanceof OnboardingClaimRequiredError) {
-				return fail(403, { error: err.message });
-			}
-			throw err;
 		}
 
 		try {
@@ -72,16 +82,11 @@ export const actions: Actions = {
 	},
 
 	cancelSync: async ({ locals, cookies, url }) => {
+		const guardResult = await requireOnboardingSyncClaim(cookies, url);
+		if (guardResult) return guardResult;
+
 		if (!locals.user?.isAdmin) {
 			return fail(403, { error: 'Admin access required' });
-		}
-		try {
-			await requireActiveOnboardingClaim(cookies, { requestUrl: url });
-		} catch (err) {
-			if (err instanceof OnboardingClaimRequiredError) {
-				return fail(403, { error: err.message });
-			}
-			throw err;
 		}
 
 		const cancelled = cancelSync();
@@ -94,16 +99,11 @@ export const actions: Actions = {
 	},
 
 	continue: async ({ locals, cookies, url }) => {
+		const guardResult = await requireOnboardingSyncClaim(cookies, url);
+		if (guardResult) return guardResult;
+
 		if (!locals.user?.isAdmin) {
 			return fail(403, { error: 'Admin access required' });
-		}
-		try {
-			await requireActiveOnboardingClaim(cookies, { requestUrl: url });
-		} catch (err) {
-			if (err instanceof OnboardingClaimRequiredError) {
-				return fail(403, { error: err.message });
-			}
-			throw err;
 		}
 
 		logger.info('Onboarding: Proceeding to settings (sync may still be running)', 'Onboarding');

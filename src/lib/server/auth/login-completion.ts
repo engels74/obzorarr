@@ -23,6 +23,9 @@ const COOKIE_OPTIONS = {
 	maxAge: Math.floor(SESSION_DURATION_MS / 1000)
 };
 
+const ONBOARDING_OWNER_REQUIRED_MESSAGE =
+	'Only the server owner can configure Obzorarr. Please sign in with the server owner account.';
+
 export interface CompletedLoginUser {
 	username: string;
 	isAdmin: boolean;
@@ -49,17 +52,28 @@ export async function createSessionFromPlexToken(
 	let isAdmin = false;
 	let accountId: number;
 
-	if (isOnboarding && !hasServerConfigured) {
+	if (isOnboarding) {
 		await requireActiveOnboardingClaim(cookies, context);
 
-		const ownership = await verifyServerOwnership(authToken);
+		if (hasServerConfigured) {
+			const membership = await requireServerMembership(authToken);
 
-		if (!ownership.isOwner) {
-			throw new NotServerMemberError('You must own a Plex server to configure Obzorarr.');
+			if (!membership.isOwner) {
+				throw new NotServerMemberError(ONBOARDING_OWNER_REQUIRED_MESSAGE);
+			}
+
+			isAdmin = true;
+			accountId = 1;
+		} else {
+			const ownership = await verifyServerOwnership(authToken);
+
+			if (!ownership.isOwner) {
+				throw new NotServerMemberError('You must own a Plex server to configure Obzorarr.');
+			}
+
+			isAdmin = true;
+			accountId = 1;
 		}
-
-		isAdmin = true;
-		accountId = 1;
 	} else {
 		const membership = await requireServerMembership(authToken);
 

@@ -14,6 +14,7 @@ export const PIN_STORAGE_KEY = 'obzorarr_plex_pin';
 
 export const POLL_INTERVAL_MS = 2000;
 export const LOGIN_TIMEOUT_MS = 5 * 60 * 1000;
+export const PIN_MAX_AGE_MS = 15 * 60 * 1000;
 
 export type PlexLoginContext = 'landing' | 'onboarding';
 
@@ -84,6 +85,18 @@ interface PinResponse {
 	authUrl: string;
 }
 
+export interface StoredRedirectPinData {
+	pinId: number;
+	createdAt: number;
+	context: PlexLoginContext;
+}
+
+export interface ServerPinFallback {
+	pinId: number;
+	expiresAt: string;
+	context: PlexLoginContext;
+}
+
 async function fetchPin(redirectUrl?: string): Promise<PinResponse> {
 	const url = redirectUrl
 		? `/auth/plex?redirectUrl=${encodeURIComponent(redirectUrl)}`
@@ -130,6 +143,55 @@ function storePinForRedirect(
 	storage: RedirectStorage = sessionStorage
 ): void {
 	storage.setItem(PIN_STORAGE_KEY, JSON.stringify({ pinId, createdAt: Date.now(), context }));
+}
+
+export function resolveRedirectPinData(
+	storage: Pick<Storage, 'getItem' | 'removeItem'>,
+	serverPinFallback: ServerPinFallback | null | undefined,
+	now = Date.now()
+): StoredRedirectPinData {
+	const storedData = storage.getItem(PIN_STORAGE_KEY);
+	if (storedData) {
+		let pinData: StoredRedirectPinData;
+		try {
+			pinData = JSON.parse(storedData) as StoredRedirectPinData;
+		} catch {
+			storage.removeItem(PIN_STORAGE_KEY);
+			throw new Error('Invalid authentication data. Please try again.');
+		}
+
+		if (
+			typeof pinData.pinId !== 'number' ||
+			typeof pinData.createdAt !== 'number' ||
+			(pinData.context !== 'landing' && pinData.context !== 'onboarding')
+		) {
+			storage.removeItem(PIN_STORAGE_KEY);
+			throw new Error('Invalid authentication data. Please try again.');
+		}
+
+		const pinAge = now - pinData.createdAt;
+		if (pinAge > PIN_MAX_AGE_MS) {
+			storage.removeItem(PIN_STORAGE_KEY);
+			throw new Error('Authentication session expired. Please try again.');
+		}
+
+		return pinData;
+	}
+
+	if (serverPinFallback) {
+		const expiresAt = Date.parse(serverPinFallback.expiresAt);
+		if (!Number.isFinite(expiresAt) || expiresAt <= now) {
+			throw new Error('Authentication session expired. Please try again.');
+		}
+
+		return {
+			pinId: serverPinFallback.pinId,
+			createdAt: now,
+			context: serverPinFallback.context
+		};
+	}
+
+	throw new Error('No pending authentication found. Please try again.');
 }
 
 export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginController {

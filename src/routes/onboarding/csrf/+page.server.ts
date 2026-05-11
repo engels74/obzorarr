@@ -118,6 +118,54 @@ async function requireOnboardingCsrfAction(
 	return null;
 }
 
+async function saveCsrfOrigin({
+	request,
+	cookies,
+	url
+}: Parameters<NonNullable<Actions['saveOrigin']>>[0]) {
+	const guardResult = await requireOnboardingCsrfAction(cookies, url, 'error');
+	if (guardResult) return guardResult;
+
+	if (!isSameOriginOnboardingAction(request, url)) {
+		return fail(403, { error: 'CSRF origin must be submitted from this Obzorarr origin' });
+	}
+
+	const csrfConfig = await getCsrfConfigWithSource();
+	if (csrfConfig.origin.isLocked) {
+		return fail(400, { error: 'CSRF origin is locked via ORIGIN environment variable' });
+	}
+
+	const formData = await request.formData();
+	const result = CsrfOriginSchema.safeParse({
+		csrfOrigin: formData.get('csrfOrigin')
+	});
+
+	if (!result.success) {
+		const errorMessage = result.error.issues[0]?.message ?? 'Invalid input';
+		return fail(400, { error: errorMessage });
+	}
+
+	const actualOrigin = getRequestOrigin(request);
+	if (!actualOrigin) {
+		return fail(400, {
+			error: 'Could not detect browser origin. Ensure you are accessing via HTTP/HTTPS.'
+		});
+	}
+
+	if (!originsMatch(result.data.csrfOrigin, actualOrigin)) {
+		return fail(400, {
+			error: `Origin mismatch: browser sends "${actualOrigin}" but you configured "${result.data.csrfOrigin}"`
+		});
+	}
+
+	await setAppSetting(AppSettingsKey.CSRF_ORIGIN, result.data.csrfOrigin);
+	await deleteAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED);
+	logger.info(`Onboarding: CSRF origin configured - ${result.data.csrfOrigin}`, 'Onboarding');
+
+	await setOnboardingStep(OnboardingSteps.PLEX);
+	redirect(303, '/onboarding/plex');
+}
+
 export const load: PageServerLoad = async ({ request, parent }) => {
 	const parentData = await parent();
 	const csrfConfig = await getCsrfConfigWithSource();
@@ -139,6 +187,8 @@ export const load: PageServerLoad = async ({ request, parent }) => {
 };
 
 export const actions: Actions = {
+	default: saveCsrfOrigin,
+
 	testOrigin: async ({ request, cookies, url }) => {
 		const guardResult = await requireOnboardingCsrfAction(cookies, url, 'testError');
 		if (guardResult) return guardResult;
@@ -168,49 +218,9 @@ export const actions: Actions = {
 		return { testSuccess: true, testedOrigin: result.data.csrfOrigin };
 	},
 
-	saveOrigin: async ({ request, cookies, url }) => {
-		const guardResult = await requireOnboardingCsrfAction(cookies, url, 'error');
-		if (guardResult) return guardResult;
+	save: saveCsrfOrigin,
 
-		if (!isSameOriginOnboardingAction(request, url)) {
-			return fail(403, { error: 'CSRF origin must be submitted from this Obzorarr origin' });
-		}
-
-		const csrfConfig = await getCsrfConfigWithSource();
-		if (csrfConfig.origin.isLocked) {
-			return fail(400, { error: 'CSRF origin is locked via ORIGIN environment variable' });
-		}
-
-		const formData = await request.formData();
-		const result = CsrfOriginSchema.safeParse({
-			csrfOrigin: formData.get('csrfOrigin')
-		});
-
-		if (!result.success) {
-			const errorMessage = result.error.issues[0]?.message ?? 'Invalid input';
-			return fail(400, { error: errorMessage });
-		}
-
-		const actualOrigin = getRequestOrigin(request);
-		if (!actualOrigin) {
-			return fail(400, {
-				error: 'Could not detect browser origin. Ensure you are accessing via HTTP/HTTPS.'
-			});
-		}
-
-		if (!originsMatch(result.data.csrfOrigin, actualOrigin)) {
-			return fail(400, {
-				error: `Origin mismatch: browser sends "${actualOrigin}" but you configured "${result.data.csrfOrigin}"`
-			});
-		}
-
-		await setAppSetting(AppSettingsKey.CSRF_ORIGIN, result.data.csrfOrigin);
-		await deleteAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED);
-		logger.info(`Onboarding: CSRF origin configured - ${result.data.csrfOrigin}`, 'Onboarding');
-
-		await setOnboardingStep(OnboardingSteps.PLEX);
-		redirect(303, '/onboarding/plex');
-	},
+	saveOrigin: saveCsrfOrigin,
 
 	skipCsrf: async ({ request, cookies, url }) => {
 		const guardResult = await requireOnboardingCsrfAction(cookies, url, 'error');
