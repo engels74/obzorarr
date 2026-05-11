@@ -329,6 +329,25 @@ describe('resolveRedirectPinData', () => {
 		).toEqual({ pinId: 222, createdAt: 2000, context: 'onboarding' });
 	});
 
+	it('uses the server fallback when sessionStorage cannot be read', () => {
+		const storage: Pick<Storage, 'getItem' | 'removeItem'> = {
+			getItem: () => {
+				throw new Error('Storage blocked');
+			},
+			removeItem: () => {
+				throw new Error('Storage blocked');
+			}
+		};
+
+		expect(
+			resolveRedirectPinData(
+				storage,
+				{ pinId: 222, expiresAt: new Date(60_000).toISOString(), context: 'onboarding' },
+				2000
+			)
+		).toEqual({ pinId: 222, createdAt: 2000, context: 'onboarding' });
+	});
+
 	it('does not use the server fallback when stored PIN data is invalid', () => {
 		const storage = createSessionStorage();
 		storage.setItem(PIN_STORAGE_KEY, '{bad-json');
@@ -341,6 +360,23 @@ describe('resolveRedirectPinData', () => {
 			)
 		).toThrow('Invalid authentication data. Please try again.');
 		expect(storage.getItem(PIN_STORAGE_KEY)).toBeNull();
+	});
+
+	it('reports invalid stored PIN data when sessionStorage cannot be cleared', () => {
+		const storage: Pick<Storage, 'getItem' | 'removeItem'> = {
+			getItem: () => '{bad-json',
+			removeItem: () => {
+				throw new Error('Storage blocked');
+			}
+		};
+
+		expect(() =>
+			resolveRedirectPinData(
+				storage,
+				{ pinId: 222, expiresAt: new Date(60_000).toISOString(), context: 'onboarding' },
+				2000
+			)
+		).toThrow('Invalid authentication data. Please try again.');
 	});
 });
 

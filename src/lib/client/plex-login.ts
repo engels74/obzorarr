@@ -145,18 +145,32 @@ function storePinForRedirect(
 	storage.setItem(PIN_STORAGE_KEY, JSON.stringify({ pinId, createdAt: Date.now(), context }));
 }
 
+function getStoredRedirectPinData(storage: Pick<Storage, 'getItem'>): string | null {
+	try {
+		return storage.getItem(PIN_STORAGE_KEY);
+	} catch {
+		return null;
+	}
+}
+
+function removeStoredRedirectPinData(storage: Pick<Storage, 'removeItem'>): void {
+	try {
+		storage.removeItem(PIN_STORAGE_KEY);
+	} catch {}
+}
+
 export function resolveRedirectPinData(
 	storage: Pick<Storage, 'getItem' | 'removeItem'>,
 	serverPinFallback: ServerPinFallback | null | undefined,
 	now = Date.now()
 ): StoredRedirectPinData {
-	const storedData = storage.getItem(PIN_STORAGE_KEY);
+	const storedData = getStoredRedirectPinData(storage);
 	if (storedData) {
 		let pinData: StoredRedirectPinData;
 		try {
 			pinData = JSON.parse(storedData) as StoredRedirectPinData;
 		} catch {
-			storage.removeItem(PIN_STORAGE_KEY);
+			removeStoredRedirectPinData(storage);
 			throw new Error('Invalid authentication data. Please try again.');
 		}
 
@@ -165,13 +179,13 @@ export function resolveRedirectPinData(
 			typeof pinData.createdAt !== 'number' ||
 			(pinData.context !== 'landing' && pinData.context !== 'onboarding')
 		) {
-			storage.removeItem(PIN_STORAGE_KEY);
+			removeStoredRedirectPinData(storage);
 			throw new Error('Invalid authentication data. Please try again.');
 		}
 
 		const pinAge = now - pinData.createdAt;
 		if (pinAge > PIN_MAX_AGE_MS) {
-			storage.removeItem(PIN_STORAGE_KEY);
+			removeStoredRedirectPinData(storage);
 			throw new Error('Authentication session expired. Please try again.');
 		}
 
