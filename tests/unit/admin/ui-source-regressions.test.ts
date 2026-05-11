@@ -160,6 +160,7 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain("checked={selectedFrequencyMode === 'many'}");
 		expect(source).toContain("checked={selectedFrequencyMode === 'custom'}");
 		expect(source).toContain("onchange={() => selectFrequencyMode('few')}");
+		expect(source).toContain("onchange={() => selectFrequencyMode('normal')}");
 		expect(source).toContain("onchange={() => selectFrequencyMode('many')}");
 		expect(source).toContain("onchange={() => selectFrequencyMode('custom')}");
 		expect(source).not.toContain('bind:group={selectedFrequencyMode}');

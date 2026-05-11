@@ -159,6 +159,43 @@ function createConsoleRecorder(consoleCalls: string[]) {
 	});
 }
 
+let consoleRecordingLock: Promise<void> = Promise.resolve();
+
+async function recordConsoleCalls(run: () => void | Promise<void>): Promise<string[]> {
+	const previousRecording = consoleRecordingLock;
+	let releaseRecording: () => void = () => {};
+	consoleRecordingLock = new Promise<void>((resolve) => {
+		releaseRecording = resolve;
+	});
+	await previousRecording;
+
+	const consoleCalls: string[] = [];
+	const originalConsoleLog = console.log;
+	const originalConsoleDebug = console.debug;
+	const originalConsoleInfo = console.info;
+	const originalConsoleWarn = console.warn;
+	const originalConsoleError = console.error;
+	const recordConsole = createConsoleRecorder(consoleCalls);
+	console.log = recordConsole as typeof console.log;
+	console.debug = recordConsole as typeof console.debug;
+	console.info = recordConsole as typeof console.info;
+	console.warn = recordConsole as typeof console.warn;
+	console.error = recordConsole as typeof console.error;
+
+	try {
+		await run();
+	} finally {
+		console.log = originalConsoleLog;
+		console.debug = originalConsoleDebug;
+		console.info = originalConsoleInfo;
+		console.warn = originalConsoleWarn;
+		console.error = originalConsoleError;
+		releaseRecording();
+	}
+
+	return consoleCalls;
+}
+
 interface MockLocation {
 	origin: string;
 	href: string;
@@ -196,38 +233,15 @@ function createTimerMocks(onInterval: (callback: () => Promise<void>) => void) {
 describe('startPlexLoginRedirect', () => {
 	let location: MockLocation;
 	let sessionStorage: MemoryStorage;
-	let originalConsoleLog: typeof console.log;
-	let originalConsoleDebug: typeof console.debug;
-	let originalConsoleInfo: typeof console.info;
-	let originalConsoleWarn: typeof console.warn;
-	let originalConsoleError: typeof console.error;
-	let consoleCalls: string[];
 
 	beforeEach(() => {
 		const origin = 'https://obzorarr.example';
 		location = { origin, href: `${origin}/` };
 		sessionStorage = createSessionStorage();
-		consoleCalls = [];
-		originalConsoleLog = console.log;
-		originalConsoleDebug = console.debug;
-		originalConsoleInfo = console.info;
-		originalConsoleWarn = console.warn;
-		originalConsoleError = console.error;
-		const recordConsole = createConsoleRecorder(consoleCalls);
-		console.log = recordConsole as typeof console.log;
-		console.debug = recordConsole as typeof console.debug;
-		console.info = recordConsole as typeof console.info;
-		console.warn = recordConsole as typeof console.warn;
-		console.error = recordConsole as typeof console.error;
 	});
 
 	afterEach(() => {
 		globalThis.fetch = originalFetch;
-		console.log = originalConsoleLog;
-		console.debug = originalConsoleDebug;
-		console.info = originalConsoleInfo;
-		console.warn = originalConsoleWarn;
-		console.error = originalConsoleError;
 	});
 
 	it('fetches PIN with same-origin redirectUrl, persists pin to sessionStorage, navigates to authUrl', async () => {
@@ -290,12 +304,14 @@ describe('startPlexLoginRedirect', () => {
 				)
 		) as unknown as typeof fetch;
 
-		await startPlexLoginRedirect({
-			context: 'landing',
-			onError: () => {},
-			location,
-			storage: sessionStorage
-		});
+		const consoleCalls = await recordConsoleCalls(() =>
+			startPlexLoginRedirect({
+				context: 'landing',
+				onError: () => {},
+				location,
+				storage: sessionStorage
+			})
+		);
 
 		const browserOwnedText = `${consoleCalls.join('\n')}\n${sessionStorage.getItem(PIN_STORAGE_KEY) ?? ''}`;
 		for (const forbidden of [
@@ -448,35 +464,8 @@ describe('resolveRedirectPinData', () => {
 });
 
 describe('startPlexLoginPopup', () => {
-	let originalConsoleLog: typeof console.log;
-	let originalConsoleDebug: typeof console.debug;
-	let originalConsoleInfo: typeof console.info;
-	let originalConsoleWarn: typeof console.warn;
-	let originalConsoleError: typeof console.error;
-	let consoleCalls: string[];
-
-	beforeEach(() => {
-		consoleCalls = [];
-		originalConsoleLog = console.log;
-		originalConsoleDebug = console.debug;
-		originalConsoleInfo = console.info;
-		originalConsoleWarn = console.warn;
-		originalConsoleError = console.error;
-		const recordConsole = createConsoleRecorder(consoleCalls);
-		console.log = recordConsole as typeof console.log;
-		console.debug = recordConsole as typeof console.debug;
-		console.info = recordConsole as typeof console.info;
-		console.warn = recordConsole as typeof console.warn;
-		console.error = recordConsole as typeof console.error;
-	});
-
 	afterEach(() => {
 		globalThis.fetch = originalFetch;
-		console.log = originalConsoleLog;
-		console.debug = originalConsoleDebug;
-		console.info = originalConsoleInfo;
-		console.warn = originalConsoleWarn;
-		console.error = originalConsoleError;
 	});
 
 	it('ignores stale poll failures once login completion has started', async () => {
@@ -620,16 +609,18 @@ describe('startPlexLoginPopup', () => {
 		const onError = mock(() => {});
 		const onPopupBlocked = mock(() => {});
 
-		startPlexLoginPopup({
-			context: 'landing',
-			onSuccess,
-			onError,
-			onPopupBlocked,
-			window: browserWindow,
-			timers
+		const consoleCalls = await recordConsoleCalls(async () => {
+			startPlexLoginPopup({
+				context: 'landing',
+				onSuccess,
+				onError,
+				onPopupBlocked,
+				window: browserWindow,
+				timers
+			});
+			await intervalRegistered;
+			await (intervalCallbacks[0] as () => Promise<void>)();
 		});
-		await intervalRegistered;
-		await (intervalCallbacks[0] as () => Promise<void>)();
 
 		expect(receivedUsers).toEqual([{ username: 'owner', isAdmin: true }]);
 		expect(onError).not.toHaveBeenCalled();
