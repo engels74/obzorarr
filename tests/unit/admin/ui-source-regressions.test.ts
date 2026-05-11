@@ -152,6 +152,17 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain(
 			'syncedFrequencyKey = `$' + '{frequency.mode}:$' + '{frequency.count}`;'
 		);
+		expect(source).toContain(
+			'function selectFrequencyMode(mode: typeof data.funFactFrequency.mode): void'
+		);
+		expect(source).toContain("checked={selectedFrequencyMode === 'few'}");
+		expect(source).toContain("checked={selectedFrequencyMode === 'normal'}");
+		expect(source).toContain("checked={selectedFrequencyMode === 'many'}");
+		expect(source).toContain("checked={selectedFrequencyMode === 'custom'}");
+		expect(source).toContain("onchange={() => selectFrequencyMode('few')}");
+		expect(source).toContain("onchange={() => selectFrequencyMode('many')}");
+		expect(source).toContain("onchange={() => selectFrequencyMode('custom')}");
+		expect(source).not.toContain('bind:group={selectedFrequencyMode}');
 		expect(source).not.toContain('class="frequency-options" onclick');
 	});
 
@@ -238,7 +249,14 @@ describe('admin UI source regressions', () => {
 
 		expect(source).toContain('<span class="user-avatar-link" aria-hidden="true">');
 		expect(source).not.toContain('<a href={user.wrappedHref} class="user-avatar-link">');
-		expect(source).toContain('<img src={user.thumb} alt="" class="user-avatar" />');
+		expect(source).toContain(
+			'function hasVisibleAvatar(user: (typeof data.users)[number]): boolean'
+		);
+		expect(source).toContain('function markAvatarFailed(userId: number): void');
+		expect(source).toContain('{#if hasVisibleAvatar(user)}');
+		expect(source).toContain('onerror={() => markAvatarFailed(user.id)}');
+		expect(source.match(/onerror=\{\(\) => markAvatarFailed\(user\.id\)\}/g)).toHaveLength(2);
+		expect(source).toContain('<span class="user-avatar placeholder">&#9787;</span>');
 		expect(source).toContain('{#if user.hasWatchHistory}');
 		expect(source).toContain('<a href={user.wrappedHref} class="user-name">');
 		expect(source).toContain('class="preview-link"');

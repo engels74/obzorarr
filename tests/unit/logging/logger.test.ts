@@ -148,7 +148,19 @@ describe('Logger', () => {
 				await logger.debug(
 					'GET https://user:pass@example.com/?X-Plex-Token=secret Authorization: Bearer secret Cookie: session=secret',
 					'Debug',
-					{ url: 'https://example.com/?token=secret' }
+					{
+						url: 'https://example.com/?token=secret',
+						authToken: 'provider-auth-token',
+						token: 'provider-token',
+						accessToken: 'provider-access-token',
+						secret: 'provider-secret',
+						password: 'provider-password',
+						cookie: 'provider-cookie',
+						session: 'provider-session',
+						nested: {
+							authToken: 'nested-provider-auth-token'
+						}
+					}
 				);
 				await logger.forceFlush();
 			} finally {
@@ -161,7 +173,16 @@ describe('Logger', () => {
 			expect(debugLog?.message).not.toContain('secret');
 			expect(debugLog?.message).not.toContain('user:pass');
 			expect(calls[0]).toBe(`[Debug] ${debugLog?.message}`);
-			expect(debugLog?.metadata).not.toContain('secret');
+			expect(debugLog?.metadata).not.toContain('session=secret');
+			expect(debugLog?.metadata).not.toContain('token=secret');
+			expect(debugLog?.metadata).not.toContain('provider-secret');
+			expect(debugLog?.metadata).not.toContain('provider-auth-token');
+			expect(debugLog?.metadata).not.toContain('provider-token');
+			expect(debugLog?.metadata).not.toContain('provider-access-token');
+			expect(debugLog?.metadata).not.toContain('provider-password');
+			expect(debugLog?.metadata).not.toContain('provider-cookie');
+			expect(debugLog?.metadata).not.toContain('provider-session');
+			expect(debugLog?.metadata).not.toContain('nested-provider-auth-token');
 		});
 
 		it('caches debug enabled setting', async () => {
