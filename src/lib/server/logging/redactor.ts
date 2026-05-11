@@ -1,5 +1,6 @@
 const REDACTED = '<redacted>';
-const SENSITIVE_METADATA_KEY = /^(?:authToken|token|accessToken|secret|password|cookie|session)$/i;
+const SENSITIVE_METADATA_KEY =
+	/^(?:authToken|auth_token|token|accessToken|access_token|secret|password|cookie|set-cookie|session|authorization|x-plex-token|plexToken|apiKey|api_key|apikey)$/i;
 
 const SENSITIVE_QUERY_PARAM =
 	/([?&](?:token|access_token|auth_token|api_key|apikey|key|x-plex-token)=)[^&#\s"'`]+/gi;
