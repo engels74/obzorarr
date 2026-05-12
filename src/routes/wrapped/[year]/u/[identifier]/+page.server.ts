@@ -69,7 +69,9 @@ async function resolveUserIdFromIdentifier(
 	return Number.isSafeInteger(userId) && userId > 0 ? userId : null;
 }
 
-export const load: PageServerLoad = async ({ params, locals, parent }) => {
+export const load: PageServerLoad = async ({ params, locals, parent, setHeaders }) => {
+	setHeaders({ 'cache-control': 'no-store' });
+
 	const year = parseInt(params.year, 10);
 	if (Number.isNaN(year) || year < 2000 || year > 2100) {
 		error(404, 'Invalid year');
@@ -309,7 +311,23 @@ export const actions: Actions = {
 			};
 		} catch (err) {
 			if (err instanceof PermissionExceededError) {
-				return fail(403, { error: err.message });
+				const [currentSettings, globalFloor] = await Promise.all([
+					getOrCreateShareSettings({ userId, year }),
+					getGlobalDefaultShareMode()
+				]);
+				return fail(403, {
+					error: err.message,
+					currentMode: currentSettings.mode,
+					globalFloor,
+					canonicalUrl: `/wrapped/${year}/u/${userId}`,
+					shareSettings: {
+						mode: currentSettings.mode,
+						storedMode: currentSettings.storedMode,
+						modeSource: currentSettings.modeSource,
+						shareToken: currentSettings.shareToken,
+						canUserControl: currentSettings.canUserControl || locals.user.isAdmin
+					}
+				});
 			}
 			const message = err instanceof Error ? err.message : 'Failed to update share settings';
 			return fail(500, { error: message });

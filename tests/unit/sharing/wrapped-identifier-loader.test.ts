@@ -80,11 +80,15 @@ async function invokeLoad(params: {
 	identifier: string;
 	availableYears: number[];
 	currentUser?: TestUser;
+	headers?: Record<string, string>;
 }): Promise<LoadData> {
 	const result = await load({
 		params: { year: String(params.year), identifier: params.identifier },
 		locals: params.currentUser ? { user: params.currentUser } : {},
-		parent: async () => ({ availableYears: params.availableYears })
+		parent: async () => ({ availableYears: params.availableYears }),
+		setHeaders: (values: Record<string, string>) => {
+			if (params.headers) Object.assign(params.headers, values);
+		}
 	} as unknown as LoadArgs);
 	return result as LoadData;
 }
@@ -115,7 +119,8 @@ async function expectServerWrappedStatus(year: string, expectedStatus: number): 
 	try {
 		await loadServerWrapped({
 			params: { year },
-			locals: {}
+			locals: {},
+			setHeaders: () => {}
 		} as unknown as ServerLoadArgs);
 		expect.unreachable(`Expected server wrapped status ${expectedStatus} for ${year}`);
 	} catch (err) {
@@ -127,6 +132,24 @@ describe('wrapped/[year] loader: year bounds', () => {
 	it('returns 404 for years outside the supported range', async () => {
 		await expectServerWrappedStatus('1999', 404);
 		await expectServerWrappedStatus('2101', 404);
+	});
+
+	it('sets no-store cache control on user wrapped loads', async () => {
+		const headers: Record<string, string> = {};
+
+		try {
+			await invokeLoad({
+				year: 1999,
+				identifier: '1',
+				availableYears: [1999],
+				headers
+			});
+			expect.unreachable('Expected user wrapped load to throw');
+		} catch (err) {
+			expect((err as { status?: number }).status).toBe(404);
+		}
+
+		expect(headers['cache-control']).toBe('no-store');
 	});
 });
 
@@ -611,6 +634,61 @@ describe('wrapped/[year]/u/[identifier] actions: token URL + floor-elevated mode
 		// Without the fix this would be: { status: 400, data: { error: 'Invalid user identifier' } }
 		const status = (result as { status?: number }).status;
 		expect(status).not.toBe(400);
+	});
+
+	it('rejects below-floor share modes for owners and returns server truth', async () => {
+		const result = await invokeUpdateShareMode({
+			identifier: TOKEN,
+			mode: ShareMode.PUBLIC,
+			currentUser: {
+				id: USER_ID,
+				plexId: 100042,
+				username: `user-${USER_ID}`,
+				isAdmin: false
+			}
+		});
+
+		expect(result).toMatchObject({
+			status: 403,
+			data: {
+				currentMode: ShareMode.PRIVATE_LINK,
+				globalFloor: ShareMode.PRIVATE_OAUTH,
+				shareSettings: {
+					mode: ShareMode.PRIVATE_LINK,
+					storedMode: ShareMode.PRIVATE_LINK,
+					shareToken: TOKEN
+				}
+			}
+		});
+	});
+
+	it('rejects below-floor share modes for admins and returns server truth', async () => {
+		const ADMIN_ID = 7;
+		await seedUser(ADMIN_ID, 100007, 200007);
+
+		const result = await invokeUpdateShareMode({
+			identifier: TOKEN,
+			mode: ShareMode.PUBLIC,
+			currentUser: {
+				id: ADMIN_ID,
+				plexId: 100007,
+				username: `user-${ADMIN_ID}`,
+				isAdmin: true
+			}
+		});
+
+		expect(result).toMatchObject({
+			status: 403,
+			data: {
+				currentMode: ShareMode.PRIVATE_LINK,
+				globalFloor: ShareMode.PRIVATE_OAUTH,
+				shareSettings: {
+					mode: ShareMode.PRIVATE_LINK,
+					storedMode: ShareMode.PRIVATE_LINK,
+					canUserControl: true
+				}
+			}
+		});
 	});
 });
 

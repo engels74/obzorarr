@@ -1,7 +1,7 @@
 <script lang="ts">
 import { untrack } from 'svelte';
 import { enhance } from '$app/forms';
-import { goto } from '$app/navigation';
+import { goto, invalidateAll } from '$app/navigation';
 import * as AlertDialog from '$lib/components/ui/alert-dialog';
 import { ShareModePrivacyLevel, type ShareModeType } from '$lib/sharing/types';
 
@@ -45,11 +45,13 @@ function isBelowFloor(mode: ShareModeType): boolean {
 let copied = $state(false);
 let copyTimeout: ReturnType<typeof setTimeout> | undefined;
 let isUpdating = $state(false);
+let isRefreshing = $state(false);
 let localMode = $state<ShareModeType>(untrack(() => shareSettings?.mode ?? 'public'));
 let localShareToken = $state<string | null | undefined>(untrack(() => shareSettings?.shareToken));
 
 const displayMode = $derived(localMode);
 const displayShareToken = $derived(localShareToken);
+const controlsDisabled = $derived(isUpdating || isRefreshing);
 
 // Computed URL based on mode
 const shareUrl = $derived.by(() => {
@@ -120,8 +122,22 @@ async function copyUrl(): Promise<void> {
 	}
 }
 
+async function refreshShareData(): Promise<void> {
+	if (isRefreshing) return;
+
+	isRefreshing = true;
+	try {
+		await invalidateAll();
+	} finally {
+		isRefreshing = false;
+	}
+}
+
 function handleOpenChange(value: boolean): void {
 	open = value;
+	if (value) {
+		void refreshShareData();
+	}
 	onOpenChange?.(value);
 }
 
@@ -150,6 +166,17 @@ function applyShareActionData(data: unknown): void {
 function restoreLocalShareState(): void {
 	localMode = shareSettings?.mode ?? 'public';
 	localShareToken = shareSettings?.shareToken;
+}
+
+function submitModeChange(event: Event, mode: ShareModeType): void {
+	if (controlsDisabled || isBelowFloor(mode)) {
+		event.preventDefault();
+		restoreLocalShareState();
+		return;
+	}
+
+	localMode = mode;
+	(event.currentTarget as HTMLInputElement).form?.requestSubmit();
 }
 
 function currentRouteIdentifier(): string | null {
@@ -324,7 +351,10 @@ $effect(() => {
 									applyShareActionData(result.data);
 									if (await navigateAfterTokenRouteUpdate(result.data)) return;
 								} else {
-									restoreLocalShareState();
+									if (result.type === 'failure') {
+										applyShareActionData(result.data);
+									}
+									await invalidateAll();
 								}
 								await update();
 							} finally {
@@ -346,11 +376,8 @@ $effect(() => {
 									name="mode"
 									value={mode}
 									checked={displayMode === mode}
-									disabled={isUpdating || isBelowFloor(mode as ShareModeType)}
-									onchange={(e) => {
-										localMode = mode as ShareModeType;
-										e.currentTarget.form?.requestSubmit();
-									}}
+									disabled={controlsDisabled || isBelowFloor(mode as ShareModeType)}
+									onchange={(e) => submitModeChange(e, mode as ShareModeType)}
 								/>
 								<div class="mode-content">
 									<span class="mode-label">{modeLabels[mode as ShareModeType].label}</span>
@@ -406,7 +433,7 @@ $effect(() => {
 						}}
 						class="regenerate-form"
 					>
-						<button type="submit" class="btn-link" disabled={isUpdating}>
+						<button type="submit" class="btn-link" disabled={controlsDisabled}>
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
 								width="14"
