@@ -355,6 +355,8 @@ $effect(() => {
 								} else {
 									if (result.type === 'failure') {
 										applyShareActionData(result.data);
+									} else {
+										restoreLocalShareState();
 									}
 									try {
 										await invalidateAll();

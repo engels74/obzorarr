@@ -422,7 +422,7 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain('onchange={(e) => submitModeChange(e, mode as ShareModeType)}');
 	});
 
-	it('invalidates wrapped share modal page data after failed mode updates', async () => {
+	it('restores wrapped share modal local state after error mode updates', async () => {
 		const source = await readSource('src/lib/components/wrapped/ShareModal.svelte');
 		const updateShareModeForm = source.match(
 			/action="\?\/updateShareMode"[\s\S]*?<div class="mode-options"/
@@ -434,7 +434,7 @@ describe('admin UI source regressions', () => {
 		expect(updateShareModeForm).toContain(
 			"console.warn('Failed to refresh share data after share mode update:', error);"
 		);
-		expect(updateShareModeForm).not.toContain('restoreLocalShareState();');
+		expect(updateShareModeForm).toContain('restoreLocalShareState();');
 	});
 
 	it('does not log Plex auth payloads from app-owned browser auth code', async () => {
