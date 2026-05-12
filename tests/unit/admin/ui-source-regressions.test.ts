@@ -431,6 +431,9 @@ describe('admin UI source regressions', () => {
 		expect(updateShareModeForm).toBeDefined();
 		expect(updateShareModeForm).toContain('applyShareActionData(result.data);');
 		expect(updateShareModeForm).toContain('await invalidateAll();');
+		expect(updateShareModeForm).toContain(
+			"console.warn('Failed to refresh share data after share mode update:', error);"
+		);
 		expect(updateShareModeForm).not.toContain('restoreLocalShareState();');
 	});
 

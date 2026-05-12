@@ -356,7 +356,11 @@ $effect(() => {
 									if (result.type === 'failure') {
 										applyShareActionData(result.data);
 									}
-									await invalidateAll();
+									try {
+										await invalidateAll();
+									} catch (error) {
+										console.warn('Failed to refresh share data after share mode update:', error);
+									}
 								}
 								await update();
 							} finally {
