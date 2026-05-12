@@ -1,5 +1,6 @@
 <script lang="ts">
 import { enhance } from '$app/forms';
+import { invalidateAll } from '$app/navigation';
 import { page } from '$app/stores';
 import * as AlertDialog from '$lib/components/ui/alert-dialog';
 import * as Tabs from '$lib/components/ui/tabs';
@@ -17,6 +18,12 @@ import type { ActionData, PageData } from './$types';
  */
 
 let { data, form }: { data: PageData; form: ActionData } = $props();
+
+type RegenerateTokenActionData = {
+	action?: string;
+	wrappedHref?: string;
+	shareToken?: string;
+};
 
 // Tab state
 const validTabs = ['privacy', 'display', 'account'] as const;
@@ -39,6 +46,9 @@ let selectedShareMode = $state<string>(data.shareSettings.mode);
 let selectedLogoPreference = $state<'show' | 'hide'>('show');
 let isUpdating = $state(false);
 let isRegenerating = $state(false);
+let wrappedHrefOverride = $state<string | null>(null);
+// svelte-ignore state_referenced_locally
+let syncedWrappedHref = $state(data.wrappedHref);
 
 // Copy state
 let copied = $state(false);
@@ -51,6 +61,10 @@ let regenerateDialogOpen = $state(false);
 $effect(() => {
 	selectedShareMode = data.shareSettings.mode;
 	selectedLogoPreference = data.userLogoPreference === false ? 'hide' : 'show';
+	if (data.wrappedHref !== syncedWrappedHref) {
+		syncedWrappedHref = data.wrappedHref;
+		wrappedHrefOverride = null;
+	}
 });
 
 // Show toast notifications and snap radio back to server truth on rejection
@@ -108,7 +122,7 @@ const shareModeLabels: Record<string, string> = {
 // Generate share URL
 function getShareUrl(): string {
 	const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-	return `${baseUrl}${data.wrappedHref}`;
+	return `${baseUrl}${wrappedHrefOverride ?? data.wrappedHref}`;
 }
 
 // Copy to clipboard
@@ -557,10 +571,27 @@ function getLogoModeDescription(): string {
 					action="?/regenerateToken"
 					use:enhance={() => {
 						isRegenerating = true;
-						return async ({ update }) => {
-							await update();
-							isRegenerating = false;
-							regenerateDialogOpen = false;
+						return async ({ result, update }) => {
+							try {
+								if (result.type === 'success') {
+									const payload = (result.data ?? {}) as RegenerateTokenActionData;
+									if (
+										payload.action === 'regenerateToken' &&
+										typeof payload.wrappedHref === 'string'
+									) {
+										wrappedHrefOverride = payload.wrappedHref;
+									}
+								}
+
+								await update({ reset: result.type !== 'failure' });
+
+								if (result.type === 'success') {
+									regenerateDialogOpen = false;
+									await invalidateAll();
+								}
+							} finally {
+								isRegenerating = false;
+							}
 						};
 					}}
 					style="display: contents;"

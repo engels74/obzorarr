@@ -54,6 +54,12 @@ function handleSummaryKeyDown(event: KeyboardEvent) {
 	event.preventDefault();
 }
 
+function handleActionClick(event: MouseEvent, action: () => void): void {
+	event.preventDefault();
+	event.stopPropagation();
+	action();
+}
+
 // Move initial focus to the heading instead of the first button so
 // stray Enter/Space presses don't trigger navigation away from the page.
 $effect(() => {
@@ -230,7 +236,11 @@ $effect(() => {
 	{/if}
 
 	<div bind:this={buttonsRow} class="actions">
-		<button type="button" class="btn btn-secondary" onclick={onRestart}>
+		<button
+			type="button"
+			class="btn btn-secondary"
+			onclick={(event) => handleActionClick(event, onRestart)}
+		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
 				width="20"
@@ -248,7 +258,11 @@ $effect(() => {
 			Watch Again
 		</button>
 
-		<button type="button" class="btn btn-primary" onclick={onShare}>
+		<button
+			type="button"
+			class="btn btn-primary"
+			onclick={(event) => handleActionClick(event, onShare)}
+		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
 				width="20"
@@ -269,7 +283,11 @@ $effect(() => {
 			Share
 		</button>
 
-		<button type="button" class="btn btn-secondary" onclick={onHome}>
+		<button
+			type="button"
+			class="btn btn-secondary"
+			onclick={(event) => handleActionClick(event, onHome)}
+		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
 				width="20"
