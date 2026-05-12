@@ -128,6 +128,8 @@ async function refreshShareData(): Promise<void> {
 	isRefreshing = true;
 	try {
 		await invalidateAll();
+	} catch (error) {
+		console.warn('Failed to refresh share data:', error);
 	} finally {
 		isRefreshing = false;
 	}

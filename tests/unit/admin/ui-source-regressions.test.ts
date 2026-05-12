@@ -391,6 +391,7 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain('const controlsDisabled = $derived(isUpdating || isRefreshing);');
 		expect(source).toContain('async function refreshShareData()');
 		expect(source).toContain('await invalidateAll();');
+		expect(source).toContain("console.warn('Failed to refresh share data:', error);");
 		expect(source).toContain('void refreshShareData();');
 		expect(source).toContain('disabled={controlsDisabled || isBelowFloor(mode as ShareModeType)}');
 		expect(source).toContain('disabled={controlsDisabled}');
