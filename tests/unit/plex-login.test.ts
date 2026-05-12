@@ -153,6 +153,49 @@ function createSessionStorage(): MemoryStorage {
 	};
 }
 
+function createConsoleRecorder(consoleCalls: string[]) {
+	return mock((...messages: unknown[]) => {
+		consoleCalls.push(messages.map((message) => Bun.inspect(message, { depth: 10 })).join(' '));
+	});
+}
+
+let consoleRecordingLock: Promise<void> = Promise.resolve();
+
+async function recordConsoleCalls(run: () => void | Promise<void>): Promise<string[]> {
+	const previousRecording = consoleRecordingLock;
+	let releaseRecording: () => void = () => {};
+	consoleRecordingLock = new Promise<void>((resolve) => {
+		releaseRecording = resolve;
+	});
+	await previousRecording;
+
+	const consoleCalls: string[] = [];
+	const originalConsoleLog = console.log;
+	const originalConsoleDebug = console.debug;
+	const originalConsoleInfo = console.info;
+	const originalConsoleWarn = console.warn;
+	const originalConsoleError = console.error;
+	const recordConsole = createConsoleRecorder(consoleCalls);
+	console.log = recordConsole as typeof console.log;
+	console.debug = recordConsole as typeof console.debug;
+	console.info = recordConsole as typeof console.info;
+	console.warn = recordConsole as typeof console.warn;
+	console.error = recordConsole as typeof console.error;
+
+	try {
+		await run();
+	} finally {
+		console.log = originalConsoleLog;
+		console.debug = originalConsoleDebug;
+		console.info = originalConsoleInfo;
+		console.warn = originalConsoleWarn;
+		console.error = originalConsoleError;
+		releaseRecording();
+	}
+
+	return consoleCalls;
+}
+
 interface MockLocation {
 	origin: string;
 	href: string;
@@ -243,6 +286,46 @@ describe('startPlexLoginRedirect', () => {
 		expect(typeof parsed.createdAt).toBe('number');
 
 		expect(location.href).toBe('https://app.plex.tv/auth#?code=ABCD');
+	});
+
+	it('does not log or persist raw provider-shaped PIN payload fields', async () => {
+		globalThis.fetch = mock(
+			async () =>
+				new Response(
+					JSON.stringify({
+						pinId: 4242,
+						authUrl: 'https://app.plex.tv/auth#?code=ABCD',
+						authToken: 'provider-auth-token',
+						token: 'provider-token',
+						accessToken: 'provider-access-token',
+						secret: 'provider-secret'
+					}),
+					{ status: 200, headers: { 'Content-Type': 'application/json' } }
+				)
+		) as unknown as typeof fetch;
+
+		const consoleCalls = await recordConsoleCalls(() =>
+			startPlexLoginRedirect({
+				context: 'landing',
+				onError: () => {},
+				location,
+				storage: sessionStorage
+			})
+		);
+
+		const browserOwnedText = `${consoleCalls.join('\n')}\n${sessionStorage.getItem(PIN_STORAGE_KEY) ?? ''}`;
+		for (const forbidden of [
+			'authToken',
+			'token',
+			'accessToken',
+			'secret',
+			'provider-auth-token',
+			'provider-token',
+			'provider-access-token',
+			'provider-secret'
+		]) {
+			expect(browserOwnedText).not.toContain(forbidden);
+		}
 	});
 
 	it('records the onboarding context when supplied', async () => {
@@ -468,6 +551,100 @@ describe('startPlexLoginPopup', () => {
 		expect(onError).not.toHaveBeenCalled();
 		expect(onPopupBlocked).not.toHaveBeenCalled();
 		expect(callbackCalls).toBe(0);
+	});
+
+	it('returns only sanitized user fields and never logs provider-shaped poll payloads', async () => {
+		let resolveIntervalRegistered: () => void = () => {};
+		const intervalRegistered = new Promise<void>((resolve) => {
+			resolveIntervalRegistered = resolve;
+		});
+		const intervalCallbacks: Array<() => Promise<void>> = [];
+		const timers = createTimerMocks((callback) => {
+			intervalCallbacks.push(callback);
+			resolveIntervalRegistered();
+		});
+
+		const popup: MockPopupWindow = { closed: false, close: mock(() => {}) };
+		const browserWindow: MockWindow = {
+			location: { origin: 'https://obzorarr.example', href: 'https://obzorarr.example/' },
+			open: mock(() => popup) as unknown as MockWindow['open']
+		};
+
+		globalThis.fetch = mock(async (input: string | URL | Request, init?: RequestInit) => {
+			const url = typeof input === 'string' ? input : input.toString();
+			if (url === '/auth/plex' && init?.method === 'POST') {
+				return new Response(
+					JSON.stringify({
+						type: 'AUTH_COMPLETE',
+						authToken: 'provider-auth-token',
+						token: 'provider-token',
+						accessToken: 'provider-access-token',
+						secret: 'provider-secret',
+						user: {
+							id: 7,
+							plexId: '123456',
+							username: 'owner',
+							email: 'owner@example.com',
+							isAdmin: true,
+							authToken: 'nested-auth-token'
+						},
+						redirectTo: '/admin'
+					}),
+					{ status: 200, headers: { 'Content-Type': 'application/json' } }
+				);
+			}
+			return new Response(
+				JSON.stringify({
+					pinId: 42,
+					authUrl: 'https://app.plex.tv/auth#?code=ABCD'
+				}),
+				{ status: 200, headers: { 'Content-Type': 'application/json' } }
+			);
+		}) as unknown as typeof fetch;
+
+		const receivedUsers: unknown[] = [];
+		const onSuccess = mock(async (user: unknown) => {
+			receivedUsers.push(user);
+		});
+		const onError = mock(() => {});
+		const onPopupBlocked = mock(() => {});
+
+		const consoleCalls = await recordConsoleCalls(async () => {
+			startPlexLoginPopup({
+				context: 'landing',
+				onSuccess,
+				onError,
+				onPopupBlocked,
+				window: browserWindow,
+				timers
+			});
+			await intervalRegistered;
+			await (intervalCallbacks[0] as () => Promise<void>)();
+		});
+
+		expect(receivedUsers).toEqual([{ username: 'owner', isAdmin: true }]);
+		expect(onError).not.toHaveBeenCalled();
+		expect(onPopupBlocked).not.toHaveBeenCalled();
+
+		const browserOwnedText = `${consoleCalls.join('\n')}\n${JSON.stringify(receivedUsers)}`;
+		for (const forbidden of [
+			'AUTH_COMPLETE',
+			'authToken',
+			'token',
+			'accessToken',
+			'secret',
+			'plexId',
+			'email',
+			'provider-auth-token',
+			'provider-token',
+			'provider-access-token',
+			'provider-secret',
+			'nested-auth-token',
+			'owner@example.com',
+			'123456'
+		]) {
+			expect(browserOwnedText).not.toContain(forbidden);
+		}
 	});
 
 	it('surfaces server message and stops polling on 403 (NotServerMemberError)', async () => {

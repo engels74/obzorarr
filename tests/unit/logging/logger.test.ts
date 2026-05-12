@@ -148,7 +148,27 @@ describe('Logger', () => {
 				await logger.debug(
 					'GET https://user:pass@example.com/?X-Plex-Token=secret Authorization: Bearer secret Cookie: session=secret',
 					'Debug',
-					{ url: 'https://example.com/?token=secret' }
+					{
+						url: 'https://example.com/?token=secret',
+						authToken: 'provider-auth-token',
+						token: 'provider-token',
+						accessToken: 'provider-access-token',
+						access_token: 'provider-snake-access-token',
+						auth_token: 'provider-snake-auth-token',
+						authorization: 'Bearer provider-authorization-token',
+						'X-Plex-Token': 'provider-plex-token',
+						apiKey: 'provider-api-key',
+						api_key: 'provider-snake-api-key',
+						secret: 'provider-secret',
+						password: 'provider-password',
+						cookie: 'provider-cookie',
+						'Set-Cookie': 'provider-set-cookie',
+						session: 'provider-session',
+						nested: {
+							authToken: 'nested-provider-auth-token',
+							auth_token: 'nested-provider-snake-auth-token'
+						}
+					}
 				);
 				await logger.forceFlush();
 			} finally {
@@ -161,7 +181,33 @@ describe('Logger', () => {
 			expect(debugLog?.message).not.toContain('secret');
 			expect(debugLog?.message).not.toContain('user:pass');
 			expect(calls[0]).toBe(`[Debug] ${debugLog?.message}`);
-			expect(debugLog?.metadata).not.toContain('secret');
+			const metadata = JSON.parse(debugLog?.metadata ?? '{}') as Record<string, unknown>;
+			expect(metadata.access_token).toBe('<redacted>');
+			expect(metadata.auth_token).toBe('<redacted>');
+			expect(metadata.authorization).toBe('<redacted>');
+			expect(metadata['X-Plex-Token']).toBe('<redacted>');
+			expect(metadata.apiKey).toBe('<redacted>');
+			expect(metadata.api_key).toBe('<redacted>');
+			expect(metadata['Set-Cookie']).toBe('<redacted>');
+			expect((metadata.nested as Record<string, unknown>).auth_token).toBe('<redacted>');
+			expect(debugLog?.metadata).not.toContain('session=secret');
+			expect(debugLog?.metadata).not.toContain('token=secret');
+			expect(debugLog?.metadata).not.toContain('provider-secret');
+			expect(debugLog?.metadata).not.toContain('provider-auth-token');
+			expect(debugLog?.metadata).not.toContain('provider-snake-access-token');
+			expect(debugLog?.metadata).not.toContain('provider-snake-auth-token');
+			expect(debugLog?.metadata).not.toContain('provider-authorization-token');
+			expect(debugLog?.metadata).not.toContain('provider-plex-token');
+			expect(debugLog?.metadata).not.toContain('provider-api-key');
+			expect(debugLog?.metadata).not.toContain('provider-snake-api-key');
+			expect(debugLog?.metadata).not.toContain('provider-token');
+			expect(debugLog?.metadata).not.toContain('provider-access-token');
+			expect(debugLog?.metadata).not.toContain('provider-password');
+			expect(debugLog?.metadata).not.toContain('provider-cookie');
+			expect(debugLog?.metadata).not.toContain('provider-set-cookie');
+			expect(debugLog?.metadata).not.toContain('provider-session');
+			expect(debugLog?.metadata).not.toContain('nested-provider-auth-token');
+			expect(debugLog?.metadata).not.toContain('nested-provider-snake-auth-token');
 		});
 
 		it('caches debug enabled setting', async () => {

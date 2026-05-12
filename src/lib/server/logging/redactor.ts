@@ -1,4 +1,6 @@
 const REDACTED = '<redacted>';
+const SENSITIVE_METADATA_KEY =
+	/^(?:authToken|auth_token|token|accessToken|access_token|secret|password|cookie|set-cookie|session|authorization|x-plex-token|plexToken|apiKey|api_key|apikey)$/i;
 
 const SENSITIVE_QUERY_PARAM =
 	/([?&](?:token|access_token|auth_token|api_key|apikey|key|x-plex-token)=)[^&#\s"'`]+/gi;
@@ -22,7 +24,10 @@ export function redactLogMessage(message: string): string {
 
 export function redactLogMetadata(metadata: Record<string, unknown>): Record<string, unknown> {
 	return Object.fromEntries(
-		Object.entries(metadata).map(([key, value]) => [key, redactMetadataValue(value)])
+		Object.entries(metadata).map(([key, value]) => [
+			key,
+			SENSITIVE_METADATA_KEY.test(key) ? REDACTED : redactMetadataValue(value)
+		])
 	);
 }
 

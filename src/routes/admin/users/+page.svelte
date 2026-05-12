@@ -13,6 +13,7 @@ import type { ActionData, PageData } from './$types';
  */
 
 let { data, form }: { data: PageData; form: ActionData } = $props();
+let failedAvatarUserIds = $state<Set<number>>(new Set());
 
 // Show toast notifications for form responses
 $effect(() => {
@@ -46,6 +47,14 @@ function getShareModeLabel(mode: string | null, source: string | null): string {
 		default:
 			return 'Default';
 	}
+}
+
+function hasVisibleAvatar(user: (typeof data.users)[number]): boolean {
+	return !!user.thumb && !failedAvatarUserIds.has(user.id);
+}
+
+function markAvatarFailed(userId: number): void {
+	failedAvatarUserIds = new Set(failedAvatarUserIds).add(userId);
 }
 </script>
 
@@ -104,8 +113,13 @@ function getShareModeLabel(mode: string | null, source: string | null): string {
 								<td>
 										<div class="user-cell">
 											<span class="user-avatar-link" aria-hidden="true">
-												{#if user.thumb}
-													<img src={user.thumb} alt="" class="user-avatar" />
+												{#if hasVisibleAvatar(user)}
+													<img
+														src={user.thumb ?? ''}
+														alt=""
+														class="user-avatar"
+														onerror={() => markAvatarFailed(user.id)}
+													/>
 												{:else}
 													<span class="user-avatar placeholder">&#9787;</span>
 												{/if}
@@ -197,8 +211,13 @@ function getShareModeLabel(mode: string | null, source: string | null): string {
 							<div class="mobile-user-row">
 							<div class="mobile-user-main">
 								<span class="user-avatar-link" aria-hidden="true">
-									{#if user.thumb}
-										<img src={user.thumb} alt="" class="user-avatar" />
+									{#if hasVisibleAvatar(user)}
+										<img
+											src={user.thumb ?? ''}
+											alt=""
+											class="user-avatar"
+											onerror={() => markAvatarFailed(user.id)}
+										/>
 									{:else}
 										<span class="user-avatar placeholder">&#9787;</span>
 									{/if}

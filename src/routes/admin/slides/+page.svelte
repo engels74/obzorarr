@@ -51,6 +51,10 @@ let syncedFrequencyKey = $state(
 	untrack(() => `${data.funFactFrequency.mode}:${data.funFactFrequency.count}`)
 );
 
+function selectFrequencyMode(mode: typeof data.funFactFrequency.mode): void {
+	selectedFrequencyMode = mode;
+}
+
 // Avoid resetting the radio while the user is selecting Custom before submit.
 $effect(() => {
 	const frequencyKey = `${data.funFactFrequency.mode}:${data.funFactFrequency.count}`;
@@ -476,7 +480,13 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 		>
 			<div class="frequency-options">
 				<label class="frequency-option">
-					<input type="radio" name="mode" value="few" bind:group={selectedFrequencyMode} />
+					<input
+						type="radio"
+						name="mode"
+						value="few"
+						checked={selectedFrequencyMode === 'few'}
+						onchange={() => selectFrequencyMode('few')}
+					/>
 					<span class="frequency-label">
 						<span class="frequency-name">Few</span>
 						<span class="frequency-desc">2 fun facts</span>
@@ -484,7 +494,13 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 				</label>
 
 				<label class="frequency-option">
-					<input type="radio" name="mode" value="normal" bind:group={selectedFrequencyMode} />
+					<input
+						type="radio"
+						name="mode"
+						value="normal"
+						checked={selectedFrequencyMode === 'normal'}
+						onchange={() => selectFrequencyMode('normal')}
+					/>
 					<span class="frequency-label">
 						<span class="frequency-name">Normal</span>
 						<span class="frequency-desc">4 fun facts</span>
@@ -492,7 +508,13 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 				</label>
 
 				<label class="frequency-option">
-					<input type="radio" name="mode" value="many" bind:group={selectedFrequencyMode} />
+					<input
+						type="radio"
+						name="mode"
+						value="many"
+						checked={selectedFrequencyMode === 'many'}
+						onchange={() => selectFrequencyMode('many')}
+					/>
 					<span class="frequency-label">
 						<span class="frequency-name">Many</span>
 						<span class="frequency-desc">8 fun facts</span>
@@ -500,7 +522,13 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 				</label>
 
 				<label class="frequency-option">
-					<input type="radio" name="mode" value="custom" bind:group={selectedFrequencyMode} />
+					<input
+						type="radio"
+						name="mode"
+						value="custom"
+						checked={selectedFrequencyMode === 'custom'}
+						onchange={() => selectFrequencyMode('custom')}
+					/>
 					<span class="frequency-label">
 						<span class="frequency-name">Custom</span>
 						<span class="frequency-desc">1-15 fun facts</span>
