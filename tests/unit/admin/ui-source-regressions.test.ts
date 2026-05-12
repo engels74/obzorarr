@@ -385,6 +385,10 @@ describe('admin UI source regressions', () => {
 
 	it('refreshes wrapped share modal data on open before enabling controls', async () => {
 		const source = await readSource('src/lib/components/wrapped/ShareModal.svelte');
+		const copyUrlSource = source.match(
+			/async function copyUrl\(\)[\s\S]*?async function refreshShareData/
+		);
+		const urlSection = source.match(/<!-- Copy URL Section -->[\s\S]*?<!-- Share Mode Controls/);
 
 		expect(source).toContain("import { goto, invalidateAll } from '$app/navigation';");
 		expect(source).toContain('let isRefreshing = $state(false);');
@@ -395,6 +399,11 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain('void refreshShareData();');
 		expect(source).toContain('disabled={controlsDisabled || isBelowFloor(mode as ShareModeType)}');
 		expect(source).toContain('disabled={controlsDisabled}');
+		expect(copyUrlSource).toBeDefined();
+		expect(copyUrlSource?.[0]).toContain('if (controlsDisabled) return;');
+		expect(urlSection).toBeDefined();
+		expect(urlSection?.[0]).toContain('disabled={controlsDisabled}');
+		expect(urlSection?.[0]).toContain("value={controlsDisabled ? '' : shareUrl}");
 	});
 
 	it('disables share modes that are more permissive than the server privacy floor', async () => {

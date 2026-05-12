@@ -99,6 +99,8 @@ const modeLabels: Record<ShareModeType, { label: string; description: string }> 
 };
 
 async function copyUrl(): Promise<void> {
+	if (controlsDisabled) return;
+
 	try {
 		await navigator.clipboard.writeText(shareUrl);
 		copied = true;
@@ -288,15 +290,18 @@ $effect(() => {
 					id="share-url"
 					type="text"
 					readonly
-					value={shareUrl}
+					disabled={controlsDisabled}
+					value={controlsDisabled ? '' : shareUrl}
+					placeholder={controlsDisabled ? 'Refreshing link...' : undefined}
 					class="url-input"
 					onclick={(e) => e.currentTarget.select()}
 				/>
 				<button
 					type="button"
 					class="copy-btn"
+					disabled={controlsDisabled}
 					onclick={copyUrl}
-					aria-label={copied ? 'Copied!' : 'Copy link'}
+					aria-label={controlsDisabled ? 'Refreshing link' : copied ? 'Copied!' : 'Copy link'}
 				>
 					{#if copied}
 						<svg
@@ -553,6 +558,16 @@ $effect(() => {
 		.copy-btn:hover {
 			background-color: rgba(255, 255, 255, 0.1);
 			border-color: hsl(var(--primary));
+		}
+
+		.copy-btn:disabled {
+			cursor: not-allowed;
+			opacity: 0.6;
+		}
+
+		.copy-btn:disabled:hover {
+			background-color: hsl(var(--background));
+			border-color: hsl(var(--border));
 		}
 
 		.copy-btn .icon.check {
