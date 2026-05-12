@@ -40,6 +40,7 @@ import VenetianMask from '@lucide/svelte/icons/venetian-mask';
 import X from '@lucide/svelte/icons/x';
 import Zap from '@lucide/svelte/icons/zap';
 import { type Component, tick, untrack } from 'svelte';
+import { prefersReducedMotion } from 'svelte/motion';
 import { deserialize, enhance } from '$app/forms';
 import { goto, invalidateAll } from '$app/navigation';
 import { page } from '$app/stores';
@@ -415,7 +416,10 @@ async function focusCountResult(getElement: () => HTMLElement | undefined): Prom
 	await tick();
 	const element = getElement();
 	if (!element) return;
-	element.scrollIntoView({ block: 'center', behavior: 'smooth' });
+	element.scrollIntoView({
+		block: 'center',
+		behavior: prefersReducedMotion.current ? 'auto' : 'smooth'
+	});
 	element.focus({ preventScroll: true });
 }
 

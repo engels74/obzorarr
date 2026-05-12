@@ -453,7 +453,8 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain('let cacheCountResultElement: HTMLElement | undefined = $state();');
 		expect(source).toContain('let historyCountResultElement: HTMLElement | undefined = $state();');
 		expect(source).toContain('async function focusCountResult');
-		expect(source).toContain("element.scrollIntoView({ block: 'center', behavior: 'smooth' });");
+		expect(source).toContain("import { prefersReducedMotion } from 'svelte/motion';");
+		expect(source).toContain("behavior: prefersReducedMotion.current ? 'auto' : 'smooth'");
 		expect(source).toContain('element.focus({ preventScroll: true });');
 		expect(source).toContain(
 			'message: `$' + '{cacheCountResult.label}: $' + '{formatRecordCount(cacheCountResult.count)}`'
