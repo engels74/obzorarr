@@ -305,6 +305,31 @@ describe('admin UI source regressions', () => {
 		expect(dashboardSource).toContain('onclick={handleAdminNavigation}');
 	});
 
+	it('uses client navigation for wrapped config cards while preserving real hrefs', async () => {
+		const source = await readSource('src/routes/admin/wrapped/+page.svelte');
+
+		expect(source).toContain('import { goto }');
+		expect(source).toContain('function shouldUseClientNavigation');
+		expect(source).toContain('event.button === 0');
+		expect(source).toContain('!event.metaKey');
+		expect(source).toContain('!event.ctrlKey');
+		expect(source).toContain('!event.shiftKey');
+		expect(source).toContain('!event.altKey');
+		expect(source).toContain('function handleConfigNavigation');
+		expect(source).toContain('void goto(href);');
+		expect(source).toContain(
+			'<a href="/admin/slides" class="config-card" onclick={handleConfigNavigation}>'
+		);
+		expect(source).toContain(
+			'<a href="/admin/settings?tab=privacy" class="config-card" onclick={handleConfigNavigation}>'
+		);
+		expect(source).toContain(
+			'<a href="/admin/settings?tab=appearance" class="config-card" onclick={handleConfigNavigation}>'
+		);
+		expect(source).toContain('Theme and logo visibility');
+		expect(source).not.toContain('Theme, logo visibility, and anonymization');
+	});
+
 	it('stacks the slide order header controls on narrow screens', async () => {
 		const source = await readSource('src/routes/admin/slides/+page.svelte');
 
@@ -384,6 +409,64 @@ describe('admin UI source regressions', () => {
 			expect(source).not.toContain('console.debug');
 			expect(source).not.toContain('console.info');
 		}
+	});
+
+	it('keeps wrapped summary button actions from bubbling into slideshow handlers', async () => {
+		const source = await readSource('src/lib/components/wrapped/SummaryPage.svelte');
+
+		expect(source).toContain(
+			'function handleActionClick(event: MouseEvent, action: () => void): void'
+		);
+		expect(source).toContain('event.preventDefault();');
+		expect(source).toContain('event.stopPropagation();');
+		expect(source).toContain('onclick={(event) => handleActionClick(event, onRestart)}');
+		expect(source).toContain('onclick={(event) => handleActionClick(event, onShare)}');
+		expect(source).toContain('onclick={(event) => handleActionClick(event, onHome)}');
+	});
+
+	it('returns server wrapped users home to the public root', async () => {
+		const source = await readSource('src/routes/wrapped/[year]/+page.svelte');
+		const handleHome = source.match(/function handleHome\(\): void \{[\s\S]*?\n\}/)?.[0];
+
+		expect(handleHome).toBeDefined();
+		expect(handleHome).toContain("goto('/');");
+		expect(handleHome).not.toContain("goto('/admin');");
+		expect(handleHome).not.toContain("goto('/dashboard');");
+	});
+
+	it('applies regenerated dashboard share URLs before reloading page data', async () => {
+		const source = await readSource('src/routes/dashboard/settings/+page.svelte');
+
+		expect(source).toContain('let wrappedHrefOverride = $state<string | null>(null);');
+		expect(source).toContain('let syncedWrappedHref = $state(data.wrappedHref);');
+		expect(source).toContain('wrappedHrefOverride ?? data.wrappedHref');
+		expect(source).toContain("payload.action === 'regenerateToken'");
+		expect(source).toContain("typeof payload.wrappedHref === 'string'");
+		expect(source).toContain('wrappedHrefOverride = payload.wrappedHref;');
+		expect(source).toContain('regenerateDialogOpen = false;');
+		expect(source).toContain('await invalidateAll();');
+	});
+
+	it('renders accessible status feedback for data count actions', async () => {
+		const source = await readSource('src/routes/admin/settings/+page.svelte');
+
+		expect(source).toContain('let cacheCountResultElement: HTMLElement | undefined = $state();');
+		expect(source).toContain('let historyCountResultElement: HTMLElement | undefined = $state();');
+		expect(source).toContain('async function focusCountResult');
+		expect(source).toContain("element.scrollIntoView({ block: 'center', behavior: 'smooth' });");
+		expect(source).toContain('element.focus({ preventScroll: true });');
+		expect(source).toContain(
+			'message: `$' + '{cacheCountResult.label}: $' + '{formatRecordCount(cacheCountResult.count)}`'
+		);
+		expect(source).toContain(
+			'message: `$' +
+				'{historyCountResult.label}: $' +
+				'{formatRecordCount(historyCountResult.count)}`'
+		);
+		expect(source).toContain('bind:this={cacheCountResultElement}');
+		expect(source).toContain('bind:this={historyCountResultElement}');
+		expect(source.match(/role="status"/g)).toHaveLength(2);
+		expect(source.match(/aria-live="polite"/g)).toHaveLength(2);
 	});
 
 	it('explains bootstrap and claim expiry on the onboarding claim page', async () => {

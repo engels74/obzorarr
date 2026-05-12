@@ -140,13 +140,7 @@ function handleRestart(): void {
  * Handle return home from summary
  */
 function handleHome(): void {
-	if (data.isAdmin) {
-		goto('/admin');
-	} else if (data.isLoggedIn) {
-		goto('/dashboard');
-	} else {
-		goto('/');
-	}
+	goto('/');
 }
 
 /**

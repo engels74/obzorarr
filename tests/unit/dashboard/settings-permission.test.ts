@@ -2,12 +2,13 @@ import { beforeEach, describe, expect, it } from 'bun:test';
 import { and, eq } from 'drizzle-orm';
 import { db } from '$lib/server/db/client';
 import { appSettings, shareSettings, users } from '$lib/server/db/schema';
-import { setGlobalShareDefaults } from '$lib/server/sharing/service';
+import { getShareSettingsByToken, setGlobalShareDefaults } from '$lib/server/sharing/service';
 import { ShareMode, ShareModeSource } from '$lib/server/sharing/types';
 import { actions, load } from '../../../src/routes/dashboard/settings/+page.server';
 
 type LoadArgs = Parameters<typeof load>[0];
 type UpdateShareModeAction = NonNullable<typeof actions.updateShareMode>;
+type RegenerateTokenAction = NonNullable<typeof actions.regenerateToken>;
 
 const USER_ID = 42;
 const YEAR = new Date().getFullYear();
@@ -33,6 +34,11 @@ async function invokeUpdateShareMode(mode: string) {
 	});
 	const updateShareMode = actions.updateShareMode as UpdateShareModeAction;
 	return updateShareMode({ request, locals } as unknown as Parameters<UpdateShareModeAction>[0]);
+}
+
+async function invokeRegenerateToken() {
+	const regenerateToken = actions.regenerateToken as RegenerateTokenAction;
+	return regenerateToken({ locals } as unknown as Parameters<RegenerateTokenAction>[0]);
 }
 
 describe('dashboard settings per-user share control', () => {
@@ -70,5 +76,35 @@ describe('dashboard settings per-user share control', () => {
 			.where(and(eq(shareSettings.userId, USER_ID), eq(shareSettings.year, YEAR)))
 			.limit(1);
 		expect(row[0]?.mode).toBe(ShareMode.PRIVATE_LINK);
+	});
+
+	it('returns the refreshed private href and invalidates the previous token on regenerate', async () => {
+		const oldToken = '11111111-1111-4111-8111-111111111111';
+		await db
+			.update(shareSettings)
+			.set({
+				mode: ShareMode.PRIVATE_LINK,
+				modeSource: ShareModeSource.EXPLICIT,
+				shareToken: oldToken,
+				canUserControl: true
+			})
+			.where(and(eq(shareSettings.userId, USER_ID), eq(shareSettings.year, YEAR)));
+
+		const result = (await invokeRegenerateToken()) as {
+			success?: boolean;
+			action?: string;
+			shareToken?: string;
+			wrappedHref?: string;
+			status?: number;
+		};
+
+		expect(result.status).toBeUndefined();
+		expect(result.success).toBe(true);
+		expect(result.action).toBe('regenerateToken');
+		expect(typeof result.shareToken).toBe('string');
+		expect(result.shareToken).not.toBe(oldToken);
+		expect(result.wrappedHref).toBe(`/wrapped/${YEAR}/u/${result.shareToken}`);
+		expect(await getShareSettingsByToken(oldToken)).toBeNull();
+		expect(await getShareSettingsByToken(result.shareToken!)).not.toBeNull();
 	});
 });

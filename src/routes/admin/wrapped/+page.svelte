@@ -7,6 +7,7 @@ import Shield from '@lucide/svelte/icons/shield';
 import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
 import Sparkles from '@lucide/svelte/icons/sparkles';
 import Star from '@lucide/svelte/icons/star';
+import { goto } from '$app/navigation';
 import type { PageData } from './$types';
 
 /**
@@ -22,6 +23,21 @@ interface Props {
 }
 
 let { data }: Props = $props();
+
+function shouldUseClientNavigation(event: MouseEvent): boolean {
+	if (!(event.currentTarget instanceof HTMLAnchorElement)) return false;
+	if (event.currentTarget.target && event.currentTarget.target !== '_self') return false;
+	return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
+}
+
+function handleConfigNavigation(event: MouseEvent): void {
+	if (!shouldUseClientNavigation(event)) return;
+	const href = (event.currentTarget as HTMLAnchorElement).getAttribute('href');
+	if (!href) return;
+
+	event.preventDefault();
+	void goto(href);
+}
 </script>
 
 <svelte:head>
@@ -113,7 +129,7 @@ let { data }: Props = $props();
 		</div>
 
 		<div class="config-grid">
-			<a href="/admin/slides" class="config-card">
+			<a href="/admin/slides" class="config-card" onclick={handleConfigNavigation}>
 				<div class="config-icon-wrap">
 					<SlidersHorizontal class="config-icon" />
 				</div>
@@ -124,7 +140,7 @@ let { data }: Props = $props();
 				<ArrowRight class="config-arrow" />
 			</a>
 
-			<a href="/admin/settings?tab=privacy" class="config-card">
+			<a href="/admin/settings?tab=privacy" class="config-card" onclick={handleConfigNavigation}>
 				<div class="config-icon-wrap">
 					<Shield class="config-icon" />
 				</div>
@@ -135,13 +151,13 @@ let { data }: Props = $props();
 				<ArrowRight class="config-arrow" />
 			</a>
 
-			<a href="/admin/settings?tab=appearance" class="config-card">
+			<a href="/admin/settings?tab=appearance" class="config-card" onclick={handleConfigNavigation}>
 				<div class="config-icon-wrap">
 					<Palette class="config-icon" />
 				</div>
 				<div class="config-content">
 					<span class="config-title">Display Settings</span>
-					<span class="config-desc">Theme, logo visibility, and anonymization</span>
+					<span class="config-desc">Theme and logo visibility</span>
 				</div>
 				<ArrowRight class="config-arrow" />
 			</a>

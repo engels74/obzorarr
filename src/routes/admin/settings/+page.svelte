@@ -39,7 +39,7 @@ import Users from '@lucide/svelte/icons/users';
 import VenetianMask from '@lucide/svelte/icons/venetian-mask';
 import X from '@lucide/svelte/icons/x';
 import Zap from '@lucide/svelte/icons/zap';
-import { type Component, untrack } from 'svelte';
+import { type Component, tick, untrack } from 'svelte';
 import { deserialize, enhance } from '$app/forms';
 import { goto, invalidateAll } from '$app/navigation';
 import { page } from '$app/stores';
@@ -400,6 +400,7 @@ let pendingCacheCount = $state(0);
 let loadingCount = $state(false);
 let isClearing = $state(false);
 let cacheCountResult = $state<{ label: string; count: number } | null>(null);
+let cacheCountResultElement: HTMLElement | undefined = $state();
 
 // Play history clearing dialog state
 let historyDialogOpen = $state(false);
@@ -408,6 +409,15 @@ let pendingHistoryCount = $state(0);
 let loadingHistoryCount = $state(false);
 let isClearingHistory = $state(false);
 let historyCountResult = $state<{ label: string; count: number } | null>(null);
+let historyCountResultElement: HTMLElement | undefined = $state();
+
+async function focusCountResult(getElement: () => HTMLElement | undefined): Promise<void> {
+	await tick();
+	const element = getElement();
+	if (!element) return;
+	element.scrollIntoView({ block: 'center', behavior: 'smooth' });
+	element.focus({ preventScroll: true });
+}
 
 // Open cache clearing confirmation dialog
 async function showCacheConfirmation(year?: number) {
@@ -468,6 +478,11 @@ async function getCacheCount(year?: number) {
 				label: year !== undefined ? `${year} cache` : 'All cache',
 				count: payload.count
 			};
+			handleFormToast({
+				success: true,
+				message: `${cacheCountResult.label}: ${formatRecordCount(cacheCountResult.count)}`
+			});
+			await focusCountResult(() => cacheCountResultElement);
 		} else {
 			handleFormToast({ error: 'Failed to get cache count.' });
 		}
@@ -550,6 +565,11 @@ async function getHistoryCount(year?: number) {
 				label: year !== undefined ? `${year} history` : 'All history',
 				count: payload.count
 			};
+			handleFormToast({
+				success: true,
+				message: `${historyCountResult.label}: ${formatRecordCount(historyCountResult.count)}`
+			});
+			await focusCountResult(() => historyCountResultElement);
 		} else {
 			handleFormToast({ error: 'Failed to get play history count.' });
 		}
@@ -2503,7 +2523,13 @@ const logFieldErrors = $derived(
 						</button>
 					</div>
 					{#if cacheCountResult}
-						<p class="count-result">
+						<p
+							bind:this={cacheCountResultElement}
+							class="count-result"
+							role="status"
+							aria-live="polite"
+							tabindex="-1"
+						>
 							{cacheCountResult.label}: {formatRecordCount(cacheCountResult.count)}
 						</p>
 					{/if}
@@ -2594,7 +2620,13 @@ const logFieldErrors = $derived(
 						</button>
 					</div>
 					{#if historyCountResult}
-						<p class="count-result">
+						<p
+							bind:this={historyCountResultElement}
+							class="count-result"
+							role="status"
+							aria-live="polite"
+							tabindex="-1"
+						>
 							{historyCountResult.label}: {formatRecordCount(historyCountResult.count)}
 						</p>
 					{/if}

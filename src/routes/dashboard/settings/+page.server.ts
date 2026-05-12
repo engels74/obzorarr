@@ -149,9 +149,16 @@ export const actions: Actions = {
 				});
 			}
 
-			await regenerateShareToken(userId, currentYear);
+			const shareToken = await regenerateShareToken(userId, currentYear);
+			const wrappedHref = await getOwnerWrappedHref(userId, currentYear);
 
-			return { success: true, message: 'Share link regenerated', action: 'regenerateToken' };
+			return {
+				success: true,
+				message: 'Share link regenerated',
+				action: 'regenerateToken',
+				shareToken,
+				wrappedHref
+			};
 		} catch (error) {
 			if (error instanceof PermissionExceededError) {
 				return fail(403, { error: error.message, action: 'regenerateToken' });
