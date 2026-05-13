@@ -202,8 +202,7 @@ export const actions: Actions = requireAdminActions({
 		const formData = await request.formData();
 		const cronExpression = formData.get('cronExpression');
 
-		const expression =
-			cronExpression && typeof cronExpression === 'string' ? cronExpression : '0 0 * * *';
+		const expression = cronExpression ?? '0 0 * * *';
 
 		const parsed = UpdateScheduleSchema.safeParse({ cronExpression: expression });
 		if (!parsed.success) {
@@ -211,7 +210,7 @@ export const actions: Actions = requireAdminActions({
 			return fail(400, {
 				error,
 				cronError: error,
-				cronExpression: expression
+				cronExpression: typeof expression === 'string' ? expression : ''
 			});
 		}
 
