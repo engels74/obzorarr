@@ -16,19 +16,22 @@ let proxyStartupLogged = false;
 // We cache the in-flight Promise rather than the resolved boolean. This makes
 // reset-during-resolve race-safe: a concurrent _resetTrustProxyCache() nulls
 // the slot, but any request already awaiting the old promise keeps its
-// reference via closure and that promise never writes back to the slot on
-// resolution. Subsequent misses after the reset start a fresh fetch.
+// reference via closure. The successful .then path never writes back to the
+// slot on resolution, so it cannot pollute the cache after reset.
 //
-// Rejections are self-evicting: if getTrustProxyConfigWithSource() rejects
-// (or the .then callback throws), the chained .catch nulls the slot and
-// re-throws. The current caller still fails fast, and the next request starts
-// a fresh fetch — so a transient DB error cannot stick a rejected promise in
-// the cache indefinitely.
+// Rejections are self-evicting with an identity check: if
+// getTrustProxyConfigWithSource() rejects (or the .then callback throws), the
+// chained .catch nulls the slot ONLY when its own promise is still the current
+// one. That guard prevents a late rejection from a pre-reset chain from
+// clobbering a freshly-populated post-reset chain. The current caller still
+// fails fast, and the next miss starts a fresh fetch — so a transient DB error
+// cannot stick a rejected promise in the cache indefinitely.
 let trustProxyPromise: Promise<boolean> | null = null;
 
 function resolveTrustProxy(): Promise<boolean> {
 	if (trustProxyPromise !== null) return trustProxyPromise;
-	trustProxyPromise = getTrustProxyConfigWithSource()
+
+	const chain: Promise<boolean> = getTrustProxyConfigWithSource()
 		.then((config) => {
 			const trustProxy = config.trustProxy.value === 'true';
 
@@ -47,11 +50,15 @@ function resolveTrustProxy(): Promise<boolean> {
 		})
 		.catch((err) => {
 			// Evict the rejected promise so the next caller retries instead of
-			// re-throwing the same stale rejection forever. Re-throw so the
-			// current caller still observes the failure.
-			trustProxyPromise = null;
+			// re-throwing the same stale rejection forever. Guard with an
+			// identity check so that if _resetTrustProxyCache() ran and another
+			// request already populated a new chain, we do NOT clobber it.
+			// Re-throw so the current caller still observes the failure.
+			if (trustProxyPromise === chain) trustProxyPromise = null;
 			throw err;
 		});
+
+	trustProxyPromise = chain;
 	return trustProxyPromise;
 }
 
@@ -113,9 +120,12 @@ export function _resetProxyStartupLogged(): void {
 //
 // Race-safety against in-flight resolves: clearing trustProxyPromise drops
 // only the module slot. Any request that already awaited the pre-reset promise
-// keeps its reference via closure and is unaffected; that promise never writes
-// back to the slot on resolution, so it cannot pollute the cache after reset.
-// The next miss after this call starts a fresh fetch and caches the new value.
+// keeps its reference via closure and is unaffected. The successful .then path
+// never writes back to the slot, and the .catch path only writes back when its
+// own promise is still the current one (identity check) — so neither a late
+// resolution nor a late rejection from a pre-reset chain can pollute the cache
+// after reset + repopulation. The next miss after this call starts a fresh
+// fetch and caches the new value.
 export function _resetTrustProxyCache(): void {
 	trustProxyPromise = null;
 }
