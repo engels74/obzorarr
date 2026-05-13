@@ -44,13 +44,6 @@ const UpdateScheduleSchema = z.object({
 
 const HISTORY_PAGE_SIZE = 8;
 
-function parseCronExpression(expression: string) {
-	const error = validateCronExpression(expression);
-	return error
-		? { success: false as const, error }
-		: { success: true as const, value: expression.trim() };
-}
-
 export const load: PageServerLoad = async ({ url }) => {
 	const pageParam = url.searchParams.get('page');
 	const page = Math.max(1, parseInt(pageParam ?? '1', 10) || 1);
@@ -212,21 +205,22 @@ export const actions: Actions = requireAdminActions({
 		const expression =
 			cronExpression && typeof cronExpression === 'string' ? cronExpression : '0 0 * * *';
 
-		const parsed = parseCronExpression(expression);
+		const parsed = UpdateScheduleSchema.safeParse({ cronExpression: expression });
 		if (!parsed.success) {
+			const error = parsed.error.issues[0]?.message ?? CRON_REQUIRED_MESSAGE;
 			return fail(400, {
-				error: parsed.error,
-				cronError: parsed.error,
+				error,
+				cronError: error,
 				cronExpression: expression
 			});
 		}
 
 		try {
 			setupSyncScheduler({
-				cronExpression: parsed.value,
+				cronExpression: parsed.data.cronExpression,
 				startImmediately: true
 			});
-			await setAppSetting(AppSettingsKey.SYNC_CRON_EXPRESSION, parsed.value);
+			await setAppSetting(AppSettingsKey.SYNC_CRON_EXPRESSION, parsed.data.cronExpression);
 			return { success: true, message: 'Scheduler initialized' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to initialize scheduler';

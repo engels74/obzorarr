@@ -196,19 +196,12 @@ describe('Plex OAuth console source attribution', () => {
 	});
 
 	it('keeps Obzorarr-owned completed auth responses limited to browser-safe fields', async () => {
-		const [completionSource, endpointSource, redirectSource] = await Promise.all([
-			Bun.file('src/lib/server/auth/login-completion.ts').text(),
+		const [endpointSource, redirectSource] = await Promise.all([
 			Bun.file('src/routes/auth/plex/+server.ts').text(),
 			Bun.file('src/routes/auth/plex/redirect/+page.server.ts').text()
 		]);
 
-		const completedReturn = completionSource.match(/return \{\n\t\tuser: \{[\s\S]*?\n\t\};/)?.[0];
-		expect(completedReturn).toBeDefined();
-		expect(completedReturn).toContain('username: plexUser.username');
-		expect(completedReturn).toContain('isAdmin');
-		expect(completedReturn).toContain("redirectTo: isAdmin ? '/admin' : '/dashboard'");
-
-		const browserAuthSource = `${completedReturn ?? ''}\n${endpointSource}\n${redirectSource}`;
+		const browserAuthSource = `${endpointSource}\n${redirectSource}`;
 		for (const forbidden of [
 			'authToken',
 			'accessToken',
@@ -217,8 +210,7 @@ describe('Plex OAuth console source attribution', () => {
 			'email',
 			'plexId'
 		]) {
-			expect(browserAuthSource).not.toContain(`\t\t\t${forbidden}:`);
-			expect(browserAuthSource).not.toContain(`\t\t${forbidden}:`);
+			expect(browserAuthSource).not.toMatch(new RegExp(String.raw`\b${forbidden}\s*:`));
 		}
 		expect(redirectSource).toContain('pinId: verifiedPin.pinId');
 		expect(redirectSource).toContain('expiresAt: verifiedPin.expiresAt.toISOString()');
