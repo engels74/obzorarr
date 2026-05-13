@@ -1,6 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import { z } from 'zod';
-import { validateCronExpression } from '$lib/cron/validation';
+import { CRON_REQUIRED_MESSAGE, validateCronExpression } from '$lib/cron/validation';
 import { AppSettingsKey, getAppSetting, setAppSetting } from '$lib/server/admin/settings.service';
 import { requireAdminActions } from '$lib/server/auth/guards';
 import { cancelSync } from '$lib/server/sync/progress';
@@ -26,6 +26,21 @@ const BackfillYearSchema = z
 	.optional()
 	.transform((val) => (val ? parseInt(val, 10) : undefined))
 	.pipe(z.number().min(2000).max(2100).optional());
+
+const UpdateScheduleSchema = z.object({
+	cronExpression: z
+		.preprocess((value) => (typeof value === 'string' ? value : ''), z.string())
+		.superRefine((expression, ctx) => {
+			const error = validateCronExpression(expression);
+			if (error) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: error
+				});
+			}
+		})
+		.transform((expression) => expression.trim())
+});
 
 const HISTORY_PAGE_SIZE = 8;
 
@@ -140,26 +155,19 @@ export const actions: Actions = requireAdminActions({
 		const formData = await request.formData();
 		const cronExpression = formData.get('cronExpression');
 
-		if (!cronExpression || typeof cronExpression !== 'string') {
-			return fail(400, {
-				error: 'Cron expression is required',
-				cronError: 'Cron expression is required',
-				cronExpression: ''
-			});
-		}
-
-		const parsed = parseCronExpression(cronExpression);
+		const parsed = UpdateScheduleSchema.safeParse({ cronExpression });
 		if (!parsed.success) {
+			const error = parsed.error.issues[0]?.message ?? CRON_REQUIRED_MESSAGE;
 			return fail(400, {
-				error: parsed.error,
-				cronError: parsed.error,
-				cronExpression
+				error,
+				cronError: error,
+				cronExpression: typeof cronExpression === 'string' ? cronExpression : ''
 			});
 		}
 
 		try {
-			updateSchedulerCron(parsed.value);
-			await setAppSetting(AppSettingsKey.SYNC_CRON_EXPRESSION, parsed.value);
+			updateSchedulerCron(parsed.data.cronExpression);
+			await setAppSetting(AppSettingsKey.SYNC_CRON_EXPRESSION, parsed.data.cronExpression);
 			return { success: true, message: 'Schedule updated successfully' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to update schedule';

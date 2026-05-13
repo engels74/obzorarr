@@ -558,9 +558,10 @@ describe('admin UI source regressions', () => {
 		expect(clientSource).toContain('role="alert"');
 		expect(clientSource).toContain('Save disabled: {cronError}');
 		expect(serverSource).toContain(
-			"import { validateCronExpression } from '$lib/cron/validation';"
+			"import { CRON_REQUIRED_MESSAGE, validateCronExpression } from '$lib/cron/validation';"
 		);
-		expect(serverSource).toContain('cronError: parsed.error');
+		expect(serverSource).toContain('const UpdateScheduleSchema = z.object');
+		expect(serverSource).toContain('cronError: error');
 		expect(serverSource).toContain('cronExpression');
 		expect(validationSource).toContain("'Only digits, spaces, and * / - , are allowed'");
 		expect(validationSource).toContain("'Cron expression must have exactly 5 fields'");
