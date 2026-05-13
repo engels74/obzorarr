@@ -515,10 +515,19 @@ async function showHistoryConfirmation(year?: number) {
 	loadingHistoryCount = true;
 	pendingHistoryYear = year;
 
-	const formData = new FormData();
-	if (year !== undefined) {
-		formData.append('year', year.toString());
+	// Year-undefined ("Delete All History") uses the load-time total — the page
+	// always knows the count even if the user hasn't pressed "Get Count" first,
+	// so the dialog renders without a probe request and never has a no-count path
+	// that could look like a silent failure (ISSUE-003).
+	if (year === undefined) {
+		pendingHistoryCount = data.playHistoryTotalCount;
+		historyDialogOpen = true;
+		loadingHistoryCount = false;
+		return;
 	}
+
+	const formData = new FormData();
+	formData.append('year', year.toString());
 
 	try {
 		const response = await fetch('?/getPlayHistoryCount', {

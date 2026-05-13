@@ -210,7 +210,13 @@ export const load: PageServerLoad = async () => {
 		plexAllowInsecureLocalHttp,
 		serverWrappedSettingsUpdatedAt,
 		userDefaultsSettingsUpdatedAt,
-		apiConfigUpdatedAt
+		apiConfigUpdatedAt,
+		// Eager-load the total play-history count so the destructive Delete History
+		// buttons can render with a known count from first paint, instead of needing
+		// an on-click POST to ?/getPlayHistoryCount before they can show a
+		// confirmation dialog. ISSUE-003 hit the no-count path and observed the
+		// click navigating to /admin with no feedback.
+		playHistoryTotalCount
 	] = await Promise.all([
 		getApiConfigWithSources(),
 		getUITheme(),
@@ -231,7 +237,8 @@ export const load: PageServerLoad = async () => {
 		isPlexInsecureLocalHttpAllowed(),
 		getAppSettingsUpdatedAt(SERVER_WRAPPED_SETTINGS_KEYS),
 		getAppSettingsUpdatedAt(USER_DEFAULTS_SETTINGS_KEYS),
-		getAppSettingsUpdatedAt(API_CONFIG_KEYS)
+		getAppSettingsUpdatedAt(API_CONFIG_KEYS),
+		countPlayHistory()
 	]);
 
 	const currentYear = new Date().getFullYear();
@@ -269,6 +276,7 @@ export const load: PageServerLoad = async () => {
 		})),
 		availableYears,
 		currentYear,
+		playHistoryTotalCount,
 		logSettings: {
 			retentionDays: logRetentionDays,
 			maxCount: logMaxCount,
