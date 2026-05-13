@@ -17,6 +17,7 @@ import {
 	setOnboardingStep
 } from '$lib/server/onboarding';
 import { parseForwardedProtoHost } from '$lib/server/security/forwarded-headers';
+import { _resetTrustProxyCache } from '$lib/server/security/proxy-handle';
 import { createReverseProxyDiagnostic } from '$lib/server/security/reverse-proxy-diagnostic';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -328,6 +329,9 @@ export const actions: Actions = {
 		}
 
 		await setAppSetting(AppSettingsKey.TRUST_PROXY, 'true');
+		// Invalidate the in-process cache AFTER the DB write so subsequent
+		// requests re-resolve the new value.
+		_resetTrustProxyCache();
 		logger.warn(
 			'Reverse-proxy header trust enabled during onboarding. Verify your upstream proxy strips inbound x-forwarded-* headers.',
 			'Onboarding'

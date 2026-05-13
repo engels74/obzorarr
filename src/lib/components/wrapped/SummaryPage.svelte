@@ -65,11 +65,12 @@ function handleActionClick(event: MouseEvent, action: () => void): void {
 	// synchronous throws and asynchronous rejections.
 	try {
 		const result = action() as unknown;
-		if (result && typeof (result as PromiseLike<unknown>).then === 'function') {
-			(result as Promise<unknown>).catch((error) => {
-				console.error('Summary endcard action rejected', error);
-			});
-		}
+		// `Promise.resolve` normalises any thenable (or non-thenable) to a real
+		// Promise, so `.catch` is guaranteed to exist even when `action()`
+		// returns a Promises/A+ thenable that lacks `.catch`, or `undefined`.
+		Promise.resolve(result).catch((error) => {
+			console.error('Summary endcard action rejected', error);
+		});
 	} catch (error) {
 		console.error('Summary endcard action threw', error);
 	}

@@ -63,6 +63,7 @@ import {
 	normalizePlexServerUrl
 } from '$lib/server/security/credentialed-url';
 import { getOriginFromRequest } from '$lib/server/security/csrf-handle';
+import { _resetTrustProxyCache } from '$lib/server/security/proxy-handle';
 import {
 	bulkApplyShareDefaults,
 	getGlobalAllowUserControl,
@@ -1081,6 +1082,9 @@ export const actions: Actions = requireAdminActions({
 
 		try {
 			await setAppSetting(AppSettingsKey.TRUST_PROXY, enabled ? 'true' : 'false');
+			// Invalidate the in-process cache AFTER the DB write so subsequent
+			// requests re-resolve the new value.
+			_resetTrustProxyCache();
 			if (enabled) {
 				logger.warn(
 					'Reverse-proxy header trust enabled by admin. Verify your upstream proxy strips inbound x-forwarded-* headers.',
