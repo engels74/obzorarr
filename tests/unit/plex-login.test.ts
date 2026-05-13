@@ -9,6 +9,37 @@ import {
 
 const originalFetch = globalThis.fetch;
 
+type ConsoleOriginClassification = 'obzorarr' | 'third-party-plex' | 'unknown';
+
+interface ConsoleEntry {
+	pageUrl?: string;
+	text: string;
+}
+
+function consoleEntryOrigin(entry: ConsoleEntry): string | null {
+	if (!entry.pageUrl) return null;
+	try {
+		return new URL(entry.pageUrl).origin;
+	} catch {
+		return null;
+	}
+}
+
+function classifyConsoleEntry(
+	entry: ConsoleEntry,
+	obzorarrOrigin: string
+): ConsoleOriginClassification {
+	const origin = consoleEntryOrigin(entry);
+	if (!origin) return 'unknown';
+	if (origin === obzorarrOrigin) return 'obzorarr';
+	if (origin === 'https://app.plex.tv' || origin === 'https://plex.tv') return 'third-party-plex';
+	return 'unknown';
+}
+
+function tokenLikeText(entry: ConsoleEntry): boolean {
+	return /authToken|accessToken|plexToken|token|secret/i.test(entry.text);
+}
+
 describe('sanitizeCompletedLoginResponse', () => {
 	it('keeps only browser-safe login fields', () => {
 		const sanitized = sanitizeCompletedLoginResponse({
@@ -127,6 +158,65 @@ describe('sanitizeCompletedLoginResponse', () => {
 		]) {
 			expect(responseText).not.toContain(forbidden);
 		}
+	});
+});
+
+describe('Plex OAuth console source attribution', () => {
+	it('classifies Plex-hosted console entries as third-party evidence', () => {
+		const entries: ConsoleEntry[] = [
+			{
+				pageUrl: 'https://app.plex.tv/auth#?code=ABCD',
+				text: 'AUTH_COMPLETE authToken=plex-hosted-token'
+			},
+			{
+				pageUrl: 'https://plex.tv/auth',
+				text: 'accessToken=plex-hosted-token'
+			},
+			{
+				pageUrl: 'https://obzorarr.example/auth/plex/redirect',
+				text: 'Completing Authentication'
+			}
+		];
+
+		expect(entries.map((entry) => consoleEntryOrigin(entry))).toEqual([
+			'https://app.plex.tv',
+			'https://plex.tv',
+			'https://obzorarr.example'
+		]);
+		expect(entries.map((entry) => classifyConsoleEntry(entry, 'https://obzorarr.example'))).toEqual(
+			['third-party-plex', 'third-party-plex', 'obzorarr']
+		);
+
+		const obzorarrTokenLeaks = entries.filter(
+			(entry) =>
+				classifyConsoleEntry(entry, 'https://obzorarr.example') === 'obzorarr' &&
+				tokenLikeText(entry)
+		);
+		expect(obzorarrTokenLeaks).toHaveLength(0);
+	});
+
+	it('keeps Obzorarr-owned completed auth responses limited to browser-safe fields', async () => {
+		const [endpointSource, redirectSource] = await Promise.all([
+			Bun.file('src/routes/auth/plex/+server.ts').text(),
+			Bun.file('src/routes/auth/plex/redirect/+page.server.ts').text()
+		]);
+
+		const browserAuthSource = `${endpointSource}\n${redirectSource}`;
+		for (const forbidden of [
+			'authToken',
+			'accessToken',
+			'services',
+			'resources',
+			'email',
+			'plexId'
+		]) {
+			const forbiddenBrowserFieldPattern = new RegExp(String.raw`\b${forbidden}\s*(?::|[,}])`);
+			expect(browserAuthSource).not.toMatch(forbiddenBrowserFieldPattern);
+		}
+		expect(redirectSource).toContain('pinId: verifiedPin.pinId');
+		expect(redirectSource).toContain('expiresAt: verifiedPin.expiresAt.toISOString()');
+		expect(redirectSource).not.toContain('authToken');
+		expect(redirectSource).not.toContain('accessToken');
 	});
 });
 
