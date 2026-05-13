@@ -16,6 +16,12 @@ const JOB_NAME = 'plex-sync';
 const PROGRESS_LOG_INTERVAL = 10;
 
 let schedulerInstance: Cron | null = null;
+// Tracks operator intent for the paused state. croner's `isRunning() === false`
+// is also true between scheduled ticks, so we cannot derive "paused" from
+// instance state alone (ISSUE-005). The flag flips to true on pauseSyncScheduler
+// and back to false on resume/stop/setup so the admin badge can pick "Paused"
+// versus "Inactive" deterministically.
+let pausedByOperator = false;
 
 export function setupSyncScheduler(options: SchedulerOptions = {}): Cron {
 	const {
@@ -38,6 +44,8 @@ export function setupSyncScheduler(options: SchedulerOptions = {}): Cron {
 			logger.error(`Sync job "${job.name}" failed: ${error}`, 'Scheduler');
 		}
 	};
+
+	pausedByOperator = !startImmediately;
 
 	schedulerInstance = new Cron(cronExpression, cronOptions, async () => {
 		logger.info(`Starting scheduled sync at ${new Date().toISOString()}`, 'Scheduler');
@@ -84,6 +92,7 @@ export function stopSyncScheduler(): void {
 	if (schedulerInstance) {
 		schedulerInstance.stop();
 		schedulerInstance = null;
+		pausedByOperator = false;
 		logger.info('Sync scheduler stopped', 'Scheduler');
 	}
 }
@@ -91,6 +100,7 @@ export function stopSyncScheduler(): void {
 export function pauseSyncScheduler(): void {
 	if (schedulerInstance) {
 		schedulerInstance.pause();
+		pausedByOperator = true;
 		logger.info('Sync scheduler paused', 'Scheduler');
 	}
 }
@@ -98,6 +108,7 @@ export function pauseSyncScheduler(): void {
 export function resumeSyncScheduler(): void {
 	if (schedulerInstance) {
 		schedulerInstance.resume();
+		pausedByOperator = false;
 		logger.info('Sync scheduler resumed', 'Scheduler');
 	}
 }
@@ -113,13 +124,18 @@ export function getSchedulerStatus(): SchedulerStatus {
 		};
 	}
 
+	// croner's `isRunning()` answers "is the job currently executing its
+	// callback", not "is the schedule active" — between ticks it returns false
+	// even on a fully-initialised, non-paused scheduler. Use the operator-intent
+	// flag for the badge state and `!pausedByOperator` for whether ticks are
+	// being honoured.
+	const isPaused = pausedByOperator;
+	const isActive = !isPaused;
+
 	return {
-		isRunning: schedulerInstance.isRunning(),
-		isPaused: !schedulerInstance.isRunning() && !schedulerInstance.isStopped(),
-		nextRun:
-			schedulerInstance.isStopped() || !schedulerInstance.isRunning()
-				? null
-				: (schedulerInstance.nextRun() ?? null),
+		isRunning: isActive,
+		isPaused,
+		nextRun: isActive ? (schedulerInstance.nextRun() ?? null) : null,
 		previousRun: schedulerInstance.previousRun() ?? null,
 		cronExpression: schedulerInstance.getPattern() ?? null
 	};

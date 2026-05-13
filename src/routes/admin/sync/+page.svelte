@@ -40,6 +40,16 @@ function submittedCronError(actionData: ActionData | null | undefined, expressio
 const DEFAULT_CRON_EXPRESSION = '0 0 * * *';
 
 let selectedBackfillYear = $state<string>('');
+
+// After ?/startSync returns, re-select the year we just submitted so the
+// dropdown does not revert to "New Activity Only" — ISSUE-004 observed the
+// sync continuing as incremental on the next manual run because the user
+// thought the selection had stuck.
+$effect(() => {
+	const submitted = (form as { selectedYear?: number | null } | null | undefined)?.selectedYear;
+	if (submitted === undefined) return;
+	selectedBackfillYear = submitted === null ? '' : submitted.toString();
+});
 const serverCronExpression = $derived(
 	data.schedulerStatus.cronExpression ?? DEFAULT_CRON_EXPRESSION
 );
