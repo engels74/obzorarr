@@ -1,3 +1,4 @@
+import { arch as osArch, platform as osPlatform } from 'node:os';
 import { fail } from '@sveltejs/kit';
 import { z } from 'zod';
 import { env } from '$env/dynamic/private';
@@ -277,6 +278,14 @@ export const load: PageServerLoad = async () => {
 		availableYears,
 		currentYear,
 		playHistoryTotalCount,
+		// System info panel (ISSUE-006) — exposed as plain primitives so the
+		// SSR JSON is small and the client doesn't need to import node:os.
+		systemInfo: {
+			uptimeSeconds: Math.floor(process.uptime()),
+			osPlatform: osPlatform(),
+			osArch: osArch(),
+			bunVersion: typeof Bun !== 'undefined' ? Bun.version : null
+		},
 		logSettings: {
 			retentionDays: logRetentionDays,
 			maxCount: logMaxCount,
