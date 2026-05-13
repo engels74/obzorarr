@@ -57,7 +57,15 @@ function handleSummaryKeyDown(event: KeyboardEvent) {
 function handleActionClick(event: MouseEvent, action: () => void): void {
 	event.preventDefault();
 	event.stopPropagation();
-	action();
+	// Swallowed exceptions inside the click path used to look like "the button
+	// is a no-op" — ISSUE-013 saw all three endcard buttons fail silently with
+	// no console error and no toast. Surface failures explicitly so the next
+	// dogfood pass can attribute the regression to a specific handler.
+	try {
+		action();
+	} catch (error) {
+		console.error('Summary endcard action threw', error);
+	}
 }
 
 // Move initial focus to the heading instead of the first button so
