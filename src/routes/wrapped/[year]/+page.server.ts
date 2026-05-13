@@ -19,7 +19,9 @@ import { getServerStatsWithAnonymization } from '$lib/server/stats/engine';
 import { triggerLiveSyncIfNeeded } from '$lib/server/sync/live-sync';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params, locals }) => {
+export const load: PageServerLoad = async ({ params, locals, setHeaders }) => {
+	setHeaders({ 'cache-control': 'no-store' });
+
 	const year = parseInt(params.year, 10);
 	if (Number.isNaN(year) || year < 2000 || year > 2100) {
 		error(404, 'Invalid year');

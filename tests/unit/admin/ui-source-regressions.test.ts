@@ -378,9 +378,32 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain('let localMode = $state<ShareModeType>');
 		expect(source).toContain('let localShareToken = $state<string | null | undefined>');
 		expect(source).toContain('checked={displayMode === mode}');
-		expect(source).toContain('localMode = mode as ShareModeType;');
+		expect(source).toContain('localMode = mode;');
 		expect(source).not.toContain('checked={isUpdating ?');
 		expect(source).not.toContain('optimisticMode');
+	});
+
+	it('refreshes wrapped share modal data on open before enabling controls', async () => {
+		const source = await readSource('src/lib/components/wrapped/ShareModal.svelte');
+		const copyUrlSource = source.match(
+			/async function copyUrl\(\)[\s\S]*?async function refreshShareData/
+		);
+		const urlSection = source.match(/<!-- Copy URL Section -->[\s\S]*?<!-- Share Mode Controls/);
+
+		expect(source).toContain("import { goto, invalidateAll } from '$app/navigation';");
+		expect(source).toContain('let isRefreshing = $state(false);');
+		expect(source).toContain('const controlsDisabled = $derived(isUpdating || isRefreshing);');
+		expect(source).toContain('async function refreshShareData()');
+		expect(source).toContain('await invalidateAll();');
+		expect(source).toContain("console.warn('Failed to refresh share data:', error);");
+		expect(source).toContain('void refreshShareData();');
+		expect(source).toContain('disabled={controlsDisabled || isBelowFloor(mode as ShareModeType)}');
+		expect(source).toContain('disabled={controlsDisabled}');
+		expect(copyUrlSource).toBeDefined();
+		expect(copyUrlSource?.[0]).toContain('if (controlsDisabled) return;');
+		expect(urlSection).toBeDefined();
+		expect(urlSection?.[0]).toContain('disabled={controlsDisabled}');
+		expect(urlSection?.[0]).toContain("value={controlsDisabled ? '' : shareUrl}");
 	});
 
 	it('disables share modes that are more permissive than the server privacy floor', async () => {
@@ -396,6 +419,31 @@ describe('admin UI source regressions', () => {
 			expect(source).toContain('isBelowFloor');
 			expect(source).toContain('floor-note');
 		}
+	});
+
+	it('guards wrapped share modal onchange from submitting below-floor modes', async () => {
+		const source = await readSource('src/lib/components/wrapped/ShareModal.svelte');
+
+		expect(source).toContain('function submitModeChange(event: Event, mode: ShareModeType)');
+		expect(source).toContain('if (controlsDisabled || isBelowFloor(mode))');
+		expect(source).toContain('event.preventDefault();');
+		expect(source).toContain('restoreLocalShareState();');
+		expect(source).toContain('onchange={(e) => submitModeChange(e, mode as ShareModeType)}');
+	});
+
+	it('restores wrapped share modal local state after error mode updates', async () => {
+		const source = await readSource('src/lib/components/wrapped/ShareModal.svelte');
+		const updateShareModeForm = source.match(
+			/action="\?\/updateShareMode"[\s\S]*?<div class="mode-options"/
+		)?.[0];
+
+		expect(updateShareModeForm).toBeDefined();
+		expect(updateShareModeForm).toContain('applyShareActionData(result.data);');
+		expect(updateShareModeForm).toContain('await invalidateAll();');
+		expect(updateShareModeForm).toContain(
+			"console.warn('Failed to refresh share data after share mode update:', error);"
+		);
+		expect(updateShareModeForm).toContain('restoreLocalShareState();');
 	});
 
 	it('does not log Plex auth payloads from app-owned browser auth code', async () => {
