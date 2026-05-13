@@ -210,7 +210,8 @@ describe('Plex OAuth console source attribution', () => {
 			'email',
 			'plexId'
 		]) {
-			expect(browserAuthSource).not.toMatch(new RegExp(String.raw`\b${forbidden}\s*:`));
+			const forbiddenBrowserFieldPattern = new RegExp(String.raw`\b${forbidden}\s*(?::|[,}])`);
+			expect(browserAuthSource).not.toMatch(forbiddenBrowserFieldPattern);
 		}
 		expect(redirectSource).toContain('pinId: verifiedPin.pinId');
 		expect(redirectSource).toContain('expiresAt: verifiedPin.expiresAt.toISOString()');
