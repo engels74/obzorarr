@@ -15,7 +15,7 @@ export const requestFilterHandle: Handle = async ({ event, resolve }) => {
 				status: 404,
 				headers: { 'Content-Type': 'application/json' }
 			}),
-			event.request
+			event.url.protocol === 'https:'
 		);
 	}
 
@@ -26,7 +26,7 @@ export const requestFilterHandle: Handle = async ({ event, resolve }) => {
 				status: 403,
 				headers: { 'Content-Type': 'application/json' }
 			}),
-			event.request
+			event.url.protocol === 'https:'
 		);
 	}
 

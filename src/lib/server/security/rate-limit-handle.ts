@@ -79,7 +79,7 @@ export const rateLimitHandle: Handle = async ({ event, resolve }) => {
 						}
 					}
 				),
-				event.request
+				event.url.protocol === 'https:'
 			);
 		}
 
@@ -98,7 +98,7 @@ export const rateLimitHandle: Handle = async ({ event, resolve }) => {
 						...rateLimitHeaders
 					}
 				}),
-				event.request
+				event.url.protocol === 'https:'
 			);
 		}
 
@@ -128,7 +128,7 @@ export const rateLimitHandle: Handle = async ({ event, resolve }) => {
 					...rateLimitHeaders
 				}
 			}),
-			event.request
+			event.url.protocol === 'https:'
 		);
 	}
 

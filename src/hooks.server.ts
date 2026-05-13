@@ -32,18 +32,22 @@ import {
 	requestFilterHandle
 } from '$lib/server/security';
 
+// `event.url.protocol` is the single source of truth: proxyHandle rewrites
+// event.url from x-forwarded-proto only when TRUST_PROXY is enabled, so reading
+// it here keeps the HSTS decision aligned with the trust-proxy gate rather than
+// reading the raw header twice.
 const securityHeadersHandle: Handle = async ({ event, resolve }) => {
 	const response = await resolve(event);
-	return applySecurityHeaders(response, event.request);
+	return applySecurityHeaders(response, event.url.protocol === 'https:');
 };
 
-function redirectResponse(event: { request: Request }, location: string): Response {
+function redirectResponse(event: { url: URL }, location: string): Response {
 	return applySecurityHeaders(
 		new Response(null, {
 			status: 303,
 			headers: { Location: location }
 		}),
-		event.request
+		event.url.protocol === 'https:'
 	);
 }
 
