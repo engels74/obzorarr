@@ -37,9 +37,15 @@ function submittedCronError(actionData: ActionData | null | undefined, expressio
 		: '';
 }
 
+const DEFAULT_CRON_EXPRESSION = '0 0 * * *';
+
 let selectedBackfillYear = $state<string>('');
-let cronExpression = $derived(
-	submittedCronExpression(form) ?? data.schedulerStatus.cronExpression ?? '0 0 * * *'
+const serverCronExpression = $derived(
+	data.schedulerStatus.cronExpression ?? DEFAULT_CRON_EXPRESSION
+);
+let localCronExpression = $state<string | null>(null);
+const cronExpression = $derived(
+	localCronExpression ?? submittedCronExpression(form) ?? serverCronExpression
 );
 const clientCronError = $derived(validateCronExpression(cronExpression));
 const serverCronError = $derived(submittedCronError(form, cronExpression));
@@ -52,6 +58,14 @@ let pendingStart = $state(false);
 $effect(() => {
 	handleFormToast(form);
 });
+
+function updateCronExpression(value: string): void {
+	localCronExpression = value === serverCronExpression ? null : value;
+}
+
+function handleCronExpressionInput(event: Event): void {
+	updateCronExpression((event.currentTarget as HTMLInputElement).value);
+}
 
 let eventSource = $state<EventSource | null>(null);
 let progress = $state<SyncProgress | null>(null);
@@ -563,14 +577,27 @@ async function goToPage(page: number) {
 					{/if}
 				</div>
 
-				<form method="POST" action="?/updateSchedule" use:enhance class="cron-config">
+				<form
+					method="POST"
+					action="?/updateSchedule"
+					use:enhance={() => {
+						return async ({ result, update }) => {
+							await update();
+							if (result.type === 'success') {
+								localCronExpression = null;
+							}
+						};
+					}}
+					class="cron-config"
+				>
 					<label for="cronExpression" class="cron-label">Schedule (cron)</label>
 					<div class="cron-input-group">
 						<input
 							type="text"
 							id="cronExpression"
 							name="cronExpression"
-							bind:value={cronExpression}
+							value={cronExpression}
+							oninput={handleCronExpressionInput}
 							placeholder="0 0 * * *"
 							class="cron-input"
 							class:cron-input-error={cronError}
@@ -608,7 +635,7 @@ async function goToPage(page: number) {
 								type="button"
 								class="preset-chip"
 								class:active={cronExpression === preset.value}
-								onclick={() => (cronExpression = preset.value)}
+								onclick={() => updateCronExpression(preset.value)}
 							>
 								{preset.label}
 							</button>

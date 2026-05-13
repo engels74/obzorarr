@@ -547,6 +547,21 @@ describe('admin UI source regressions', () => {
 		expect(clientSource).toContain(
 			'const cronError = $derived(clientCronError || serverCronError);'
 		);
+		expect(clientSource).toContain('const serverCronExpression = $derived(');
+		expect(clientSource).toContain(
+			'data.schedulerStatus.cronExpression ?? DEFAULT_CRON_EXPRESSION'
+		);
+		expect(clientSource).toContain('const cronExpression = $derived(');
+		expect(clientSource).toContain(
+			'localCronExpression ?? submittedCronExpression(form) ?? serverCronExpression'
+		);
+		expect(clientSource).toContain('let localCronExpression = $state<string | null>(null);');
+		expect(clientSource).not.toContain('submittedCronExpressionSnapshot');
+		expect(clientSource).not.toContain('syncedCronExpression');
+		expect(clientSource).toContain('oninput={handleCronExpressionInput}');
+		expect(clientSource).toContain('onclick={() => updateCronExpression(preset.value)}');
+		expect(clientSource).toContain("if (result.type === 'success')");
+		expect(clientSource).toContain('localCronExpression = null;');
 		expect(clientSource).toContain("aria-invalid={cronError ? 'true' : 'false'}");
 		expect(clientSource).toContain(
 			"aria-describedby={cronError ? 'cronExpression-error' : undefined}"
