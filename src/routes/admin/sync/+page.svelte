@@ -1,5 +1,4 @@
 <script lang="ts">
-import { untrack } from 'svelte';
 import { browser } from '$app/environment';
 import { enhance } from '$app/forms';
 import { goto, invalidateAll } from '$app/navigation';
@@ -39,11 +38,8 @@ function submittedCronError(actionData: ActionData | null | undefined, expressio
 }
 
 let selectedBackfillYear = $state<string>('');
-let syncedCronExpression = $state(
-	untrack(() => data.schedulerStatus.cronExpression ?? '0 0 * * *')
-);
-let cronExpression = $state(
-	untrack(() => submittedCronExpression(form) ?? data.schedulerStatus.cronExpression ?? '0 0 * * *')
+let cronExpression = $derived(
+	submittedCronExpression(form) ?? data.schedulerStatus.cronExpression ?? '0 0 * * *'
 );
 const clientCronError = $derived(validateCronExpression(cronExpression));
 const serverCronError = $derived(submittedCronError(form, cronExpression));
@@ -149,19 +145,6 @@ function disconnectSSE() {
 	}
 	isConnected = false;
 }
-
-$effect(() => {
-	const submitted = submittedCronExpression(form);
-	if (submitted !== null) {
-		cronExpression = submitted;
-		return;
-	}
-
-	const nextCronExpression = data.schedulerStatus.cronExpression ?? '0 0 * * *';
-	if (nextCronExpression === syncedCronExpression) return;
-	syncedCronExpression = nextCronExpression;
-	cronExpression = nextCronExpression;
-});
 
 $effect(() => {
 	if (browser && data.isRunning && !eventSource && !syncCompleted) {
