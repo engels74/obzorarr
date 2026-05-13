@@ -695,10 +695,28 @@ $effect(() => {
 				action="?/clearLogs"
 				use:enhance={() => {
 					isClearingLogs = true;
-					return async ({ update }) => {
+					return async ({ result, update }) => {
 						try {
 							await refreshAfterLogMutation(update);
 							clearLogsDialogOpen = false;
+							// The page-level $effect also calls handleFormToast(form), but
+							// explicit feedback inside the enhance callback guarantees a toast
+							// even on adapter quirks where the form prop never refreshes
+							// (ISSUE-010 "no toast, no action" observation).
+							if (result.type === 'success') {
+								const payload = (result.data ?? {}) as { message?: string };
+								handleFormToast({
+									success: true,
+									message: payload.message ?? 'Logs cleared'
+								});
+							} else if (result.type === 'failure') {
+								const payload = (result.data ?? {}) as { error?: string };
+								handleFormToast({ error: payload.error ?? 'Failed to clear logs.' });
+							} else if (result.type === 'error') {
+								handleFormToast({
+									error: result.error?.message ?? 'Failed to clear logs.'
+								});
+							}
 						} finally {
 							isClearingLogs = false;
 						}
@@ -730,10 +748,26 @@ $effect(() => {
 				action="?/runCleanup"
 				use:enhance={() => {
 					isRunningCleanup = true;
-					return async ({ update }) => {
+					return async ({ result, update }) => {
 						try {
 							await refreshAfterLogMutation(update);
 							runCleanupDialogOpen = false;
+							if (result.type === 'success') {
+								const payload = (result.data ?? {}) as { message?: string };
+								handleFormToast({
+									success: true,
+									message: payload.message ?? 'Retention cleanup complete'
+								});
+							} else if (result.type === 'failure') {
+								const payload = (result.data ?? {}) as { error?: string };
+								handleFormToast({
+									error: payload.error ?? 'Failed to run retention cleanup.'
+								});
+							} else if (result.type === 'error') {
+								handleFormToast({
+									error: result.error?.message ?? 'Failed to run retention cleanup.'
+								});
+							}
 						} finally {
 							isRunningCleanup = false;
 						}
