@@ -134,7 +134,7 @@ export const actions: Actions = requireAdminActions({
 			};
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to start sync';
-			return fail(500, { error: message });
+			return fail(500, { error: message, selectedYear: backfillYear ?? null });
 		}
 	},
 

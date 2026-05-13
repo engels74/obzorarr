@@ -5,33 +5,40 @@ import { buildForwardedUrl, parseForwardedProtoHost } from './forwarded-headers'
 
 let proxyStartupLogged = false;
 
-// Module-level cache for the resolved TRUST_PROXY boolean. The setting is
+// Module-level cache for the resolved TRUST_PROXY decision. The setting is
 // operationally static (changes only when an admin toggles it in the UI), but
 // getTrustProxyConfigWithSource() reads the full app_settings table on every
 // call. Without this cache, every blocked/rate-limited request triggers a fresh
 // SQLite scan via isProxiedHttps() — defensive short-circuits should shed load,
 // not amplify it. Admin write sites MUST call _resetTrustProxyCache() AFTER the
 // DB write completes so subsequent requests re-resolve the new value.
-let cachedTrustProxy: boolean | null = null;
+//
+// We cache the in-flight Promise rather than the resolved boolean. This makes
+// reset-during-resolve race-safe: a concurrent _resetTrustProxyCache() nulls
+// the slot, but any request already awaiting the old promise keeps its
+// reference via closure and that promise never writes back to the slot on
+// resolution. Subsequent misses after the reset start a fresh fetch.
+let trustProxyPromise: Promise<boolean> | null = null;
 
-async function resolveTrustProxy(): Promise<boolean> {
-	if (cachedTrustProxy !== null) return cachedTrustProxy;
-	const config = await getTrustProxyConfigWithSource();
-	const trustProxy = config.trustProxy.value === 'true';
+function resolveTrustProxy(): Promise<boolean> {
+	if (trustProxyPromise !== null) return trustProxyPromise;
+	trustProxyPromise = getTrustProxyConfigWithSource().then((config) => {
+		const trustProxy = config.trustProxy.value === 'true';
 
-	if (!proxyStartupLogged && trustProxy) {
-		proxyStartupLogged = true;
-		const sourceLabel = config.trustProxy.source === 'env' ? 'environment' : 'database';
-		logger.warn(
-			`Trusting reverse-proxy x-forwarded-* headers (source: ${sourceLabel}). ` +
-				'The upstream proxy MUST strip inbound x-forwarded-* headers from clients ' +
-				'or attackers can poison event.url.host / event.url.protocol.',
-			'Proxy'
-		);
-	}
+		if (!proxyStartupLogged && trustProxy) {
+			proxyStartupLogged = true;
+			const sourceLabel = config.trustProxy.source === 'env' ? 'environment' : 'database';
+			logger.warn(
+				`Trusting reverse-proxy x-forwarded-* headers (source: ${sourceLabel}). ` +
+					'The upstream proxy MUST strip inbound x-forwarded-* headers from clients ' +
+					'or attackers can poison event.url.host / event.url.protocol.',
+				'Proxy'
+			);
+		}
 
-	cachedTrustProxy = trustProxy;
-	return trustProxy;
+		return trustProxy;
+	});
+	return trustProxyPromise;
 }
 
 // Resolve the effective URL for a request after honouring TRUST_PROXY and the
@@ -87,9 +94,14 @@ export function _resetProxyStartupLogged(): void {
 
 // Invalidate the cached TRUST_PROXY decision so the next request re-reads it
 // from settings. Admin action handlers MUST call this AFTER setAppSetting()
-// completes — calling it before the write would cache the stale value again
-// on a concurrent request. JS is single-threaded so sequential await order in
-// the same handler is sufficient.
+// completes — calling it before the write would seed the cache with a fresh
+// fetch of the OLD value if a concurrent request misses in the same tick.
+//
+// Race-safety against in-flight resolves: clearing trustProxyPromise drops
+// only the module slot. Any request that already awaited the pre-reset promise
+// keeps its reference via closure and is unaffected; that promise never writes
+// back to the slot on resolution, so it cannot pollute the cache after reset.
+// The next miss after this call starts a fresh fetch and caches the new value.
 export function _resetTrustProxyCache(): void {
-	cachedTrustProxy = null;
+	trustProxyPromise = null;
 }
