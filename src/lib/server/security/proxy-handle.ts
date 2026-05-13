@@ -18,26 +18,40 @@ let proxyStartupLogged = false;
 // the slot, but any request already awaiting the old promise keeps its
 // reference via closure and that promise never writes back to the slot on
 // resolution. Subsequent misses after the reset start a fresh fetch.
+//
+// Rejections are self-evicting: if getTrustProxyConfigWithSource() rejects
+// (or the .then callback throws), the chained .catch nulls the slot and
+// re-throws. The current caller still fails fast, and the next request starts
+// a fresh fetch — so a transient DB error cannot stick a rejected promise in
+// the cache indefinitely.
 let trustProxyPromise: Promise<boolean> | null = null;
 
 function resolveTrustProxy(): Promise<boolean> {
 	if (trustProxyPromise !== null) return trustProxyPromise;
-	trustProxyPromise = getTrustProxyConfigWithSource().then((config) => {
-		const trustProxy = config.trustProxy.value === 'true';
+	trustProxyPromise = getTrustProxyConfigWithSource()
+		.then((config) => {
+			const trustProxy = config.trustProxy.value === 'true';
 
-		if (!proxyStartupLogged && trustProxy) {
-			proxyStartupLogged = true;
-			const sourceLabel = config.trustProxy.source === 'env' ? 'environment' : 'database';
-			logger.warn(
-				`Trusting reverse-proxy x-forwarded-* headers (source: ${sourceLabel}). ` +
-					'The upstream proxy MUST strip inbound x-forwarded-* headers from clients ' +
-					'or attackers can poison event.url.host / event.url.protocol.',
-				'Proxy'
-			);
-		}
+			if (!proxyStartupLogged && trustProxy) {
+				proxyStartupLogged = true;
+				const sourceLabel = config.trustProxy.source === 'env' ? 'environment' : 'database';
+				logger.warn(
+					`Trusting reverse-proxy x-forwarded-* headers (source: ${sourceLabel}). ` +
+						'The upstream proxy MUST strip inbound x-forwarded-* headers from clients ' +
+						'or attackers can poison event.url.host / event.url.protocol.',
+					'Proxy'
+				);
+			}
 
-		return trustProxy;
-	});
+			return trustProxy;
+		})
+		.catch((err) => {
+			// Evict the rejected promise so the next caller retries instead of
+			// re-throwing the same stale rejection forever. Re-throw so the
+			// current caller still observes the failure.
+			trustProxyPromise = null;
+			throw err;
+		});
 	return trustProxyPromise;
 }
 

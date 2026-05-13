@@ -570,5 +570,9 @@ describe('admin updateLogSettings action — round-trip', () => {
 	it('rejects maxCount below floor without persisting any field', async () => {
 		const result = await run(createRequest({ maxCount: '500' }));
 		expect(result).toMatchObject({ status: 400 });
+		// retention + maxCount + debug stay at their defaults — confirm no partial write.
+		expect(await getLogRetentionDays()).toBe(7);
+		expect(await getLogMaxCount()).toBe(50000);
+		expect(await isDebugEnabled()).toBe(false);
 	});
 });
