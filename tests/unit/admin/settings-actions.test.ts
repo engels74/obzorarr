@@ -2,16 +2,23 @@ import { beforeEach, describe, expect, it } from 'bun:test';
 import { env } from '$env/dynamic/private';
 import {
 	AppSettingsKey,
+	getAnonymizationMode,
 	getAppSetting,
 	getAppSettingsUpdatedAt,
 	getWrappedLogoMode,
+	SERVER_WRAPPED_SETTINGS_KEYS,
 	setAppSetting,
 	USER_DEFAULTS_SETTINGS_KEYS,
 	WrappedLogoMode
 } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
 import { appSettings } from '$lib/server/db/schema';
-import { getGlobalAllowUserControl, getGlobalDefaultShareMode } from '$lib/server/sharing/service';
+import { getLogMaxCount, getLogRetentionDays, isDebugEnabled } from '$lib/server/logging';
+import {
+	getGlobalAllowUserControl,
+	getGlobalDefaultShareMode,
+	getServerWrappedShareMode
+} from '$lib/server/sharing/service';
 import { actions } from '../../../src/routes/admin/settings/+page.server';
 
 type UpdateUserDefaultsAction = NonNullable<typeof actions.updateUserDefaults>;
@@ -19,6 +26,8 @@ type UpdateApiConfigAction = NonNullable<typeof actions.updateApiConfig>;
 type ClearOpenaiModelAction = NonNullable<typeof actions.clearOpenaiModel>;
 type UpdateTrustProxyAction = NonNullable<typeof actions.updateTrustProxy>;
 type UpdateWrappedLogoModeAction = NonNullable<typeof actions.updateWrappedLogoMode>;
+type UpdateServerWrappedSettingsAction = NonNullable<typeof actions.updateServerWrappedSettings>;
+type UpdateLogSettingsAction = NonNullable<typeof actions.updateLogSettings>;
 
 const adminLocals = {
 	user: { id: 1, plexId: 1, username: 'admin', isAdmin: true }
@@ -449,5 +458,115 @@ describe('admin updateWrappedLogoMode action', () => {
 			}
 		});
 		expect(await getWrappedLogoMode()).toBe(WrappedLogoMode.ALWAYS_HIDE);
+	});
+});
+
+// Round-trip persistence for the Server-wide Wrapped privacy form.
+// Mirrors the dogfood ISSUE-002 repro: change anonymizationMode + serverWrappedShareMode,
+// save, then read back through the same getters the load function uses.
+describe('admin updateServerWrappedSettings action — round-trip', () => {
+	beforeEach(async () => {
+		await db.delete(appSettings);
+	});
+
+	function createRequest(overrides: Record<string, string> = {}): Request {
+		const formData = new FormData();
+		formData.set('anonymizationMode', 'anonymous');
+		formData.set('serverWrappedShareMode', 'private-oauth');
+		formData.set('settingsVersion', new Date(0).toISOString());
+		for (const [k, v] of Object.entries(overrides)) formData.set(k, v);
+		return new Request('http://localhost/admin/settings?/updateServerWrappedSettings', {
+			method: 'POST',
+			body: formData
+		});
+	}
+
+	async function run(request: Request) {
+		const handler = actions.updateServerWrappedSettings as UpdateServerWrappedSettingsAction;
+		return handler({
+			request,
+			locals: adminLocals
+		} as Parameters<UpdateServerWrappedSettingsAction>[0]);
+	}
+
+	it('persists both anonymizationMode and serverWrappedShareMode and exposes them via load-time getters', async () => {
+		await expect(run(createRequest())).resolves.toMatchObject({ success: true });
+		expect(await getAnonymizationMode()).toBe('anonymous');
+		expect(await getServerWrappedShareMode()).toBe('private-oauth');
+	});
+
+	it('allows a follow-up save with the bumped settingsVersion (no spurious 409)', async () => {
+		await expect(run(createRequest())).resolves.toMatchObject({ success: true });
+		const updatedAt = await getAppSettingsUpdatedAt(SERVER_WRAPPED_SETTINGS_KEYS);
+		expect(updatedAt).not.toBeNull();
+
+		await expect(
+			run(
+				createRequest({
+					anonymizationMode: 'hybrid',
+					serverWrappedShareMode: 'public',
+					settingsVersion: (updatedAt as Date).toISOString()
+				})
+			)
+		).resolves.toMatchObject({ success: true });
+		expect(await getAnonymizationMode()).toBe('hybrid');
+		expect(await getServerWrappedShareMode()).toBe('public');
+	});
+
+	it('rejects a stale settingsVersion as 409 without overwriting current values', async () => {
+		await expect(run(createRequest())).resolves.toMatchObject({ success: true });
+		// Submit again with the original epoch — now stale.
+		const result = await run(createRequest({ anonymizationMode: 'real' }));
+		expect(result).toMatchObject({ status: 409 });
+		expect(await getAnonymizationMode()).toBe('anonymous');
+	});
+
+	it('rejects private-link for serverWrappedShareMode and surfaces fieldErrors', async () => {
+		const result = await run(createRequest({ serverWrappedShareMode: 'private-link' }));
+		expect(result).toMatchObject({ status: 400, data: { error: 'Invalid input' } });
+		expect(await getServerWrappedShareMode()).toBe('public');
+	});
+});
+
+// Round-trip persistence for the System tab Logging form (ISSUE-002 system section).
+describe('admin updateLogSettings action — round-trip', () => {
+	beforeEach(async () => {
+		await db.delete(appSettings);
+	});
+
+	function createRequest(overrides: Record<string, string> = {}): Request {
+		const formData = new FormData();
+		formData.set('retentionDays', '14');
+		formData.set('maxCount', '2000');
+		formData.set('debugEnabled', 'true');
+		for (const [k, v] of Object.entries(overrides)) formData.set(k, v);
+		return new Request('http://localhost/admin/settings?/updateLogSettings', {
+			method: 'POST',
+			body: formData
+		});
+	}
+
+	async function run(request: Request) {
+		const handler = actions.updateLogSettings as UpdateLogSettingsAction;
+		return handler({ request, locals: adminLocals } as Parameters<UpdateLogSettingsAction>[0]);
+	}
+
+	it('persists retentionDays, maxCount, and debugEnabled together', async () => {
+		await expect(run(createRequest())).resolves.toMatchObject({ success: true });
+		expect(await getLogRetentionDays()).toBe(14);
+		expect(await getLogMaxCount()).toBe(2000);
+		expect(await isDebugEnabled()).toBe(true);
+	});
+
+	it('rejects retentionDays out of range without persisting any field', async () => {
+		const result = await run(createRequest({ retentionDays: '999' }));
+		expect(result).toMatchObject({ status: 400 });
+		// maxCount + debug stay at their defaults — confirm no partial write.
+		expect(await getAppSetting(AppSettingsKey.SYNC_CRON_EXPRESSION)).toBeNull();
+	});
+
+	it('rejects maxCount below floor without persisting any field', async () => {
+		const result = await run(createRequest({ maxCount: '500' }));
+		expect(result).toMatchObject({ status: 400 });
 	});
 });

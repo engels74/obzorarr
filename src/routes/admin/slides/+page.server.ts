@@ -8,6 +8,7 @@ import {
 } from '$lib/server/admin/settings.service';
 import { getAvailableYears } from '$lib/server/admin/users.service';
 import { requireAdminActions } from '$lib/server/auth/guards';
+import { logger } from '$lib/server/logging';
 import {
 	getAllSlideConfigs,
 	initializeDefaultSlideConfig,
@@ -329,6 +330,9 @@ export const actions: Actions = requireAdminActions({
 		// Validate mode
 		const validModes = Object.values(FunFactFrequency);
 		if (typeof mode !== 'string' || !validModes.includes(mode as FunFactFrequencyType)) {
+			logger.warn('setFunFactFrequency rejected: invalid mode', 'Slides', {
+				submittedMode: typeof mode === 'string' ? mode : null
+			});
 			return fail(400, { error: 'Invalid frequency mode' });
 		}
 
@@ -336,14 +340,21 @@ export const actions: Actions = requireAdminActions({
 		let customCount: number | undefined;
 		if (mode === FunFactFrequency.CUSTOM) {
 			if (typeof customCountStr !== 'string') {
+				logger.warn('setFunFactFrequency rejected: custom count missing', 'Slides');
 				return fail(400, { error: 'Custom count must be between 1 and 15' });
 			}
 			const customCountToken = customCountStr.trim();
 			if (!/^\d+$/.test(customCountToken)) {
+				logger.warn('setFunFactFrequency rejected: custom count not integer', 'Slides', {
+					submittedCount: customCountStr
+				});
 				return fail(400, { error: 'Custom count must be between 1 and 15' });
 			}
 			customCount = Number(customCountToken);
 			if (!Number.isInteger(customCount) || customCount < 1 || customCount > 15) {
+				logger.warn('setFunFactFrequency rejected: custom count out of range', 'Slides', {
+					submittedCount: customCountStr
+				});
 				return fail(400, { error: 'Custom count must be between 1 and 15' });
 			}
 		}

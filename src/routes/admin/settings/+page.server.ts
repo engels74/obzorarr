@@ -27,7 +27,6 @@ import {
 	isPlexInsecureLocalHttpAllowed,
 	resetCsrfWarningDismissal,
 	SERVER_WRAPPED_SETTINGS_KEYS,
-	setAnonymizationMode,
 	setApiConfigAtomic,
 	setAppSetting,
 	setCachedServerName,
@@ -67,11 +66,8 @@ import {
 	bulkApplyShareDefaults,
 	getGlobalAllowUserControl,
 	getGlobalDefaultShareMode,
-	getServerWrappedShareMode,
-	setGlobalShareDefaults,
-	setServerWrappedShareMode
+	getServerWrappedShareMode
 } from '$lib/server/sharing/service';
-import type { ShareModeType } from '$lib/server/sharing/types';
 import type { Actions, PageServerLoad } from './$types';
 
 const ThemeSchema = z.enum([
@@ -86,10 +82,6 @@ const WrappedLogoModeSchema = z.enum(['always_show', 'always_hide', 'user_choice
 
 const ShareModeSchema = z.enum(['public', 'private-oauth', 'private-link']);
 const BooleanStringSchema = z.enum(['true', 'false']).transform((value) => value === 'true');
-const GlobalDefaultsSchema = z.object({
-	defaultShareMode: ShareModeSchema,
-	allowUserControl: BooleanStringSchema
-});
 // Server-wide wrapped only supports public and private-oauth (not private-link)
 const ServerWrappedModeSchema = z.enum(['public', 'private-oauth']);
 
@@ -555,24 +547,6 @@ export const actions: Actions = requireAdminActions({
 		}
 	},
 
-	updateAnonymization: async ({ request }) => {
-		const formData = await request.formData();
-		const mode = formData.get('anonymizationMode');
-
-		const parsed = AnonymizationSchema.safeParse(mode);
-		if (!parsed.success) {
-			return fail(400, { error: 'Invalid anonymization mode' });
-		}
-
-		try {
-			await setAnonymizationMode(parsed.data as AnonymizationModeType);
-			return { success: true, message: 'Anonymization mode updated' };
-		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Failed to update mode';
-			return fail(500, { error: message });
-		}
-	},
-
 	updateWrappedLogoMode: async ({ request }) => {
 		const formData = await request.formData();
 		const mode = formData.get('logoMode');
@@ -697,9 +671,11 @@ export const actions: Actions = requireAdminActions({
 
 		const parsed = LogSettingsSchema.safeParse(data);
 		if (!parsed.success) {
+			const fieldErrors = parsed.error.flatten().fieldErrors;
+			logger.warn('updateLogSettings rejected: validation failed', 'Settings', { fieldErrors });
 			return fail(400, {
 				error: 'Invalid input',
-				fieldErrors: parsed.error.flatten().fieldErrors
+				fieldErrors
 			});
 		}
 
@@ -719,32 +695,6 @@ export const actions: Actions = requireAdminActions({
 		}
 	},
 
-	updateGlobalDefaults: async ({ request }) => {
-		const formData = await request.formData();
-
-		const data = {
-			defaultShareMode: formData.get('defaultShareMode'),
-			allowUserControl: formData.get('allowUserControl')
-		};
-
-		const parsed = GlobalDefaultsSchema.safeParse(data);
-		if (!parsed.success) {
-			return fail(400, { error: 'Invalid input', fieldErrors: parsed.error.flatten().fieldErrors });
-		}
-
-		try {
-			await setGlobalShareDefaults({
-				defaultShareMode: parsed.data.defaultShareMode as ShareModeType,
-				allowUserControl: parsed.data.allowUserControl
-			});
-
-			return { success: true, message: 'Sharing defaults updated' };
-		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Failed to update defaults';
-			return fail(500, { error: message });
-		}
-	},
-
 	bulkApplyShareDefaults: async () => {
 		try {
 			const count = await bulkApplyShareDefaults();
@@ -752,27 +702,6 @@ export const actions: Actions = requireAdminActions({
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : 'Failed to apply defaults to existing users';
-			return fail(500, { error: message });
-		}
-	},
-
-	updateServerWrappedMode: async ({ request }) => {
-		const formData = await request.formData();
-		const mode = formData.get('serverWrappedShareMode');
-
-		const parsed = ServerWrappedModeSchema.safeParse(mode);
-		if (!parsed.success) {
-			return fail(400, {
-				error: 'Invalid share mode. Server wrapped only supports public or private-oauth.'
-			});
-		}
-
-		try {
-			await setServerWrappedShareMode(parsed.data as ShareModeType);
-			return { success: true, message: 'Server wrapped share mode updated' };
-		} catch (error) {
-			const message =
-				error instanceof Error ? error.message : 'Failed to update server wrapped mode';
 			return fail(500, { error: message });
 		}
 	},
@@ -795,6 +724,9 @@ export const actions: Actions = requireAdminActions({
 					error: 'Settings changed in another tab. Please reload.'
 				});
 			}
+			logger.warn('updateServerWrappedSettings rejected: validation failed', 'Settings', {
+				fieldErrors
+			});
 			return fail(400, {
 				error: 'Invalid input',
 				fieldErrors
@@ -840,6 +772,7 @@ export const actions: Actions = requireAdminActions({
 					error: 'Settings changed in another tab. Please reload.'
 				});
 			}
+			logger.warn('updateUserDefaults rejected: validation failed', 'Settings', { fieldErrors });
 			return fail(400, {
 				error: 'Invalid input',
 				fieldErrors
