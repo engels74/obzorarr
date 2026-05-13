@@ -61,8 +61,15 @@ function handleActionClick(event: MouseEvent, action: () => void): void {
 	// is a no-op" — ISSUE-013 saw all three endcard buttons fail silently with
 	// no console error and no toast. Surface failures explicitly so the next
 	// dogfood pass can attribute the regression to a specific handler.
+	// `() => void` permits handlers that return a Promise, so guard both
+	// synchronous throws and asynchronous rejections.
 	try {
-		action();
+		const result = action() as unknown;
+		if (result && typeof (result as PromiseLike<unknown>).then === 'function') {
+			(result as Promise<unknown>).catch((error) => {
+				console.error('Summary endcard action rejected', error);
+			});
+		}
 	} catch (error) {
 		console.error('Summary endcard action threw', error);
 	}

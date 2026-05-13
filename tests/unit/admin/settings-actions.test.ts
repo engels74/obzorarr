@@ -561,8 +561,10 @@ describe('admin updateLogSettings action — round-trip', () => {
 	it('rejects retentionDays out of range without persisting any field', async () => {
 		const result = await run(createRequest({ retentionDays: '999' }));
 		expect(result).toMatchObject({ status: 400 });
-		// maxCount + debug stay at their defaults — confirm no partial write.
-		expect(await getAppSetting(AppSettingsKey.SYNC_CRON_EXPRESSION)).toBeNull();
+		// retention + maxCount + debug stay at their defaults — confirm no partial write.
+		expect(await getLogRetentionDays()).toBe(7);
+		expect(await getLogMaxCount()).toBe(50000);
+		expect(await isDebugEnabled()).toBe(false);
 	});
 
 	it('rejects maxCount below floor without persisting any field', async () => {
