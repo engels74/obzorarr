@@ -1,7 +1,9 @@
 <script lang="ts">
+import { untrack } from 'svelte';
 import { browser } from '$app/environment';
 import { enhance } from '$app/forms';
 import { goto, invalidateAll } from '$app/navigation';
+import { validateCronExpression } from '$lib/cron/validation';
 import { handleFormToast } from '$lib/utils/form-toast';
 import { formatDuration as formatDurationMs } from '$lib/utils/format';
 import type { ActionData, PageData } from './$types';
@@ -22,23 +24,34 @@ interface SyncProgress {
 
 let { data, form }: { data: PageData; form: ActionData } = $props();
 
+function submittedCronExpression(actionData: ActionData | null | undefined): string | null {
+	if (!actionData || !('cronExpression' in actionData)) return null;
+	const value = actionData.cronExpression;
+	return typeof value === 'string' ? value : null;
+}
+
+function submittedCronError(actionData: ActionData | null | undefined, expression: string): string {
+	if (!actionData || !('cronError' in actionData)) return '';
+	const error = actionData.cronError;
+	return submittedCronExpression(actionData) === expression && typeof error === 'string'
+		? error
+		: '';
+}
+
 let selectedBackfillYear = $state<string>('');
-let cronExpression = $state('0 0 * * *');
-const cronError = $derived(validateCron(cronExpression));
+let syncedCronExpression = $state(
+	untrack(() => data.schedulerStatus.cronExpression ?? '0 0 * * *')
+);
+let cronExpression = $state(
+	untrack(() => submittedCronExpression(form) ?? data.schedulerStatus.cronExpression ?? '0 0 * * *')
+);
+const clientCronError = $derived(validateCronExpression(cronExpression));
+const serverCronError = $derived(submittedCronError(form, cronExpression));
+const cronError = $derived(clientCronError || serverCronError);
 let isSyncing = $state(false);
 let isCancelling = $state(false);
 // Optimistic flag so Cancel is hit-testable during the brief gap between Start-click and the first SSE frame.
 let pendingStart = $state(false);
-
-function validateCron(expr: string): string {
-	const trimmed = expr.trim();
-	if (!trimmed) return 'Cron expression is required';
-	if (!/^[\d\s*/\-,]+$/.test(trimmed)) return 'Only digits, spaces, and * / - , are allowed';
-	const fields = trimmed.split(/\s+/);
-	if (fields.length !== 5)
-		return `Expected 5 fields (minute hour day month weekday), got ${fields.length}`;
-	return '';
-}
 
 $effect(() => {
 	handleFormToast(form);
@@ -138,7 +151,16 @@ function disconnectSSE() {
 }
 
 $effect(() => {
-	cronExpression = data.schedulerStatus.cronExpression ?? '0 0 * * *';
+	const submitted = submittedCronExpression(form);
+	if (submitted !== null) {
+		cronExpression = submitted;
+		return;
+	}
+
+	const nextCronExpression = data.schedulerStatus.cronExpression ?? '0 0 * * *';
+	if (nextCronExpression === syncedCronExpression) return;
+	syncedCronExpression = nextCronExpression;
+	cronExpression = nextCronExpression;
 });
 
 $effect(() => {
@@ -532,7 +554,12 @@ async function goToPage(page: number) {
 					{:else}
 						<form method="POST" action="?/initScheduler" use:enhance>
 							<input type="hidden" name="cronExpression" value={cronExpression} />
-							<button type="submit" class="control-btn init" disabled={!!cronError}>
+							<button
+								type="submit"
+								class="control-btn init"
+								disabled={!!cronError}
+								aria-describedby={cronError ? 'cronExpression-error' : undefined}
+							>
 								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 									<circle cx="12" cy="12" r="10" />
 									<polyline points="12 6 12 12 16 14" />
@@ -567,7 +594,13 @@ async function goToPage(page: number) {
 							aria-invalid={cronError ? 'true' : 'false'}
 							aria-describedby={cronError ? 'cronExpression-error' : undefined}
 						/>
-						<button type="submit" class="cron-update-btn" disabled={!!cronError} aria-label="Update schedule">
+						<button
+							type="submit"
+							class="cron-update-btn"
+							disabled={!!cronError}
+							aria-label={cronError ? 'Fix cron expression before saving' : 'Update schedule'}
+							aria-describedby={cronError ? 'cronExpression-error' : undefined}
+						>
 							<svg
 								viewBox="0 0 24 24"
 								fill="none"
@@ -581,7 +614,9 @@ async function goToPage(page: number) {
 					</div>
 
 					{#if cronError}
-						<span id="cronExpression-error" class="cron-error" role="alert">{cronError}</span>
+						<span id="cronExpression-error" class="cron-error" role="alert">
+							Save disabled: {cronError}
+						</span>
 					{/if}
 
 					<div class="cron-presets">

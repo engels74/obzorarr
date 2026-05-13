@@ -529,15 +529,54 @@ describe('admin UI source regressions', () => {
 	});
 
 	it('renders invalid cron feedback inline while disabling schedule save', async () => {
-		const source = await readSource('src/routes/admin/sync/+page.svelte');
+		const [clientSource, serverSource, validationSource] = await Promise.all([
+			readSource('src/routes/admin/sync/+page.svelte'),
+			readSource('src/routes/admin/sync/+page.server.ts'),
+			readSource('src/lib/cron/validation.ts')
+		]);
 
-		expect(source).toContain('const cronError = $derived(validateCron(cronExpression));');
-		expect(source).toContain("aria-invalid={cronError ? 'true' : 'false'}");
-		expect(source).toContain("aria-describedby={cronError ? 'cronExpression-error' : undefined}");
-		expect(source).toContain('disabled={!!cronError}');
-		expect(source).toContain('id="cronExpression-error"');
-		expect(source).toContain('class="cron-error"');
-		expect(source).toContain('role="alert"');
+		expect(clientSource).toContain(
+			"import { validateCronExpression } from '$lib/cron/validation';"
+		);
+		expect(clientSource).toContain(
+			'const clientCronError = $derived(validateCronExpression(cronExpression));'
+		);
+		expect(clientSource).toContain(
+			'const serverCronError = $derived(submittedCronError(form, cronExpression));'
+		);
+		expect(clientSource).toContain(
+			'const cronError = $derived(clientCronError || serverCronError);'
+		);
+		expect(clientSource).toContain("aria-invalid={cronError ? 'true' : 'false'}");
+		expect(clientSource).toContain(
+			"aria-describedby={cronError ? 'cronExpression-error' : undefined}"
+		);
+		expect(clientSource).toContain('disabled={!!cronError}');
+		expect(clientSource).toContain("aria-label={cronError ? 'Fix cron expression before saving'");
+		expect(clientSource).toContain('id="cronExpression-error"');
+		expect(clientSource).toContain('class="cron-error"');
+		expect(clientSource).toContain('role="alert"');
+		expect(clientSource).toContain('Save disabled: {cronError}');
+		expect(serverSource).toContain(
+			"import { validateCronExpression } from '$lib/cron/validation';"
+		);
+		expect(serverSource).toContain('cronError: parsed.error');
+		expect(serverSource).toContain('cronExpression');
+		expect(validationSource).toContain("'Only digits, spaces, and * / - , are allowed'");
+		expect(validationSource).toContain("'Cron expression must have exactly 5 fields'");
+	});
+
+	it('wires server wrapped SummaryPage sharing into ShareModal', async () => {
+		const source = await readSource('src/routes/wrapped/[year]/+page.svelte');
+
+		expect(source).toContain('let showShareModal = $state(false);');
+		expect(source).toContain('function handleShare(): void');
+		expect(source).toContain('showShareModal = true;');
+		expect(source).toMatch(/<SummaryPage[\s\S]*onShare=\{handleShare\}[\s\S]*\/>/);
+		expect(source).toMatch(/<ShareModal[\s\S]*bind:open=\{showShareModal\}/);
+		expect(source).toContain('currentUrl={data.currentUrl}');
+		expect(source).toContain('isAdmin={data.isAdmin}');
+		expect(source).toContain('isServerWrapped={true}');
 	});
 
 	it('wires Clear All Logs through a visible confirmation dialog', async () => {

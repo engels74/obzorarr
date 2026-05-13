@@ -1,5 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import { z } from 'zod';
+import { validateCronExpression } from '$lib/cron/validation';
 import { AppSettingsKey, getAppSetting, setAppSetting } from '$lib/server/admin/settings.service';
 import { requireAdminActions } from '$lib/server/auth/guards';
 import { cancelSync } from '$lib/server/sync/progress';
@@ -20,14 +21,6 @@ import {
 } from '$lib/server/sync/service';
 import type { Actions, PageServerLoad } from './$types';
 
-const CronExpressionSchema = z
-	.string()
-	.regex(/^[\d\s*/\-,]+$/, 'Invalid cron expression format')
-	.refine(
-		(val) => val.trim().split(/\s+/).filter(Boolean).length === 5,
-		'Cron expression must have exactly 5 fields'
-	);
-
 const BackfillYearSchema = z
 	.string()
 	.optional()
@@ -35,6 +28,13 @@ const BackfillYearSchema = z
 	.pipe(z.number().min(2000).max(2100).optional());
 
 const HISTORY_PAGE_SIZE = 8;
+
+function parseCronExpression(expression: string) {
+	const error = validateCronExpression(expression);
+	return error
+		? { success: false as const, error }
+		: { success: true as const, value: expression.trim() };
+}
 
 export const load: PageServerLoad = async ({ url }) => {
 	const pageParam = url.searchParams.get('page');
@@ -141,18 +141,25 @@ export const actions: Actions = requireAdminActions({
 		const cronExpression = formData.get('cronExpression');
 
 		if (!cronExpression || typeof cronExpression !== 'string') {
-			return fail(400, { error: 'Cron expression is required' });
+			return fail(400, {
+				error: 'Cron expression is required',
+				cronError: 'Cron expression is required',
+				cronExpression: ''
+			});
 		}
 
-		const parsed = CronExpressionSchema.safeParse(cronExpression);
+		const parsed = parseCronExpression(cronExpression);
 		if (!parsed.success) {
-			const message = parsed.error.issues[0]?.message ?? 'Invalid cron expression format';
-			return fail(400, { error: message });
+			return fail(400, {
+				error: parsed.error,
+				cronError: parsed.error,
+				cronExpression
+			});
 		}
 
 		try {
-			updateSchedulerCron(parsed.data);
-			await setAppSetting(AppSettingsKey.SYNC_CRON_EXPRESSION, parsed.data);
+			updateSchedulerCron(parsed.value);
+			await setAppSetting(AppSettingsKey.SYNC_CRON_EXPRESSION, parsed.value);
 			return { success: true, message: 'Schedule updated successfully' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to update schedule';
@@ -197,18 +204,21 @@ export const actions: Actions = requireAdminActions({
 		const expression =
 			cronExpression && typeof cronExpression === 'string' ? cronExpression : '0 0 * * *';
 
-		const parsed = CronExpressionSchema.safeParse(expression);
+		const parsed = parseCronExpression(expression);
 		if (!parsed.success) {
-			const message = parsed.error.issues[0]?.message ?? 'Invalid cron expression format';
-			return fail(400, { error: message });
+			return fail(400, {
+				error: parsed.error,
+				cronError: parsed.error,
+				cronExpression: expression
+			});
 		}
 
 		try {
 			setupSyncScheduler({
-				cronExpression: parsed.data,
+				cronExpression: parsed.value,
 				startImmediately: true
 			});
-			await setAppSetting(AppSettingsKey.SYNC_CRON_EXPRESSION, parsed.data);
+			await setAppSetting(AppSettingsKey.SYNC_CRON_EXPRESSION, parsed.value);
 			return { success: true, message: 'Scheduler initialized' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to initialize scheduler';
