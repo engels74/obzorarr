@@ -93,21 +93,7 @@
           "isUnique": false
         }
       },
-      "foreignKeys": {
-        "cached_stats_user_id_users_id_fk": {
-          "name": "cached_stats_user_id_users_id_fk",
-          "tableFrom": "cached_stats",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}

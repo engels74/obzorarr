@@ -56,7 +56,8 @@ export const cachedStats = sqliteTable(
 	'cached_stats',
 	{
 		id: integer('id').primaryKey({ autoIncrement: true }),
-		userId: integer('user_id').references(() => users.id, { onDelete: 'cascade' }),
+		// Stores the Plex account id used by stats, not the local users.id.
+		userId: integer('user_id'),
 		year: integer('year').notNull(),
 		statsType: text('stats_type').notNull(),
 		statsJson: text('stats_json').notNull(),

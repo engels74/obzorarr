@@ -8,6 +8,7 @@ import {
 	createBootstrapToken,
 	ONBOARDING_CLAIM_REQUIRED_MESSAGE
 } from '$lib/server/onboarding/bootstrap';
+import { actions as completeActions } from '../../../src/routes/onboarding/complete/+page.server';
 import { actions as plexActions } from '../../../src/routes/onboarding/plex/+page.server';
 import { actions as settingsActions } from '../../../src/routes/onboarding/settings/+page.server';
 import { actions as syncActions } from '../../../src/routes/onboarding/sync/+page.server';
@@ -34,7 +35,8 @@ const claimCheckedActions = [
 	['settings.testAIConnection', settingsActions.testAIConnection],
 	['sync.startSync', syncActions.startSync],
 	['sync.cancelSync', syncActions.cancelSync],
-	['sync.continue', syncActions.continue]
+	['sync.continue', syncActions.continue],
+	['complete.goToDashboard', completeActions.goToDashboard]
 ] as const;
 
 const adminRequiredActions = [
@@ -43,7 +45,8 @@ const adminRequiredActions = [
 	['settings.testAIConnection', settingsActions.testAIConnection],
 	['sync.startSync', syncActions.startSync],
 	['sync.cancelSync', syncActions.cancelSync],
-	['sync.continue', syncActions.continue]
+	['sync.continue', syncActions.continue],
+	['complete.goToDashboard', completeActions.goToDashboard]
 ] as const;
 
 function makeCookies(errorToThrow?: Error): Cookies {
