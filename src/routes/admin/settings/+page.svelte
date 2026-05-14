@@ -210,7 +210,7 @@ async function confirmBulkApplyShareDefaults() {
 			'?/bulkApplyShareDefaults'
 		);
 		if (result.type === 'success') {
-			handleFormToast(result.data ?? { success: true, message: 'Defaults applied to all users.' });
+			handleFormToast(result.data);
 		} else if (result.type === 'failure') {
 			handleFormToast({ error: result.data.error ?? 'Failed to apply defaults.' });
 		} else if (result.type === 'error') {

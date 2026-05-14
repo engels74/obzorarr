@@ -24,7 +24,18 @@ export async function submitAction<T = unknown>(
 		headers: { 'x-sveltekit-action': 'true' },
 		body: body ?? new FormData()
 	});
-	const result = deserialize(await response.text()) as ActionResult;
+
+	let result: ActionResult;
+	try {
+		result = deserialize(await response.text()) as ActionResult;
+	} catch (err) {
+		// `deserialize` throws when the response body is not the SvelteKit action
+		// wire format (e.g. a proxy/WAF returned HTML, a rate limiter returned
+		// plain text, or the body was truncated). Map this to a typed error
+		// outcome so callers can rely on the `SubmitOutcome<T>` contract.
+		const message = err instanceof Error ? err.message : 'Invalid action response';
+		return { type: 'error', error: { message } };
+	}
 
 	if (result.type === 'success') {
 		return { type: 'success', data: (result.data ?? {}) as T };
