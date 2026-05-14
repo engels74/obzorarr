@@ -635,6 +635,7 @@ function formatServerUrl(url: string | null): string {
 							<span>Sign in with Plex</span>
 						{/if}
 					</button>
+					<a class="redirect-fallback" href="?auth=redirect">Use redirect instead</a>
 				</div>
 			{:else if isNonAdminUser}
 				<div class="error-card animate-item">
@@ -690,6 +691,7 @@ function formatServerUrl(url: string | null): string {
 							<span>Sign in with Plex</span>
 						{/if}
 					</button>
+					<a class="redirect-fallback" href="?auth=redirect">Use redirect instead</a>
 				</div>
 			{:else if isNonAdminUser}
 				<div class="error-card animate-item">
@@ -1327,6 +1329,21 @@ function formatServerUrl(url: string | null): string {
 			border-top-color: rgba(0, 0, 0, 0.7);
 			border-radius: 50%;
 			animation: spin 0.8s linear infinite;
+		}
+
+		.redirect-fallback {
+			display: inline-block;
+			margin-top: 0.75rem;
+			font-size: 0.85rem;
+			color: rgba(255, 255, 255, 0.55);
+			text-decoration: underline;
+			text-underline-offset: 3px;
+			transition: color 0.2s ease;
+		}
+
+		.redirect-fallback:hover,
+		.redirect-fallback:focus-visible {
+			color: rgba(255, 255, 255, 0.85);
 		}
 
 		/* Success Card */

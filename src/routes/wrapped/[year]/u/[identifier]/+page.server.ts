@@ -66,7 +66,16 @@ async function resolveUserIdFromIdentifier(
 	}
 
 	const userId = Number(identifier);
-	return Number.isSafeInteger(userId) && userId > 0 ? userId : null;
+	if (!Number.isSafeInteger(userId) || userId <= 0) {
+		return null;
+	}
+
+	const userRow = await db
+		.select({ id: users.id })
+		.from(users)
+		.where(eq(users.id, userId))
+		.limit(1);
+	return userRow[0]?.id ?? null;
 }
 
 export const load: PageServerLoad = async ({ params, locals, parent, setHeaders }) => {
@@ -114,6 +123,20 @@ export const load: PageServerLoad = async ({ params, locals, parent, setHeaders 
 			error(404, "We couldn't find a Wrapped page for that link.");
 		}
 		userId = parsedId;
+
+		// Verify the user actually exists before any code path that may create
+		// share_settings rows for them (checkWrappedAccess -> getOrCreateShareSettings).
+		// Preserves the F-015 anti-enumeration story (unknown id -> 404) and blocks
+		// the route by which a stray numeric id (e.g. a Plex id) became a
+		// share_settings.user_id orphan.
+		const userExists = await db
+			.select({ id: users.id })
+			.from(users)
+			.where(eq(users.id, userId))
+			.limit(1);
+		if (!userExists[0]) {
+			error(404, "We couldn't find a Wrapped page for that link.");
+		}
 
 		try {
 			await checkWrappedAccess({

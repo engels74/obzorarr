@@ -54,7 +54,8 @@ describe('onboarding CSRF page source', () => {
 	it('runs onboarding reverse proxy diagnostics through the CSRF page action only', async () => {
 		const source = await readPageSource();
 
-		expect(source).toContain("fetch('?/diagnoseReverseProxy'");
+		expect(source).toContain('submitAction<');
+		expect(source).toContain("'?/diagnoseReverseProxy'");
 		expect(source).toContain('action="?/enableTrustProxy"');
 		expect(source).not.toContain('/api/security');
 	});

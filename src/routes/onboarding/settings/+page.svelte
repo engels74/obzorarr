@@ -1,9 +1,10 @@
 <script lang="ts">
 import { animate } from 'motion';
 import { tick, untrack } from 'svelte';
-import { deserialize, enhance } from '$app/forms';
+import { enhance } from '$app/forms';
 import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
 import { handleFormToast } from '$lib/utils/form-toast';
+import { submitAction } from '$lib/utils/submit-action';
 import { loadThemeFont } from '$lib/utils/theme-fonts';
 import type { ActionData, PageData } from './$types';
 
@@ -671,17 +672,13 @@ function getThemeColors(themeValue: string) {
 												formData.set('openaiBaseUrl', openaiBaseUrl);
 												formData.set('openaiModel', openaiModel);
 												try {
-													const response = await fetch('?/testAIConnection', {
-														method: 'POST',
-														body: formData
-													});
-													const result = deserialize(await response.text());
+													const result = await submitAction<{
+														success?: boolean;
+														message?: string;
+														error?: string;
+													}>('?/testAIConnection', formData);
 													if (result.type === 'success' || result.type === 'failure') {
-														const payload = result.data as {
-															success?: boolean;
-															message?: string;
-															error?: string;
-														};
+														const payload = result.data;
 														handleFormToast(payload);
 														testAIResult = payload.error
 															? { type: 'error', message: payload.error }
@@ -691,7 +688,7 @@ function getThemeColors(themeValue: string) {
 																};
 													} else if (result.type === 'error') {
 														const message =
-															result.error?.message ?? 'An error occurred while testing connection';
+															result.error.message ?? 'An error occurred while testing connection';
 														handleFormToast({ error: message });
 														testAIResult = { type: 'error', message };
 													} else {

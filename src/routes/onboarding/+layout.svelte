@@ -103,7 +103,8 @@ $effect(() => {
 			min-height: 100dvh;
 			width: 100%;
 			position: relative;
-			overflow: clip;
+			overflow-x: clip;
+			overflow-y: auto;
 			display: flex;
 			flex-direction: column;
 			background: hsl(var(--background));
