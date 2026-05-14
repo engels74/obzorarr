@@ -20,17 +20,19 @@ Follow the patterns established in `.augment/rules/bun-svelte-pro.md`. Key princ
 
 ## Pre-commit Hooks
 
-This project uses [prek](https://github.com/j178/prek) to run pre-commit hooks. Hooks are automatically installed when you run `bun install`.
+This project uses [prek](https://github.com/j178/prek) to run Git hooks. Configuration lives in [`prek.toml`](./prek.toml) and hooks are installed automatically when you run `bun install`.
 
 ### Pre-commit (every commit)
 
 - Trailing whitespace removal
 - End-of-file newline fix
+- Mixed line endings normalized to LF
 - YAML, JSON, TOML syntax validation
-- Merge conflict detection
+- Merge conflict and case conflict detection
 - Private key detection
 - Large file prevention (max 500KB)
-- Prettier formatting (staged files only)
+- Direct commits to `main` blocked
+- Biome format + lint on staged JS/TS/Svelte/JSON/CSS files
 
 ### Pre-push (before push)
 
@@ -40,8 +42,9 @@ This project uses [prek](https://github.com/j178/prek) to run pre-commit hooks. 
 ### Manual Commands
 
 ```bash
-prek run --all-files    # Run all hooks on entire codebase
-prek run prettier       # Run specific hook
+prek run --all-files            # Run all hooks on entire codebase
+prek run biome --all-files      # Run a single hook by id
+prek validate-config prek.toml  # Validate the config
 ```
 
 ### Skipping Hooks
