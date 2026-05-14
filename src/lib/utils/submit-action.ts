@@ -1,0 +1,39 @@
+import type { ActionResult } from '@sveltejs/kit';
+import { deserialize } from '$app/forms';
+
+export type SubmitOutcome<T> =
+	| { type: 'success'; data: T }
+	| { type: 'failure'; data: { error?: string } & Partial<T> }
+	| { type: 'error'; error: { message?: string } }
+	| { type: 'redirect'; location: string };
+
+/**
+ * Submit a SvelteKit form action programmatically and return the parsed result.
+ *
+ * SvelteKit only returns the action wire format (parseable by `deserialize`) when
+ * the request carries the `x-sveltekit-action: true` header. Without it the server
+ * responds with an HTML page and `deserialize()` throws. This helper guarantees the
+ * header is set and normalizes the response shape for callers.
+ */
+export async function submitAction<T = unknown>(
+	action: string,
+	body?: FormData
+): Promise<SubmitOutcome<T>> {
+	const response = await fetch(action, {
+		method: 'POST',
+		headers: { 'x-sveltekit-action': 'true' },
+		body: body ?? new FormData()
+	});
+	const result = deserialize(await response.text()) as ActionResult;
+
+	if (result.type === 'success') {
+		return { type: 'success', data: (result.data ?? {}) as T };
+	}
+	if (result.type === 'failure') {
+		return { type: 'failure', data: (result.data ?? {}) as { error?: string } & Partial<T> };
+	}
+	if (result.type === 'redirect') {
+		return { type: 'redirect', location: result.location };
+	}
+	return { type: 'error', error: { message: result.error?.message } };
+}

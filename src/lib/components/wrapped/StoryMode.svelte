@@ -519,6 +519,7 @@ function handleSlideAnimationComplete(): void {}
 			justify-content: center;
 			padding: 3rem 1.5rem;
 			padding-top: 4rem; /* Space for progress bar */
+			overflow-y: auto;
 		}
 
 		.previous-slide {

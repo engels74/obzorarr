@@ -163,7 +163,9 @@ function handleCancelRedirect(): void {
 					class="username-form"
 				>
 					<div class="username-input-group">
+						<label for="username-input" class="sr-only">Plex username</label>
 						<input
+							id="username-input"
 							type="text"
 							name="username"
 							bind:value={username}
@@ -339,6 +341,18 @@ function handleCancelRedirect(): void {
 			gap: 0.5rem;
 			flex-wrap: wrap;
 			justify-content: center;
+		}
+
+		.sr-only {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			padding: 0;
+			margin: -1px;
+			overflow: hidden;
+			clip: rect(0, 0, 0, 0);
+			white-space: nowrap;
+			border: 0;
 		}
 
 		.username-input {

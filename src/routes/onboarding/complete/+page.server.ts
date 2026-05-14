@@ -45,11 +45,6 @@ export const load: PageServerLoad = async ({ parent, locals, url, cookies }) => 
 	const parentData = await parent();
 	const notice = url.searchParams.get('notice');
 
-	await completeOnboarding();
-	clearOnboardingClaimCookie(cookies);
-
-	logger.info(`Onboarding completed by ${locals.user?.username || 'unknown'}`, 'Onboarding');
-
 	// Get sync status (may still be running)
 	const syncRunning = await isSyncRunning();
 	const syncProgress = getSyncProgress();
@@ -152,10 +147,13 @@ export const actions: Actions = {
 	/**
 	 * Go to dashboard
 	 */
-	goToDashboard: async ({ locals }) => {
+	goToDashboard: async ({ locals, cookies }) => {
 		if (!locals.user?.isAdmin) {
 			return fail(403, { error: 'Admin access required' });
 		}
+		await completeOnboarding();
+		clearOnboardingClaimCookie(cookies);
+		logger.info(`Onboarding completed by ${locals.user?.username || 'unknown'}`, 'Onboarding');
 		redirect(303, '/admin');
 	}
 };

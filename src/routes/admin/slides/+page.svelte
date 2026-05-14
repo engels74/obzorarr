@@ -1,10 +1,11 @@
 <script lang="ts">
 import Plus from '@lucide/svelte/icons/plus';
 import { untrack } from 'svelte';
-import { deserialize, enhance } from '$app/forms';
+import { enhance } from '$app/forms';
 import type { SlideType } from '$lib/components/slides/types';
 import { DEFAULT_SLIDE_ORDER } from '$lib/components/slides/types';
 import { handleFormToast } from '$lib/utils/form-toast';
+import { submitAction } from '$lib/utils/submit-action';
 import type { ActionData, PageData } from './$types';
 
 /**
@@ -689,25 +690,22 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 								formData.append('content', editorContent);
 
 								try {
-									const response = await fetch('?/previewMarkdown', {
-										method: 'POST',
-										body: formData
-									});
-									const result = deserialize(await response.text());
+									const result = await submitAction<{ html?: string }>(
+										'?/previewMarkdown',
+										formData
+									);
 									if (result.type === 'success') {
-										const data = (result.data ?? {}) as { html?: string };
-										previewHtml = data.html ?? '';
-										previewRendered = typeof data.html === 'string';
+										previewHtml = result.data.html ?? '';
+										previewRendered = typeof result.data.html === 'string';
 										previewError = previewRendered ? '' : 'Failed to render Markdown';
 									} else if (result.type === 'failure') {
-										const data = (result.data ?? {}) as { error?: string };
 										previewHtml = '';
 										previewRendered = false;
-										previewError = data.error ?? 'Failed to render Markdown';
+										previewError = result.data.error ?? 'Failed to render Markdown';
 									} else if (result.type === 'error') {
 										previewHtml = '';
 										previewRendered = false;
-										previewError = result.error?.message ?? 'Failed to render Markdown';
+										previewError = result.error.message ?? 'Failed to render Markdown';
 									}
 								} catch (error) {
 									console.error('Failed to render Markdown preview:', error);

@@ -1,9 +1,8 @@
 <script lang="ts">
 import ExternalLink from '@lucide/svelte/icons/external-link';
-import type { ActionResult } from '@sveltejs/kit';
 import { animate, stagger } from 'motion';
-import { deserialize } from '$app/forms';
 import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
+import { submitAction } from '$lib/utils/submit-action';
 import type { ActionData, PageData } from './$types';
 
 let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -122,19 +121,14 @@ async function runDiagnostic() {
 	formData.set('browserOrigin', browserOrigin);
 
 	try {
-		const response = await fetch('?/diagnoseReverseProxy', {
-			method: 'POST',
-			body: formData
-		});
-		const text = await response.text();
-		const result: ActionResult = deserialize(text);
+		const result = await submitAction<{
+			reverseProxyDiagnostic?: ReverseProxyDiagnosticView;
+			diagnosticError?: string;
+		}>('?/diagnoseReverseProxy', formData);
 
 		if (result.type === 'success') {
-			const payload = result.data as
-				| { reverseProxyDiagnostic?: ReverseProxyDiagnosticView }
-				| undefined;
-			if (payload?.reverseProxyDiagnostic) {
-				reverseProxyDiagnostic = payload.reverseProxyDiagnostic;
+			if (result.data.reverseProxyDiagnostic) {
+				reverseProxyDiagnostic = result.data.reverseProxyDiagnostic;
 				diagnosticStatus = 'success';
 			} else {
 				diagnosticStatus = 'failure';
@@ -142,8 +136,7 @@ async function runDiagnostic() {
 			}
 		} else if (result.type === 'failure') {
 			diagnosticStatus = 'failure';
-			const payload = result.data as { diagnosticError?: string } | undefined;
-			diagnosticError = payload?.diagnosticError ?? 'Diagnostic failed';
+			diagnosticError = result.data.diagnosticError ?? 'Diagnostic failed';
 		} else {
 			diagnosticStatus = 'failure';
 			diagnosticError = 'Unexpected diagnostic response';
@@ -171,20 +164,14 @@ async function runTest() {
 	formData.set('csrfOrigin', csrfOriginInput);
 
 	try {
-		const response = await fetch('?/testOrigin', {
-			method: 'POST',
-			body: formData
-		});
-		const text = await response.text();
-		const result: ActionResult = deserialize(text);
+		const result = await submitAction<{ testError?: string }>('?/testOrigin', formData);
 
 		if (result.type === 'success') {
 			testResult = 'success';
 			testedOrigin = csrfOriginInput ?? null;
 		} else if (result.type === 'failure') {
 			testResult = 'failure';
-			const data = result.data as { testError?: string } | undefined;
-			testError = data?.testError ?? 'Test failed';
+			testError = result.data.testError ?? 'Test failed';
 		} else {
 			testResult = 'failure';
 			testError = 'Unexpected response';

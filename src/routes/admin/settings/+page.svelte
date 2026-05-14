@@ -41,12 +41,13 @@ import X from '@lucide/svelte/icons/x';
 import Zap from '@lucide/svelte/icons/zap';
 import { type Component, tick, untrack } from 'svelte';
 import { prefersReducedMotion } from 'svelte/motion';
-import { deserialize, enhance } from '$app/forms';
+import { enhance } from '$app/forms';
 import { goto, invalidateAll } from '$app/navigation';
 import { page } from '$app/stores';
 import * as AlertDialog from '$lib/components/ui/alert-dialog';
 import * as Tabs from '$lib/components/ui/tabs';
 import { handleFormToast } from '$lib/utils/form-toast';
+import { submitAction } from '$lib/utils/submit-action';
 import type { ActionData, PageData } from './$types';
 
 // Valid tab values
@@ -205,24 +206,15 @@ async function confirmBulkApplyShareDefaults() {
 	isBulkApplyingUserControl = true;
 
 	try {
-		const response = await fetch('?/bulkApplyShareDefaults', {
-			method: 'POST',
-			body: new FormData()
-		});
-		const result = deserialize(await response.text());
-
+		const result = await submitAction<{ success: boolean; message: string }>(
+			'?/bulkApplyShareDefaults'
+		);
 		if (result.type === 'success') {
-			const payload = (result.data ?? {
-				success: true,
-				message: 'Defaults applied to all users.'
-			}) as { success: boolean; message: string };
-			handleFormToast(payload);
+			handleFormToast(result.data ?? { success: true, message: 'Defaults applied to all users.' });
 		} else if (result.type === 'failure') {
-			handleFormToast({
-				error: (result.data as { error?: string })?.error ?? 'Failed to apply defaults.'
-			});
+			handleFormToast({ error: result.data.error ?? 'Failed to apply defaults.' });
 		} else if (result.type === 'error') {
-			handleFormToast({ error: result.error?.message ?? 'Failed to apply defaults.' });
+			handleFormToast({ error: result.error.message ?? 'Failed to apply defaults.' });
 		}
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Failed to apply defaults.';
@@ -448,15 +440,11 @@ async function showCacheConfirmation(year?: number) {
 	}
 
 	try {
-		const response = await fetch('?/getCacheCount', {
-			method: 'POST',
-			body: formData
-		});
-		const result = deserialize(await response.text());
-		const payload =
-			result.type === 'success'
-				? ((result.data ?? {}) as { success?: boolean; count?: number; year?: number })
-				: {};
+		const result = await submitAction<{ success?: boolean; count?: number; year?: number }>(
+			'?/getCacheCount',
+			formData
+		);
+		const payload = result.type === 'success' ? result.data : {};
 		if (payload.count !== undefined) {
 			pendingCacheCount = payload.count;
 			cacheDialogOpen = true;
@@ -482,15 +470,11 @@ async function getCacheCount(year?: number) {
 	}
 
 	try {
-		const response = await fetch('?/getCacheCount', {
-			method: 'POST',
-			body: formData
-		});
-		const result = deserialize(await response.text());
-		const payload =
-			result.type === 'success'
-				? ((result.data ?? {}) as { success?: boolean; count?: number; year?: number })
-				: {};
+		const result = await submitAction<{ success?: boolean; count?: number; year?: number }>(
+			'?/getCacheCount',
+			formData
+		);
+		const payload = result.type === 'success' ? result.data : {};
 		if (payload.count !== undefined) {
 			cacheCountResult = {
 				label: year !== undefined ? `${year} cache` : 'All cache',
@@ -544,15 +528,11 @@ async function showHistoryConfirmation(year?: number) {
 	formData.append('year', year.toString());
 
 	try {
-		const response = await fetch('?/getPlayHistoryCount', {
-			method: 'POST',
-			body: formData
-		});
-		const result = deserialize(await response.text());
-		const payload =
-			result.type === 'success'
-				? ((result.data ?? {}) as { success?: boolean; count?: number; year?: number })
-				: {};
+		const result = await submitAction<{ success?: boolean; count?: number; year?: number }>(
+			'?/getPlayHistoryCount',
+			formData
+		);
+		const payload = result.type === 'success' ? result.data : {};
 		if (payload.count !== undefined) {
 			pendingHistoryCount = payload.count;
 			historyDialogOpen = true;
@@ -578,15 +558,11 @@ async function getHistoryCount(year?: number) {
 	}
 
 	try {
-		const response = await fetch('?/getPlayHistoryCount', {
-			method: 'POST',
-			body: formData
-		});
-		const result = deserialize(await response.text());
-		const payload =
-			result.type === 'success'
-				? ((result.data ?? {}) as { success?: boolean; count?: number; year?: number })
-				: {};
+		const result = await submitAction<{ success?: boolean; count?: number; year?: number }>(
+			'?/getPlayHistoryCount',
+			formData
+		);
+		const payload = result.type === 'success' ? result.data : {};
 		if (payload.count !== undefined) {
 			historyCountResult = {
 				label: year !== undefined ? `${year} history` : 'All history',
@@ -977,13 +953,13 @@ const logFieldErrors = $derived(
 										plexAllowInsecureLocalHttp ? 'true' : 'false'
 									);
 									try {
-										const response = await fetch('?/testPlexConnection', {
-											method: 'POST',
-											body: formData
-										});
-										const result = deserialize(await response.text());
+										const result = await submitAction<{
+											success?: boolean;
+											message?: string;
+											error?: string;
+										}>('?/testPlexConnection', formData);
 										if (result.type === 'success' || result.type === 'failure') {
-											const data = result.data as { success?: boolean; message?: string; error?: string };
+											const data = result.data;
 											handleFormToast(data);
 											testConnectionResult = data.error
 												? { type: 'error', message: data.error }
@@ -993,7 +969,7 @@ const logFieldErrors = $derived(
 													};
 										} else if (result.type === 'error') {
 											const message =
-												result.error?.message ?? 'An error occurred while testing connection';
+												result.error.message ?? 'An error occurred while testing connection';
 											handleFormToast({ error: message });
 											testConnectionResult = { type: 'error', message };
 										} else {
@@ -1204,17 +1180,13 @@ const logFieldErrors = $derived(
 									formData.set('openaiBaseUrl', openaiBaseUrl);
 									formData.set('openaiModel', openaiModel);
 									try {
-										const response = await fetch('?/testAIConnection', {
-											method: 'POST',
-											body: formData
-										});
-										const result = deserialize(await response.text());
+										const result = await submitAction<{
+											success?: boolean;
+											message?: string;
+											error?: string;
+										}>('?/testAIConnection', formData);
 										if (result.type === 'success' || result.type === 'failure') {
-											const data = result.data as {
-												success?: boolean;
-												message?: string;
-												error?: string;
-											};
+											const data = result.data;
 											handleFormToast(data);
 											testAIResult = data.error
 												? { type: 'error', message: data.error }
@@ -1224,7 +1196,7 @@ const logFieldErrors = $derived(
 													};
 										} else if (result.type === 'error') {
 											const message =
-												result.error?.message ?? 'An error occurred while testing connection';
+												result.error.message ?? 'An error occurred while testing connection';
 											handleFormToast({ error: message });
 											testAIResult = { type: 'error', message };
 										} else {
@@ -1460,6 +1432,11 @@ const logFieldErrors = $derived(
 										await update({ invalidateAll: true });
 									} else {
 										await update();
+										if (result.type === 'error') {
+											handleFormToast({
+												error: result.error?.message ?? 'Failed to update logo mode.'
+											});
+										}
 									}
 								} finally {
 									if (result.type === 'failure' || result.type === 'error') {

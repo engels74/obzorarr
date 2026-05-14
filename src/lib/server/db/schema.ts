@@ -56,7 +56,7 @@ export const cachedStats = sqliteTable(
 	'cached_stats',
 	{
 		id: integer('id').primaryKey({ autoIncrement: true }),
-		userId: integer('user_id'),
+		userId: integer('user_id').references(() => users.id, { onDelete: 'cascade' }),
 		year: integer('year').notNull(),
 		statsType: text('stats_type').notNull(),
 		statsJson: text('stats_json').notNull(),
@@ -67,7 +67,9 @@ export const cachedStats = sqliteTable(
 
 export const shareSettings = sqliteTable('share_settings', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
-	userId: integer('user_id').notNull(),
+	userId: integer('user_id')
+		.notNull()
+		.references(() => users.id, { onDelete: 'cascade' }),
 	year: integer('year').notNull(),
 	mode: text('mode').notNull().default('public'),
 	modeSource: text('mode_source').notNull().default('explicit'),
