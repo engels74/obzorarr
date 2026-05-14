@@ -33,8 +33,8 @@ export async function submitAction<T = unknown>(
 		// wire format (e.g. a proxy/WAF returned HTML, a rate limiter returned
 		// plain text, or the body was truncated). Map this to a typed error
 		// outcome so callers can rely on the `SubmitOutcome<T>` contract.
-		const message = err instanceof Error ? err.message : 'Invalid action response';
-		return { type: 'error', error: { message } };
+		console.error('[submitAction] deserialize failed:', err);
+		return { type: 'error', error: { message: 'An unexpected error occurred' } };
 	}
 
 	if (result.type === 'success') {
