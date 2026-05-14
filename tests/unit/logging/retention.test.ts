@@ -43,8 +43,32 @@ class MockCron {
 		this._isRunning = false;
 	}
 
+	pause(): boolean {
+		this._isRunning = false;
+		return true;
+	}
+
+	resume(): boolean {
+		if (!this._stopped) {
+			this._isRunning = true;
+		}
+		return !this._stopped;
+	}
+
 	isRunning(): boolean {
 		return this._isRunning && !this._stopped;
+	}
+
+	isStopped(): boolean {
+		return this._stopped;
+	}
+
+	isBusy(): boolean {
+		return false;
+	}
+
+	getPattern(): string | undefined {
+		return this.expression;
 	}
 
 	nextRun(): Date | null {

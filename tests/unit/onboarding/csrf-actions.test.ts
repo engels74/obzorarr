@@ -484,10 +484,14 @@ describe('onboarding CSRF actions', () => {
 			})
 		);
 
+		// After ISSUE-001 reorder the browserOrigin schema runs first, so the
+		// oversized value is rejected by its own validation message before the
+		// later confirmRisk gate is consulted — a clearer signal than the
+		// generic confirmRisk error.
 		expect(result).toEqual({
 			status: 400,
 			data: {
-				trustProxyError: 'Confirm the reverse-proxy header trust risk before enabling TRUST_PROXY.'
+				trustProxyError: 'browserOrigin is too long'
 			}
 		});
 		expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBeNull();
@@ -555,6 +559,33 @@ describe('onboarding CSRF actions', () => {
 					formData.set('confirmRisk', 'true');
 					return formData;
 				})()
+			})
+		);
+
+		expect(result).toEqual({
+			status: 400,
+			data: {
+				trustProxyError:
+					'The current diagnostic does not recommend enabling reverse proxy header trust.'
+			}
+		});
+		expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBeNull();
+	});
+
+	// ISSUE-001: when the diagnostic does NOT recommend enabling, the error
+	// message must reflect that — even if confirmRisk is also missing — so an
+	// API-direct caller that sends confirmRisk=true later does not pass the
+	// guard simply because the prior failure message blamed confirmRisk.
+	it('rejects with the diagnostic error first when diagnostic disagrees AND confirmRisk is absent', async () => {
+		const formData = new FormData();
+		formData.set('browserOrigin', ORIGIN);
+		// confirmRisk omitted on purpose
+
+		const result = await runEnableTrustProxy(
+			new Request(`${ORIGIN}/onboarding/csrf`, {
+				method: 'POST',
+				headers: { origin: ORIGIN },
+				body: formData
 			})
 		);
 

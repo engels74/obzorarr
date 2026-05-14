@@ -57,7 +57,23 @@ function handleSummaryKeyDown(event: KeyboardEvent) {
 function handleActionClick(event: MouseEvent, action: () => void): void {
 	event.preventDefault();
 	event.stopPropagation();
-	action();
+	// Swallowed exceptions inside the click path used to look like "the button
+	// is a no-op" — ISSUE-013 saw all three endcard buttons fail silently with
+	// no console error and no toast. Surface failures explicitly so the next
+	// dogfood pass can attribute the regression to a specific handler.
+	// `() => void` permits handlers that return a Promise, so guard both
+	// synchronous throws and asynchronous rejections.
+	try {
+		const result = action() as unknown;
+		// `Promise.resolve` normalises any thenable (or non-thenable) to a real
+		// Promise, so `.catch` is guaranteed to exist even when `action()`
+		// returns a Promises/A+ thenable that lacks `.catch`, or `undefined`.
+		Promise.resolve(result).catch((error) => {
+			console.error('Summary endcard action rejected', error);
+		});
+	} catch (error) {
+		console.error('Summary endcard action threw', error);
+	}
 }
 
 // Move initial focus to the heading instead of the first button so

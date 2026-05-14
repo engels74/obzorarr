@@ -3,7 +3,11 @@ import { env } from '$env/dynamic/private';
 import { AppSettingsKey, setAppSetting } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
 import { appSettings } from '$lib/server/db/schema';
-import { _resetProxyStartupLogged, proxyHandle } from '$lib/server/security/proxy-handle';
+import {
+	_resetProxyStartupLogged,
+	_resetTrustProxyCache,
+	proxyHandle
+} from '$lib/server/security/proxy-handle';
 
 interface InvokeOptions {
 	url: string;
@@ -76,6 +80,7 @@ describe('proxyHandle', () => {
 		// per-test mutations between runs.
 		delete (env as Record<string, string | undefined>).TRUST_PROXY;
 		_resetProxyStartupLogged();
+		_resetTrustProxyCache();
 	});
 
 	afterEach(() => {

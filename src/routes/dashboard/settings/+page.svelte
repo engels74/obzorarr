@@ -581,6 +581,10 @@ function getLogoModeDescription(): string {
 									) {
 										wrappedHrefOverride = payload.wrappedHref;
 									}
+								} else if (result.type === 'error') {
+									handleFormToast({
+										error: result.error?.message ?? 'Failed to regenerate share link.'
+									});
 								}
 
 								await update({ reset: result.type !== 'failure' });

@@ -166,6 +166,23 @@ describe('admin slides actions', () => {
 		});
 	}
 
+	// Mirrors the dogfood ISSUE-011 repro: change from default to "few" and confirm
+	// the value is read back via getFunFactFrequency() like the load function does.
+	for (const [mode, expectedCount] of [
+		[FunFactFrequency.FEW, 2],
+		[FunFactFrequency.NORMAL, 4],
+		[FunFactFrequency.MANY, 8]
+	] as const) {
+		it(`persists fun fact frequency mode ${mode}`, async () => {
+			await expect(runSetFunFactFrequency(createFrequencyRequest(mode))).resolves.toMatchObject({
+				success: true,
+				funFactFrequency: { mode, count: expectedCount }
+			});
+
+			expect(await getFunFactFrequency()).toEqual({ mode, count: expectedCount });
+		});
+	}
+
 	describe('createCustom error mapping', () => {
 		it('returns 400 with fieldErrors.content when content has unsafe HTML', async () => {
 			const result = await runCreateCustom(

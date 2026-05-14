@@ -361,6 +361,20 @@ function selectWrappedLogoMode(mode: WrappedLogoModeValue): void {
 	selectedWrappedLogoMode = mode;
 }
 
+function formatUptime(seconds: number): string {
+	if (!Number.isFinite(seconds) || seconds < 0) return '—';
+	const days = Math.floor(seconds / 86400);
+	const hours = Math.floor((seconds % 86400) / 3600);
+	const minutes = Math.floor((seconds % 3600) / 60);
+	const remaining = Math.floor(seconds % 60);
+	const parts: string[] = [];
+	if (days > 0) parts.push(`${days}d`);
+	if (hours > 0) parts.push(`${hours}h`);
+	if (minutes > 0) parts.push(`${minutes}m`);
+	if (parts.length === 0) parts.push(`${remaining}s`);
+	return parts.join(' ');
+}
+
 function restoreServerWrappedSettings(): void {
 	selectedAnonymization = syncedAnonymization;
 	selectedServerWrappedMode = syncedServerWrappedMode;
@@ -515,10 +529,19 @@ async function showHistoryConfirmation(year?: number) {
 	loadingHistoryCount = true;
 	pendingHistoryYear = year;
 
-	const formData = new FormData();
-	if (year !== undefined) {
-		formData.append('year', year.toString());
+	// Year-undefined ("Delete All History") uses the load-time total — the page
+	// always knows the count even if the user hasn't pressed "Get Count" first,
+	// so the dialog renders without a probe request and never has a no-count path
+	// that could look like a silent failure (ISSUE-003).
+	if (year === undefined) {
+		pendingHistoryCount = data.playHistoryTotalCount;
+		historyDialogOpen = true;
+		loadingHistoryCount = false;
+		return;
 	}
+
+	const formData = new FormData();
+	formData.append('year', year.toString());
 
 	try {
 		const response = await fetch('?/getPlayHistoryCount', {
@@ -2748,6 +2771,35 @@ const logFieldErrors = $derived(
 						</div>
 					</form>
 				</section>
+
+				<section class="panel system-panel">
+					<div class="panel-header">
+						<div class="panel-title">
+							<Monitor class="panel-icon" />
+							<h2>System</h2>
+						</div>
+					</div>
+					<p class="panel-description">Read-only runtime information for the current process.</p>
+
+					<dl class="system-info-grid">
+						<div class="system-info-item">
+							<dt>App version</dt>
+							<dd>{data.appVersion.display}</dd>
+						</div>
+						<div class="system-info-item">
+							<dt>Uptime</dt>
+							<dd>{formatUptime(data.systemInfo.uptimeSeconds)}</dd>
+						</div>
+						<div class="system-info-item">
+							<dt>OS / arch</dt>
+							<dd>{data.systemInfo.osPlatform} / {data.systemInfo.osArch}</dd>
+						</div>
+						<div class="system-info-item">
+							<dt>Bun version</dt>
+							<dd>{data.systemInfo.bunVersion ?? 'Unknown'}</dd>
+						</div>
+					</dl>
+				</section>
 			</div>
 		{/if}
 	</div>
@@ -3317,6 +3369,38 @@ const logFieldErrors = $derived(
 			font-size: 0.75rem;
 			color: hsl(var(--destructive));
 			margin-top: 0.375rem;
+		}
+
+		.system-info-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+			gap: 1rem;
+			margin: 0;
+			padding: 0;
+		}
+
+		.system-info-item {
+			background: hsl(var(--muted) / 0.4);
+			border: 1px solid hsl(var(--border));
+			border-radius: var(--radius);
+			padding: 0.875rem 1rem;
+		}
+
+		.system-info-item dt {
+			font-size: 0.7rem;
+			font-weight: 600;
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+			color: hsl(var(--muted-foreground));
+			margin: 0 0 0.25rem;
+		}
+
+		.system-info-item dd {
+			margin: 0;
+			font-size: 0.9rem;
+			font-weight: 600;
+			color: hsl(var(--foreground));
+			word-break: break-word;
 		}
 
 		.source-badge {

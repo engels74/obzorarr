@@ -1,3 +1,4 @@
+import { arch as osArch, platform as osPlatform } from 'node:os';
 import { fail } from '@sveltejs/kit';
 import { z } from 'zod';
 import { env } from '$env/dynamic/private';
@@ -27,7 +28,6 @@ import {
 	isPlexInsecureLocalHttpAllowed,
 	resetCsrfWarningDismissal,
 	SERVER_WRAPPED_SETTINGS_KEYS,
-	setAnonymizationMode,
 	setApiConfigAtomic,
 	setAppSetting,
 	setCachedServerName,
@@ -63,15 +63,13 @@ import {
 	normalizePlexServerUrl
 } from '$lib/server/security/credentialed-url';
 import { getOriginFromRequest } from '$lib/server/security/csrf-handle';
+import { _resetTrustProxyCache } from '$lib/server/security/proxy-handle';
 import {
 	bulkApplyShareDefaults,
 	getGlobalAllowUserControl,
 	getGlobalDefaultShareMode,
-	getServerWrappedShareMode,
-	setGlobalShareDefaults,
-	setServerWrappedShareMode
+	getServerWrappedShareMode
 } from '$lib/server/sharing/service';
-import type { ShareModeType } from '$lib/server/sharing/types';
 import type { Actions, PageServerLoad } from './$types';
 
 const ThemeSchema = z.enum([
@@ -86,10 +84,6 @@ const WrappedLogoModeSchema = z.enum(['always_show', 'always_hide', 'user_choice
 
 const ShareModeSchema = z.enum(['public', 'private-oauth', 'private-link']);
 const BooleanStringSchema = z.enum(['true', 'false']).transform((value) => value === 'true');
-const GlobalDefaultsSchema = z.object({
-	defaultShareMode: ShareModeSchema,
-	allowUserControl: BooleanStringSchema
-});
 // Server-wide wrapped only supports public and private-oauth (not private-link)
 const ServerWrappedModeSchema = z.enum(['public', 'private-oauth']);
 
@@ -218,7 +212,13 @@ export const load: PageServerLoad = async () => {
 		plexAllowInsecureLocalHttp,
 		serverWrappedSettingsUpdatedAt,
 		userDefaultsSettingsUpdatedAt,
-		apiConfigUpdatedAt
+		apiConfigUpdatedAt,
+		// Eager-load the total play-history count so the destructive Delete History
+		// buttons can render with a known count from first paint, instead of needing
+		// an on-click POST to ?/getPlayHistoryCount before they can show a
+		// confirmation dialog. ISSUE-003 hit the no-count path and observed the
+		// click navigating to /admin with no feedback.
+		playHistoryTotalCount
 	] = await Promise.all([
 		getApiConfigWithSources(),
 		getUITheme(),
@@ -239,7 +239,8 @@ export const load: PageServerLoad = async () => {
 		isPlexInsecureLocalHttpAllowed(),
 		getAppSettingsUpdatedAt(SERVER_WRAPPED_SETTINGS_KEYS),
 		getAppSettingsUpdatedAt(USER_DEFAULTS_SETTINGS_KEYS),
-		getAppSettingsUpdatedAt(API_CONFIG_KEYS)
+		getAppSettingsUpdatedAt(API_CONFIG_KEYS),
+		countPlayHistory()
 	]);
 
 	const currentYear = new Date().getFullYear();
@@ -277,6 +278,15 @@ export const load: PageServerLoad = async () => {
 		})),
 		availableYears,
 		currentYear,
+		playHistoryTotalCount,
+		// System info panel (ISSUE-006) — exposed as plain primitives so the
+		// SSR JSON is small and the client doesn't need to import node:os.
+		systemInfo: {
+			uptimeSeconds: Math.floor(process.uptime()),
+			osPlatform: osPlatform(),
+			osArch: osArch(),
+			bunVersion: typeof Bun !== 'undefined' ? Bun.version : null
+		},
 		logSettings: {
 			retentionDays: logRetentionDays,
 			maxCount: logMaxCount,
@@ -555,24 +565,6 @@ export const actions: Actions = requireAdminActions({
 		}
 	},
 
-	updateAnonymization: async ({ request }) => {
-		const formData = await request.formData();
-		const mode = formData.get('anonymizationMode');
-
-		const parsed = AnonymizationSchema.safeParse(mode);
-		if (!parsed.success) {
-			return fail(400, { error: 'Invalid anonymization mode' });
-		}
-
-		try {
-			await setAnonymizationMode(parsed.data as AnonymizationModeType);
-			return { success: true, message: 'Anonymization mode updated' };
-		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Failed to update mode';
-			return fail(500, { error: message });
-		}
-	},
-
 	updateWrappedLogoMode: async ({ request }) => {
 		const formData = await request.formData();
 		const mode = formData.get('logoMode');
@@ -697,9 +689,11 @@ export const actions: Actions = requireAdminActions({
 
 		const parsed = LogSettingsSchema.safeParse(data);
 		if (!parsed.success) {
+			const fieldErrors = parsed.error.flatten().fieldErrors;
+			logger.warn('updateLogSettings rejected: validation failed', 'Settings', { fieldErrors });
 			return fail(400, {
 				error: 'Invalid input',
-				fieldErrors: parsed.error.flatten().fieldErrors
+				fieldErrors
 			});
 		}
 
@@ -719,32 +713,6 @@ export const actions: Actions = requireAdminActions({
 		}
 	},
 
-	updateGlobalDefaults: async ({ request }) => {
-		const formData = await request.formData();
-
-		const data = {
-			defaultShareMode: formData.get('defaultShareMode'),
-			allowUserControl: formData.get('allowUserControl')
-		};
-
-		const parsed = GlobalDefaultsSchema.safeParse(data);
-		if (!parsed.success) {
-			return fail(400, { error: 'Invalid input', fieldErrors: parsed.error.flatten().fieldErrors });
-		}
-
-		try {
-			await setGlobalShareDefaults({
-				defaultShareMode: parsed.data.defaultShareMode as ShareModeType,
-				allowUserControl: parsed.data.allowUserControl
-			});
-
-			return { success: true, message: 'Sharing defaults updated' };
-		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Failed to update defaults';
-			return fail(500, { error: message });
-		}
-	},
-
 	bulkApplyShareDefaults: async () => {
 		try {
 			const count = await bulkApplyShareDefaults();
@@ -752,27 +720,6 @@ export const actions: Actions = requireAdminActions({
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : 'Failed to apply defaults to existing users';
-			return fail(500, { error: message });
-		}
-	},
-
-	updateServerWrappedMode: async ({ request }) => {
-		const formData = await request.formData();
-		const mode = formData.get('serverWrappedShareMode');
-
-		const parsed = ServerWrappedModeSchema.safeParse(mode);
-		if (!parsed.success) {
-			return fail(400, {
-				error: 'Invalid share mode. Server wrapped only supports public or private-oauth.'
-			});
-		}
-
-		try {
-			await setServerWrappedShareMode(parsed.data as ShareModeType);
-			return { success: true, message: 'Server wrapped share mode updated' };
-		} catch (error) {
-			const message =
-				error instanceof Error ? error.message : 'Failed to update server wrapped mode';
 			return fail(500, { error: message });
 		}
 	},
@@ -795,6 +742,9 @@ export const actions: Actions = requireAdminActions({
 					error: 'Settings changed in another tab. Please reload.'
 				});
 			}
+			logger.warn('updateServerWrappedSettings rejected: validation failed', 'Settings', {
+				fieldErrors
+			});
 			return fail(400, {
 				error: 'Invalid input',
 				fieldErrors
@@ -840,6 +790,7 @@ export const actions: Actions = requireAdminActions({
 					error: 'Settings changed in another tab. Please reload.'
 				});
 			}
+			logger.warn('updateUserDefaults rejected: validation failed', 'Settings', { fieldErrors });
 			return fail(400, {
 				error: 'Invalid input',
 				fieldErrors
@@ -1131,6 +1082,9 @@ export const actions: Actions = requireAdminActions({
 
 		try {
 			await setAppSetting(AppSettingsKey.TRUST_PROXY, enabled ? 'true' : 'false');
+			// Invalidate the in-process cache AFTER the DB write so subsequent
+			// requests re-resolve the new value.
+			_resetTrustProxyCache();
 			if (enabled) {
 				logger.warn(
 					'Reverse-proxy header trust enabled by admin. Verify your upstream proxy strips inbound x-forwarded-* headers.',

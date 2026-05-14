@@ -17,6 +17,7 @@ import {
 	setOnboardingStep
 } from '$lib/server/onboarding';
 import { parseForwardedProtoHost } from '$lib/server/security/forwarded-headers';
+import { _resetTrustProxyCache } from '$lib/server/security/proxy-handle';
 import { createReverseProxyDiagnostic } from '$lib/server/security/reverse-proxy-diagnostic';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -277,18 +278,25 @@ export const actions: Actions = {
 			});
 		}
 
+		// Re-ordered per ISSUE-001: the diagnostic-recommendation guard must run
+		// BEFORE the confirmRisk guard, otherwise an API-direct caller posting
+		// `confirmRisk=1` on a system the diagnostic told to leave disabled would
+		// see the wrong error message and assume the diagnostic guard had passed.
+		// Parse browserOrigin alone first so we have a normalized value for the
+		// same-origin + diagnostic calls; confirmRisk is validated last so its
+		// error message is only emitted once the diagnostic has approved enabling.
 		const formData = await request.formData();
-		const parsed = TrustProxyEnableSchema.safeParse({
-			browserOrigin: formData.get('browserOrigin'),
-			confirmRisk: formData.get('confirmRisk')
+		const browserOriginParsed = BrowserOriginSchema.safeParse({
+			browserOrigin: formData.get('browserOrigin')
 		});
-		if (!parsed.success) {
+		if (!browserOriginParsed.success) {
 			return fail(400, {
-				trustProxyError: 'Confirm the reverse-proxy header trust risk before enabling TRUST_PROXY.'
+				trustProxyError:
+					browserOriginParsed.error.issues[0]?.message ?? 'Could not read browser origin safely'
 			});
 		}
 
-		if (!isSubmittedBrowserOriginAction(request, parsed.data.browserOrigin)) {
+		if (!isSubmittedBrowserOriginAction(request, browserOriginParsed.data.browserOrigin)) {
 			return fail(403, {
 				trustProxyError: 'Reverse proxy header trust must be enabled from this browser origin'
 			});
@@ -298,7 +306,7 @@ export const actions: Actions = {
 			request,
 			rawAppUrl: request.url,
 			effectiveAppUrl: url,
-			browserOrigin: parsed.data.browserOrigin,
+			browserOrigin: browserOriginParsed.data.browserOrigin,
 			sourceAddress: getClientAddress()
 		});
 		if (diagnostic.recommendation.action !== 'enable') {
@@ -308,7 +316,22 @@ export const actions: Actions = {
 			});
 		}
 
+		// Now that the diagnostic has approved enabling, require the explicit
+		// risk-acknowledgement flag. The full schema enforces confirmRisk === 'true'.
+		const parsed = TrustProxyEnableSchema.safeParse({
+			browserOrigin: browserOriginParsed.data.browserOrigin,
+			confirmRisk: formData.get('confirmRisk')
+		});
+		if (!parsed.success) {
+			return fail(400, {
+				trustProxyError: 'Confirm the reverse-proxy header trust risk before enabling TRUST_PROXY.'
+			});
+		}
+
 		await setAppSetting(AppSettingsKey.TRUST_PROXY, 'true');
+		// Invalidate the in-process cache AFTER the DB write so subsequent
+		// requests re-resolve the new value.
+		_resetTrustProxyCache();
 		logger.warn(
 			'Reverse-proxy header trust enabled during onboarding. Verify your upstream proxy strips inbound x-forwarded-* headers.',
 			'Onboarding'

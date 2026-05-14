@@ -117,17 +117,24 @@ export const actions: Actions = requireAdminActions({
 			const result = await startBackgroundSync(backfillYear);
 
 			if (!result.started) {
-				return fail(400, { error: result.error ?? 'Failed to start sync' });
+				return fail(400, {
+					error: result.error ?? 'Failed to start sync',
+					selectedYear: backfillYear ?? null
+				});
 			}
 
+			// Echo back the year we acted on so the form can re-select it after the
+			// post-submit update() — without this, the dropdown reverts to
+			// "New Activity Only" once the sync completes (ISSUE-004).
 			return {
 				success: true,
 				started: true,
-				message: 'Sync started'
+				message: 'Sync started',
+				selectedYear: backfillYear ?? null
 			};
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to start sync';
-			return fail(500, { error: message });
+			return fail(500, { error: message, selectedYear: backfillYear ?? null });
 		}
 	},
 

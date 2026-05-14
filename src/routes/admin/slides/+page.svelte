@@ -21,6 +21,15 @@ $effect(() => {
 	handleFormToast(form);
 });
 
+// ISSUE-016: surface fieldErrors next to the offending input — the toast alone
+// only reported "Validation failed", which left the user guessing which field
+// was over the 200-char limit. Mirrors the pattern used in admin/settings.
+const slideFieldErrors = $derived(
+	form && 'fieldErrors' in form
+		? ((form as { fieldErrors?: Record<string, string[] | undefined> }).fieldErrors ?? undefined)
+		: undefined
+);
+
 // Slide display names
 const SLIDE_NAMES: Record<SlideType, string> = {
 	'total-time': 'Total Watch Time',
@@ -620,7 +629,14 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 							bind:value={editorTitle}
 							required
 							placeholder="Enter slide title"
+							aria-invalid={slideFieldErrors?.title?.[0] ? 'true' : undefined}
+							aria-describedby={slideFieldErrors?.title?.[0] ? 'title-error' : undefined}
 						/>
+						{#if slideFieldErrors?.title?.[0]}
+							<span id="title-error" class="field-error" role="alert">
+								{slideFieldErrors.title[0]}
+							</span>
+						{/if}
 					</div>
 
 					<div class="form-group">
@@ -733,6 +749,13 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			max-width: 800px;
 			margin: 0 auto;
 			padding: 2rem;
+		}
+
+		.field-error {
+			display: block;
+			font-size: 0.75rem;
+			color: hsl(var(--destructive));
+			margin-top: 0.375rem;
 		}
 
 		.admin-header {
