@@ -1,4 +1,5 @@
 import { getSyncProgress, type LiveSyncProgress } from '$lib/server/sync/progress';
+import type { SyncStatusStreamEvent, SyncStatusStreamProgress } from '$lib/sync/types';
 import type { RequestHandler } from './$types';
 
 /**
@@ -122,7 +123,7 @@ export const GET: RequestHandler = async ({ request }) => {
 	});
 };
 
-function simplifyProgress(progress: LiveSyncProgress | null): SimpleProgress | null {
+function simplifyProgress(progress: LiveSyncProgress | null): SyncStatusStreamProgress | null {
 	if (!progress || (progress.status !== 'running' && progress.status !== 'completed')) return null;
 
 	return {
@@ -134,22 +135,6 @@ function simplifyProgress(progress: LiveSyncProgress | null): SimpleProgress | n
 	};
 }
 
-function formatSSE(data: SSEEvent): string {
+function formatSSE(data: SyncStatusStreamEvent): string {
 	return `data: ${JSON.stringify(data)}\n\n`;
 }
-
-interface SimpleProgress {
-	phase: 'fetching' | 'enriching';
-	recordsProcessed: number;
-	recordsInserted: number;
-	enrichmentTotal?: number;
-	enrichmentProcessed?: number;
-}
-
-type SSEEvent =
-	| { type: 'connected'; inProgress: boolean; progress: SimpleProgress | null }
-	| { type: 'update'; inProgress: boolean; progress: SimpleProgress | null }
-	| { type: 'completed'; inProgress: false; progress: null }
-	| { type: 'failed'; inProgress: false; progress: null }
-	| { type: 'cancelled'; inProgress: false; progress: null }
-	| { type: 'idle'; inProgress: false; progress: null };

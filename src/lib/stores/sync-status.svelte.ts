@@ -1,18 +1,10 @@
 import { browser } from '$app/environment';
-import type { LiveSyncProgress } from '$lib/server/sync/progress';
-
-interface SimpleProgress {
-	phase: 'fetching' | 'enriching';
-	recordsProcessed: number;
-	enrichmentTotal?: number;
-	enrichmentProcessed?: number;
-}
-
-interface SSEEventData {
-	type: 'connected' | 'update' | 'completed' | 'failed' | 'cancelled' | 'idle';
-	inProgress: boolean;
-	progress: SimpleProgress | null;
-}
+import type {
+	LiveSyncProgress,
+	SyncStatusStreamEvent,
+	SyncStatusStreamProgress,
+	SyncTerminalEventType
+} from '$lib/sync/types';
 
 export interface InitialSyncStatus {
 	inProgress: boolean;
@@ -20,18 +12,19 @@ export interface InitialSyncStatus {
 }
 
 export interface SyncStatusStoreOptions {
-	onSyncComplete?: () => void | Promise<void>;
+	onSyncComplete?: (event: SyncTerminalEventType) => void | Promise<void>;
+	shouldHandleTerminalEvent?: (event: SyncTerminalEventType) => boolean;
 }
 
 // Converts simplified SSE progress to LiveSyncProgress-compatible format
-function toCompatibleProgress(simple: SimpleProgress | null): LiveSyncProgress | null {
+function toCompatibleProgress(simple: SyncStatusStreamProgress | null): LiveSyncProgress | null {
 	if (!simple) return null;
 
 	return {
 		syncId: 0, // Not used by SyncIndicator
 		status: 'running',
 		recordsProcessed: simple.recordsProcessed,
-		recordsInserted: 0, // Not used by SyncIndicator
+		recordsInserted: simple.recordsInserted ?? 0, // Not used by SyncIndicator
 		recordsSkipped: 0, // Not used by SyncIndicator
 		currentPage: 0, // Not used by SyncIndicator
 		startedAt: new Date(), // Not used by SyncIndicator
@@ -47,13 +40,15 @@ export class SyncStatusStore {
 
 	private eventSource: EventSource | null = null;
 	private connected = false;
-	private onSyncComplete?: () => void | Promise<void>;
+	private onSyncComplete?: (event: SyncTerminalEventType) => void | Promise<void>;
+	private shouldHandleTerminalEvent?: (event: SyncTerminalEventType) => boolean;
 	private wasSyncing = false;
 
 	initialize(initialStatus: InitialSyncStatus, options?: SyncStatusStoreOptions): void {
 		this.inProgress = initialStatus.inProgress;
 		this.progress = initialStatus.progress;
 		this.onSyncComplete = options?.onSyncComplete;
+		this.shouldHandleTerminalEvent = options?.shouldHandleTerminalEvent;
 		this.wasSyncing = initialStatus.inProgress;
 
 		if (browser) {
@@ -74,7 +69,7 @@ export class SyncStatusStore {
 
 		this.eventSource.onmessage = (event) => {
 			try {
-				const data: SSEEventData = JSON.parse(event.data);
+				const data: SyncStatusStreamEvent = JSON.parse(event.data);
 
 				if (data.type === 'connected' || data.type === 'update') {
 					this.inProgress = data.inProgress;
@@ -88,15 +83,25 @@ export class SyncStatusStore {
 					data.type === 'cancelled' ||
 					data.type === 'idle'
 				) {
-					if (this.wasSyncing && this.onSyncComplete) {
-						const callback = this.onSyncComplete;
-						setTimeout(async () => {
-							try {
-								await callback();
-							} catch {
-								// Silently ignore callback errors
-							}
-						}, 500);
+					if (this.onSyncComplete) {
+						let predicateResult = false;
+						try {
+							predicateResult = this.shouldHandleTerminalEvent?.(data.type) === true;
+						} catch {
+							// Treat predicate errors as "don't handle"
+						}
+						const shouldHandle = this.wasSyncing || predicateResult;
+						if (shouldHandle) {
+							const callback = this.onSyncComplete;
+							const terminalEvent = data.type;
+							setTimeout(async () => {
+								try {
+									await callback(terminalEvent);
+								} catch {
+									// Silently ignore callback errors
+								}
+							}, 500);
+						}
 					}
 					this.inProgress = false;
 					this.progress = null;
