@@ -20,7 +20,7 @@ describe('dogfood ISSUE-003 — admin log settings persistence', () => {
 
 		const enhanceStart = source.indexOf('action="?/updateLogSettings"');
 		expect(enhanceStart).toBeGreaterThan(-1);
-		const enhanceSlice = source.slice(enhanceStart, enhanceStart + 800);
+		const enhanceSlice = source.slice(enhanceStart, enhanceStart + 1200);
 		expect(enhanceSlice).toContain('await update({ invalidateAll: true });');
 		expect(enhanceSlice).toContain('await invalidateAll();');
 		expect(enhanceSlice).toContain('restoreLogSettings();');
@@ -104,7 +104,7 @@ describe('dogfood ISSUE-008 — StoryMode keydown throttle', () => {
 			'function handleKeyDown(event: KeyboardEvent): void {'
 		);
 		expect(handleKeyDownStart).toBeGreaterThan(-1);
-		const handleKeyDownSlice = source.slice(handleKeyDownStart, handleKeyDownStart + 800);
+		const handleKeyDownSlice = source.slice(handleKeyDownStart, handleKeyDownStart + 1200);
 		expect(handleKeyDownSlice).toContain('const now = Date.now();');
 		expect(handleKeyDownSlice).toContain('if (now - lastKeyTime < KEYDOWN_THROTTLE_MS) {');
 		expect(handleKeyDownSlice).toContain('lastKeyTime = now;');

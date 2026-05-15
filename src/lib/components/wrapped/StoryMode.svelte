@@ -296,6 +296,24 @@ function handleTouchEnd(event: TouchEvent): void {
 function handleKeyDown(event: KeyboardEvent): void {
 	if (isTransitioning) return;
 
+	// Only the navigation keys below are owned by this handler. Tab, browser
+	// shortcuts, and any other key must fall through untouched so they don't
+	// have their default behaviour suppressed or poison the throttle window.
+	switch (event.key) {
+		case 'ArrowRight':
+		case 'ArrowDown':
+		case ' ':
+		case 'Enter':
+		case 'ArrowLeft':
+		case 'ArrowUp':
+		case 'Escape':
+		case 'Home':
+		case 'End':
+			break;
+		default:
+			return;
+	}
+
 	// Drop key repeats arriving faster than the throttle window. The OS auto-
 	// repeats held arrow keys at 30+/sec which piles up against the animations
 	// and freezes the main thread.

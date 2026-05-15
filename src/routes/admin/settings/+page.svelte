@@ -2684,8 +2684,19 @@ const logFieldErrors = $derived(
 										return;
 									}
 
-									restoreLogSettings();
 									await update();
+									// Only restore server-truth when the failure does not
+									// carry per-field errors. On Zod validation failures we
+									// keep the user's invalid input visible so the field
+									// errors line up with what they typed.
+									const hasFieldErrors =
+										result.type === 'failure' &&
+										result.data != null &&
+										typeof result.data === 'object' &&
+										'fieldErrors' in result.data;
+									if (!hasFieldErrors) {
+										restoreLogSettings();
+									}
 								} finally {
 									isSavingLogSettings = false;
 								}
