@@ -91,8 +91,9 @@ async function hideLoadingWithMinDelay(): Promise<void> {
  * 2. Refresh data
  * 3. Hide overlay with minimum delay
  */
-function consumeLookupSyncMarker(): boolean {
+function consumeLookupSyncMarker(event: SyncTerminalEventType): boolean {
 	if (!lookupSyncFeedbackPending) return false;
+	if (event !== 'failed') return false;
 	lookupSyncFeedbackPending = false;
 	return true;
 }
