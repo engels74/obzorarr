@@ -1,10 +1,14 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { z } from 'zod';
+import { logger } from '$lib/server/logging';
 import { getEffectiveShareMode } from '$lib/server/sharing/service';
 import { ShareMode } from '$lib/server/sharing/types';
 import { triggerLiveSyncIfNeeded } from '$lib/server/sync/live-sync';
 import { findUserByUsername } from '$lib/server/sync/plex-accounts.service';
 import type { Actions, PageServerLoad } from './$types';
+
+const LOOKUP_LIVE_SYNC_COOKIE = 'lookup_live_sync';
+const LOOKUP_LIVE_SYNC_COOKIE_MAX_AGE_SECONDS = 60;
 
 const UsernameSchema = z.object({
 	username: z
@@ -24,7 +28,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 export const actions: Actions = {
-	lookupUser: async ({ request }) => {
+	lookupUser: async ({ request, cookies }) => {
 		const formData = await request.formData();
 		const rawUsername = formData.get('username')?.toString() ?? '';
 
@@ -56,7 +60,25 @@ export const actions: Actions = {
 			return fail(404, publicLookupFailure);
 		}
 
-		triggerLiveSyncIfNeeded('landing-page-lookup').catch(() => {});
+		try {
+			const liveSyncResult = await triggerLiveSyncIfNeeded('landing-page-lookup');
+
+			if (liveSyncResult.reason === 'error') {
+				logger.warn('Lookup-triggered live sync failed to start', 'LandingLookup');
+			}
+
+			if (liveSyncResult.triggered || liveSyncResult.syncInProgress) {
+				cookies.set(LOOKUP_LIVE_SYNC_COOKIE, '1', {
+					path: '/wrapped',
+					httpOnly: true,
+					sameSite: 'lax',
+					maxAge: LOOKUP_LIVE_SYNC_COOKIE_MAX_AGE_SECONDS
+				});
+			}
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Unknown error';
+			logger.error(`Lookup-triggered live sync failed: ${message}`, 'LandingLookup');
+		}
 
 		redirect(303, `/wrapped/${currentYear}/u/${userResult.userId}`);
 	}
