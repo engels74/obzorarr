@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, describe, expect, it, spyOn } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import { isRedirect } from '@sveltejs/kit';
 import { db } from '$lib/server/db/client';
 import { appSettings, plexAccounts, shareSettings, users } from '$lib/server/db/schema';
@@ -15,11 +15,7 @@ let liveSyncResult: LiveSyncResult = {
 };
 let liveSyncCalls: string[] = [];
 
-const triggerLiveSyncSpy = spyOn(liveSync, 'triggerLiveSyncIfNeeded');
-triggerLiveSyncSpy.mockImplementation(async (source: string) => {
-	liveSyncCalls.push(source);
-	return liveSyncResult;
-});
+let triggerLiveSyncSpy: ReturnType<typeof spyOn<typeof liveSync, 'triggerLiveSyncIfNeeded'>>;
 
 const { actions } = await import('../../src/routes/+page.server');
 type LookupAction = NonNullable<typeof actions.lookupUser>;
@@ -92,10 +88,6 @@ async function invokeLookup(username: string, ip: string, cookies: TestCookies =
 }
 
 describe('landing username lookup', () => {
-	afterAll(() => {
-		triggerLiveSyncSpy.mockRestore();
-	});
-
 	beforeEach(async () => {
 		await db.delete(shareSettings);
 		await db.delete(appSettings);
@@ -103,10 +95,15 @@ describe('landing username lookup', () => {
 		await db.delete(plexAccounts);
 		liveSyncCalls = [];
 		liveSyncResult = { triggered: false, syncInProgress: false, reason: 'disabled' };
+		triggerLiveSyncSpy = spyOn(liveSync, 'triggerLiveSyncIfNeeded');
 		triggerLiveSyncSpy.mockImplementation(async (source: string) => {
 			liveSyncCalls.push(source);
 			return liveSyncResult;
 		});
+	});
+
+	afterEach(() => {
+		triggerLiveSyncSpy.mockRestore();
 	});
 
 	it('redirects anonymous lookup only for effectively public wrapped pages', async () => {

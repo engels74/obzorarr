@@ -83,18 +83,20 @@ export class SyncStatusStore {
 					data.type === 'cancelled' ||
 					data.type === 'idle'
 				) {
-					const shouldHandle =
-						this.wasSyncing || this.shouldHandleTerminalEvent?.(data.type) === true;
-					if (shouldHandle && this.onSyncComplete) {
-						const callback = this.onSyncComplete;
-						const terminalEvent = data.type;
-						setTimeout(async () => {
-							try {
-								await callback(terminalEvent);
-							} catch {
-								// Silently ignore callback errors
-							}
-						}, 500);
+					if (this.onSyncComplete) {
+						const shouldHandle =
+							this.wasSyncing || this.shouldHandleTerminalEvent?.(data.type) === true;
+						if (shouldHandle) {
+							const callback = this.onSyncComplete;
+							const terminalEvent = data.type;
+							setTimeout(async () => {
+								try {
+									await callback(terminalEvent);
+								} catch {
+									// Silently ignore callback errors
+								}
+							}, 500);
+						}
 					}
 					this.inProgress = false;
 					this.progress = null;
