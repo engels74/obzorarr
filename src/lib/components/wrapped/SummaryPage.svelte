@@ -254,7 +254,8 @@ $effect(() => {
 	<div bind:this={buttonsRow} class="actions">
 		<button
 			type="button"
-			class="btn btn-secondary"
+			class="btn btn-secondary tap-target"
+			aria-label="Watch Again"
 			onclick={(event) => handleActionClick(event, onRestart)}
 		>
 			<svg
@@ -267,6 +268,8 @@ $effect(() => {
 				stroke-width="2"
 				stroke-linecap="round"
 				stroke-linejoin="round"
+				aria-hidden="true"
+				focusable="false"
 			>
 				<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
 				<path d="M3 3v5h5" />
@@ -276,7 +279,8 @@ $effect(() => {
 
 		<button
 			type="button"
-			class="btn btn-primary"
+			class="btn btn-primary tap-target"
+			aria-label="Share"
 			onclick={(event) => handleActionClick(event, onShare)}
 		>
 			<svg
@@ -289,6 +293,8 @@ $effect(() => {
 				stroke-width="2"
 				stroke-linecap="round"
 				stroke-linejoin="round"
+				aria-hidden="true"
+				focusable="false"
 			>
 				<circle cx="18" cy="5" r="3" />
 				<circle cx="6" cy="12" r="3" />
@@ -301,7 +307,8 @@ $effect(() => {
 
 		<button
 			type="button"
-			class="btn btn-secondary"
+			class="btn btn-secondary tap-target"
+			aria-label="Return Home"
 			onclick={(event) => handleActionClick(event, onHome)}
 		>
 			<svg
@@ -314,6 +321,8 @@ $effect(() => {
 				stroke-width="2"
 				stroke-linecap="round"
 				stroke-linejoin="round"
+				aria-hidden="true"
+				focusable="false"
 			>
 				<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
 				<polyline points="9 22 9 12 15 12 15 22" />

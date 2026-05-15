@@ -377,6 +377,12 @@ function restoreUserDefaults(): void {
 	allowUserControl = syncedAllowUserControl;
 }
 
+function restoreLogSettings(): void {
+	logRetentionDays = data.logSettings.retentionDays;
+	logMaxCount = data.logSettings.maxCount;
+	logDebugEnabled = data.logSettings.debugEnabled;
+}
+
 // Show toast notifications for form responses
 $effect(() => {
 	handleFormToast(form);
@@ -1511,8 +1517,15 @@ const logFieldErrors = $derived(
 										return;
 									}
 
+									// On failure (including 409 OCC conflicts), restore the radio
+									// buttons to the synced value, surface the error via the form
+									// prop, AND invalidate the load so the hidden settingsVersion
+									// refreshes. Without the invalidate, a stale settingsVersion
+									// would re-trigger 409 on the user's next click and the UI
+									// would silently revert again with no visible cause.
 									restoreServerWrappedSettings();
 									await update();
+									await invalidateAll();
 								} finally {
 									isSavingServerWrappedSettings = false;
 								}
@@ -1691,8 +1704,12 @@ const logFieldErrors = $derived(
 										return;
 									}
 
+									// Mirror the server-wide form: restore the controls, surface
+									// the error, and refresh the OCC settingsVersion so retrying
+									// isn't permanently locked into 409.
 									restoreUserDefaults();
 									await update();
+									await invalidateAll();
 								} finally {
 									isSavingUserDefaults = false;
 								}
@@ -2659,9 +2676,27 @@ const logFieldErrors = $derived(
 						action="?/updateLogSettings"
 						use:enhance={() => {
 							isSavingLogSettings = true;
-							return async ({ update }) => {
+							return async ({ result, update }) => {
 								try {
+									if (result.type === 'success') {
+										await update({ invalidateAll: true });
+										await invalidateAll();
+										return;
+									}
+
 									await update();
+									// Only restore server-truth when the failure does not
+									// carry per-field errors. On Zod validation failures we
+									// keep the user's invalid input visible so the field
+									// errors line up with what they typed.
+									const hasFieldErrors =
+										result.type === 'failure' &&
+										result.data != null &&
+										typeof result.data === 'object' &&
+										'fieldErrors' in result.data;
+									if (!hasFieldErrors) {
+										restoreLogSettings();
+									}
 								} finally {
 									isSavingLogSettings = false;
 								}
@@ -3100,6 +3135,9 @@ const logFieldErrors = $derived(
 			align-items: center;
 			gap: 0.5rem;
 			padding: 0.75rem 1.25rem;
+			/* WCAG 2.1 SC 2.5.5 floor — keeps the vertical hit-area at 44px
+			   even when the active tab pill shrinks under wider viewports. */
+			min-height: var(--min-tap-size);
 			background: transparent;
 			border: none;
 			border-radius: 8px;
@@ -3477,7 +3515,13 @@ const logFieldErrors = $derived(
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			width: 42px;
+			/* WCAG 2.1 SC 2.5.5 floor — was 42px wide with no min-height,
+			   so the rendered hit-area was 42×(input height). Lift to 44×44
+			   minimum so the show/hide secret and clear-input affordances
+			   pass touch-target audits. */
+			min-width: var(--min-tap-size);
+			min-height: var(--min-tap-size);
+			padding: 0 0.5rem;
 			background: hsl(var(--muted));
 			border: 1px solid hsl(var(--border));
 			border-radius: 8px;

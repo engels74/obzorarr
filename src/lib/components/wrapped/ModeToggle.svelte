@@ -76,8 +76,12 @@ function handleKeyDown(event: KeyboardEvent): void {
 			z-index: 100;
 			display: flex;
 			align-items: center;
+			justify-content: center;
 			gap: 0.5rem;
 			padding: 0.5rem 1rem;
+			/* WCAG 2.1 SC 2.5.5: keep both axes at or above 44×44 logical px. */
+			min-width: var(--min-tap-size);
+			min-height: var(--min-tap-size);
 			background: rgba(0, 0, 0, 0.7);
 			backdrop-filter: blur(8px);
 			border: 1px solid rgba(255, 255, 255, 0.1);
@@ -127,6 +131,11 @@ function handleKeyDown(event: KeyboardEvent): void {
 				top: 0.75rem;
 				right: 3rem;
 				padding: 0.5rem;
+				/* Force the circular mobile button to the tap-target floor —
+				   the previous min-width/-height inherited from the default
+				   layout were being clipped by padding alone. */
+				width: var(--min-tap-size);
+				height: var(--min-tap-size);
 				border-radius: 50%;
 			}
 

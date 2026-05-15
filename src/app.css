@@ -65,6 +65,17 @@
 	--slide-glass-blur: 20px;
 	--slide-glow-color: hsl(var(--primary) / 0.4);
 	--slide-accent-glow: hsl(var(--accent) / 0.3);
+
+	/* WCAG 2.1 SC 2.5.5 minimum touch target. 2.75rem = 44px at the default
+	   16px root font, the standard mobile-accessibility threshold. Apply via
+	   the `.tap-target` utility below — any interactive element that should
+	   pass touch-target audits gets `min-width`/`min-height` from this token. */
+	--min-tap-size: 2.75rem;
+}
+
+.tap-target {
+	min-width: var(--min-tap-size);
+	min-height: var(--min-tap-size);
 }
 
 /* Dark mode class (same as :root since app is dark-only) */
