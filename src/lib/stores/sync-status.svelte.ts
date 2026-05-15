@@ -84,8 +84,13 @@ export class SyncStatusStore {
 					data.type === 'idle'
 				) {
 					if (this.onSyncComplete) {
-						const shouldHandle =
-							this.wasSyncing || this.shouldHandleTerminalEvent?.(data.type) === true;
+						let predicateResult = false;
+						try {
+							predicateResult = this.shouldHandleTerminalEvent?.(data.type) === true;
+						} catch {
+							// Treat predicate errors as "don't handle"
+						}
+						const shouldHandle = this.wasSyncing || predicateResult;
 						if (shouldHandle) {
 							const callback = this.onSyncComplete;
 							const terminalEvent = data.type;

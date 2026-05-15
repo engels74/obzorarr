@@ -132,6 +132,7 @@ $effect(() => {
 
 	if (!lookupSyncStarted) {
 		lookupSyncMarkerSeen = false;
+		lookupSyncFeedbackPending = false;
 	}
 });
 
