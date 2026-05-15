@@ -4,7 +4,9 @@ import { untrack } from 'svelte';
 import { browser } from '$app/environment';
 import { invalidateAll } from '$app/navigation';
 import SyncLoadingOverlay from '$lib/components/SyncLoadingOverlay.svelte';
+import { toast } from '$lib/services/toast';
 import { createSyncStatusStore, type SyncStatusStore } from '$lib/stores/sync-status.svelte';
+import type { SyncTerminalEventType } from '$lib/sync/types';
 import type { LayoutData } from './$types';
 
 /**
@@ -23,7 +25,17 @@ interface Props {
 	data: LayoutData;
 }
 
+type LayoutDataWithLookupSync = LayoutData & {
+	lookupSyncStarted?: boolean;
+	lookupSyncTriggered?: boolean;
+};
+
 let { children, data }: Props = $props();
+
+function hasLookupSyncMarker(layoutData: LayoutData): boolean {
+	const lookupData = layoutData as LayoutDataWithLookupSync;
+	return Boolean(lookupData.lookupSyncTriggered ?? lookupData.lookupSyncStarted);
+}
 
 // ==========================================================================
 // Constants
@@ -31,6 +43,8 @@ let { children, data }: Props = $props();
 
 /** Minimum time to show loading overlay for consistent UX */
 const MIN_LOADING_DISPLAY_MS = 300;
+const FAILED_LIVE_SYNC_MESSAGE =
+	"Couldn't refresh your viewing history from Plex. Showing your most recent data.";
 
 // ==========================================================================
 // Loading State
@@ -44,6 +58,14 @@ let loadingStartTime = $state(Date.now());
 
 /** Whether sync completion has been handled (prevents double-handling) */
 let syncCompletionHandled = $state(false);
+
+const initialLookupSyncMarker = untrack(() => hasLookupSyncMarker(data));
+
+/** Whether the current page load came from a landing-page lookup sync trigger */
+let lookupSyncFeedbackPending = $state(initialLookupSyncMarker);
+
+/** Prevents repeatedly re-arming the same server-provided lookup marker */
+let lookupSyncMarkerSeen = $state(initialLookupSyncMarker);
 
 // ==========================================================================
 // Sync Status Store
@@ -69,7 +91,15 @@ async function hideLoadingWithMinDelay(): Promise<void> {
  * 2. Refresh data
  * 3. Hide overlay with minimum delay
  */
-async function handleSyncComplete(): Promise<void> {
+function consumeLookupSyncMarker(): boolean {
+	if (!lookupSyncFeedbackPending) return false;
+	lookupSyncFeedbackPending = false;
+	return true;
+}
+
+async function handleSyncComplete(event: SyncTerminalEventType): Promise<void> {
+	lookupSyncFeedbackPending = false;
+
 	// Prevent double handling
 	if (syncCompletionHandled) return;
 	syncCompletionHandled = true;
@@ -82,11 +112,27 @@ async function handleSyncComplete(): Promise<void> {
 		// Refresh data while overlay is still visible
 		await invalidateAll();
 	} finally {
+		if (event === 'failed') {
+			toast.error(FAILED_LIVE_SYNC_MESSAGE);
+		}
 		// Hide overlay after data refresh (with minimum delay)
 		await hideLoadingWithMinDelay();
 		syncCompletionHandled = false;
 	}
 }
+
+$effect(() => {
+	const lookupSyncStarted = hasLookupSyncMarker(data);
+
+	if (lookupSyncStarted && !lookupSyncMarkerSeen) {
+		lookupSyncFeedbackPending = true;
+		lookupSyncMarkerSeen = true;
+	}
+
+	if (!lookupSyncStarted) {
+		lookupSyncMarkerSeen = false;
+	}
+});
 
 // Create sync status store with reactive access to data.syncStatus
 // Using $effect ensures:
@@ -115,7 +161,8 @@ $effect(() => {
 			progress: syncStatus.progress
 		},
 		{
-			onSyncComplete: handleSyncComplete
+			onSyncComplete: handleSyncComplete,
+			shouldHandleTerminalEvent: consumeLookupSyncMarker
 		}
 	);
 	syncStatusStore = store;
