@@ -105,7 +105,7 @@ describe('dogfood ISSUE-008 — StoryMode keydown throttle', () => {
 		);
 		expect(handleKeyDownStart).toBeGreaterThan(-1);
 		const handleKeyDownSlice = source.slice(handleKeyDownStart, handleKeyDownStart + 1200);
-		expect(handleKeyDownSlice).toContain('const now = Date.now();');
+		expect(handleKeyDownSlice).toContain('const now = performance.now();');
 		expect(handleKeyDownSlice).toContain('if (now - lastKeyTime < KEYDOWN_THROTTLE_MS) {');
 		expect(handleKeyDownSlice).toContain('lastKeyTime = now;');
 	});
