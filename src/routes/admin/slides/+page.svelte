@@ -684,10 +684,23 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 						<h3>Preview</h3>
 						<button
 							type="button"
-							class="preview-button"
+							class="preview-button tap-target"
 							onclick={async () => {
+								// Short-circuit when there is nothing to render. Without this
+								// guard the server returns html: '' for empty input and the
+								// preview region falls through to {@html ''} — visible
+								// outcome is the placeholder text staying put with no
+								// indication the button was clicked (dogfood ISSUE-004).
+								const content = editorContent ?? '';
+								if (content.trim().length === 0) {
+									previewHtml = '';
+									previewRendered = false;
+									previewError = 'Enter some Markdown content first.';
+									return;
+								}
+
 								const formData = new FormData();
-								formData.append('content', editorContent);
+								formData.append('content', content);
 
 								try {
 									const result = await submitAction<{ html?: string }>(
@@ -695,9 +708,16 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 										formData
 									);
 									if (result.type === 'success') {
-										previewHtml = result.data.html ?? '';
-										previewRendered = typeof result.data.html === 'string';
-										previewError = previewRendered ? '' : 'Failed to render Markdown';
+										const html = typeof result.data.html === 'string' ? result.data.html : '';
+										previewHtml = html;
+										// Render the preview region whenever the server returned
+										// success, even if html is empty (e.g. sanitizer stripped
+										// everything). An explicit empty-state line inside the
+										// rendered region is clearer than silently reverting to
+										// the "Click 'Update Preview' …" placeholder, which made
+										// the button look broken.
+										previewRendered = true;
+										previewError = '';
 									} else if (result.type === 'failure') {
 										previewHtml = '';
 										previewRendered = false;
@@ -722,8 +742,12 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 							{#if previewError}
 								<p class="preview-error">{previewError}</p>
 							{:else if previewRendered}
-								<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-								{@html previewHtml}
+								{#if previewHtml.length > 0}
+									<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+									{@html previewHtml}
+								{:else}
+									<p class="preview-placeholder">Markdown rendered to an empty result.</p>
+								{/if}
 							{:else}
 								<p class="preview-placeholder">Click "Update Preview" to see rendered Markdown</p>
 							{/if}

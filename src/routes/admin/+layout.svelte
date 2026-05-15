@@ -363,8 +363,11 @@ function handleCsrfWarningDismissed() {
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			width: 40px;
-			height: 40px;
+			/* WCAG 2.1 SC 2.5.5 floor — was 40×40, now 44×44 via the shared token. */
+			width: var(--min-tap-size);
+			height: var(--min-tap-size);
+			min-width: var(--min-tap-size);
+			min-height: var(--min-tap-size);
 			background: transparent;
 			border: none;
 			color: hsl(var(--foreground));

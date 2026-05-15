@@ -70,6 +70,7 @@ import {
 	getGlobalDefaultShareMode,
 	getServerWrappedShareMode
 } from '$lib/server/sharing/service';
+import { getAppVersion } from '$lib/server/version';
 import type { Actions, PageServerLoad } from './$types';
 
 const ThemeSchema = z.enum([
@@ -279,6 +280,10 @@ export const load: PageServerLoad = async () => {
 		availableYears,
 		currentYear,
 		playHistoryTotalCount,
+		// Returned explicitly here so the System tab's "App version" row renders
+		// even if the root layout data merge ever changes shape — the System tab
+		// reads `data.appVersion.display` directly.
+		appVersion: getAppVersion(),
 		// System info panel (ISSUE-006) — exposed as plain primitives so the
 		// SSR JSON is small and the client doesn't need to import node:os.
 		systemInfo: {

@@ -39,6 +39,12 @@ let {
 const EDGE_ZONE_PERCENT = 0.15;
 const SWIPE_THRESHOLD = 50;
 const ANIMATION_DURATION = 450;
+// Throttle keydown to ~10 events/sec. Held-down arrow keys repeat at the OS
+// rate (often 30+/sec), which queues up against the in-flight motion-library
+// animation calls and saturates the main thread. The `isTransitioning` gate
+// only blocks during an animation; this gate also caps the rate between
+// animations so the slideshow advances at a human-readable pace.
+const KEYDOWN_THROTTLE_MS = 100;
 type AnimationHandle = { stop: () => void; finished: Promise<void> };
 
 const navigation = createSlideState();
@@ -71,6 +77,7 @@ let activeEnterAnim: AnimationHandle | null = $state(null);
 let activeExitAnim: AnimationHandle | null = $state(null);
 let transitionTimeout: ReturnType<typeof setTimeout> | null = $state(null);
 let transitionToken = 0;
+let lastKeyTime = 0;
 
 $effect(() => {
 	return () => {
@@ -288,6 +295,16 @@ function handleTouchEnd(event: TouchEvent): void {
 
 function handleKeyDown(event: KeyboardEvent): void {
 	if (isTransitioning) return;
+
+	// Drop key repeats arriving faster than the throttle window. The OS auto-
+	// repeats held arrow keys at 30+/sec which piles up against the animations
+	// and freezes the main thread.
+	const now = Date.now();
+	if (now - lastKeyTime < KEYDOWN_THROTTLE_MS) {
+		event.preventDefault();
+		return;
+	}
+	lastKeyTime = now;
 
 	switch (event.key) {
 		case 'ArrowRight':
@@ -560,8 +577,10 @@ function handleSlideAnimationComplete(): void {}
 			top: 1rem;
 			right: 1rem;
 			z-index: 101;
-			width: 2.5rem;
-			height: 2.5rem;
+			width: var(--min-tap-size);
+			height: var(--min-tap-size);
+			min-width: var(--min-tap-size);
+			min-height: var(--min-tap-size);
 			display: flex;
 			align-items: center;
 			justify-content: center;
@@ -605,13 +624,15 @@ function handleSlideAnimationComplete(): void {}
 			.close-button {
 				top: 0.75rem;
 				right: 0.75rem;
-				width: 2rem;
-				height: 2rem;
+				/* Hold the tap-target floor on mobile too — the previous 2rem
+				   square (32px) failed WCAG 2.1 SC 2.5.5. */
+				width: var(--min-tap-size);
+				height: var(--min-tap-size);
 			}
 
 			.close-button svg {
-				width: 1rem;
-				height: 1rem;
+				width: 1.25rem;
+				height: 1.25rem;
 			}
 		}
 
@@ -684,8 +705,8 @@ function handleSlideAnimationComplete(): void {}
 			}
 
 			.close-button {
-				width: 2.75rem;
-				height: 2.75rem;
+				width: var(--min-tap-size);
+				height: var(--min-tap-size);
 			}
 
 			.close-button svg {

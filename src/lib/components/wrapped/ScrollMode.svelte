@@ -277,8 +277,10 @@ function handleKeyDown(event: KeyboardEvent): void {
 			top: 1rem;
 			right: 1rem;
 			z-index: 101;
-			width: 2.5rem;
-			height: 2.5rem;
+			width: var(--min-tap-size);
+			height: var(--min-tap-size);
+			min-width: var(--min-tap-size);
+			min-height: var(--min-tap-size);
 			display: flex;
 			align-items: center;
 			justify-content: center;
@@ -327,13 +329,15 @@ function handleKeyDown(event: KeyboardEvent): void {
 			.close-button {
 				top: 0.75rem;
 				right: 0.75rem;
-				width: 2rem;
-				height: 2rem;
+				/* Hold the tap-target floor on mobile — the previous 2rem
+				   square (32px) failed WCAG 2.1 SC 2.5.5. */
+				width: var(--min-tap-size);
+				height: var(--min-tap-size);
 			}
 
 			.close-button svg {
-				width: 1rem;
-				height: 1rem;
+				width: 1.25rem;
+				height: 1.25rem;
 			}
 		}
 

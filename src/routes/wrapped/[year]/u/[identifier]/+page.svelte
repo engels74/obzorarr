@@ -139,6 +139,15 @@ function handleRestart(): void {
 	showSummary = false;
 	viewMode = 'story';
 	currentSlideIndex = 0;
+	// Clear the URL hash before the StoryMode remount. Otherwise the freshly
+	// mounted StoryMode reads the stale `#slide=N` (from the user reaching the
+	// summary) via readInitialSlideIndex and the slideshow restarts at the
+	// last slide instead of slide 0.
+	if (browser && routerReady) {
+		const url = new URL(window.location.href);
+		url.hash = '#slide=0';
+		replaceState(url, {});
+	}
 	storyKey++; // Force StoryMode remount
 }
 
