@@ -1,15 +1,42 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
+import { afterAll, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import { isRedirect } from '@sveltejs/kit';
 import { db } from '$lib/server/db/client';
 import { appSettings, plexAccounts, shareSettings, users } from '$lib/server/db/schema';
+import { logger } from '$lib/server/logging';
 import { setGlobalShareDefaults } from '$lib/server/sharing/service';
 import { ShareMode, ShareModeSource } from '$lib/server/sharing/types';
-import { actions } from '../../src/routes/+page.server';
+import type { LiveSyncResult } from '$lib/server/sync/live-sync';
+import * as liveSync from '$lib/server/sync/live-sync';
 
+let liveSyncResult: LiveSyncResult = {
+	triggered: false,
+	syncInProgress: false,
+	reason: 'disabled'
+};
+let liveSyncCalls: string[] = [];
+
+const triggerLiveSyncSpy = spyOn(liveSync, 'triggerLiveSyncIfNeeded');
+triggerLiveSyncSpy.mockImplementation(async (source: string) => {
+	liveSyncCalls.push(source);
+	return liveSyncResult;
+});
+
+const { actions } = await import('../../src/routes/+page.server');
 type LookupAction = NonNullable<typeof actions.lookupUser>;
 
 const USER_ID = 42;
 const YEAR = new Date().getFullYear();
+
+interface CookieCall {
+	name: string;
+	value: string;
+	options?: unknown;
+}
+
+interface TestCookies {
+	sets: CookieCall[];
+	set: (name: string, value: string, options?: unknown) => void;
+}
 
 async function seedUser(mode?: (typeof ShareMode)[keyof typeof ShareMode]): Promise<void> {
 	await db.insert(plexAccounts).values({
@@ -38,7 +65,16 @@ async function seedUser(mode?: (typeof ShareMode)[keyof typeof ShareMode]): Prom
 	}
 }
 
-async function invokeLookup(username: string, ip: string) {
+function createCookies(): TestCookies {
+	return {
+		sets: [],
+		set(name: string, value: string, options?: unknown) {
+			this.sets.push({ name, value, options });
+		}
+	};
+}
+
+async function invokeLookup(username: string, ip: string, cookies: TestCookies = createCookies()) {
 	const formData = new FormData();
 	formData.set('username', username);
 	const request = new Request('https://obzorarr.example/', {
@@ -49,17 +85,28 @@ async function invokeLookup(username: string, ip: string) {
 	const lookupUser = actions.lookupUser as LookupAction;
 	return lookupUser({
 		request,
+		cookies,
 		getClientAddress: () => ip,
 		setHeaders: () => {}
 	} as unknown as Parameters<LookupAction>[0]);
 }
 
 describe('landing username lookup', () => {
+	afterAll(() => {
+		triggerLiveSyncSpy.mockRestore();
+	});
+
 	beforeEach(async () => {
 		await db.delete(shareSettings);
 		await db.delete(appSettings);
 		await db.delete(users);
 		await db.delete(plexAccounts);
+		liveSyncCalls = [];
+		liveSyncResult = { triggered: false, syncInProgress: false, reason: 'disabled' };
+		triggerLiveSyncSpy.mockImplementation(async (source: string) => {
+			liveSyncCalls.push(source);
+			return liveSyncResult;
+		});
 	});
 
 	it('redirects anonymous lookup only for effectively public wrapped pages', async () => {
@@ -73,6 +120,65 @@ describe('landing username lookup', () => {
 			expect(isRedirect(error)).toBe(true);
 			if (!isRedirect(error)) throw error;
 			expect(error.location).toBe(`/wrapped/${YEAR}/u/${USER_ID}`);
+		}
+	});
+
+	it('sets a short-lived wrapped marker when public lookup starts live sync', async () => {
+		liveSyncResult = {
+			triggered: true,
+			syncInProgress: true
+		};
+		const cookies = createCookies();
+		await setGlobalShareDefaults({ defaultShareMode: ShareMode.PUBLIC, allowUserControl: false });
+		await seedUser();
+
+		try {
+			await invokeLookup('alice', '198.51.100.5', cookies);
+			throw new Error('Expected redirect');
+		} catch (error) {
+			expect(isRedirect(error)).toBe(true);
+			if (!isRedirect(error)) throw error;
+		}
+
+		expect(liveSyncCalls).toEqual(['landing-page-lookup']);
+		expect(cookies.sets).toEqual([
+			{
+				name: 'lookup_live_sync',
+				value: '1',
+				options: {
+					path: '/wrapped',
+					httpOnly: true,
+					sameSite: 'lax',
+					maxAge: 60
+				}
+			}
+		]);
+	});
+
+	it('logs trigger startup failures without setting the lookup marker', async () => {
+		liveSyncResult = {
+			triggered: false,
+			syncInProgress: false,
+			reason: 'error'
+		};
+		const warnSpy = spyOn(logger, 'warn').mockImplementation(() => {});
+		const cookies = createCookies();
+		await setGlobalShareDefaults({ defaultShareMode: ShareMode.PUBLIC, allowUserControl: false });
+		await seedUser();
+
+		try {
+			await invokeLookup('alice', '198.51.100.6', cookies);
+			throw new Error('Expected redirect');
+		} catch (error) {
+			expect(isRedirect(error)).toBe(true);
+			if (!isRedirect(error)) throw error;
+			expect(warnSpy).toHaveBeenCalledWith(
+				'Lookup-triggered live sync failed to start',
+				'LandingLookup'
+			);
+			expect(cookies.sets).toHaveLength(0);
+		} finally {
+			warnSpy.mockRestore();
 		}
 	});
 
