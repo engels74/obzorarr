@@ -12,7 +12,6 @@ let {
 <AlertDialogPrimitive.Description
 	bind:ref
 	data-slot="alert-dialog-description"
-	class={cn('text-sm text-muted-foreground', className)}
-	style="font-size: 0.875rem; color: oklch(var(--muted-foreground));"
+	class={cn("text-muted-foreground *:[a]:hover:text-foreground text-sm text-balance md:text-pretty *:[a]:underline *:[a]:underline-offset-3", className)}
 	{...restProps}
 />

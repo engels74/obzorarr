@@ -12,7 +12,6 @@ let {
 <AlertDialogPrimitive.Title
 	bind:ref
 	data-slot="alert-dialog-title"
-	class={cn('text-lg font-semibold', className)}
-	style="font-size: 1.125rem; font-weight: 600; color: oklch(var(--foreground));"
+	class={cn("text-base font-medium sm:group-data-[size=default]/alert-dialog-content:group-has-data-[slot=alert-dialog-media]/alert-dialog-content:col-start-2", className)}
 	{...restProps}
 />

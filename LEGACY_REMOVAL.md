@@ -67,6 +67,25 @@ rg 'var\(--primary-hue\)|--primary-hue:' src/
 rg 'OnboardingCard|ShareModal' src/
 ```
 
+## shadcn-svelte Slider (re-add when first consumer materialises)
+
+The `slider` primitive was installed in the US-003 batch but removed
+again because bits-ui's `Slider.Root` exposes a discriminated-union
+`type: "single" | "multiple"` prop that doesn't survive the
+shadcn-svelte `...restProps` spread + `bind:value` pattern under
+Svelte 5 strict mode. The component currently produces an
+"Expression produces a union type that is too complex to represent"
+error from svelte-check.
+
+When the first PR-2/3 surface needs a slider:
+
+- Re-install with `bunx shadcn-svelte@latest add slider -o`.
+- Either remove the discriminated `type` prop (forward it explicitly
+  via a `single` / `multiple` wrapper) or downgrade the slider entry
+  to drop `restProps` spreading.
+- If the bits-ui upstream fix lands, the wrapper-free shadcn pattern
+  works again.
+
 ## Follow-ups (post-PR-4, separate workstreams)
 
 - After PR-4 ships, consider migrating the hardcoded per-theme OKLCH triples
