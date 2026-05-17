@@ -1,5 +1,27 @@
 # Legacy Removal TODO — scheduled for PR-4 of the v3 UI overhaul
 
+> **Resumption note (iteration 1 stopped 2026-05-18).** The v3 plan at
+> `~/.claude/plans/i-set-you-to-vectorized-sutton-v3.md` is partially
+> executed on this branch: 15 of 34 user stories closed across 8 commits
+> (see `git log feat/ui-overhaul-pr1`), with all 4 verification gates
+> green (check + lint + test 1794 pass + build + tweakcn-drift).
+>
+> **PR-1 foundation is mergeable as-is.** Remaining 19 stories
+> (US-009b, US-012, US-013, US-015, US-018-034) are blocked by either
+> the PR-2 settings split (~2500 LOC redesign rooted in the 4779-line
+> monolith at `src/routes/admin/settings/+page.svelte`), the absence of
+> Playwright browser binaries (~700MB, run `bunx playwright install`
+> first), or consumers that don't exist until PR-2 lands.
+>
+> **To resume**: run
+> `/oh-my-claudecode:ralph execute the plan at ~/.claude/plans/i-set-you-to-vectorized-sutton-v3.md`
+> in a fresh session. Recommended next pick: US-018+US-019 (admin shell
+> + settings nested routes). The shadcn Sidebar primitive is
+> pre-installed and the OCC strategy JSDoc map at the head of
+> `src/routes/admin/settings/+page.server.ts` (commit 340c4c2) tells
+> US-020 exactly which schemas get inline vs external OCC plumbing.
+
+
 This file tracks transient compatibility shims introduced during the PR-1..PR-3
 phases of the v3 UI/UX overhaul. Every entry below MUST be removed in PR-4
 (D6, D7) before the feature branch lands on `main`. The boulder doesn't stop
