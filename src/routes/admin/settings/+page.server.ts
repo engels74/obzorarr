@@ -73,6 +73,15 @@ import {
 import { getAppVersion } from '$lib/server/version';
 import type { Actions, PageServerLoad } from './$types';
 
+/**
+ * OCC strategy: EXTERNAL.
+ * `ThemeSchema` is a top-level `z.enum()` whose payload would change shape if
+ * wrapped in `z.object({...})` to carry an inline `settingsVersion`. The
+ * action handler validates `formData.get('settingsVersion')` against the
+ * current row BEFORE `safeParse`; on mismatch returns
+ * `fail(409, { error: '__OCC_CONFLICT__', settingsVersion: current })`.
+ * See v3 plan §A5 / Table D2.
+ */
 const ThemeSchema = z.enum([
 	'modern-minimal',
 	'supabase',
@@ -80,20 +89,50 @@ const ThemeSchema = z.enum([
 	'amber-minimal',
 	'soviet-red'
 ]);
+
+/**
+ * OCC strategy: INHERITED FROM PARENT.
+ * `AnonymizationSchema` is consumed as a field of `ServerWrappedSettingsSchema`
+ * (a `z.object`), so OCC is enforced via that parent's inline `settingsVersion`.
+ */
 const AnonymizationSchema = z.enum(['real', 'anonymous', 'hybrid']);
+
+/**
+ * OCC strategy: EXTERNAL.
+ * Top-level `z.enum` like `ThemeSchema`. Action validates `settingsVersion`
+ * before `safeParse`; mismatch → `fail(409, ...)`.
+ */
 const WrappedLogoModeSchema = z.enum(['always_show', 'always_hide', 'user_choice']);
 
+/**
+ * OCC strategy: INHERITED FROM PARENT.
+ * Consumed as a field of `UserDefaultsSettingsSchema` (a `z.object`).
+ */
 const ShareModeSchema = z.enum(['public', 'private-oauth', 'private-link']);
+
 const BooleanStringSchema = z.enum(['true', 'false']).transform((value) => value === 'true');
-// Server-wide wrapped only supports public and private-oauth (not private-link)
+
+/**
+ * OCC strategy: INHERITED FROM PARENT.
+ * Consumed as a field of `ServerWrappedSettingsSchema`. Server-wide wrapped
+ * only supports public and private-oauth (not private-link).
+ */
 const ServerWrappedModeSchema = z.enum(['public', 'private-oauth']);
 
+/**
+ * OCC strategy: INLINE `settingsVersion`.
+ * `z.object` schema: the version field rides alongside the data fields and
+ * is validated in the same `safeParse` call.
+ */
 const ServerWrappedSettingsSchema = z.object({
 	anonymizationMode: AnonymizationSchema,
 	serverWrappedShareMode: ServerWrappedModeSchema,
 	settingsVersion: z.string().min(1, 'Missing settings version (reload the page)')
 });
 
+/**
+ * OCC strategy: INLINE `settingsVersion`.
+ */
 const UserDefaultsSettingsSchema = z.object({
 	defaultShareMode: ShareModeSchema,
 	allowUserControl: BooleanStringSchema,
@@ -131,6 +170,12 @@ const trimmedUrlOrEmpty = z
 	)
 	.optional();
 
+/**
+ * OCC strategy: INLINE `apiConfigVersion`.
+ * Same inline-OCC pattern but uses a dedicated `apiConfigVersion` field name
+ * (predates the `settingsVersion` convention; both fire the same 409 path
+ * in the action handler).
+ */
 const ApiConfigSchema = z.object({
 	plexServerUrl: trimmedUrlOrEmpty,
 	plexToken: optionalTrimmed(512),
@@ -148,6 +193,12 @@ const ApiConfigSchema = z.object({
 	apiConfigVersion: z.string().min(1, 'Missing api config version (reload the page)')
 });
 
+/**
+ * OCC strategy: NONE in PR-1.
+ * Pre-v3 schema with no version field. The v3 plan calls for inline OCC
+ * (`settingsVersion`) — added in PR-2 alongside the settings nested-route
+ * split (US-020).
+ */
 const LogSettingsSchema = z.object({
 	retentionDays: z.coerce
 		.number({ error: 'Retention days must be a number' })
@@ -162,6 +213,10 @@ const LogSettingsSchema = z.object({
 	debugEnabled: z.boolean()
 });
 
+/**
+ * OCC strategy: NONE in PR-1.
+ * Plan calls for inline OCC in PR-2 (US-020).
+ */
 const CsrfOriginSchema = z.object({
 	csrfOrigin: z
 		.string()
@@ -179,6 +234,10 @@ const CsrfOriginSchema = z.object({
 		})
 });
 
+/**
+ * OCC strategy: NONE in PR-1.
+ * Plan calls for inline OCC in PR-2 (US-020).
+ */
 const TrustProxySchema = z.object({
 	enabled: z.enum(['true', 'false']).transform((v) => v === 'true'),
 	confirmRisk: z.enum(['true']).optional()
