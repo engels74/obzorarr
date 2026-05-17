@@ -2034,14 +2034,14 @@ const logFieldErrors = $derived(
 								{/if}
 
 								{#if data.security.csrfOriginSkipped}
-									<p class="field-hint" style="color: hsl(25 95% 53%); width: 100%;">
+									<p class="field-hint" style="color: oklch(0.7065 0.186 48.13); width: 100%;">
 										CSRF origin skip is currently <strong>active</strong>. Origin validation is
 										relaxed — configure a proper ORIGIN when possible.
 									</p>
 								{/if}
 
 								{#if data.security.csrfOriginSkipped}
-									<p class="field-hint" style="color: hsl(var(--muted-foreground)); width: 100%;">
+									<p class="field-hint" style="color: oklch(var(--muted-foreground)); width: 100%;">
 										To disable the CSRF skip, configure a CSRF origin above first.
 									</p>
 									<button type="button" class="btn-destructive" disabled>
@@ -2049,7 +2049,7 @@ const logFieldErrors = $derived(
 										Disable CSRF Skip
 									</button>
 								{:else if data.security.csrfEnabled}
-									<p class="field-hint" style="color: hsl(var(--muted-foreground)); width: 100%;">
+									<p class="field-hint" style="color: oklch(var(--muted-foreground)); width: 100%;">
 										CSRF is already enforced by the configured origin — skipping is not needed.
 									</p>
 									<button type="button" class="btn-secondary" disabled>
@@ -3079,7 +3079,7 @@ const logFieldErrors = $derived(
 			align-items: center;
 			margin-bottom: 1.5rem;
 			padding-bottom: 1.5rem;
-			border-bottom: 1px solid hsl(var(--border));
+			border-bottom: 1px solid oklch(var(--border));
 		}
 
 		.header-content {
@@ -3094,10 +3094,10 @@ const logFieldErrors = $derived(
 			justify-content: center;
 			width: 56px;
 			height: 56px;
-			background: linear-gradient(135deg, hsl(var(--primary) / 0.15), hsl(var(--primary) / 0.05));
-			border: 1px solid hsl(var(--primary) / 0.3);
+			background: linear-gradient(135deg, oklch(var(--primary) / 0.15), oklch(var(--primary) / 0.05));
+			border: 1px solid oklch(var(--primary) / 0.3);
 			border-radius: 16px;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 		}
 
 		.header-icon :global(svg) {
@@ -3108,14 +3108,14 @@ const logFieldErrors = $derived(
 		.header-text h1 {
 			font-size: 1.75rem;
 			font-weight: 700;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			margin: 0;
 			letter-spacing: -0.02em;
 		}
 
 		.header-subtitle {
 			font-size: 0.875rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin: 0.25rem 0 0;
 		}
 
@@ -3124,7 +3124,7 @@ const logFieldErrors = $derived(
 			display: flex;
 			gap: 0.5rem;
 			padding: 0.5rem;
-			background: hsl(var(--muted) / 0.3);
+			background: oklch(var(--muted) / 0.3);
 			border-radius: 12px;
 			margin-bottom: 1.5rem;
 			overflow-x: auto;
@@ -3141,7 +3141,7 @@ const logFieldErrors = $derived(
 			background: transparent;
 			border: none;
 			border-radius: 8px;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-size: 0.875rem;
 			font-weight: 500;
 			cursor: pointer;
@@ -3150,14 +3150,14 @@ const logFieldErrors = $derived(
 		}
 
 		.tab-button:hover {
-			color: hsl(var(--foreground));
-			background: hsl(var(--muted) / 0.5);
+			color: oklch(var(--foreground));
+			background: oklch(var(--muted) / 0.5);
 		}
 
 		.tab-button.active {
-			color: hsl(var(--primary-foreground));
-			background: hsl(var(--primary));
-			box-shadow: 0 2px 8px hsl(var(--primary) / 0.3);
+			color: oklch(var(--primary-foreground));
+			background: oklch(var(--primary));
+			box-shadow: 0 2px 8px oklch(var(--primary) / 0.3);
 		}
 
 		.tab-icon {
@@ -3167,8 +3167,8 @@ const logFieldErrors = $derived(
 
 		/* ===== Panel Base ===== */
 		.panel {
-			background: hsl(var(--card));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--card));
+			border: 1px solid oklch(var(--border));
 			border-radius: 16px;
 			overflow: hidden;
 			margin-bottom: 1.5rem;
@@ -3179,8 +3179,8 @@ const logFieldErrors = $derived(
 			justify-content: space-between;
 			align-items: center;
 			padding: 1rem 1.25rem;
-			border-bottom: 1px solid hsl(var(--border));
-			background: hsl(var(--muted) / 0.3);
+			border-bottom: 1px solid oklch(var(--border));
+			background: oklch(var(--muted) / 0.3);
 		}
 
 		.panel-title {
@@ -3192,30 +3192,30 @@ const logFieldErrors = $derived(
 		.panel-title h2 {
 			font-size: 1rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			margin: 0;
 		}
 
 		.panel-icon {
 			width: 20px;
 			height: 20px;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 		}
 
 		.panel-icon.plex {
-			color: hsl(45 100% 50%);
+			color: oklch(0.8408 0.1725 84.2);
 		}
 
 		.panel-icon.openai {
-			color: hsl(160 60% 50%);
+			color: oklch(0.7551 0.1452 165.37);
 		}
 
 		.panel-icon.danger {
-			color: hsl(0 70% 50%);
+			color: oklch(0.5714 0.2121 27.25);
 		}
 
 		.panel-description {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-size: 0.875rem;
 			margin: 0;
 			padding: 1rem 1.25rem 0;
@@ -3233,7 +3233,7 @@ const logFieldErrors = $derived(
 			flex-wrap: wrap;
 			margin-top: 1.25rem;
 			padding-top: 1rem;
-			border-top: 1px solid hsl(var(--border) / 0.5);
+			border-top: 1px solid oklch(var(--border) / 0.5);
 		}
 
 		.plex-actions {
@@ -3247,13 +3247,13 @@ const logFieldErrors = $derived(
 			letter-spacing: 0.05em;
 			padding: 0.25rem 0.625rem;
 			border-radius: 6px;
-			background: hsl(var(--muted));
-			color: hsl(var(--muted-foreground));
+			background: oklch(var(--muted));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.panel-badge.optional {
-			background: hsl(200 60% 20%);
-			color: hsl(200 60% 70%);
+			background: oklch(0.3424 0.0573 233.83);
+			color: oklch(0.7828 0.0764 230.66);
 		}
 
 		.panel-link {
@@ -3261,7 +3261,7 @@ const logFieldErrors = $derived(
 			align-items: center;
 			gap: 0.375rem;
 			font-size: 0.8125rem;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			text-decoration: none;
 			transition: opacity 0.15s ease;
 		}
@@ -3281,7 +3281,7 @@ const logFieldErrors = $derived(
 			align-items: center;
 			gap: 0.5rem;
 			padding: 0.375rem 0.75rem;
-			background: hsl(var(--muted));
+			background: oklch(var(--muted));
 			border-radius: 20px;
 			font-size: 0.75rem;
 		}
@@ -3290,20 +3290,20 @@ const logFieldErrors = $derived(
 			width: 8px;
 			height: 8px;
 			border-radius: 50%;
-			background: hsl(var(--muted-foreground));
+			background: oklch(var(--muted-foreground));
 		}
 
 		.connection-status.connected .status-dot {
-			background: hsl(145 70% 50%);
-			box-shadow: 0 0 8px hsl(145 70% 50% / 0.5);
+			background: oklch(0.7776 0.199 151.21);
+			box-shadow: 0 0 8px oklch(0.7776 0.199 151.21 / 0.5);
 		}
 
 		.status-text {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.connection-status.connected .status-text {
-			color: hsl(145 70% 50%);
+			color: oklch(0.7776 0.199 151.21);
 		}
 
 		/* ===== Form Fields ===== */
@@ -3326,41 +3326,41 @@ const logFieldErrors = $derived(
 			gap: 0.5rem;
 			font-size: 0.8125rem;
 			font-weight: 500;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.field-icon {
 			width: 16px;
 			height: 16px;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.form-field input {
 			width: 100%;
 			padding: 0.625rem 0.875rem;
-			background: hsl(var(--input));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--input));
+			border: 1px solid oklch(var(--border));
 			border-radius: 8px;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			font-size: 0.875rem;
 			transition: all 0.15s ease;
 		}
 
 		.form-field input:focus {
 			outline: none;
-			border-color: hsl(var(--ring));
-			box-shadow: 0 0 0 3px hsl(var(--ring) / 0.15);
+			border-color: oklch(var(--ring));
+			box-shadow: 0 0 0 3px oklch(var(--ring) / 0.15);
 		}
 
 		.form-field input.from-env {
-			border-color: hsl(210 80% 40% / 0.4);
-			background: hsl(210 80% 50% / 0.05);
+			border-color: oklch(0.5096 0.1483 253.46 / 0.4);
+			background: oklch(0.5987 0.1773 253.7 / 0.05);
 		}
 
 		.field-hint {
 			display: block;
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin-top: 0.375rem;
 		}
 
@@ -3370,19 +3370,19 @@ const logFieldErrors = $derived(
 			gap: 0.625rem;
 			margin: -0.25rem 0 1rem;
 			font-size: 0.8125rem;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.checkbox-row input {
 			width: 1rem;
 			height: 1rem;
-			accent-color: hsl(var(--primary));
+			accent-color: oklch(var(--primary));
 		}
 
 		.field-error {
 			display: block;
 			font-size: 0.75rem;
-			color: hsl(var(--destructive));
+			color: oklch(var(--destructive));
 			margin-top: 0.375rem;
 		}
 
@@ -3395,8 +3395,8 @@ const logFieldErrors = $derived(
 		}
 
 		.system-info-item {
-			background: hsl(var(--muted) / 0.4);
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--muted) / 0.4);
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
 			padding: 0.875rem 1rem;
 		}
@@ -3406,7 +3406,7 @@ const logFieldErrors = $derived(
 			font-weight: 600;
 			text-transform: uppercase;
 			letter-spacing: 0.05em;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin: 0 0 0.25rem;
 		}
 
@@ -3414,7 +3414,7 @@ const logFieldErrors = $derived(
 			margin: 0;
 			font-size: 0.9rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			word-break: break-word;
 		}
 
@@ -3425,13 +3425,13 @@ const logFieldErrors = $derived(
 			letter-spacing: 0.03em;
 			padding: 0.125rem 0.5rem;
 			border-radius: 4px;
-			background: hsl(140 50% 25%);
-			color: hsl(140 50% 60%);
+			background: oklch(0.4353 0.0951 151.26);
+			color: oklch(0.7662 0.1373 152.72);
 		}
 
 		.source-badge.env {
-			background: hsl(210 80% 25%);
-			color: hsl(210 80% 65%);
+			background: oklch(0.3681 0.1016 252.83);
+			color: oklch(0.708 0.1276 250.07);
 		}
 
 		/* Environment Lock Badge - indicates ENV-controlled settings */
@@ -3440,12 +3440,12 @@ const logFieldErrors = $derived(
 			align-items: center;
 			gap: 0.375rem;
 			padding: 0.25rem 0.625rem;
-			background: linear-gradient(135deg, hsl(210 70% 25%), hsl(210 60% 20%));
-			border: 1px solid hsl(210 60% 35%);
+			background: linear-gradient(135deg, oklch(0.3653 0.0908 251.82), oklch(0.3146 0.066 250.72));
+			border: 1px solid oklch(0.4566 0.1043 251.21);
 			border-radius: 6px;
 			font-size: 0.6875rem;
 			font-weight: 600;
-			color: hsl(210 80% 70%);
+			color: oklch(0.7478 0.1093 249.48);
 			letter-spacing: 0.02em;
 		}
 
@@ -3457,15 +3457,15 @@ const logFieldErrors = $derived(
 		/* Locked input styling */
 		.form-field input:read-only,
 		.form-field input:disabled {
-			background: hsl(var(--muted) / 0.3);
-			border-color: hsl(210 60% 35% / 0.4);
-			color: hsl(var(--muted-foreground));
+			background: oklch(var(--muted) / 0.3);
+			border-color: oklch(0.4566 0.1043 251.21 / 0.4);
+			color: oklch(var(--muted-foreground));
 			cursor: not-allowed;
 			opacity: 0.8;
 		}
 
 		.field-hint.env-hint {
-			color: hsl(210 60% 60%);
+			color: oklch(0.6673 0.1116 249.83);
 			font-style: italic;
 		}
 
@@ -3473,15 +3473,15 @@ const logFieldErrors = $derived(
 		.panel-info {
 			margin-top: 1.25rem;
 			padding: 1rem;
-			background: hsl(210 60% 50% / 0.08);
-			border: 1px dashed hsl(210 60% 35% / 0.4);
+			background: oklch(0.5883 0.1391 251.44 / 0.08);
+			border: 1px dashed oklch(0.4566 0.1043 251.21 / 0.4);
 			border-radius: 8px;
 			text-align: center;
 		}
 
 		.panel-info .info-text {
 			font-size: 0.8125rem;
-			color: hsl(210 60% 60%);
+			color: oklch(0.6673 0.1116 249.83);
 			font-style: italic;
 		}
 
@@ -3489,17 +3489,17 @@ const logFieldErrors = $derived(
 		.count-result {
 			margin-top: 1rem;
 			padding: 0.75rem 1rem;
-			border: 1px solid hsl(140 50% 35% / 0.45);
+			border: 1px solid oklch(0.5516 0.1244 150.96 / 0.45);
 			border-radius: 8px;
-			background: hsl(140 50% 30% / 0.12);
-			color: hsl(140 50% 70%);
+			background: oklch(0.4943 0.11 151.09 / 0.12);
+			color: oklch(0.8209 0.1049 154.29);
 			font-size: 0.875rem;
 		}
 
 		.inline-result.error {
-			border-color: hsl(var(--destructive) / 0.45);
-			background: hsl(var(--destructive) / 0.1);
-			color: hsl(var(--destructive));
+			border-color: oklch(var(--destructive) / 0.45);
+			background: oklch(var(--destructive) / 0.1);
+			color: oklch(var(--destructive));
 		}
 
 		.input-with-action {
@@ -3522,17 +3522,17 @@ const logFieldErrors = $derived(
 			min-width: var(--min-tap-size);
 			min-height: var(--min-tap-size);
 			padding: 0 0.5rem;
-			background: hsl(var(--muted));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--muted));
+			border: 1px solid oklch(var(--border));
 			border-radius: 8px;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			cursor: pointer;
 			transition: all 0.15s ease;
 		}
 
 		.input-action:hover {
-			background: hsl(var(--secondary));
-			color: hsl(var(--foreground));
+			background: oklch(var(--secondary));
+			color: oklch(var(--foreground));
 		}
 
 		.input-action :global(svg) {
@@ -3560,12 +3560,12 @@ const logFieldErrors = $derived(
 			display: flex;
 			align-items: center;
 			padding: 0 0.875rem;
-			background: hsl(var(--muted));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--muted));
+			border: 1px solid oklch(var(--border));
 			border-left: none;
 			border-radius: 0 8px 8px 0;
 			font-size: 0.8125rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.form-row {
@@ -3593,8 +3593,8 @@ const logFieldErrors = $derived(
 			justify-content: center;
 			gap: 0.5rem;
 			padding: 0.625rem 1.25rem;
-			background: hsl(var(--primary));
-			color: hsl(var(--primary-foreground));
+			background: oklch(var(--primary));
+			color: oklch(var(--primary-foreground));
 			border: none;
 			border-radius: 8px;
 			font-size: 0.875rem;
@@ -3620,9 +3620,9 @@ const logFieldErrors = $derived(
 			justify-content: center;
 			gap: 0.5rem;
 			padding: 0.5rem 1rem;
-			background: hsl(var(--secondary));
-			color: hsl(var(--foreground));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--secondary));
+			color: oklch(var(--foreground));
+			border: 1px solid oklch(var(--border));
 			border-radius: 8px;
 			font-size: 0.8125rem;
 			font-weight: 500;
@@ -3631,8 +3631,8 @@ const logFieldErrors = $derived(
 		}
 
 		.btn-secondary:hover:not(:disabled) {
-			background: hsl(var(--muted));
-			border-color: hsl(var(--primary) / 0.5);
+			background: oklch(var(--muted));
+			border-color: oklch(var(--primary) / 0.5);
 		}
 
 		.btn-secondary:disabled {
@@ -3646,9 +3646,9 @@ const logFieldErrors = $derived(
 			justify-content: center;
 			gap: 0.5rem;
 			padding: 0.5rem 1rem;
-			background: hsl(var(--secondary));
-			color: hsl(var(--foreground));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--secondary));
+			color: oklch(var(--foreground));
+			border: 1px solid oklch(var(--border));
 			border-radius: 8px;
 			font-size: 0.8125rem;
 			font-weight: 500;
@@ -3657,9 +3657,9 @@ const logFieldErrors = $derived(
 		}
 
 		.btn-danger:hover:not(:disabled) {
-			background: hsl(0 70% 45%);
+			background: oklch(0.5288 0.1952 27.16);
 			color: white;
-			border-color: hsl(0 70% 45%);
+			border-color: oklch(0.5288 0.1952 27.16);
 		}
 
 		.btn-danger:disabled {
@@ -3673,9 +3673,9 @@ const logFieldErrors = $derived(
 			justify-content: center;
 			gap: 0.5rem;
 			padding: 0.5rem 1rem;
-			background: hsl(0 60% 25%);
-			color: hsl(0 70% 70%);
-			border: 1px solid hsl(0 50% 35%);
+			background: oklch(0.3437 0.1092 24.99);
+			color: oklch(0.7089 0.1324 20.95);
+			border: 1px solid oklch(0.4287 0.1227 23.86);
 			border-radius: 8px;
 			font-size: 0.8125rem;
 			font-weight: 500;
@@ -3684,9 +3684,9 @@ const logFieldErrors = $derived(
 		}
 
 		.btn-destructive:hover:not(:disabled) {
-			background: hsl(0 70% 45%);
+			background: oklch(0.5288 0.1952 27.16);
 			color: white;
-			border-color: hsl(0 70% 45%);
+			border-color: oklch(0.5288 0.1952 27.16);
 		}
 
 		.btn-destructive:disabled {
@@ -3710,8 +3710,8 @@ const logFieldErrors = $derived(
 			gap: 1rem;
 			margin: 0 1.25rem 1.25rem;
 			padding: 0.875rem 1rem;
-			background: hsl(var(--muted) / 0.35);
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--muted) / 0.35);
+			border: 1px solid oklch(var(--border));
 			border-radius: 10px;
 		}
 
@@ -3725,13 +3725,13 @@ const logFieldErrors = $derived(
 		.maintenance-title {
 			font-size: 0.8125rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.maintenance-description {
 			font-size: 0.75rem;
 			line-height: 1.4;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.openai-maintenance-actions {
@@ -3780,21 +3780,21 @@ const logFieldErrors = $derived(
 			flex-direction: column;
 			align-items: center;
 			padding: 1rem 0.75rem;
-			background: hsl(var(--muted) / 0.5);
-			border: 2px solid hsl(var(--border));
+			background: oklch(var(--muted) / 0.5);
+			border: 2px solid oklch(var(--border));
 			border-radius: 12px;
 			cursor: pointer;
 			transition: all 0.2s ease;
 		}
 
 		.theme-card:hover {
-			border-color: hsl(var(--primary) / 0.5);
+			border-color: oklch(var(--primary) / 0.5);
 			transform: translateY(-2px);
 		}
 
 		.theme-card.selected {
-			border-color: hsl(var(--primary));
-			background: hsl(var(--primary) / 0.1);
+			border-color: oklch(var(--primary));
+			background: oklch(var(--primary) / 0.1);
 		}
 
 		.theme-card input {
@@ -3808,7 +3808,7 @@ const logFieldErrors = $derived(
 			height: 56px;
 			border-radius: 50%;
 			margin-bottom: 0.625rem;
-			border: 2px solid hsl(var(--border));
+			border: 2px solid oklch(var(--border));
 			overflow: hidden;
 			position: relative;
 		}
@@ -3841,7 +3841,7 @@ const logFieldErrors = $derived(
 		.theme-name {
 			font-size: 0.75rem;
 			font-weight: 500;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			text-align: center;
 		}
 
@@ -3851,12 +3851,12 @@ const logFieldErrors = $derived(
 			right: 0.5rem;
 			width: 20px;
 			height: 20px;
-			background: hsl(var(--primary));
+			background: oklch(var(--primary));
 			border-radius: 50%;
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			color: hsl(var(--primary-foreground));
+			color: oklch(var(--primary-foreground));
 		}
 
 		.theme-check :global(svg) {
@@ -3887,21 +3887,21 @@ const logFieldErrors = $derived(
 			align-items: center;
 			text-align: center;
 			padding: 1rem 0.75rem;
-			background: hsl(var(--muted) / 0.5);
-			border: 2px solid hsl(var(--border));
+			background: oklch(var(--muted) / 0.5);
+			border: 2px solid oklch(var(--border));
 			border-radius: 12px;
 			cursor: pointer;
 			transition: all 0.2s ease;
 		}
 
 		.option-card:hover {
-			border-color: hsl(var(--primary) / 0.5);
-			background: hsl(var(--muted) / 0.8);
+			border-color: oklch(var(--primary) / 0.5);
+			background: oklch(var(--muted) / 0.8);
 		}
 
 		.option-card.selected {
-			border-color: hsl(var(--primary));
-			background: hsl(var(--primary) / 0.1);
+			border-color: oklch(var(--primary));
+			background: oklch(var(--primary) / 0.1);
 		}
 
 		.option-card input {
@@ -3916,16 +3916,16 @@ const logFieldErrors = $derived(
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			background: hsl(var(--secondary));
+			background: oklch(var(--secondary));
 			border-radius: 10px;
 			margin-bottom: 0.625rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			transition: all 0.2s ease;
 		}
 
 		.option-card.selected .option-icon {
-			background: hsl(var(--primary) / 0.2);
-			color: hsl(var(--primary));
+			background: oklch(var(--primary) / 0.2);
+			color: oklch(var(--primary));
 		}
 
 		.option-icon :global(svg) {
@@ -3941,14 +3941,14 @@ const logFieldErrors = $derived(
 			display: block;
 			font-size: 0.875rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			margin-bottom: 0.25rem;
 		}
 
 		.option-desc {
 			display: block;
 			font-size: 0.7rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			line-height: 1.4;
 		}
 
@@ -3958,12 +3958,12 @@ const logFieldErrors = $derived(
 			right: 0.5rem;
 			width: 20px;
 			height: 20px;
-			background: hsl(var(--primary));
+			background: oklch(var(--primary));
 			border-radius: 50%;
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			color: hsl(var(--primary-foreground));
+			color: oklch(var(--primary-foreground));
 		}
 
 		.option-check :global(svg) {
@@ -3978,7 +3978,7 @@ const logFieldErrors = $derived(
 			gap: 0.5rem;
 			font-size: 0.9375rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			margin: 1.5rem 0 0.5rem;
 			padding: 0 1.25rem;
 		}
@@ -3988,25 +3988,25 @@ const logFieldErrors = $derived(
 		}
 
 		.subsection-title.danger {
-			color: hsl(0 70% 50%);
+			color: oklch(0.5714 0.2121 27.25);
 		}
 
 		.subsection-icon {
 			width: 18px;
 			height: 18px;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.subsection-hint {
 			font-size: 0.8125rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin: 0 0 1rem;
 			padding: 0 1.25rem;
 		}
 
 		.panel-description code {
 			padding: 0.125rem 0.375rem;
-			background: hsl(var(--muted));
+			background: oklch(var(--muted));
 			border-radius: 4px;
 			font-size: 0.75rem;
 		}
@@ -4019,7 +4019,7 @@ const logFieldErrors = $derived(
 
 			.privacy-setting-group + .privacy-setting-group {
 				padding-top: 1.25rem;
-				border-top: 1px solid hsl(var(--border) / 0.5);
+				border-top: 1px solid oklch(var(--border) / 0.5);
 			}
 
 			.privacy-form-body .subsection-title {
@@ -4047,9 +4047,9 @@ const logFieldErrors = $derived(
 		.toggle-option {
 			margin: 1rem 1.25rem;
 			padding: 1rem;
-			background: hsl(var(--secondary));
+			background: oklch(var(--secondary));
 			border-radius: 10px;
-			border: 1px solid hsl(var(--border));
+			border: 1px solid oklch(var(--border));
 		}
 
 		.toggle-label {
@@ -4070,8 +4070,8 @@ const logFieldErrors = $derived(
 			box-sizing: border-box;
 			width: 44px;
 			height: 24px;
-			background: hsl(var(--muted) / 0.5);
-			border: 1px solid hsl(var(--muted-foreground) / 0.4);
+			background: oklch(var(--muted) / 0.5);
+			border: 1px solid oklch(var(--muted-foreground) / 0.4);
 			border-radius: 12px;
 			transition: all 0.2s ease;
 			flex-shrink: 0;
@@ -4084,14 +4084,14 @@ const logFieldErrors = $derived(
 			left: 1px;
 			width: 20px;
 			height: 20px;
-			background: hsl(var(--foreground));
+			background: oklch(var(--foreground));
 			border-radius: 50%;
 			transition: transform 0.2s ease;
 		}
 
 		.toggle-label input:checked + .toggle-switch {
-			background: hsl(var(--primary));
-			border-color: hsl(var(--primary));
+			background: oklch(var(--primary));
+			border-color: oklch(var(--primary));
 		}
 
 		.toggle-label input:checked + .toggle-switch::after {
@@ -4104,25 +4104,25 @@ const logFieldErrors = $derived(
 			gap: 0.5rem;
 			font-size: 0.875rem;
 			font-weight: 500;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.toggle-icon {
 			width: 16px;
 			height: 16px;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.toggle-hint {
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin: 0.5rem 0 0 3.25rem;
 		}
 
 		/* ===== Years Display ===== */
 		.years-display {
 			padding: 1.25rem;
-			background: hsl(var(--muted) / 0.3);
+			background: oklch(var(--muted) / 0.3);
 			margin: 1rem 1.25rem;
 			border-radius: 10px;
 		}
@@ -4132,7 +4132,7 @@ const logFieldErrors = $derived(
 			font-weight: 600;
 			text-transform: uppercase;
 			letter-spacing: 0.05em;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin-bottom: 0.75rem;
 		}
 
@@ -4145,8 +4145,8 @@ const logFieldErrors = $derived(
 
 		.year-badge {
 			padding: 0.375rem 0.875rem;
-			background: hsl(var(--primary) / 0.15);
-			color: hsl(var(--primary));
+			background: oklch(var(--primary) / 0.15);
+			color: oklch(var(--primary));
 			border-radius: 6px;
 			font-size: 0.875rem;
 			font-weight: 600;
@@ -4154,14 +4154,14 @@ const logFieldErrors = $derived(
 		}
 
 		.no-years {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-style: italic;
 			font-size: 0.875rem;
 		}
 
 		.years-hint {
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin: 0;
 		}
 
@@ -4177,17 +4177,17 @@ const logFieldErrors = $derived(
 
 		/* ===== Danger Panel ===== */
 		.danger-panel {
-			border-color: hsl(0 60% 40% / 0.4);
-			background: hsl(0 60% 50% / 0.03);
+			border-color: oklch(0.476 0.159 25.64 / 0.4);
+			background: oklch(0.5594 0.19 25.86 / 0.03);
 		}
 
 		.panel-header.danger {
-			background: hsl(0 60% 50% / 0.1);
-			border-bottom-color: hsl(0 60% 40% / 0.3);
+			background: oklch(0.5594 0.19 25.86 / 0.1);
+			border-bottom-color: oklch(0.476 0.159 25.64 / 0.3);
 		}
 
 		.panel-header.danger h2 {
-			color: hsl(0 70% 55%);
+			color: oklch(0.5972 0.1977 25.52);
 		}
 
 		/* Destructive Action Warning Callout - Subordinate to main header */
@@ -4198,8 +4198,8 @@ const logFieldErrors = $derived(
 			gap: 0.875rem;
 			margin: 1rem 1.25rem;
 			padding: 0.875rem 1rem 0.875rem 1.125rem;
-			background: hsl(0 50% 50% / 0.04);
-			border: 1px dashed hsl(0 50% 45% / 0.25);
+			background: oklch(0.5523 0.1637 24.21 / 0.04);
+			border: 1px dashed oklch(0.5119 0.1503 24.12 / 0.25);
 			border-left: none;
 			border-radius: 0 8px 8px 0;
 			overflow: hidden;
@@ -4215,10 +4215,10 @@ const logFieldErrors = $derived(
 			width: 4px;
 			background: repeating-linear-gradient(
 				-45deg,
-				hsl(0 70% 50%),
-				hsl(0 70% 50%) 4px,
-				hsl(45 100% 50%) 4px,
-				hsl(45 100% 50%) 8px
+				oklch(0.5714 0.2121 27.25),
+				oklch(0.5714 0.2121 27.25) 4px,
+				oklch(0.8408 0.1725 84.2) 4px,
+				oklch(0.8408 0.1725 84.2) 8px
 			);
 		}
 
@@ -4230,7 +4230,7 @@ const logFieldErrors = $derived(
 			top: 0;
 			bottom: 0;
 			width: 40px;
-			background: linear-gradient(90deg, hsl(0 70% 50% / 0.08), transparent);
+			background: linear-gradient(90deg, oklch(0.5714 0.2121 27.25 / 0.08), transparent);
 			pointer-events: none;
 		}
 
@@ -4239,7 +4239,7 @@ const logFieldErrors = $derived(
 			z-index: 1;
 			width: 18px;
 			height: 18px;
-			color: hsl(40 90% 55%);
+			color: oklch(0.7981 0.1577 78.37);
 			flex-shrink: 0;
 			margin-top: 0.125rem;
 		}
@@ -4258,8 +4258,8 @@ const logFieldErrors = $derived(
 			font-weight: 700;
 			text-transform: uppercase;
 			letter-spacing: 0.08em;
-			color: hsl(40 85% 60%);
-			background: hsl(40 70% 50% / 0.12);
+			color: oklch(0.8094 0.1437 81.08);
+			background: oklch(0.7355 0.1423 79.13 / 0.12);
 			padding: 0.1875rem 0.5rem;
 			border-radius: 3px;
 			margin-bottom: 0.375rem;
@@ -4267,19 +4267,19 @@ const logFieldErrors = $derived(
 
 		.warning-content p {
 			font-size: 0.8125rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin: 0;
 			line-height: 1.5;
 		}
 
 		/* ===== AlertDialog Styling ===== */
 		:global(.destructive-action) {
-			background-color: hsl(0 70% 45%) !important;
+			background-color: oklch(0.5288 0.1952 27.16) !important;
 			color: white !important;
 		}
 
 		:global(.destructive-action:hover) {
-			background-color: hsl(0 70% 40%) !important;
+			background-color: oklch(0.4854 0.178 27.04) !important;
 		}
 
 		/* ===== Security Tab ===== */
@@ -4302,16 +4302,16 @@ const logFieldErrors = $derived(
 			height: 3px;
 			background: linear-gradient(
 				90deg,
-				hsl(145 70% 45%) 0%,
-				hsl(145 70% 55%) 50%,
-				hsl(160 60% 45%) 100%
+				oklch(0.7189 0.1831 151.3) 0%,
+				oklch(0.7934 0.1859 152.72) 50%,
+				oklch(0.6983 0.1337 165.46) 100%
 			);
 			border-radius: 16px 16px 0 0;
 			opacity: 0.8;
 		}
 
 		.csrf-panel :global(.panel-icon.security) {
-			color: hsl(145 70% 50%);
+			color: oklch(0.7776 0.199 151.21);
 		}
 
 		/* CSRF actions layout */
@@ -4323,7 +4323,7 @@ const logFieldErrors = $derived(
 		.csrf-actions-caption {
 			margin: 1rem 0 0;
 			font-size: 0.8rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.help-trigger {
@@ -4332,16 +4332,16 @@ const logFieldErrors = $derived(
 			align-items: center;
 			justify-content: center;
 			cursor: pointer;
-			color: hsl(var(--muted-foreground) / 0.4);
+			color: oklch(var(--muted-foreground) / 0.4);
 			transition: color 0.2s ease;
 		}
 
 		.help-trigger:hover {
-			color: hsl(var(--muted-foreground) / 0.75);
+			color: oklch(var(--muted-foreground) / 0.75);
 		}
 
 		.help-trigger:focus-visible {
-			color: hsl(210 60% 55%);
+			color: oklch(0.6273 0.1256 250.49);
 		}
 
 		.help-trigger :global(svg) {
@@ -4352,10 +4352,10 @@ const logFieldErrors = $derived(
 		.security-help-panel {
 			margin: 0.75rem 0 1.25rem;
 			padding: 0.875rem 1rem;
-			border: 1px solid hsl(var(--border) / 0.65);
+			border: 1px solid oklch(var(--border) / 0.65);
 			border-radius: 8px;
-			background: hsl(var(--muted) / 0.25);
-			color: hsl(var(--muted-foreground));
+			background: oklch(var(--muted) / 0.25);
+			color: oklch(var(--muted-foreground));
 			font-size: 0.875rem;
 			line-height: 1.55;
 		}
@@ -4363,7 +4363,7 @@ const logFieldErrors = $derived(
 		.security-help-panel strong {
 			display: block;
 			margin-bottom: 0.35rem;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			font-size: 0.875rem;
 		}
 
@@ -4378,9 +4378,9 @@ const logFieldErrors = $derived(
 		.trust-proxy-diagnostic {
 			margin-top: 1.25rem;
 			padding: 1rem;
-			border: 1px solid hsl(var(--border) / 0.7);
+			border: 1px solid oklch(var(--border) / 0.7);
 			border-radius: 8px;
-			background: hsl(var(--muted) / 0.16);
+			background: oklch(var(--muted) / 0.16);
 		}
 
 		.diagnostic-header {
@@ -4393,14 +4393,14 @@ const logFieldErrors = $derived(
 
 		.diagnostic-header h3 {
 			margin: 0;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			font-size: 0.9375rem;
 			font-weight: 600;
 		}
 
 		.diagnostic-header p {
 			margin: 0.25rem 0 0;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-size: 0.8125rem;
 			line-height: 1.45;
 		}
@@ -4419,22 +4419,22 @@ const logFieldErrors = $derived(
 		}
 
 		.diagnostic-env-lock {
-			border: 1px solid hsl(210 60% 35% / 0.45);
-			background: hsl(210 60% 50% / 0.08);
-			color: hsl(210 60% 70%);
+			border: 1px solid oklch(0.4566 0.1043 251.21 / 0.45);
+			background: oklch(0.5883 0.1391 251.44 / 0.08);
+			color: oklch(0.7495 0.0828 248.98);
 		}
 
 		.diagnostic-error {
-			border: 1px solid hsl(0 70% 40% / 0.45);
-			background: hsl(0 70% 45% / 0.12);
-			color: hsl(0 70% 72%);
+			border: 1px solid oklch(0.4854 0.178 27.04 / 0.45);
+			background: oklch(0.5288 0.1952 27.16 / 0.12);
+			color: oklch(0.7265 0.1228 20.51);
 		}
 
 		.diagnostic-empty {
 			margin-bottom: 0;
-			border: 1px dashed hsl(var(--border) / 0.7);
-			background: hsl(var(--background) / 0.35);
-			color: hsl(var(--muted-foreground));
+			border: 1px dashed oklch(var(--border) / 0.7);
+			background: oklch(var(--background) / 0.35);
+			color: oklch(var(--muted-foreground));
 		}
 
 		.diagnostic-inline-icon {
@@ -4451,14 +4451,14 @@ const logFieldErrors = $derived(
 
 		.diagnostic-group {
 			padding: 0.875rem;
-			border: 1px solid hsl(var(--border) / 0.55);
+			border: 1px solid oklch(var(--border) / 0.55);
 			border-radius: 8px;
-			background: hsl(var(--background) / 0.4);
+			background: oklch(var(--background) / 0.4);
 		}
 
 		.diagnostic-group h4 {
 			margin: 0 0 0.75rem;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			font-size: 0.8125rem;
 			font-weight: 600;
 		}
@@ -4470,7 +4470,7 @@ const logFieldErrors = $derived(
 		}
 
 		.diagnostic-group dt {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-size: 0.6875rem;
 			font-weight: 600;
 			text-transform: uppercase;
@@ -4479,19 +4479,19 @@ const logFieldErrors = $derived(
 
 		.diagnostic-group dd {
 			margin: 0.125rem 0 0;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			font-size: 0.8125rem;
 			line-height: 1.45;
 			overflow-wrap: anywhere;
 		}
 
 		.diagnostic-muted {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.diagnostic-recommendation {
-			border-color: hsl(145 70% 45% / 0.35);
-			background: hsl(145 70% 35% / 0.1);
+			border-color: oklch(0.7189 0.1831 151.3 / 0.35);
+			background: oklch(0.5975 0.1502 151.55 / 0.1);
 		}
 
 		.recommendation-label {
@@ -4499,15 +4499,15 @@ const logFieldErrors = $derived(
 			margin-bottom: 0.5rem;
 			padding: 0.25rem 0.625rem;
 			border-radius: 999px;
-			background: hsl(145 60% 24%);
-			color: hsl(145 70% 72%);
+			background: oklch(0.4401 0.0997 153.19);
+			color: oklch(0.8591 0.1257 156.85);
 			font-size: 0.75rem;
 			font-weight: 700;
 		}
 
 		.diagnostic-recommendation p {
 			margin: 0 0 0.625rem;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			font-size: 0.8125rem;
 			line-height: 1.5;
 		}
@@ -4515,14 +4515,14 @@ const logFieldErrors = $derived(
 		.diagnostic-recommendation ul {
 			margin: 0 0 0.625rem;
 			padding-left: 1.1rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-size: 0.78125rem;
 			line-height: 1.45;
 		}
 
 		.diagnostic-recommendation .safety-notice {
 			margin-bottom: 0;
-			color: hsl(45 90% 72%);
+			color: oklch(0.8888 0.1215 91.38);
 		}
 
 		/* Documentation - Compact Collapsible */
@@ -4537,10 +4537,10 @@ const logFieldErrors = $derived(
 			gap: 0.625rem;
 			width: 100%;
 			padding: 0.75rem 1rem;
-			background: hsl(var(--muted) / 0.25);
-			border: 1px solid hsl(var(--border) / 0.6);
+			background: oklch(var(--muted) / 0.25);
+			border: 1px solid oklch(var(--border) / 0.6);
 			border-radius: 10px;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-size: 0.8125rem;
 			font-weight: 500;
 			cursor: pointer;
@@ -4548,9 +4548,9 @@ const logFieldErrors = $derived(
 		}
 
 		.docs-toggle:hover {
-			background: hsl(var(--muted) / 0.4);
-			color: hsl(var(--foreground));
-			border-color: hsl(var(--border));
+			background: oklch(var(--muted) / 0.4);
+			color: oklch(var(--foreground));
+			border-color: oklch(var(--border));
 		}
 
 		.docs-toggle :global(.docs-toggle-icon) {
@@ -4583,8 +4583,8 @@ const logFieldErrors = $derived(
 
 		.docs-content {
 			padding: 0.875rem 1rem;
-			background: hsl(var(--muted) / 0.15);
-			border: 1px solid hsl(var(--border) / 0.6);
+			background: oklch(var(--muted) / 0.15);
+			border: 1px solid oklch(var(--border) / 0.6);
 			border-top: none;
 			border-radius: 0 0 10px 10px;
 			margin-top: -1px;
@@ -4592,14 +4592,14 @@ const logFieldErrors = $derived(
 
 		.docs-hint {
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin: 0 0 0.75rem;
 			line-height: 1.5;
 		}
 
 		.docs-hint code {
 			padding: 0.125rem 0.375rem;
-			background: hsl(var(--muted) / 0.6);
+			background: oklch(var(--muted) / 0.6);
 			border-radius: 4px;
 			font-size: 0.6875rem;
 			font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
@@ -4616,7 +4616,7 @@ const logFieldErrors = $derived(
 			display: inline-flex;
 			align-items: center;
 			gap: 0.25rem;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			text-decoration: none;
 			font-size: 0.8125rem;
 			font-weight: 500;
@@ -4634,7 +4634,7 @@ const logFieldErrors = $derived(
 		}
 
 		.docs-separator {
-			color: hsl(var(--muted-foreground) / 0.4);
+			color: oklch(var(--muted-foreground) / 0.4);
 			font-size: 0.75rem;
 			user-select: none;
 		}
@@ -4749,12 +4749,12 @@ const logFieldErrors = $derived(
 		:global(.csrf-tooltip) {
 			max-width: 320px !important;
 			padding: 0.875rem 1rem !important;
-			background: hsl(var(--popover)) !important;
-			border: 1px solid hsl(var(--border)) !important;
+			background: oklch(var(--popover)) !important;
+			border: 1px solid oklch(var(--border)) !important;
 			border-radius: 10px !important;
 			box-shadow:
-				0 4px 12px hsl(0 0% 0% / 0.15),
-				0 2px 4px hsl(0 0% 0% / 0.1) !important;
+				0 4px 12px oklch(0 0 0 / 0.15),
+				0 2px 4px oklch(0 0 0 / 0.1) !important;
 		}
 
 		:global(.csrf-tooltip-inner) {
@@ -4766,13 +4766,13 @@ const logFieldErrors = $derived(
 		:global(.csrf-tooltip-inner strong) {
 			font-size: 0.8125rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			letter-spacing: 0.01em;
 		}
 
 		:global(.csrf-tooltip-inner p) {
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			line-height: 1.55;
 			margin: 0;
 		}

@@ -798,12 +798,12 @@ $effect(() => {
 		.page-header h1 {
 			font-size: 2rem;
 			font-weight: 700;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			margin: 0 0 0.5rem;
 		}
 
 		.subtitle {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin: 0;
 		}
 
@@ -816,43 +816,43 @@ $effect(() => {
 		}
 
 		.stat-card {
-			background: hsl(var(--card));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--card));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
 			padding: 1rem;
 			text-align: center;
 		}
 
 		.stat-card.level-info {
-			border-left: 3px solid hsl(200 60% 50%);
+			border-left: 3px solid oklch(0.6475 0.1187 235.02);
 		}
 
 		.stat-card.level-warn {
-			border-left: 3px solid hsl(45 80% 50%);
+			border-left: 3px solid oklch(0.7899 0.1569 87.11);
 		}
 
 		.stat-card.level-error {
-			border-left: 3px solid hsl(var(--destructive));
+			border-left: 3px solid oklch(var(--destructive));
 		}
 
 		.stat-value {
 			display: block;
 			font-size: 1.5rem;
 			font-weight: 700;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.stat-label {
 			display: block;
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin-top: 0.25rem;
 		}
 
 		/* Section */
 		.section {
-			background: hsl(var(--card));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--card));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
 			padding: 1.5rem;
 			margin-bottom: 1.5rem;
@@ -861,7 +861,7 @@ $effect(() => {
 		.section h2 {
 			font-size: 1.125rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			margin: 0;
 		}
 
@@ -877,15 +877,15 @@ $effect(() => {
 			padding: 0.25rem 0.5rem;
 			font-size: 0.75rem;
 			background: transparent;
-			color: hsl(var(--muted-foreground));
-			border: 1px solid hsl(var(--border));
+			color: oklch(var(--muted-foreground));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
 			cursor: pointer;
 		}
 
 		.clear-filters-button:hover {
-			color: hsl(var(--foreground));
-			border-color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
+			border-color: oklch(var(--foreground));
 		}
 
 		.filters-grid {
@@ -904,16 +904,16 @@ $effect(() => {
 		.filter-label {
 			font-size: 0.875rem;
 			font-weight: 500;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.filter-group input,
 		.filter-group select {
 			padding: 0.5rem 0.75rem;
-			background: hsl(var(--input));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--input));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			font-size: 0.875rem;
 			min-width: 0;
 			width: 100%;
@@ -932,9 +932,9 @@ $effect(() => {
 			padding: 0.375rem 0.75rem;
 			font-size: 0.75rem;
 			font-weight: 500;
-			background: hsl(var(--muted) / 0.4);
-			color: hsl(var(--muted-foreground));
-			border: 1px dashed hsl(var(--border));
+			background: oklch(var(--muted) / 0.4);
+			color: oklch(var(--muted-foreground));
+			border: 1px dashed oklch(var(--border));
 			border-radius: var(--radius);
 			cursor: pointer;
 			opacity: 0.7;
@@ -942,7 +942,7 @@ $effect(() => {
 		}
 
 		.level-toggle:hover {
-			background: hsl(var(--muted) / 0.7);
+			background: oklch(var(--muted) / 0.7);
 			opacity: 1;
 		}
 
@@ -972,27 +972,27 @@ $effect(() => {
 		}
 
 		.level-toggle.active.level-error {
-			background: hsl(var(--destructive));
-			color: hsl(var(--destructive-foreground));
-			border-color: hsl(var(--destructive));
+			background: oklch(var(--destructive));
+			color: oklch(var(--destructive-foreground));
+			border-color: oklch(var(--destructive));
 		}
 
 		.level-toggle.active.level-warn {
-			background: hsl(45 80% 40%);
+			background: oklch(0.6697 0.1323 87.37);
 			color: white;
-			border-color: hsl(45 80% 40%);
+			border-color: oklch(0.6697 0.1323 87.37);
 		}
 
 		.level-toggle.active.level-info {
-			background: hsl(200 60% 45%);
+			background: oklch(0.5996 0.1091 234.92);
 			color: white;
-			border-color: hsl(200 60% 45%);
+			border-color: oklch(0.5996 0.1091 234.92);
 		}
 
 		.level-toggle.active.level-debug {
-			background: hsl(var(--muted-foreground));
-			color: hsl(var(--background));
-			border-color: hsl(var(--muted-foreground));
+			background: oklch(var(--muted-foreground));
+			color: oklch(var(--background));
+			border-color: oklch(var(--muted-foreground));
 		}
 
 		.level-count {
@@ -1024,8 +1024,8 @@ $effect(() => {
 			padding: 0.5rem 1rem;
 			font-size: 0.875rem;
 			font-weight: 500;
-			background: hsl(var(--primary));
-			color: hsl(var(--primary-foreground));
+			background: oklch(var(--primary));
+			color: oklch(var(--primary-foreground));
 			border: none;
 			border-radius: var(--radius);
 			cursor: pointer;
@@ -1040,18 +1040,18 @@ $effect(() => {
 		}
 
 		.control-button.secondary {
-			background: hsl(var(--secondary));
-			color: hsl(var(--secondary-foreground));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--secondary));
+			color: oklch(var(--secondary-foreground));
+			border: 1px solid oklch(var(--border));
 		}
 
 		.control-button.danger {
-			background: hsl(var(--destructive));
-			color: hsl(var(--destructive-foreground));
+			background: oklch(var(--destructive));
+			color: oklch(var(--destructive-foreground));
 		}
 
 		.control-button.active {
-			background: hsl(120 40% 35%);
+			background: oklch(0.5266 0.1278 143.49);
 		}
 
 		.pulse-dot {
@@ -1087,7 +1087,7 @@ $effect(() => {
 
 		.logs-count {
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.logs-table-wrapper {
@@ -1106,23 +1106,23 @@ $effect(() => {
 		.logs-table td {
 			padding: 0.625rem 0.75rem;
 			text-align: left;
-			border-bottom: 1px solid hsl(var(--border));
+			border-bottom: 1px solid oklch(var(--border));
 			vertical-align: top;
 		}
 
 		.logs-table th {
 			position: sticky;
 			top: 0;
-			background: hsl(var(--card));
+			background: oklch(var(--card));
 			font-weight: 600;
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-transform: uppercase;
 			z-index: 1;
 		}
 
 		.logs-table tbody tr:hover {
-			background: hsl(var(--muted) / 0.3);
+			background: oklch(var(--muted) / 0.3);
 		}
 
 		.col-time {
@@ -1148,13 +1148,13 @@ $effect(() => {
 
 		.time-relative {
 			display: block;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.time-full {
 			display: block;
 			font-size: 0.6875rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.level-badge {
@@ -1167,32 +1167,32 @@ $effect(() => {
 		}
 
 		.level-badge.level-error {
-			background: hsl(var(--destructive));
-			color: hsl(var(--destructive-foreground));
+			background: oklch(var(--destructive));
+			color: oklch(var(--destructive-foreground));
 		}
 
 		.level-badge.level-warn {
-			background: hsl(45 80% 35%);
-			color: hsl(45 100% 95%);
+			background: oklch(0.6075 0.1196 87.55);
+			color: oklch(0.9809 0.026 91.62);
 		}
 
 		.level-badge.level-info {
-			background: hsl(200 60% 40%);
-			color: hsl(200 100% 95%);
+			background: oklch(0.5508 0.0994 234.79);
+			color: oklch(0.9646 0.0213 229.05);
 		}
 
 		.level-badge.level-debug {
-			background: hsl(var(--muted));
-			color: hsl(var(--muted-foreground));
+			background: oklch(var(--muted));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.source-tag {
 			display: inline-block;
 			padding: 0.125rem 0.375rem;
-			background: hsl(var(--muted));
+			background: oklch(var(--muted));
 			border-radius: var(--radius);
 			font-size: 0.75rem;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.message-text {
@@ -1208,13 +1208,13 @@ $effect(() => {
 		.metadata-details summary {
 			cursor: pointer;
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.metadata-json {
 			margin: 0.5rem 0 0;
 			padding: 0.5rem;
-			background: hsl(var(--muted));
+			background: oklch(var(--muted));
 			border-radius: var(--radius);
 			font-size: 0.75rem;
 			overflow-x: auto;
@@ -1223,21 +1223,21 @@ $effect(() => {
 		.copy-button {
 			padding: 0.25rem 0.5rem;
 			font-size: 0.6875rem;
-			background: hsl(var(--muted));
-			color: hsl(var(--muted-foreground));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--muted));
+			color: oklch(var(--muted-foreground));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
 			cursor: pointer;
 		}
 
 		.copy-button:hover {
-			background: hsl(var(--primary));
-			color: hsl(var(--primary-foreground));
-			border-color: hsl(var(--primary));
+			background: oklch(var(--primary));
+			color: oklch(var(--primary-foreground));
+			border-color: oklch(var(--primary));
 		}
 
 		.empty-message {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-align: center;
 			padding: 2rem;
 		}
@@ -1250,16 +1250,16 @@ $effect(() => {
 		.load-more-button {
 			display: inline-block;
 			padding: 0.5rem 1.5rem;
-			background: hsl(var(--secondary));
-			color: hsl(var(--foreground));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--secondary));
+			color: oklch(var(--foreground));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
 			text-decoration: none;
 			font-size: 0.875rem;
 		}
 
 		.load-more-button:hover {
-			background: hsl(var(--muted));
+			background: oklch(var(--muted));
 		}
 
 		/* Settings Info */
@@ -1277,29 +1277,29 @@ $effect(() => {
 			display: flex;
 			justify-content: space-between;
 			padding: 0.5rem;
-			background: hsl(var(--muted) / 0.5);
+			background: oklch(var(--muted) / 0.5);
 			border-radius: var(--radius);
 		}
 
 		.setting-label {
 			font-size: 0.8125rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.setting-value {
 			font-size: 0.8125rem;
 			font-weight: 500;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.settings-note {
 			margin-top: 1rem;
 			font-size: 0.8125rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.settings-note a {
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 		}
 
 		/* Responsive */

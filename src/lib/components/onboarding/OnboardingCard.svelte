@@ -70,9 +70,9 @@ $effect(() => {
 			inset: -1px;
 			background: linear-gradient(
 				135deg,
-				hsl(var(--primary) / 0.15) 0%,
-				hsl(var(--primary) / 0.05) 50%,
-				hsl(var(--primary) / 0.1) 100%
+				oklch(var(--primary) / 0.15) 0%,
+				oklch(var(--primary) / 0.05) 50%,
+				oklch(var(--primary) / 0.1) 100%
 			);
 			border-radius: 20px;
 			filter: blur(20px);

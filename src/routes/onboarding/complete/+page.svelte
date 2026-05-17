@@ -280,7 +280,7 @@ const summaryItems = $derived([
 			left: var(--x-start);
 			width: var(--size);
 			height: var(--size);
-			background: radial-gradient(circle, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+			background: radial-gradient(circle, oklch(var(--primary)) 0%, oklch(var(--accent)) 100%);
 			border-radius: 50%;
 			opacity: 0;
 			animation: float-up var(--duration) ease-out var(--delay) infinite;
@@ -315,7 +315,7 @@ const summaryItems = $derived([
 		.success-glow {
 			position: absolute;
 			inset: -20px;
-			background: radial-gradient(circle, hsl(var(--primary) / 0.4) 0%, transparent 70%);
+			background: radial-gradient(circle, oklch(var(--primary) / 0.4) 0%, transparent 70%);
 			border-radius: 50%;
 			opacity: 0;
 			transform: scale(0.5);
@@ -343,7 +343,7 @@ const summaryItems = $derived([
 		.success-ring {
 			position: absolute;
 			inset: 0;
-			border: 3px solid hsl(var(--primary) / 0.3);
+			border: 3px solid oklch(var(--primary) / 0.3);
 			border-radius: 50%;
 			opacity: 0;
 			transform: scale(0.8);
@@ -363,7 +363,7 @@ const summaryItems = $derived([
 		}
 
 		.checkmark-circle {
-			stroke: hsl(var(--primary));
+			stroke: oklch(var(--primary));
 			stroke-width: 2;
 			stroke-dasharray: 166;
 			stroke-dashoffset: 166;
@@ -375,7 +375,7 @@ const summaryItems = $derived([
 		}
 
 		.checkmark-check {
-			stroke: hsl(var(--primary));
+			stroke: oklch(var(--primary));
 			stroke-width: 3;
 			stroke-linecap: round;
 			stroke-linejoin: round;
@@ -407,9 +407,9 @@ const summaryItems = $derived([
 			font-weight: 700;
 			background: linear-gradient(
 				135deg,
-				hsl(var(--primary)) 0%,
-				hsl(var(--accent)) 50%,
-				hsl(var(--primary)) 100%
+				oklch(var(--primary)) 0%,
+				oklch(var(--accent)) 50%,
+				oklch(var(--primary)) 100%
 			);
 			background-size: 200% auto;
 			-webkit-background-clip: text;
@@ -503,7 +503,7 @@ const summaryItems = $derived([
 			gap: 0.875rem;
 			padding: 0.875rem 1rem;
 			background: rgba(255, 255, 255, 0.04);
-			border: 1px solid hsl(var(--primary) / 0.1);
+			border: 1px solid oklch(var(--primary) / 0.1);
 			border-radius: 0.875rem;
 			text-align: left;
 			opacity: 0;
@@ -550,8 +550,8 @@ const summaryItems = $derived([
 		}
 
 		.summary-icon.share {
-			background: linear-gradient(135deg, hsl(var(--primary) / 0.2), hsl(var(--accent) / 0.1));
-			color: hsl(var(--primary));
+			background: linear-gradient(135deg, oklch(var(--primary) / 0.2), oklch(var(--accent) / 0.1));
+			color: oklch(var(--primary));
 		}
 
 		.summary-content {
@@ -584,8 +584,8 @@ const summaryItems = $derived([
 			gap: 0.875rem;
 			margin-top: 1.5rem;
 			padding: 0.875rem 1.25rem;
-			background: hsl(var(--primary) / 0.08);
-			border: 1px solid hsl(var(--primary) / 0.2);
+			background: oklch(var(--primary) / 0.08);
+			border: 1px solid oklch(var(--primary) / 0.2);
 			border-radius: 0.875rem;
 			opacity: 0;
 			transform: translateY(10px);
@@ -607,7 +607,7 @@ const summaryItems = $derived([
 		.sync-pulse {
 			position: absolute;
 			inset: 0;
-			background: hsl(var(--primary));
+			background: oklch(var(--primary));
 			border-radius: 50%;
 			animation: pulse-ring 1.5s ease-out infinite;
 		}
@@ -626,7 +626,7 @@ const summaryItems = $derived([
 		.sync-dot {
 			position: absolute;
 			inset: 3px;
-			background: hsl(var(--primary));
+			background: oklch(var(--primary));
 			border-radius: 50%;
 		}
 
@@ -701,24 +701,24 @@ const summaryItems = $derived([
 			width: 100%;
 			max-width: 280px;
 			padding: 1rem 2rem;
-			background: hsl(var(--primary));
+			background: oklch(var(--primary));
 			border: none;
 			border-radius: 0.875rem;
-			color: hsl(var(--primary-foreground));
+			color: oklch(var(--primary-foreground));
 			font-size: 1rem;
 			font-weight: 600;
 			cursor: pointer;
 			transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 			box-shadow:
-				0 4px 20px hsl(var(--primary) / 0.3),
-				0 0 40px hsl(var(--primary) / 0.1);
+				0 4px 20px oklch(var(--primary) / 0.3),
+				0 0 40px oklch(var(--primary) / 0.1);
 		}
 
 		.btn-dashboard:hover {
 			transform: translateY(-3px);
 			box-shadow:
-				0 8px 30px hsl(var(--primary) / 0.4),
-				0 0 60px hsl(var(--primary) / 0.15);
+				0 8px 30px oklch(var(--primary) / 0.4),
+				0 0 60px oklch(var(--primary) / 0.15);
 		}
 
 		.btn-dashboard:active {

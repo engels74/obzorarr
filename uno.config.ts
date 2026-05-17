@@ -2,7 +2,7 @@ import {
 	defineConfig,
 	presetIcons,
 	presetTypography,
-	presetUno,
+	presetWind4,
 	transformerDirectives,
 	transformerVariantGroup
 } from 'unocss';
@@ -90,7 +90,7 @@ export default defineConfig({
 		'disabled:opacity-50'
 	],
 	presets: [
-		presetUno(),
+		presetWind4(),
 		presetIcons({
 			scale: 1.2,
 			extraProperties: {
@@ -115,7 +115,8 @@ export default defineConfig({
 			]
 		}
 	},
-	// Theme colors are defined in app.css using oklch for maximum flexibility
+	// Theme colors live in src/app.css as OKLCH custom properties consumed via
+	// oklch(var(--…)). Each shadcn-svelte primitive references the same token set.
 	theme: {
 		// Extend default theme as needed
 	}

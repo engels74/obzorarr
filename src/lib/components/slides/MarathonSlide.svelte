@@ -200,10 +200,10 @@ $effect(() => {
 		.title {
 			font-size: 1.75rem;
 			font-weight: 700;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			text-transform: uppercase;
 			letter-spacing: 0.05em;
-			text-shadow: 0 0 30px var(--slide-glow-color, hsl(var(--primary) / 0.3));
+			text-shadow: 0 0 30px var(--slide-glow-color, oklch(var(--primary) / 0.3));
 		}
 
 		.date-card {
@@ -212,12 +212,12 @@ $effect(() => {
 			align-items: center;
 			gap: 0.75rem;
 			padding: 1.5rem 2rem;
-			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
+			background: var(--slide-glass-bg);
 			backdrop-filter: blur(var(--slide-glass-blur, 20px));
 			-webkit-backdrop-filter: blur(var(--slide-glass-blur, 20px));
-			border: 1px solid hsl(var(--primary) / 0.3);
+			border: 1px solid oklch(var(--primary) / 0.3);
 			border-radius: calc(var(--radius) * 2);
-			box-shadow: 0 0 30px hsl(var(--primary) / 0.2);
+			box-shadow: 0 0 30px oklch(var(--primary) / 0.2);
 		}
 
 		.date-icon {
@@ -227,7 +227,7 @@ $effect(() => {
 		.date-text {
 			font-size: 1.375rem;
 			font-weight: 700;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 		}
 
 		.stats-row {
@@ -245,12 +245,12 @@ $effect(() => {
 		.stat-value {
 			font-size: 1.25rem;
 			font-weight: 700;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.stat-label {
 			font-size: 0.6875rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-transform: uppercase;
 			letter-spacing: 0.05em;
 		}
@@ -265,7 +265,7 @@ $effect(() => {
 
 		.list-label {
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-transform: uppercase;
 			letter-spacing: 0.1em;
 		}
@@ -284,7 +284,7 @@ $effect(() => {
 			align-items: center;
 			gap: 0.375rem;
 			padding: 0.5rem;
-			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.3));
+			background: var(--slide-glass-bg);
 			border-radius: var(--radius);
 			transition: transform 0.2s ease;
 		}
@@ -303,13 +303,13 @@ $effect(() => {
 		.item-placeholder {
 			width: 60px;
 			height: 60px;
-			background: hsl(var(--muted) / 0.3);
+			background: oklch(var(--muted) / 0.3);
 			border-radius: calc(var(--radius) * 0.5);
 		}
 
 		.item-title {
 			font-size: 0.6875rem;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			text-align: center;
 			overflow: hidden;
 			text-overflow: ellipsis;
@@ -319,12 +319,12 @@ $effect(() => {
 
 		.more-items {
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-style: italic;
 		}
 
 		.empty-message {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-style: italic;
 			font-size: 1.125rem;
 		}

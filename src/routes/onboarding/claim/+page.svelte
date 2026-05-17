@@ -60,9 +60,9 @@ let token = $state('');
 		display: grid;
 		place-items: center;
 		margin: 0 auto;
-		background: hsl(var(--primary) / 0.12);
-		color: hsl(var(--primary));
-		border: 1px solid hsl(var(--primary) / 0.25);
+		background: oklch(var(--primary) / 0.12);
+		color: oklch(var(--primary));
+		border: 1px solid oklch(var(--primary) / 0.25);
 	}
 
 	.field {
@@ -73,7 +73,7 @@ let token = $state('');
 
 	.claim-help {
 		margin: 0;
-		color: hsl(var(--muted-foreground));
+		color: oklch(var(--muted-foreground));
 		font-size: 0.875rem;
 		line-height: 1.5;
 	}
@@ -81,15 +81,15 @@ let token = $state('');
 	label {
 		font-size: 0.875rem;
 		font-weight: 600;
-		color: hsl(var(--foreground));
+		color: oklch(var(--foreground));
 	}
 
 	input {
 		width: 100%;
-		border: 1px solid hsl(var(--border));
+		border: 1px solid oklch(var(--border));
 		border-radius: 0.5rem;
-		background: hsl(var(--background));
-		color: hsl(var(--foreground));
+		background: oklch(var(--background));
+		color: oklch(var(--foreground));
 		padding: 0.85rem 1rem;
 		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 		font-size: 1rem;
@@ -97,21 +97,21 @@ let token = $state('');
 	}
 
 	input:focus {
-		outline: 2px solid hsl(var(--primary) / 0.45);
+		outline: 2px solid oklch(var(--primary) / 0.45);
 		outline-offset: 2px;
 	}
 
 	.error {
 		margin: 0;
-		color: hsl(var(--destructive));
+		color: oklch(var(--destructive));
 		font-size: 0.875rem;
 	}
 
 	.claim-button {
 		border: 0;
 		border-radius: 0.5rem;
-		background: hsl(var(--primary));
-		color: hsl(var(--primary-foreground));
+		background: oklch(var(--primary));
+		color: oklch(var(--primary-foreground));
 		font-weight: 700;
 		padding: 0.85rem 1rem;
 		cursor: pointer;

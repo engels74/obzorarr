@@ -257,7 +257,7 @@ function handleCancelRedirect(): void {
 			min-height: 100vh;
 			display: flex;
 			flex-direction: column;
-			background: hsl(var(--background));
+			background: oklch(var(--background));
 		}
 
 		/* Hero Section */
@@ -276,7 +276,7 @@ function handleCancelRedirect(): void {
 			content: '';
 			position: absolute;
 			inset: 0;
-			background: radial-gradient(ellipse at center, hsl(var(--primary) / 0.1) 0%, transparent 70%);
+			background: radial-gradient(ellipse at center, oklch(var(--primary) / 0.1) 0%, transparent 70%);
 			pointer-events: none;
 		}
 
@@ -289,8 +289,8 @@ function handleCancelRedirect(): void {
 
 		.logo-glow {
 			margin-bottom: 1rem;
-			filter: drop-shadow(0 0 20px hsl(var(--primary) / 0.5))
-				drop-shadow(0 0 40px hsl(var(--primary) / 0.3));
+			filter: drop-shadow(0 0 20px oklch(var(--primary) / 0.5))
+				drop-shadow(0 0 40px oklch(var(--primary) / 0.3));
 		}
 
 		.hero-title {
@@ -302,10 +302,10 @@ function handleCancelRedirect(): void {
 			font-size: clamp(2.5rem, 8vw, 4rem);
 			font-weight: 900;
 			letter-spacing: 0.15em;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			text-shadow:
-				2px 2px 0 hsl(var(--primary) / 0.3),
-				4px 4px 0 hsl(var(--primary) / 0.1);
+				2px 2px 0 oklch(var(--primary) / 0.3),
+				4px 4px 0 oklch(var(--primary) / 0.1);
 		}
 
 		.title-sub {
@@ -314,14 +314,14 @@ function handleCancelRedirect(): void {
 			font-weight: 400;
 			letter-spacing: 0.3em;
 			text-transform: uppercase;
-			color: hsl(var(--accent));
+			color: oklch(var(--accent));
 			margin-top: 0.5rem;
 		}
 
 		.hero-description {
 			font-size: 1.125rem;
 			line-height: 1.7;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin: 0 0 2rem;
 		}
 
@@ -361,23 +361,23 @@ function handleCancelRedirect(): void {
 			max-width: 300px;
 			padding: 0.875rem 1rem;
 			font-size: 1rem;
-			background: hsl(var(--input));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--input));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			transition:
 				border-color 0.2s ease,
 				box-shadow 0.2s ease;
 		}
 
 		.username-input::placeholder {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.username-input:focus {
 			outline: none;
-			border-color: hsl(var(--ring));
-			box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+			border-color: oklch(var(--ring));
+			box-shadow: 0 0 0 2px oklch(var(--ring) / 0.2);
 		}
 
 		.username-input:disabled {
@@ -393,24 +393,24 @@ function handleCancelRedirect(): void {
 			padding: 0.875rem 1.5rem;
 			font-size: 1rem;
 			font-weight: 600;
-			color: hsl(var(--primary-foreground));
-			background: hsl(var(--primary));
+			color: oklch(var(--primary-foreground));
+			background: oklch(var(--primary));
 			border: none;
 			border-radius: var(--radius);
 			cursor: pointer;
 			transition: all 0.2s ease;
 			white-space: nowrap;
 			box-shadow:
-				0 4px 14px hsl(var(--primary) / 0.4),
-				0 0 0 0 hsl(var(--accent) / 0);
+				0 4px 14px oklch(var(--primary) / 0.4),
+				0 0 0 0 oklch(var(--accent) / 0);
 		}
 
 		.view-button:hover:not(:disabled) {
-			background: hsl(var(--primary) / 0.9);
+			background: oklch(var(--primary) / 0.9);
 			transform: translateY(-2px);
 			box-shadow:
-				0 6px 20px hsl(var(--primary) / 0.5),
-				0 0 0 3px hsl(var(--accent) / 0.3);
+				0 6px 20px oklch(var(--primary) / 0.5),
+				0 0 0 3px oklch(var(--accent) / 0.3);
 		}
 
 		.view-button:active:not(:disabled) {
@@ -425,12 +425,12 @@ function handleCancelRedirect(): void {
 		/* Login Section - SECONDARY */
 		.login-section {
 			padding-top: 1.5rem;
-			border-top: 1px solid hsl(var(--border) / 0.5);
+			border-top: 1px solid oklch(var(--border) / 0.5);
 		}
 
 		.login-prompt {
 			font-size: 0.875rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin: 0 0 0.75rem;
 		}
 
@@ -449,14 +449,14 @@ function handleCancelRedirect(): void {
 		}
 
 		.login-button.secondary {
-			background: hsl(var(--secondary));
-			color: hsl(var(--secondary-foreground));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--secondary));
+			color: oklch(var(--secondary-foreground));
+			border: 1px solid oklch(var(--border));
 			box-shadow: none;
 		}
 
 		.login-button.secondary:hover:not(:disabled) {
-			background: hsl(var(--muted));
+			background: oklch(var(--muted));
 			transform: none;
 		}
 
@@ -481,8 +481,8 @@ function handleCancelRedirect(): void {
 			display: inline-block;
 			width: 1.25rem;
 			height: 1.25rem;
-			border: 2px solid hsl(var(--primary-foreground) / 0.3);
-			border-top-color: hsl(var(--primary-foreground));
+			border: 2px solid oklch(var(--primary-foreground) / 0.3);
+			border-top-color: oklch(var(--primary-foreground));
 			border-radius: 50%;
 			animation: spin 1s linear infinite;
 		}
@@ -501,17 +501,17 @@ function handleCancelRedirect(): void {
 		.error-message {
 			margin-top: 0.75rem;
 			padding: 0.75rem 1rem;
-			background: hsl(var(--destructive) / 0.2);
-			border: 1px solid hsl(var(--destructive));
+			background: oklch(var(--destructive) / 0.2);
+			border: 1px solid oklch(var(--destructive));
 			border-radius: var(--radius);
-			color: hsl(var(--destructive-foreground));
+			color: oklch(var(--destructive-foreground));
 			font-size: 0.875rem;
 		}
 
 		.link-button {
 			background: none;
 			border: none;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			text-decoration: underline;
 			cursor: pointer;
 			font-size: inherit;
@@ -527,13 +527,13 @@ function handleCancelRedirect(): void {
 		.footer {
 			padding: 1.5rem 2rem;
 			text-align: center;
-			border-top: 1px solid hsl(var(--border));
+			border-top: 1px solid oklch(var(--border));
 		}
 
 		.footer p {
 			margin: 0;
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			letter-spacing: 0.05em;
 		}
 

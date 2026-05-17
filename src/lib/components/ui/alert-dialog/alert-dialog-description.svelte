@@ -13,6 +13,6 @@ let {
 	bind:ref
 	data-slot="alert-dialog-description"
 	class={cn('text-sm text-muted-foreground', className)}
-	style="font-size: 0.875rem; color: hsl(var(--muted-foreground));"
+	style="font-size: 0.875rem; color: oklch(var(--muted-foreground));"
 	{...restProps}
 />

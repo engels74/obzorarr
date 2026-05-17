@@ -513,7 +513,7 @@ $effect(() => {
 			display: block;
 			font-size: 0.875rem;
 			font-weight: 500;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			margin-bottom: 0.5rem;
 		}
 
@@ -526,17 +526,17 @@ $effect(() => {
 			flex: 1;
 			padding: 0.625rem 0.75rem;
 			font-size: 0.875rem;
-			border: 1px solid hsl(var(--border));
+			border: 1px solid oklch(var(--border));
 			border-radius: 6px;
-			background-color: hsl(var(--background));
-			color: hsl(var(--foreground));
+			background-color: oklch(var(--background));
+			color: oklch(var(--foreground));
 			font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Monaco, Consolas, monospace;
 		}
 
 		.url-input:focus {
 			outline: none;
-			border-color: hsl(var(--primary));
-			box-shadow: 0 0 0 2px hsl(var(--primary) / 0.1);
+			border-color: oklch(var(--primary));
+			box-shadow: 0 0 0 2px oklch(var(--primary) / 0.1);
 		}
 
 		.copy-btn {
@@ -545,10 +545,10 @@ $effect(() => {
 			justify-content: center;
 			width: 2.5rem;
 			height: 2.5rem;
-			border: 1px solid hsl(var(--border));
+			border: 1px solid oklch(var(--border));
 			border-radius: 6px;
-			background-color: hsl(var(--background));
-			color: hsl(var(--foreground));
+			background-color: oklch(var(--background));
+			color: oklch(var(--foreground));
 			cursor: pointer;
 			transition:
 				background-color 0.15s ease,
@@ -557,7 +557,7 @@ $effect(() => {
 
 		.copy-btn:hover {
 			background-color: rgba(255, 255, 255, 0.1);
-			border-color: hsl(var(--primary));
+			border-color: oklch(var(--primary));
 		}
 
 		.copy-btn:disabled {
@@ -566,8 +566,8 @@ $effect(() => {
 		}
 
 		.copy-btn:disabled:hover {
-			background-color: hsl(var(--background));
-			border-color: hsl(var(--border));
+			background-color: oklch(var(--background));
+			border-color: oklch(var(--border));
 		}
 
 		.copy-btn .icon.check {
@@ -584,7 +584,7 @@ $effect(() => {
 		.share-modes {
 			margin-bottom: 1.25rem;
 			padding-top: 1rem;
-			border-top: 1px solid hsl(var(--border));
+			border-top: 1px solid oklch(var(--border));
 		}
 
 		.mode-options {
@@ -598,7 +598,7 @@ $effect(() => {
 			align-items: center;
 			gap: 0.75rem;
 			padding: 0.75rem 1rem;
-			border: 1px solid hsl(var(--border));
+			border: 1px solid oklch(var(--border));
 			border-radius: 8px;
 			cursor: pointer;
 			transition:
@@ -611,8 +611,8 @@ $effect(() => {
 		}
 
 		.mode-option.active {
-			border-color: hsl(var(--primary));
-			background-color: hsl(var(--primary) / 0.08);
+			border-color: oklch(var(--primary));
+			background-color: oklch(var(--primary) / 0.08);
 		}
 
 		.mode-option.below-floor {
@@ -637,7 +637,7 @@ $effect(() => {
 		}
 
 		.mode-option:focus-within {
-			outline: 2px solid hsl(var(--primary));
+			outline: 2px solid oklch(var(--primary));
 			outline-offset: 2px;
 		}
 
@@ -651,12 +651,12 @@ $effect(() => {
 		.mode-label {
 			font-size: 0.875rem;
 			font-weight: 500;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.mode-desc {
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.floor-note {
@@ -664,14 +664,14 @@ $effect(() => {
 			padding: 0.375rem 0.5rem;
 			font-size: 0.7rem;
 			line-height: 1.4;
-			color: hsl(45, 93%, 65%);
+			color: oklch(0.869 0.1467 90.38);
 			background: rgba(250, 204, 21, 0.08);
 			border-left: 2px solid rgba(250, 204, 21, 0.5);
 			border-radius: 4px;
 		}
 
 		.check-icon {
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 		}
 
 		.regenerate-form {
@@ -684,7 +684,7 @@ $effect(() => {
 			gap: 0.375rem;
 			padding: 0.375rem 0;
 			font-size: 0.8125rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			background: none;
 			border: none;
 			cursor: pointer;
@@ -692,7 +692,7 @@ $effect(() => {
 		}
 
 		.btn-link:hover {
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.btn-link:disabled {
@@ -702,7 +702,7 @@ $effect(() => {
 
 		.advanced-section {
 			padding-top: 1rem;
-			border-top: 1px solid hsl(var(--border));
+			border-top: 1px solid oklch(var(--border));
 			margin-bottom: 0.5rem;
 		}
 
@@ -711,12 +711,12 @@ $effect(() => {
 			align-items: center;
 			gap: 0.375rem;
 			font-size: 0.8125rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-decoration: none;
 			transition: color 0.15s ease;
 		}
 
 		.advanced-link:hover {
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 </style>

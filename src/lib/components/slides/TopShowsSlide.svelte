@@ -167,10 +167,10 @@ $effect(() => {
 		.title {
 			font-size: 1.75rem;
 			font-weight: 700;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			text-transform: uppercase;
 			letter-spacing: 0.05em;
-			text-shadow: 0 0 30px var(--slide-glow-color, hsl(var(--primary) / 0.3));
+			text-shadow: 0 0 30px var(--slide-glow-color, oklch(var(--primary) / 0.3));
 		}
 
 		.show-list {
@@ -188,12 +188,12 @@ $effect(() => {
 			align-items: center;
 			gap: 1.25rem;
 			padding: 1rem 1.25rem;
-			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
+			background: var(--slide-glass-bg);
 			backdrop-filter: blur(var(--slide-glass-blur, 20px));
 			-webkit-backdrop-filter: blur(var(--slide-glass-blur, 20px));
-			border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
+			border: 1px solid var(--slide-glass-border);
 			border-radius: calc(var(--radius) * 1.5);
-			box-shadow: var(--shadow-elevation-low, 0 2px 4px hsl(0 0% 0% / 0.2));
+			box-shadow: var(--shadow-elevation-low, 0 2px 4px oklch(0 0 0 / 0.2));
 			position: relative;
 			transition:
 				transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
@@ -209,7 +209,7 @@ $effect(() => {
 			left: 0;
 			right: 0;
 			height: 1px;
-			background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.2), transparent);
+			background: linear-gradient(90deg, transparent, oklch(var(--primary) / 0.2), transparent);
 			border-radius: inherit;
 			opacity: 0;
 			transition: opacity 0.3s ease;
@@ -221,40 +221,40 @@ $effect(() => {
 
 		.show-item:hover {
 			transform: translateY(-2px) scale(1.01);
-			box-shadow: var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.3));
-			border-color: hsl(var(--primary) / 0.4);
+			box-shadow: var(--shadow-elevation-medium, 0 4px 12px oklch(0 0 0 / 0.3));
+			border-color: oklch(var(--primary) / 0.4);
 		}
 
 		/* First item gets special treatment */
 		.show-item.first {
-			border-color: hsl(var(--primary) / 0.3);
+			border-color: oklch(var(--primary) / 0.3);
 			background: linear-gradient(
 				135deg,
-				hsl(var(--primary) / 0.15) 0%,
-				var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4)) 100%
+				oklch(var(--primary) / 0.15) 0%,
+				var(--slide-glass-bg) 100%
 			);
 		}
 
 		.show-item.first::before {
-			background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.5), transparent);
+			background: linear-gradient(90deg, transparent, oklch(var(--primary) / 0.5), transparent);
 			opacity: 1;
 		}
 
 		.rank {
 			font-size: 1rem;
 			font-weight: 800;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			min-width: 2.5rem;
 			padding: 0.25rem 0.5rem;
-			background: hsl(var(--primary) / 0.15);
+			background: oklch(var(--primary) / 0.15);
 			border-radius: var(--radius);
 			text-align: center;
-			text-shadow: 0 0 10px hsl(var(--primary) / 0.3);
+			text-shadow: 0 0 10px oklch(var(--primary) / 0.3);
 		}
 
 		.first .rank {
-			background: linear-gradient(135deg, hsl(var(--primary) / 0.25), hsl(var(--accent) / 0.15));
-			box-shadow: 0 0 15px hsl(var(--primary) / 0.2);
+			background: linear-gradient(135deg, oklch(var(--primary) / 0.25), oklch(var(--accent) / 0.15));
+			box-shadow: 0 0 15px oklch(var(--primary) / 0.2);
 		}
 
 		.thumb {
@@ -262,8 +262,8 @@ $effect(() => {
 			height: 84px;
 			object-fit: cover;
 			border-radius: calc(var(--radius) * 0.75);
-			background: hsl(var(--muted));
-			box-shadow: var(--shadow-elevation-low, 0 2px 4px hsl(0 0% 0% / 0.3));
+			background: oklch(var(--muted));
+			box-shadow: var(--shadow-elevation-low, 0 2px 4px oklch(0 0 0 / 0.3));
 			transition:
 				transform 0.3s ease,
 				box-shadow 0.3s ease;
@@ -272,14 +272,14 @@ $effect(() => {
 		.show-item:hover .thumb {
 			transform: scale(1.05);
 			box-shadow:
-				var(--shadow-elevation-medium, 0 4px 8px hsl(0 0% 0% / 0.4)),
-				0 0 20px var(--slide-glow-color, hsl(var(--primary) / 0.15));
+				var(--shadow-elevation-medium, 0 4px 8px oklch(0 0 0 / 0.4)),
+				0 0 20px var(--slide-glow-color, oklch(var(--primary) / 0.15));
 		}
 
 		.thumb-placeholder {
 			width: 56px;
 			height: 84px;
-			background: linear-gradient(135deg, hsl(var(--muted)) 0%, hsl(var(--secondary)) 100%);
+			background: linear-gradient(135deg, oklch(var(--muted)) 0%, oklch(var(--secondary)) 100%);
 			border-radius: calc(var(--radius) * 0.75);
 		}
 
@@ -294,17 +294,17 @@ $effect(() => {
 		.show-title {
 			font-size: 1rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			line-height: 1.3;
 		}
 
 		.episode-count {
 			font-size: 0.8125rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.empty-message {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-style: italic;
 		}
 

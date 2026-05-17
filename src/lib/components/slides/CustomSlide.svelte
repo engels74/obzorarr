@@ -118,17 +118,17 @@ $effect(() => {
 		.title {
 			font-size: 1.75rem;
 			font-weight: 700;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			text-transform: uppercase;
 			letter-spacing: 0.05em;
 			text-align: center;
-			text-shadow: 0 0 30px hsl(var(--primary) / 0.3);
+			text-shadow: 0 0 30px oklch(var(--primary) / 0.3);
 		}
 
 		.markdown-content {
 			font-size: 1.1875rem;
 			line-height: 1.7;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			text-align: left;
 			width: 100%;
 			overflow-wrap: anywhere;
@@ -139,7 +139,7 @@ $effect(() => {
 		.markdown-content :global(h1),
 		.markdown-content :global(h2),
 		.markdown-content :global(h3) {
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			margin-top: 1.5rem;
 			margin-bottom: 0.75rem;
 		}
@@ -171,7 +171,7 @@ $effect(() => {
 		}
 
 		.markdown-content :global(strong) {
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			font-weight: 700;
 		}
 
@@ -180,7 +180,7 @@ $effect(() => {
 		}
 
 		.markdown-content :global(a) {
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			text-decoration: underline;
 			text-underline-offset: 2px;
 		}
@@ -190,11 +190,11 @@ $effect(() => {
 		}
 
 		.markdown-content :global(blockquote) {
-			border-left: 4px solid hsl(var(--primary));
+			border-left: 4px solid oklch(var(--primary));
 			padding-left: 1rem;
 			margin: 1rem 0;
 			font-style: italic;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.markdown-content :global(code) {
@@ -220,7 +220,7 @@ $effect(() => {
 
 		.markdown-content :global(hr) {
 			border: none;
-			border-top: 1px solid hsl(var(--border));
+			border-top: 1px solid oklch(var(--border));
 			margin: 2rem 0;
 		}
 

@@ -695,7 +695,7 @@ function canEnableTrustProxy(): boolean {
 			justify-content: center;
 			background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.05) 100%);
 			border-radius: 18px;
-			color: hsl(217, 91%, 60%);
+			color: oklch(0.6261 0.1859 259.6);
 		}
 
 		.icon-wrapper svg {
@@ -767,11 +767,11 @@ function canEnableTrustProxy(): boolean {
 		}
 
 		.detection-value.proxy {
-			color: hsl(217, 91%, 65%);
+			color: oklch(0.6684 0.1625 259.49);
 		}
 
 		.detection-value.direct {
-			color: hsl(142, 71%, 55%);
+			color: oklch(0.7946 0.1951 150.81);
 		}
 
 		.detection-value.origin {
@@ -836,7 +836,7 @@ function canEnableTrustProxy(): boolean {
 		.diagnostic-check-btn {
 			background: rgba(59, 130, 246, 0.08);
 			border: 1px solid rgba(59, 130, 246, 0.18);
-			color: hsl(217, 91%, 68%);
+			color: oklch(0.695 0.1481 259.5);
 		}
 
 		.diagnostic-check-btn:hover:not(:disabled) {
@@ -936,7 +936,7 @@ function canEnableTrustProxy(): boolean {
 			border-radius: 4px;
 			background: rgba(34, 197, 94, 0.14);
 			border: 1px solid rgba(34, 197, 94, 0.25);
-			color: hsl(142, 71%, 60%);
+			color: oklch(0.8116 0.1789 152.1);
 			font-size: 0.6rem;
 			font-weight: 700;
 			letter-spacing: 0.05em;
@@ -978,14 +978,14 @@ function canEnableTrustProxy(): boolean {
 		.risk-confirmation input {
 			flex-shrink: 0;
 			margin-top: 0.15rem;
-			accent-color: hsl(217, 91%, 60%);
+			accent-color: oklch(0.6261 0.1859 259.6);
 		}
 
 		.enable-trust-btn {
 			width: fit-content;
 			background: rgba(34, 197, 94, 0.12);
 			border: 1px solid rgba(34, 197, 94, 0.28);
-			color: hsl(142, 71%, 58%);
+			color: oklch(0.8046 0.1857 151.6);
 		}
 
 		.enable-trust-btn:hover {
@@ -1026,7 +1026,7 @@ function canEnableTrustProxy(): boolean {
 			justify-content: center;
 			background: rgba(34, 197, 94, 0.12);
 			border-radius: 11px;
-			color: hsl(142, 71%, 55%);
+			color: oklch(0.7946 0.1951 150.81);
 			position: relative;
 		}
 
@@ -1066,7 +1066,7 @@ function canEnableTrustProxy(): boolean {
 			text-transform: uppercase;
 			letter-spacing: 0.05em;
 			background: rgba(34, 197, 94, 0.15);
-			color: hsl(142, 71%, 60%);
+			color: oklch(0.8116 0.1789 152.1);
 			border-radius: 5px;
 			border: 1px solid rgba(34, 197, 94, 0.3);
 		}
@@ -1095,7 +1095,7 @@ function canEnableTrustProxy(): boolean {
 			justify-content: center;
 			background: rgba(34, 197, 94, 0.15);
 			border-radius: 50%;
-			color: hsl(142, 71%, 55%);
+			color: oklch(0.7946 0.1951 150.81);
 		}
 
 		.preconfigured-check svg {
@@ -1174,7 +1174,7 @@ function canEnableTrustProxy(): boolean {
 			border-radius: 6px;
 			font-size: 0.75rem;
 			font-weight: 500;
-			color: hsl(217, 91%, 65%);
+			color: oklch(0.6684 0.1625 259.49);
 			cursor: pointer;
 			box-shadow:
 				0 1px 2px rgba(0, 0, 0, 0.1),
@@ -1196,7 +1196,7 @@ function canEnableTrustProxy(): boolean {
 		}
 
 		.use-detected-btn:focus-visible {
-			outline: 2px solid hsl(217, 91%, 65%);
+			outline: 2px solid oklch(0.6684 0.1625 259.49);
 			outline-offset: 2px;
 		}
 
@@ -1211,7 +1211,7 @@ function canEnableTrustProxy(): boolean {
 			border-radius: 6px;
 			font-size: 0.75rem;
 			font-weight: 500;
-			color: hsl(142, 71%, 55%);
+			color: oklch(0.7946 0.1951 150.81);
 			cursor: pointer;
 			box-shadow:
 				0 1px 2px rgba(0, 0, 0, 0.1),
@@ -1233,7 +1233,7 @@ function canEnableTrustProxy(): boolean {
 		}
 
 		.test-btn:focus-visible {
-			outline: 2px solid hsl(142, 71%, 55%);
+			outline: 2px solid oklch(0.7946 0.1951 150.81);
 			outline-offset: 2px;
 		}
 
@@ -1299,18 +1299,18 @@ function canEnableTrustProxy(): boolean {
 		.test-result.success {
 			background: rgba(34, 197, 94, 0.1);
 			border: 1px solid rgba(34, 197, 94, 0.2);
-			color: hsl(142, 71%, 55%);
+			color: oklch(0.7946 0.1951 150.81);
 		}
 
 		.test-result.error {
 			background: rgba(239, 68, 68, 0.1);
 			border: 1px solid rgba(239, 68, 68, 0.2);
-			color: hsl(0, 84%, 60%);
+			color: oklch(0.6356 0.2082 25.38);
 		}
 
 		.error-message {
 			font-size: 0.8rem;
-			color: hsl(0, 84%, 60%);
+			color: oklch(0.6356 0.2082 25.38);
 		}
 
 		.input-hint {
@@ -1333,7 +1333,7 @@ function canEnableTrustProxy(): boolean {
 			flex-shrink: 0;
 			width: 20px;
 			height: 20px;
-			color: hsl(217, 91%, 60%);
+			color: oklch(0.6261 0.1859 259.6);
 			margin-top: 0.125rem;
 		}
 
@@ -1374,7 +1374,7 @@ function canEnableTrustProxy(): boolean {
 			background: rgba(59, 130, 246, 0.08);
 			border: 1px solid rgba(59, 130, 246, 0.18);
 			border-radius: 6px;
-			color: hsl(217, 91%, 68%);
+			color: oklch(0.695 0.1481 259.5);
 			text-decoration: none;
 			font-size: 0.75rem;
 			font-weight: 500;
@@ -1388,7 +1388,7 @@ function canEnableTrustProxy(): boolean {
 		}
 
 		.edu-link:focus-visible {
-			outline: 2px solid hsl(217, 91%, 65%);
+			outline: 2px solid oklch(0.6684 0.1625 259.49);
 			outline-offset: 2px;
 		}
 
@@ -1425,7 +1425,7 @@ function canEnableTrustProxy(): boolean {
 			display: inline-flex;
 			align-items: center;
 			gap: 0.2rem;
-			color: hsl(217, 85%, 65%);
+			color: oklch(0.6703 0.1523 259.49);
 			text-decoration: none;
 			font-size: 0.7rem;
 			font-weight: 500;
@@ -1436,11 +1436,11 @@ function canEnableTrustProxy(): boolean {
 
 		.proxy-links a:hover {
 			background: rgba(59, 130, 246, 0.1);
-			color: hsl(217, 91%, 72%);
+			color: oklch(0.7313 0.1288 259.57);
 		}
 
 		.proxy-links a:focus-visible {
-			outline: 2px solid hsl(217, 91%, 65%);
+			outline: 2px solid oklch(0.6684 0.1625 259.49);
 			outline-offset: 1px;
 		}
 
@@ -1470,7 +1470,7 @@ function canEnableTrustProxy(): boolean {
 			background: rgba(59, 130, 246, 0.06);
 			border: 1px solid rgba(59, 130, 246, 0.15);
 			border-radius: 8px;
-			color: hsl(217, 91%, 68%);
+			color: oklch(0.695 0.1481 259.5);
 			text-decoration: none;
 			font-size: 0.8rem;
 			font-weight: 500;
@@ -1484,7 +1484,7 @@ function canEnableTrustProxy(): boolean {
 		}
 
 		.locked-docs a:focus-visible {
-			outline: 2px solid hsl(217, 91%, 65%);
+			outline: 2px solid oklch(0.6684 0.1625 259.49);
 			outline-offset: 2px;
 		}
 
@@ -1548,7 +1548,7 @@ function canEnableTrustProxy(): boolean {
 			justify-content: center;
 			gap: 0.5rem;
 			padding: 0.875rem 1.5rem;
-			background: linear-gradient(135deg, hsl(217, 91%, 55%) 0%, hsl(217, 91%, 50%) 100%);
+			background: linear-gradient(135deg, oklch(0.5869 0.2079 260) 0%, oklch(0.5516 0.2278 260.85) 100%);
 			border: none;
 			border-radius: 10px;
 			font-size: 0.9rem;

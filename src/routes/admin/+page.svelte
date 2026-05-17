@@ -367,7 +367,7 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 			position: relative;
 			margin-bottom: 2rem;
 			padding-bottom: 1.5rem;
-			border-bottom: 1px solid hsl(var(--border) / 0.5);
+			border-bottom: 1px solid oklch(var(--border) / 0.5);
 		}
 
 		.header-content {
@@ -381,17 +381,17 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 		.header-title {
 			font-size: 2.25rem;
 			font-weight: 800;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			margin: 0;
 			letter-spacing: -0.025em;
-			background: linear-gradient(135deg, hsl(var(--foreground)) 0%, hsl(var(--primary)) 100%);
+			background: linear-gradient(135deg, oklch(var(--foreground)) 0%, oklch(var(--primary)) 100%);
 			-webkit-background-clip: text;
 			-webkit-text-fill-color: transparent;
 			background-clip: text;
 		}
 
 		.header-subtitle {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin: 0.25rem 0 0;
 			font-size: 0.9375rem;
 		}
@@ -401,12 +401,12 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 			align-items: center;
 			gap: 0.375rem;
 			padding: 0.375rem 0.75rem;
-			background: hsl(120 50% 25% / 0.3);
-			border: 1px solid hsl(120 50% 40% / 0.4);
+			background: oklch(0.4318 0.1162 143.23 / 0.3);
+			border: 1px solid oklch(0.6026 0.1684 143.13 / 0.4);
 			border-radius: 9999px;
 			font-size: 0.75rem;
 			font-weight: 600;
-			color: hsl(120 60% 70%);
+			color: oklch(0.8284 0.1534 144.04);
 			text-transform: uppercase;
 			letter-spacing: 0.05em;
 		}
@@ -417,7 +417,7 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 			left: -20px;
 			width: 200px;
 			height: 100px;
-			background: radial-gradient(ellipse, hsl(var(--primary) / 0.15) 0%, transparent 70%);
+			background: radial-gradient(ellipse, oklch(var(--primary) / 0.15) 0%, transparent 70%);
 			pointer-events: none;
 		}
 
@@ -435,8 +435,8 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 			align-items: center;
 			gap: 1rem;
 			padding: 1.25rem;
-			background: hsl(var(--card));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--card));
+			border: 1px solid oklch(var(--border));
 			border-radius: 0.75rem;
 			overflow: hidden;
 			transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -446,10 +446,10 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 
 		.stat-card:hover {
 			transform: translateY(-2px);
-			border-color: hsl(var(--primary) / 0.5);
+			border-color: oklch(var(--primary) / 0.5);
 			box-shadow:
-				0 8px 24px -4px hsl(var(--primary) / 0.15),
-				0 0 0 1px hsl(var(--primary) / 0.1);
+				0 8px 24px -4px oklch(var(--primary) / 0.15),
+				0 0 0 1px oklch(var(--primary) / 0.1);
 		}
 
 		.stat-glow {
@@ -458,7 +458,7 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 			left: 0;
 			right: 0;
 			height: 1px;
-			background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.5), transparent);
+			background: linear-gradient(90deg, transparent, oklch(var(--primary) / 0.5), transparent);
 			opacity: 0;
 			transition: opacity 0.3s ease;
 		}
@@ -486,46 +486,46 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 			width: 2.75rem;
 			height: 2.75rem;
 			border-radius: 0.625rem;
-			background: hsl(var(--primary) / 0.1);
+			background: oklch(var(--primary) / 0.1);
 			flex-shrink: 0;
 		}
 
 		.stat-blue .stat-icon-wrap {
-			background: hsl(217 91% 60% / 0.15);
+			background: oklch(0.6261 0.1859 259.6 / 0.15);
 		}
 
 		.stat-emerald .stat-icon-wrap {
-			background: hsl(152 69% 40% / 0.15);
+			background: oklch(0.6594 0.1501 156.53 / 0.15);
 		}
 
 		.stat-violet .stat-icon-wrap {
-			background: hsl(263 70% 50% / 0.15);
+			background: oklch(0.4865 0.2423 291.87 / 0.15);
 		}
 
 		.stat-amber .stat-icon-wrap {
-			background: hsl(38 92% 50% / 0.15);
+			background: oklch(0.7697 0.1645 70.61 / 0.15);
 		}
 
 		.stat-card :global(.stat-icon) {
 			width: 1.25rem;
 			height: 1.25rem;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 		}
 
 		.stat-blue :global(.stat-icon) {
-			color: hsl(217 91% 65%);
+			color: oklch(0.6684 0.1625 259.49);
 		}
 
 		.stat-emerald :global(.stat-icon) {
-			color: hsl(152 69% 50%);
+			color: oklch(0.7781 0.1789 156.3);
 		}
 
 		.stat-violet :global(.stat-icon) {
-			color: hsl(263 70% 60%);
+			color: oklch(0.5727 0.207 297);
 		}
 
 		.stat-amber :global(.stat-icon) {
-			color: hsl(38 92% 55%);
+			color: oklch(0.789 0.1592 74.08);
 		}
 
 		.stat-content {
@@ -538,14 +538,14 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 		.stat-value {
 			font-size: 1.625rem;
 			font-weight: 700;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			line-height: 1.1;
 			letter-spacing: -0.02em;
 		}
 
 		.stat-label {
 			font-size: 0.6875rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-transform: uppercase;
 			letter-spacing: 0.08em;
 			margin-top: 0.125rem;
@@ -553,7 +553,7 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 
 		.stat-sub {
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground) / 0.8);
+			color: oklch(var(--muted-foreground) / 0.8);
 			margin-top: 0.125rem;
 		}
 
@@ -567,8 +567,8 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 
 		/* Sections */
 		.section {
-			background: hsl(var(--card));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--card));
+			border: 1px solid oklch(var(--border));
 			border-radius: 0.75rem;
 			padding: 1.25rem;
 			animation: fadeIn 0.5s ease backwards;
@@ -581,7 +581,7 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 			align-items: center;
 			margin-bottom: 1rem;
 			padding-bottom: 0.75rem;
-			border-bottom: 1px solid hsl(var(--border) / 0.5);
+			border-bottom: 1px solid oklch(var(--border) / 0.5);
 		}
 
 		.section-title-wrap {
@@ -593,13 +593,13 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 		.section-title-wrap :global(.section-icon) {
 			width: 1.125rem;
 			height: 1.125rem;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 		}
 
 		.section-header h2 {
 			font-size: 1rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			margin: 0;
 		}
 
@@ -609,7 +609,7 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 			gap: 0.25rem;
 			font-size: 0.8125rem;
 			font-weight: 500;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			text-decoration: none;
 			transition: all 0.2s ease;
 		}
@@ -630,7 +630,7 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 			justify-content: space-between;
 			align-items: center;
 			padding: 0.625rem 0;
-			border-bottom: 1px solid hsl(var(--border) / 0.3);
+			border-bottom: 1px solid oklch(var(--border) / 0.3);
 		}
 
 		.sync-row:last-child {
@@ -640,20 +640,20 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 
 		.sync-label {
 			font-size: 0.8125rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.sync-value {
 			font-size: 0.8125rem;
 			font-weight: 500;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			display: flex;
 			align-items: center;
 			gap: 0.5rem;
 		}
 
 		.sync-value.highlight {
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			font-weight: 600;
 		}
 
@@ -667,26 +667,26 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 			font-weight: 600;
 			text-transform: uppercase;
 			letter-spacing: 0.03em;
-			background: hsl(var(--muted));
-			color: hsl(var(--muted-foreground));
+			background: oklch(var(--muted));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.status-badge.success {
-			background: hsl(120 50% 20% / 0.5);
-			color: hsl(120 60% 70%);
-			border: 1px solid hsl(120 50% 30% / 0.5);
+			background: oklch(0.3712 0.0974 143.3 / 0.5);
+			color: oklch(0.8284 0.1534 144.04);
+			border: 1px solid oklch(0.4903 0.1342 143.19 / 0.5);
 		}
 
 		.status-badge.error {
-			background: hsl(0 60% 25% / 0.5);
-			color: hsl(0 70% 70%);
-			border: 1px solid hsl(0 50% 35% / 0.5);
+			background: oklch(0.3437 0.1092 24.99 / 0.5);
+			color: oklch(0.7089 0.1324 20.95);
+			border: 1px solid oklch(0.4287 0.1227 23.86 / 0.5);
 		}
 
 		.status-badge.syncing {
-			background: hsl(200 70% 25% / 0.5);
-			color: hsl(200 80% 70%);
-			border: 1px solid hsl(200 60% 40% / 0.5);
+			background: oklch(0.4041 0.0768 235.62 / 0.5);
+			color: oklch(0.7925 0.0987 231.59);
+			border: 1px solid oklch(0.5508 0.0994 234.79 / 0.5);
 		}
 
 		.status-indicator {
@@ -698,15 +698,15 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 		}
 
 		.status-indicator.active {
-			color: hsl(120 60% 60%);
+			color: oklch(0.7806 0.1966 143.4);
 		}
 
 		.status-indicator.paused {
-			color: hsl(45 90% 55%);
+			color: oklch(0.8309 0.1622 87.87);
 		}
 
 		.status-indicator.inactive {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.pulse-dot {
@@ -715,7 +715,7 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 			width: 0.75rem;
 			height: 0.75rem;
 			border-radius: 50%;
-			background: hsl(120 60% 50% / 0.4);
+			background: oklch(0.7395 0.2268 142.85 / 0.4);
 			animation: pulse 2s ease-in-out infinite;
 		}
 
@@ -737,8 +737,8 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 			align-items: center;
 			justify-content: center;
 			padding: 1.25rem 0.75rem;
-			background: hsl(var(--secondary));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--secondary));
+			border: 1px solid oklch(var(--border));
 			border-radius: 0.625rem;
 			text-decoration: none;
 			text-align: center;
@@ -749,8 +749,8 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 
 		.wrapped-card:hover {
 			transform: translateY(-3px);
-			border-color: hsl(var(--primary) / 0.6);
-			box-shadow: 0 8px 24px -4px hsl(var(--primary) / 0.2);
+			border-color: oklch(var(--primary) / 0.6);
+			box-shadow: 0 8px 24px -4px oklch(var(--primary) / 0.2);
 		}
 
 		.wrapped-card-glow {
@@ -767,15 +767,15 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 		}
 
 		.wrapped-card.personal .wrapped-card-glow {
-			background: radial-gradient(circle, hsl(var(--primary) / 0.3) 0%, transparent 70%);
+			background: radial-gradient(circle, oklch(var(--primary) / 0.3) 0%, transparent 70%);
 		}
 
 		.wrapped-card.server .wrapped-card-glow {
-			background: radial-gradient(circle, hsl(175 70% 50% / 0.3) 0%, transparent 70%);
+			background: radial-gradient(circle, oklch(0.7986 0.1344 185.85 / 0.3) 0%, transparent 70%);
 		}
 
 		.wrapped-card.config .wrapped-card-glow {
-			background: radial-gradient(circle, hsl(var(--muted-foreground) / 0.2) 0%, transparent 70%);
+			background: radial-gradient(circle, oklch(var(--muted-foreground) / 0.2) 0%, transparent 70%);
 		}
 
 		.wrapped-card:hover .wrapped-card-glow {
@@ -798,15 +798,15 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 		}
 
 		.wrapped-card.personal .wrapped-icon-wrap {
-			background: hsl(var(--primary) / 0.15);
+			background: oklch(var(--primary) / 0.15);
 		}
 
 		.wrapped-card.server .wrapped-icon-wrap {
-			background: hsl(175 70% 50% / 0.15);
+			background: oklch(0.7986 0.1344 185.85 / 0.15);
 		}
 
 		.wrapped-card.config .wrapped-icon-wrap {
-			background: hsl(var(--muted) / 0.5);
+			background: oklch(var(--muted) / 0.5);
 		}
 
 		.wrapped-card :global(.wrapped-icon) {
@@ -815,25 +815,25 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 		}
 
 		.wrapped-card.personal :global(.wrapped-icon) {
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 		}
 
 		.wrapped-card.server :global(.wrapped-icon) {
-			color: hsl(175 70% 55%);
+			color: oklch(0.813 0.1296 186.59);
 		}
 
 		.wrapped-card.config :global(.wrapped-icon) {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.wrapped-card.config:hover :global(.wrapped-icon) {
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 		}
 
 		.wrapped-label {
 			font-size: 0.8125rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			position: relative;
 			z-index: 1;
 		}
@@ -844,7 +844,7 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 			right: 0.5rem;
 			width: 0.875rem;
 			height: 0.875rem;
-			color: hsl(var(--muted-foreground) / 0.5);
+			color: oklch(var(--muted-foreground) / 0.5);
 			opacity: 0;
 			transform: translateX(-4px);
 			transition: all 0.3s ease;
@@ -863,7 +863,7 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 		.actions-title {
 			font-size: 1rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			margin: 0 0 1rem;
 		}
 
@@ -878,16 +878,16 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 			align-items: center;
 			gap: 1rem;
 			padding: 1rem 1.25rem;
-			background: hsl(var(--secondary));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--secondary));
+			border: 1px solid oklch(var(--border));
 			border-radius: 0.625rem;
 			text-decoration: none;
 			transition: all 0.2s ease;
 		}
 
 		.action-card:hover {
-			background: hsl(var(--primary) / 0.08);
-			border-color: hsl(var(--primary) / 0.4);
+			background: oklch(var(--primary) / 0.08);
+			border-color: oklch(var(--primary) / 0.4);
 		}
 
 		.action-icon-wrap {
@@ -896,20 +896,20 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 			justify-content: center;
 			width: 2.5rem;
 			height: 2.5rem;
-			background: hsl(var(--primary) / 0.1);
+			background: oklch(var(--primary) / 0.1);
 			border-radius: 0.5rem;
 			flex-shrink: 0;
 			transition: all 0.2s ease;
 		}
 
 		.action-card:hover .action-icon-wrap {
-			background: hsl(var(--primary) / 0.2);
+			background: oklch(var(--primary) / 0.2);
 		}
 
 		.action-card :global(.action-icon) {
 			width: 1.125rem;
 			height: 1.125rem;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 		}
 
 		.action-content {
@@ -921,24 +921,24 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 		.action-label {
 			font-size: 0.875rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.action-desc {
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin-top: 0.125rem;
 		}
 
 		.action-card :global(.action-arrow) {
 			width: 1rem;
 			height: 1rem;
-			color: hsl(var(--muted-foreground) / 0.5);
+			color: oklch(var(--muted-foreground) / 0.5);
 			transition: all 0.2s ease;
 		}
 
 		.action-card:hover :global(.action-arrow) {
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			transform: translateX(2px);
 		}
 

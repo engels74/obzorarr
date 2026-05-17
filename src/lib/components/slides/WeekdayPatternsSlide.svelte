@@ -207,21 +207,21 @@ $effect(() => {
 		.title {
 			font-size: 1.75rem;
 			font-weight: 700;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			text-transform: uppercase;
 			letter-spacing: 0.05em;
-			text-shadow: 0 0 30px var(--slide-glow-color, hsl(var(--primary) / 0.3));
+			text-shadow: 0 0 30px var(--slide-glow-color, oklch(var(--primary) / 0.3));
 		}
 
 		.chart-container {
 			width: 100%;
 			padding: 1.5rem;
-			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
+			background: var(--slide-glass-bg);
 			backdrop-filter: blur(var(--slide-glass-blur, 20px));
 			-webkit-backdrop-filter: blur(var(--slide-glass-blur, 20px));
-			border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
+			border: 1px solid var(--slide-glass-border);
 			border-radius: calc(var(--radius) * 2);
-			box-shadow: var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.3));
+			box-shadow: var(--shadow-elevation-medium, 0 4px 12px oklch(0 0 0 / 0.3));
 		}
 
 		.bars {
@@ -251,7 +251,7 @@ $effect(() => {
 		.bar {
 			width: 100%;
 			max-width: 50px;
-			background: linear-gradient(180deg, hsl(var(--primary) / 0.6), hsl(var(--primary) / 0.3));
+			background: linear-gradient(180deg, oklch(var(--primary) / 0.6), oklch(var(--primary) / 0.3));
 			border-radius: var(--radius) var(--radius) 0 0;
 			transform-origin: bottom center;
 			display: flex;
@@ -267,34 +267,34 @@ $effect(() => {
 		}
 
 		.bar.peak {
-			background: linear-gradient(180deg, hsl(var(--primary)), hsl(var(--primary) / 0.7));
-			box-shadow: 0 0 20px hsl(var(--primary) / 0.4);
+			background: linear-gradient(180deg, oklch(var(--primary)), oklch(var(--primary) / 0.7));
+			box-shadow: 0 0 20px oklch(var(--primary) / 0.4);
 		}
 
 		.bar.weekend {
-			background: linear-gradient(180deg, hsl(280 60% 55% / 0.7), hsl(280 60% 55% / 0.4));
+			background: linear-gradient(180deg, oklch(0.5797 0.2102 312.33 / 0.7), oklch(0.5797 0.2102 312.33 / 0.4));
 		}
 
 		.bar.weekend.peak {
-			background: linear-gradient(180deg, hsl(280 60% 55%), hsl(280 60% 55% / 0.7));
-			box-shadow: 0 0 20px hsl(280 60% 55% / 0.4);
+			background: linear-gradient(180deg, oklch(0.5797 0.2102 312.33), oklch(0.5797 0.2102 312.33 / 0.7));
+			box-shadow: 0 0 20px oklch(0.5797 0.2102 312.33 / 0.4);
 		}
 
 		.bar-value {
 			font-size: 0.625rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			white-space: nowrap;
 		}
 
 		.bar-label {
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-weight: 500;
 		}
 
 		.bar-label.peak {
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			font-weight: 700;
 		}
 
@@ -311,15 +311,15 @@ $effect(() => {
 			align-items: center;
 			gap: 0.25rem;
 			padding: 0.75rem 1.5rem;
-			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.3));
+			background: var(--slide-glass-bg);
 			border-radius: calc(var(--radius) * 1.5);
-			border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.15));
+			border: 1px solid var(--slide-glass-border);
 		}
 
 		.peak-label,
 		.split-label {
 			font-size: 0.6875rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-transform: uppercase;
 			letter-spacing: 0.1em;
 		}
@@ -328,7 +328,7 @@ $effect(() => {
 		.split-value {
 			font-size: 1.125rem;
 			font-weight: 700;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 		}
 
 		.extra {

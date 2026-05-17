@@ -37,11 +37,11 @@ const personality = $derived.by(() => {
 });
 
 function getProgressColor(percent: number): string {
-	if (percent >= 100) return 'hsl(120 50% 45%)';
-	if (percent >= 75) return 'hsl(80 50% 50%)';
-	if (percent >= 50) return 'hsl(45 70% 50%)';
-	if (percent >= 25) return 'hsl(30 70% 50%)';
-	return 'hsl(var(--primary))';
+	if (percent >= 100) return 'oklch(0.6568 0.1848 143.11)';
+	if (percent >= 75) return 'oklch(0.75 0.1608 125.94)';
+	if (percent >= 50) return 'oklch(0.7646 0.1468 88.42)';
+	if (percent >= 25) return 'oklch(0.6811 0.1461 59.81)';
+	return 'oklch(var(--primary))';
 }
 
 let container: HTMLElement | undefined = $state();
@@ -209,10 +209,10 @@ $effect(() => {
 		.title {
 			font-size: 1.75rem;
 			font-weight: 700;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			text-transform: uppercase;
 			letter-spacing: 0.05em;
-			text-shadow: 0 0 30px var(--slide-glow-color, hsl(var(--primary) / 0.3));
+			text-shadow: 0 0 30px var(--slide-glow-color, oklch(var(--primary) / 0.3));
 		}
 
 		.series-list {
@@ -227,10 +227,10 @@ $effect(() => {
 			align-items: center;
 			gap: 1rem;
 			padding: 0.75rem 1rem;
-			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
+			background: var(--slide-glass-bg);
 			backdrop-filter: blur(var(--slide-glass-blur, 12px));
 			-webkit-backdrop-filter: blur(var(--slide-glass-blur, 12px));
-			border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
+			border: 1px solid var(--slide-glass-border);
 			border-radius: calc(var(--radius) * 1.5);
 			transition:
 				transform 0.3s ease,
@@ -239,11 +239,11 @@ $effect(() => {
 
 		.series-card:hover {
 			transform: translateX(4px);
-			border-color: hsl(var(--primary) / 0.3);
+			border-color: oklch(var(--primary) / 0.3);
 		}
 
 		.series-card.complete {
-			border-color: hsl(120 50% 45% / 0.3);
+			border-color: oklch(0.6568 0.1848 143.11 / 0.3);
 		}
 
 		.thumb-container {
@@ -267,7 +267,7 @@ $effect(() => {
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			background: hsl(var(--muted) / 0.3);
+			background: oklch(var(--muted) / 0.3);
 			font-size: 1.5rem;
 		}
 
@@ -280,7 +280,7 @@ $effect(() => {
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			background: hsl(120 50% 45%);
+			background: oklch(0.6568 0.1848 143.11);
 			border-radius: 50%;
 			font-size: 0.75rem;
 			color: white;
@@ -298,7 +298,7 @@ $effect(() => {
 		.series-title {
 			font-size: 0.9375rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			overflow: hidden;
 			text-overflow: ellipsis;
 			white-space: nowrap;
@@ -313,7 +313,7 @@ $effect(() => {
 		.progress-track {
 			flex: 1;
 			height: 6px;
-			background: hsl(var(--muted) / 0.3);
+			background: oklch(var(--muted) / 0.3);
 			border-radius: 3px;
 			overflow: hidden;
 		}
@@ -326,7 +326,7 @@ $effect(() => {
 
 		.progress-text {
 			font-size: 0.6875rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			white-space: nowrap;
 		}
 
@@ -343,14 +343,14 @@ $effect(() => {
 			align-items: center;
 			gap: 0.25rem;
 			padding: 0.75rem 1.5rem;
-			background: linear-gradient(135deg, hsl(var(--primary) / 0.2), hsl(var(--primary) / 0.1));
-			border: 1px solid hsl(var(--primary) / 0.3);
+			background: linear-gradient(135deg, oklch(var(--primary) / 0.2), oklch(var(--primary) / 0.1));
+			border: 1px solid oklch(var(--primary) / 0.3);
 			border-radius: 2rem;
 		}
 
 		.personality-badge.completionist {
-			background: linear-gradient(135deg, hsl(120 50% 45% / 0.2), hsl(120 50% 45% / 0.1));
-			border-color: hsl(120 50% 45% / 0.3);
+			background: linear-gradient(135deg, oklch(0.6568 0.1848 143.11 / 0.2), oklch(0.6568 0.1848 143.11 / 0.1));
+			border-color: oklch(0.6568 0.1848 143.11 / 0.3);
 		}
 
 		.badge-icon {
@@ -360,18 +360,18 @@ $effect(() => {
 		.badge-text {
 			font-size: 1rem;
 			font-weight: 600;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			text-transform: uppercase;
 			letter-spacing: 0.1em;
 		}
 
 		.personality-badge.completionist .badge-text {
-			color: hsl(120 50% 45%);
+			color: oklch(0.6568 0.1848 143.11);
 		}
 
 		.badge-stat {
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.no-series {
@@ -387,14 +387,14 @@ $effect(() => {
 		}
 
 		.empty-message {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-style: italic;
 			font-size: 1.125rem;
 			margin: 0;
 		}
 
 		.empty-hint {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-size: 0.875rem;
 			opacity: 0.7;
 			margin: 0;

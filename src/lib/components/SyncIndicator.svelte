@@ -46,12 +46,12 @@ const statusText = $derived.by(() => {
 			align-items: center;
 			gap: 0.5rem;
 			padding: 0.75rem 1rem;
-			background: hsl(var(--card, 0 0% 10%));
-			border: 1px solid hsl(var(--border, 0 0% 20%));
+			background: oklch(var(--card));
+			border: 1px solid oklch(var(--border));
 			border-radius: 0.5rem;
-			box-shadow: 0 2px 8px hsl(0 0% 0% / 0.2);
+			box-shadow: 0 2px 8px oklch(0 0 0 / 0.2);
 			font-size: 0.875rem;
-			color: hsl(var(--muted-foreground, 0 0% 70%));
+			color: oklch(var(--muted-foreground));
 			z-index: 50;
 			animation: slideIn 0.3s ease-out;
 		}
@@ -59,8 +59,8 @@ const statusText = $derived.by(() => {
 		.sync-spinner {
 			width: 1rem;
 			height: 1rem;
-			border: 2px solid hsl(var(--primary, 0 70% 50%) / 0.3);
-			border-top-color: hsl(var(--primary, 0 70% 50%));
+			border: 2px solid oklch(var(--primary) / 0.3);
+			border-top-color: oklch(var(--primary));
 			border-radius: 50%;
 			animation: spin 1s linear infinite;
 		}

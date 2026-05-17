@@ -627,12 +627,12 @@ function getLogoModeDescription(): string {
 		.page-header h1 {
 			font-size: 2rem;
 			font-weight: 700;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			margin: 0 0 0.5rem;
 		}
 
 		.subtitle {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin: 0;
 		}
 
@@ -644,7 +644,7 @@ function getLogoModeDescription(): string {
 		:global(.tabs-list) {
 			display: flex;
 			gap: 0.25rem;
-			border-bottom: 1px solid hsl(var(--border));
+			border-bottom: 1px solid oklch(var(--border));
 			margin-bottom: 1.5rem;
 			overflow-x: auto;
 			scrollbar-width: thin;
@@ -654,7 +654,7 @@ function getLogoModeDescription(): string {
 			padding: 0.75rem 1.25rem;
 			font-size: 0.875rem;
 			font-weight: 500;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			background: transparent;
 			border: none;
 			border-bottom: 2px solid transparent;
@@ -664,18 +664,18 @@ function getLogoModeDescription(): string {
 		}
 
 		:global(.tabs-list button:hover) {
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		:global(.tabs-list button[data-state='active']) {
-			color: hsl(var(--primary));
-			border-bottom-color: hsl(var(--primary));
+			color: oklch(var(--primary));
+			border-bottom-color: oklch(var(--primary));
 		}
 
 		/* Section Styling */
 		.section {
-			background: hsl(var(--card));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--card));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
 			padding: 1.5rem;
 			margin-bottom: 1.5rem;
@@ -684,19 +684,19 @@ function getLogoModeDescription(): string {
 		.section h2 {
 			font-size: 1.125rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			margin: 0 0 0.5rem;
 		}
 
 		.section h3 {
 			font-size: 0.95rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			margin: 1.5rem 0 0.75rem;
 		}
 
 		.section-description {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-size: 0.875rem;
 			margin: 0 0 1.25rem;
 		}
@@ -723,8 +723,8 @@ function getLogoModeDescription(): string {
 			align-items: center;
 			justify-content: center;
 			padding: 1rem 0.75rem;
-			background: hsl(var(--muted));
-			border: 2px solid hsl(var(--border));
+			background: oklch(var(--muted));
+			border: 2px solid oklch(var(--border));
 			border-radius: var(--radius);
 			cursor: pointer;
 			transition: all 0.15s ease;
@@ -733,13 +733,13 @@ function getLogoModeDescription(): string {
 		}
 
 		.privacy-card:hover {
-			border-color: hsl(var(--primary) / 0.5);
-			background: hsl(var(--muted) / 0.8);
+			border-color: oklch(var(--primary) / 0.5);
+			background: oklch(var(--muted) / 0.8);
 		}
 
 		.privacy-card.selected {
-			border-color: hsl(var(--primary));
-			background: hsl(var(--primary) / 0.1);
+			border-color: oklch(var(--primary));
+			background: oklch(var(--primary) / 0.1);
 		}
 
 		.privacy-card.below-floor {
@@ -748,8 +748,8 @@ function getLogoModeDescription(): string {
 		}
 
 		.privacy-card.below-floor:hover {
-			border-color: hsl(var(--border));
-			background: hsl(var(--muted));
+			border-color: oklch(var(--border));
+			background: oklch(var(--muted));
 		}
 
 		.floor-note {
@@ -757,7 +757,7 @@ function getLogoModeDescription(): string {
 			padding: 0.375rem 0.5rem;
 			font-size: 0.7rem;
 			line-height: 1.4;
-			color: hsl(45, 93%, 65%);
+			color: oklch(0.869 0.1467 90.38);
 			background: rgba(250, 204, 21, 0.08);
 			border-left: 2px solid rgba(250, 204, 21, 0.5);
 			border-radius: 4px;
@@ -779,13 +779,13 @@ function getLogoModeDescription(): string {
 		.privacy-card .card-title {
 			font-weight: 600;
 			font-size: 0.875rem;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			margin-bottom: 0.25rem;
 		}
 
 		.privacy-card .card-desc {
 			font-size: 0.7rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			line-height: 1.4;
 		}
 
@@ -796,8 +796,8 @@ function getLogoModeDescription(): string {
 
 		.save-button {
 			padding: 0.625rem 1.25rem;
-			background: hsl(var(--primary));
-			color: hsl(var(--primary-foreground));
+			background: oklch(var(--primary));
+			color: oklch(var(--primary-foreground));
 			border: none;
 			border-radius: var(--radius);
 			font-weight: 500;
@@ -819,7 +819,7 @@ function getLogoModeDescription(): string {
 		.share-url-section {
 			margin-top: 1.5rem;
 			padding-top: 1.5rem;
-			border-top: 1px solid hsl(var(--border));
+			border-top: 1px solid oklch(var(--border));
 		}
 
 		.share-url-section.readonly {
@@ -834,10 +834,10 @@ function getLogoModeDescription(): string {
 		.url-input {
 			flex: 1;
 			padding: 0.625rem 0.875rem;
-			background: hsl(var(--muted));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--muted));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			font-size: 0.8rem;
 			font-family: monospace;
 		}
@@ -847,9 +847,9 @@ function getLogoModeDescription(): string {
 			align-items: center;
 			gap: 0.375rem;
 			padding: 0.625rem 1rem;
-			background: hsl(var(--secondary));
-			color: hsl(var(--foreground));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--secondary));
+			color: oklch(var(--foreground));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
 			font-size: 0.8rem;
 			font-weight: 500;
@@ -859,13 +859,13 @@ function getLogoModeDescription(): string {
 		}
 
 		.copy-button:hover {
-			background: hsl(var(--muted));
+			background: oklch(var(--muted));
 		}
 
 		.copy-button.copied {
-			background: hsl(140 60% 40%);
+			background: oklch(0.6318 0.1589 149.73);
 			color: white;
-			border-color: hsl(140 60% 40%);
+			border-color: oklch(0.6318 0.1589 149.73);
 		}
 
 		/* Token Actions */
@@ -875,15 +875,15 @@ function getLogoModeDescription(): string {
 
 		.token-hint {
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin: 0 0 0.75rem;
 		}
 
 		.regenerate-button {
 			padding: 0.5rem 0.875rem;
-			background: hsl(var(--secondary));
-			color: hsl(var(--foreground));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--secondary));
+			color: oklch(var(--foreground));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
 			font-size: 0.8rem;
 			cursor: pointer;
@@ -891,9 +891,9 @@ function getLogoModeDescription(): string {
 		}
 
 		.regenerate-button:hover {
-			background: hsl(var(--destructive));
-			color: hsl(var(--destructive-foreground));
-			border-color: hsl(var(--destructive));
+			background: oklch(var(--destructive));
+			color: oklch(var(--destructive-foreground));
+			border-color: oklch(var(--destructive));
 		}
 
 		/* Info Banner */
@@ -901,9 +901,9 @@ function getLogoModeDescription(): string {
 			display: flex;
 			gap: 1rem;
 			padding: 1rem 1.25rem;
-			background: hsl(210 60% 50% / 0.1);
-			border: 1px solid hsl(210 60% 50% / 0.25);
-			border-left: 3px solid hsl(var(--primary));
+			background: oklch(0.5883 0.1391 251.44 / 0.1);
+			border: 1px solid oklch(0.5883 0.1391 251.44 / 0.25);
+			border-left: 3px solid oklch(var(--primary));
 			border-radius: var(--radius);
 			margin-bottom: 1rem;
 		}
@@ -921,13 +921,13 @@ function getLogoModeDescription(): string {
 			display: block;
 			font-size: 0.9375rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			margin-bottom: 0.25rem;
 		}
 
 		.info-content p {
 			font-size: 0.8rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin: 0;
 		}
 
@@ -936,14 +936,14 @@ function getLogoModeDescription(): string {
 			align-items: center;
 			gap: 0.25rem;
 			padding: 0.125rem 0.5rem;
-			background: hsl(var(--muted));
+			background: oklch(var(--muted));
 			border-radius: calc(var(--radius) / 2);
 			font-weight: 500;
 		}
 
 		/* Profile Card */
 		.profile-card {
-			background: hsl(var(--muted));
+			background: oklch(var(--muted));
 			border-radius: var(--radius);
 			overflow: hidden;
 		}
@@ -955,10 +955,10 @@ function getLogoModeDescription(): string {
 			padding: 1.25rem;
 			background: linear-gradient(
 				135deg,
-				hsl(var(--primary) / 0.15) 0%,
-				hsl(var(--primary) / 0.05) 100%
+				oklch(var(--primary) / 0.15) 0%,
+				oklch(var(--primary) / 0.05) 100%
 			);
-			border-bottom: 1px solid hsl(var(--border));
+			border-bottom: 1px solid oklch(var(--border));
 		}
 
 		.profile-avatar {
@@ -966,24 +966,24 @@ function getLogoModeDescription(): string {
 			height: 64px;
 			border-radius: 50%;
 			object-fit: cover;
-			border: 3px solid hsl(var(--primary));
+			border: 3px solid oklch(var(--primary));
 		}
 
 		.profile-avatar-placeholder {
 			width: 64px;
 			height: 64px;
 			border-radius: 50%;
-			background: hsl(var(--primary));
+			background: oklch(var(--primary));
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			border: 3px solid hsl(var(--primary) / 0.5);
+			border: 3px solid oklch(var(--primary) / 0.5);
 		}
 
 		.profile-avatar-placeholder span {
 			font-size: 1.75rem;
 			font-weight: 700;
-			color: hsl(var(--primary-foreground));
+			color: oklch(var(--primary-foreground));
 		}
 
 		.profile-info {
@@ -993,13 +993,13 @@ function getLogoModeDescription(): string {
 		.profile-name {
 			font-size: 1.25rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			margin: 0 0 0.25rem;
 		}
 
 		.profile-email {
 			font-size: 0.875rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin: 0;
 		}
 
@@ -1012,7 +1012,7 @@ function getLogoModeDescription(): string {
 			justify-content: space-between;
 			align-items: center;
 			padding: 0.625rem 0;
-			border-bottom: 1px solid hsl(var(--border) / 0.5);
+			border-bottom: 1px solid oklch(var(--border) / 0.5);
 		}
 
 		.detail-row:last-child {
@@ -1021,13 +1021,13 @@ function getLogoModeDescription(): string {
 
 		.detail-label {
 			font-size: 0.8rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.detail-value {
 			font-size: 0.875rem;
 			font-weight: 500;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.detail-value.mono {
@@ -1037,7 +1037,7 @@ function getLogoModeDescription(): string {
 
 		.session-expiry {
 			padding: 0.25rem 0.5rem;
-			background: hsl(var(--primary) / 0.15);
+			background: oklch(var(--primary) / 0.15);
 			border-radius: calc(var(--radius) / 2);
 			font-size: 0.8rem;
 		}
@@ -1051,8 +1051,8 @@ function getLogoModeDescription(): string {
 			display: inline-flex;
 			align-items: center;
 			padding: 0.75rem 1.25rem;
-			background: hsl(var(--primary));
-			color: hsl(var(--primary-foreground));
+			background: oklch(var(--primary));
+			color: oklch(var(--primary-foreground));
 			border-radius: var(--radius);
 			font-weight: 500;
 			font-size: 0.875rem;

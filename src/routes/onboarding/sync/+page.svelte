@@ -470,7 +470,7 @@ function formatNumber(n: number): string {
 
 		.ring-progress circle {
 			fill: none;
-			stroke: hsl(var(--primary));
+			stroke: oklch(var(--primary));
 			stroke-width: 8;
 			stroke-linecap: round;
 			stroke-dasharray: 326.7;
@@ -490,16 +490,16 @@ function formatNumber(n: number): string {
 				stroke: rgba(255, 255, 255, 0.08);
 			}
 			50% {
-				stroke: hsl(var(--primary) / 0.15);
+				stroke: oklch(var(--primary) / 0.15);
 			}
 		}
 
 		.progress-ring.complete .ring-progress circle {
-			stroke: hsl(142, 71%, 50%);
+			stroke: oklch(0.7794 0.2087 149.41);
 		}
 
 		.progress-ring.failed .ring-progress circle {
-			stroke: hsl(0, 84%, 60%);
+			stroke: oklch(0.6356 0.2082 25.38);
 		}
 
 		/* Ring center */
@@ -529,11 +529,11 @@ function formatNumber(n: number): string {
 		}
 
 		.ring-icon.complete {
-			color: hsl(142, 71%, 55%);
+			color: oklch(0.7946 0.1951 150.81);
 		}
 
 		.ring-icon.failed {
-			color: hsl(0, 84%, 60%);
+			color: oklch(0.6356 0.2082 25.38);
 		}
 
 		/* Spinner dots */
@@ -545,7 +545,7 @@ function formatNumber(n: number): string {
 		.spinner-dots span {
 			width: 10px;
 			height: 10px;
-			background: hsl(var(--primary));
+			background: oklch(var(--primary));
 			border-radius: 50%;
 			animation: dot-bounce 1.4s ease-in-out infinite;
 		}
@@ -578,7 +578,7 @@ function formatNumber(n: number): string {
 			position: absolute;
 			inset: -10px;
 			border-radius: 50%;
-			background: radial-gradient(circle, hsl(var(--primary) / 0.2) 0%, transparent 70%);
+			background: radial-gradient(circle, oklch(var(--primary) / 0.2) 0%, transparent 70%);
 			opacity: 0;
 			transition: opacity 0.4s ease;
 			pointer-events: none;
@@ -627,15 +627,15 @@ function formatNumber(n: number): string {
 		}
 
 		.phase-text.running {
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 		}
 
 		.phase-text.complete {
-			color: hsl(142, 71%, 55%);
+			color: oklch(0.7946 0.1951 150.81);
 		}
 
 		.phase-text.failed {
-			color: hsl(0, 84%, 60%);
+			color: oklch(0.6356 0.2082 25.38);
 		}
 
 		/* Stats row */
@@ -707,7 +707,7 @@ function formatNumber(n: number): string {
 
 		.enrichment-fill {
 			height: 100%;
-			background: linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+			background: linear-gradient(90deg, oklch(var(--primary)) 0%, oklch(var(--accent)) 100%);
 			border-radius: 2px;
 			transition: width 0.3s ease;
 		}
@@ -730,14 +730,14 @@ function formatNumber(n: number): string {
 			min-width: 180px;
 			font-size: 1rem;
 			font-weight: 600;
-			color: hsl(var(--primary-foreground));
-			background: hsl(var(--primary));
+			color: oklch(var(--primary-foreground));
+			background: oklch(var(--primary));
 			border: none;
 			border-radius: 12px;
 			cursor: pointer;
 			transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 			box-shadow:
-				0 4px 16px hsl(var(--primary) / 0.35),
+				0 4px 16px oklch(var(--primary) / 0.35),
 				0 2px 4px rgba(0, 0, 0, 0.2),
 				inset 0 1px 0 rgba(255, 255, 255, 0.2);
 		}
@@ -745,7 +745,7 @@ function formatNumber(n: number): string {
 		.start-button:hover:not(:disabled) {
 			transform: translateY(-2px);
 			box-shadow:
-				0 6px 24px hsl(var(--primary) / 0.45),
+				0 6px 24px oklch(var(--primary) / 0.45),
 				0 4px 8px rgba(0, 0, 0, 0.25),
 				inset 0 1px 0 rgba(255, 255, 255, 0.25);
 		}
@@ -763,8 +763,8 @@ function formatNumber(n: number): string {
 		.btn-spinner {
 			width: 18px;
 			height: 18px;
-			border: 2px solid hsl(var(--primary-foreground) / 0.2);
-			border-top-color: hsl(var(--primary-foreground) / 0.7);
+			border: 2px solid oklch(var(--primary-foreground) / 0.2);
+			border-top-color: oklch(var(--primary-foreground) / 0.7);
 			border-radius: 50%;
 			animation: spin 0.8s linear infinite;
 		}
@@ -792,7 +792,7 @@ function formatNumber(n: number): string {
 			flex-shrink: 0;
 			width: 22px;
 			height: 22px;
-			color: hsl(45, 93%, 55%);
+			color: oklch(0.8376 0.1649 87.55);
 		}
 
 		.warning-icon svg {
@@ -808,7 +808,7 @@ function formatNumber(n: number): string {
 			margin: 0;
 			font-size: 0.9rem;
 			font-weight: 600;
-			color: hsl(45, 93%, 65%);
+			color: oklch(0.869 0.1467 90.38);
 		}
 
 		.warning-text {
@@ -829,7 +829,7 @@ function formatNumber(n: number): string {
 			border-radius: 10px;
 			width: 100%;
 			font-size: 0.9rem;
-			color: hsl(142, 71%, 60%);
+			color: oklch(0.8116 0.1789 152.1);
 			animation: fade-slide-in 0.3s ease-out;
 		}
 
@@ -850,7 +850,7 @@ function formatNumber(n: number): string {
 			border-radius: 10px;
 			width: 100%;
 			font-size: 0.875rem;
-			color: hsl(0, 84%, 70%);
+			color: oklch(0.7052 0.1587 21.97);
 			animation: fade-slide-in 0.3s ease-out;
 		}
 
@@ -895,7 +895,7 @@ function formatNumber(n: number): string {
 			padding: 0.75rem 1.5rem;
 			font-size: 0.95rem;
 			font-weight: 600;
-			color: hsl(0, 84%, 70%);
+			color: oklch(0.7052 0.1587 21.97);
 			background: rgba(239, 68, 68, 0.08);
 			border: 1px solid rgba(239, 68, 68, 0.3);
 			border-radius: 10px;
@@ -927,21 +927,21 @@ function formatNumber(n: number): string {
 			padding: 0.75rem 1.5rem;
 			font-size: 0.95rem;
 			font-weight: 600;
-			color: hsl(var(--primary-foreground));
-			background: hsl(var(--primary));
+			color: oklch(var(--primary-foreground));
+			background: oklch(var(--primary));
 			border: none;
 			border-radius: 10px;
 			cursor: pointer;
 			transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 			box-shadow:
-				0 2px 12px hsl(var(--primary) / 0.3),
+				0 2px 12px oklch(var(--primary) / 0.3),
 				inset 0 1px 0 rgba(255, 255, 255, 0.2);
 		}
 
 		.continue-button:hover:not(:disabled) {
 			transform: translateY(-1px);
 			box-shadow:
-				0 4px 16px hsl(var(--primary) / 0.4),
+				0 4px 16px oklch(var(--primary) / 0.4),
 				inset 0 1px 0 rgba(255, 255, 255, 0.25);
 		}
 

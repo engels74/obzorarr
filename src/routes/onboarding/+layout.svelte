@@ -107,7 +107,7 @@ $effect(() => {
 			overflow-y: auto;
 			display: flex;
 			flex-direction: column;
-			background: hsl(var(--background));
+			background: oklch(var(--background));
 		}
 
 		/* Background gradient - cinematic theater lighting using theme colors */
@@ -115,10 +115,10 @@ $effect(() => {
 			position: fixed;
 			inset: 0;
 			background:
-				radial-gradient(ellipse 80% 50% at 50% 0%, hsl(var(--primary) / 0.08) 0%, transparent 50%),
-				radial-gradient(ellipse 60% 40% at 20% 80%, hsl(var(--primary) / 0.05) 0%, transparent 40%),
-				radial-gradient(ellipse 60% 40% at 80% 80%, hsl(var(--accent) / 0.03) 0%, transparent 40%),
-				linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--card)) 100%);
+				radial-gradient(ellipse 80% 50% at 50% 0%, oklch(var(--primary) / 0.08) 0%, transparent 50%),
+				radial-gradient(ellipse 60% 40% at 20% 80%, oklch(var(--primary) / 0.05) 0%, transparent 40%),
+				radial-gradient(ellipse 60% 40% at 80% 80%, oklch(var(--accent) / 0.03) 0%, transparent 40%),
+				linear-gradient(180deg, oklch(var(--background)) 0%, oklch(var(--card)) 100%);
 			z-index: 0;
 			pointer-events: none;
 		}
@@ -188,7 +188,7 @@ $effect(() => {
 			font-weight: 500;
 			letter-spacing: 0.15em;
 			text-transform: uppercase;
-			color: hsl(var(--primary) / 0.7);
+			color: oklch(var(--primary) / 0.7);
 			margin: 0;
 		}
 

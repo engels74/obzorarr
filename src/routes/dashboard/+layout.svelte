@@ -172,7 +172,7 @@ function closeSidebar() {
 	.dashboard-layout {
 			display: flex;
 			min-height: 100vh;
-			background: hsl(var(--background));
+			background: oklch(var(--background));
 		}
 
 		/* Mobile header */
@@ -183,9 +183,9 @@ function closeSidebar() {
 			left: 0;
 			right: 0;
 			height: 56px;
-			background: hsl(var(--card) / 0.95);
+			background: oklch(var(--card) / 0.95);
 			backdrop-filter: blur(12px);
-			border-bottom: 1px solid hsl(var(--border));
+			border-bottom: 1px solid oklch(var(--border));
 			padding: 0 1rem;
 			align-items: center;
 			gap: 1rem;
@@ -200,14 +200,14 @@ function closeSidebar() {
 			height: 40px;
 			background: transparent;
 			border: none;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			cursor: pointer;
 			border-radius: 0.5rem;
 			transition: all 0.2s ease;
 		}
 
 		.menu-button:hover {
-			background: hsl(var(--muted));
+			background: oklch(var(--muted));
 		}
 
 		.menu-button :global(.menu-icon) {
@@ -224,7 +224,7 @@ function closeSidebar() {
 		.mobile-title {
 			font-size: 1.125rem;
 			font-weight: 600;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			margin: 0;
 		}
 
@@ -233,7 +233,7 @@ function closeSidebar() {
 			display: none;
 			position: fixed;
 			inset: 0;
-			background: hsl(0 0% 0% / 0.6);
+			background: oklch(0 0 0 / 0.6);
 			backdrop-filter: blur(4px);
 			z-index: 45;
 		}
@@ -245,8 +245,8 @@ function closeSidebar() {
 			left: 0;
 			bottom: 0;
 			width: 260px;
-			background: hsl(var(--card));
-			border-right: 1px solid hsl(var(--border));
+			background: oklch(var(--card));
+			border-right: 1px solid oklch(var(--border));
 			display: flex;
 			flex-direction: column;
 			z-index: 50;
@@ -254,7 +254,7 @@ function closeSidebar() {
 
 		.sidebar-header {
 			padding: 1.25rem 1.5rem;
-			border-bottom: 1px solid hsl(var(--border) / 0.5);
+			border-bottom: 1px solid oklch(var(--border) / 0.5);
 		}
 
 		.sidebar-branding {
@@ -271,7 +271,7 @@ function closeSidebar() {
 		.sidebar-title {
 			font-size: 1.25rem;
 			font-weight: 700;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			margin: 0;
 			line-height: 1.2;
 			letter-spacing: -0.01em;
@@ -279,7 +279,7 @@ function closeSidebar() {
 
 		.sidebar-subtitle {
 			font-size: 0.6875rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-transform: uppercase;
 			letter-spacing: 0.08em;
 			margin-top: 0.125rem;
@@ -305,7 +305,7 @@ function closeSidebar() {
 			align-items: center;
 			gap: 0.75rem;
 			padding: 0.625rem 0.875rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-decoration: none;
 			font-weight: 500;
 			border-radius: 0.5rem;
@@ -314,13 +314,13 @@ function closeSidebar() {
 		}
 
 		.nav-link:hover {
-			background: hsl(var(--muted) / 0.5);
-			color: hsl(var(--foreground));
+			background: oklch(var(--muted) / 0.5);
+			color: oklch(var(--foreground));
 		}
 
 		.nav-link.active {
-			background: hsl(var(--primary) / 0.12);
-			color: hsl(var(--primary));
+			background: oklch(var(--primary) / 0.12);
+			color: oklch(var(--primary));
 		}
 
 		.nav-icon-wrap {
@@ -330,16 +330,16 @@ function closeSidebar() {
 			width: 2rem;
 			height: 2rem;
 			border-radius: 0.375rem;
-			background: hsl(var(--muted) / 0.5);
+			background: oklch(var(--muted) / 0.5);
 			transition: all 0.2s ease;
 		}
 
 		.nav-link:hover .nav-icon-wrap {
-			background: hsl(var(--muted));
+			background: oklch(var(--muted));
 		}
 
 		.nav-icon-wrap.active {
-			background: hsl(var(--primary) / 0.15);
+			background: oklch(var(--primary) / 0.15);
 		}
 
 		.nav-link :global(.nav-icon) {
@@ -349,7 +349,7 @@ function closeSidebar() {
 		}
 
 		.nav-link.active :global(.nav-icon) {
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 		}
 
 		.nav-label {
@@ -360,7 +360,7 @@ function closeSidebar() {
 		.nav-link :global(.nav-indicator) {
 			width: 1rem;
 			height: 1rem;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			opacity: 0;
 			transform: translateX(-4px);
 			transition: all 0.2s ease;
@@ -373,7 +373,7 @@ function closeSidebar() {
 
 		.sidebar-footer {
 			padding: 1rem;
-			border-top: 1px solid hsl(var(--border) / 0.5);
+			border-top: 1px solid oklch(var(--border) / 0.5);
 			display: flex;
 			flex-direction: column;
 			gap: 0.75rem;
@@ -384,9 +384,9 @@ function closeSidebar() {
 			align-items: center;
 			gap: 0.75rem;
 			padding: 0.75rem;
-			background: hsl(var(--muted) / 0.3);
+			background: oklch(var(--muted) / 0.3);
 			border-radius: 0.5rem;
-			border: 1px solid hsl(var(--border) / 0.5);
+			border: 1px solid oklch(var(--border) / 0.5);
 		}
 
 		.user-avatar {
@@ -395,7 +395,7 @@ function closeSidebar() {
 			justify-content: center;
 			width: 2.25rem;
 			height: 2.25rem;
-			background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.8) 100%);
+			background: linear-gradient(135deg, oklch(var(--primary)) 0%, oklch(var(--primary) / 0.8) 100%);
 			border-radius: 0.5rem;
 			flex-shrink: 0;
 			overflow: hidden;
@@ -404,7 +404,7 @@ function closeSidebar() {
 		.user-avatar :global(.user-avatar-icon) {
 			width: 1.125rem;
 			height: 1.125rem;
-			color: hsl(var(--primary-foreground));
+			color: oklch(var(--primary-foreground));
 		}
 
 		.user-avatar-img {
@@ -423,7 +423,7 @@ function closeSidebar() {
 		.user-name {
 			font-size: 0.875rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			overflow: hidden;
 			text-overflow: ellipsis;
 			white-space: nowrap;
@@ -431,7 +431,7 @@ function closeSidebar() {
 
 		.user-role {
 			font-size: 0.6875rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-transform: uppercase;
 			letter-spacing: 0.05em;
 		}
@@ -443,9 +443,9 @@ function closeSidebar() {
 			gap: 0.5rem;
 			width: 100%;
 			padding: 0.5rem 0.75rem;
-			background: hsl(var(--muted) / 0.3);
-			color: hsl(var(--muted-foreground));
-			border: 1px solid hsl(var(--border) / 0.5);
+			background: oklch(var(--muted) / 0.3);
+			color: oklch(var(--muted-foreground));
+			border: 1px solid oklch(var(--border) / 0.5);
 			border-radius: 0.5rem;
 			font-size: 0.8125rem;
 			font-weight: 500;
@@ -454,9 +454,9 @@ function closeSidebar() {
 		}
 
 		.logout-button:hover {
-			background: hsl(var(--destructive) / 0.15);
-			color: hsl(var(--destructive));
-			border-color: hsl(var(--destructive) / 0.3);
+			background: oklch(var(--destructive) / 0.15);
+			color: oklch(var(--destructive));
+			border-color: oklch(var(--destructive) / 0.3);
 		}
 
 		.logout-button :global(.logout-icon) {

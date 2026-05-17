@@ -1120,7 +1120,7 @@ function formatServerUrl(url: string | null): string {
 		.plex-icon-glow {
 			position: absolute;
 			inset: -8px;
-			background: radial-gradient(circle, hsl(var(--primary) / 0.4) 0%, transparent 70%);
+			background: radial-gradient(circle, oklch(var(--primary) / 0.4) 0%, transparent 70%);
 			border-radius: 50%;
 			animation: icon-pulse 3s ease-in-out infinite;
 		}
@@ -1179,7 +1179,7 @@ function formatServerUrl(url: string | null): string {
 			justify-content: center;
 			background: rgba(34, 197, 94, 0.12);
 			border-radius: 11px;
-			color: hsl(142, 71%, 55%);
+			color: oklch(0.7946 0.1951 150.81);
 			position: relative;
 		}
 
@@ -1225,7 +1225,7 @@ function formatServerUrl(url: string | null): string {
 			text-transform: uppercase;
 			letter-spacing: 0.05em;
 			background: rgba(34, 197, 94, 0.2);
-			color: hsl(142, 71%, 60%);
+			color: oklch(0.8116 0.1789 152.1);
 			border-radius: 5px;
 			border: 1px solid rgba(34, 197, 94, 0.3);
 		}
@@ -1254,7 +1254,7 @@ function formatServerUrl(url: string | null): string {
 			justify-content: center;
 			background: rgba(34, 197, 94, 0.15);
 			border-radius: 50%;
-			color: hsl(142, 71%, 55%);
+			color: oklch(0.7946 0.1951 150.81);
 		}
 
 		.preconfigured-check svg {
@@ -1288,7 +1288,7 @@ function formatServerUrl(url: string | null): string {
 			min-width: 220px;
 			font-size: 1rem;
 			font-weight: 600;
-			color: hsl(30, 20%, 10%);
+			color: oklch(0.2198 0.0126 67.09);
 			background: linear-gradient(135deg, #e5a00d 0%, #cc8400 100%);
 			border: none;
 			border-radius: 12px;
@@ -1362,7 +1362,7 @@ function formatServerUrl(url: string | null): string {
 			flex-shrink: 0;
 			width: 24px;
 			height: 24px;
-			color: hsl(142, 71%, 55%);
+			color: oklch(0.7946 0.1951 150.81);
 		}
 
 		.success-icon svg {
@@ -1403,7 +1403,7 @@ function formatServerUrl(url: string | null): string {
 			flex-shrink: 0;
 			width: 24px;
 			height: 24px;
-			color: hsl(0, 84%, 60%);
+			color: oklch(0.6356 0.2082 25.38);
 		}
 
 		.error-icon svg {
@@ -1449,7 +1449,7 @@ function formatServerUrl(url: string | null): string {
 			padding: 0.5rem 0.875rem;
 			font-size: 0.85rem;
 			font-weight: 500;
-			color: hsl(0, 84%, 70%);
+			color: oklch(0.7052 0.1587 21.97);
 			background: rgba(239, 68, 68, 0.1);
 			border: 1px solid rgba(239, 68, 68, 0.3);
 			border-radius: 8px;
@@ -1492,7 +1492,7 @@ function formatServerUrl(url: string | null): string {
 		.override-checkbox input[type='checkbox'] {
 			margin-top: 0.15rem;
 			flex-shrink: 0;
-			accent-color: hsl(var(--primary));
+			accent-color: oklch(var(--primary));
 		}
 
 		.override-actions {
@@ -1524,7 +1524,7 @@ function formatServerUrl(url: string | null): string {
 			width: 20px;
 			height: 20px;
 			border: 2px solid rgba(255, 255, 255, 0.2);
-			border-top-color: hsl(var(--primary));
+			border-top-color: oklch(var(--primary));
 			border-radius: 50%;
 			animation: spin 0.8s linear infinite;
 		}
@@ -1585,9 +1585,9 @@ function formatServerUrl(url: string | null): string {
 		}
 
 		.server-card.selected {
-			background: hsl(var(--primary) / 0.1);
-			border-color: hsl(var(--primary) / 0.4);
-			box-shadow: 0 0 0 1px hsl(var(--primary) / 0.2);
+			background: oklch(var(--primary) / 0.1);
+			border-color: oklch(var(--primary) / 0.4);
+			box-shadow: 0 0 0 1px oklch(var(--primary) / 0.2);
 		}
 
 		.server-card:disabled {
@@ -1638,15 +1638,15 @@ function formatServerUrl(url: string | null): string {
 		}
 
 		.server-badge.owner {
-			background: hsl(var(--primary) / 0.15);
-			color: hsl(var(--primary));
+			background: oklch(var(--primary) / 0.15);
+			color: oklch(var(--primary));
 		}
 
 		.server-check {
 			flex-shrink: 0;
 			width: 24px;
 			height: 24px;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 		}
 
 		.server-check svg {
@@ -1675,8 +1675,8 @@ function formatServerUrl(url: string | null): string {
 			display: block;
 			width: 20px;
 			height: 20px;
-			border: 2px solid hsl(var(--primary) / 0.3);
-			border-top-color: hsl(var(--primary));
+			border: 2px solid oklch(var(--primary) / 0.3);
+			border-top-color: oklch(var(--primary));
 			border-radius: 50%;
 			animation: spin 0.8s linear infinite;
 		}
@@ -1715,7 +1715,7 @@ function formatServerUrl(url: string | null): string {
 		.insecure-http-toggle input {
 			width: 1rem;
 			height: 1rem;
-			accent-color: hsl(var(--primary));
+			accent-color: oklch(var(--primary));
 		}
 
 		.connections-list {
@@ -1787,7 +1787,7 @@ function formatServerUrl(url: string | null): string {
 
 		.connection-badge.secure {
 			background: linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(16, 185, 129, 0.15) 100%);
-			color: hsl(142, 71%, 55%);
+			color: oklch(0.7946 0.1951 150.81);
 			border: 1px solid rgba(34, 197, 94, 0.3);
 			box-shadow:
 				0 0 8px rgba(34, 197, 94, 0.15),
@@ -1808,17 +1808,17 @@ function formatServerUrl(url: string | null): string {
 
 		.connection-badge.local {
 			background: rgba(59, 130, 246, 0.15);
-			color: hsl(217, 91%, 60%);
+			color: oklch(0.6261 0.1859 259.6);
 		}
 
 		.connection-badge.remote {
 			background: rgba(168, 85, 247, 0.15);
-			color: hsl(271, 91%, 65%);
+			color: oklch(0.6268 0.2332 304.11);
 		}
 
 		.connection-badge.relay {
 			background: rgba(251, 191, 36, 0.15);
-			color: hsl(43, 96%, 56%);
+			color: oklch(0.8334 0.1641 83.87);
 		}
 
 		.connection-desc {
@@ -1839,7 +1839,7 @@ function formatServerUrl(url: string | null): string {
 			flex-shrink: 0;
 			width: 20px;
 			height: 20px;
-			color: hsl(142, 71%, 55%);
+			color: oklch(0.7946 0.1951 150.81);
 		}
 
 		.connection-check svg {
@@ -1866,7 +1866,7 @@ function formatServerUrl(url: string | null): string {
 			border-radius: 10px;
 			width: 100%;
 			font-size: 0.875rem;
-			color: hsl(0, 84%, 70%);
+			color: oklch(0.7052 0.1587 21.97);
 		}
 
 		.error-banner svg {
@@ -1884,21 +1884,21 @@ function formatServerUrl(url: string | null): string {
 			padding: 0.75rem 1.5rem;
 			font-size: 0.95rem;
 			font-weight: 600;
-			color: hsl(var(--primary-foreground));
-			background: hsl(var(--primary));
+			color: oklch(var(--primary-foreground));
+			background: oklch(var(--primary));
 			border: none;
 			border-radius: 10px;
 			cursor: pointer;
 			transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 			box-shadow:
-				0 2px 12px hsl(var(--primary) / 0.3),
+				0 2px 12px oklch(var(--primary) / 0.3),
 				inset 0 1px 0 rgba(255, 255, 255, 0.2);
 		}
 
 		.continue-button:hover:not(:disabled) {
 			transform: translateY(-1px);
 			box-shadow:
-				0 4px 16px hsl(var(--primary) / 0.4),
+				0 4px 16px oklch(var(--primary) / 0.4),
 				inset 0 1px 0 rgba(255, 255, 255, 0.25);
 		}
 
@@ -1966,7 +1966,7 @@ function formatServerUrl(url: string | null): string {
 		}
 
 		.tooltip-header.ssl {
-			color: hsl(142, 71%, 55%);
+			color: oklch(0.7946 0.1951 150.81);
 		}
 
 		.tooltip-header strong {
@@ -2100,8 +2100,8 @@ function formatServerUrl(url: string | null): string {
 
 		.custom-url-input:focus {
 			outline: none;
-			border-color: hsl(var(--primary) / 0.5);
-			box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
+			border-color: oklch(var(--primary) / 0.5);
+			box-shadow: 0 0 0 3px oklch(var(--primary) / 0.1);
 		}
 
 		.custom-url-input::placeholder {
@@ -2126,10 +2126,10 @@ function formatServerUrl(url: string | null): string {
 			align-items: center;
 			gap: 0.5rem;
 			padding: 0.75rem 1rem;
-			background: hsl(var(--primary) / 0.15);
-			border: 1px solid hsl(var(--primary) / 0.3);
+			background: oklch(var(--primary) / 0.15);
+			border: 1px solid oklch(var(--primary) / 0.3);
 			border-radius: 8px;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			font-size: 0.85rem;
 			font-weight: 500;
 			white-space: nowrap;
@@ -2138,8 +2138,8 @@ function formatServerUrl(url: string | null): string {
 		}
 
 		.custom-url-test-btn:hover:not(:disabled) {
-			background: hsl(var(--primary) / 0.25);
-			border-color: hsl(var(--primary) / 0.5);
+			background: oklch(var(--primary) / 0.25);
+			border-color: oklch(var(--primary) / 0.5);
 		}
 
 		.custom-url-test-btn:disabled {
@@ -2155,8 +2155,8 @@ function formatServerUrl(url: string | null): string {
 		.test-spinner {
 			width: 16px;
 			height: 16px;
-			border: 2px solid hsl(var(--primary) / 0.3);
-			border-top-color: hsl(var(--primary));
+			border: 2px solid oklch(var(--primary) / 0.3);
+			border-top-color: oklch(var(--primary));
 			border-radius: 50%;
 			animation: spin 0.8s linear infinite;
 		}
@@ -2186,13 +2186,13 @@ function formatServerUrl(url: string | null): string {
 		.custom-url-status.success {
 			background: rgba(34, 197, 94, 0.1);
 			border: 1px solid rgba(34, 197, 94, 0.25);
-			color: hsl(142, 71%, 55%);
+			color: oklch(0.7946 0.1951 150.81);
 		}
 
 		.custom-url-status.error {
 			background: rgba(239, 68, 68, 0.1);
 			border: 1px solid rgba(239, 68, 68, 0.25);
-			color: hsl(0, 84%, 70%);
+			color: oklch(0.7052 0.1587 21.97);
 		}
 
 		.custom-url-status .status-icon {

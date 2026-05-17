@@ -204,10 +204,10 @@ $effect(() => {
 		.title {
 			font-size: 1.75rem;
 			font-weight: 700;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			text-transform: uppercase;
 			letter-spacing: 0.05em;
-			text-shadow: 0 0 30px var(--slide-glow-color, hsl(var(--primary) / 0.3));
+			text-shadow: 0 0 30px var(--slide-glow-color, oklch(var(--primary) / 0.3));
 		}
 
 		.streak-display {
@@ -219,7 +219,7 @@ $effect(() => {
 
 		.streak-flame {
 			font-size: 4rem;
-			filter: drop-shadow(0 0 20px hsl(30 90% 50% / 0.5));
+			filter: drop-shadow(0 0 20px oklch(0.7139 0.1737 55.15 / 0.5));
 		}
 
 		.streak-counter {
@@ -232,14 +232,14 @@ $effect(() => {
 		.streak-number {
 			font-size: 4rem;
 			font-weight: 800;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			line-height: 1;
-			text-shadow: 0 0 30px hsl(var(--primary) / 0.4);
+			text-shadow: 0 0 30px oklch(var(--primary) / 0.4);
 		}
 
 		.streak-label {
 			font-size: 1rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-transform: uppercase;
 			letter-spacing: 0.1em;
 		}
@@ -258,14 +258,14 @@ $effect(() => {
 			align-items: center;
 			gap: 0.25rem;
 			padding: 0.75rem 1.5rem;
-			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.3));
+			background: var(--slide-glass-bg);
 			border-radius: calc(var(--radius) * 1.5);
-			border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.15));
+			border: 1px solid var(--slide-glass-border);
 		}
 
 		.range-label {
 			font-size: 0.6875rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-transform: uppercase;
 			letter-spacing: 0.1em;
 		}
@@ -273,20 +273,20 @@ $effect(() => {
 		.range-value {
 			font-size: 1rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.message {
 			padding: 0.625rem 1.25rem;
-			background: linear-gradient(135deg, hsl(30 80% 50% / 0.15), hsl(30 80% 50% / 0.05));
-			border: 1px solid hsl(30 80% 50% / 0.2);
+			background: linear-gradient(135deg, oklch(0.6972 0.1606 57.57 / 0.15), oklch(0.6972 0.1606 57.57 / 0.05));
+			border: 1px solid oklch(0.6972 0.1606 57.57 / 0.2);
 			border-radius: 2rem;
 		}
 
 		.message-text {
 			font-size: 0.9375rem;
 			font-weight: 600;
-			color: hsl(30 80% 55%);
+			color: oklch(0.7232 0.15 60.63);
 		}
 
 		.no-streak {
@@ -302,14 +302,14 @@ $effect(() => {
 		}
 
 		.empty-message {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-style: italic;
 			font-size: 1.125rem;
 			margin: 0;
 		}
 
 		.empty-hint {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-size: 0.875rem;
 			opacity: 0.7;
 			margin: 0;

@@ -143,14 +143,14 @@ $effect(() => {
 			max-width: 750px;
 			text-align: center;
 			padding: 2.5rem;
-			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
+			background: var(--slide-glass-bg);
 			backdrop-filter: blur(var(--slide-glass-blur, 20px));
 			-webkit-backdrop-filter: blur(var(--slide-glass-blur, 20px));
-			border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
+			border: 1px solid var(--slide-glass-border);
 			border-radius: calc(var(--radius) * 2.5);
 			box-shadow:
-				var(--shadow-elevation-high, 0 8px 24px hsl(0 0% 0% / 0.4)),
-				inset 0 1px 0 hsl(0 0% 100% / 0.05);
+				var(--shadow-elevation-high, 0 8px 24px oklch(0 0 0 / 0.4)),
+				inset 0 1px 0 oklch(1 0 0 / 0.05);
 			position: relative;
 		}
 
@@ -162,7 +162,7 @@ $effect(() => {
 			left: 0;
 			right: 0;
 			height: 1px;
-			background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.5), transparent);
+			background: linear-gradient(90deg, transparent, oklch(var(--primary) / 0.5), transparent);
 			border-radius: inherit;
 		}
 
@@ -170,7 +170,7 @@ $effect(() => {
 			font-size: 4.5rem;
 			line-height: 1;
 			margin-bottom: 0.5rem;
-			filter: drop-shadow(0 0 25px var(--slide-glow-color, hsl(var(--primary) / 0.4)));
+			filter: drop-shadow(0 0 25px var(--slide-glow-color, oklch(var(--primary) / 0.4)));
 			/* Floating animation */
 			animation: float 3s ease-in-out infinite;
 		}
@@ -195,7 +195,7 @@ $effect(() => {
 		.title {
 			font-size: 1rem;
 			font-weight: 600;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-transform: uppercase;
 			letter-spacing: 0.15em;
 		}
@@ -203,19 +203,19 @@ $effect(() => {
 		.fact {
 			font-size: clamp(1.5rem, 4vw, 2rem);
 			font-weight: 700;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			line-height: 1.35;
 		}
 
 		.comparison {
 			font-size: 1.125rem;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			font-style: italic;
 			margin-top: 0.5rem;
 			padding: 0.5rem 1rem;
-			background: hsl(var(--primary) / 0.1);
+			background: oklch(var(--primary) / 0.1);
 			border-radius: var(--radius);
-			text-shadow: 0 0 15px hsl(var(--primary) / 0.3);
+			text-shadow: 0 0 15px oklch(var(--primary) / 0.3);
 		}
 
 		.extra {
@@ -278,7 +278,7 @@ $effect(() => {
 			.icon {
 				font-size: 7rem;
 				margin-bottom: 0.75rem;
-				filter: drop-shadow(0 0 40px var(--slide-glow-color, hsl(var(--primary) / 0.5)));
+				filter: drop-shadow(0 0 40px var(--slide-glow-color, oklch(var(--primary) / 0.5)));
 			}
 
 			.title {

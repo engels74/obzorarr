@@ -184,10 +184,10 @@ $effect(() => {
 		.title {
 			font-size: 1.75rem;
 			font-weight: 700;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			text-transform: uppercase;
 			letter-spacing: 0.05em;
-			text-shadow: 0 0 30px var(--slide-glow-color, hsl(var(--primary) / 0.3));
+			text-shadow: 0 0 30px var(--slide-glow-color, oklch(var(--primary) / 0.3));
 		}
 
 		.rewatch-list {
@@ -202,10 +202,10 @@ $effect(() => {
 			align-items: center;
 			gap: 1rem;
 			padding: 0.75rem 1rem;
-			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
+			background: var(--slide-glass-bg);
 			backdrop-filter: blur(var(--slide-glass-blur, 12px));
 			-webkit-backdrop-filter: blur(var(--slide-glass-blur, 12px));
-			border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
+			border: 1px solid var(--slide-glass-border);
 			border-radius: calc(var(--radius) * 1.5);
 			transition:
 				transform 0.3s ease,
@@ -214,7 +214,7 @@ $effect(() => {
 
 		.rewatch-card:hover {
 			transform: translateX(4px);
-			border-color: hsl(var(--primary) / 0.3);
+			border-color: oklch(var(--primary) / 0.3);
 		}
 
 		.thumb-container {
@@ -237,7 +237,7 @@ $effect(() => {
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			background: hsl(var(--muted) / 0.3);
+			background: oklch(var(--muted) / 0.3);
 			font-size: 1.5rem;
 		}
 
@@ -252,7 +252,7 @@ $effect(() => {
 		.title-text {
 			font-size: 0.9375rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			overflow: hidden;
 			text-overflow: ellipsis;
 			white-space: nowrap;
@@ -260,7 +260,7 @@ $effect(() => {
 
 		.type-badge {
 			font-size: 0.6875rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-transform: uppercase;
 			letter-spacing: 0.05em;
 		}
@@ -270,7 +270,7 @@ $effect(() => {
 			align-items: center;
 			gap: 0.25rem;
 			padding: 0.375rem 0.625rem;
-			background: hsl(var(--primary) / 0.15);
+			background: oklch(var(--primary) / 0.15);
 			border-radius: var(--radius);
 		}
 
@@ -281,32 +281,32 @@ $effect(() => {
 		.rewatch-count {
 			font-size: 0.875rem;
 			font-weight: 700;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 		}
 
 		.personality-badge {
 			padding: 0.75rem 1.5rem;
-			background: linear-gradient(135deg, hsl(var(--primary) / 0.2), hsl(var(--primary) / 0.1));
-			border: 1px solid hsl(var(--primary) / 0.3);
+			background: linear-gradient(135deg, oklch(var(--primary) / 0.2), oklch(var(--primary) / 0.1));
+			border: 1px solid oklch(var(--primary) / 0.3);
 			border-radius: 2rem;
 		}
 
 		.badge-text {
 			font-size: 1rem;
 			font-weight: 600;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			text-transform: uppercase;
 			letter-spacing: 0.1em;
 		}
 
 		.empty-message {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-style: italic;
 			font-size: 1.125rem;
 		}
 
 		.empty-hint {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-size: 0.875rem;
 			opacity: 0.7;
 		}

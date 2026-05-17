@@ -125,20 +125,20 @@ $effect(() => {
 
 		/* Active state - uses theme primary color */
 		.active .step-circle {
-			background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
-			border: 2px solid hsl(var(--primary));
-			color: hsl(var(--primary-foreground));
+			background: linear-gradient(135deg, oklch(var(--primary)) 0%, oklch(var(--accent)) 100%);
+			border: 2px solid oklch(var(--primary));
+			color: oklch(var(--primary-foreground));
 			box-shadow:
-				0 0 20px hsl(var(--primary) / 0.4),
-				0 0 40px hsl(var(--primary) / 0.2),
+				0 0 20px oklch(var(--primary) / 0.4),
+				0 0 40px oklch(var(--primary) / 0.2),
 				inset 0 1px 0 rgba(255, 255, 255, 0.3);
 			animation: pulse-glow 2s ease-in-out infinite;
 		}
 
 		/* Completed state */
 		.completed .step-circle {
-			background: linear-gradient(135deg, hsl(142, 71%, 45%) 0%, hsl(142, 71%, 35%) 100%);
-			border: 2px solid hsl(142, 71%, 50%);
+			background: linear-gradient(135deg, oklch(0.7205 0.192 149.49) 0%, oklch(0.5988 0.1576 149.72) 100%);
+			border: 2px solid oklch(0.7794 0.2087 149.41);
 			color: white;
 			box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
 		}
@@ -147,14 +147,14 @@ $effect(() => {
 			0%,
 			100% {
 				box-shadow:
-					0 0 20px hsl(var(--primary) / 0.4),
-					0 0 40px hsl(var(--primary) / 0.2),
+					0 0 20px oklch(var(--primary) / 0.4),
+					0 0 40px oklch(var(--primary) / 0.2),
 					inset 0 1px 0 rgba(255, 255, 255, 0.3);
 			}
 			50% {
 				box-shadow:
-					0 0 25px hsl(var(--primary) / 0.5),
-					0 0 50px hsl(var(--primary) / 0.3),
+					0 0 25px oklch(var(--primary) / 0.5),
+					0 0 50px oklch(var(--primary) / 0.3),
 					inset 0 1px 0 rgba(255, 255, 255, 0.3);
 			}
 		}
@@ -179,7 +179,7 @@ $effect(() => {
 		.connector-fill {
 			width: 0%;
 			height: 100%;
-			background: linear-gradient(90deg, hsl(142, 71%, 45%) 0%, hsl(var(--primary)) 100%);
+			background: linear-gradient(90deg, oklch(0.7205 0.192 149.49) 0%, oklch(var(--primary)) 100%);
 			border-radius: 1px;
 			transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
 		}
@@ -204,7 +204,7 @@ $effect(() => {
 		}
 
 		.active .step-label {
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 		}
 
 		.completed .step-label {

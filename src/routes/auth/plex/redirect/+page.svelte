@@ -196,8 +196,8 @@ function handleRetry(): void {
 			align-items: center;
 			text-align: center;
 			padding: 2.5rem;
-			background: hsl(var(--card));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--card));
+			border: 1px solid oklch(var(--border));
 			border-radius: 12px;
 			max-width: 400px;
 			width: 100%;
@@ -207,21 +207,21 @@ function handleRetry(): void {
 			margin: 1rem 0 0.5rem;
 			font-size: 1.5rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.status-box p {
 			margin: 0;
 			font-size: 0.875rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			line-height: 1.5;
 		}
 
 		.spinner {
 			width: 48px;
 			height: 48px;
-			border: 3px solid hsl(var(--border));
-			border-top-color: hsl(var(--primary));
+			border: 3px solid oklch(var(--border));
+			border-top-color: oklch(var(--primary));
 			border-radius: 50%;
 			animation: spin 1s linear infinite;
 		}
@@ -237,7 +237,7 @@ function handleRetry(): void {
 		}
 
 		.cancelled svg {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.error svg {
@@ -249,8 +249,8 @@ function handleRetry(): void {
 			padding: 0.75rem 1.5rem;
 			font-size: 0.875rem;
 			font-weight: 500;
-			color: hsl(var(--primary-foreground));
-			background: hsl(var(--primary));
+			color: oklch(var(--primary-foreground));
+			background: oklch(var(--primary));
 			border: none;
 			border-radius: 8px;
 			cursor: pointer;

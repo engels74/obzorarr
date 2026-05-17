@@ -885,7 +885,7 @@ function getThemeColors(themeValue: string) {
 			gap: 1rem;
 			padding: 0.875rem 1rem;
 			background: rgba(0, 0, 0, 0.2);
-			border: 1px solid hsl(var(--primary) / 0.1);
+			border: 1px solid oklch(var(--primary) / 0.1);
 			border-radius: 0.875rem;
 			margin-bottom: 1rem;
 		}
@@ -934,14 +934,14 @@ function getThemeColors(themeValue: string) {
 		}
 
 		.substep-dot.completed {
-			border-color: hsl(142, 71%, 45%);
-			background: linear-gradient(135deg, hsl(142, 71%, 45%) 0%, hsl(142, 71%, 35%) 100%);
+			border-color: oklch(0.7205 0.192 149.49);
+			background: linear-gradient(135deg, oklch(0.7205 0.192 149.49) 0%, oklch(0.5988 0.1576 149.72) 100%);
 		}
 
 		.substep-dot.active {
-			border-color: hsl(var(--primary));
-			background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
-			box-shadow: 0 0 12px hsl(var(--primary) / 0.4);
+			border-color: oklch(var(--primary));
+			background: linear-gradient(135deg, oklch(var(--primary)) 0%, oklch(var(--accent)) 100%);
+			box-shadow: 0 0 12px oklch(var(--primary) / 0.4);
 		}
 
 		.dot-check {
@@ -1092,28 +1092,28 @@ function getThemeColors(themeValue: string) {
 		}
 
 		.btn-next {
-			background: hsl(var(--primary) / 0.15);
-			border: 1px solid hsl(var(--primary) / 0.3);
-			color: hsl(var(--primary));
+			background: oklch(var(--primary) / 0.15);
+			border: 1px solid oklch(var(--primary) / 0.3);
+			color: oklch(var(--primary));
 		}
 
 		.btn-next:hover:not(:disabled) {
-			background: hsl(var(--primary) / 0.25);
-			border-color: hsl(var(--primary) / 0.5);
+			background: oklch(var(--primary) / 0.25);
+			border-color: oklch(var(--primary) / 0.5);
 			transform: translateX(2px);
 		}
 
 		.btn-save {
-			background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+			background: linear-gradient(135deg, oklch(var(--primary)) 0%, oklch(var(--accent)) 100%);
 			border: none;
-			color: hsl(var(--primary-foreground));
+			color: oklch(var(--primary-foreground));
 			font-weight: 600;
-			box-shadow: 0 4px 16px hsl(var(--primary) / 0.25);
+			box-shadow: 0 4px 16px oklch(var(--primary) / 0.25);
 		}
 
 		.btn-save:hover:not(:disabled) {
 			transform: translateY(-2px);
-			box-shadow: 0 6px 24px hsl(var(--primary) / 0.35);
+			box-shadow: 0 6px 24px oklch(var(--primary) / 0.35);
 		}
 
 		.btn-save:disabled {
@@ -1254,7 +1254,7 @@ function getThemeColors(themeValue: string) {
 		}
 
 		.radio-card:focus-within .radio-card-content {
-			outline: 2px solid hsl(var(--primary));
+			outline: 2px solid oklch(var(--primary));
 			outline-offset: 2px;
 		}
 
@@ -1275,8 +1275,8 @@ function getThemeColors(themeValue: string) {
 		}
 
 		.radio-card.selected .radio-card-content {
-			background: hsl(var(--primary) / 0.08);
-			border-color: hsl(var(--primary) / 0.35);
+			background: oklch(var(--primary) / 0.08);
+			border-color: oklch(var(--primary) / 0.35);
 		}
 
 		.radio-indicator {
@@ -1293,8 +1293,8 @@ function getThemeColors(themeValue: string) {
 		}
 
 		.radio-card.selected .radio-indicator {
-			border-color: hsl(var(--primary));
-			background: hsl(var(--primary));
+			border-color: oklch(var(--primary));
+			background: oklch(var(--primary));
 		}
 
 		.radio-dot {
@@ -1306,7 +1306,7 @@ function getThemeColors(themeValue: string) {
 		}
 
 		.radio-card.selected .radio-dot {
-			background: hsl(var(--primary-foreground));
+			background: oklch(var(--primary-foreground));
 		}
 
 		.radio-text {
@@ -1383,7 +1383,7 @@ function getThemeColors(themeValue: string) {
 		}
 
 		.toggle-switch.active {
-			background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+			background: linear-gradient(135deg, oklch(var(--primary)), oklch(var(--accent)));
 		}
 
 		.toggle-knob {
@@ -1455,7 +1455,7 @@ function getThemeColors(themeValue: string) {
 		}
 
 		.slide-toggle.enabled {
-			border-color: hsl(var(--primary) / 0.2);
+			border-color: oklch(var(--primary) / 0.2);
 		}
 
 		.slide-name {
@@ -1466,7 +1466,7 @@ function getThemeColors(themeValue: string) {
 		/* Frequency Options */
 		.frequency-group {
 			padding-left: 1.5rem;
-			border-left: 2px solid hsl(var(--primary) / 0.2);
+			border-left: 2px solid oklch(var(--primary) / 0.2);
 			animation: fadeSlide 0.3s ease;
 		}
 
@@ -1513,8 +1513,8 @@ function getThemeColors(themeValue: string) {
 		}
 
 		.frequency-option.selected {
-			background: hsl(var(--primary) / 0.1);
-			border-color: hsl(var(--primary) / 0.4);
+			background: oklch(var(--primary) / 0.1);
+			border-color: oklch(var(--primary) / 0.4);
 		}
 
 		.frequency-label {
@@ -1557,7 +1557,7 @@ function getThemeColors(themeValue: string) {
 		.text-input:focus {
 			outline: none;
 			background: rgba(0, 0, 0, 0.35);
-			border-color: hsl(var(--primary) / 0.5);
+			border-color: oklch(var(--primary) / 0.5);
 		}
 
 		.text-input.has-error {
@@ -1622,8 +1622,8 @@ function getThemeColors(themeValue: string) {
 		.spinner {
 			width: 1rem;
 			height: 1rem;
-			border: 2px solid hsl(var(--primary-foreground) / 0.3);
-			border-top-color: hsl(var(--primary-foreground));
+			border: 2px solid oklch(var(--primary-foreground) / 0.3);
+			border-top-color: oklch(var(--primary-foreground));
 			border-radius: 50%;
 			animation: spin 0.8s linear infinite;
 		}
