@@ -5,7 +5,7 @@ import { enhance } from '$app/forms';
 import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
 import { handleFormToast } from '$lib/utils/form-toast';
 import { submitAction } from '$lib/utils/submit-action';
-import { loadThemeFont } from '$lib/utils/theme-fonts';
+import { loadThemeFonts } from '$lib/utils/theme-fonts';
 import type { ActionData, PageData } from './$types';
 
 /**
@@ -73,7 +73,7 @@ $effect(() => {
 	document.body.classList.add(themeClass);
 
 	// Load theme-specific font
-	loadThemeFont(uiTheme);
+	loadThemeFonts(uiTheme);
 });
 
 // Slide toggles

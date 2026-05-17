@@ -2,7 +2,7 @@
 import { animate } from 'motion';
 import Logo from '$lib/components/Logo.svelte';
 import StepIndicator from '$lib/components/onboarding/StepIndicator.svelte';
-import { loadThemeFont } from '$lib/utils/theme-fonts';
+import { loadThemeFonts } from '$lib/utils/theme-fonts';
 import type { LayoutData } from './$types';
 
 // biome-ignore lint/suspicious/noExplicitAny: Svelte's children snippet type is complex
@@ -38,7 +38,7 @@ $effect(() => {
 	document.body.classList.add('onboarding-route');
 
 	// Load theme-specific font
-	loadThemeFont(data.uiTheme ?? 'modern-minimal');
+	loadThemeFonts(data.uiTheme ?? 'modern-minimal');
 
 	return () => {
 		document.body.classList.remove('onboarding-route');

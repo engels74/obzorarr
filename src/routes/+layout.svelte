@@ -4,7 +4,7 @@ import '../app.css';
 import { Toaster } from 'svelte-sonner';
 import { page } from '$app/stores';
 import obzorarrIcon from '$lib/assets/obzorarr-icon.svg';
-import { loadThemeFont } from '$lib/utils/theme-fonts';
+import { loadThemeFonts } from '$lib/utils/theme-fonts';
 
 let { children } = $props();
 
@@ -48,7 +48,7 @@ $effect(() => {
 	}
 
 	// Load the font for this theme (if not already loaded)
-	loadThemeFont(effectiveTheme);
+	loadThemeFonts(effectiveTheme);
 });
 </script>
 
