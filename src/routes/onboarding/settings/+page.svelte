@@ -1,4 +1,5 @@
 <script lang="ts">
+import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 import { animate } from 'motion';
 import { tick, untrack } from 'svelte';
 import { enhance } from '$app/forms';
@@ -793,28 +794,19 @@ function getThemeColors(themeValue: string) {
 
 			<!-- Next / Save Button -->
 			{#if isLastSubStep}
-				<button
-					type="submit"
+				<SubmitButton
 					form="onboarding-settings-form"
-					class="btn-nav btn-save"
-					disabled={isSubmitting}
+					class="btn-nav btn-save tap-target"
+					submitting={isSubmitting}
 				>
-					{#if isSubmitting}
-						<span class="spinner"></span>
-						Saving...
-					{:else}
+					{#snippet children()}
 						Save & Continue
-						<svg
-							class="nav-arrow"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-						>
-							<path d="M5 12h14M12 5l7 7-7 7" />
-						</svg>
-					{/if}
-				</button>
+						<ArrowRightIcon class="nav-arrow" />
+					{/snippet}
+					{#snippet submittingLabel()}
+						Saving...
+					{/snippet}
+				</SubmitButton>
 			{:else}
 				<button
 					type="button"
@@ -1070,7 +1062,13 @@ function getThemeColors(themeValue: string) {
 			cursor: not-allowed;
 		}
 
-		.btn-nav {
+		/* `.btn-nav` is the shared base for the footer nav trio
+		   (btn-prev + btn-next + btn-save). Hoisted to :global so the
+		   SubmitButton-rendered btn-save (this iteration) inherits the
+		   layout while btn-prev + btn-next stay scoped (still native
+		   <button>s in this file's template — they continue to match
+		   the global selector). */
+		:global(.btn-nav) {
 			display: flex;
 			align-items: center;
 			justify-content: center;
@@ -1112,7 +1110,7 @@ function getThemeColors(themeValue: string) {
 			transform: translateX(2px);
 		}
 
-		.btn-save {
+		:global(.btn-save) {
 			background: linear-gradient(135deg, oklch(var(--primary)) 0%, oklch(var(--accent)) 100%);
 			border: none;
 			color: oklch(var(--primary-foreground));
@@ -1120,18 +1118,18 @@ function getThemeColors(themeValue: string) {
 			box-shadow: 0 4px 16px oklch(var(--primary) / 0.25);
 		}
 
-		.btn-save:hover:not(:disabled) {
+		:global(.btn-save:hover:not(:disabled)) {
 			transform: translateY(-2px);
 			box-shadow: 0 6px 24px oklch(var(--primary) / 0.35);
 		}
 
-		.btn-save:disabled {
+		:global(.btn-save:disabled) {
 			opacity: 0.7;
 			cursor: not-allowed;
 			transform: none;
 		}
 
-		.nav-arrow {
+		:global(.nav-arrow) {
 			width: 1rem;
 			height: 1rem;
 			transition: transform 0.2s ease;
@@ -1717,7 +1715,7 @@ function getThemeColors(themeValue: string) {
 				margin-bottom: 0.5rem;
 			}
 
-			.btn-nav {
+			:global(.btn-nav) {
 				padding: 0.625rem 1rem;
 				font-size: 0.8rem;
 			}
