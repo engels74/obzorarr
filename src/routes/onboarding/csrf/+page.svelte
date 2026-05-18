@@ -430,7 +430,11 @@ function canEnableTrustProxy(): boolean {
 									requests reach Obzorarr.
 								</span>
 							</label>
-							<button type="submit" class="enable-trust-btn">Enable Header Trust</button>
+							<SubmitButton class="enable-trust-btn tap-target">
+								{#snippet children()}
+									Enable Header Trust
+								{/snippet}
+							</SubmitButton>
 						</form>
 					{/if}
 
@@ -819,8 +823,15 @@ function canEnableTrustProxy(): boolean {
 			color: rgba(255, 255, 255, 0.94);
 		}
 
-		.diagnostic-check-btn,
-		.enable-trust-btn {
+		/* Shared base rule for .diagnostic-check-btn (still hand-rolled
+		   above) + .enable-trust-btn (migrated to SubmitButton). The
+		   shared selector is globalised so the SubmitButton child
+		   component picks up the flex/padding/font baseline; native
+		   <button class="diagnostic-check-btn"> still matches via the
+		   same selector. The accent variants live in their own
+		   per-class rules below. */
+		:global(.diagnostic-check-btn),
+		:global(.enable-trust-btn) {
 			flex-shrink: 0;
 			display: inline-flex;
 			align-items: center;
@@ -985,14 +996,14 @@ function canEnableTrustProxy(): boolean {
 			accent-color: oklch(0.6261 0.1859 259.6);
 		}
 
-		.enable-trust-btn {
+		:global(.enable-trust-btn) {
 			width: fit-content;
 			background: rgba(34, 197, 94, 0.12);
 			border: 1px solid rgba(34, 197, 94, 0.28);
 			color: oklch(0.8046 0.1857 151.6);
 		}
 
-		.enable-trust-btn:hover {
+		:global(.enable-trust-btn:hover) {
 			background: rgba(34, 197, 94, 0.18);
 			border-color: rgba(34, 197, 94, 0.38);
 		}
@@ -1608,8 +1619,8 @@ function canEnableTrustProxy(): boolean {
 				align-items: stretch;
 			}
 
-			.diagnostic-check-btn,
-			.enable-trust-btn {
+			:global(.diagnostic-check-btn),
+			:global(.enable-trust-btn) {
 				width: 100%;
 			}
 
