@@ -46,6 +46,14 @@ const CsrfOriginSchema = z.object({
 		})
 });
 
+/**
+ * OCC strategy: INLINE `settingsVersion` (in-schema). Standard pattern —
+ * the version field lives alongside the data fields and the action
+ * validates blank/missing via Zod min(1) (-> 409) and stale via
+ * `inlineOccCheck` (-> 409) after safeParse. confirmRisk is a separate
+ * z.enum(['true']).optional() gate that the action checks after OCC
+ * but before the service-layer write.
+ */
 const TrustProxySchema = z.object({
 	enabled: z.enum(['true', 'false']).transform((v) => v === 'true'),
 	confirmRisk: z.enum(['true']).optional(),
