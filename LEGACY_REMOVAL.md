@@ -15,6 +15,7 @@
 > | US-013 | ✅ Closed — direct OCC helper tests (12 cases at occ-helpers.test.ts) + appearance-actions external-OCC coverage (10 cases) + nested-route inline-OCC integration (~57 cases) |
 > | US-021 | ❌ Not started — 5 admin route reskins (sync/users/logs/slides/wrapped admin); each is visually-coupled to custom CSS, multi-iteration job |
 > | US-024 | ✅ Closed — landing page uses shadcn Input + SubmitButton + Button; `:global` hoists on `.view-button` / `.username-input` / `.login-button` preserve hero CTA hand-tuned styling across the Svelte 5 component-scope boundary (e276772, 19f1d87, 1d5f80f, 9d7c35b, 1fa375b) |
+> | US-026 | ⚠️  Partial — 4 of 6 onboarding pages migrated using the visual-coupling pattern: claim (cb5dbce, ...), complete (post-cb5dbce btn-dashboard), sync (continue + start + cancel — 3 commits), csrf (footer + 4 mid-page buttons + cleanup — 6 commits). Remaining: plex/+page.svelte (2300 LOC) + settings/+page.svelte (1731 LOC) — biggest unblocked work |
 > | US-025 | ✅ Closed — PopupBlockedModal already uses shadcn AlertDialog; continue-btn swapped to shadcn Button (81d8f64); auth/plex/redirect callback fully reskinned with shadcn Card + Button + lucide icons (efa131e) |
 > | US-009b, US-012, US-015 | ❌ Deferred (consumer-driven / Playwright install / inline bootstrap) |
 > | US-023, US-026..US-034 | ❌ PR-3 + PR-4 backlog                       |
