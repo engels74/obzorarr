@@ -120,3 +120,31 @@ When the first PR-2/3 surface needs a slider:
   `var(--primary-hue)` in `src/`.
 - If the Playwright visual-regression suite is rejected, document the rejection
   here and switch to manual theme-rotation spot-checks as the de facto gate.
+
+## US-019 admin sidebar shadcn migration — deferred
+
+The v3 plan §B2 calls for migrating `src/routes/admin/+layout.svelte` from
+its hand-rolled focus-trapped sidebar to the shadcn `Sidebar` primitive.
+The migration was attempted in iteration 2 and **reverted** because the
+shadcn `SidebarTrigger` uses `Button size="icon-sm"` (`h-8 w-8` = 32×32),
+which is below the WCAG 2.5.5 Level AAA 44×44 tap-target floor that the
+existing implementation explicitly fixed via the `--min-tap-size` token
+(dogfood ISSUE-007).
+
+The other a11y properties guarded by the source-pinned regression tests in
+`tests/unit/admin/ui-source-regressions.test.ts` and
+`tests/unit/dogfood-fixes.test.ts` (focus trap, inert closed sidebar,
+client navigation wrapper) ARE preserved by bits-ui Dialog inside shadcn
+Sheet, but the tests can't see them through the primitive boundary.
+
+When resuming the migration:
+
+1. Override the SidebarTrigger size: wrap it with a custom button whose
+   `min-width` / `min-height` is `var(--min-tap-size)`, or pass a class
+   that bumps it to 44×44.
+2. Migrate the relevant source-pinned a11y assertions in
+   `ui-source-regressions.test.ts` + `dogfood-fixes.test.ts` to behavioral
+   assertions (render the layout in a test harness, query the computed
+   style of the trigger and the inert/aria-hidden of the closed sidebar).
+3. Then the shadcn primitive can land without losing the regression
+   guards.
