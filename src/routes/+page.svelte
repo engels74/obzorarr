@@ -11,7 +11,9 @@ import {
 	startPlexLoginRedirect
 } from '$lib/client/plex-login';
 import PopupBlockedModal from '$lib/components/auth/PopupBlockedModal.svelte';
+import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import Logo from '$lib/components/Logo.svelte';
+import { Input } from '$lib/components/ui/input';
 import type { ActionData, PageData } from './$types';
 
 /**
@@ -164,7 +166,7 @@ function handleCancelRedirect(): void {
 				>
 					<div class="username-input-group">
 						<label for="username-input" class="sr-only">Plex username</label>
-						<input
+						<Input
 							id="username-input"
 							type="text"
 							name="username"
@@ -177,14 +179,18 @@ function handleCancelRedirect(): void {
 							spellcheck="false"
 							onblur={() => (usernameTouched = true)}
 						/>
-						<button type="submit" class="view-button" disabled={isLookingUp || !username.trim()}>
-							{#if isLookingUp}
-								<span class="spinner small" aria-hidden="true"></span>
-								Looking up...
-							{:else}
+						<SubmitButton
+							class="view-button tap-target"
+							submitting={isLookingUp}
+							disabled={!username.trim()}
+						>
+							{#snippet children()}
 								View My {data.currentYear} Wrapped
-							{/if}
-						</button>
+							{/snippet}
+							{#snippet submittingLabel()}
+								Looking up...
+							{/snippet}
+						</SubmitButton>
 					</div>
 
 					{#if form?.error}
@@ -502,11 +508,6 @@ function handleCancelRedirect(): void {
 			border-top-color: oklch(var(--primary-foreground));
 			border-radius: 50%;
 			animation: spin 1s linear infinite;
-		}
-
-		.spinner.small {
-			width: 1rem;
-			height: 1rem;
 		}
 
 		@keyframes spin {
