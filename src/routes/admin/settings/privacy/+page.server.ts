@@ -30,8 +30,24 @@ import type { Actions, PageServerLoad } from './$types';
  * vs z.enum, inline vs external OCC). Schema co-location with its consuming
  * action stays the cleanest layout post-US-022.
  */
+/**
+ * OCC strategy: INHERITED FROM PARENT. Consumed inside `ServerWrappedSettingsSchema`
+ * (z.object), which carries the inline `settingsVersion`. Per v3 plan §A5 Table D2.
+ */
 const AnonymizationSchema = z.enum(['real', 'anonymous', 'hybrid']);
+
+/**
+ * OCC strategy: INHERITED FROM PARENT. Server-wide wrapped supports only
+ * `public` and `private-oauth` (not `private-link`). The inline settingsVersion
+ * lives on `ServerWrappedSettingsSchema`.
+ */
 const ServerWrappedModeSchema = z.enum(['public', 'private-oauth']);
+
+/**
+ * OCC strategy: INHERITED FROM PARENT. Per-user defaults are broader than
+ * server-wide — `private-link` is allowed. Inline settingsVersion lives on
+ * `UserDefaultsSettingsSchema`.
+ */
 const ShareModeSchema = z.enum(['public', 'private-oauth', 'private-link']);
 /**
  * Strict boolean for form submission + initial load. Accepts ONLY 'true' /
