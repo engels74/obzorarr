@@ -1317,6 +1317,7 @@ const logFieldErrors = $derived(
 						}}
 						class="panel-form"
 					>
+						<input type="hidden" name="settingsVersion" value={data.uiThemeVersion} />
 						<div class="theme-grid">
 							{#each data.themeOptions as theme}
 								<label class="theme-card" class:selected={selectedUITheme === theme.value}>
@@ -1379,6 +1380,7 @@ const logFieldErrors = $derived(
 						}}
 						class="panel-form"
 					>
+						<input type="hidden" name="settingsVersion" value={data.wrappedThemeVersion} />
 						<div class="theme-grid">
 							{#each data.themeOptions as theme}
 								<label class="theme-card" class:selected={selectedWrappedTheme === theme.value}>
@@ -1454,6 +1456,11 @@ const logFieldErrors = $derived(
 						}}
 						class="panel-form"
 					>
+						<input
+							type="hidden"
+							name="settingsVersion"
+							value={data.wrappedLogoModeVersion}
+						/>
 						<div class="option-cards">
 							{#each data.wrappedLogoOptions as option}
 								{@const optionId = `wrapped-logo-mode-${option.value}`}

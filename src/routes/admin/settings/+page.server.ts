@@ -42,7 +42,10 @@ import {
 	type ThemePresetType,
 	TRUST_PROXY_SETTINGS_KEYS,
 	toSafeConfigValue,
+	UI_THEME_SETTINGS_KEYS,
 	USER_DEFAULTS_SETTINGS_KEYS,
+	WRAPPED_LOGO_MODE_SETTINGS_KEYS,
+	WRAPPED_THEME_SETTINGS_KEYS,
 	WrappedLogoMode,
 	type WrappedLogoModeType
 } from '$lib/server/admin/settings.service';
@@ -263,6 +266,35 @@ interface SettingValue {
 
 type SafeSettingValue = Omit<SettingValue, 'value'> & { hasValue: boolean };
 
+/**
+ * External OCC check used by the top-level `z.enum` actions (`updateUITheme`,
+ * `updateWrappedTheme`, `updateWrappedLogoMode`) where wrapping the schema
+ * in `z.object({...})` to carry an inline `settingsVersion` would change
+ * the payload shape. Per v3 plan §A5 Table D2.
+ *
+ * Returns `{ status: 'ok' }` to proceed, or
+ * `{ status: 'conflict', current: <ISO> }` to short-circuit the action with
+ * `fail(409, { error: '__OCC_CONFLICT__', settingsVersion: current })`.
+ */
+async function externalOccCheck(
+	submittedVersion: string,
+	keys: readonly string[]
+): Promise<{ status: 'ok' } | { status: 'conflict'; current: string }> {
+	if (!submittedVersion) {
+		return { status: 'conflict', current: new Date(0).toISOString() };
+	}
+	const currentUpdatedAt = await getAppSettingsUpdatedAt(keys);
+	const currentMs = currentUpdatedAt?.getTime() ?? 0;
+	const submittedMs = Date.parse(submittedVersion);
+	if (Number.isNaN(submittedMs) || submittedMs < currentMs) {
+		return {
+			status: 'conflict',
+			current: currentUpdatedAt?.toISOString() ?? new Date(0).toISOString()
+		};
+	}
+	return { status: 'ok' };
+}
+
 export const load: PageServerLoad = async () => {
 	const [
 		apiConfig,
@@ -288,6 +320,9 @@ export const load: PageServerLoad = async () => {
 		logSettingsUpdatedAt,
 		trustProxySettingsUpdatedAt,
 		csrfOriginSettingsUpdatedAt,
+		uiThemeSettingsUpdatedAt,
+		wrappedThemeSettingsUpdatedAt,
+		wrappedLogoModeSettingsUpdatedAt,
 		// Eager-load the total play-history count so the destructive Delete History
 		// buttons can render with a known count from first paint, instead of needing
 		// an on-click POST to ?/getPlayHistoryCount before they can show a
@@ -318,6 +353,9 @@ export const load: PageServerLoad = async () => {
 		getAppSettingsUpdatedAt(LOG_SETTINGS_KEYS),
 		getAppSettingsUpdatedAt(TRUST_PROXY_SETTINGS_KEYS),
 		getAppSettingsUpdatedAt(CSRF_ORIGIN_SETTINGS_KEYS),
+		getAppSettingsUpdatedAt(UI_THEME_SETTINGS_KEYS),
+		getAppSettingsUpdatedAt(WRAPPED_THEME_SETTINGS_KEYS),
+		getAppSettingsUpdatedAt(WRAPPED_LOGO_MODE_SETTINGS_KEYS),
 		countPlayHistory()
 	]);
 
@@ -392,6 +430,10 @@ export const load: PageServerLoad = async () => {
 		logSettingsVersion: logSettingsUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
 		trustProxyVersion: trustProxySettingsUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
 		csrfOriginVersion: csrfOriginSettingsUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
+		uiThemeVersion: uiThemeSettingsUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
+		wrappedThemeVersion: wrappedThemeSettingsUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
+		wrappedLogoModeVersion:
+			wrappedLogoModeSettingsUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
 		security: {
 			originValue: csrfConfig.origin.value,
 			csrfEnabled: !!csrfConfig.origin.value,
@@ -616,8 +658,16 @@ export const actions: Actions = requireAdminActions({
 
 	updateUITheme: async ({ request }) => {
 		const formData = await request.formData();
-		const theme = formData.get('theme');
 
+		const occ = await externalOccCheck(
+			formData.get('settingsVersion')?.toString() ?? '',
+			UI_THEME_SETTINGS_KEYS
+		);
+		if (occ.status === 'conflict') {
+			return fail(409, { error: '__OCC_CONFLICT__', settingsVersion: occ.current });
+		}
+
+		const theme = formData.get('theme');
 		const parsed = ThemeSchema.safeParse(theme);
 		if (!parsed.success) {
 			return fail(400, { error: 'Invalid theme selection' });
@@ -634,8 +684,16 @@ export const actions: Actions = requireAdminActions({
 
 	updateWrappedTheme: async ({ request }) => {
 		const formData = await request.formData();
-		const theme = formData.get('wrappedTheme') ?? formData.get('theme');
 
+		const occ = await externalOccCheck(
+			formData.get('settingsVersion')?.toString() ?? '',
+			WRAPPED_THEME_SETTINGS_KEYS
+		);
+		if (occ.status === 'conflict') {
+			return fail(409, { error: '__OCC_CONFLICT__', settingsVersion: occ.current });
+		}
+
+		const theme = formData.get('wrappedTheme') ?? formData.get('theme');
 		const parsed = ThemeSchema.safeParse(theme);
 		if (!parsed.success) {
 			return fail(400, { error: 'Invalid theme selection' });
@@ -652,8 +710,16 @@ export const actions: Actions = requireAdminActions({
 
 	updateWrappedLogoMode: async ({ request }) => {
 		const formData = await request.formData();
-		const mode = formData.get('logoMode');
 
+		const occ = await externalOccCheck(
+			formData.get('settingsVersion')?.toString() ?? '',
+			WRAPPED_LOGO_MODE_SETTINGS_KEYS
+		);
+		if (occ.status === 'conflict') {
+			return fail(409, { error: '__OCC_CONFLICT__', settingsVersion: occ.current });
+		}
+
+		const mode = formData.get('logoMode');
 		const parsed = WrappedLogoModeSchema.safeParse(mode);
 		if (!parsed.success) {
 			return fail(400, { error: 'Invalid logo mode' });

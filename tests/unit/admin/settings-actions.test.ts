@@ -448,9 +448,15 @@ describe('admin updateWrappedLogoMode action', () => {
 		await db.delete(appSettings);
 	});
 
-	function createWrappedLogoModeRequest(logoMode?: string): Request {
+	function createWrappedLogoModeRequest(
+		logoMode?: string,
+		settingsVersion: string = new Date(0).toISOString()
+	): Request {
 		const formData = new FormData();
 		if (logoMode !== undefined) formData.set('logoMode', logoMode);
+		// External-OCC enum action: defaults to epoch (wins for no-rows-yet);
+		// tests that pre-seed the row must override.
+		formData.set('settingsVersion', settingsVersion);
 
 		return new Request('http://localhost/admin/settings?/updateWrappedLogoMode', {
 			method: 'POST',
@@ -483,7 +489,13 @@ describe('admin updateWrappedLogoMode action', () => {
 	it('rejects invalid logo mode without persisting a change', async () => {
 		await setAppSetting(AppSettingsKey.WRAPPED_LOGO_MODE, WrappedLogoMode.ALWAYS_HIDE);
 
-		const result = await runUpdateWrappedLogoMode(createWrappedLogoModeRequest('invalid'));
+		// Pre-seed bumps updatedAt to ~Date.now(); pass a future timestamp so the
+		// external-OCC check sees the version as fresh-enough and the test
+		// exercises the schema validation rather than 409.
+		const futureVersion = new Date(Date.now() + 60_000).toISOString();
+		const result = await runUpdateWrappedLogoMode(
+			createWrappedLogoModeRequest('invalid', futureVersion)
+		);
 
 		expect(result).toMatchObject({
 			status: 400,
@@ -497,7 +509,10 @@ describe('admin updateWrappedLogoMode action', () => {
 	it('rejects missing logo mode without persisting a change', async () => {
 		await setAppSetting(AppSettingsKey.WRAPPED_LOGO_MODE, WrappedLogoMode.ALWAYS_HIDE);
 
-		const result = await runUpdateWrappedLogoMode(createWrappedLogoModeRequest());
+		const futureVersion = new Date(Date.now() + 60_000).toISOString();
+		const result = await runUpdateWrappedLogoMode(
+			createWrappedLogoModeRequest(undefined, futureVersion)
+		);
 
 		expect(result).toMatchObject({
 			status: 400,
@@ -506,6 +521,45 @@ describe('admin updateWrappedLogoMode action', () => {
 			}
 		});
 		expect(await getWrappedLogoMode()).toBe(WrappedLogoMode.ALWAYS_HIDE);
+	});
+
+	it('rejects updateWrappedLogoMode with blank settingsVersion as 409 (__OCC_CONFLICT__)', async () => {
+		// Pre-seed to ALWAYS_HIDE so the assertion below distinguishes "OCC blocked
+		// the write" from "default value happens to match".
+		await setAppSetting(AppSettingsKey.WRAPPED_LOGO_MODE, WrappedLogoMode.ALWAYS_HIDE);
+
+		const result = await runUpdateWrappedLogoMode(
+			createWrappedLogoModeRequest(WrappedLogoMode.ALWAYS_SHOW, '')
+		);
+		expect(result).toMatchObject({
+			status: 409,
+			data: {
+				error: '__OCC_CONFLICT__'
+			}
+		});
+		// Conflict response includes the current version so the client can refresh.
+		expect(typeof (result as { data: { settingsVersion: unknown } }).data.settingsVersion).toBe(
+			'string'
+		);
+		// Row left intact — OCC blocked the write before any service call.
+		expect(await getWrappedLogoMode()).toBe(WrappedLogoMode.ALWAYS_HIDE);
+	});
+
+	it('rejects updateWrappedLogoMode with stale settingsVersion as 409', async () => {
+		// First write succeeds and advances updatedAt.
+		await runUpdateWrappedLogoMode(createWrappedLogoModeRequest(WrappedLogoMode.ALWAYS_SHOW));
+		expect(await getWrappedLogoMode()).toBe(WrappedLogoMode.ALWAYS_SHOW);
+
+		// Stale tab tries to flip back using the epoch timestamp.
+		const result = await runUpdateWrappedLogoMode(
+			createWrappedLogoModeRequest(WrappedLogoMode.ALWAYS_HIDE, new Date(0).toISOString())
+		);
+		expect(result).toMatchObject({
+			status: 409,
+			data: { error: '__OCC_CONFLICT__' }
+		});
+		// First write's value still in place.
+		expect(await getWrappedLogoMode()).toBe(WrappedLogoMode.ALWAYS_SHOW);
 	});
 });
 

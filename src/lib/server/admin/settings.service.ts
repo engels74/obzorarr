@@ -182,6 +182,17 @@ export const TRUST_PROXY_SETTINGS_KEYS = [AppSettingsKey.TRUST_PROXY] as const;
 export const CSRF_ORIGIN_SETTINGS_KEYS = [AppSettingsKey.CSRF_ORIGIN] as const;
 
 /**
+ * Single-key OCC tuples for the three Appearance-tab `z.enum` forms. Per
+ * v3 plan §A5 Table D2 these use EXTERNAL OCC (validated before
+ * `safeParse` in the action) because the schemas are top-level `z.enum`,
+ * not `z.object`, and wrapping them in `z.object({...})` would change the
+ * payload shape.
+ */
+export const UI_THEME_SETTINGS_KEYS = [AppSettingsKey.UI_THEME] as const;
+export const WRAPPED_THEME_SETTINGS_KEYS = [AppSettingsKey.WRAPPED_THEME] as const;
+export const WRAPPED_LOGO_MODE_SETTINGS_KEYS = [AppSettingsKey.WRAPPED_LOGO_MODE] as const;
+
+/**
  * Keys covered by the API configuration panel (Plex + OpenAI connections).
  * Used for the optimistic-concurrency timestamp on `updateApiConfig`.
  *
