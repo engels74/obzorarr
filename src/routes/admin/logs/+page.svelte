@@ -645,12 +645,12 @@ $effect(() => {
 			{@const lastLog = data.logs[data.logs.length - 1]}
 			{#if lastLog}
 				<div class="load-more">
-					<a
+					<Button
 						href="/admin/logs?cursor={lastLog.id}&{$page.url.searchParams.toString()}"
-						class="load-more-button"
+						class="load-more-button tap-target"
 					>
 						Load More
-					</a>
+					</Button>
 				</div>
 			{/if}
 		{/if}
@@ -1263,7 +1263,12 @@ $effect(() => {
 			padding: 1rem;
 		}
 
-		.load-more-button {
+		/* `.load-more-button` renders as an <a> tag (pagination cursor
+		   link). shadcn Button with `href` prop renders <a> internally.
+		   Hoisted to :global so the rendered anchor inherits the
+		   secondary palette + border + hover-darken. text-decoration:none
+		   stays for the underline-removal. */
+		:global(.load-more-button) {
 			display: inline-block;
 			padding: 0.5rem 1.5rem;
 			background: oklch(var(--secondary));
@@ -1274,7 +1279,7 @@ $effect(() => {
 			font-size: 0.875rem;
 		}
 
-		.load-more-button:hover {
+		:global(.load-more-button:hover) {
 			background: oklch(var(--muted));
 		}
 
