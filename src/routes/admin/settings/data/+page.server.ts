@@ -24,9 +24,19 @@ export const load: PageServerLoad = async () => {
 };
 
 /**
- * Parses the optional `year` form field. Returns `undefined` for missing/blank
- * (meaning "all years"); a positive integer for a parseable year; a fail()
- * for malformed input that can't safely be treated as either.
+ * Parses the optional `year` form field.
+ *
+ * Returns:
+ *   - `undefined` when the field is missing or blank/whitespace (meaning
+ *     "all years" — passed to the service-layer count/clear helpers as
+ *     "no scope").
+ *   - A number when the value is parseable. parseInt is permissive: it
+ *     accepts decimals (silently truncated, e.g. '2024.5' → 2024) and
+ *     negative integers. tests/unit/admin/data-actions.test.ts pins this
+ *     behavior — a future commit that tightens validation (e.g.,
+ *     positive-integers-only or a year range) should update those tests
+ *     in lockstep.
+ *   - `fail(400, ...)` when the value is unparseable (e.g., 'twenty-two').
  */
 function parseYear(formData: FormData): number | undefined | ReturnType<typeof fail> {
 	const yearStr = formData.get('year')?.toString().trim();
