@@ -574,7 +574,11 @@ function formatServerUrl(url: string | null): string {
 								'Obzorarr could not reach the server at the configured URL.'}
 						</p>
 						<form method="POST" action="?/forceManualSelection" use:enhance class="error-action-form">
-							<button type="submit" class="error-action-btn">Use a different server</button>
+							<SubmitButton class="error-action-btn tap-target">
+								{#snippet children()}
+									Use a different server
+								{/snippet}
+							</SubmitButton>
 						</form>
 					</div>
 				</div>
@@ -602,14 +606,21 @@ function formatServerUrl(url: string | null): string {
 						</label>
 						<div class="override-actions">
 							<form method="POST" action="?/confirmOwnershipOverride" use:enhance>
-								<button type="submit" class="error-action-btn" disabled={!confirmOwnershipChecked}
-									>Continue anyway</button
+								<SubmitButton
+									class="error-action-btn tap-target"
+									disabled={!confirmOwnershipChecked}
 								>
+									{#snippet children()}
+										Continue anyway
+									{/snippet}
+								</SubmitButton>
 							</form>
 							<form method="POST" action="?/forceManualSelection" use:enhance>
-								<button type="submit" class="error-action-btn secondary"
-									>Use a different server</button
-								>
+								<SubmitButton class="error-action-btn secondary tap-target">
+									{#snippet children()}
+										Use a different server
+									{/snippet}
+								</SubmitButton>
 							</form>
 						</div>
 					</div>
@@ -1443,7 +1454,13 @@ function formatServerUrl(url: string | null): string {
 			margin-top: 0.75rem;
 		}
 
-		.error-action-btn {
+		/* `.error-action-btn` is the destructive-variant CTA used in 3
+		   error-card panels (configured-url-unreachable, not-in-resources,
+		   etc.). Hoisted to :global so SubmitButton's child-rendered
+		   <button> inherits the red palette + hover-darken + optional
+		   .secondary modifier (white/transparent variant for the
+		   alternative action in the dual-button error card). */
+		:global(.error-action-btn) {
 			display: inline-flex;
 			align-items: center;
 			gap: 0.4rem;
@@ -1458,23 +1475,23 @@ function formatServerUrl(url: string | null): string {
 			transition: all 0.2s ease;
 		}
 
-		.error-action-btn:hover:not(:disabled) {
+		:global(.error-action-btn:hover:not(:disabled)) {
 			background: rgba(239, 68, 68, 0.18);
 			border-color: rgba(239, 68, 68, 0.5);
 		}
 
-		.error-action-btn:disabled {
+		:global(.error-action-btn:disabled) {
 			opacity: 0.4;
 			cursor: not-allowed;
 		}
 
-		.error-action-btn.secondary {
+		:global(.error-action-btn.secondary) {
 			color: rgba(255, 255, 255, 0.7);
 			background: rgba(255, 255, 255, 0.04);
 			border-color: rgba(255, 255, 255, 0.12);
 		}
 
-		.error-action-btn.secondary:hover:not(:disabled) {
+		:global(.error-action-btn.secondary:hover:not(:disabled)) {
 			background: rgba(255, 255, 255, 0.08);
 			border-color: rgba(255, 255, 255, 0.2);
 		}
