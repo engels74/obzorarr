@@ -33,6 +33,12 @@ const ThemeSchema = z.enum([
 	'amber-minimal',
 	'soviet-red'
 ]);
+/**
+ * OCC strategy: EXTERNAL. Same shape as `ThemeSchema` — top-level z.enum,
+ * validated via `externalOccCheck` against `WRAPPED_LOGO_MODE_SETTINGS_KEYS`
+ * before `safeParse` so the conflict response carries the magic
+ * `OCC_CONFLICT_CODE` sentinel + the current settingsVersion.
+ */
 const WrappedLogoModeSchema = z.enum(['always_show', 'always_hide', 'user_choice']);
 
 export const load: PageServerLoad = async () => {
