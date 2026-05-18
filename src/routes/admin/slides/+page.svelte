@@ -345,14 +345,14 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 
 						<form method="POST" action="?/toggleSlide" use:enhance class="toggle-form">
 							<input type="hidden" name="slideType" value={item.slideType} />
-							<button
-								type="submit"
-								class="toggle-button"
-								class:enabled={item.enabled}
+							<SubmitButton
+								class={`toggle-button tap-target ${item.enabled ? 'enabled' : ''}`}
 								aria-label={item.enabled ? 'Disable slide' : 'Enable slide'}
 							>
-								{item.enabled ? 'Enabled' : 'Disabled'}
-							</button>
+								{#snippet children()}
+									{item.enabled ? 'Enabled' : 'Disabled'}
+								{/snippet}
+							</SubmitButton>
 						</form>
 					{:else}
 						<div class="slide-name-group">
@@ -378,14 +378,14 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 
 							<form method="POST" action="?/toggleCustomSlide" use:enhance class="toggle-form">
 								<input type="hidden" name="id" value={item.id} />
-								<button
-									type="submit"
-									class="toggle-button"
-									class:enabled={item.enabled}
+								<SubmitButton
+									class={`toggle-button tap-target ${item.enabled ? 'enabled' : ''}`}
 									aria-label={item.enabled ? 'Disable slide' : 'Enable slide'}
 								>
-									{item.enabled ? 'Enabled' : 'Disabled'}
-								</button>
+									{#snippet children()}
+										{item.enabled ? 'Enabled' : 'Disabled'}
+									{/snippet}
+								</SubmitButton>
 							</form>
 
 							{#if deletingSlideId === item.id}
@@ -1022,7 +1022,13 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			margin: 0;
 		}
 
-		.toggle-button {
+		/* `.toggle-button` is the per-row Enabled/Disabled toggle CTA
+		   (used by both built-in slides + custom slides). Hoisted to
+		   :global so SubmitButton's child-rendered <button> inherits
+		   the muted-default vs primary-enabled palette swap. The
+		   `.enabled` modifier toggles via template-literal class prop
+		   (same pattern as admin/users iteration 108). */
+		:global(.toggle-button) {
 			padding: 0.375rem 0.75rem;
 			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
@@ -1034,13 +1040,13 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			transition: all 0.15s ease;
 		}
 
-		.toggle-button.enabled {
+		:global(.toggle-button.enabled) {
 			background: oklch(var(--primary));
 			color: oklch(var(--primary-foreground));
 			border-color: oklch(var(--primary));
 		}
 
-		.toggle-button:hover {
+		:global(.toggle-button:hover) {
 			opacity: 0.9;
 		}
 
