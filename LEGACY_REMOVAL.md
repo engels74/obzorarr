@@ -146,9 +146,10 @@ Sheet, but the tests can't see them through the primitive boundary.
 
 When resuming the migration:
 
-1. Override the SidebarTrigger size: wrap it with a custom button whose
-   `min-width` / `min-height` is `var(--min-tap-size)`, or pass a class
-   that bumps it to 44×44.
+1. ✅ DONE — `src/lib/components/ui/sidebar/sidebar-trigger.svelte` bakes
+   `tap-target` into the cn() merge, so every Sidebar consumer hits the
+   44×44 floor via `min-width`/`min-height: var(--min-tap-size)` while
+   the icon stays visually at `size-7` (28×28).
 2. Migrate the relevant source-pinned a11y assertions in
    `ui-source-regressions.test.ts` + `dogfood-fixes.test.ts` to behavioral
    assertions (render the layout in a test harness, query the computed

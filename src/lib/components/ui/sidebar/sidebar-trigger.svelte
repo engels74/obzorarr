@@ -23,7 +23,7 @@ const sidebar = useSidebar();
 	data-slot="sidebar-trigger"
 	variant="ghost"
 	size="icon-sm"
-	class={cn("cn-sidebar-trigger", className)}
+	class={cn("cn-sidebar-trigger tap-target", className)}
 	type="button"
 	onclick={(e) => {
 		onclick?.(e);
