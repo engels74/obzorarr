@@ -355,7 +355,14 @@ function handleCancelRedirect(): void {
 			border: 0;
 		}
 
-		.username-input {
+		/* Paired :global hoist for the username form input — same migration
+		   story as `.view-button` above: PR-3 / US-024 swaps the native
+		   <input class="username-input"> for the shadcn Input primitive
+		   which renders inside a child component beyond Svelte 5's
+		   component-scope. Globalising the rules now preserves the
+		   hand-tuned focus ring + max-width without forcing the Input
+		   consumer to re-implement them. */
+		:global(.username-input) {
 			flex: 1;
 			min-width: 200px;
 			max-width: 300px;
@@ -370,17 +377,17 @@ function handleCancelRedirect(): void {
 				box-shadow 0.2s ease;
 		}
 
-		.username-input::placeholder {
+		:global(.username-input::placeholder) {
 			color: oklch(var(--muted-foreground));
 		}
 
-		.username-input:focus {
+		:global(.username-input:focus) {
 			outline: none;
 			border-color: oklch(var(--ring));
 			box-shadow: 0 0 0 2px oklch(var(--ring) / 0.2);
 		}
 
-		.username-input:disabled {
+		:global(.username-input:disabled) {
 			opacity: 0.7;
 			cursor: not-allowed;
 		}
@@ -568,7 +575,7 @@ function handleCancelRedirect(): void {
 				align-items: stretch;
 			}
 
-			.username-input {
+			:global(.username-input) {
 				max-width: none;
 			}
 
@@ -591,7 +598,7 @@ function handleCancelRedirect(): void {
 
 			:global(.view-button),
 			.login-button,
-			.username-input {
+			:global(.username-input) {
 				transition: none;
 			}
 		}
