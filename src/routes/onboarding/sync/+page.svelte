@@ -1,5 +1,6 @@
 <script lang="ts">
 import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
+import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
 import { animate, stagger } from 'motion';
 import { untrack } from 'svelte';
 import { browser } from '$app/environment';
@@ -304,27 +305,15 @@ function formatNumber(n: number): string {
 					};
 				}}
 			>
-				<button type="submit" class="start-button animate-item" disabled={isStarting}>
-					{#if isStarting}
-						<span class="btn-spinner"></span>
-						<span>Starting sync...</span>
-					{:else}
-						<svg
-							class="btn-icon"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-						>
-							<path
-								d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-							/>
-						</svg>
+				<SubmitButton class="start-button animate-item tap-target" submitting={isStarting}>
+					{#snippet children()}
+						<RefreshCwIcon class="size-5" />
 						<span>Start Sync</span>
-					{/if}
-				</button>
+					{/snippet}
+					{#snippet submittingLabel()}
+						<span>Starting sync...</span>
+					{/snippet}
+				</SubmitButton>
 			</form>
 			<p class="pre-sync-hint animate-item">
 				Sync will continue in the background if you proceed to the next step.
@@ -722,8 +711,15 @@ function formatNumber(n: number): string {
 			text-align: center;
 		}
 
-		/* Start button */
-		.start-button {
+		/* Start button — hoisted to :global so SubmitButton's
+		   child-rendered <button> inherits the primary palette, hover
+		   translate-y (-2px), and triple shadow (drop + accent + inset
+		   highlight). The `.btn-icon` descendant rule is dropped; the
+		   lucide RefreshCwIcon is sized inline via `class="size-5"`.
+		   `.btn-spinner` (used by .cancel-button below) stays — its
+		   start-button consumer was replaced by SubmitButton's built-in
+		   LoaderCircleIcon spinner. */
+		:global(.start-button) {
 			display: inline-flex;
 			align-items: center;
 			justify-content: center;
@@ -744,7 +740,7 @@ function formatNumber(n: number): string {
 				inset 0 1px 0 rgba(255, 255, 255, 0.2);
 		}
 
-		.start-button:hover:not(:disabled) {
+		:global(.start-button:hover:not(:disabled)) {
 			transform: translateY(-2px);
 			box-shadow:
 				0 6px 24px oklch(var(--primary) / 0.45),
@@ -752,14 +748,9 @@ function formatNumber(n: number): string {
 				inset 0 1px 0 rgba(255, 255, 255, 0.25);
 		}
 
-		.start-button:disabled {
+		:global(.start-button:disabled) {
 			opacity: 0.8;
 			cursor: not-allowed;
-		}
-
-		.btn-icon {
-			width: 20px;
-			height: 20px;
 		}
 
 		.btn-spinner {
@@ -979,7 +970,7 @@ function formatNumber(n: number): string {
 				font-size: 1.25rem;
 			}
 
-			.start-button {
+			:global(.start-button) {
 				width: 100%;
 				min-width: unset;
 			}
