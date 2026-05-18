@@ -21,6 +21,14 @@ import { getOriginFromRequest } from '$lib/server/security/csrf-handle';
 import { _resetTrustProxyCache } from '$lib/server/security/proxy-handle';
 import type { Actions, PageServerLoad } from './$types';
 
+/**
+ * OCC strategy: INLINE `settingsVersion` validated OUTSIDE the schema
+ * (clear branch bypasses safeParse). The action handler extracts
+ * `settingsVersion` from formData and runs `inlineOccCheck` BEFORE the
+ * set/clear branching so blank/stale versions hit the shared 409 path
+ * regardless of whether the user is setting or clearing the origin.
+ * The actual settingsVersion field is NOT part of this schema.
+ */
 const CsrfOriginSchema = z.object({
 	csrfOrigin: z
 		.string()
