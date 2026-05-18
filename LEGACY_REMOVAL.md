@@ -1,25 +1,28 @@
 # Legacy Removal TODO — scheduled for PR-4 of the v3 UI overhaul
 
-> **Resumption note (session 2 stopped 2026-05-18).** PR-1 foundation +
-> PR-2 settings monolith deletion are landed. The v3 plan at
+> **Resumption note (session 3 stopped 2026-05-18 afternoon).** PR-1
+> foundation + PR-2 settings monolith deletion are landed; PR-3 auth
+> surfaces are partially shadcnized. The v3 plan at
 > `~/.claude/plans/i-set-you-to-vectorized-sutton-v3.md` is on track:
 >
 > | Story  | Status                                                |
 > |--------|-------------------------------------------------------|
 > | US-001..US-017 | ✅ Closed in session 1 (PR-1 foundation)         |
 > | US-018 | ✅ Closed — route split + ?tab= redirect (cf958fa, 57e4161, 9f3769b) |
-> | US-019 | ⚠️  Attempted, reverted; follow-up below              |
-> | US-020 | ✅ Closed — all 6 nested-route UI extractions + full OCC plumbing + bulk-apply migration |
+> | US-019 | ⚠️  SidebarTrigger 44×44 floor fixed in 2c543a7; full migration still blocked on the 5 source-pinned a11y test refactors (follow-up §US-019 below) |
+> | US-020 | ✅ Closed — all 6 nested-route UI extractions + full OCC plumbing + bulk-apply migration + settingsVersionISO helper (6a0a09c) |
 > | US-022 | ✅ Closed — 4779-line monolith deleted (cf958fa, f3cc0b5, 5081af2) |
-> | US-013 | ⚠️  Partial — direct OCC helper tests at tests/unit/admin/occ-helpers.test.ts (11 cases) + nested-route integration coverage (69 cases) |
-> | US-021 | ❌ Not started — 5 admin route reskins (sync/users/logs/slides/wrapped admin) |
+> | US-013 | ✅ Closed — direct OCC helper tests (12 cases at occ-helpers.test.ts) + appearance-actions external-OCC coverage (10 cases) + nested-route inline-OCC integration (~57 cases) |
+> | US-021 | ❌ Not started — 5 admin route reskins (sync/users/logs/slides/wrapped admin); each is visually-coupled to custom CSS, multi-iteration job |
+> | US-024 | ⚠️  Token audit clean; SubmitButton swap attempted + reverted (hero CTA visual coupling) — needs paired CSS hoisting to :global() |
+> | US-025 | ✅ Closed — PopupBlockedModal already uses shadcn AlertDialog; continue-btn swapped to shadcn Button (81d8f64); auth/plex/redirect callback fully reskinned with shadcn Card + Button + lucide icons (efa131e) |
 > | US-009b, US-012, US-015 | ❌ Deferred (consumer-driven / Playwright install / inline bootstrap) |
-> | US-023..US-034 | ❌ PR-3 + PR-4 backlog                            |
+> | US-023, US-026..US-034 | ❌ PR-3 + PR-4 backlog                       |
 >
-> All gates green: `bun run check` 6716/0/0; `bun run lint` clean; `bun run build` ✓;
-> `bun run test` 1877 pass, 0 fail. **Branch `feat/ui-overhaul-pr1` is mergeable
-> as PR-1 + most of PR-2** — US-021 admin route reskins are the remaining PR-2
-> work; everything below US-022 belongs to PR-3 or PR-4.
+> All gates green: `bun run check` 6715/0/0; `bun run lint` clean; `bun run build` ✓;
+> `bun run test` 1884 pass, 0 fail. **Branch `feat/ui-overhaul-pr1` is mergeable
+> as PR-1 + PR-2 (minus US-021) + the US-025 slice of PR-3.** Everything below
+> US-025 belongs to PR-3 / PR-4 backlog.
 >
 > **To resume**: run
 > `/oh-my-claudecode:ralph execute the plan at ~/.claude/plans/i-set-you-to-vectorized-sutton-v3.md`
@@ -27,6 +30,15 @@
 > The smallest is /admin/users at 738 LOC; each route is its own focused
 > rewrite to shadcn Card / Table / Tabs / Dialog primitives, preserving
 > the existing form actions + requireAdminActions guard.
+>
+> **Landing-page caveat for US-024**: the hero `view-button` + `username-input`
+> have hand-tuned padding/font-size/box-shadow that the shadcn Button + Input
+> defaults don't match. A naive SubmitButton swap visually shrinks the
+> primary CTA. The clean path is to (a) wrap the existing `.view-button` and
+> `.username-input` CSS rules in `:global(...)` so Svelte 5 scoped CSS still
+> reaches the child component's rendered element, then (b) pass
+> `class="view-button tap-target"` / `class="username-input"` to the swapped
+> primitives. Plan ~8 CSS-block edits + 2 template edits for the swap.
 
 
 This file tracks transient compatibility shims introduced during the PR-1..PR-3
