@@ -1,4 +1,5 @@
 <script lang="ts">
+import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 import { animate } from 'motion';
 import { prefersReducedMotion } from 'svelte/motion';
 import { browser } from '$app/environment';
@@ -13,6 +14,7 @@ import {
 import PopupBlockedModal from '$lib/components/auth/PopupBlockedModal.svelte';
 import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import Logo from '$lib/components/Logo.svelte';
+import { Button } from '$lib/components/ui/button';
 import { Input } from '$lib/components/ui/input';
 import type { ActionData, PageData } from './$types';
 
@@ -215,29 +217,24 @@ function handleCancelRedirect(): void {
 			<!-- SECONDARY: Plex OAuth Login -->
 			<div class="login-section">
 				<p class="login-prompt">Want to access your dashboard or change settings?</p>
-				<button
+				<Button
 					type="button"
-					class="login-button secondary"
+					class="login-button secondary tap-target"
 					onclick={handlePlexLogin}
 					disabled={isOAuthLoading || isRedirecting}
+					aria-busy={isOAuthLoading || isRedirecting}
 				>
 					{#if isRedirecting}
-						<span class="button-loading">
-							<span class="spinner" aria-hidden="true"></span>
-							Redirecting to Plex...
-						</span>
+						<LoaderCircleIcon class="size-4 animate-spin" aria-hidden="true" />
+						Redirecting to Plex...
 					{:else if isOAuthLoading}
-						<span class="button-loading">
-							<span class="spinner" aria-hidden="true"></span>
-							Connecting to Plex...
-						</span>
+						<LoaderCircleIcon class="size-4 animate-spin" aria-hidden="true" />
+						Connecting to Plex...
 					{:else}
-						<span class="button-content">
-							<span class="plex-icon" aria-hidden="true">&#9654;</span>
-							Sign in with Plex
-						</span>
+						<span class="plex-icon" aria-hidden="true">&#9654;</span>
+						Sign in with Plex
 					{/if}
-				</button>
+				</Button>
 
 				{#if oauthError}
 					<p class="error-message" role="alert">{oauthError}</p>
@@ -493,32 +490,8 @@ function handleCancelRedirect(): void {
 			cursor: not-allowed;
 		}
 
-		.button-content,
-		.button-loading {
-			display: flex;
-			align-items: center;
-			gap: 0.75rem;
-		}
-
 		.plex-icon {
 			font-size: 1.125rem;
-		}
-
-		/* Shared Elements */
-		.spinner {
-			display: inline-block;
-			width: 1.25rem;
-			height: 1.25rem;
-			border: 2px solid oklch(var(--primary-foreground) / 0.3);
-			border-top-color: oklch(var(--primary-foreground));
-			border-radius: 50%;
-			animation: spin 1s linear infinite;
-		}
-
-		@keyframes spin {
-			to {
-				transform: rotate(360deg);
-			}
 		}
 
 		.error-message {
@@ -598,10 +571,6 @@ function handleCancelRedirect(): void {
 
 		/* Reduced motion */
 		@media (prefers-reduced-motion: reduce) {
-			.spinner {
-				animation: none;
-			}
-
 			:global(.view-button),
 			:global(.login-button),
 			:global(.username-input) {
