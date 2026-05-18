@@ -1,13 +1,13 @@
 # Legacy Removal TODO — scheduled for PR-4 of the v3 UI overhaul
 
-> **Resumption note (session 3 ralph loop reached max iteration 110/110
-> after the runtime extended past 100, 2026-05-18 evening).** PR-1
-> foundation + PR-2 settings monolith deletion are landed; PR-3 landing
-> + auth surfaces fully shadcnized; 5 of 6 onboarding pages migrated
-> (claim + complete + sync + csrf + plex + settings — only the visual
-> selectors inside settings/plex stay custom by design). US-021
-> started: admin/users + admin/logs partial. Branch is +50 commits
-> past main. The v3 plan at
+> **Resumption note (session 3 ralph loop reached max iteration
+> 130/130 after the runtime extended past 100 + 110 + 120, 2026-05-18
+> evening).** PR-1 foundation + PR-2 settings monolith deletion are
+> landed; PR-3 landing + auth surfaces fully shadcnized; 5 of 6
+> onboarding pages migrated (only visual selectors stay custom by
+> design); **US-021 closed at natural stopping point** — all 4
+> reskin-target admin routes have their CTA-shaped buttons on shadcn
+> primitives. Branch sits at +75+ commits past main. The v3 plan at
 > `~/.claude/plans/i-set-you-to-vectorized-sutton-v3.md` is on track:
 >
 > | Story  | Status                                                |
@@ -25,20 +25,35 @@
 > | US-009b, US-012, US-015 | ❌ Deferred (consumer-driven / Playwright install / inline bootstrap) |
 > | US-023, US-026..US-034 | ❌ PR-3 + PR-4 backlog                       |
 >
-> All gates green: `bun run check` 3081/0/0; `bun run lint` clean; `bun run build` ✓;
+> All gates green: `bun run check` 3089/0/0; `bun run lint` clean; `bun run build` ✓;
 > `bun run test` 1884 pass, 0 fail. **Branch `feat/ui-overhaul-pr1` is mergeable
-> as PR-1 + PR-2 (minus US-021) + PR-3 (US-024 + US-025 + 4 of 6 US-026
-> onboarding pages).** Everything below belongs to remaining US-021 +
-> US-026 (plex/settings) + PR-4 backlog.
+> as PR-1 + PR-2 + PR-3 (US-024 + US-025 + most of US-026) + most of
+> PR-2's US-021.** Remaining work: PR-3 wrap-up (US-023 verification
+> gates + Playwright snapshots) + PR-4 (US-029 BaseSlide animation
+> choreography, US-030 submit-action deletion, US-031 legacy
+> component deletion, US-032 legacy-tokens fallback drop, US-033
+> final grep sweep, US-034 PR-4 verification).
 >
-> **Session 3 commit count**: ~30 atomic commits applying the visual-
-> coupling pattern (see below) across landing + 4 onboarding pages +
-> auth callbacks. The pattern is mechanical and reliably keeps the
-> hand-tuned styling — each commit is in the 5-50 LOC range and only
-> swaps one primitive at a time. svelte-check's "Unused CSS selector"
-> warning reliably catches orphan rules left behind by inline-SVG
-> replacements (e.g. .button-loading wrapper spans, local @keyframes
-> spin) and the cleanup belongs in the primitive-swap commit.
+> **Session 3 commit count**: ~60+ atomic commits across iterations
+> 68-130 applying the visual-coupling pattern (see below) to landing
+> + 5 onboarding pages + 4 admin routes + auth callbacks. The pattern
+> is mechanical and reliably keeps the hand-tuned styling — each
+> commit is in the 5-50 LOC range and only swaps one primitive at a
+> time. svelte-check's "Unused CSS selector" warning reliably catches
+> orphan rules left behind by inline-SVG replacements (e.g.
+> .button-loading wrapper spans, local @keyframes spin) and the
+> cleanup belongs in the primitive-swap commit.
+>
+> **Established classifier** (refined across the session): shadcn
+> Button / SubmitButton is the right target for CTAs — submit /
+> cancel / continue / skip / save / start / next / prev / delete /
+> confirm — and for icon-only action buttons whose primary purpose
+> is a click action. shadcn primitives are NOT the right target for
+> visual *selectors* — pagination dots, color/theme swatches,
+> server-list cards, cron preset chips, numeric page selectors —
+> where the element's primary purpose is its visual representation.
+> Those stay hand-styled. /admin/wrapped's entire layout is in this
+> category (cinematic decoration, no primary CTAs).
 >
 > **To resume**: run
 > `/oh-my-claudecode:ralph execute the plan at ~/.claude/plans/i-set-you-to-vectorized-sutton-v3.md`
