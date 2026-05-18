@@ -539,6 +539,9 @@ describe('admin updateLogSettings action — round-trip', () => {
 		formData.set('retentionDays', '14');
 		formData.set('maxCount', '2000');
 		formData.set('debugEnabled', 'true');
+		// Use a far-past timestamp so OCC succeeds when the keys don't yet exist
+		// in the DB (no rows → maxMs is 0). Empty/missing is rejected as 409.
+		formData.set('settingsVersion', new Date(0).toISOString());
 		for (const [k, v] of Object.entries(overrides)) formData.set(k, v);
 		return new Request('http://localhost/admin/settings?/updateLogSettings', {
 			method: 'POST',
@@ -574,5 +577,52 @@ describe('admin updateLogSettings action — round-trip', () => {
 		expect(await getLogRetentionDays()).toBe(7);
 		expect(await getLogMaxCount()).toBe(50000);
 		expect(await isDebugEnabled()).toBe(false);
+	});
+
+	it('rejects updateLogSettings with blank settingsVersion as 409 conflict', async () => {
+		const result = await run(createRequest({ settingsVersion: '' }));
+		expect(result).toMatchObject({
+			status: 409,
+			data: {
+				conflict: true,
+				error: 'Settings changed in another tab. Please reload.'
+			}
+		});
+		expect(await getLogRetentionDays()).toBe(7);
+		expect(await getLogMaxCount()).toBe(50000);
+		expect(await isDebugEnabled()).toBe(false);
+	});
+
+	it('rejects updateLogSettings with stale settingsVersion as 409 conflict', async () => {
+		// First write succeeds and advances the row's updatedAt.
+		await expect(run(createRequest())).resolves.toMatchObject({ success: true });
+		// Second write uses the original (now-stale) epoch timestamp.
+		const result = await run(
+			createRequest({
+				settingsVersion: new Date(0).toISOString(),
+				retentionDays: '21'
+			})
+		);
+		expect(result).toMatchObject({
+			status: 409,
+			data: { conflict: true }
+		});
+		// First write's values still in place — stale tab did not clobber them.
+		expect(await getLogRetentionDays()).toBe(14);
+		expect(await getLogMaxCount()).toBe(2000);
+	});
+
+	it('allows a follow-up save with the bumped settingsVersion (no spurious 409)', async () => {
+		await expect(run(createRequest())).resolves.toMatchObject({ success: true });
+		// Re-read the freshly bumped settingsVersion (using a future ISO works because
+		// the OCC check compares submitted >= current).
+		const result = await run(
+			createRequest({
+				settingsVersion: new Date(Date.now() + 60_000).toISOString(),
+				retentionDays: '21'
+			})
+		);
+		expect(result).toMatchObject({ success: true });
+		expect(await getLogRetentionDays()).toBe(21);
 	});
 });

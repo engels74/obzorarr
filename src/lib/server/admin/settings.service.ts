@@ -152,6 +152,20 @@ export const USER_DEFAULTS_SETTINGS_KEYS = [
 ] as const;
 
 /**
+ * Keys covered by the System tab Logging form (retention days + max log count
+ * + debug flag). The three values land via `setLogRetentionDays`,
+ * `setLogMaxCount`, and `setDebugEnabled` from `$lib/server/logging/service`;
+ * each writes its own `app_settings` row, so the OCC version is the max of
+ * their `updatedAt` columns. Used for the inline `settingsVersion` retrofit on
+ * `updateLogSettings` (US-020 partial / inline-OCC pattern).
+ */
+export const LOG_SETTINGS_KEYS = [
+	'log_retention_days',
+	'log_max_count',
+	'log_debug_enabled'
+] as const;
+
+/**
  * Keys covered by the API configuration panel (Plex + OpenAI connections).
  * Used for the optimistic-concurrency timestamp on `updateApiConfig`.
  *

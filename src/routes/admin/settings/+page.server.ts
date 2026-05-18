@@ -26,6 +26,7 @@ import {
 	getWrappedTheme,
 	isCsrfWarningDismissed,
 	isPlexInsecureLocalHttpAllowed,
+	LOG_SETTINGS_KEYS,
 	resetCsrfWarningDismissal,
 	SERVER_WRAPPED_SETTINGS_KEYS,
 	setApiConfigAtomic,
@@ -194,10 +195,11 @@ const ApiConfigSchema = z.object({
 });
 
 /**
- * OCC strategy: NONE in PR-1.
- * Pre-v3 schema with no version field. The v3 plan calls for inline OCC
- * (`settingsVersion`) — added in PR-2 alongside the settings nested-route
- * split (US-020).
+ * OCC strategy: INLINE `settingsVersion`.
+ * Retrofitted in PR-2 (US-020 partial) — was NONE in PR-1. The version field
+ * rides alongside the data fields and is validated in the same `safeParse`
+ * call. The action handler promotes blank/missing/stale `settingsVersion` to
+ * the same 409 path as the other inline-OCC actions.
  */
 const LogSettingsSchema = z.object({
 	retentionDays: z.coerce
@@ -210,7 +212,8 @@ const LogSettingsSchema = z.object({
 		.int('Max log count must be a whole number')
 		.min(1000, 'Max log count must be at least 1000')
 		.max(1000000, 'Max log count cannot exceed 1,000,000'),
-	debugEnabled: z.boolean()
+	debugEnabled: z.boolean(),
+	settingsVersion: z.string().min(1, 'Missing settings version (reload the page)')
 });
 
 /**
@@ -273,6 +276,7 @@ export const load: PageServerLoad = async () => {
 		serverWrappedSettingsUpdatedAt,
 		userDefaultsSettingsUpdatedAt,
 		apiConfigUpdatedAt,
+		logSettingsUpdatedAt,
 		// Eager-load the total play-history count so the destructive Delete History
 		// buttons can render with a known count from first paint, instead of needing
 		// an on-click POST to ?/getPlayHistoryCount before they can show a
@@ -300,6 +304,7 @@ export const load: PageServerLoad = async () => {
 		getAppSettingsUpdatedAt(SERVER_WRAPPED_SETTINGS_KEYS),
 		getAppSettingsUpdatedAt(USER_DEFAULTS_SETTINGS_KEYS),
 		getAppSettingsUpdatedAt(API_CONFIG_KEYS),
+		getAppSettingsUpdatedAt(LOG_SETTINGS_KEYS),
 		countPlayHistory()
 	]);
 
@@ -371,6 +376,7 @@ export const load: PageServerLoad = async () => {
 		userDefaultsSettingsVersion:
 			userDefaultsSettingsUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
 		apiConfigVersion: apiConfigUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
+		logSettingsVersion: logSettingsUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
 		security: {
 			originValue: csrfConfig.origin.value,
 			csrfEnabled: !!csrfConfig.origin.value,
@@ -748,16 +754,41 @@ export const actions: Actions = requireAdminActions({
 		const data = {
 			retentionDays: formData.get('retentionDays')?.toString(),
 			maxCount: formData.get('maxCount')?.toString(),
-			debugEnabled: formData.get('debugEnabled')?.toString() === 'true'
+			debugEnabled: formData.get('debugEnabled')?.toString() === 'true',
+			settingsVersion: formData.get('settingsVersion')?.toString() ?? ''
 		};
 
 		const parsed = LogSettingsSchema.safeParse(data);
 		if (!parsed.success) {
 			const fieldErrors = parsed.error.flatten().fieldErrors;
+			// Promote blank/missing settingsVersion to a 409 conflict — matches the
+			// inline-OCC pattern used by `updateUserDefaults` and
+			// `updateServerWrappedSettings`. Recovery is reload the page.
+			if (fieldErrors.settingsVersion?.length) {
+				return fail(409, {
+					conflict: true,
+					error: 'Settings changed in another tab. Please reload.'
+				});
+			}
 			logger.warn('updateLogSettings rejected: validation failed', 'Settings', { fieldErrors });
 			return fail(400, {
 				error: 'Invalid input',
 				fieldErrors
+			});
+		}
+
+		// OCC: refuse the write when the submitted version is older than the row's
+		// current `max(updatedAt)` across LOG_SETTINGS_KEYS. We compare the parsed
+		// ms timestamps so an empty row table (fresh install) compares 0 against
+		// the epoch fallback the load sends — both round to 0 and the write
+		// proceeds without a false-409.
+		const currentUpdatedAt = await getAppSettingsUpdatedAt(LOG_SETTINGS_KEYS);
+		const currentMs = currentUpdatedAt?.getTime() ?? 0;
+		const submittedMs = Date.parse(parsed.data.settingsVersion);
+		if (Number.isNaN(submittedMs) || submittedMs < currentMs) {
+			return fail(409, {
+				conflict: true,
+				error: 'Settings changed in another tab. Please reload.'
 			});
 		}
 

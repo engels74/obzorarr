@@ -2769,6 +2769,7 @@ const logFieldErrors = $derived(
 							</p>
 						</div>
 						<input type="hidden" name="debugEnabled" value={logDebugEnabled.toString()} />
+						<input type="hidden" name="settingsVersion" value={data.logSettingsVersion} />
 
 						<div class="panel-actions">
 							<button type="submit" class="btn-primary" disabled={isSavingLogSettings}>
