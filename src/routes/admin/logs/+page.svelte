@@ -3,6 +3,7 @@ import { browser } from '$app/environment';
 import { enhance } from '$app/forms';
 import { goto, invalidateAll } from '$app/navigation';
 import { page } from '$app/stores';
+import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import * as AlertDialog from '$lib/components/ui/alert-dialog';
 import { Button } from '$lib/components/ui/button';
 import type { LogEntry, LogLevelType } from '$lib/server/logging';
@@ -502,10 +503,9 @@ $effect(() => {
 	<!-- Controls Section -->
 	<section class="section controls-section">
 		<div class="controls-left">
-			<button
+			<Button
 				type="button"
-				class="control-button"
-				class:active={autoScroll}
+				class={`control-button tap-target ${autoScroll ? 'active' : ''}`}
 				onclick={toggleAutoScroll}
 			>
 				{#if autoScroll}
@@ -514,7 +514,7 @@ $effect(() => {
 				{:else}
 					Resume Live View
 				{/if}
-			</button>
+			</Button>
 
 			<form
 				method="POST"
@@ -548,26 +548,30 @@ $effect(() => {
 				}}
 				class="inline-form"
 			>
-				<button type="submit" class="control-button secondary"> Export JSON </button>
+				<SubmitButton class="control-button secondary tap-target">
+					{#snippet children()}
+						Export JSON
+					{/snippet}
+				</SubmitButton>
 			</form>
 		</div>
 
 		<div class="controls-right">
-			<button
+			<Button
 				type="button"
-				class="control-button secondary"
+				class="control-button secondary tap-target"
 				onclick={() => (runCleanupDialogOpen = true)}
 			>
 				Run Cleanup
-			</button>
+			</Button>
 
-			<button
+			<Button
 				type="button"
-				class="control-button danger"
+				class="control-button danger tap-target"
 				onclick={() => (clearLogsDialogOpen = true)}
 			>
 				Clear All Logs
-			</button>
+			</Button>
 		</div>
 	</section>
 
@@ -1027,7 +1031,12 @@ $effect(() => {
 			display: inline;
 		}
 
-		.control-button {
+		/* `.control-button` is the log-page actions group (live-view
+		   toggle + Export/Cleanup/Clear). 4 variants (default primary +
+		   .secondary + .danger + .active) all hoisted to :global so the
+		   shadcn Button + SubmitButton consumers inherit each variant's
+		   palette. */
+		:global(.control-button) {
 			padding: 0.5rem 1rem;
 			font-size: 0.875rem;
 			font-weight: 500;
@@ -1042,22 +1051,22 @@ $effect(() => {
 			transition: opacity 0.15s ease;
 		}
 
-		.control-button:hover {
+		:global(.control-button:hover) {
 			opacity: 0.9;
 		}
 
-		.control-button.secondary {
+		:global(.control-button.secondary) {
 			background: oklch(var(--secondary));
 			color: oklch(var(--secondary-foreground));
 			border: 1px solid oklch(var(--border));
 		}
 
-		.control-button.danger {
+		:global(.control-button.danger) {
 			background: oklch(var(--destructive));
 			color: oklch(var(--destructive-foreground));
 		}
 
-		.control-button.active {
+		:global(.control-button.active) {
 			background: oklch(0.5266 0.1278 143.49);
 		}
 
@@ -1369,7 +1378,7 @@ $effect(() => {
 				width: 100%;
 			}
 
-			.control-button {
+			:global(.control-button) {
 				width: 100%;
 				justify-content: center;
 			}
