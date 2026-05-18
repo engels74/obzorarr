@@ -23,9 +23,12 @@ import {
 import type { Actions, PageServerLoad } from './$types';
 
 /**
- * OCC strategy: INLINE `settingsVersion` for both forms (z.object). Schemas
- * duplicated from monolith pending shared module emergence after more
- * tabs land.
+ * OCC strategy: INLINE `settingsVersion` for both forms (z.object). Each
+ * nested-route owns its own schemas — the shared-module consolidation that
+ * was tentatively planned during US-020 didn't materialise because the
+ * six tabs settled on different shapes (Superforms vs use:enhance, z.object
+ * vs z.enum, inline vs external OCC). Schema co-location with its consuming
+ * action stays the cleanest layout post-US-022.
  */
 const AnonymizationSchema = z.enum(['real', 'anonymous', 'hybrid']);
 const ServerWrappedModeSchema = z.enum(['public', 'private-oauth']);
