@@ -1,4 +1,5 @@
 <script lang="ts">
+import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 import { animate, stagger } from 'motion';
 import { browser } from '$app/environment';
 import { enhance } from '$app/forms';
@@ -11,7 +12,9 @@ import {
 	startPlexLoginRedirect
 } from '$lib/client/plex-login';
 import PopupBlockedModal from '$lib/components/auth/PopupBlockedModal.svelte';
+import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
+import { Button } from '$lib/components/ui/button';
 import * as Tooltip from '$lib/components/ui/tooltip';
 import { toast } from '$lib/services/toast';
 import type { ActionData, PageData } from './$types';
@@ -1065,29 +1068,27 @@ function formatServerUrl(url: string | null): string {
 	{#snippet footer()}
 		{#if data.hasEnvConfig && data.canProceed}
 			<form method="POST" action="?/verifyAdmin" use:enhance>
-				<button type="submit" class="continue-button">
-					<span>Continue</span>
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-						<path d="M5 12h14M12 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" />
-					</svg>
-				</button>
+				<SubmitButton class="continue-button tap-target">
+					{#snippet children()}
+						<span>Continue</span>
+						<ArrowRightIcon class="size-[18px]" strokeWidth={2.5} />
+					{/snippet}
+				</SubmitButton>
 			</form>
 		{:else if !data.hasEnvConfig && serverSaved}
 			<form method="POST" action="?/continueAfterServerSelection" use:enhance>
-				<button type="submit" class="continue-button">
-					<span>Continue</span>
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-						<path d="M5 12h14M12 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" />
-					</svg>
-				</button>
+				<SubmitButton class="continue-button tap-target">
+					{#snippet children()}
+						<span>Continue</span>
+						<ArrowRightIcon class="size-[18px]" strokeWidth={2.5} />
+					{/snippet}
+				</SubmitButton>
 			</form>
 		{:else}
-			<button type="button" class="continue-button" disabled>
+			<Button type="button" class="continue-button tap-target" disabled>
 				<span>Continue</span>
-				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-					<path d="M5 12h14M12 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" />
-				</svg>
-			</button>
+				<ArrowRightIcon class="size-[18px]" strokeWidth={2.5} />
+			</Button>
 		{/if}
 	{/snippet}
 </OnboardingCard>
@@ -1875,8 +1876,15 @@ function formatServerUrl(url: string | null): string {
 			height: 18px;
 		}
 
-		/* Continue Button */
-		.continue-button {
+		/* Continue Button — hoisted to :global so SubmitButton + Button
+		   (both shadcn primitives render the button element inside a
+		   child component) inherit the primary palette, hover translate-y,
+		   and dual shadow (drop + inset highlight). `.continue-button svg`
+		   descendant rule dropped; ArrowRightIcon is sized inline via
+		   `class="size-[18px]"`. Same migration template as iteration 88's
+		   onboarding/sync continue-button (which uses identical CSS;
+		   eventual consolidation candidate). */
+		:global(.continue-button) {
 			display: inline-flex;
 			align-items: center;
 			justify-content: center;
@@ -1895,23 +1903,18 @@ function formatServerUrl(url: string | null): string {
 				inset 0 1px 0 rgba(255, 255, 255, 0.2);
 		}
 
-		.continue-button:hover:not(:disabled) {
+		:global(.continue-button:hover:not(:disabled)) {
 			transform: translateY(-1px);
 			box-shadow:
 				0 4px 16px oklch(var(--primary) / 0.4),
 				inset 0 1px 0 rgba(255, 255, 255, 0.25);
 		}
 
-		.continue-button:disabled {
+		:global(.continue-button:disabled) {
 			opacity: 0.4;
 			cursor: not-allowed;
 			transform: none;
 			box-shadow: none;
-		}
-
-		.continue-button svg {
-			width: 18px;
-			height: 18px;
 		}
 
 		/* SSL Connection Card Enhancement */
