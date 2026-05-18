@@ -624,14 +624,14 @@ $effect(() => {
 									{/if}
 								</td>
 								<td class="col-actions">
-									<button
+									<Button
 										type="button"
-										class="copy-button"
+										class="copy-button tap-target"
 										title="Copy to clipboard"
 										onclick={() => copyLog(log)}
 									>
 										Copy
-									</button>
+									</Button>
 								</td>
 							</tr>
 						{/each}
@@ -1236,7 +1236,11 @@ $effect(() => {
 			overflow-x: auto;
 		}
 
-		.copy-button {
+		/* `.copy-button` is the per-row copy-to-clipboard CTA in the log
+		   table. Hoisted to :global so shadcn Button's child-rendered
+		   <button> inherits the muted-default vs primary-on-hover
+		   palette swap. */
+		:global(.copy-button) {
 			padding: 0.25rem 0.5rem;
 			font-size: 0.6875rem;
 			background: oklch(var(--muted));
@@ -1246,7 +1250,7 @@ $effect(() => {
 			cursor: pointer;
 		}
 
-		.copy-button:hover {
+		:global(.copy-button:hover) {
 			background: oklch(var(--primary));
 			color: oklch(var(--primary-foreground));
 			border-color: oklch(var(--primary));
