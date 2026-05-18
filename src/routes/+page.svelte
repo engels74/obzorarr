@@ -457,7 +457,12 @@ function handleCancelRedirect(): void {
 			margin: 0 0 0.75rem;
 		}
 
-		.login-button {
+		/* `.login-button` is the secondary Plex-OAuth CTA. Same :global hoist
+		   story as .view-button + .username-input above — prep for the
+		   future shadcn Button swap so the child component's rendered
+		   element inherits the styling across Svelte 5's component-scope
+		   boundary. Rule bodies are byte-identical. */
+		:global(.login-button) {
 			display: inline-flex;
 			align-items: center;
 			justify-content: center;
@@ -471,19 +476,19 @@ function handleCancelRedirect(): void {
 			transition: all 0.2s ease;
 		}
 
-		.login-button.secondary {
+		:global(.login-button.secondary) {
 			background: oklch(var(--secondary));
 			color: oklch(var(--secondary-foreground));
 			border: 1px solid oklch(var(--border));
 			box-shadow: none;
 		}
 
-		.login-button.secondary:hover:not(:disabled) {
+		:global(.login-button.secondary:hover:not(:disabled)) {
 			background: oklch(var(--muted));
 			transform: none;
 		}
 
-		.login-button:disabled {
+		:global(.login-button:disabled) {
 			opacity: 0.8;
 			cursor: not-allowed;
 		}
@@ -585,7 +590,7 @@ function handleCancelRedirect(): void {
 				width: 100%;
 			}
 
-			.login-button {
+			:global(.login-button) {
 				width: 100%;
 				min-width: unset;
 			}
@@ -598,7 +603,7 @@ function handleCancelRedirect(): void {
 			}
 
 			:global(.view-button),
-			.login-button,
+			:global(.login-button),
 			:global(.username-input) {
 				transition: none;
 			}
