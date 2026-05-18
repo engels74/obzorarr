@@ -2,6 +2,7 @@
 import { animate } from 'motion';
 import { tick, untrack } from 'svelte';
 import { enhance } from '$app/forms';
+import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
 import { handleFormToast } from '$lib/utils/form-toast';
 import { submitAction } from '$lib/utils/submit-action';
@@ -783,7 +784,11 @@ function getThemeColors(themeValue: string) {
 
 			<!-- Skip Link (center) -->
 			<form method="POST" action="?/skipSettings" use:enhance class="skip-form">
-				<button type="submit" class="btn-skip-link" disabled={isSubmitting}> Skip setup </button>
+				<SubmitButton class="btn-skip-link tap-target" disabled={isSubmitting}>
+					{#snippet children()}
+						Skip setup
+					{/snippet}
+				</SubmitButton>
 			</form>
 
 			<!-- Next / Save Button -->
@@ -1038,7 +1043,11 @@ function getThemeColors(themeValue: string) {
 			transform: translateX(-50%);
 		}
 
-		.btn-skip-link {
+		/* `.btn-skip-link` styled as a low-emphasis text link (underline-
+		   on-hover, transparent background). Hoisted to :global so
+		   SubmitButton's child-rendered <button> inherits the link-style
+		   palette + hover treatment + :disabled fade. */
+		:global(.btn-skip-link) {
 			background: transparent;
 			border: none;
 			color: rgba(255, 255, 255, 0.4);
@@ -1051,12 +1060,12 @@ function getThemeColors(themeValue: string) {
 			text-underline-offset: 2px;
 		}
 
-		.btn-skip-link:hover:not(:disabled) {
+		:global(.btn-skip-link:hover:not(:disabled)) {
 			color: rgba(255, 255, 255, 0.6);
 			text-decoration-color: currentColor;
 		}
 
-		.btn-skip-link:disabled {
+		:global(.btn-skip-link:disabled) {
 			opacity: 0.5;
 			cursor: not-allowed;
 		}
@@ -1713,7 +1722,7 @@ function getThemeColors(themeValue: string) {
 				font-size: 0.8rem;
 			}
 
-			.btn-skip-link {
+			:global(.btn-skip-link) {
 				font-size: 0.75rem;
 			}
 		}
