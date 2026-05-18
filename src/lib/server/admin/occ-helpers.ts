@@ -33,3 +33,33 @@ export async function externalOccCheck(
 	}
 	return { status: 'ok' };
 }
+
+/**
+ * Inline OCC check shared by `updateLogSettings`, `updateTrustProxy`, and
+ * `updateCsrfOrigin`. The conflict response shape for these actions is
+ * `{ conflict: true, error: 'Settings changed in another tab. Please
+ * reload.' }` so the helper just returns a status discriminator — the
+ * caller writes the `fail(409, ...)` itself to keep the existing wording
+ * and the test-asserted payload shape intact.
+ *
+ * For schemas where `settingsVersion` is a required Zod field, the schema
+ * already rejects blank submissions; calling this helper after a
+ * successful `safeParse` only exercises the stale branch. The CsrfOrigin
+ * call site invokes it BEFORE schema parsing (the clear branch bypasses
+ * the schema entirely), so the blank-handling here is exercised there.
+ */
+export async function inlineOccCheck(
+	submittedVersion: string,
+	keys: readonly string[]
+): Promise<{ status: 'ok' } | { status: 'conflict' }> {
+	if (!submittedVersion) {
+		return { status: 'conflict' };
+	}
+	const currentUpdatedAt = await getAppSettingsUpdatedAt(keys);
+	const currentMs = currentUpdatedAt?.getTime() ?? 0;
+	const submittedMs = Date.parse(submittedVersion);
+	if (Number.isNaN(submittedMs) || submittedMs < currentMs) {
+		return { status: 'conflict' };
+	}
+	return { status: 'ok' };
+}

@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import { externalOccCheck } from '$lib/server/admin/occ-helpers';
+import { externalOccCheck, inlineOccCheck } from '$lib/server/admin/occ-helpers';
 import {
 	AppSettingsKey,
+	LOG_SETTINGS_KEYS,
 	setAppSetting,
 	UI_THEME_SETTINGS_KEYS
 } from '$lib/server/admin/settings.service';
@@ -71,5 +72,47 @@ describe('externalOccCheck', () => {
 		const result = await externalOccCheck(boundaryVersion, UI_THEME_SETTINGS_KEYS);
 
 		expect(result.status).toBe('ok');
+	});
+});
+
+describe('inlineOccCheck', () => {
+	beforeEach(async () => {
+		await db.delete(appSettings);
+	});
+
+	it('returns conflict for blank submittedVersion', async () => {
+		const result = await inlineOccCheck('', LOG_SETTINGS_KEYS);
+
+		expect(result).toEqual({ status: 'conflict' });
+		// Inline shape intentionally omits `current` (failure message is the
+		// generic "Settings changed in another tab" string; clients don't
+		// consume a fresh version from the response).
+		expect('current' in result).toBe(false);
+	});
+
+	it('returns conflict for unparseable submittedVersion', async () => {
+		const result = await inlineOccCheck('garbage', LOG_SETTINGS_KEYS);
+		expect(result).toEqual({ status: 'conflict' });
+	});
+
+	it('returns ok when submitted version is the epoch and no rows exist', async () => {
+		const result = await inlineOccCheck(new Date(0).toISOString(), LOG_SETTINGS_KEYS);
+		expect(result).toEqual({ status: 'ok' });
+	});
+
+	it('returns conflict when submitted version is stale', async () => {
+		// Seed one of the LOG_SETTINGS_KEYS rows so max(updatedAt) > 0.
+		await setAppSetting('log_retention_days' as never, '14');
+
+		const result = await inlineOccCheck(new Date(0).toISOString(), LOG_SETTINGS_KEYS);
+		expect(result).toEqual({ status: 'conflict' });
+	});
+
+	it('returns ok when submitted version is fresh (>= current row updatedAt)', async () => {
+		await setAppSetting('log_retention_days' as never, '14');
+
+		const futureVersion = new Date(Date.now() + 60_000).toISOString();
+		const result = await inlineOccCheck(futureVersion, LOG_SETTINGS_KEYS);
+		expect(result).toEqual({ status: 'ok' });
 	});
 });

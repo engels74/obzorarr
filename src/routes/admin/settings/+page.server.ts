@@ -2,7 +2,7 @@ import { arch as osArch, platform as osPlatform } from 'node:os';
 import { fail } from '@sveltejs/kit';
 import { z } from 'zod';
 import { env } from '$env/dynamic/private';
-import { externalOccCheck } from '$lib/server/admin/occ-helpers';
+import { externalOccCheck, inlineOccCheck } from '$lib/server/admin/occ-helpers';
 import {
 	AnonymizationMode,
 	type AnonymizationModeType,
@@ -831,14 +831,12 @@ export const actions: Actions = requireAdminActions({
 		}
 
 		// OCC: refuse the write when the submitted version is older than the row's
-		// current `max(updatedAt)` across LOG_SETTINGS_KEYS. We compare the parsed
-		// ms timestamps so an empty row table (fresh install) compares 0 against
-		// the epoch fallback the load sends — both round to 0 and the write
-		// proceeds without a false-409.
-		const currentUpdatedAt = await getAppSettingsUpdatedAt(LOG_SETTINGS_KEYS);
-		const currentMs = currentUpdatedAt?.getTime() ?? 0;
-		const submittedMs = Date.parse(parsed.data.settingsVersion);
-		if (Number.isNaN(submittedMs) || submittedMs < currentMs) {
+		// current `max(updatedAt)` across LOG_SETTINGS_KEYS. The helper handles the
+		// no-rows-yet case by comparing against 0 (the epoch fallback the load sends
+		// also round-trips to 0), so a fresh install does not false-409.
+		if (
+			(await inlineOccCheck(parsed.data.settingsVersion, LOG_SETTINGS_KEYS)).status === 'conflict'
+		) {
 			return fail(409, {
 				conflict: true,
 				error: 'Settings changed in another tab. Please reload.'
@@ -1003,18 +1001,9 @@ export const actions: Actions = requireAdminActions({
 
 		// Inline OCC, validated outside the schema so both the set (csrfOrigin
 		// non-empty) and clear (csrfOrigin === '') branches share the same check.
-		// Promotes blank/missing/stale `settingsVersion` to the same 409 path the
-		// other inline-OCC actions use.
-		if (!submittedVersion) {
-			return fail(409, {
-				conflict: true,
-				error: 'Settings changed in another tab. Please reload.'
-			});
-		}
-		const currentUpdatedAt = await getAppSettingsUpdatedAt(CSRF_ORIGIN_SETTINGS_KEYS);
-		const currentMs = currentUpdatedAt?.getTime() ?? 0;
-		const submittedMs = Date.parse(submittedVersion);
-		if (Number.isNaN(submittedMs) || submittedMs < currentMs) {
+		// The helper folds blank + stale into a single conflict path so blank
+		// `submittedVersion` (from the no-cookie case) still triggers 409 here.
+		if ((await inlineOccCheck(submittedVersion, CSRF_ORIGIN_SETTINGS_KEYS)).status === 'conflict') {
 			return fail(409, {
 				conflict: true,
 				error: 'Settings changed in another tab. Please reload.'
@@ -1259,10 +1248,10 @@ export const actions: Actions = requireAdminActions({
 
 		// OCC: refuse the write when the submitted version is older than the row's
 		// current `updatedAt`. Same shape as `updateLogSettings`.
-		const currentUpdatedAt = await getAppSettingsUpdatedAt(TRUST_PROXY_SETTINGS_KEYS);
-		const currentMs = currentUpdatedAt?.getTime() ?? 0;
-		const submittedMs = Date.parse(parsed.data.settingsVersion);
-		if (Number.isNaN(submittedMs) || submittedMs < currentMs) {
+		if (
+			(await inlineOccCheck(parsed.data.settingsVersion, TRUST_PROXY_SETTINGS_KEYS)).status ===
+			'conflict'
+		) {
 			return fail(409, {
 				conflict: true,
 				error: 'Settings changed in another tab. Please reload.'
