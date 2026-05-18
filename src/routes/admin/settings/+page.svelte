@@ -1988,6 +1988,7 @@ const logFieldErrors = $derived(
 										}}
 									>
 										<input type="hidden" name="csrfOrigin" value={csrfOriginValue} />
+										<input type="hidden" name="settingsVersion" value={data.csrfOriginVersion} />
 										<button type="submit" class="btn-primary" disabled={isSavingCsrf}>
 											{#if isSavingCsrf}
 												<Loader2 class="btn-icon spinning" />
@@ -2991,6 +2992,7 @@ const logFieldErrors = $derived(
 			>
 				<input type="hidden" name="csrfOrigin" value={pendingCsrfOrigin ?? ''} />
 				<input type="hidden" name="confirmMismatch" value="true" />
+				<input type="hidden" name="settingsVersion" value={data.csrfOriginVersion} />
 				<AlertDialog.Action type="submit" disabled={isConfirmingCsrfMismatch}>
 					{isConfirmingCsrfMismatch ? 'Saving…' : 'Save anyway'}
 				</AlertDialog.Action>

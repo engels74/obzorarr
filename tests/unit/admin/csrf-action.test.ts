@@ -23,6 +23,7 @@ function createRequest(opts: {
 	confirmMismatch?: boolean;
 	requestUrl?: string;
 	originHeader?: string | null;
+	settingsVersion?: string;
 }): Request {
 	const formData = new FormData();
 	if (opts.csrfOrigin !== undefined) {
@@ -31,6 +32,10 @@ function createRequest(opts: {
 	if (opts.confirmMismatch) {
 		formData.set('confirmMismatch', 'true');
 	}
+	// Far-past timestamp wins the inline-OCC check for the no-rows-yet case
+	// (maxMs = 0). Tests that pre-seed AppSettingsKey.CSRF_ORIGIN must pass
+	// a fresh timestamp via `settingsVersion`.
+	formData.set('settingsVersion', opts.settingsVersion ?? new Date(0).toISOString());
 	const requestUrl = opts.requestUrl ?? `${ORIGIN}/admin/settings?/updateCsrfOrigin`;
 	const headers: HeadersInit = {};
 	// Default to setting Origin: ORIGIN so tests exercise the same source-of-truth
@@ -136,7 +141,13 @@ describe('admin updateCsrfOrigin action', () => {
 	it('refuses to clear origin when no ORIGIN env and skip flag not set', async () => {
 		await setAppSetting(AppSettingsKey.CSRF_ORIGIN, ORIGIN);
 
-		const result = (await runUpdate(createRequest({ csrfOrigin: '' }))) as {
+		// setAppSetting just wrote the row at ~Date.now(); pass a future timestamp
+		// so the inline-OCC check sees the submitted version as fresh-enough and
+		// the test exercises the clear-guard rather than 409.
+		const futureVersion = new Date(Date.now() + 60_000).toISOString();
+		const result = (await runUpdate(
+			createRequest({ csrfOrigin: '', settingsVersion: futureVersion })
+		)) as {
 			status: number;
 			data: { error: string };
 		};
@@ -150,7 +161,10 @@ describe('admin updateCsrfOrigin action', () => {
 		await setAppSetting(AppSettingsKey.CSRF_ORIGIN, ORIGIN);
 		await setAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED, 'true');
 
-		const result = await runUpdate(createRequest({ csrfOrigin: '' }));
+		const futureVersion = new Date(Date.now() + 60_000).toISOString();
+		const result = await runUpdate(
+			createRequest({ csrfOrigin: '', settingsVersion: futureVersion })
+		);
 
 		expect((result as { success: boolean }).success).toBe(true);
 		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBeNull();
@@ -205,11 +219,62 @@ describe('admin updateCsrfOrigin action', () => {
 		await setAppSetting(AppSettingsKey.CSRF_ORIGIN, ORIGIN);
 		await setAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED, 'true');
 
-		const result = await runUpdate(createRequest({ csrfOrigin: '   ' }));
+		const futureVersion = new Date(Date.now() + 60_000).toISOString();
+		const result = await runUpdate(
+			createRequest({ csrfOrigin: '   ', settingsVersion: futureVersion })
+		);
 
 		expect((result as { success: boolean }).success).toBe(true);
 		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBeNull();
 
 		await deleteAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED);
+	});
+
+	it('rejects updateCsrfOrigin with blank settingsVersion as 409 conflict', async () => {
+		const result = (await runUpdate(
+			createRequest({ csrfOrigin: ORIGIN, settingsVersion: '' })
+		)) as { status: number; data: Record<string, unknown> };
+
+		expect(result.status).toBe(409);
+		expect(result.data).toMatchObject({
+			conflict: true,
+			error: 'Settings changed in another tab. Please reload.'
+		});
+		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBeNull();
+	});
+
+	it('rejects updateCsrfOrigin with stale settingsVersion as 409 conflict', async () => {
+		// First write succeeds and advances the row's updatedAt.
+		await runUpdate(createRequest({ csrfOrigin: ORIGIN }));
+		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBe(ORIGIN);
+
+		// Stale tab tries to overwrite with the epoch timestamp.
+		const result = (await runUpdate(
+			createRequest({
+				csrfOrigin: 'http://other.example.com:5173',
+				settingsVersion: new Date(0).toISOString()
+			})
+		)) as { status: number; data: Record<string, unknown> };
+
+		expect(result.status).toBe(409);
+		expect(result.data).toMatchObject({ conflict: true });
+		// First write's value still in place — stale tab did not clobber it.
+		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBe(ORIGIN);
+	});
+
+	it('rejects clear branch with blank settingsVersion as 409 conflict (not 400 clear-guard)', async () => {
+		// Both branches share the same OCC check, so a stale tab trying to clear
+		// hits 409 before the env/skip-flag guard.
+		await setAppSetting(AppSettingsKey.CSRF_ORIGIN, ORIGIN);
+
+		const result = (await runUpdate(createRequest({ csrfOrigin: '', settingsVersion: '' }))) as {
+			status: number;
+			data: Record<string, unknown>;
+		};
+
+		expect(result.status).toBe(409);
+		expect(result.data).toMatchObject({ conflict: true });
+		// Row left intact.
+		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBe(ORIGIN);
 	});
 });

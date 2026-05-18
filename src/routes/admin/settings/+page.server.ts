@@ -8,6 +8,7 @@ import {
 	API_CONFIG_KEYS,
 	AppSettingsKey,
 	type ConfigSource,
+	CSRF_ORIGIN_SETTINGS_KEYS,
 	clearApiConfigKey,
 	clearCachedServerMachineId,
 	clearPlayHistory,
@@ -218,8 +219,12 @@ const LogSettingsSchema = z.object({
 });
 
 /**
- * OCC strategy: NONE in PR-1.
- * Plan calls for inline OCC in PR-2 (US-020).
+ * OCC strategy: INLINE `settingsVersion` (validated outside the Zod schema).
+ * Retrofitted in PR-2 (US-020 partial) — was NONE in PR-1. The
+ * `updateCsrfOrigin` action extracts `settingsVersion` from `formData`
+ * BEFORE the set/clear branching and returns `fail(409, ...)` on stale.
+ * The version is intentionally NOT a field of `CsrfOriginSchema` because
+ * the clear branch (`csrfOrigin === ''`) bypasses the schema entirely.
  */
 const CsrfOriginSchema = z.object({
 	csrfOrigin: z
@@ -282,6 +287,7 @@ export const load: PageServerLoad = async () => {
 		apiConfigUpdatedAt,
 		logSettingsUpdatedAt,
 		trustProxySettingsUpdatedAt,
+		csrfOriginSettingsUpdatedAt,
 		// Eager-load the total play-history count so the destructive Delete History
 		// buttons can render with a known count from first paint, instead of needing
 		// an on-click POST to ?/getPlayHistoryCount before they can show a
@@ -311,6 +317,7 @@ export const load: PageServerLoad = async () => {
 		getAppSettingsUpdatedAt(API_CONFIG_KEYS),
 		getAppSettingsUpdatedAt(LOG_SETTINGS_KEYS),
 		getAppSettingsUpdatedAt(TRUST_PROXY_SETTINGS_KEYS),
+		getAppSettingsUpdatedAt(CSRF_ORIGIN_SETTINGS_KEYS),
 		countPlayHistory()
 	]);
 
@@ -384,6 +391,7 @@ export const load: PageServerLoad = async () => {
 		apiConfigVersion: apiConfigUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
 		logSettingsVersion: logSettingsUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
 		trustProxyVersion: trustProxySettingsUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
+		csrfOriginVersion: csrfOriginSettingsUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
 		security: {
 			originValue: csrfConfig.origin.value,
 			csrfEnabled: !!csrfConfig.origin.value,
@@ -953,6 +961,27 @@ export const actions: Actions = requireAdminActions({
 		// used for ApiConfigSchema URL fields above.
 		const csrfOrigin = (formData.get('csrfOrigin')?.toString() ?? '').trim();
 		const confirmMismatch = formData.get('confirmMismatch')?.toString() === 'true';
+		const submittedVersion = formData.get('settingsVersion')?.toString() ?? '';
+
+		// Inline OCC, validated outside the schema so both the set (csrfOrigin
+		// non-empty) and clear (csrfOrigin === '') branches share the same check.
+		// Promotes blank/missing/stale `settingsVersion` to the same 409 path the
+		// other inline-OCC actions use.
+		if (!submittedVersion) {
+			return fail(409, {
+				conflict: true,
+				error: 'Settings changed in another tab. Please reload.'
+			});
+		}
+		const currentUpdatedAt = await getAppSettingsUpdatedAt(CSRF_ORIGIN_SETTINGS_KEYS);
+		const currentMs = currentUpdatedAt?.getTime() ?? 0;
+		const submittedMs = Date.parse(submittedVersion);
+		if (Number.isNaN(submittedMs) || submittedMs < currentMs) {
+			return fail(409, {
+				conflict: true,
+				error: 'Settings changed in another tab. Please reload.'
+			});
+		}
 
 		if (csrfOrigin) {
 			const parsed = CsrfOriginSchema.safeParse({ csrfOrigin });

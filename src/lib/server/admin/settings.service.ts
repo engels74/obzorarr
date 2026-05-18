@@ -174,6 +174,14 @@ export const LOG_SETTINGS_KEYS = [
 export const TRUST_PROXY_SETTINGS_KEYS = [AppSettingsKey.TRUST_PROXY] as const;
 
 /**
+ * Single-key OCC tuple for the Security tab CSRF Origin field (the textarea
+ * + "Save CSRF Origin" / "Clear" form). Only covers the origin value; the
+ * skip flag (`CSRF_ORIGIN_SKIPPED`) has its own toggle and is intentionally
+ * NOT part of this group so the two controls don't false-409 each other.
+ */
+export const CSRF_ORIGIN_SETTINGS_KEYS = [AppSettingsKey.CSRF_ORIGIN] as const;
+
+/**
  * Keys covered by the API configuration panel (Plex + OpenAI connections).
  * Used for the optimistic-concurrency timestamp on `updateApiConfig`.
  *
