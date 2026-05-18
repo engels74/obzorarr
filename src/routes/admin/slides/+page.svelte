@@ -734,10 +734,14 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 					</div>
 
 					<div class="modal-actions">
-						<button type="button" class="cancel-button" onclick={closeEditor}> Cancel </button>
-						<button type="submit" class="save-button">
-							{editingSlide ? 'Save Changes' : 'Create Slide'}
-						</button>
+						<Button type="button" class="cancel-button tap-target" onclick={closeEditor}>
+							Cancel
+						</Button>
+						<SubmitButton class="save-button tap-target">
+							{#snippet children()}
+								{editingSlide ? 'Save Changes' : 'Create Slide'}
+							{/snippet}
+						</SubmitButton>
 					</div>
 				</form>
 			</div>
@@ -1308,7 +1312,10 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			z-index: 1;
 		}
 
-		.cancel-button {
+		/* `.cancel-button` + `.save-button` are the editor modal's footer
+		   action pair. Hoisted to :global so shadcn Button (cancel) +
+		   SubmitButton (save) inherit their secondary/primary palettes. */
+		:global(.cancel-button) {
 			padding: 0.5rem 1rem;
 			background: oklch(var(--secondary));
 			color: oklch(var(--foreground));
@@ -1317,11 +1324,11 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			cursor: pointer;
 		}
 
-		.cancel-button:hover {
+		:global(.cancel-button:hover) {
 			background: oklch(var(--muted));
 		}
 
-		.save-button {
+		:global(.save-button) {
 			padding: 0.5rem 1rem;
 			background: oklch(var(--primary));
 			color: oklch(var(--primary-foreground));
@@ -1333,7 +1340,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			z-index: 2;
 		}
 
-		.save-button:hover {
+		:global(.save-button:hover) {
 			opacity: 0.9;
 		}
 
