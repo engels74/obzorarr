@@ -115,4 +115,19 @@ describe('inlineOccCheck', () => {
 		const result = await inlineOccCheck(futureVersion, LOG_SETTINGS_KEYS);
 		expect(result).toEqual({ status: 'ok' });
 	});
+
+	it('returns ok when submitted version equals current row updatedAt (boundary)', async () => {
+		// Symmetric with the externalOccCheck boundary test. inlineOccCheck
+		// uses strict `submittedMs < currentMs`, so submissions landing on the
+		// exact-ms boundary pass OCC. Same-second concurrent submissions from
+		// two tabs both succeed; the SQLite atomic-write path is the final
+		// arbiter via setApiConfigAtomic / setUserDefaultsAtomic.
+		await setAppSetting('log_retention_days' as never, '14');
+
+		const rows = await db.select().from(appSettings);
+		const currentMs = rows[0]?.updatedAt.getTime() ?? 0;
+		const boundaryVersion = new Date(currentMs).toISOString();
+		const result = await inlineOccCheck(boundaryVersion, LOG_SETTINGS_KEYS);
+		expect(result).toEqual({ status: 'ok' });
+	});
 });
