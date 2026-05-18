@@ -1,8 +1,10 @@
 <script lang="ts">
+import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 import { animate, stagger } from 'motion';
 import { untrack } from 'svelte';
 import { browser } from '$app/environment';
 import { enhance } from '$app/forms';
+import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
 import type { ActionData, PageData } from './$types';
 
@@ -418,12 +420,12 @@ function formatNumber(n: number): string {
 				</form>
 			{/if}
 			<form method="POST" action="?/continue" use:enhance>
-				<button type="submit" class="continue-button" disabled={!hasStarted}>
-					<span>Continue</span>
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-						<path d="M5 12h14M12 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" />
-					</svg>
-				</button>
+				<SubmitButton class="continue-button tap-target" disabled={!hasStarted}>
+					{#snippet children()}
+						<span>Continue</span>
+						<ArrowRightIcon class="size-[18px]" strokeWidth={2.5} />
+					{/snippet}
+				</SubmitButton>
 			</form>
 		</div>
 	{/snippet}
@@ -918,8 +920,12 @@ function formatNumber(n: number): string {
 			height: 18px;
 		}
 
-		/* Continue button */
-		.continue-button {
+		/* Continue button — hoisted to :global so SubmitButton's
+		   child-rendered <button> inherits the primary palette, hover
+		   translate-y, and dual shadow (drop + inset highlight). The
+		   `.continue-button svg` descendant rule is dropped because the
+		   lucide ArrowRightIcon is sized explicitly via `class="size-[18px]"`. */
+		:global(.continue-button) {
 			display: inline-flex;
 			align-items: center;
 			justify-content: center;
@@ -938,23 +944,18 @@ function formatNumber(n: number): string {
 				inset 0 1px 0 rgba(255, 255, 255, 0.2);
 		}
 
-		.continue-button:hover:not(:disabled) {
+		:global(.continue-button:hover:not(:disabled)) {
 			transform: translateY(-1px);
 			box-shadow:
 				0 4px 16px oklch(var(--primary) / 0.4),
 				inset 0 1px 0 rgba(255, 255, 255, 0.25);
 		}
 
-		.continue-button:disabled {
+		:global(.continue-button:disabled) {
 			opacity: 0.4;
 			cursor: not-allowed;
 			transform: none;
 			box-shadow: none;
-		}
-
-		.continue-button svg {
-			width: 18px;
-			height: 18px;
 		}
 
 		/* Responsive */
