@@ -1,20 +1,28 @@
 import {
 	AppSettingsKey,
 	getAppSetting,
+	getAppSettingsUpdatedAt,
 	getCsrfConfigWithSource,
 	getTrustProxyConfigWithSource,
-	isCsrfWarningDismissed
+	isCsrfWarningDismissed,
+	TRUST_PROXY_SETTINGS_KEYS
 } from '$lib/server/admin/settings.service';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
-	const [csrfConfig, csrfWarningDismissed, csrfOriginSkippedRaw, trustProxyConfig] =
-		await Promise.all([
-			getCsrfConfigWithSource(),
-			isCsrfWarningDismissed(),
-			getAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED),
-			getTrustProxyConfigWithSource()
-		]);
+	const [
+		csrfConfig,
+		csrfWarningDismissed,
+		csrfOriginSkippedRaw,
+		trustProxyConfig,
+		trustProxySettingsUpdatedAt
+	] = await Promise.all([
+		getCsrfConfigWithSource(),
+		isCsrfWarningDismissed(),
+		getAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED),
+		getTrustProxyConfigWithSource(),
+		getAppSettingsUpdatedAt(TRUST_PROXY_SETTINGS_KEYS)
+	]);
 
 	return {
 		security: {
@@ -27,6 +35,7 @@ export const load: PageServerLoad = async () => {
 			trustProxyValue: trustProxyConfig.trustProxy.value === 'true',
 			trustProxySource: trustProxyConfig.trustProxy.source,
 			trustProxyLocked: trustProxyConfig.trustProxy.isLocked
-		}
+		},
+		trustProxyVersion: trustProxySettingsUpdatedAt?.toISOString() ?? new Date(0).toISOString()
 	};
 };

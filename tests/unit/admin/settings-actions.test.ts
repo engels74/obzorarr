@@ -306,10 +306,17 @@ describe('admin updateTrustProxy action', () => {
 		else dynamicEnv.TRUST_PROXY = previousTrustProxyEnv;
 	}
 
-	function createTrustProxyRequest(enabled: boolean, confirmRisk?: boolean): Request {
+	function createTrustProxyRequest(
+		enabled: boolean,
+		confirmRisk?: boolean,
+		settingsVersion: string = new Date(0).toISOString()
+	): Request {
 		const formData = new FormData();
 		formData.set('enabled', enabled ? 'true' : 'false');
 		if (confirmRisk) formData.set('confirmRisk', 'true');
+		// Far-past timestamp wins OCC for the no-rows-yet case; explicit override
+		// available for the stale-version test.
+		formData.set('settingsVersion', settingsVersion);
 
 		return new Request('http://localhost/admin/settings?/updateTrustProxy', {
 			method: 'POST',
@@ -343,6 +350,7 @@ describe('admin updateTrustProxy action', () => {
 			const formData = new FormData();
 			formData.set('enabled', 'true');
 			formData.set('confirmRisk', 'false');
+			formData.set('settingsVersion', new Date(0).toISOString());
 
 			const result = await runUpdateTrustProxy(
 				new Request('http://localhost/admin/settings?/updateTrustProxy', {
@@ -359,6 +367,42 @@ describe('admin updateTrustProxy action', () => {
 				}
 			});
 			expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBeNull();
+		} finally {
+			restoreTrustProxyEnv();
+		}
+	});
+
+	it('rejects updateTrustProxy with blank settingsVersion as 409 conflict', async () => {
+		try {
+			const result = await runUpdateTrustProxy(createTrustProxyRequest(true, true, ''));
+			expect(result).toMatchObject({
+				status: 409,
+				data: {
+					conflict: true,
+					error: 'Settings changed in another tab. Please reload.'
+				}
+			});
+			expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBeNull();
+		} finally {
+			restoreTrustProxyEnv();
+		}
+	});
+
+	it('rejects updateTrustProxy with stale settingsVersion as 409 conflict', async () => {
+		try {
+			// First write succeeds + advances the row's updatedAt.
+			await runUpdateTrustProxy(createTrustProxyRequest(true, true));
+			expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBe('true');
+			// Stale tab tries to disable using the original epoch timestamp.
+			const result = await runUpdateTrustProxy(
+				createTrustProxyRequest(false, undefined, new Date(0).toISOString())
+			);
+			expect(result).toMatchObject({
+				status: 409,
+				data: { conflict: true }
+			});
+			// First write's value still in place — stale tab did not flip it.
+			expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBe('true');
 		} finally {
 			restoreTrustProxyEnv();
 		}
@@ -382,7 +426,11 @@ describe('admin updateTrustProxy action', () => {
 		try {
 			await setAppSetting(AppSettingsKey.TRUST_PROXY, 'true');
 
-			const result = await runUpdateTrustProxy(createTrustProxyRequest(false));
+			// setAppSetting just wrote the row at ~Date.now(); use a future timestamp
+			// so the inline-OCC check sees the submitted version as fresh-enough.
+			const result = await runUpdateTrustProxy(
+				createTrustProxyRequest(false, undefined, new Date(Date.now() + 60_000).toISOString())
+			);
 
 			expect(result).toMatchObject({
 				success: true,

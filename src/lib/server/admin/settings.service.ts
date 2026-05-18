@@ -166,6 +166,14 @@ export const LOG_SETTINGS_KEYS = [
 ] as const;
 
 /**
+ * Single-key OCC tuple for the Security tab Trust Proxy toggle. The form has
+ * exactly one persisted value (`AppSettingsKey.TRUST_PROXY`) so the version
+ * is just that row's `updatedAt`. Wrapped in a tuple to share the
+ * `getAppSettingsUpdatedAt(...)` helper that the multi-key OCC paths use.
+ */
+export const TRUST_PROXY_SETTINGS_KEYS = [AppSettingsKey.TRUST_PROXY] as const;
+
+/**
  * Keys covered by the API configuration panel (Plex + OpenAI connections).
  * Used for the optimistic-concurrency timestamp on `updateApiConfig`.
  *

@@ -2362,6 +2362,11 @@ const logFieldErrors = $derived(
 											}}
 										>
 											<input type="hidden" name="enabled" value="false" />
+											<input
+												type="hidden"
+												name="settingsVersion"
+												value={data.trustProxyVersion}
+											/>
 											<button type="submit" class="btn-destructive" disabled={isSavingTrustProxy}>
 												{#if isSavingTrustProxy}
 													<Loader2 class="btn-icon spinning" />
@@ -3035,6 +3040,7 @@ const logFieldErrors = $derived(
 			>
 				<input type="hidden" name="enabled" value="true" />
 				<input type="hidden" name="confirmRisk" value="true" />
+				<input type="hidden" name="settingsVersion" value={data.trustProxyVersion} />
 				<AlertDialog.Action type="submit" disabled={isConfirmingTrustProxy}>
 					{isConfirmingTrustProxy ? 'Enabling...' : 'Enable header trust'}
 				</AlertDialog.Action>
