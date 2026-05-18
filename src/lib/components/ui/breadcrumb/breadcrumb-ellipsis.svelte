@@ -1,5 +1,5 @@
 <script lang="ts">
-import MoreHorizontalIcon from '@lucide/svelte/icons/more-horizontal';
+import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
 import type { HTMLAttributes } from 'svelte/elements';
 import { cn, type WithElementRef, type WithoutChildren } from '$lib/utils.js';
 
@@ -18,6 +18,6 @@ let {
 	class={cn("size-5 [&>svg]:size-4 flex items-center justify-center", className)}
 	{...restProps}
 >
-	<MoreHorizontalIcon  />
+	<EllipsisIcon  />
 	<span class="sr-only">More</span>
 </span>
