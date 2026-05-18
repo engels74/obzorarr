@@ -131,6 +131,21 @@ describe('appearance nested route — updateWrappedTheme', () => {
 		expect(await getWrappedTheme()).toBe('supabase');
 	});
 
+	it('prefers `wrappedTheme` over `theme` when both are present (?? precedence)', async () => {
+		// Pin the documented precedence of `wrappedTheme ?? theme`. If a client
+		// happens to send both (a stale UI from the monolith era + the new
+		// per-tab input both wired up), wrappedTheme wins.
+		const result = await run(
+			makeRequest('updateWrappedTheme', {
+				wrappedTheme: 'doom-64',
+				theme: 'amber-minimal',
+				settingsVersion: new Date(0).toISOString()
+			})
+		);
+		expect(result).toMatchObject({ success: true });
+		expect(await getWrappedTheme()).toBe('doom-64');
+	});
+
 	it('rejects stale settingsVersion as 409', async () => {
 		await setAppSetting(AppSettingsKey.WRAPPED_THEME, 'supabase');
 		const result = await run(
