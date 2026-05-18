@@ -65,12 +65,28 @@ const FormBooleanSchema = z
 	.union([z.literal('true'), z.literal('false'), z.literal(true), z.literal(false)])
 	.transform((v) => v === 'true' || v === true);
 
+/**
+ * OCC strategy: INLINE `settingsVersion`. Parent schema for the
+ * server-wide wrapped settings form. `superValidate` infers the input
+ * type from this shape; the Superforms-driven action validates blank
+ * settingsVersion via Zod min(1) and stale via `inlineOccCheck` against
+ * `SERVER_WRAPPED_SETTINGS_KEYS`. The atomic write through
+ * `setServerWrappedSettingsAtomic` does a second OCC check inside the
+ * SQLite transaction to catch same-ms collisions.
+ */
 const ServerWrappedSettingsSchema = z.object({
 	anonymizationMode: AnonymizationSchema,
 	serverWrappedShareMode: ServerWrappedModeSchema,
 	settingsVersion: z.string().min(1, 'Missing settings version (reload the page)')
 });
 
+/**
+ * OCC strategy: INLINE `settingsVersion`. Parent schema for the user
+ * sharing defaults form. allowUserControl uses `FormBooleanSchema` so
+ * unexpected strings like 'on' fail validation. Same two-stage OCC
+ * (Zod min(1) + inlineOccCheck + transactional check in
+ * `setUserDefaultsAtomic`) as ServerWrappedSettingsSchema above.
+ */
 const UserDefaultsSettingsSchema = z.object({
 	defaultShareMode: ShareModeSchema,
 	allowUserControl: FormBooleanSchema,
