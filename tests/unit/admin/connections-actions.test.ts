@@ -112,6 +112,23 @@ describe('connections nested route — updateApiConfig (OCC + schema)', () => {
 		);
 		expect(result).toMatchObject({ status: 400 });
 	});
+
+	it('rejects checkbox-style boolean for plexAllowInsecureLocalHttp', async () => {
+		// Same protection as the privacy tab's FormBooleanSchema fix
+		// (commit adefc25): ApiConfigSchema.plexAllowInsecureLocalHttp uses
+		// z.enum(['true', 'false']).transform() so HTML checkbox 'on' fails
+		// schema validation instead of being silently coerced to false.
+		// Without this guard, accidentally wiring a checkbox to this field
+		// would unconditionally write `false` regardless of the checkbox
+		// state.
+		const result = await run(
+			makeRequest('updateApiConfig', {
+				plexAllowInsecureLocalHttp: 'on',
+				apiConfigVersion: new Date(Date.now() + 60_000).toISOString()
+			})
+		);
+		expect(result).toMatchObject({ status: 400, data: { error: 'Invalid input' } });
+	});
 });
 
 describe('connections nested route — clearOpenaiKey', () => {
