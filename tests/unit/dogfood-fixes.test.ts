@@ -144,13 +144,22 @@ describe('dogfood ISSUE-007 — --min-tap-size token rolled out everywhere', () 
 		}
 	});
 
-	it('applies the token to admin chrome controls', async () => {
+	it('applies the token to admin layout chrome (sidebar menu button)', async () => {
 		const layoutSource = await readSource('src/routes/admin/+layout.svelte');
 		expect(layoutSource).toContain('width: var(--min-tap-size);');
 		expect(layoutSource).toContain('height: var(--min-tap-size);');
+	});
 
+	// Source-pin guard on the monolith /admin/settings/+page.svelte's
+	// `.tab-button` + `.input-action` tap-size floors. The monolith is on
+	// the chopping block in US-022; once it's gone, the nested-route
+	// settings tabs (system/appearance/privacy/data/connections/security)
+	// will need their own tap-size guard against shadcn Button's default
+	// h-9 (36×36, below the WCAG 2.5.5 44×44 floor) before this test can
+	// be re-pointed. Tracked in LEGACY_REMOVAL.md alongside US-019's
+	// SidebarTrigger tap-size note.
+	it('applies the token to admin chrome — monolith settings (pending US-022 follow-up)', async () => {
 		const settingsSource = await readSource('src/routes/admin/settings/+page.svelte');
-		// `.tab-button` got a min-height floor; `.input-action` got both axes.
 		const tabButtonIdx = settingsSource.indexOf('.tab-button {');
 		expect(tabButtonIdx).toBeGreaterThan(-1);
 		expect(settingsSource.slice(tabButtonIdx, tabButtonIdx + 600)).toContain(

@@ -148,3 +148,39 @@ When resuming the migration:
    style of the trigger and the inert/aria-hidden of the closed sidebar).
 3. Then the shadcn primitive can land without losing the regression
    guards.
+
+## US-022 prep — source-pinned test audit + tap-size follow-up
+
+Once US-020's six nested-route UI extractions landed (commits 6603190
+through 97152be), 12 source-pinned tests pointed at the old monolith
+`src/routes/admin/settings/+page.svelte`:
+
+- 9 in `tests/unit/admin/ui-source-regressions.test.ts` — disposition
+  block at the top of the file documents which 5 get DELETED when US-022
+  runs (features deferred from nested routes), which 3 RE-POINT to
+  nested-route source paths, and which 1 needs the new state shape.
+- 3 in `tests/unit/dogfood-fixes.test.ts` — 2 were already split into a
+  separate `it()` that targets only `src/routes/admin/+layout.svelte`
+  (still passing post-deletion). The 3rd specifically tests the
+  monolith's `.tab-button` + `.input-action` tap-size floors and is
+  marked "pending US-022 follow-up" with the rationale below.
+
+### Tap-size follow-up before US-022 can land cleanly
+
+The shadcn `Button` primitive used across the nested-route settings tabs
+defaults to `h-9` (36×36) — that's below the WCAG 2.5.5 44×44 floor that
+the monolith fixed via the `--min-tap-size` token + `.tap-target` class.
+The dogfood ISSUE-007 regression test enforces the floor on the monolith
+today; once the monolith goes, the nested route tabs need their own
+guard. Two options:
+
+1. **Add a `.size-11` or `class="min-h-[var(--min-tap-size)]"` override**
+   on every interactive shadcn Button in the 6 nested route +page.svelte
+   files. Mechanical; about 12 sites.
+2. **Define a `tap-target` shadcn variant** in the project's `button`
+   primitive so the floor is built-in and discoverable. Bigger change;
+   ripples through any future Button consumer.
+
+Either choice unblocks the dogfood ISSUE-007 regression test re-point.
+Same blocker exists for US-019's SidebarTrigger (32×32 → 44×44 floor),
+so a shared fix is the highest-leverage move.

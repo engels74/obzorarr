@@ -4,6 +4,27 @@ async function readSource(path: string): Promise<string> {
 	return Bun.file(path).text();
 }
 
+// US-022 prep — disposition for the 9 tests below that source-pin the
+// 4779-line monolith at src/routes/admin/settings/+page.svelte. Each test
+// is annotated where it appears in this file; the master list lives here:
+//
+//   L50  renders security help as real disclosure buttons       — DELETE on US-022 (feature deferred from nested route Security tab)
+//   L60  labels mobile settings tab buttons                      — DELETE on US-022 (mobile tab UX not in nested layout)
+//   L68  requires confirmation before enabling trust-proxy       — RE-POINT to security/+page.svelte (same AlertDialog pattern)
+//   L76  auto-runs reverse-proxy diagnostic                      — DELETE on US-022 (feature deferred)
+//   L88  guards duplicate reverse-proxy diagnostic requests      — DELETE on US-022 (feature deferred)
+//   L103 keeps the diagnostic read-only                          — DELETE on US-022 (feature deferred)
+//   L115 explains env-locked reverse-proxy trust + setup examples — DELETE on US-022 (docs section deferred)
+//   L346 updates wrapped logo mode selection explicitly          — RE-POINT to appearance/+page.svelte (uses different state shape)
+//   L498 renders accessible status feedback for data count       — RE-POINT to data/+page.svelte (has role/aria-live)
+//
+// When US-022 lands and deletes the monolith, all 9 of these tests fail
+// (they Bun.file().text() a deleted file). The disposition above is the
+// US-022 playbook: 5 deletes (features deferred from nested routes per
+// commit 97152be Security commit message), 3 re-points to nested route
+// source paths, and 1 logo-mode test that needs the new state shape.
+// Until US-022 runs, all 9 still pin the live monolith and stay green.
+
 describe('admin UI source regressions', () => {
 	it('uses the effective visible log collection for empty filtered results', async () => {
 		const source = await readSource('src/routes/admin/logs/+page.svelte');
