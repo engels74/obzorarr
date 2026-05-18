@@ -667,7 +667,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 					<!-- Preview Section -->
 					<div class="preview-section">
 						<h3>Preview</h3>
-						<button
+						<Button
 							type="button"
 							class="preview-button tap-target"
 							onclick={async () => {
@@ -721,7 +721,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 							}}
 						>
 							Update Preview
-						</button>
+						</Button>
 
 						<div class="preview-content">
 							{#if previewError}
@@ -1278,7 +1278,14 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			margin: 0 0 0.75rem;
 		}
 
-		.preview-button {
+		/* `.preview-button` is the "Update Preview" CTA inside the slide
+		   editor (triggers an async ?/previewMarkdown submitAction call).
+		   Hoisted to :global so shadcn Button's child-rendered <button>
+		   inherits the secondary palette + hover-darken. The button stays
+		   client-side `type="button"` because the async submitAction
+		   handler manages the preview state directly rather than relying
+		   on form submission. */
+		:global(.preview-button) {
 			padding: 0.375rem 0.75rem;
 			background: oklch(var(--secondary));
 			color: oklch(var(--foreground));
@@ -1289,7 +1296,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			margin-bottom: 0.75rem;
 		}
 
-		.preview-button:hover {
+		:global(.preview-button:hover) {
 			background: oklch(var(--muted));
 		}
 
