@@ -1,7 +1,7 @@
 import { arch as osArch, platform as osPlatform } from 'node:os';
 import { fail } from '@sveltejs/kit';
-import { superValidate } from 'sveltekit-superforms';
 import { zod4 } from 'sveltekit-superforms/adapters';
+import { superValidate } from 'sveltekit-superforms/server';
 import { z } from 'zod';
 import { inlineOccCheck } from '$lib/server/admin/occ-helpers';
 import { getAppSettingsUpdatedAt, LOG_SETTINGS_KEYS } from '$lib/server/admin/settings.service';
