@@ -543,13 +543,14 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 				</div>
 			{/if}
 
-			<button
-				type="submit"
-				class="save-frequency-button"
+			<SubmitButton
+				class="save-frequency-button tap-target"
 				disabled={selectedFrequencyMode === 'custom' && (customCount < 1 || customCount > 15)}
 			>
-			Save Frequency Settings
-		</button>
+				{#snippet children()}
+					Save Frequency Settings
+				{/snippet}
+			</SubmitButton>
 	</form>
 	</section>
 	</div>
@@ -1499,12 +1500,18 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			color: oklch(var(--destructive));
 		}
 
-		.save-frequency-button:disabled {
+		/* `.save-frequency-button` is the Fun Fact frequency form's
+		   submit CTA. Hoisted to :global so SubmitButton's child-
+		   rendered <button> inherits the primary palette + hover-fade.
+		   The :disabled fade gates on the custom-count out-of-range
+		   condition (1-15 range enforced by the parent's disabled
+		   predicate). */
+		:global(.save-frequency-button:disabled) {
 			opacity: 0.5;
 			cursor: not-allowed;
 		}
 
-		.save-frequency-button {
+		:global(.save-frequency-button) {
 			padding: 0.5rem 1rem;
 			background: oklch(var(--primary));
 			color: oklch(var(--primary-foreground));
@@ -1515,7 +1522,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			transition: opacity 0.15s ease;
 		}
 
-		.save-frequency-button:hover {
+		:global(.save-frequency-button:hover) {
 			opacity: 0.9;
 		}
 
