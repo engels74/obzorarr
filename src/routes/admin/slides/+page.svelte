@@ -1,6 +1,7 @@
 <script lang="ts">
 import Pencil from '@lucide/svelte/icons/pencil';
 import Plus from '@lucide/svelte/icons/plus';
+import Trash2 from '@lucide/svelte/icons/trash-2';
 import { untrack } from 'svelte';
 import { enhance } from '$app/forms';
 import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
@@ -423,27 +424,14 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 									}}
 								>
 									<input type="hidden" name="id" value={item.id} />
-									<button
-										type="submit"
-										class="action-button delete-action"
+									<SubmitButton
+										class="action-button delete-action tap-target"
 										aria-label="Delete custom slide"
 									>
-										<svg
-											xmlns="http://www.w3.org/2000/svg"
-											width="14"
-											height="14"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="2"
-											stroke-linecap="round"
-											stroke-linejoin="round"
-										>
-											<path d="M3 6h18" />
-											<path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-											<path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-										</svg>
-									</button>
+										{#snippet children()}
+											<Trash2 class="size-[14px]" />
+										{/snippet}
+									</SubmitButton>
 								</form>
 							{/if}
 						</div>
