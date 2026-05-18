@@ -14,7 +14,7 @@
 > | US-022 | ✅ Closed — 4779-line monolith deleted (cf958fa, f3cc0b5, 5081af2) |
 > | US-013 | ✅ Closed — direct OCC helper tests (12 cases at occ-helpers.test.ts) + appearance-actions external-OCC coverage (10 cases) + nested-route inline-OCC integration (~57 cases) |
 > | US-021 | ❌ Not started — 5 admin route reskins (sync/users/logs/slides/wrapped admin); each is visually-coupled to custom CSS, multi-iteration job |
-> | US-024 | ⚠️  Token audit clean; SubmitButton swap attempted + reverted (hero CTA visual coupling) — needs paired CSS hoisting to :global() |
+> | US-024 | ✅ Closed — landing page uses shadcn Input + SubmitButton + Button; `:global` hoists on `.view-button` / `.username-input` / `.login-button` preserve hero CTA hand-tuned styling across the Svelte 5 component-scope boundary (e276772, 19f1d87, 1d5f80f, 9d7c35b, 1fa375b) |
 > | US-025 | ✅ Closed — PopupBlockedModal already uses shadcn AlertDialog; continue-btn swapped to shadcn Button (81d8f64); auth/plex/redirect callback fully reskinned with shadcn Card + Button + lucide icons (efa131e) |
 > | US-009b, US-012, US-015 | ❌ Deferred (consumer-driven / Playwright install / inline bootstrap) |
 > | US-023, US-026..US-034 | ❌ PR-3 + PR-4 backlog                       |
@@ -31,14 +31,21 @@
 > rewrite to shadcn Card / Table / Tabs / Dialog primitives, preserving
 > the existing form actions + requireAdminActions guard.
 >
-> **Landing-page caveat for US-024**: the hero `view-button` + `username-input`
-> have hand-tuned padding/font-size/box-shadow that the shadcn Button + Input
-> defaults don't match. A naive SubmitButton swap visually shrinks the
-> primary CTA. The clean path is to (a) wrap the existing `.view-button` and
-> `.username-input` CSS rules in `:global(...)` so Svelte 5 scoped CSS still
-> reaches the child component's rendered element, then (b) pass
-> `class="view-button tap-target"` / `class="username-input"` to the swapped
-> primitives. Plan ~8 CSS-block edits + 2 template edits for the swap.
+> **Visual-coupling pattern (proven on US-024, reusable for US-021 / US-026)**:
+> Svelte 5 component-scoped CSS does NOT reach into a child component's
+> rendered DOM, so any swap of a hand-tuned `<button class="x">` /
+> `<input class="x">` to a shadcn primitive that renders the element inside
+> a sub-component will silently drop the parent's `.x { ... }` styling.
+> The fix is to wrap each affected rule with `:global(.x)` BEFORE the
+> primitive swap (commit pattern: `refactor(<surface>): hoist .x CSS to
+> :global() for <story> prep`). Each hoist commit is byte-identical for
+> the current native consumer (specificity 0,0,1,0 preserved) but unblocks
+> the next iteration to pass `class="x tap-target"` to a shadcn Button /
+> Input / Select / etc. and inherit the hand-tuned styling without
+> re-implementation. svelte-check flags any orphaned CSS left over from
+> the swap (e.g., bespoke `.spinner` / `@keyframes spin` superseded by
+> `LoaderCircleIcon class="animate-spin"`); the cleanup belongs in the
+> primitive-swap commit, not a separate one.
 
 
 This file tracks transient compatibility shims introduced during the PR-1..PR-3
