@@ -233,6 +233,23 @@ describe('security nested route — updateTrustProxy (confirmRisk + OCC)', () =>
 		return handler({ request, locals: adminLocals } as Parameters<UpdateTrustProxyAction>[0]);
 	}
 
+	it('rejects checkbox-style boolean for enabled (z.enum guards against silent coercion)', async () => {
+		// Same protection as plexAllowInsecureLocalHttp + privacy FormBoolean:
+		// TrustProxySchema.enabled uses z.enum(['true', 'false']).transform so
+		// HTML checkbox 'on' fails schema validation. A refactor to z.preprocess
+		// or z.coerce.boolean would silently coerce 'on' to false (= disabled),
+		// hiding accidental checkbox-vs-toggle wiring bugs.
+		const result = await run(
+			trustProxyRequest({
+				enabled: 'on',
+				confirmRisk: 'true',
+				settingsVersion: new Date(0).toISOString()
+			})
+		);
+		expect(result).toMatchObject({ status: 400 });
+		expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBeNull();
+	});
+
 	it('refuses to enable without confirmRisk=true', async () => {
 		const result = await run(
 			trustProxyRequest({
