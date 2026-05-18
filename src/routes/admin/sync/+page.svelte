@@ -1,4 +1,5 @@
 <script lang="ts">
+import PlayIcon from '@lucide/svelte/icons/play';
 import SquareIcon from '@lucide/svelte/icons/square';
 import { browser } from '$app/environment';
 import { enhance } from '$app/forms';
@@ -464,17 +465,15 @@ async function goToPage(page: number) {
 						</div>
 					</div>
 
-					<button type="submit" class="sync-btn" disabled={isSyncing}>
-						{#if isSyncing}
-							<span class="btn-spinner"></span>
-							<span>Initializing...</span>
-						{:else}
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-								<polygon points="5 3 19 12 5 21 5 3" />
-							</svg>
+					<SubmitButton class="sync-btn tap-target" submitting={isSyncing}>
+						{#snippet children()}
+							<PlayIcon class="size-[18px]" strokeWidth={2.5} />
 							<span>Start Sync</span>
-						{/if}
-					</button>
+						{/snippet}
+						{#snippet submittingLabel()}
+							<span>Initializing...</span>
+						{/snippet}
+					</SubmitButton>
 				</form>
 
 				{#if data.lastSync}
@@ -1310,7 +1309,12 @@ async function goToPage(page: number) {
 			pointer-events: none;
 		}
 
-		.sync-btn {
+		/* `.sync-btn` is the primary "Start Sync" CTA. Hoisted to :global
+		   so SubmitButton's child-rendered <button> inherits the
+		   gradient primary palette + hover translate-y + shadow glow.
+		   The `.sync-btn svg` descendant rule is dropped; PlayIcon is
+		   sized inline via `class="size-[18px]"`. */
+		:global(.sync-btn) {
 			display: flex;
 			align-items: center;
 			justify-content: center;
@@ -1326,32 +1330,18 @@ async function goToPage(page: number) {
 			transition: all 0.2s ease;
 		}
 
-		.sync-btn:hover:not(:disabled) {
+		:global(.sync-btn:hover:not(:disabled)) {
 			transform: translateY(-1px);
 			box-shadow: 0 8px 24px oklch(var(--primary) / 0.3);
 		}
 
-		.sync-btn:active:not(:disabled) {
+		:global(.sync-btn:active:not(:disabled)) {
 			transform: translateY(0);
 		}
 
-		.sync-btn:disabled {
+		:global(.sync-btn:disabled) {
 			opacity: 0.6;
 			cursor: not-allowed;
-		}
-
-		.sync-btn svg {
-			width: 18px;
-			height: 18px;
-		}
-
-		.btn-spinner {
-			width: 18px;
-			height: 18px;
-			border: 2px solid oklch(var(--primary-foreground) / 0.3);
-			border-top-color: oklch(var(--primary-foreground));
-			border-radius: 50%;
-			animation: spin 0.8s linear infinite;
 		}
 
 		.last-sync-info {
