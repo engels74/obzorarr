@@ -15,7 +15,7 @@ export type SubmitButtonProps = Omit<ButtonProps, 'type' | 'children'> & {
 </script>
 
 <script lang="ts">
-import { Loader2 } from '@lucide/svelte';
+import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 import Button from '$lib/components/ui/button/button.svelte';
 
 let {
@@ -36,7 +36,7 @@ let {
 	{...restProps}
 >
 	{#if submitting}
-		<Loader2 class="size-4 animate-spin" aria-hidden="true" />
+		<LoaderCircleIcon class="size-4 animate-spin" aria-hidden="true" />
 		{#if submittingLabel}
 			{@render submittingLabel()}
 		{:else}
