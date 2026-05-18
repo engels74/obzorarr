@@ -2,6 +2,7 @@
 import KeyRound from '@lucide/svelte/icons/key-round';
 import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
+import { Input } from '$lib/components/ui/input';
 import type { ActionData } from './$types';
 
 let { form }: { form: ActionData } = $props();
@@ -31,10 +32,11 @@ let isClaiming = $state(false);
 
 		<div class="field">
 			<label for="bootstrap-token">Bootstrap token</label>
-			<input
+			<Input
 				id="bootstrap-token"
 				name="token"
 				bind:value={token}
+				class="bootstrap-token-input"
 				autocomplete="one-time-code"
 				autocapitalize="none"
 				spellcheck="false"
@@ -102,7 +104,13 @@ let isClaiming = $state(false);
 		color: oklch(var(--foreground));
 	}
 
-	input {
+	/* `.bootstrap-token-input` is the monospace token field. Hoisted to
+	   :global so the shadcn Input primitive (renders the <input> inside
+	   a child component) inherits the monospace font + letter-spacing +
+	   focus-ring styling. The shadcn Input default `h-8` is preserved
+	   only because this rule doesn't override height — the monospace
+	   + padding 0.85rem still applies via the cascade. */
+	:global(.bootstrap-token-input) {
 		width: 100%;
 		border: 1px solid oklch(var(--border));
 		border-radius: 0.5rem;
@@ -114,7 +122,7 @@ let isClaiming = $state(false);
 		letter-spacing: 0.04em;
 	}
 
-	input:focus {
+	:global(.bootstrap-token-input:focus) {
 		outline: 2px solid oklch(var(--primary) / 0.45);
 		outline-offset: 2px;
 	}
