@@ -1,14 +1,23 @@
 <script lang="ts">
 import KeyRound from '@lucide/svelte/icons/key-round';
+import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
 import type { ActionData } from './$types';
 
 let { form }: { form: ActionData } = $props();
 let token = $state('');
+let isClaiming = $state(false);
 </script>
 
 <OnboardingCard title="Claim Setup" subtitle="Enter the bootstrap token printed in the server console">
-	<form method="POST" action="?/claimInstance" class="claim-form">
+	<form
+		method="POST"
+		action="?/claimInstance"
+		class="claim-form"
+		onsubmit={() => {
+			isClaiming = true;
+		}}
+	>
 		<div class="icon-wrap">
 			<KeyRound size={36} strokeWidth={1.75} />
 		</div>
@@ -38,9 +47,18 @@ let token = $state('');
 			<p class="error" role="alert">{form.error}</p>
 		{/if}
 
-		<button type="submit" class="claim-button" disabled={token.trim().length === 0}>
-			Claim setup
-		</button>
+		<SubmitButton
+			class="claim-button tap-target"
+			submitting={isClaiming}
+			disabled={token.trim().length === 0}
+		>
+			{#snippet children()}
+				Claim setup
+			{/snippet}
+			{#snippet submittingLabel()}
+				Claiming…
+			{/snippet}
+		</SubmitButton>
 	</form>
 </OnboardingCard>
 
@@ -107,7 +125,11 @@ let token = $state('');
 		font-size: 0.875rem;
 	}
 
-	.claim-button {
+	/* `.claim-button` is hoisted to :global so the SubmitButton primitive
+	   (which renders its <button> inside a child component) inherits the
+	   styling — Svelte 5 component-scoped CSS doesn't cross the boundary.
+	   Same visual-coupling pattern proven on the landing page in US-024. */
+	:global(.claim-button) {
 		border: 0;
 		border-radius: 0.5rem;
 		background: oklch(var(--primary));
@@ -117,7 +139,7 @@ let token = $state('');
 		cursor: pointer;
 	}
 
-	.claim-button:disabled {
+	:global(.claim-button:disabled) {
 		opacity: 0.5;
 		cursor: not-allowed;
 	}
