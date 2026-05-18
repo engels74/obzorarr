@@ -101,17 +101,17 @@ function formatUptime(seconds: number): string {
 				</Form.Field>
 
 				<Form.Field {form} name="debugEnabled">
-					<div class="flex items-center justify-between rounded-lg border p-3">
-						<div class="space-y-0.5">
-							<Form.Label>DEBUG-level logging</Form.Label>
-							<Form.Description>Records detailed debug output. May increase log volume.</Form.Description>
-						</div>
-						<Form.Control>
-							{#snippet children({ props })}
+					<Form.Control>
+						{#snippet children({ props })}
+							<div class="flex items-center justify-between rounded-lg border p-3">
+								<div class="space-y-0.5">
+									<Form.Label>DEBUG-level logging</Form.Label>
+									<Form.Description>Records detailed debug output. May increase log volume.</Form.Description>
+								</div>
 								<Switch {...props} bind:checked={$formData.debugEnabled} />
-							{/snippet}
-						</Form.Control>
-					</div>
+							</div>
+						{/snippet}
+					</Form.Control>
 					<Form.FieldErrors />
 				</Form.Field>
 

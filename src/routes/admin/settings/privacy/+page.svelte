@@ -185,22 +185,22 @@ let isBulkApplying = $state(false);
 				</Form.Field>
 
 				<Form.Field form={userDefaultsForm} name="allowUserControl">
-					<div class="flex items-center justify-between rounded-lg border p-3">
-						<div class="space-y-0.5">
-							<Form.Label>Allow users to change their share settings</Form.Label>
-							<Form.Description>
-								When off, only administrators can change a user's share mode.
-							</Form.Description>
-						</div>
-						<Form.Control>
-							{#snippet children({ props })}
+					<Form.Control>
+						{#snippet children({ props })}
+							<div class="flex items-center justify-between rounded-lg border p-3">
+								<div class="space-y-0.5">
+									<Form.Label>Allow users to change their share settings</Form.Label>
+									<Form.Description>
+										When off, only administrators can change a user's share mode.
+									</Form.Description>
+								</div>
 								<Switch
 									{...props}
 									bind:checked={$userDefaultsData.allowUserControl}
 								/>
-							{/snippet}
-						</Form.Control>
-					</div>
+							</div>
+						{/snippet}
+					</Form.Control>
 					<Form.FieldErrors />
 				</Form.Field>
 
