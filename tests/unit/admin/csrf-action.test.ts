@@ -8,7 +8,12 @@ import {
 } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
 import { appSettings } from '$lib/server/db/schema';
-import { actions } from '../../../src/routes/admin/settings/+page.server';
+// Re-pointed to the nested Security route after US-022 deleted the monolith.
+// All 14 tests below exercise the same updateCsrfOrigin contract — the
+// nested-route handler is a verbatim copy of the monolith's (per the
+// commit 220f6ad CsrfOrigin inline OCC retrofit, then carried forward
+// when the Security tab was extracted in 97152be).
+import { actions } from '../../../src/routes/admin/settings/security/+page.server';
 
 const ORIGIN = 'http://localhost:5173';
 
