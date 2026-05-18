@@ -385,7 +385,17 @@ function handleCancelRedirect(): void {
 			cursor: not-allowed;
 		}
 
-		.view-button {
+		/* `.view-button` is consumed at scope today by the native <button> in the
+		   username form, but PR-3 / US-024 will swap that for the shadcn
+		   SubmitButton primitive which renders the button element inside a
+		   child component — Svelte 5 component-scoped CSS doesn't reach
+		   inside a child, so the styling has to be globalised now. The rules
+		   are unchanged; only the selector scope is bumped to :global so the
+		   primitive consumer can keep the hero CTA's hover translate-y + glow
+		   without re-implementing them. The .username-input rules below have
+		   the same migration story; the matching :global hoist is paired with
+		   the shadcn Input swap pre-work. */
+		:global(.view-button) {
 			display: inline-flex;
 			align-items: center;
 			justify-content: center;
@@ -405,7 +415,7 @@ function handleCancelRedirect(): void {
 				0 0 0 0 oklch(var(--accent) / 0);
 		}
 
-		.view-button:hover:not(:disabled) {
+		:global(.view-button:hover:not(:disabled)) {
 			background: oklch(var(--primary) / 0.9);
 			transform: translateY(-2px);
 			box-shadow:
@@ -413,11 +423,11 @@ function handleCancelRedirect(): void {
 				0 0 0 3px oklch(var(--accent) / 0.3);
 		}
 
-		.view-button:active:not(:disabled) {
+		:global(.view-button:active:not(:disabled)) {
 			transform: translateY(0);
 		}
 
-		.view-button:disabled {
+		:global(.view-button:disabled) {
 			opacity: 0.6;
 			cursor: not-allowed;
 		}
@@ -562,7 +572,7 @@ function handleCancelRedirect(): void {
 				max-width: none;
 			}
 
-			.view-button {
+			:global(.view-button) {
 				justify-content: center;
 				width: 100%;
 			}
@@ -579,7 +589,7 @@ function handleCancelRedirect(): void {
 				animation: none;
 			}
 
-			.view-button,
+			:global(.view-button),
 			.login-button,
 			.username-input {
 				transition: none;
