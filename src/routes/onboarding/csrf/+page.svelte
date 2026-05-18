@@ -1301,12 +1301,6 @@ function canEnableTrustProxy(): boolean {
 			}
 		}
 
-		.spinner.small {
-			width: 12px;
-			height: 12px;
-			border-width: 1.5px;
-		}
-
 		.test-result {
 			display: flex;
 			align-items: flex-start;
