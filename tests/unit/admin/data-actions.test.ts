@@ -54,6 +54,19 @@ describe('data nested route — getCacheCount', () => {
 		const result = await run(makeRequest('getCacheCount', { year: 'twenty-two' }));
 		expect(result).toMatchObject({ status: 400, data: { error: 'Invalid year' } });
 	});
+
+	// Edge cases that pin parseYear's current permissive behavior. If a future
+	// commit tightens validation (e.g., requires year between 1970 and 9999, or
+	// rejects negatives + decimals), these tests catch the change.
+	it('accepts decimal years by silently truncating (parseInt behavior)', async () => {
+		const result = await run(makeRequest('getCacheCount', { year: '2024.5' }));
+		expect(result).toMatchObject({ success: true, count: 0, year: 2024 });
+	});
+
+	it('accepts negative years without validation', async () => {
+		const result = await run(makeRequest('getCacheCount', { year: '-1' }));
+		expect(result).toMatchObject({ success: true, count: 0, year: -1 });
+	});
 });
 
 describe('data nested route — clearCache', () => {
