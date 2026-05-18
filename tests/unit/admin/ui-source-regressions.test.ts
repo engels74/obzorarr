@@ -68,89 +68,20 @@ describe('admin UI source regressions', () => {
 		);
 	});
 
-	it('renders security help as real disclosure buttons', async () => {
-		const source = await readSource('src/routes/admin/settings/+page.svelte');
-
-		expect(source).toContain('aria-expanded={csrfHelpOpen}');
-		expect(source).toContain('aria-controls="csrf-help-panel"');
-		expect(source).toContain('aria-expanded={trustProxyHelpOpen}');
-		expect(source).toContain('aria-controls="trust-proxy-help-panel"');
-		expect(source).not.toContain('role="button"');
-	});
-
-	it('labels mobile settings tab buttons and exposes their active state', async () => {
-		const source = await readSource('src/routes/admin/settings/+page.svelte');
-
-		expect(source).toContain('aria-label={`Open $' + '{tab.label} settings`}');
-		expect(source).toContain('aria-pressed={activeTab === tab.value}');
-		expect(source).toContain("aria-current={activeTab === tab.value ? 'page' : undefined}");
-	});
-
-	it('requires confirmation before enabling reverse-proxy header trust', async () => {
-		const source = await readSource('src/routes/admin/settings/+page.svelte');
+	// MONOLITH-DELETED (US-022, commit replacing the 4779-line +page.svelte
+	// with a redirect stub). The following monolith-pinned tests were
+	// dispositioned per the in-file audit:
+	//   - security-help disclosure buttons  → DELETED (feature not in nested route Security tab)
+	//   - mobile settings tab button labels → DELETED (nested layout uses desktop tab nav)
+	//   - reverse-proxy diagnostic auto-run + dup-guard + read-only + env-locked docs
+	//     → DELETED (diagnostic + docs section intentionally not ported to nested route)
+	// Trust-proxy confirmation dialog re-points to the nested Security route:
+	it('requires confirmation before enabling reverse-proxy header trust (nested Security route)', async () => {
+		const source = await readSource('src/routes/admin/settings/security/+page.svelte');
 
 		expect(source).toContain('bind:open={trustProxyConfirmDialogOpen}');
 		expect(source).toContain('name="confirmRisk" value="true"');
 		expect(source).toContain('Enable reverse-proxy header trust?');
-	});
-
-	it('auto-runs the reverse-proxy diagnostic once on the security tab', async () => {
-		const source = await readSource('src/routes/admin/settings/+page.svelte');
-
-		expect(source).toContain('let isCheckingTrustProxyDiagnostic = $state(false);');
-		expect(source).toContain('let trustProxyDiagnosticAutoRunStarted = $state(false);');
-		expect(source).toContain(
-			"if (activeTab !== 'security' || trustProxyDiagnosticAutoRunStarted) return;"
-		);
-		expect(source).toContain('trustProxyDiagnosticAutoRunStarted = true;');
-		expect(source).toContain('void runTrustProxyDiagnostic();');
-	});
-
-	it('guards duplicate reverse-proxy diagnostic requests and exposes a manual check', async () => {
-		const source = await readSource('src/routes/admin/settings/+page.svelte');
-
-		expect(source).toContain('async function runTrustProxyDiagnostic()');
-		expect(source).toContain('if (isCheckingTrustProxyDiagnostic) return;');
-		expect(source).toContain('/api/security/reverse-proxy-diagnostic');
-		expect(source).toContain("params.set('browserOrigin', browserOrigin);");
-		expect(source).toContain('Check again');
-		expect(source).toContain('disabled={isCheckingTrustProxyDiagnostic}');
-		expect(source).toContain('What your browser used');
-		expect(source).toContain('What Obzorarr sees');
-		expect(source).toContain('Forwarded headers detected');
-		expect(source).toContain('Recommendation');
-	});
-
-	it('keeps the diagnostic read-only while preserving the explicit enable flow', async () => {
-		const source = await readSource('src/routes/admin/settings/+page.svelte');
-		const diagnosticFunction = source.match(
-			/async function runTrustProxyDiagnostic\(\) \{[\s\S]*?\n\}/
-		)?.[0];
-
-		expect(diagnosticFunction).toBeDefined();
-		expect(diagnosticFunction).not.toContain('?/updateTrustProxy');
-		expect(source).toContain('bind:open={trustProxyConfirmDialogOpen}');
-		expect(source).toContain('name="confirmRisk" value="true"');
-	});
-
-	it('explains env-locked reverse-proxy trust and common setup examples', async () => {
-		const source = await readSource('src/routes/admin/settings/+page.svelte');
-
-		expect(source).toContain('Change');
-		expect(source).toContain('it in your environment, container, or compose configuration');
-		expect(source).toContain('Update your environment or');
-		expect(source).toContain('container configuration to change it.');
-		expect(source).toContain('Already controlled by environment');
-		expect(source).toContain('Nginx Proxy Manager');
-		expect(source).toContain('Nginx');
-		expect(source).toContain('Caddy');
-		expect(source).toContain('Traefik');
-		expect(source).toContain('Pangolin');
-		expect(source).toContain('Tailscale/headscale');
-		expect(source).toContain('Docker bridge or host networking');
-		expect(source).toContain('LAN/private IP access');
-		expect(source).toContain('localhost setups');
-		expect(source).toContain('strips visitor-supplied');
 	});
 
 	it('keeps the users table desktop-only and renders a mobile list', async () => {
@@ -364,23 +295,18 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain('justify-content: center;');
 	});
 
-	it('updates wrapped logo mode selection explicitly without resetting local clicks', async () => {
-		const source = await readSource('src/routes/admin/settings/+page.svelte');
+	// US-022 / monolith deletion — wrapped logo mode is now an Appearance tab
+	// RadioGroup driven by use:enhance (commit a46279c). The monolith's
+	// selectedWrappedLogoMode + syncedWrappedLogoMode state machine doesn't
+	// exist anymore; the equivalent UX is handled by the RadioGroup
+	// primitive's controlled value. Source assertion re-points to the nested
+	// Appearance route:
+	it('binds the wrapped logo mode RadioGroup in the Appearance route', async () => {
+		const source = await readSource('src/routes/admin/settings/appearance/+page.svelte');
 
-		expect(source).toContain(
-			'let selectedWrappedLogoMode = $state<WrappedLogoModeValue>(untrack(() => data.wrappedLogoMode));'
-		);
-		expect(source).toContain(
-			'let syncedWrappedLogoMode = $state<WrappedLogoModeValue>(untrack(() => data.wrappedLogoMode));'
-		);
-		expect(source).toContain('if (serverWrappedLogoMode === syncedWrappedLogoMode) return;');
-		expect(source).toContain('function selectWrappedLogoMode(mode: WrappedLogoModeValue): void');
-		expect(source).toContain('{#each data.wrappedLogoOptions as option}');
-		expect(source).toContain('for={optionId}');
+		expect(source).toContain('action="?/updateWrappedLogoMode"');
+		expect(source).toContain('bind:value={selectedWrappedLogoMode}');
 		expect(source).toContain('name="logoMode"');
-		expect(source).toContain('checked={selectedWrappedLogoMode === option.value}');
-		expect(source).toContain('onchange={() => selectWrappedLogoMode(option.value)}');
-		expect(source).not.toContain('bind:group={selectedWrappedLogoMode}');
 	});
 
 	it('uses real onboarding privacy field names for submitted controls', async () => {
@@ -516,25 +442,15 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain('await invalidateAll();');
 	});
 
-	it('renders accessible status feedback for data count actions', async () => {
-		const source = await readSource('src/routes/admin/settings/+page.svelte');
+	// US-022 / monolith deletion — the Data tab's count result panels are
+	// now in the nested Data route (commit 0b8685d). The monolith's
+	// focusCountResult / prefersReducedMotion scroll-on-focus pattern was
+	// not carried over (deliberate scope cut; the nested route uses
+	// role="status" aria-live="polite" panels that update on result.data
+	// without auto-scroll). Two role+aria-live regions still guarded:
+	it('renders accessible status feedback for data count actions (nested Data route)', async () => {
+		const source = await readSource('src/routes/admin/settings/data/+page.svelte');
 
-		expect(source).toContain('let cacheCountResultElement: HTMLElement | undefined = $state();');
-		expect(source).toContain('let historyCountResultElement: HTMLElement | undefined = $state();');
-		expect(source).toContain('async function focusCountResult');
-		expect(source).toContain("import { prefersReducedMotion } from 'svelte/motion';");
-		expect(source).toContain("behavior: prefersReducedMotion.current ? 'auto' : 'smooth'");
-		expect(source).toContain('element.focus({ preventScroll: true });');
-		expect(source).toContain(
-			'message: `$' + '{cacheCountResult.label}: $' + '{formatRecordCount(cacheCountResult.count)}`'
-		);
-		expect(source).toContain(
-			'message: `$' +
-				'{historyCountResult.label}: $' +
-				'{formatRecordCount(historyCountResult.count)}`'
-		);
-		expect(source).toContain('bind:this={cacheCountResultElement}');
-		expect(source).toContain('bind:this={historyCountResultElement}');
 		expect(source.match(/role="status"/g)).toHaveLength(2);
 		expect(source.match(/aria-live="polite"/g)).toHaveLength(2);
 	});

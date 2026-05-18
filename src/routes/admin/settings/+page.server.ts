@@ -1,14 +1,10 @@
-import { arch as osArch, platform as osPlatform } from 'node:os';
 import { fail, redirect } from '@sveltejs/kit';
 import { z } from 'zod';
 import { env } from '$env/dynamic/private';
 import { externalOccCheck, inlineOccCheck } from '$lib/server/admin/occ-helpers';
 import {
-	AnonymizationMode,
 	type AnonymizationModeType,
-	API_CONFIG_KEYS,
 	AppSettingsKey,
-	type ConfigSource,
 	CSRF_ORIGIN_SETTINGS_KEYS,
 	clearApiConfigKey,
 	clearCachedServerMachineId,
@@ -17,20 +13,13 @@ import {
 	countPlayHistory,
 	countStatsCache,
 	deleteAppSetting,
-	getAnonymizationMode,
 	getApiConfigWithSources,
 	getAppSetting,
-	getAppSettingsUpdatedAt,
 	getCsrfConfigWithSource,
 	getTrustProxyConfigWithSource,
-	getUITheme,
-	getWrappedLogoMode,
-	getWrappedTheme,
-	isCsrfWarningDismissed,
 	isPlexInsecureLocalHttpAllowed,
 	LOG_SETTINGS_KEYS,
 	resetCsrfWarningDismissal,
-	SERVER_WRAPPED_SETTINGS_KEYS,
 	setApiConfigAtomic,
 	setAppSetting,
 	setCachedServerName,
@@ -39,30 +28,17 @@ import {
 	setUserDefaultsAtomic,
 	setWrappedLogoMode,
 	setWrappedTheme,
-	ThemePresets,
 	type ThemePresetType,
 	TRUST_PROXY_SETTINGS_KEYS,
-	toSafeConfigValue,
 	UI_THEME_SETTINGS_KEYS,
-	USER_DEFAULTS_SETTINGS_KEYS,
 	WRAPPED_LOGO_MODE_SETTINGS_KEYS,
 	WRAPPED_THEME_SETTINGS_KEYS,
-	WrappedLogoMode,
 	type WrappedLogoModeType
 } from '$lib/server/admin/settings.service';
-import { getAvailableYears } from '$lib/server/admin/users.service';
 import { optionalTrimmed } from '$lib/server/admin/zod-helpers';
 import { requireAdminActions } from '$lib/server/auth/guards';
 import { testOpenAIConnection } from '$lib/server/funfacts/test-connection';
-import {
-	getLogMaxCount,
-	getLogRetentionDays,
-	isDebugEnabled,
-	logger,
-	setDebugEnabled,
-	setLogMaxCount,
-	setLogRetentionDays
-} from '$lib/server/logging';
+import { logger, setDebugEnabled, setLogMaxCount, setLogRetentionDays } from '$lib/server/logging';
 import {
 	CredentialedUrlError,
 	envAllowsInsecureLocalPlexHttp,
@@ -71,13 +47,7 @@ import {
 } from '$lib/server/security/credentialed-url';
 import { getOriginFromRequest } from '$lib/server/security/csrf-handle';
 import { _resetTrustProxyCache } from '$lib/server/security/proxy-handle';
-import {
-	bulkApplyShareDefaults,
-	getGlobalAllowUserControl,
-	getGlobalDefaultShareMode,
-	getServerWrappedShareMode
-} from '$lib/server/sharing/service';
-import { getAppVersion } from '$lib/server/version';
+import { bulkApplyShareDefaults } from '$lib/server/sharing/service';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
@@ -259,20 +229,17 @@ const TrustProxySchema = z.object({
 	settingsVersion: z.string().min(1, 'Missing settings version (reload the page)')
 });
 
-interface SettingValue {
-	value: string;
-	source: ConfigSource;
-	isLocked: boolean;
-}
-
-type SafeSettingValue = Omit<SettingValue, 'value'> & { hasValue: boolean };
-
 /**
- * Legacy `?tab=<name>` redirect (v3 plan §B1 / US-018). Settings tabs now
- * live at their own nested routes; any incoming `?tab=` URL is bookmarks
- * or external links from before the split. 302 them to the new home.
- * Unknown tab names fall through and render the monolith (bare URL still
- * shows the monolith until US-022 deletes it).
+ * US-022: monolith deleted. Settings tabs live at their own nested routes;
+ * /admin/settings is now a thin redirect:
+ *   - Known `?tab=<name>` → /admin/settings/<name> (preserves legacy
+ *     bookmarks from before the v3 split, per v3 plan §B1 / US-018).
+ *   - Anything else → /admin/settings/connections (the default first tab).
+ *
+ * Below the load, `actions` is preserved so any external POSTs that still
+ * target /admin/settings?/updateXxx URLs continue to work; the in-tree UI
+ * no longer posts to those endpoints, but third-party scripts / curl
+ * smoke tests / older bookmarks may still hit them.
  */
 const KNOWN_TABS = new Set(['connections', 'security', 'data', 'system', 'appearance', 'privacy']);
 
@@ -281,158 +248,9 @@ export const load: PageServerLoad = async ({ url }) => {
 	if (tab && KNOWN_TABS.has(tab)) {
 		redirect(303, `/admin/settings/${tab}`);
 	}
-
-	const [
-		apiConfig,
-		uiTheme,
-		wrappedTheme,
-		anonymizationMode,
-		wrappedLogoMode,
-		availableYears,
-		logRetentionDays,
-		logMaxCount,
-		logDebugEnabled,
-		defaultShareMode,
-		allowUserControl,
-		serverWrappedShareMode,
-		csrfConfig,
-		csrfWarningDismissed,
-		csrfOriginSkippedRaw,
-		trustProxyConfig,
-		plexAllowInsecureLocalHttp,
-		serverWrappedSettingsUpdatedAt,
-		userDefaultsSettingsUpdatedAt,
-		apiConfigUpdatedAt,
-		logSettingsUpdatedAt,
-		trustProxySettingsUpdatedAt,
-		csrfOriginSettingsUpdatedAt,
-		uiThemeSettingsUpdatedAt,
-		wrappedThemeSettingsUpdatedAt,
-		wrappedLogoModeSettingsUpdatedAt,
-		// Eager-load the total play-history count so the destructive Delete History
-		// buttons can render with a known count from first paint, instead of needing
-		// an on-click POST to ?/getPlayHistoryCount before they can show a
-		// confirmation dialog. ISSUE-003 hit the no-count path and observed the
-		// click navigating to /admin with no feedback.
-		playHistoryTotalCount
-	] = await Promise.all([
-		getApiConfigWithSources(),
-		getUITheme(),
-		getWrappedTheme(),
-		getAnonymizationMode(),
-		getWrappedLogoMode(),
-		getAvailableYears(),
-		getLogRetentionDays(),
-		getLogMaxCount(),
-		isDebugEnabled(),
-		getGlobalDefaultShareMode(),
-		getGlobalAllowUserControl(),
-		getServerWrappedShareMode(),
-		getCsrfConfigWithSource(),
-		isCsrfWarningDismissed(),
-		getAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED),
-		getTrustProxyConfigWithSource(),
-		isPlexInsecureLocalHttpAllowed(),
-		getAppSettingsUpdatedAt(SERVER_WRAPPED_SETTINGS_KEYS),
-		getAppSettingsUpdatedAt(USER_DEFAULTS_SETTINGS_KEYS),
-		getAppSettingsUpdatedAt(API_CONFIG_KEYS),
-		getAppSettingsUpdatedAt(LOG_SETTINGS_KEYS),
-		getAppSettingsUpdatedAt(TRUST_PROXY_SETTINGS_KEYS),
-		getAppSettingsUpdatedAt(CSRF_ORIGIN_SETTINGS_KEYS),
-		getAppSettingsUpdatedAt(UI_THEME_SETTINGS_KEYS),
-		getAppSettingsUpdatedAt(WRAPPED_THEME_SETTINGS_KEYS),
-		getAppSettingsUpdatedAt(WRAPPED_LOGO_MODE_SETTINGS_KEYS),
-		countPlayHistory()
-	]);
-
-	const currentYear = new Date().getFullYear();
-
-	return {
-		settings: {
-			plexServerUrl: apiConfig.plex.serverUrl as SettingValue,
-			plexToken: toSafeConfigValue(apiConfig.plex.token) satisfies SafeSettingValue,
-			plexAllowInsecureLocalHttp,
-			openaiApiKey: toSafeConfigValue(apiConfig.openai.apiKey) satisfies SafeSettingValue,
-			openaiBaseUrl: apiConfig.openai.baseUrl as SettingValue,
-			openaiModel: apiConfig.openai.model as SettingValue
-		},
-		uiTheme,
-		wrappedTheme,
-		anonymizationMode,
-		wrappedLogoMode,
-		themeOptions: Object.entries(ThemePresets).map(([key, value]) => ({
-			value,
-			label: key
-				.replace(/_/g, ' ')
-				.toLowerCase()
-				.replace(/\b\w/g, (c) => c.toUpperCase())
-		})),
-		anonymizationOptions: Object.entries(AnonymizationMode).map(([key, value]) => ({
-			value,
-			label: key.charAt(0).toUpperCase() + key.slice(1).toLowerCase()
-		})),
-		wrappedLogoOptions: Object.entries(WrappedLogoMode).map(([key, value]) => ({
-			value,
-			label: key
-				.replace(/_/g, ' ')
-				.toLowerCase()
-				.replace(/\b\w/g, (c) => c.toUpperCase())
-		})),
-		availableYears,
-		currentYear,
-		playHistoryTotalCount,
-		// Returned explicitly here so the System tab's "App version" row renders
-		// even if the root layout data merge ever changes shape — the System tab
-		// reads `data.appVersion.display` directly.
-		appVersion: getAppVersion(),
-		// System info panel (ISSUE-006) — exposed as plain primitives so the
-		// SSR JSON is small and the client doesn't need to import node:os.
-		systemInfo: {
-			uptimeSeconds: Math.floor(process.uptime()),
-			osPlatform: osPlatform(),
-			osArch: osArch(),
-			bunVersion: typeof Bun !== 'undefined' ? Bun.version : null
-		},
-		logSettings: {
-			retentionDays: logRetentionDays,
-			maxCount: logMaxCount,
-			debugEnabled: logDebugEnabled
-		},
-		globalDefaults: {
-			defaultShareMode,
-			allowUserControl
-		},
-		serverWrappedShareMode,
-		// Fall back to the epoch when no rows yet exist (fresh install / all-cleared).
-		// The atomic services accept any parseable timestamp on rows.length === 0 and
-		// the Zod `.min(1)` gate requires non-empty — emitting `''` would lock the
-		// admin out of the first save with an irrecoverable 409. The epoch is the
-		// canonical "older than anything" sentinel for OCC purposes.
-		serverWrappedSettingsVersion:
-			serverWrappedSettingsUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
-		userDefaultsSettingsVersion:
-			userDefaultsSettingsUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
-		apiConfigVersion: apiConfigUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
-		logSettingsVersion: logSettingsUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
-		trustProxyVersion: trustProxySettingsUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
-		csrfOriginVersion: csrfOriginSettingsUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
-		uiThemeVersion: uiThemeSettingsUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
-		wrappedThemeVersion: wrappedThemeSettingsUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
-		wrappedLogoModeVersion:
-			wrappedLogoModeSettingsUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
-		security: {
-			originValue: csrfConfig.origin.value,
-			csrfEnabled: !!csrfConfig.origin.value,
-			originSource: csrfConfig.origin.source,
-			originLocked: csrfConfig.origin.isLocked,
-			warningDismissed: csrfWarningDismissed,
-			// Flag is only effective when no origin is configured; mirror csrfHandle semantics
-			csrfOriginSkipped: csrfOriginSkippedRaw === 'true' && !csrfConfig.origin.value,
-			trustProxyValue: trustProxyConfig.trustProxy.value === 'true',
-			trustProxySource: trustProxyConfig.trustProxy.source,
-			trustProxyLocked: trustProxyConfig.trustProxy.isLocked
-		}
-	};
+	// Bare /admin/settings (or `?tab=<unknown>`) → first tab. Was previously
+	// where the monolith rendered; now there is no monolith to render.
+	redirect(303, '/admin/settings/connections');
 };
 
 export const actions: Actions = requireAdminActions({

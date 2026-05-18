@@ -9,51 +9,25 @@ async function readSource(path: string): Promise<string> {
 	return Bun.file(path).text();
 }
 
+// dogfood ISSUE-003 — the monolith form's restoreLogSettings() + manual
+// invalidate-on-failure pattern lived in the deleted /admin/settings/+page.svelte.
+// The nested-route system tab (src/routes/admin/settings/system/+page.server.ts +
+// +page.svelte) handles the same invariant through Superforms' built-in
+// stateful update + the matching test cases in tests/unit/admin/system-actions.test.ts.
+// The appVersion-from-load assertion re-points to the nested system route.
 describe('dogfood ISSUE-003 — admin log settings persistence', () => {
-	it('runs invalidateAll on success and restores state on failure', async () => {
-		const source = await readSource('src/routes/admin/settings/+page.svelte');
-
-		expect(source).toContain('function restoreLogSettings(): void {');
-		expect(source).toContain('logRetentionDays = data.logSettings.retentionDays;');
-		expect(source).toContain('logMaxCount = data.logSettings.maxCount;');
-		expect(source).toContain('logDebugEnabled = data.logSettings.debugEnabled;');
-
-		const enhanceStart = source.indexOf('action="?/updateLogSettings"');
-		expect(enhanceStart).toBeGreaterThan(-1);
-		const enhanceSlice = source.slice(enhanceStart, enhanceStart + 1200);
-		expect(enhanceSlice).toContain('await update({ invalidateAll: true });');
-		expect(enhanceSlice).toContain('await invalidateAll();');
-		expect(enhanceSlice).toContain('restoreLogSettings();');
-	});
-
-	it('returns appVersion from the admin settings load function', async () => {
-		const source = await readSource('src/routes/admin/settings/+page.server.ts');
+	it('returns appVersion from the System tab load function', async () => {
+		const source = await readSource('src/routes/admin/settings/system/+page.server.ts');
 		expect(source).toContain("import { getAppVersion } from '$lib/server/version';");
 		expect(source).toContain('appVersion: getAppVersion()');
 	});
 });
 
-describe('dogfood ISSUE-002 — server-wide wrapped + user defaults persistence', () => {
-	it('invalidates on the failure path so OCC settingsVersion refreshes', async () => {
-		const source = await readSource('src/routes/admin/settings/+page.svelte');
-
-		const serverWrappedStart = source.indexOf('action="?/updateServerWrappedSettings"');
-		expect(serverWrappedStart).toBeGreaterThan(-1);
-		const serverWrappedSlice = source.slice(serverWrappedStart, serverWrappedStart + 1200);
-		expect(serverWrappedSlice).toContain('restoreServerWrappedSettings();');
-		// Two await invalidateAll() calls in the block: one in the success
-		// branch, one after restore in the failure branch.
-		const occurrences = serverWrappedSlice.match(/await invalidateAll\(\);/g);
-		expect(occurrences?.length).toBeGreaterThanOrEqual(2);
-
-		const userDefaultsStart = source.indexOf('action="?/updateUserDefaults"');
-		expect(userDefaultsStart).toBeGreaterThan(-1);
-		const userDefaultsSlice = source.slice(userDefaultsStart, userDefaultsStart + 1200);
-		expect(userDefaultsSlice).toContain('restoreUserDefaults();');
-		const userOccurrences = userDefaultsSlice.match(/await invalidateAll\(\);/g);
-		expect(userOccurrences?.length).toBeGreaterThanOrEqual(2);
-	});
-});
+// dogfood ISSUE-002 — the monolith form's two-stage invalidateAll() +
+// restoreServerWrappedSettings()/restoreUserDefaults() pattern is replaced by
+// Superforms' resetForm: false + onUpdated re-fetch in the nested privacy tab.
+// OCC settingsVersion refresh is covered end-to-end by
+// tests/unit/admin/privacy-actions.test.ts (stale-version 409 paths).
 
 describe('dogfood ISSUE-005 — Watch Again must return to slide 0', () => {
 	it('server-wide wrapped clears the URL hash before remounting StoryMode', async () => {
@@ -150,25 +124,23 @@ describe('dogfood ISSUE-007 — --min-tap-size token rolled out everywhere', () 
 		expect(layoutSource).toContain('height: var(--min-tap-size);');
 	});
 
-	// Source-pin guard on the monolith /admin/settings/+page.svelte's
-	// `.tab-button` + `.input-action` tap-size floors. The monolith is on
-	// the chopping block in US-022; once it's gone, the nested-route
-	// settings tabs (system/appearance/privacy/data/connections/security)
-	// will need their own tap-size guard against shadcn Button's default
-	// h-9 (36×36, below the WCAG 2.5.5 44×44 floor) before this test can
-	// be re-pointed. Tracked in LEGACY_REMOVAL.md alongside US-019's
-	// SidebarTrigger tap-size note.
-	it('applies the token to admin chrome — monolith settings (pending US-022 follow-up)', async () => {
-		const settingsSource = await readSource('src/routes/admin/settings/+page.svelte');
-		const tabButtonIdx = settingsSource.indexOf('.tab-button {');
-		expect(tabButtonIdx).toBeGreaterThan(-1);
-		expect(settingsSource.slice(tabButtonIdx, tabButtonIdx + 600)).toContain(
-			'min-height: var(--min-tap-size);'
-		);
-		const inputActionIdx = settingsSource.indexOf('.input-action {');
-		expect(inputActionIdx).toBeGreaterThan(-1);
-		const inputActionSlice = settingsSource.slice(inputActionIdx, inputActionIdx + 600);
-		expect(inputActionSlice).toContain('min-width: var(--min-tap-size);');
-		expect(inputActionSlice).toContain('min-height: var(--min-tap-size);');
+	it('applies the token to nested-route settings submit buttons via the tap-target class', async () => {
+		// US-022 replaced the monolith's `.tab-button` + `.input-action` rules
+		// with `class="tap-target"` on the 24 shadcn Button + AlertDialog.Action
+		// instances across the 6 nested-route settings tabs (commit e59d7e5).
+		// Spot-check one button per tab so a regression that drops the class
+		// is caught at the source-pin level.
+		const tabs = [
+			'src/routes/admin/settings/system/+page.svelte',
+			'src/routes/admin/settings/appearance/+page.svelte',
+			'src/routes/admin/settings/privacy/+page.svelte',
+			'src/routes/admin/settings/data/+page.svelte',
+			'src/routes/admin/settings/connections/+page.svelte',
+			'src/routes/admin/settings/security/+page.svelte'
+		];
+		for (const path of tabs) {
+			const source = await readSource(path);
+			expect(source).toContain('class="tap-target"');
+		}
 	});
 });
