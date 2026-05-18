@@ -1,4 +1,5 @@
 <script lang="ts">
+import CheckIcon from '@lucide/svelte/icons/check';
 import ExternalLink from '@lucide/svelte/icons/external-link';
 import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 import { animate, stagger } from 'motion';
@@ -537,25 +538,23 @@ function canEnableTrustProxy(): boolean {
 							Detect URL
 						</Button>
 					{/if}
-					<button
+					<Button
 						type="button"
 						onclick={runTest}
 						disabled={testResult === 'testing' || !csrfOriginInput}
-						class="test-btn"
-						class:success={testResult === 'success'}
+						aria-busy={testResult === 'testing'}
+						class={`test-btn tap-target ${testResult === 'success' ? 'success' : ''}`}
 					>
 						{#if testResult === 'testing'}
-							<span class="spinner small"></span>
+							<LoaderCircleIcon class="size-3.5 animate-spin" aria-hidden="true" />
 							Testing...
 						{:else if testResult === 'success'}
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-								<path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round" />
-							</svg>
+							<CheckIcon class="size-3.5" strokeWidth={2.5} />
 							Verified
 						{:else}
 							Test URL
 						{/if}
-					</button>
+					</Button>
 				</div>
 				{#if form?.error}
 					<span class="error-message">{form.error}</span>
@@ -1226,7 +1225,15 @@ function canEnableTrustProxy(): boolean {
 			outline-offset: 2px;
 		}
 
-		.test-btn {
+		/* `.test-btn` is the 3-state Test URL CTA. Hoisted to :global so
+		   the shadcn Button child-rendered <button> picks up the green
+		   gradient + hover/active animations + success-variant glow. The
+		   `.test-btn svg` width/height descendant rule is kept so the
+		   lucide icons render at 14px without needing inline classes
+		   (CheckIcon + LoaderCircleIcon render <svg> elements that match
+		   the descendant selector). `.test-btn.success svg` keeps its
+		   checkmark-pop animation. */
+		:global(.test-btn) {
 			flex-shrink: 0;
 			display: flex;
 			align-items: center;
@@ -1245,7 +1252,7 @@ function canEnableTrustProxy(): boolean {
 			transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 		}
 
-		.test-btn:hover:not(:disabled):not(.success) {
+		:global(.test-btn:hover:not(:disabled):not(.success)) {
 			background: linear-gradient(135deg, rgba(34, 197, 94, 0.22) 0%, rgba(34, 197, 94, 0.12) 100%);
 			border-color: rgba(34, 197, 94, 0.4);
 			box-shadow:
@@ -1254,22 +1261,22 @@ function canEnableTrustProxy(): boolean {
 			transform: translateY(-1px);
 		}
 
-		.test-btn:active:not(:disabled):not(.success) {
+		:global(.test-btn:active:not(:disabled):not(.success)) {
 			transform: translateY(0) scale(0.98);
 		}
 
-		.test-btn:focus-visible {
+		:global(.test-btn:focus-visible) {
 			outline: 2px solid oklch(0.7946 0.1951 150.81);
 			outline-offset: 2px;
 		}
 
-		.test-btn:disabled {
+		:global(.test-btn:disabled) {
 			opacity: 0.4;
 			cursor: not-allowed;
 			filter: grayscale(0.3);
 		}
 
-		.test-btn.success {
+		:global(.test-btn.success) {
 			background: linear-gradient(135deg, rgba(34, 197, 94, 0.25) 0%, rgba(34, 197, 94, 0.15) 100%);
 			border-color: rgba(34, 197, 94, 0.5);
 			box-shadow:
@@ -1279,12 +1286,7 @@ function canEnableTrustProxy(): boolean {
 			cursor: default;
 		}
 
-		.test-btn svg {
-			width: 14px;
-			height: 14px;
-		}
-
-		.test-btn.success svg {
+		:global(.test-btn.success svg) {
 			animation: checkmark-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 		}
 
