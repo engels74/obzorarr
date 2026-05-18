@@ -4,6 +4,7 @@ import { enhance } from '$app/forms';
 import { goto, invalidateAll } from '$app/navigation';
 import { page } from '$app/stores';
 import * as AlertDialog from '$lib/components/ui/alert-dialog';
+import { Button } from '$lib/components/ui/button';
 import type { LogEntry, LogLevelType } from '$lib/server/logging';
 import { toast } from '$lib/services/toast';
 import { handleFormToast } from '$lib/utils/form-toast';
@@ -412,7 +413,9 @@ $effect(() => {
 	<section class="section filters-section">
 		<div class="filters-header">
 			<h2>Filters</h2>
-			<button type="button" class="clear-filters-button" onclick={clearFilters}> Clear All </button>
+			<Button type="button" class="clear-filters-button tap-target" onclick={clearFilters}>
+				Clear All
+			</Button>
 		</div>
 
 		<div class="filters-grid">
@@ -873,7 +876,11 @@ $effect(() => {
 			margin-bottom: 1rem;
 		}
 
-		.clear-filters-button {
+		/* `.clear-filters-button` is the muted-tertiary "Clear All" CTA
+		   in the filters header. Hoisted to :global so shadcn Button's
+		   child-rendered <button> inherits the transparent background +
+		   border + hover-darken treatment. */
+		:global(.clear-filters-button) {
 			padding: 0.25rem 0.5rem;
 			font-size: 0.75rem;
 			background: transparent;
@@ -883,7 +890,7 @@ $effect(() => {
 			cursor: pointer;
 		}
 
-		.clear-filters-button:hover {
+		:global(.clear-filters-button:hover) {
 			color: oklch(var(--foreground));
 			border-color: oklch(var(--foreground));
 		}
