@@ -571,9 +571,14 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 					<h2 id="editor-title">
 						{editingSlide ? 'Edit Custom Slide' : 'Create Custom Slide'}
 					</h2>
-					<button type="button" class="close-button" onclick={closeEditor} aria-label="Close">
+					<Button
+						type="button"
+						class="close-button tap-target"
+						onclick={closeEditor}
+						aria-label="Close"
+					>
 						&times;
-					</button>
+					</Button>
 				</header>
 
 				<form
@@ -1115,7 +1120,10 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			margin: 0;
 		}
 
-		.close-button {
+		/* `.close-button` is the modal-header X dismiss CTA. Hoisted to
+		   :global so shadcn Button's child-rendered <button> inherits
+		   the transparent background + large × glyph treatment. */
+		:global(.close-button) {
 			background: none;
 			border: none;
 			font-size: 1.5rem;
@@ -1125,7 +1133,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			line-height: 1;
 		}
 
-		.close-button:hover {
+		:global(.close-button:hover) {
 			color: oklch(var(--foreground));
 		}
 
