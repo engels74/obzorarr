@@ -1,6 +1,7 @@
 <script lang="ts">
 import ExternalLink from '@lucide/svelte/icons/external-link';
 import { animate, stagger } from 'motion';
+import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
 import { submitAction } from '$lib/utils/submit-action';
 import type { ActionData, PageData } from './$types';
@@ -653,20 +654,23 @@ function canEnableTrustProxy(): boolean {
 	{#snippet footer()}
 		<div class="button-group">
 			<form method="POST" action="?/skipCsrf" class="skip-form">
-				<button type="submit" class="skip-btn" formnovalidate>
-					{data.csrfConfig.isLocked ? 'Continue' : 'Skip'}
-				</button>
+				<SubmitButton class="skip-btn tap-target" formnovalidate>
+					{#snippet children()}
+						{data.csrfConfig.isLocked ? 'Continue' : 'Skip'}
+					{/snippet}
+				</SubmitButton>
 			</form>
 			{#if !data.csrfConfig.isLocked}
 				<form method="POST" action="?/saveOrigin" class="save-form">
 					<input type="hidden" name="csrfOrigin" value={csrfOriginInput ?? ''} />
-					<button
-						type="submit"
-						class="save-btn"
+					<SubmitButton
+						class="save-btn tap-target"
 						disabled={!csrfOriginInput || testResult !== 'success'}
 					>
-						Save & Continue
-					</button>
+						{#snippet children()}
+							Save & Continue
+						{/snippet}
+					</SubmitButton>
 				</form>
 			{/if}
 		</div>
@@ -1516,7 +1520,12 @@ function canEnableTrustProxy(): boolean {
 			flex: 2;
 		}
 
-		.skip-btn {
+		/* `.skip-btn` + `.save-btn` are footer CTAs in the CSRF onboarding
+		   step. Hoisted to :global so SubmitButton's child-rendered
+		   <button> inherits the neutral (skip) / gradient (save) palettes
+		   plus their hover + disabled states. The mobile @media rule
+		   `.skip-btn, .save-btn { flex: none }` below is also hoisted. */
+		:global(.skip-btn) {
 			width: 100%;
 			padding: 0.875rem 1.5rem;
 			background: rgba(255, 255, 255, 0.06);
@@ -1531,17 +1540,17 @@ function canEnableTrustProxy(): boolean {
 				border-color 0.2s;
 		}
 
-		.skip-btn:hover:not(:disabled) {
+		:global(.skip-btn:hover:not(:disabled)) {
 			background: rgba(255, 255, 255, 0.1);
 			border-color: rgba(255, 255, 255, 0.2);
 		}
 
-		.skip-btn:disabled {
+		:global(.skip-btn:disabled) {
 			opacity: 0.5;
 			cursor: not-allowed;
 		}
 
-		.save-btn {
+		:global(.save-btn) {
 			width: 100%;
 			display: flex;
 			align-items: center;
@@ -1560,12 +1569,12 @@ function canEnableTrustProxy(): boolean {
 				transform 0.2s;
 		}
 
-		.save-btn:hover:not(:disabled) {
+		:global(.save-btn:hover:not(:disabled)) {
 			opacity: 0.9;
 			transform: translateY(-1px);
 		}
 
-		.save-btn:disabled {
+		:global(.save-btn:disabled) {
 			opacity: 0.5;
 			cursor: not-allowed;
 			transform: none;
@@ -1640,8 +1649,8 @@ function canEnableTrustProxy(): boolean {
 				flex: none;
 			}
 
-			.skip-btn,
-			.save-btn {
+			:global(.skip-btn),
+			:global(.save-btn) {
 				flex: none;
 			}
 

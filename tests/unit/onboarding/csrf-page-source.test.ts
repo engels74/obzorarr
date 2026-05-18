@@ -46,9 +46,15 @@ describe('onboarding CSRF page source', () => {
 		const skipForm = findPostForm(source, '?/skipCsrf', 'skip-form');
 		const saveForm = findPostForm(source, '?/saveOrigin', 'save-form');
 
-		expect(skipForm).toContain('type="submit"');
+		// SubmitButton (shadcn-based helper) renders `<button type="submit">`
+		// internally, so the literal `type="submit"` string lives in the
+		// helper component not this file. Assert on the helper consumption
+		// instead — the contract (native browser POST, no JS bridging) is
+		// preserved because SubmitButton wraps shadcn Button which renders
+		// a real submit button when `type` isn't overridden.
+		expect(skipForm).toContain('<SubmitButton');
 		expect(skipForm).toContain('formnovalidate');
-		expect(saveForm).toContain('type="submit"');
+		expect(saveForm).toContain('<SubmitButton');
 	});
 
 	it('runs onboarding reverse proxy diagnostics through the CSRF page action only', async () => {
