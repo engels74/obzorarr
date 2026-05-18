@@ -1,15 +1,39 @@
+import { fail } from '@sveltejs/kit';
+import { z } from 'zod';
+import { externalOccCheck } from '$lib/server/admin/occ-helpers';
 import {
 	getAppSettingsUpdatedAt,
 	getUITheme,
 	getWrappedLogoMode,
 	getWrappedTheme,
+	setUITheme,
+	setWrappedLogoMode,
+	setWrappedTheme,
 	ThemePresets,
+	type ThemePresetType,
 	UI_THEME_SETTINGS_KEYS,
 	WRAPPED_LOGO_MODE_SETTINGS_KEYS,
 	WRAPPED_THEME_SETTINGS_KEYS,
-	WrappedLogoMode
+	WrappedLogoMode,
+	type WrappedLogoModeType
 } from '$lib/server/admin/settings.service';
-import type { PageServerLoad } from './$types';
+import { requireAdminActions } from '$lib/server/auth/guards';
+import type { Actions, PageServerLoad } from './$types';
+
+/**
+ * OCC strategy: EXTERNAL for both theme schemas + the logo-mode schema.
+ * Top-level `z.enum` schemas; the action validates `settingsVersion` from
+ * formData against the current row BEFORE `safeParse`. Mirrors the
+ * monolith's three z.enum actions verbatim — see v3 plan §A5 Table D2.
+ */
+const ThemeSchema = z.enum([
+	'modern-minimal',
+	'supabase',
+	'doom-64',
+	'amber-minimal',
+	'soviet-red'
+]);
+const WrappedLogoModeSchema = z.enum(['always_show', 'always_hide', 'user_choice']);
 
 export const load: PageServerLoad = async () => {
 	const [
@@ -51,3 +75,74 @@ export const load: PageServerLoad = async () => {
 		}))
 	};
 };
+
+export const actions: Actions = requireAdminActions({
+	updateUITheme: async ({ request }) => {
+		const formData = await request.formData();
+
+		const occ = await externalOccCheck(
+			formData.get('settingsVersion')?.toString() ?? '',
+			UI_THEME_SETTINGS_KEYS
+		);
+		if (occ.status === 'conflict') {
+			return fail(409, { error: '__OCC_CONFLICT__', settingsVersion: occ.current });
+		}
+
+		const parsed = ThemeSchema.safeParse(formData.get('theme'));
+		if (!parsed.success) return fail(400, { error: 'Invalid theme selection' });
+
+		try {
+			await setUITheme(parsed.data as ThemePresetType);
+			return { success: true, message: 'UI theme updated' };
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to update UI theme';
+			return fail(500, { error: message });
+		}
+	},
+
+	updateWrappedTheme: async ({ request }) => {
+		const formData = await request.formData();
+
+		const occ = await externalOccCheck(
+			formData.get('settingsVersion')?.toString() ?? '',
+			WRAPPED_THEME_SETTINGS_KEYS
+		);
+		if (occ.status === 'conflict') {
+			return fail(409, { error: '__OCC_CONFLICT__', settingsVersion: occ.current });
+		}
+
+		const parsed = ThemeSchema.safeParse(formData.get('wrappedTheme') ?? formData.get('theme'));
+		if (!parsed.success) return fail(400, { error: 'Invalid theme selection' });
+
+		try {
+			await setWrappedTheme(parsed.data as ThemePresetType);
+			return { success: true, message: 'Wrapped theme updated' };
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to update wrapped theme';
+			return fail(500, { error: message });
+		}
+	},
+
+	updateWrappedLogoMode: async ({ request }) => {
+		const formData = await request.formData();
+
+		const occ = await externalOccCheck(
+			formData.get('settingsVersion')?.toString() ?? '',
+			WRAPPED_LOGO_MODE_SETTINGS_KEYS
+		);
+		if (occ.status === 'conflict') {
+			return fail(409, { error: '__OCC_CONFLICT__', settingsVersion: occ.current });
+		}
+
+		const parsed = WrappedLogoModeSchema.safeParse(formData.get('logoMode'));
+		if (!parsed.success) return fail(400, { error: 'Invalid logo mode' });
+
+		try {
+			await setWrappedLogoMode(parsed.data as WrappedLogoModeType);
+			return { success: true, message: 'Logo visibility mode updated' };
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to update mode';
+			return fail(500, { error: message });
+		}
+	}
+});
