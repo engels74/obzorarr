@@ -57,24 +57,11 @@ describe('onboarding CSRF page source', () => {
 		expect(saveForm).toContain('<SubmitButton');
 	});
 
-	it('runs onboarding reverse proxy diagnostics through the CSRF page action only', async () => {
+	it('no longer embeds the reverse-proxy diagnostic on the CSRF step', async () => {
 		const source = await readPageSource();
 
-		expect(source).toContain('submitAction<');
-		expect(source).toContain("'?/diagnoseReverseProxy'");
-		expect(source).toContain('action="?/enableTrustProxy"');
+		expect(source).not.toContain("'?/diagnoseReverseProxy'");
+		expect(source).not.toContain('action="?/enableTrustProxy"');
 		expect(source).not.toContain('/api/security');
-	});
-
-	it('prevents duplicate in-flight diagnostic checks and keeps enable confirmation explicit', async () => {
-		const source = await readPageSource();
-		const enableForm = findPostForm(source, '?/enableTrustProxy', 'trust-proxy-enable-form');
-
-		expect(source).toContain("if (diagnosticStatus === 'checking') return;");
-		expect(source).toContain('hasRunInitialDiagnostic');
-		expect(enableForm).toContain('name="confirmRisk"');
-		expect(enableForm).toContain('type="checkbox"');
-		expect(enableForm).toContain('required');
-		expect(enableForm).toContain('name="browserOrigin"');
 	});
 });

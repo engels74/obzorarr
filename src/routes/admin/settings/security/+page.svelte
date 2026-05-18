@@ -1,4 +1,6 @@
 <script lang="ts">
+import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 import { enhance } from '$app/forms';
 import { invalidateAll } from '$app/navigation';
 import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
@@ -14,6 +16,7 @@ import { Input } from '$lib/components/ui/input/index.js';
 import { Label } from '$lib/components/ui/label/index.js';
 import { Switch } from '$lib/components/ui/switch/index.js';
 import { handleFormToast } from '$lib/utils/form-toast';
+import { submitAction } from '$lib/utils/submit-action';
 import type { PageData } from './$types';
 
 interface Props {
@@ -40,6 +43,158 @@ let pendingCsrfOrigin = $state<string | null>(null);
 let pendingMismatchMessage = $state('');
 
 let trustProxyConfirmDialogOpen = $state(false);
+
+type ReverseProxyDiagnosticView = {
+	trustProxy: {
+		enabled: boolean;
+		source: 'env' | 'db' | 'default';
+		isLocked: boolean;
+	};
+	forwardedHeaders: {
+		present: string[];
+		pair: {
+			status: string;
+			isUsable: boolean;
+			protoPresent: boolean;
+			hostPresent: boolean;
+		};
+	};
+	recommendation: {
+		action:
+			| 'enable'
+			| 'leave-disabled'
+			| 'review-proxy'
+			| 'appears-working'
+			| 'unable-to-determine'
+			| 'env-controlled';
+		summary: string;
+	};
+	reasons: string[];
+	safetyNotice: string;
+};
+
+let diagnostic = $state<ReverseProxyDiagnosticView | null>(null);
+let diagnosticStatus = $state<'idle' | 'checking' | 'success' | 'failure'>('idle');
+let diagnosticError = $state<string | null>(null);
+let showDiagnosticDetails = $state(false);
+let hasRunInitialDiagnostic = $state(false);
+let diagnosticRunToken = 0;
+
+async function runDiagnostic() {
+	if (diagnosticStatus === 'checking') return;
+
+	const myToken = ++diagnosticRunToken;
+	diagnostic = null;
+	diagnosticStatus = 'checking';
+	diagnosticError = null;
+
+	const formData = new FormData();
+	formData.set('browserOrigin', window.location.origin);
+
+	try {
+		const result = await submitAction<{
+			reverseProxyDiagnostic?: ReverseProxyDiagnosticView;
+			diagnosticError?: string;
+		}>('?/diagnoseReverseProxy', formData);
+
+		if (myToken !== diagnosticRunToken) return;
+
+		if (result.type === 'success') {
+			if (result.data.reverseProxyDiagnostic) {
+				diagnostic = result.data.reverseProxyDiagnostic;
+				diagnosticStatus = 'success';
+			} else {
+				diagnosticStatus = 'failure';
+				diagnosticError = 'Diagnostic response was incomplete';
+			}
+		} else if (result.type === 'failure') {
+			diagnosticStatus = 'failure';
+			diagnosticError = result.data.diagnosticError ?? 'Diagnostic failed';
+		} else {
+			diagnosticStatus = 'failure';
+			diagnosticError = 'Unexpected diagnostic response';
+		}
+	} catch {
+		if (myToken !== diagnosticRunToken) return;
+		diagnosticStatus = 'failure';
+		diagnosticError = 'Network error - could not complete diagnostic';
+	}
+}
+
+$effect(() => {
+	if (hasRunInitialDiagnostic) return;
+	hasRunInitialDiagnostic = true;
+	void runDiagnostic();
+});
+
+type StatusTone = 'success' | 'warning' | 'neutral';
+
+const statusView = $derived.by<{
+	tone: StatusTone;
+	headline: string;
+	body: string;
+} | null>(() => {
+	if (!diagnostic) return null;
+	const action = diagnostic.recommendation.action;
+
+	if (action === 'appears-working') {
+		return {
+			tone: 'success',
+			headline: 'Header trust is working',
+			body: 'Obzorarr is correctly identifying visitor IP addresses and protocols from your reverse proxy.'
+		};
+	}
+	if (action === 'leave-disabled') {
+		return {
+			tone: 'success',
+			headline: 'No proxy detected',
+			body: 'Direct connection details look correct. Header trust does not need to be enabled.'
+		};
+	}
+	if (action === 'enable') {
+		return {
+			tone: 'warning',
+			headline: 'Proxy detected — header trust recommended',
+			body: 'Obzorarr appears to be behind a reverse proxy. Enable header trust to use forwarded IPs and protocols, but only if your proxy strips incoming x-forwarded-* headers from external traffic.'
+		};
+	}
+	if (action === 'review-proxy') {
+		return {
+			tone: 'warning',
+			headline: 'Proxy configuration needs review',
+			body: 'Some forwarded headers are present but do not match the browser origin. Check your reverse proxy configuration and re-run the check.'
+		};
+	}
+	if (action === 'env-controlled') {
+		return {
+			tone: 'neutral',
+			headline: 'Managed by environment',
+			body: 'TRUST_PROXY is controlled by the environment variable. Change it in your environment or container configuration to switch the setting.'
+		};
+	}
+	return {
+		tone: 'neutral',
+		headline: 'Could not verify automatically',
+		body: 'Obzorarr could not determine your proxy setup from the current request.'
+	};
+});
+
+function getForwardedPairLabel(status: string): string {
+	switch (status) {
+		case 'usable':
+			return 'Forwarded scheme and host look usable';
+		case 'missing':
+			return 'No forwarded scheme/host pair detected';
+		case 'partial':
+			return 'Forwarded scheme/host pair is incomplete';
+		case 'invalid-proto':
+		case 'unsafe-host':
+		case 'invalid-host':
+			return 'Forwarded scheme/host pair is invalid';
+		default:
+			return 'Forwarded scheme/host pair needs review';
+	}
+}
 </script>
 
 <svelte:head>
@@ -200,12 +355,156 @@ let trustProxyConfirmDialogOpen = $state(false);
 		<CardHeader>
 			<CardTitle>Reverse-proxy header trust</CardTitle>
 			<CardDescription>
-				When enabled, obzorarr trusts `x-forwarded-*` headers from the upstream proxy. Source:
-				<strong>{security.trustProxySource}</strong>{#if security.trustProxyLocked} (locked by env){/if}.
-				⚠️ Only enable if your proxy strips inbound `x-forwarded-*` headers before forwarding.
+				Controls whether Obzorarr trusts <code>x-forwarded-*</code> headers from your reverse proxy.
+				Source: <strong>{security.trustProxySource}</strong>{#if security.trustProxyLocked} (locked by env){/if}.
 			</CardDescription>
 		</CardHeader>
-		<CardContent>
+		<CardContent class="space-y-4">
+			{#if diagnosticStatus === 'checking' && !diagnostic}
+				<div class="status-card neutral">
+					<LoaderCircleIcon class="size-5 animate-spin status-icon" aria-hidden="true" />
+					<div class="status-text">
+						<span class="status-headline">Checking your connection…</span>
+						<span class="status-body">
+							Comparing what your browser sees with what Obzorarr receives.
+						</span>
+					</div>
+				</div>
+			{:else if diagnosticStatus === 'failure' && !diagnostic}
+				<div class="status-card warning">
+					<svg
+						class="status-icon"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<circle cx="12" cy="12" r="10" />
+						<line x1="15" y1="9" x2="9" y2="15" stroke-linecap="round" />
+						<line x1="9" y1="9" x2="15" y2="15" stroke-linecap="round" />
+					</svg>
+					<div class="status-text">
+						<span class="status-headline">Could not run the diagnostic</span>
+						<span class="status-body">{diagnosticError ?? 'Diagnostic failed'}</span>
+					</div>
+				</div>
+			{:else if statusView && diagnostic}
+				<div class="status-card {statusView.tone}">
+					{#if statusView.tone === 'success'}
+						<svg
+							class="status-icon"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+						>
+							<circle cx="12" cy="12" r="10" />
+							<path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round" />
+						</svg>
+					{:else if statusView.tone === 'warning'}
+						<svg
+							class="status-icon"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+						>
+							<path d="M12 2l10 18H2z" stroke-linecap="round" stroke-linejoin="round" />
+							<line x1="12" y1="9" x2="12" y2="13" stroke-linecap="round" />
+							<circle cx="12" cy="16" r="0.6" fill="currentColor" />
+						</svg>
+					{:else}
+						<svg
+							class="status-icon"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+						>
+							<circle cx="12" cy="12" r="10" />
+							<path d="M12 16v-4" stroke-linecap="round" />
+							<path d="M12 8h.01" stroke-linecap="round" />
+						</svg>
+					{/if}
+					<div class="status-text">
+						<span class="status-headline">{statusView.headline}</span>
+						<span class="status-body">{statusView.body}</span>
+					</div>
+				</div>
+
+				<button
+					type="button"
+					class="details-toggle"
+					onclick={() => (showDiagnosticDetails = !showDiagnosticDetails)}
+					aria-expanded={showDiagnosticDetails}
+				>
+					<span>
+						{showDiagnosticDetails ? 'Hide technical details' : 'Show technical details'}
+					</span>
+					<ChevronDownIcon
+						class="size-4 chevron"
+						data-open={showDiagnosticDetails}
+						aria-hidden="true"
+					/>
+				</button>
+
+				{#if showDiagnosticDetails}
+					<div class="details-panel">
+						<div class="diagnostic-facts">
+							<div>
+								<span class="fact-label">Forwarded headers</span>
+								<span class="fact-value">
+									{getForwardedPairLabel(diagnostic.forwardedHeaders.pair.status)}
+								</span>
+							</div>
+							<div>
+								<span class="fact-label">Signals present</span>
+								<span class="fact-value">
+									{diagnostic.forwardedHeaders.present.length > 0
+										? diagnostic.forwardedHeaders.present.join(', ')
+										: 'None'}
+								</span>
+							</div>
+							<div>
+								<span class="fact-label">Current setting</span>
+								<span class="fact-value">
+									{diagnostic.trustProxy.enabled ? 'Enabled' : 'Disabled'}
+									{#if diagnostic.trustProxy.isLocked}
+										<span class="inline-badge">ENV</span>
+									{/if}
+								</span>
+							</div>
+						</div>
+
+						{#if diagnostic.reasons.length > 0}
+							<div class="reasons-block">
+								<span class="reasons-label">Why we recommend this</span>
+								<ul>
+									{#each diagnostic.reasons as reason}
+										<li>{reason}</li>
+									{/each}
+								</ul>
+							</div>
+						{/if}
+
+						<p class="safety-note">{diagnostic.safetyNotice}</p>
+
+						<div class="re-check">
+							<Button
+								type="button"
+								variant="outline"
+								class="tap-target"
+								onclick={runDiagnostic}
+								disabled={diagnosticStatus === 'checking'}
+								aria-busy={diagnosticStatus === 'checking'}
+							>
+								{diagnosticStatus === 'checking' ? 'Re-checking…' : 'Re-run diagnostic'}
+							</Button>
+						</div>
+					</div>
+				{/if}
+			{/if}
+
 			{#if security.trustProxyLocked}
 				<p class="text-sm text-muted-foreground">
 					Reverse-proxy header trust is managed via environment variable and cannot be changed here.
@@ -234,7 +533,12 @@ let trustProxyConfirmDialogOpen = $state(false);
 					<input type="hidden" name="enabled" value="false" />
 					<input type="hidden" name="settingsVersion" value={data.trustProxyVersion} />
 					<div class="flex justify-end">
-						<Button type="submit" variant="destructive" class="tap-target" disabled={isTogglingTrustProxy}>
+						<Button
+							type="submit"
+							variant="destructive"
+							class="tap-target"
+							disabled={isTogglingTrustProxy}
+						>
 							{isTogglingTrustProxy ? 'Disabling…' : 'Disable header trust'}
 						</Button>
 					</div>
@@ -342,3 +646,203 @@ let trustProxyConfirmDialogOpen = $state(false);
 		</AlertDialog.Footer>
 	</AlertDialog.Content>
 </AlertDialog.Root>
+
+<style>
+	.status-card {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.875rem;
+		padding: 0.875rem 1rem;
+		border-radius: 10px;
+		border: 1px solid hsl(var(--border));
+		background: hsl(var(--muted) / 0.4);
+	}
+
+	.status-card.success {
+		background: oklch(0.7205 0.192 149.49 / 0.08);
+		border-color: oklch(0.7205 0.192 149.49 / 0.25);
+	}
+
+	.status-card.warning {
+		background: oklch(0.79 0.1606 79.6 / 0.08);
+		border-color: oklch(0.79 0.1606 79.6 / 0.25);
+	}
+
+	.status-card.neutral {
+		background: hsl(var(--muted) / 0.4);
+	}
+
+	:global(.status-icon) {
+		flex-shrink: 0;
+		width: 20px;
+		height: 20px;
+		margin-top: 0.1rem;
+	}
+
+	.status-card.success :global(.status-icon) {
+		color: oklch(0.7205 0.192 149.49);
+	}
+
+	.status-card.warning :global(.status-icon) {
+		color: oklch(0.79 0.1606 79.6);
+	}
+
+	.status-card.neutral :global(.status-icon) {
+		color: hsl(var(--muted-foreground));
+	}
+
+	.status-text {
+		display: flex;
+		flex-direction: column;
+		gap: 0.2rem;
+		min-width: 0;
+	}
+
+	.status-headline {
+		font-size: 0.9rem;
+		font-weight: 600;
+		color: hsl(var(--foreground));
+	}
+
+	.status-body {
+		font-size: 0.825rem;
+		line-height: 1.5;
+		color: hsl(var(--muted-foreground));
+	}
+
+	.details-toggle {
+		align-self: flex-start;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.375rem;
+		background: transparent;
+		border: none;
+		padding: 0.35rem 0.5rem;
+		margin: 0;
+		font-size: 0.78rem;
+		font-weight: 500;
+		color: hsl(var(--muted-foreground));
+		cursor: pointer;
+		border-radius: 6px;
+		transition:
+			color 0.2s,
+			background 0.2s;
+	}
+
+	.details-toggle:hover {
+		color: hsl(var(--foreground));
+		background: hsl(var(--muted) / 0.5);
+	}
+
+	.details-toggle:focus-visible {
+		outline: 2px solid hsl(var(--ring));
+		outline-offset: 2px;
+	}
+
+	.details-toggle :global(.chevron) {
+		transition: transform 0.2s ease;
+	}
+
+	.details-toggle :global(.chevron[data-open='true']) {
+		transform: rotate(180deg);
+	}
+
+	.details-panel {
+		display: flex;
+		flex-direction: column;
+		gap: 0.875rem;
+		padding: 0.875rem 1rem;
+		background: hsl(var(--muted) / 0.3);
+		border: 1px solid hsl(var(--border));
+		border-radius: 10px;
+	}
+
+	.diagnostic-facts {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 0.6rem;
+	}
+
+	.diagnostic-facts > div {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		min-width: 0;
+		padding: 0.6rem 0.7rem;
+		background: hsl(var(--background) / 0.6);
+		border: 1px solid hsl(var(--border));
+		border-radius: 8px;
+	}
+
+	.fact-label {
+		font-size: 0.65rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: hsl(var(--muted-foreground));
+	}
+
+	.fact-value {
+		display: flex;
+		align-items: center;
+		gap: 0.375rem;
+		min-width: 0;
+		font-size: 0.78rem;
+		line-height: 1.35;
+		color: hsl(var(--foreground));
+		overflow-wrap: anywhere;
+	}
+
+	.inline-badge {
+		display: inline-flex;
+		align-items: center;
+		padding: 0.05rem 0.35rem;
+		border-radius: 4px;
+		background: oklch(0.7205 0.192 149.49 / 0.16);
+		border: 1px solid oklch(0.7205 0.192 149.49 / 0.3);
+		color: oklch(0.7205 0.192 149.49);
+		font-size: 0.6rem;
+		font-weight: 700;
+		letter-spacing: 0.05em;
+	}
+
+	.reasons-block {
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+	}
+
+	.reasons-label {
+		font-size: 0.7rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: hsl(var(--muted-foreground));
+	}
+
+	.reasons-block ul {
+		margin: 0;
+		padding-left: 1.1rem;
+		color: hsl(var(--muted-foreground));
+		font-size: 0.8rem;
+		line-height: 1.5;
+	}
+
+	.safety-note {
+		margin: 0;
+		font-size: 0.78rem;
+		line-height: 1.5;
+		color: hsl(var(--muted-foreground));
+	}
+
+	.re-check {
+		display: flex;
+		justify-content: flex-end;
+	}
+
+	@media (max-width: 640px) {
+		.diagnostic-facts {
+			grid-template-columns: 1fr;
+		}
+	}
+</style>

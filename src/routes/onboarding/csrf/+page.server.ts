@@ -4,7 +4,6 @@ import {
 	AppSettingsKey,
 	deleteAppSetting,
 	getCsrfConfigWithSource,
-	getTrustProxyConfigWithSource,
 	setAppSetting
 } from '$lib/server/admin/settings.service';
 import { logger } from '$lib/server/logging';
@@ -17,8 +16,6 @@ import {
 	setOnboardingStep
 } from '$lib/server/onboarding';
 import { parseForwardedProtoHost } from '$lib/server/security/forwarded-headers';
-import { _resetTrustProxyCache } from '$lib/server/security/proxy-handle';
-import { createReverseProxyDiagnostic } from '$lib/server/security/reverse-proxy-diagnostic';
 import type { Actions, PageServerLoad } from './$types';
 
 async function isOnboardingCsrfStep(): Promise<boolean> {
@@ -59,13 +56,6 @@ function isSameOriginOnboardingAction(request: Request, url: URL): boolean {
 	return requestOrigin !== null && originsMatch(requestOrigin, url.origin);
 }
 
-function isSubmittedBrowserOriginAction(request: Request, browserOrigin: string): boolean {
-	const requestOrigin = getRequestOrigin(request);
-	return requestOrigin !== null && originsMatch(requestOrigin, browserOrigin);
-}
-
-const MAX_BROWSER_ORIGIN_LENGTH = 2048;
-
 const CsrfOriginSchema = z.object({
 	csrfOrigin: z
 		.string()
@@ -84,26 +74,10 @@ const CsrfOriginSchema = z.object({
 		})
 });
 
-const BrowserOriginSchema = z.object({
-	browserOrigin: z
-		.string()
-		.min(1, 'Browser origin is required')
-		.max(MAX_BROWSER_ORIGIN_LENGTH, 'browserOrigin is too long')
-		.url('Browser origin is invalid')
-		.refine((url) => url.startsWith('http://') || url.startsWith('https://'), {
-			message: 'Browser origin must start with http:// or https://'
-		})
-		.transform((url) => new URL(url).origin)
-});
-
-const TrustProxyEnableSchema = BrowserOriginSchema.extend({
-	confirmRisk: z.literal('true')
-});
-
 async function requireOnboardingCsrfAction(
 	cookies: Parameters<NonNullable<Actions['testOrigin']>>[0]['cookies'],
 	url: URL,
-	errorKey: 'error' | 'testError' | 'diagnosticError' | 'trustProxyError'
+	errorKey: 'error' | 'testError'
 ) {
 	if (!(await isOnboardingCsrfStep())) {
 		return fail(403, { [errorKey]: 'Not allowed at this onboarding stage' });
@@ -163,8 +137,8 @@ async function saveCsrfOrigin({
 	await deleteAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED);
 	logger.info(`Onboarding: CSRF origin configured - ${result.data.csrfOrigin}`, 'Onboarding');
 
-	await setOnboardingStep(OnboardingSteps.PLEX);
-	redirect(303, '/onboarding/plex');
+	await setOnboardingStep(OnboardingSteps.PROXY_TRUST);
+	redirect(303, '/onboarding/proxy-trust');
 }
 
 export const load: PageServerLoad = async ({ request, parent }) => {
@@ -179,7 +153,6 @@ export const load: PageServerLoad = async ({ request, parent }) => {
 	return {
 		...parentData,
 		csrfConfig: csrfConfig.origin,
-		reverseProxyDiagnostic: null,
 		detection: {
 			isReverseProxy,
 			detectedOrigin
@@ -232,110 +205,7 @@ export const actions: Actions = {
 		await setAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED, 'true');
 		logger.info('Onboarding: CSRF configuration skipped', 'Onboarding');
 
-		await setOnboardingStep(OnboardingSteps.PLEX);
-		redirect(303, '/onboarding/plex');
-	},
-
-	diagnoseReverseProxy: async ({ request, cookies, url, getClientAddress }) => {
-		const guardResult = await requireOnboardingCsrfAction(cookies, url, 'diagnosticError');
-		if (guardResult) return guardResult;
-
-		const formData = await request.formData();
-		const parsed = BrowserOriginSchema.safeParse({
-			browserOrigin: formData.get('browserOrigin')
-		});
-		if (!parsed.success) {
-			return fail(400, {
-				diagnosticError: parsed.error.issues[0]?.message ?? 'Could not read browser origin safely'
-			});
-		}
-
-		try {
-			const diagnostic = await createReverseProxyDiagnostic({
-				request,
-				rawAppUrl: request.url,
-				effectiveAppUrl: url,
-				browserOrigin: parsed.data.browserOrigin,
-				sourceAddress: getClientAddress()
-			});
-			return { reverseProxyDiagnostic: diagnostic };
-		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Unknown diagnostic error';
-			logger.error(`Onboarding reverse proxy diagnostic failed: ${message}`, 'Onboarding');
-			return fail(500, { diagnosticError: 'Could not run reverse proxy diagnostic' });
-		}
-	},
-
-	enableTrustProxy: async ({ request, cookies, url, getClientAddress }) => {
-		const guardResult = await requireOnboardingCsrfAction(cookies, url, 'trustProxyError');
-		if (guardResult) return guardResult;
-
-		const trustProxyConfig = await getTrustProxyConfigWithSource();
-		if (trustProxyConfig.trustProxy.isLocked) {
-			return fail(400, {
-				trustProxyError:
-					'TRUST_PROXY is set via environment variable and must be changed in your environment or container configuration.'
-			});
-		}
-
-		// Re-ordered per ISSUE-001: the diagnostic-recommendation guard must run
-		// BEFORE the confirmRisk guard, otherwise an API-direct caller posting
-		// `confirmRisk=1` on a system the diagnostic told to leave disabled would
-		// see the wrong error message and assume the diagnostic guard had passed.
-		// Parse browserOrigin alone first so we have a normalized value for the
-		// same-origin + diagnostic calls; confirmRisk is validated last so its
-		// error message is only emitted once the diagnostic has approved enabling.
-		const formData = await request.formData();
-		const browserOriginParsed = BrowserOriginSchema.safeParse({
-			browserOrigin: formData.get('browserOrigin')
-		});
-		if (!browserOriginParsed.success) {
-			return fail(400, {
-				trustProxyError:
-					browserOriginParsed.error.issues[0]?.message ?? 'Could not read browser origin safely'
-			});
-		}
-
-		if (!isSubmittedBrowserOriginAction(request, browserOriginParsed.data.browserOrigin)) {
-			return fail(403, {
-				trustProxyError: 'Reverse proxy header trust must be enabled from this browser origin'
-			});
-		}
-
-		const diagnostic = await createReverseProxyDiagnostic({
-			request,
-			rawAppUrl: request.url,
-			effectiveAppUrl: url,
-			browserOrigin: browserOriginParsed.data.browserOrigin,
-			sourceAddress: getClientAddress()
-		});
-		if (diagnostic.recommendation.action !== 'enable') {
-			return fail(400, {
-				trustProxyError:
-					'The current diagnostic does not recommend enabling reverse proxy header trust.'
-			});
-		}
-
-		// Now that the diagnostic has approved enabling, require the explicit
-		// risk-acknowledgement flag. The full schema enforces confirmRisk === 'true'.
-		const parsed = TrustProxyEnableSchema.safeParse({
-			browserOrigin: browserOriginParsed.data.browserOrigin,
-			confirmRisk: formData.get('confirmRisk')
-		});
-		if (!parsed.success) {
-			return fail(400, {
-				trustProxyError: 'Confirm the reverse-proxy header trust risk before enabling TRUST_PROXY.'
-			});
-		}
-
-		await setAppSetting(AppSettingsKey.TRUST_PROXY, 'true');
-		// Invalidate the in-process cache AFTER the DB write so subsequent
-		// requests re-resolve the new value.
-		_resetTrustProxyCache();
-		logger.warn(
-			'Reverse-proxy header trust enabled during onboarding. Verify your upstream proxy strips inbound x-forwarded-* headers.',
-			'Onboarding'
-		);
-		return { trustProxySuccess: true, trustProxyMessage: 'Reverse-proxy header trust enabled.' };
+		await setOnboardingStep(OnboardingSteps.PROXY_TRUST);
+		redirect(303, '/onboarding/proxy-trust');
 	}
 };

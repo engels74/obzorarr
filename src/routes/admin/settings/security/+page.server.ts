@@ -23,7 +23,32 @@ import { requireAdminActions } from '$lib/server/auth/guards';
 import { logger } from '$lib/server/logging';
 import { getOriginFromRequest } from '$lib/server/security/csrf-handle';
 import { _resetTrustProxyCache } from '$lib/server/security/proxy-handle';
+import { createReverseProxyDiagnostic } from '$lib/server/security/reverse-proxy-diagnostic';
 import type { Actions, PageServerLoad } from './$types';
+
+const MAX_BROWSER_ORIGIN_LENGTH = 2048;
+
+const BrowserOriginSchema = z.object({
+	browserOrigin: z
+		.string()
+		.min(1, 'Browser origin is required')
+		.max(MAX_BROWSER_ORIGIN_LENGTH, 'browserOrigin is too long')
+		.url('Browser origin is invalid')
+		.refine((url) => url.startsWith('http://') || url.startsWith('https://'), {
+			message: 'Browser origin must start with http:// or https://'
+		})
+		.transform((url) => new URL(url).origin)
+});
+
+function adminRequestOriginMatches(request: Request, browserOrigin: string): boolean {
+	const requestOrigin = getOriginFromRequest(request);
+	if (!requestOrigin) return false;
+	try {
+		return new URL(requestOrigin).origin.toLowerCase() === browserOrigin.toLowerCase();
+	} catch {
+		return false;
+	}
+}
 
 /**
  * OCC strategy: INLINE `settingsVersion` validated OUTSIDE the schema
@@ -244,6 +269,39 @@ export const actions: Actions = requireAdminActions({
 			const message = error instanceof Error ? error.message : 'Failed to reset CSRF warning';
 			logger.error(`Failed to reset CSRF warning: ${message}`, 'Security');
 			return fail(500, { error: message });
+		}
+	},
+
+	diagnoseReverseProxy: async ({ request, url, getClientAddress }) => {
+		const formData = await request.formData();
+		const parsed = BrowserOriginSchema.safeParse({
+			browserOrigin: formData.get('browserOrigin')
+		});
+		if (!parsed.success) {
+			return fail(400, {
+				diagnosticError: parsed.error.issues[0]?.message ?? 'Could not read browser origin safely'
+			});
+		}
+
+		if (!adminRequestOriginMatches(request, parsed.data.browserOrigin)) {
+			return fail(403, {
+				diagnosticError: 'Reverse-proxy diagnostic must be submitted from this browser origin'
+			});
+		}
+
+		try {
+			const diagnostic = await createReverseProxyDiagnostic({
+				request,
+				rawAppUrl: request.url,
+				effectiveAppUrl: url,
+				browserOrigin: parsed.data.browserOrigin,
+				sourceAddress: getClientAddress()
+			});
+			return { reverseProxyDiagnostic: diagnostic };
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Unknown diagnostic error';
+			logger.error(`Admin reverse proxy diagnostic failed: ${message}`, 'Security');
+			return fail(500, { diagnosticError: 'Could not run reverse proxy diagnostic' });
 		}
 	},
 
