@@ -1,5 +1,6 @@
 <script lang="ts">
 import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
+import CircleCheckIcon from '@lucide/svelte/icons/circle-check';
 import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 import PlayIcon from '@lucide/svelte/icons/play';
 import { animate, stagger } from 'motion';
@@ -963,38 +964,23 @@ function formatServerUrl(url: string | null): string {
 															aria-label="Custom Plex server URL"
 															aria-describedby="custom-url-help"
 														/>
-														<button
+														<Button
 															type="button"
-															class="custom-url-test-btn"
+															class="custom-url-test-btn tap-target"
 															onclick={() => testCustomConnection(server)}
 															disabled={!isValidUrl(customUrl) ||
 																isTestingCustomUrl ||
 																isSavingServer}
+															aria-busy={isTestingCustomUrl}
 														>
 															{#if isTestingCustomUrl}
-																<span class="test-spinner"></span>
+																<LoaderCircleIcon class="size-4 animate-spin" aria-hidden="true" />
 																<span>Testing...</span>
 															{:else}
-																<svg
-																	viewBox="0 0 24 24"
-																	fill="none"
-																	stroke="currentColor"
-																	stroke-width="2"
-																>
-																	<path
-																		d="M22 11.08V12a10 10 0 11-5.93-9.14"
-																		stroke-linecap="round"
-																		stroke-linejoin="round"
-																	/>
-																	<path
-																		d="M22 4L12 14.01l-3-3"
-																		stroke-linecap="round"
-																		stroke-linejoin="round"
-																	/>
-																</svg>
+																<CircleCheckIcon class="size-4" />
 																<span>Test Connection</span>
 															{/if}
-														</button>
+														</Button>
 													</div>
 
 													{#if isHttpUrl(customUrl)}
@@ -2141,7 +2127,13 @@ function formatServerUrl(url: string | null): string {
 			box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
 		}
 
-		.custom-url-test-btn {
+		/* `.custom-url-test-btn` is the connection-test CTA in the
+		   reverse-proxy URL form. Hoisted to :global so shadcn Button
+		   inherits the primary-tinted background + hover-darken. The
+		   `.custom-url-test-btn svg` descendant rule is dropped;
+		   CircleCheckIcon + LoaderCircleIcon are sized inline via
+		   `class="size-4"`. */
+		:global(.custom-url-test-btn) {
 			display: inline-flex;
 			align-items: center;
 			gap: 0.5rem;
@@ -2157,19 +2149,14 @@ function formatServerUrl(url: string | null): string {
 			transition: all 0.2s ease;
 		}
 
-		.custom-url-test-btn:hover:not(:disabled) {
+		:global(.custom-url-test-btn:hover:not(:disabled)) {
 			background: oklch(var(--primary) / 0.25);
 			border-color: oklch(var(--primary) / 0.5);
 		}
 
-		.custom-url-test-btn:disabled {
+		:global(.custom-url-test-btn:disabled) {
 			opacity: 0.5;
 			cursor: not-allowed;
-		}
-
-		.custom-url-test-btn svg {
-			width: 16px;
-			height: 16px;
 		}
 
 		.test-spinner {
