@@ -17,30 +17,24 @@ const tabs = [
 	{ name: 'Privacy', href: '/admin/settings/privacy' }
 ];
 
-// The monolithic /admin/settings page renders its own tab bar. Suppress the
-// new shell tab list there to avoid double navigation until US-022 deletes
-// the monolith.
-const isMonolith = $derived(page.url.pathname === '/admin/settings');
+// US-022: the bare /admin/settings load always 303s to /admin/settings/connections,
+// so this layout only renders for the six nested-route paths below.
+// (The `isMonolith` suppression that lived here pre-US-022 is gone — see
+// commit cf958fa.)
 </script>
 
-{#if !isMonolith}
-	<nav class="settings-tabs" aria-label="Settings sections">
-		<ul>
-			{#each tabs as tab (tab.href)}
-				{@const active = page.url.pathname.startsWith(tab.href)}
-				<li>
-					<a
-						href={tab.href}
-						class:active
-						aria-current={active ? 'page' : undefined}
-					>
-						{tab.name}
-					</a>
-				</li>
-			{/each}
-		</ul>
-	</nav>
-{/if}
+<nav class="settings-tabs" aria-label="Settings sections">
+	<ul>
+		{#each tabs as tab (tab.href)}
+			{@const active = page.url.pathname.startsWith(tab.href)}
+			<li>
+				<a href={tab.href} class:active aria-current={active ? 'page' : undefined}>
+					{tab.name}
+				</a>
+			</li>
+		{/each}
+	</ul>
+</nav>
 
 {@render children()}
 
