@@ -41,6 +41,19 @@ const trimmedUrlOrEmpty = z
 	)
 	.optional();
 
+/**
+ * 409 error message for the `apiConfigVersion` OCC conflict path. Worded
+ * slightly differently from `OCC_CONFLICT_MESSAGE` ('Please reload.') in
+ * `$lib/server/admin/occ-helpers` — connections predates the
+ * settingsVersion convention and uses the `apiConfigVersion` field name,
+ * so its message inherits the legacy 'Reload and try again.' wording. Both
+ * messages are functionally identical; the wording is not unified because
+ * (a) several tests pin the literal string content and (b) operators
+ * comparing the two messages can use the difference to tell which OCC path
+ * fired.
+ */
+const API_CONFIG_OCC_MESSAGE = 'Settings changed in another tab. Reload and try again.';
+
 const ApiConfigSchema = z.object({
 	plexServerUrl: trimmedUrlOrEmpty,
 	plexToken: optionalTrimmed(512),
@@ -103,7 +116,7 @@ export const actions: Actions = requireAdminActions({
 			if (fieldErrors.apiConfigVersion?.length) {
 				return fail(409, {
 					conflict: true,
-					error: 'Settings changed in another tab. Reload and try again.'
+					error: API_CONFIG_OCC_MESSAGE
 				});
 			}
 			return fail(400, { error: 'Invalid input', fieldErrors });
@@ -158,7 +171,7 @@ export const actions: Actions = requireAdminActions({
 			if (result.status === 'conflict') {
 				return fail(409, {
 					conflict: true,
-					error: 'Settings changed in another tab. Reload and try again.'
+					error: API_CONFIG_OCC_MESSAGE
 				});
 			}
 
