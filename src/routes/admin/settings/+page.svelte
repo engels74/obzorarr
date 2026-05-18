@@ -201,29 +201,6 @@ let isBulkApplyingUserControl = $state(false);
 
 let bulkApplyShareDefaultsDialogOpen = $state(false);
 
-async function confirmBulkApplyShareDefaults() {
-	bulkApplyShareDefaultsDialogOpen = false;
-	isBulkApplyingUserControl = true;
-
-	try {
-		const result = await submitAction<{ success: boolean; message: string }>(
-			'?/bulkApplyShareDefaults'
-		);
-		if (result.type === 'success') {
-			handleFormToast(result.data);
-		} else if (result.type === 'failure') {
-			handleFormToast({ error: result.data.error ?? 'Failed to apply defaults.' });
-		} else if (result.type === 'error') {
-			handleFormToast({ error: result.error.message ?? 'Failed to apply defaults.' });
-		}
-	} catch (error) {
-		const message = error instanceof Error ? error.message : 'Failed to apply defaults.';
-		handleFormToast({ error: message });
-	} finally {
-		isBulkApplyingUserControl = false;
-	}
-}
-
 // Track sources for display
 let plexServerUrlSource = $state<'env' | 'db' | 'default'>('default');
 let plexTokenSource = $state<'env' | 'db' | 'default'>('default');
@@ -3070,12 +3047,35 @@ const logFieldErrors = $derived(
 		</AlertDialog.Header>
 		<AlertDialog.Footer>
 			<AlertDialog.Cancel disabled={isBulkApplyingUserControl}>Cancel</AlertDialog.Cancel>
-			<AlertDialog.Action
-				disabled={isBulkApplyingUserControl}
-				onclick={confirmBulkApplyShareDefaults}
+			<form
+				method="POST"
+				action="?/bulkApplyShareDefaults"
+				use:enhance={() => {
+					isBulkApplyingUserControl = true;
+					return async ({ result, update }) => {
+						try {
+							if (result.type === 'success' || result.type === 'failure') {
+								handleFormToast(
+									result.data as { success?: boolean; message?: string; error?: string }
+								);
+							} else if (result.type === 'error') {
+								handleFormToast({
+									error: result.error?.message ?? 'Failed to apply defaults.'
+								});
+							}
+							await update({ reset: false });
+						} finally {
+							isBulkApplyingUserControl = false;
+							bulkApplyShareDefaultsDialogOpen = false;
+						}
+					};
+				}}
+				style="display: contents;"
 			>
-				{isBulkApplyingUserControl ? 'Applying…' : 'Apply to all users'}
-			</AlertDialog.Action>
+				<AlertDialog.Action type="submit" disabled={isBulkApplyingUserControl}>
+					{isBulkApplyingUserControl ? 'Applying…' : 'Apply to all users'}
+				</AlertDialog.Action>
+			</form>
 		</AlertDialog.Footer>
 	</AlertDialog.Content>
 </AlertDialog.Root>
