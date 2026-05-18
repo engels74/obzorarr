@@ -1,4 +1,5 @@
 <script lang="ts">
+import CheckIcon from '@lucide/svelte/icons/check';
 import ClockIcon from '@lucide/svelte/icons/clock';
 import PauseIcon from '@lucide/svelte/icons/pause';
 import PlayIcon from '@lucide/svelte/icons/play';
@@ -613,23 +614,16 @@ async function goToPage(page: number) {
 							aria-invalid={cronError ? 'true' : 'false'}
 							aria-describedby={cronError ? 'cronExpression-error' : undefined}
 						/>
-						<button
-							type="submit"
-							class="cron-update-btn"
+						<SubmitButton
+							class="cron-update-btn tap-target"
 							disabled={!!cronError}
 							aria-label={cronError ? 'Fix cron expression before saving' : 'Update schedule'}
 							aria-describedby={cronError ? 'cronExpression-error' : undefined}
 						>
-							<svg
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
-								aria-hidden="true"
-							>
-								<polyline points="20 6 9 17 4 12" />
-							</svg>
-						</button>
+							{#snippet children()}
+								<CheckIcon class="size-[18px]" aria-hidden="true" />
+							{/snippet}
+						</SubmitButton>
 					</div>
 
 					{#if cronError}
@@ -1557,7 +1551,12 @@ async function goToPage(page: number) {
 			color: oklch(var(--destructive));
 		}
 
-		.cron-update-btn {
+		/* `.cron-update-btn` is the icon-only commit-cron-expression CTA
+		   (40px wide). Hoisted to :global so SubmitButton's child-
+		   rendered <button> inherits the muted-default vs primary-on-
+		   hover palette swap. `.cron-update-btn svg` descendant rule
+		   dropped — CheckIcon sized inline via `class="size-[18px]"`. */
+		:global(.cron-update-btn) {
 			display: flex;
 			align-items: center;
 			justify-content: center;
@@ -1570,15 +1569,10 @@ async function goToPage(page: number) {
 			transition: all 0.15s ease;
 		}
 
-		.cron-update-btn:hover {
+		:global(.cron-update-btn:hover) {
 			background: oklch(var(--primary));
 			border-color: oklch(var(--primary));
 			color: oklch(var(--primary-foreground));
-		}
-
-		.cron-update-btn svg {
-			width: 18px;
-			height: 18px;
 		}
 
 		.cron-presets {
