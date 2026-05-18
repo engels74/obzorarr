@@ -1,5 +1,7 @@
 <script lang="ts">
+import PlayIcon from '@lucide/svelte/icons/play';
 import * as AlertDialog from '$lib/components/ui/alert-dialog';
+import { Button } from '$lib/components/ui/button';
 
 interface Props {
 	open?: boolean;
@@ -78,22 +80,10 @@ function handleCancel(): void {
 
 		<AlertDialog.Footer>
 			<AlertDialog.Cancel onclick={handleCancel}>Cancel</AlertDialog.Cancel>
-			<button type="button" class="continue-btn" onclick={handleContinue}>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					width="16"
-					height="16"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-				>
-					<polygon points="5 3 19 12 5 21 5 3" />
-				</svg>
+			<Button class="tap-target" onclick={handleContinue}>
+				<PlayIcon />
 				Continue to Plex
-			</button>
+			</Button>
 		</AlertDialog.Footer>
 	</AlertDialog.Content>
 </AlertDialog.Root>
@@ -154,45 +144,5 @@ function handleCancel(): void {
 			font-size: 0.8125rem;
 			line-height: 1.5;
 			color: oklch(var(--muted-foreground));
-		}
-
-		.continue-btn {
-			display: inline-flex;
-			align-items: center;
-			justify-content: center;
-			gap: 0.5rem;
-			height: 2.5rem;
-			padding: 0 1rem;
-			font-size: 0.875rem;
-			font-weight: 600;
-			color: oklch(var(--primary-foreground));
-			background: oklch(var(--primary));
-			border: none;
-			border-radius: calc(var(--radius) + 2px);
-			cursor: pointer;
-			transition:
-				background-color 0.15s ease,
-				transform 0.1s ease,
-				box-shadow 0.15s ease;
-		}
-
-		.continue-btn:hover {
-			background: oklch(var(--primary) / 0.9);
-			box-shadow: 0 0 0 3px oklch(var(--primary) / 0.15);
-		}
-
-		.continue-btn:active {
-			transform: scale(0.98);
-		}
-
-		.continue-btn:focus-visible {
-			outline: none;
-			box-shadow:
-				0 0 0 2px oklch(var(--background)),
-				0 0 0 4px oklch(var(--ring));
-		}
-
-		.continue-btn svg {
-			flex-shrink: 0;
 		}
 </style>
