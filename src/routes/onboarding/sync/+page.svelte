@@ -1,6 +1,7 @@
 <script lang="ts">
 import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
+import SquareIcon from '@lucide/svelte/icons/square';
 import { animate, stagger } from 'motion';
 import { untrack } from 'svelte';
 import { browser } from '$app/environment';
@@ -396,16 +397,15 @@ function formatNumber(n: number): string {
 						};
 					}}
 				>
-					<button type="submit" class="cancel-button" disabled={isCancelling}>
-						{#if isCancelling}
-							<span class="btn-spinner"></span>
-						{:else}
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<rect x="6" y="6" width="12" height="12" rx="2" />
-							</svg>
-						{/if}
-						<span>Cancel</span>
-					</button>
+					<SubmitButton class="cancel-button tap-target" submitting={isCancelling}>
+						{#snippet children()}
+							<SquareIcon class="size-[18px]" />
+							<span>Cancel</span>
+						{/snippet}
+						{#snippet submittingLabel()}
+							<span>Cancel</span>
+						{/snippet}
+					</SubmitButton>
 				</form>
 			{/if}
 			<form method="POST" action="?/continue" use:enhance>
@@ -714,11 +714,9 @@ function formatNumber(n: number): string {
 		/* Start button — hoisted to :global so SubmitButton's
 		   child-rendered <button> inherits the primary palette, hover
 		   translate-y (-2px), and triple shadow (drop + accent + inset
-		   highlight). The `.btn-icon` descendant rule is dropped; the
-		   lucide RefreshCwIcon is sized inline via `class="size-5"`.
-		   `.btn-spinner` (used by .cancel-button below) stays — its
-		   start-button consumer was replaced by SubmitButton's built-in
-		   LoaderCircleIcon spinner. */
+		   highlight). The `.btn-icon` descendant rule was dropped when
+		   the inline SVG was replaced with the lucide RefreshCwIcon
+		   sized inline via `class="size-5"`. */
 		:global(.start-button) {
 			display: inline-flex;
 			align-items: center;
@@ -753,20 +751,6 @@ function formatNumber(n: number): string {
 			cursor: not-allowed;
 		}
 
-		.btn-spinner {
-			width: 18px;
-			height: 18px;
-			border: 2px solid oklch(var(--primary-foreground) / 0.2);
-			border-top-color: oklch(var(--primary-foreground) / 0.7);
-			border-radius: 50%;
-			animation: spin 0.8s linear infinite;
-		}
-
-		@keyframes spin {
-			to {
-				transform: rotate(360deg);
-			}
-		}
 
 		/* Warning banner */
 		.warning-banner {
@@ -879,8 +863,12 @@ function formatNumber(n: number): string {
 			flex-wrap: wrap;
 		}
 
-		/* Cancel button */
-		.cancel-button {
+		/* Cancel button — destructive variant. Hoisted to :global so
+		   SubmitButton's child-rendered <button> inherits the red palette
+		   + hover-darken effect. The `.cancel-button svg` descendant rule
+		   is dropped; the lucide SquareIcon is sized inline via
+		   `class="size-[18px]"`. */
+		:global(.cancel-button) {
 			display: inline-flex;
 			align-items: center;
 			justify-content: center;
@@ -896,19 +884,14 @@ function formatNumber(n: number): string {
 			transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 		}
 
-		.cancel-button:hover:not(:disabled) {
+		:global(.cancel-button:hover:not(:disabled)) {
 			background: rgba(239, 68, 68, 0.15);
 			border-color: rgba(239, 68, 68, 0.5);
 		}
 
-		.cancel-button:disabled {
+		:global(.cancel-button:disabled) {
 			opacity: 0.6;
 			cursor: not-allowed;
-		}
-
-		.cancel-button svg {
-			width: 18px;
-			height: 18px;
 		}
 
 		/* Continue button — hoisted to :global so SubmitButton's
