@@ -4,7 +4,10 @@ import { db } from '$lib/server/db/client';
 import { appSettings } from '$lib/server/db/schema';
 import { setServerWrappedShareMode } from '$lib/server/sharing/service';
 import { ShareMode } from '$lib/server/sharing/types';
-import { actions as adminSettingsActions } from '../../../src/routes/admin/settings/+page.server';
+// Post-US-022: re-pointed to the nested Privacy route. The
+// updateServerWrappedSettings handler is byte-identical between the deleted
+// monolith and the privacy/+page.server.ts copy (commit 853561f).
+import { actions as adminSettingsActions } from '../../../src/routes/admin/settings/privacy/+page.server';
 import { load } from '../../../src/routes/wrapped/[year]/+page.server';
 
 type ServerWrappedLoad = typeof load;
