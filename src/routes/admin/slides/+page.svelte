@@ -4,6 +4,7 @@ import { untrack } from 'svelte';
 import { enhance } from '$app/forms';
 import type { SlideType } from '$lib/components/slides/types';
 import { DEFAULT_SLIDE_ORDER } from '$lib/components/slides/types';
+import { Button } from '$lib/components/ui/button';
 import { handleFormToast } from '$lib/utils/form-toast';
 import { submitAction } from '$lib/utils/submit-action';
 import type { ActionData, PageData } from './$types';
@@ -307,10 +308,10 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 					Drag and drop to reorder. Toggle to enable or disable slides.
 				</p>
 			</div>
-			<button type="button" class="add-button" onclick={openNewEditor}>
+			<Button type="button" class="add-button tap-target" onclick={openNewEditor}>
 				<Plus class="add-button-icon" />
 				Add Custom Slide
-			</button>
+			</Button>
 		</div>
 
 		<!-- Hidden form for reordering -->
@@ -1045,7 +1046,13 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			opacity: 0.9;
 		}
 
-		.add-button {
+		/* `.add-button` is the section-header primary CTA ("Add Custom
+		   Slide"). Hoisted to :global so shadcn Button's child-rendered
+		   <button> inherits the primary palette + hover translate-y.
+		   The `.add-button-icon` descendant rule (lucide Plus sizing)
+		   stays — the previous hybrid scoped+global selector is fully
+		   globalised now. */
+		:global(.add-button) {
 			display: inline-flex;
 			align-items: center;
 			gap: 0.5rem;
@@ -1062,12 +1069,12 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			flex-shrink: 0;
 		}
 
-		.add-button:hover {
+		:global(.add-button:hover) {
 			opacity: 0.9;
 			transform: translateY(-1px);
 		}
 
-		.add-button :global(.add-button-icon) {
+		:global(.add-button .add-button-icon) {
 			width: 1rem;
 			height: 1rem;
 			flex-shrink: 0;
@@ -1508,7 +1515,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 				align-items: stretch;
 			}
 
-			.add-button {
+			:global(.add-button) {
 				width: 100%;
 				justify-content: center;
 			}
