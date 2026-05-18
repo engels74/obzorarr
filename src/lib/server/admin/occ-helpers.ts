@@ -6,12 +6,24 @@ import { getAppSettingsUpdatedAt } from './settings.service';
  * security-actions, server-wrapped-route) all assert this exact string;
  * changing it requires updating those tests in lockstep.
  *
- * The external-OCC path uses a different shape (`error: '__OCC_CONFLICT__'`
- * + `settingsVersion: current`) so clients can distinguish OCC from
- * regular validation errors — that shape is not parameterised by this
- * constant.
+ * The external-OCC path uses a different shape — see `OCC_CONFLICT_CODE`.
  */
 export const OCC_CONFLICT_MESSAGE = 'Settings changed in another tab. Please reload.';
+
+/**
+ * Sentinel `error` field value for the external-OCC conflict shape.
+ * Action handlers for the top-level `z.enum` schemas (UI / wrapped theme,
+ * wrapped logo mode) return:
+ *   `fail(409, { error: OCC_CONFLICT_CODE, settingsVersion: current })`
+ * so the client can distinguish OCC conflicts from regular validation
+ * failures and refresh its local version before retrying.
+ *
+ * VersionField.svelte and the appearance/+page.server.ts handlers depend on
+ * this exact string; tests in occ-helpers.test.ts + appearance-actions.test.ts
+ * also assert against the literal. Lockstep rules apply if the sentinel
+ * ever needs to change.
+ */
+export const OCC_CONFLICT_CODE = '__OCC_CONFLICT__';
 
 /**
  * External OCC check used by the top-level `z.enum` actions

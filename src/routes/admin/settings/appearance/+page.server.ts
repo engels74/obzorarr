@@ -1,6 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import { z } from 'zod';
-import { externalOccCheck } from '$lib/server/admin/occ-helpers';
+import { externalOccCheck, OCC_CONFLICT_CODE } from '$lib/server/admin/occ-helpers';
 import {
 	getAppSettingsUpdatedAt,
 	getUITheme,
@@ -85,7 +85,7 @@ export const actions: Actions = requireAdminActions({
 			UI_THEME_SETTINGS_KEYS
 		);
 		if (occ.status === 'conflict') {
-			return fail(409, { error: '__OCC_CONFLICT__', settingsVersion: occ.current });
+			return fail(409, { error: OCC_CONFLICT_CODE, settingsVersion: occ.current });
 		}
 
 		const parsed = ThemeSchema.safeParse(formData.get('theme'));
@@ -108,7 +108,7 @@ export const actions: Actions = requireAdminActions({
 			WRAPPED_THEME_SETTINGS_KEYS
 		);
 		if (occ.status === 'conflict') {
-			return fail(409, { error: '__OCC_CONFLICT__', settingsVersion: occ.current });
+			return fail(409, { error: OCC_CONFLICT_CODE, settingsVersion: occ.current });
 		}
 
 		const parsed = ThemeSchema.safeParse(formData.get('wrappedTheme') ?? formData.get('theme'));
@@ -131,7 +131,7 @@ export const actions: Actions = requireAdminActions({
 			WRAPPED_LOGO_MODE_SETTINGS_KEYS
 		);
 		if (occ.status === 'conflict') {
-			return fail(409, { error: '__OCC_CONFLICT__', settingsVersion: occ.current });
+			return fail(409, { error: OCC_CONFLICT_CODE, settingsVersion: occ.current });
 		}
 
 		const parsed = WrappedLogoModeSchema.safeParse(formData.get('logoMode'));
