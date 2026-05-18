@@ -1,4 +1,6 @@
 <script lang="ts">
+import ClockIcon from '@lucide/svelte/icons/clock';
+import PauseIcon from '@lucide/svelte/icons/pause';
 import PlayIcon from '@lucide/svelte/icons/play';
 import SquareIcon from '@lucide/svelte/icons/square';
 import { browser } from '$app/environment';
@@ -541,48 +543,45 @@ async function goToPage(page: number) {
 				<div class="scheduler-controls">
 					{#if data.schedulerStatus.isPaused}
 						<form method="POST" action="?/resumeScheduler" use:enhance>
-							<button type="submit" class="control-btn resume">
-								<svg viewBox="0 0 24 24" fill="currentColor">
-									<polygon points="5 3 19 12 5 21 5 3" />
-								</svg>
-								Resume
-							</button>
+							<SubmitButton class="control-btn resume tap-target">
+								{#snippet children()}
+									<PlayIcon class="size-4" fill="currentColor" />
+									Resume
+								{/snippet}
+							</SubmitButton>
 						</form>
 					{:else if data.schedulerStatus.isRunning}
 						<form method="POST" action="?/pauseScheduler" use:enhance>
-							<button type="submit" class="control-btn pause">
-								<svg viewBox="0 0 24 24" fill="currentColor">
-									<rect x="6" y="4" width="4" height="16" />
-									<rect x="14" y="4" width="4" height="16" />
-								</svg>
-								Pause
-							</button>
+							<SubmitButton class="control-btn pause tap-target">
+								{#snippet children()}
+									<PauseIcon class="size-4" fill="currentColor" />
+									Pause
+								{/snippet}
+							</SubmitButton>
 						</form>
 					{:else}
 						<form method="POST" action="?/initScheduler" use:enhance>
 							<input type="hidden" name="cronExpression" value={cronExpression} />
-							<button
-								type="submit"
-								class="control-btn init"
+							<SubmitButton
+								class="control-btn init tap-target"
 								disabled={!!cronError}
 								aria-describedby={cronError ? 'cronExpression-error' : undefined}
 							>
-								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-									<circle cx="12" cy="12" r="10" />
-									<polyline points="12 6 12 12 16 14" />
-								</svg>
-								Initialize
-							</button>
+								{#snippet children()}
+									<ClockIcon class="size-4" />
+									Initialize
+								{/snippet}
+							</SubmitButton>
 						</form>
 					{/if}
 					{#if data.schedulerStatus.isRunning || data.schedulerStatus.isPaused}
 						<form method="POST" action="?/stopScheduler" use:enhance>
-							<button type="submit" class="control-btn stop">
-								<svg viewBox="0 0 24 24" fill="currentColor">
-									<rect x="6" y="6" width="12" height="12" rx="2" />
-								</svg>
-								Stop
-							</button>
+							<SubmitButton class="control-btn stop tap-target">
+								{#snippet children()}
+									<SquareIcon class="size-4" fill="currentColor" />
+									Stop
+								{/snippet}
+							</SubmitButton>
 						</form>
 					{/if}
 				</div>
@@ -1447,7 +1446,14 @@ async function goToPage(page: number) {
 			gap: 0.5rem;
 		}
 
-		.control-btn {
+		/* `.control-btn` is the scheduler control quartet (resume / pause
+		   / init / stop). 4 per-variant palettes (green / amber /
+		   primary / muted), each with a hover state. Hoisted to :global
+		   so SubmitButton's child-rendered <button> inherits each
+		   variant's color. The `.control-btn svg` descendant rule is
+		   dropped — PlayIcon / PauseIcon / ClockIcon / SquareIcon are
+		   sized inline via `class="size-4"`. */
+		:global(.control-btn) {
 			flex: 1;
 			display: flex;
 			align-items: center;
@@ -1461,48 +1467,43 @@ async function goToPage(page: number) {
 			transition: all 0.15s ease;
 		}
 
-		.control-btn svg {
-			width: 16px;
-			height: 16px;
-		}
-
-		.control-btn.resume {
+		:global(.control-btn.resume) {
 			background: oklch(0.4863 0.0951 154.82);
 			border: 1px solid oklch(0.5972 0.1198 154.58);
 			color: oklch(0.9426 0.0399 159.98);
 		}
 
-		.control-btn.resume:hover {
+		:global(.control-btn.resume:hover) {
 			background: oklch(0.553 0.117 154.02);
 		}
 
-		.control-btn.pause {
+		:global(.control-btn.pause) {
 			background: oklch(0.4944 0.0796 90.72);
 			border: 1px solid oklch(0.607 0.0999 90.58);
 			color: oklch(0.9504 0.0364 91.69);
 		}
 
-		.control-btn.pause:hover {
+		:global(.control-btn.pause:hover) {
 			background: oklch(0.5606 0.096 90.25);
 		}
 
-		.control-btn.init {
+		:global(.control-btn.init) {
 			background: oklch(var(--primary));
 			border: 1px solid oklch(var(--primary));
 			color: oklch(var(--primary-foreground));
 		}
 
-		.control-btn.init:hover {
+		:global(.control-btn.init:hover) {
 			opacity: 0.9;
 		}
 
-		.control-btn.stop {
+		:global(.control-btn.stop) {
 			background: oklch(var(--muted));
 			border: 1px solid oklch(var(--border));
 			color: oklch(var(--foreground));
 		}
 
-		.control-btn.stop:hover {
+		:global(.control-btn.stop:hover) {
 			background: oklch(var(--muted) / 0.8);
 		}
 
