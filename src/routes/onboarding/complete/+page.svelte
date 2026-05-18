@@ -1,5 +1,7 @@
 <script lang="ts">
+import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 import { enhance } from '$app/forms';
+import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
 import type { PageData } from './$types';
 
@@ -16,6 +18,9 @@ let { data }: { data: PageData } = $props();
 let showCheckmark = $state(false);
 let showContent = $state(false);
 let showParticles = $state(false);
+
+// Submit state for "Go to Dashboard"
+let isNavigating = $state(false);
 
 // Trigger animations on mount
 $effect(() => {
@@ -229,19 +234,26 @@ const summaryItems = $derived([
 
 	{#snippet footer()}
 		<div class="footer-content" class:visible={showContent}>
-			<form method="POST" action="?/goToDashboard" use:enhance>
-				<button type="submit" class="btn-dashboard">
-					<span>Go to Dashboard</span>
-					<svg
-						class="arrow-icon"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-					>
-						<path d="M5 12h14M12 5l7 7-7 7" />
-					</svg>
-				</button>
+			<form
+				method="POST"
+				action="?/goToDashboard"
+				use:enhance
+				onsubmit={() => {
+					isNavigating = true;
+				}}
+			>
+				<SubmitButton
+					class="btn-dashboard tap-target"
+					submitting={isNavigating}
+				>
+					{#snippet children()}
+						<span>Go to Dashboard</span>
+						<ArrowRightIcon class="arrow-icon" />
+					{/snippet}
+					{#snippet submittingLabel()}
+						<span>Loading dashboard…</span>
+					{/snippet}
+				</SubmitButton>
 			</form>
 			<p class="footer-note">You can change these settings anytime from the admin panel</p>
 		</div>
@@ -693,7 +705,13 @@ const summaryItems = $derived([
 			transform: translateY(0);
 		}
 
-		.btn-dashboard {
+		/* `.btn-dashboard` is hoisted to :global so SubmitButton (which
+		   renders its <button> in a child component) inherits the primary
+		   palette, hover translate-y, and dual-shadow glow. `.arrow-icon`
+		   piggy-backs the same hoist for the arrow-translate-x hover
+		   effect that pairs with the button's lift. Pattern matches
+		   landing-page US-024 (e276772 + downstream). */
+		:global(.btn-dashboard) {
 			display: flex;
 			align-items: center;
 			justify-content: center;
@@ -714,24 +732,24 @@ const summaryItems = $derived([
 				0 0 40px oklch(var(--primary) / 0.1);
 		}
 
-		.btn-dashboard:hover {
+		:global(.btn-dashboard:hover) {
 			transform: translateY(-3px);
 			box-shadow:
 				0 8px 30px oklch(var(--primary) / 0.4),
 				0 0 60px oklch(var(--primary) / 0.15);
 		}
 
-		.btn-dashboard:active {
+		:global(.btn-dashboard:active) {
 			transform: translateY(-1px);
 		}
 
-		.arrow-icon {
+		:global(.arrow-icon) {
 			width: 1.25rem;
 			height: 1.25rem;
 			transition: transform 0.25s ease;
 		}
 
-		.btn-dashboard:hover .arrow-icon {
+		:global(.btn-dashboard:hover .arrow-icon) {
 			transform: translateX(4px);
 		}
 
