@@ -1,4 +1,5 @@
 <script lang="ts">
+import Pencil from '@lucide/svelte/icons/pencil';
 import Plus from '@lucide/svelte/icons/plus';
 import { untrack } from 'svelte';
 import { enhance } from '$app/forms';
@@ -361,30 +362,17 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 						</div>
 
 						<div class="slide-actions">
-							<button
+							<Button
 								type="button"
-								class="action-button edit-action"
+								class="action-button edit-action tap-target"
 								onclick={() => {
 									const slide = getCustomSlideForEdit(item);
 									if (slide) openEditEditor(slide);
 								}}
 								aria-label="Edit custom slide"
 							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									width="14"
-									height="14"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-								>
-									<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-									<path d="m15 5 4 4" />
-								</svg>
-							</button>
+								<Pencil class="size-[14px]" />
+							</Button>
 
 							<form method="POST" action="?/toggleCustomSlide" use:enhance class="toggle-form">
 								<input type="hidden" name="id" value={item.id} />
@@ -934,7 +922,14 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			gap: 0.375rem;
 		}
 
-		.action-button {
+		/* `.action-button` is the per-row 28px-square icon-action CTA
+		   (edit-action + delete-action variants). Hoisted to :global so
+		   shadcn Button's child-rendered <button> inherits the muted-
+		   default + primary-on-hover (edit) / destructive-on-hover
+		   (delete) palette swaps. The `.delete-action` button stays
+		   native this iteration (inside the confirm/cancel flow); the
+		   shared rules below cover both consumers. */
+		:global(.action-button) {
 			display: inline-flex;
 			align-items: center;
 			justify-content: center;
@@ -949,18 +944,18 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			transition: all 0.15s ease;
 		}
 
-		.action-button:hover {
+		:global(.action-button:hover) {
 			background: oklch(var(--secondary));
 			color: oklch(var(--foreground));
 		}
 
-		.action-button.edit-action:hover {
+		:global(.action-button.edit-action:hover) {
 			background: oklch(var(--primary));
 			color: oklch(var(--primary-foreground));
 			border-color: oklch(var(--primary));
 		}
 
-		.action-button.delete-action:hover {
+		:global(.action-button.delete-action:hover) {
 			background: oklch(var(--destructive));
 			color: oklch(var(--destructive-foreground));
 			border-color: oklch(var(--destructive));
