@@ -1,10 +1,12 @@
 <script lang="ts">
+import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 import { animate } from 'motion';
 import { tick, untrack } from 'svelte';
 import { enhance } from '$app/forms';
 import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
+import { Button } from '$lib/components/ui/button';
 import { handleFormToast } from '$lib/utils/form-toast';
 import { submitAction } from '$lib/utils/submit-action';
 import { loadThemeFonts } from '$lib/utils/theme-fonts';
@@ -765,23 +767,15 @@ function getThemeColors(themeValue: string) {
 	{#snippet footer()}
 		<div class="footer-actions">
 			<!-- Previous Button -->
-			<button
+			<Button
 				type="button"
-				class="btn-nav btn-prev"
+				class="btn-nav btn-prev tap-target"
 				disabled={isFirstSubStep || isSubmitting}
 				onclick={prevSubStep}
 			>
-				<svg
-					class="nav-arrow"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-				>
-					<path d="M19 12H5M12 19l-7-7 7-7" />
-				</svg>
+				<ArrowLeftIcon class="nav-arrow" />
 				Previous
-			</button>
+			</Button>
 
 			<!-- Skip Link (center) -->
 			<form method="POST" action="?/skipSettings" use:enhance class="skip-form">
@@ -808,23 +802,15 @@ function getThemeColors(themeValue: string) {
 					{/snippet}
 				</SubmitButton>
 			{:else}
-				<button
+				<Button
 					type="button"
-					class="btn-nav btn-next"
+					class="btn-nav btn-next tap-target"
 					disabled={isSubmitting}
 					onclick={nextSubStep}
 				>
 					Next
-					<svg
-						class="nav-arrow"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-					>
-						<path d="M5 12h14M12 5l7 7-7 7" />
-					</svg>
-				</button>
+					<ArrowRightIcon class="nav-arrow" />
+				</Button>
 			{/if}
 		</div>
 	{/snippet}
@@ -1081,30 +1067,30 @@ function getThemeColors(themeValue: string) {
 			transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 		}
 
-		.btn-prev {
+		:global(.btn-prev) {
 			background: transparent;
 			border: 1px solid rgba(255, 255, 255, 0.15);
 			color: rgba(255, 255, 255, 0.7);
 		}
 
-		.btn-prev:hover:not(:disabled) {
+		:global(.btn-prev:hover:not(:disabled)) {
 			background: rgba(255, 255, 255, 0.05);
 			border-color: rgba(255, 255, 255, 0.25);
 			color: rgba(255, 255, 255, 0.9);
 		}
 
-		.btn-prev:disabled {
+		:global(.btn-prev:disabled) {
 			opacity: 0.35;
 			cursor: not-allowed;
 		}
 
-		.btn-next {
+		:global(.btn-next) {
 			background: oklch(var(--primary) / 0.15);
 			border: 1px solid oklch(var(--primary) / 0.3);
 			color: oklch(var(--primary));
 		}
 
-		.btn-next:hover:not(:disabled) {
+		:global(.btn-next:hover:not(:disabled)) {
 			background: oklch(var(--primary) / 0.25);
 			border-color: oklch(var(--primary) / 0.5);
 			transform: translateX(2px);
@@ -1135,11 +1121,11 @@ function getThemeColors(themeValue: string) {
 			transition: transform 0.2s ease;
 		}
 
-		.btn-next:hover:not(:disabled) .nav-arrow {
+		:global(.btn-next:hover:not(:disabled) .nav-arrow) {
 			transform: translateX(2px);
 		}
 
-		.btn-prev:hover:not(:disabled) .nav-arrow {
+		:global(.btn-prev:hover:not(:disabled) .nav-arrow) {
 			transform: translateX(-2px);
 		}
 		/* Setting Groups */
