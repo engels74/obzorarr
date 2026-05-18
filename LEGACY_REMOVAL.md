@@ -1,11 +1,14 @@
 # Legacy Removal TODO — scheduled for PR-4 of the v3 UI overhaul
 
-> **Resumption note (session 3 ralph loop hit max iteration 100/100,
-> 2026-05-18 evening).** PR-1 foundation + PR-2 settings monolith
-> deletion are landed; PR-3 landing + auth surfaces fully shadcnized;
-> 4 of 6 onboarding pages migrated + plex partially started. The v3
-> plan at `~/.claude/plans/i-set-you-to-vectorized-sutton-v3.md` is
-> on track:
+> **Resumption note (session 3 ralph loop reached max iteration 110/110
+> after the runtime extended past 100, 2026-05-18 evening).** PR-1
+> foundation + PR-2 settings monolith deletion are landed; PR-3 landing
+> + auth surfaces fully shadcnized; 5 of 6 onboarding pages migrated
+> (claim + complete + sync + csrf + plex + settings — only the visual
+> selectors inside settings/plex stay custom by design). US-021
+> started: admin/users + admin/logs partial. Branch is +50 commits
+> past main. The v3 plan at
+> `~/.claude/plans/i-set-you-to-vectorized-sutton-v3.md` is on track:
 >
 > | Story  | Status                                                |
 > |--------|-------------------------------------------------------|
