@@ -1,5 +1,6 @@
 <script lang="ts">
 import { enhance } from '$app/forms';
+import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import { handleFormToast } from '$lib/utils/form-toast';
 import type { ActionData, PageData } from './$types';
 
@@ -175,16 +176,16 @@ function markAvatarFailed(userId: number): void {
 											name="canUserControl"
 											value={user.canUserControl ? 'false' : 'true'}
 										/>
-										<button
-											type="submit"
-											class="toggle-button"
-											class:enabled={user.canUserControl}
+										<SubmitButton
+											class={`toggle-button tap-target ${user.canUserControl ? 'enabled' : ''}`}
 											title={user.canUserControl
 												? 'Click to revoke control'
 												: 'Click to grant control'}
 										>
-											{user.canUserControl ? 'Yes' : 'No'}
-										</button>
+											{#snippet children()}
+												{user.canUserControl ? 'Yes' : 'No'}
+											{/snippet}
+										</SubmitButton>
 									</form>
 								</td>
 								<td>
@@ -276,14 +277,16 @@ function markAvatarFailed(userId: number): void {
 										name="canUserControl"
 										value={user.canUserControl ? 'false' : 'true'}
 									/>
-									<button
-										type="submit"
-										class="toggle-button"
-										class:enabled={user.canUserControl}
-										title={user.canUserControl ? 'Click to revoke control' : 'Click to grant control'}
+									<SubmitButton
+										class={`toggle-button tap-target ${user.canUserControl ? 'enabled' : ''}`}
+										title={user.canUserControl
+											? 'Click to revoke control'
+											: 'Click to grant control'}
 									>
-										{user.canUserControl ? 'Yes' : 'No'}
-									</button>
+										{#snippet children()}
+											{user.canUserControl ? 'Yes' : 'No'}
+										{/snippet}
+									</SubmitButton>
 								</form>
 							</div>
 						</div>
@@ -565,7 +568,14 @@ function markAvatarFailed(userId: number): void {
 			margin: 0;
 		}
 
-		.toggle-button {
+		/* `.toggle-button` is the Yes/No permission toggle in the user
+		   table cells (desktop) + mobile list. Hoisted to :global so
+		   SubmitButton's child-rendered <button> inherits the muted-
+		   default vs green-enabled palettes + hover-fade. The `.enabled`
+		   modifier toggles via a template literal in the consuming
+		   class prop (Svelte `class:foo` syntax doesn't compose with
+		   component class props — only DOM-level). */
+		:global(.toggle-button) {
 			padding: 0.25rem 0.5rem;
 			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
@@ -577,13 +587,13 @@ function markAvatarFailed(userId: number): void {
 			transition: all 0.15s ease;
 		}
 
-		.toggle-button.enabled {
+		:global(.toggle-button.enabled) {
 			background: oklch(0.4165 0.0976 143.57);
 			color: oklch(0.9393 0.0518 145.15);
 			border-color: oklch(0.4165 0.0976 143.57);
 		}
 
-		.toggle-button:hover {
+		:global(.toggle-button:hover) {
 			opacity: 0.8;
 		}
 
