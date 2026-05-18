@@ -1,5 +1,5 @@
 import { arch as osArch, platform as osPlatform } from 'node:os';
-import { fail } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import { z } from 'zod';
 import { env } from '$env/dynamic/private';
 import { externalOccCheck, inlineOccCheck } from '$lib/server/admin/occ-helpers';
@@ -267,7 +267,21 @@ interface SettingValue {
 
 type SafeSettingValue = Omit<SettingValue, 'value'> & { hasValue: boolean };
 
-export const load: PageServerLoad = async () => {
+/**
+ * Legacy `?tab=<name>` redirect (v3 plan §B1 / US-018). Settings tabs now
+ * live at their own nested routes; any incoming `?tab=` URL is bookmarks
+ * or external links from before the split. 302 them to the new home.
+ * Unknown tab names fall through and render the monolith (bare URL still
+ * shows the monolith until US-022 deletes it).
+ */
+const KNOWN_TABS = new Set(['connections', 'security', 'data', 'system', 'appearance', 'privacy']);
+
+export const load: PageServerLoad = async ({ url }) => {
+	const tab = url.searchParams.get('tab');
+	if (tab && KNOWN_TABS.has(tab)) {
+		redirect(303, `/admin/settings/${tab}`);
+	}
+
 	const [
 		apiConfig,
 		uiTheme,
