@@ -1,9 +1,11 @@
 # Legacy Removal TODO — scheduled for PR-4 of the v3 UI overhaul
 
-> **Resumption note (session 3 stopped 2026-05-18 afternoon).** PR-1
-> foundation + PR-2 settings monolith deletion are landed; PR-3 auth
-> surfaces are partially shadcnized. The v3 plan at
-> `~/.claude/plans/i-set-you-to-vectorized-sutton-v3.md` is on track:
+> **Resumption note (session 3 ralph loop hit max iteration 100/100,
+> 2026-05-18 evening).** PR-1 foundation + PR-2 settings monolith
+> deletion are landed; PR-3 landing + auth surfaces fully shadcnized;
+> 4 of 6 onboarding pages migrated + plex partially started. The v3
+> plan at `~/.claude/plans/i-set-you-to-vectorized-sutton-v3.md` is
+> on track:
 >
 > | Story  | Status                                                |
 > |--------|-------------------------------------------------------|
@@ -15,22 +17,39 @@
 > | US-013 | ✅ Closed — direct OCC helper tests (12 cases at occ-helpers.test.ts) + appearance-actions external-OCC coverage (10 cases) + nested-route inline-OCC integration (~57 cases) |
 > | US-021 | ❌ Not started — 5 admin route reskins (sync/users/logs/slides/wrapped admin); each is visually-coupled to custom CSS, multi-iteration job |
 > | US-024 | ✅ Closed — landing page uses shadcn Input + SubmitButton + Button; `:global` hoists on `.view-button` / `.username-input` / `.login-button` preserve hero CTA hand-tuned styling across the Svelte 5 component-scope boundary (e276772, 19f1d87, 1d5f80f, 9d7c35b, 1fa375b) |
-> | US-026 | ⚠️  Partial — 4 of 6 onboarding pages migrated using the visual-coupling pattern: claim (cb5dbce, ...), complete (post-cb5dbce btn-dashboard), sync (continue + start + cancel — 3 commits), csrf (footer + 4 mid-page buttons + cleanup — 6 commits). Remaining: plex/+page.svelte (2300 LOC) + settings/+page.svelte (1731 LOC) — biggest unblocked work |
+> | US-026 | ⚠️  Partial — claim + complete + sync + csrf fully migrated (zero hand-rolled buttons across all 4); plex started (continue-button trio swapped, ~10 buttons remain); settings unstarted (1731 LOC) |
 > | US-025 | ✅ Closed — PopupBlockedModal already uses shadcn AlertDialog; continue-btn swapped to shadcn Button (81d8f64); auth/plex/redirect callback fully reskinned with shadcn Card + Button + lucide icons (efa131e) |
 > | US-009b, US-012, US-015 | ❌ Deferred (consumer-driven / Playwright install / inline bootstrap) |
 > | US-023, US-026..US-034 | ❌ PR-3 + PR-4 backlog                       |
 >
-> All gates green: `bun run check` 6715/0/0; `bun run lint` clean; `bun run build` ✓;
+> All gates green: `bun run check` 3081/0/0; `bun run lint` clean; `bun run build` ✓;
 > `bun run test` 1884 pass, 0 fail. **Branch `feat/ui-overhaul-pr1` is mergeable
-> as PR-1 + PR-2 (minus US-021) + the US-025 slice of PR-3.** Everything below
-> US-025 belongs to PR-3 / PR-4 backlog.
+> as PR-1 + PR-2 (minus US-021) + PR-3 (US-024 + US-025 + 4 of 6 US-026
+> onboarding pages).** Everything below belongs to remaining US-021 +
+> US-026 (plex/settings) + PR-4 backlog.
+>
+> **Session 3 commit count**: ~30 atomic commits applying the visual-
+> coupling pattern (see below) across landing + 4 onboarding pages +
+> auth callbacks. The pattern is mechanical and reliably keeps the
+> hand-tuned styling — each commit is in the 5-50 LOC range and only
+> swaps one primitive at a time. svelte-check's "Unused CSS selector"
+> warning reliably catches orphan rules left behind by inline-SVG
+> replacements (e.g. .button-loading wrapper spans, local @keyframes
+> spin) and the cleanup belongs in the primitive-swap commit.
 >
 > **To resume**: run
 > `/oh-my-claudecode:ralph execute the plan at ~/.claude/plans/i-set-you-to-vectorized-sutton-v3.md`
-> in a fresh session. Recommended next pick: US-021 (admin route reskins).
-> The smallest is /admin/users at 738 LOC; each route is its own focused
-> rewrite to shadcn Card / Table / Tabs / Dialog primitives, preserving
-> the existing form actions + requireAdminActions guard.
+> in a fresh session. Two recommended next picks (parallel):
+>
+> 1. Finish US-026: 10 buttons remain in onboarding/plex/+page.svelte
+>    (plex-button × 2, error-action-btn × 3, custom-url-test-btn, plus
+>    server-list per-row actions). Then start onboarding/settings
+>    (1731 LOC, unstarted). Same `:global` hoist + SubmitButton/Button
+>    pattern from iterations 85-99.
+> 2. Start US-021: admin route reskins (sync/users/logs/slides/wrapped
+>    admin). admin/users at 738 LOC is the smallest. Custom <table>
+>    swap to shadcn Table primitives can ride alongside the same
+>    pattern.
 >
 > **Visual-coupling pattern (proven on US-024, reusable for US-021 / US-026)**:
 > Svelte 5 component-scoped CSS does NOT reach into a child component's
