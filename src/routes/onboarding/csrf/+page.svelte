@@ -3,6 +3,7 @@ import ExternalLink from '@lucide/svelte/icons/external-link';
 import { animate, stagger } from 'motion';
 import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
+import { Button } from '$lib/components/ui/button';
 import { submitAction } from '$lib/utils/submit-action';
 import type { ActionData, PageData } from './$types';
 
@@ -526,9 +527,13 @@ function canEnableTrustProxy(): boolean {
 						class:error={form?.error}
 					/>
 					{#if csrfOriginInput !== data.detection.detectedOrigin}
-						<button type="button" class="use-detected-btn" onclick={useDetectedOrigin}>
+						<Button
+							type="button"
+							class="use-detected-btn tap-target"
+							onclick={useDetectedOrigin}
+						>
 							Detect URL
-						</button>
+						</Button>
 					{/if}
 					<button
 						type="button"
@@ -1181,7 +1186,11 @@ function canEnableTrustProxy(): boolean {
 			border-color: rgba(239, 68, 68, 0.5);
 		}
 
-		.use-detected-btn {
+		/* `.use-detected-btn` is the "Detect URL" CTA. Hoisted to :global
+		   so shadcn Button's child-rendered <button> inherits the blue
+		   gradient + hover translate-y / scale-active animation +
+		   focus-visible outline. */
+		:global(.use-detected-btn) {
 			flex-shrink: 0;
 			padding: 0.5rem 0.75rem;
 			background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.08) 100%);
@@ -1197,7 +1206,7 @@ function canEnableTrustProxy(): boolean {
 			transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 		}
 
-		.use-detected-btn:hover {
+		:global(.use-detected-btn:hover) {
 			background: linear-gradient(135deg, rgba(59, 130, 246, 0.22) 0%, rgba(59, 130, 246, 0.12) 100%);
 			border-color: rgba(59, 130, 246, 0.4);
 			box-shadow:
@@ -1206,11 +1215,11 @@ function canEnableTrustProxy(): boolean {
 			transform: translateY(-1px);
 		}
 
-		.use-detected-btn:active {
+		:global(.use-detected-btn:active) {
 			transform: translateY(0) scale(0.98);
 		}
 
-		.use-detected-btn:focus-visible {
+		:global(.use-detected-btn:focus-visible) {
 			outline: 2px solid oklch(0.6684 0.1625 259.49);
 			outline-offset: 2px;
 		}
@@ -1669,7 +1678,7 @@ function canEnableTrustProxy(): boolean {
 				flex-direction: column;
 			}
 
-			.use-detected-btn {
+			:global(.use-detected-btn) {
 				width: 100%;
 				padding: 0.625rem;
 			}
