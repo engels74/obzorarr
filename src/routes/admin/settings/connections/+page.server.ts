@@ -54,6 +54,15 @@ const trimmedUrlOrEmpty = z
  */
 const API_CONFIG_OCC_MESSAGE = 'Settings changed in another tab. Reload and try again.';
 
+/**
+ * OCC strategy: INLINE `apiConfigVersion` (legacy field name; predates
+ * the `settingsVersion` convention). Action handlers validate
+ * blank/missing via Zod min(1) -> fail(409 conflict) and stale via the
+ * service-layer setApiConfigAtomic's transactional check -> fail(409).
+ * The schema's optional shape preserves the field-absent vs blank-field
+ * discriminator that the two-panel UI relies on (Plex save shouldn't
+ * wipe OpenAI fields and vice versa).
+ */
 const ApiConfigSchema = z.object({
 	plexServerUrl: trimmedUrlOrEmpty,
 	plexToken: optionalTrimmed(512),
