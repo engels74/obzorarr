@@ -1,12 +1,12 @@
 <script lang="ts">
 import { animate } from 'motion';
+import type { Snippet } from 'svelte';
 import Logo from '$lib/components/Logo.svelte';
 import StepIndicator from '$lib/components/onboarding/StepIndicator.svelte';
 import { loadThemeFonts } from '$lib/utils/theme-fonts';
 import type { LayoutData } from './$types';
 
-// biome-ignore lint/suspicious/noExplicitAny: Svelte's children snippet type is complex
-let { data, children }: { data: LayoutData; children: any } = $props();
+let { data, children }: { data: LayoutData; children: Snippet } = $props();
 
 let logoRef: HTMLElement | undefined = $state();
 let contentRef: HTMLElement | undefined = $state();
