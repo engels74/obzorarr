@@ -84,7 +84,7 @@ let isSavingWrappedLogoMode = $state(false);
 				<input type="hidden" name="settingsVersion" value={data.uiThemeVersion} />
 
 				<div class="flex justify-end">
-					<Button type="submit" disabled={isSavingUITheme}>
+					<Button type="submit" class="tap-target" disabled={isSavingUITheme}>
 						{isSavingUITheme ? 'Saving…' : 'Save UI theme'}
 					</Button>
 				</div>
@@ -141,7 +141,7 @@ let isSavingWrappedLogoMode = $state(false);
 				<input type="hidden" name="settingsVersion" value={data.wrappedThemeVersion} />
 
 				<div class="flex justify-end">
-					<Button type="submit" disabled={isSavingWrappedTheme}>
+					<Button type="submit" class="tap-target" disabled={isSavingWrappedTheme}>
 						{isSavingWrappedTheme ? 'Saving…' : 'Save wrapped theme'}
 					</Button>
 				</div>
@@ -196,7 +196,7 @@ let isSavingWrappedLogoMode = $state(false);
 				<input type="hidden" name="settingsVersion" value={data.wrappedLogoModeVersion} />
 
 				<div class="flex justify-end">
-					<Button type="submit" disabled={isSavingWrappedLogoMode}>
+					<Button type="submit" class="tap-target" disabled={isSavingWrappedLogoMode}>
 						{isSavingWrappedLogoMode ? 'Saving…' : 'Save logo mode'}
 					</Button>
 				</div>

@@ -118,7 +118,7 @@ function formatUptime(seconds: number): string {
 				<input type="hidden" name="settingsVersion" bind:value={$formData.settingsVersion} />
 
 				<div class="flex justify-end">
-					<Button type="submit" disabled={$submitting}>
+					<Button type="submit" class="tap-target" disabled={$submitting}>
 						{$submitting ? 'Saving…' : 'Save logging settings'}
 					</Button>
 				</div>

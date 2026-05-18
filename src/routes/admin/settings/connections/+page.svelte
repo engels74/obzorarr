@@ -145,7 +145,7 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 				<input type="hidden" name="apiConfigVersion" value={data.apiConfigVersion} />
 
 				<div class="flex flex-wrap gap-2 justify-end">
-					<Button type="submit" disabled={isSavingPlex || plexAnyLocked}>
+					<Button type="submit" class="tap-target" disabled={isSavingPlex || plexAnyLocked}>
 						{isSavingPlex ? 'Saving…' : 'Save Plex settings'}
 					</Button>
 				</div>
@@ -176,7 +176,7 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 					};
 				}}
 			>
-				<Button type="submit" variant="outline" disabled={isTestingPlex}>
+				<Button type="submit" variant="outline" class="tap-target" disabled={isTestingPlex}>
 					{isTestingPlex ? 'Testing…' : 'Test Plex connection'}
 				</Button>
 			</form>
@@ -261,7 +261,7 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 				<input type="hidden" name="apiConfigVersion" value={data.apiConfigVersion} />
 
 				<div class="flex flex-wrap gap-2 justify-end">
-					<Button type="submit" disabled={isSavingOpenai || openaiAnyLocked}>
+					<Button type="submit" class="tap-target" disabled={isSavingOpenai || openaiAnyLocked}>
 						{isSavingOpenai ? 'Saving…' : 'Save OpenAI settings'}
 					</Button>
 				</div>
@@ -289,7 +289,7 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 						};
 					}}
 				>
-					<Button type="submit" variant="outline" disabled={isTestingOpenai}>
+					<Button type="submit" variant="outline" class="tap-target" disabled={isTestingOpenai}>
 						{isTestingOpenai ? 'Testing…' : 'Test OpenAI connection'}
 					</Button>
 				</form>
@@ -315,7 +315,7 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 							};
 						}}
 					>
-						<Button type="submit" variant="destructive" disabled={isClearingOpenaiKey}>
+						<Button type="submit" variant="destructive" class="tap-target" disabled={isClearingOpenaiKey}>
 							{isClearingOpenaiKey ? 'Clearing…' : 'Clear API key'}
 						</Button>
 					</form>
@@ -342,7 +342,7 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 							};
 						}}
 					>
-						<Button type="submit" variant="destructive" disabled={isClearingOpenaiModel}>
+						<Button type="submit" variant="destructive" class="tap-target" disabled={isClearingOpenaiModel}>
 							{isClearingOpenaiModel ? 'Clearing…' : 'Clear model'}
 						</Button>
 					</form>

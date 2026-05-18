@@ -132,7 +132,7 @@ let isBulkApplying = $state(false);
 				/>
 
 				<div class="flex justify-end">
-					<Button type="submit" disabled={$serverWrappedSubmitting}>
+					<Button type="submit" class="tap-target" disabled={$serverWrappedSubmitting}>
 						{$serverWrappedSubmitting ? 'Saving…' : 'Save server-wide settings'}
 					</Button>
 				</div>
@@ -211,7 +211,7 @@ let isBulkApplying = $state(false);
 				/>
 
 				<div class="flex justify-end">
-					<Button type="submit" disabled={$userDefaultsSubmitting}>
+					<Button type="submit" class="tap-target" disabled={$userDefaultsSubmitting}>
 						{$userDefaultsSubmitting ? 'Saving…' : 'Save user defaults'}
 					</Button>
 				</div>
@@ -274,7 +274,7 @@ let isBulkApplying = $state(false);
 				}}
 				style="display: contents;"
 			>
-				<AlertDialog.Action type="submit" disabled={isBulkApplying}>
+				<AlertDialog.Action type="submit" class="tap-target" disabled={isBulkApplying}>
 					{isBulkApplying ? 'Applying…' : 'Apply to all users'}
 				</AlertDialog.Action>
 			</form>

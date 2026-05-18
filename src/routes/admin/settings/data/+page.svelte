@@ -112,7 +112,7 @@ const historyYearLabel = $derived(
 						};
 					}}
 				>
-					<Button type="submit" variant="outline" disabled={isCheckingCacheCount}>
+					<Button type="submit" variant="outline" class="tap-target" disabled={isCheckingCacheCount}>
 						{isCheckingCacheCount ? 'Counting…' : 'Count cache entries'}
 					</Button>
 				</form>
@@ -181,7 +181,7 @@ const historyYearLabel = $derived(
 						};
 					}}
 				>
-					<Button type="submit" variant="outline" disabled={isCheckingHistoryCount}>
+					<Button type="submit" variant="outline" class="tap-target" disabled={isCheckingHistoryCount}>
 						{isCheckingHistoryCount ? 'Counting…' : 'Count play records'}
 					</Button>
 				</form>
@@ -235,7 +235,7 @@ const historyYearLabel = $derived(
 				}}
 				style="display: contents;"
 			>
-				<AlertDialog.Action type="submit" disabled={isClearingCache}>
+				<AlertDialog.Action type="submit" class="tap-target" disabled={isClearingCache}>
 					{isClearingCache ? 'Clearing…' : 'Clear cache'}
 				</AlertDialog.Action>
 			</form>
@@ -281,7 +281,7 @@ const historyYearLabel = $derived(
 				}}
 				style="display: contents;"
 			>
-				<AlertDialog.Action type="submit" disabled={isClearingHistory}>
+				<AlertDialog.Action type="submit" class="tap-target" disabled={isClearingHistory}>
 					{isClearingHistory ? 'Clearing…' : 'Clear play history'}
 				</AlertDialog.Action>
 			</form>

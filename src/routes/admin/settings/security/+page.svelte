@@ -105,7 +105,7 @@ let trustProxyConfirmDialogOpen = $state(false);
 					<input type="hidden" name="settingsVersion" value={data.csrfOriginVersion} />
 
 					<div class="flex flex-wrap gap-2 justify-end">
-						<Button type="submit" disabled={isSavingCsrf}>
+						<Button type="submit" class="tap-target" disabled={isSavingCsrf}>
 							{isSavingCsrf ? 'Saving…' : 'Save CSRF origin'}
 						</Button>
 					</div>
@@ -134,7 +134,7 @@ let trustProxyConfirmDialogOpen = $state(false);
 					};
 				}}
 			>
-				<Button type="submit" variant="outline" disabled={isTestingCsrf}>
+				<Button type="submit" variant="outline" class="tap-target" disabled={isTestingCsrf}>
 					{isTestingCsrf ? 'Testing…' : 'Test CSRF protection'}
 				</Button>
 			</form>
@@ -161,7 +161,7 @@ let trustProxyConfirmDialogOpen = $state(false);
 						};
 					}}
 				>
-					<Button type="submit" variant="outline" disabled={isClearingCsrfSkip}>
+					<Button type="submit" variant="outline" class="tap-target" disabled={isClearingCsrfSkip}>
 						{security.csrfOriginSkipped ? 'Disable CSRF skip flag' : 'Enable CSRF skip flag'}
 					</Button>
 				</form>
@@ -188,7 +188,7 @@ let trustProxyConfirmDialogOpen = $state(false);
 						};
 					}}
 				>
-					<Button type="submit" variant="outline" disabled={isResetingWarning}>
+					<Button type="submit" variant="outline" class="tap-target" disabled={isResetingWarning}>
 						{isResetingWarning ? 'Resetting…' : 'Re-enable CSRF warning banner'}
 					</Button>
 				</form>
@@ -234,7 +234,7 @@ let trustProxyConfirmDialogOpen = $state(false);
 					<input type="hidden" name="enabled" value="false" />
 					<input type="hidden" name="settingsVersion" value={data.trustProxyVersion} />
 					<div class="flex justify-end">
-						<Button type="submit" variant="destructive" disabled={isTogglingTrustProxy}>
+						<Button type="submit" variant="destructive" class="tap-target" disabled={isTogglingTrustProxy}>
 							{isTogglingTrustProxy ? 'Disabling…' : 'Disable header trust'}
 						</Button>
 					</div>
@@ -290,7 +290,7 @@ let trustProxyConfirmDialogOpen = $state(false);
 				<input type="hidden" name="csrfOrigin" value={pendingCsrfOrigin ?? ''} />
 				<input type="hidden" name="confirmMismatch" value="true" />
 				<input type="hidden" name="settingsVersion" value={data.csrfOriginVersion} />
-				<AlertDialog.Action type="submit" disabled={isConfirmingCsrfMismatch}>
+				<AlertDialog.Action type="submit" class="tap-target" disabled={isConfirmingCsrfMismatch}>
 					{isConfirmingCsrfMismatch ? 'Saving…' : 'Save anyway'}
 				</AlertDialog.Action>
 			</form>
@@ -335,7 +335,7 @@ let trustProxyConfirmDialogOpen = $state(false);
 				<input type="hidden" name="enabled" value="true" />
 				<input type="hidden" name="confirmRisk" value="true" />
 				<input type="hidden" name="settingsVersion" value={data.trustProxyVersion} />
-				<AlertDialog.Action type="submit" disabled={isConfirmingTrustProxy}>
+				<AlertDialog.Action type="submit" class="tap-target" disabled={isConfirmingTrustProxy}>
 					{isConfirmingTrustProxy ? 'Enabling…' : 'Enable header trust'}
 				</AlertDialog.Action>
 			</form>
