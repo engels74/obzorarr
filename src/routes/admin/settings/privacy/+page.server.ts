@@ -31,11 +31,20 @@ const AnonymizationSchema = z.enum(['real', 'anonymous', 'hybrid']);
 const ServerWrappedModeSchema = z.enum(['public', 'private-oauth']);
 const ShareModeSchema = z.enum(['public', 'private-oauth', 'private-link']);
 /**
- * Accepts boolean (initial load) or 'true'/'false' strings (form-encoded
- * submission). z.coerce.boolean() can't be used here because it treats the
- * literal string 'false' as truthy, silently flipping the flag to true.
+ * Strict boolean for form submission + initial load. Accepts ONLY 'true' /
+ * 'false' strings (form-encoded) or the boolean literals (initial load).
+ *
+ * Two things this schema deliberately rejects:
+ *   - z.coerce.boolean() treats the literal string 'false' as truthy, silently
+ *     flipping the flag to true. Catastrophic for a privacy toggle.
+ *   - z.preprocess((v) => v === 'true' || v === true, z.boolean()) silently
+ *     maps unexpected strings like the HTML checkbox 'on' to false, which
+ *     hides accidental checkbox-vs-toggle wiring bugs. The legacy monolith
+ *     used z.enum(['true', 'false']).transform(...) for this reason.
  */
-const FormBooleanSchema = z.preprocess((v) => v === 'true' || v === true, z.boolean());
+const FormBooleanSchema = z
+	.union([z.literal('true'), z.literal('false'), z.literal(true), z.literal(false)])
+	.transform((v) => v === 'true' || v === true);
 
 const ServerWrappedSettingsSchema = z.object({
 	anonymizationMode: AnonymizationSchema,

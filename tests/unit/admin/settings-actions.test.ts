@@ -19,15 +19,31 @@ import {
 	getGlobalDefaultShareMode,
 	getServerWrappedShareMode
 } from '$lib/server/sharing/service';
-import { actions } from '../../../src/routes/admin/settings/+page.server';
+// Post-US-022 (cf958fa): the monolith /admin/settings/+page.server.ts UI was
+// deleted, but its action handlers remain as orphans for legacy-URL POSTs
+// (and originally for this test file). This file re-points to each nested
+// route — `connections/security/appearance/privacy/system` — so the
+// monolith action handlers can be deleted in a follow-up. The action
+// contracts are byte-identical between monolith and nested-route copies
+// (the nested route handlers were verbatim copies in commits 97152be,
+// 853561f, a46279c, 3c32486, b9dc5ac, 220f6ad, fd526aa, e8ebcab); the
+// Superforms-driven handlers in privacy + system return responses with
+// an extra `form` field that `toMatchObject` ignores by design.
+import { actions as appearanceActions } from '../../../src/routes/admin/settings/appearance/+page.server';
+import { actions as connectionsActions } from '../../../src/routes/admin/settings/connections/+page.server';
+import { actions as privacyActions } from '../../../src/routes/admin/settings/privacy/+page.server';
+import { actions as securityActions } from '../../../src/routes/admin/settings/security/+page.server';
+import { actions as systemActions } from '../../../src/routes/admin/settings/system/+page.server';
 
-type UpdateUserDefaultsAction = NonNullable<typeof actions.updateUserDefaults>;
-type UpdateApiConfigAction = NonNullable<typeof actions.updateApiConfig>;
-type ClearOpenaiModelAction = NonNullable<typeof actions.clearOpenaiModel>;
-type UpdateTrustProxyAction = NonNullable<typeof actions.updateTrustProxy>;
-type UpdateWrappedLogoModeAction = NonNullable<typeof actions.updateWrappedLogoMode>;
-type UpdateServerWrappedSettingsAction = NonNullable<typeof actions.updateServerWrappedSettings>;
-type UpdateLogSettingsAction = NonNullable<typeof actions.updateLogSettings>;
+type UpdateUserDefaultsAction = NonNullable<typeof privacyActions.updateUserDefaults>;
+type UpdateApiConfigAction = NonNullable<typeof connectionsActions.updateApiConfig>;
+type ClearOpenaiModelAction = NonNullable<typeof connectionsActions.clearOpenaiModel>;
+type UpdateTrustProxyAction = NonNullable<typeof securityActions.updateTrustProxy>;
+type UpdateWrappedLogoModeAction = NonNullable<typeof appearanceActions.updateWrappedLogoMode>;
+type UpdateServerWrappedSettingsAction = NonNullable<
+	typeof privacyActions.updateServerWrappedSettings
+>;
+type UpdateLogSettingsAction = NonNullable<typeof systemActions.updateLogSettings>;
 
 const adminLocals = {
 	user: { id: 1, plexId: 1, username: 'admin', isAdmin: true }
@@ -52,7 +68,7 @@ function createUserDefaultsRequest(overrides: Record<string, string> = {}): Requ
 }
 
 async function runUpdateUserDefaults(request: Request) {
-	const updateUserDefaults = actions.updateUserDefaults as UpdateUserDefaultsAction;
+	const updateUserDefaults = privacyActions.updateUserDefaults as UpdateUserDefaultsAction;
 	return updateUserDefaults({
 		request,
 		locals: adminLocals
@@ -132,7 +148,7 @@ describe('admin updateApiConfig schema hardening', () => {
 	}
 
 	async function runUpdateApiConfig(request: Request) {
-		const handler = actions.updateApiConfig as UpdateApiConfigAction;
+		const handler = connectionsActions.updateApiConfig as UpdateApiConfigAction;
 		return handler({ request, locals: adminLocals } as Parameters<UpdateApiConfigAction>[0]);
 	}
 
@@ -247,7 +263,7 @@ describe('admin clearOpenaiModel action', () => {
 	});
 
 	async function runClearOpenaiModel() {
-		const handler = actions.clearOpenaiModel as ClearOpenaiModelAction;
+		const handler = connectionsActions.clearOpenaiModel as ClearOpenaiModelAction;
 		const request = new Request('http://localhost/admin/settings?/clearOpenaiModel', {
 			method: 'POST',
 			body: new FormData()
@@ -325,7 +341,7 @@ describe('admin updateTrustProxy action', () => {
 	}
 
 	async function runUpdateTrustProxy(request: Request) {
-		const handler = actions.updateTrustProxy as UpdateTrustProxyAction;
+		const handler = securityActions.updateTrustProxy as UpdateTrustProxyAction;
 		return handler({ request, locals: adminLocals } as Parameters<UpdateTrustProxyAction>[0]);
 	}
 
@@ -465,7 +481,7 @@ describe('admin updateWrappedLogoMode action', () => {
 	}
 
 	async function runUpdateWrappedLogoMode(request: Request) {
-		const handler = actions.updateWrappedLogoMode as UpdateWrappedLogoModeAction;
+		const handler = appearanceActions.updateWrappedLogoMode as UpdateWrappedLogoModeAction;
 		return handler({ request, locals: adminLocals } as Parameters<UpdateWrappedLogoModeAction>[0]);
 	}
 
@@ -584,7 +600,7 @@ describe('admin updateServerWrappedSettings action — round-trip', () => {
 	}
 
 	async function run(request: Request) {
-		const handler = actions.updateServerWrappedSettings as UpdateServerWrappedSettingsAction;
+		const handler = privacyActions.updateServerWrappedSettings as UpdateServerWrappedSettingsAction;
 		return handler({
 			request,
 			locals: adminLocals
@@ -652,7 +668,7 @@ describe('admin updateLogSettings action — round-trip', () => {
 	}
 
 	async function run(request: Request) {
-		const handler = actions.updateLogSettings as UpdateLogSettingsAction;
+		const handler = systemActions.updateLogSettings as UpdateLogSettingsAction;
 		return handler({ request, locals: adminLocals } as Parameters<UpdateLogSettingsAction>[0]);
 	}
 
