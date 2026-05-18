@@ -1,14 +1,48 @@
+import { fail } from '@sveltejs/kit';
+import { z } from 'zod';
+import { env } from '$env/dynamic/private';
+import { inlineOccCheck } from '$lib/server/admin/occ-helpers';
 import {
 	AppSettingsKey,
 	CSRF_ORIGIN_SETTINGS_KEYS,
+	deleteAppSetting,
 	getAppSetting,
 	getAppSettingsUpdatedAt,
 	getCsrfConfigWithSource,
 	getTrustProxyConfigWithSource,
 	isCsrfWarningDismissed,
+	resetCsrfWarningDismissal,
+	setAppSetting,
 	TRUST_PROXY_SETTINGS_KEYS
 } from '$lib/server/admin/settings.service';
-import type { PageServerLoad } from './$types';
+import { requireAdminActions } from '$lib/server/auth/guards';
+import { logger } from '$lib/server/logging';
+import { getOriginFromRequest } from '$lib/server/security/csrf-handle';
+import { _resetTrustProxyCache } from '$lib/server/security/proxy-handle';
+import type { Actions, PageServerLoad } from './$types';
+
+const CsrfOriginSchema = z.object({
+	csrfOrigin: z
+		.string()
+		.url('Invalid URL format')
+		.refine((url) => url.startsWith('http://') || url.startsWith('https://'), {
+			message: 'Origin must start with http:// or https://'
+		})
+		.transform((url) => {
+			try {
+				const parsed = new URL(url);
+				return parsed.origin;
+			} catch {
+				return url;
+			}
+		})
+});
+
+const TrustProxySchema = z.object({
+	enabled: z.enum(['true', 'false']).transform((v) => v === 'true'),
+	confirmRisk: z.enum(['true']).optional(),
+	settingsVersion: z.string().min(1, 'Missing settings version (reload the page)')
+});
 
 export const load: PageServerLoad = async () => {
 	const [
@@ -43,3 +77,221 @@ export const load: PageServerLoad = async () => {
 		csrfOriginVersion: csrfOriginSettingsUpdatedAt?.toISOString() ?? new Date(0).toISOString()
 	};
 };
+
+export const actions: Actions = requireAdminActions({
+	testCsrfProtection: async () => {
+		const csrfConfig = await getCsrfConfigWithSource();
+		const originValue = csrfConfig.origin.value;
+		if (!originValue) {
+			return fail(400, {
+				error:
+					'CSRF ORIGIN is not configured. Set it via the field above or the ORIGIN environment variable.'
+			});
+		}
+		const sourceLabel = csrfConfig.origin.source === 'db' ? 'database' : 'environment variable';
+		return {
+			success: true,
+			message: `CSRF protection is active. Origin: ${originValue} (from ${sourceLabel})`
+		};
+	},
+
+	updateCsrfOrigin: async ({ request, url }) => {
+		const csrfConfig = await getCsrfConfigWithSource();
+		if (csrfConfig.origin.isLocked) {
+			return fail(400, {
+				error: 'CSRF origin is set via environment variable and cannot be changed here'
+			});
+		}
+
+		const formData = await request.formData();
+		const csrfOrigin = (formData.get('csrfOrigin')?.toString() ?? '').trim();
+		const confirmMismatch = formData.get('confirmMismatch')?.toString() === 'true';
+		const submittedVersion = formData.get('settingsVersion')?.toString() ?? '';
+
+		// Inline OCC, before the set/clear branching so blank `submittedVersion`
+		// (no-cookie / stale tab) still triggers 409 here.
+		if ((await inlineOccCheck(submittedVersion, CSRF_ORIGIN_SETTINGS_KEYS)).status === 'conflict') {
+			return fail(409, {
+				conflict: true,
+				error: 'Settings changed in another tab. Please reload.'
+			});
+		}
+
+		if (csrfOrigin) {
+			const parsed = CsrfOriginSchema.safeParse({ csrfOrigin });
+			if (!parsed.success) {
+				return fail(400, {
+					error: 'Invalid origin URL',
+					fieldErrors: parsed.error.flatten().fieldErrors
+				});
+			}
+
+			const normalizedOrigin = parsed.data.csrfOrigin;
+			const requestOrigin = getOriginFromRequest(request) ?? url.origin;
+			const isMismatch = normalizedOrigin.toLowerCase() !== requestOrigin.toLowerCase();
+
+			if (isMismatch && !confirmMismatch) {
+				return fail(409, {
+					requireConfirmation: true,
+					attemptedOrigin: normalizedOrigin,
+					requestOrigin,
+					csrfMismatchMessage: `Saving "${normalizedOrigin}" while loaded from "${requestOrigin}" will lock this browser out of all admin POST operations. Recovery would require restarting the server with ORIGIN=<correct> env or editing the app_settings table directly. Confirm to proceed anyway.`
+				});
+			}
+
+			try {
+				await setAppSetting(AppSettingsKey.CSRF_ORIGIN, normalizedOrigin);
+				if (isMismatch) {
+					return {
+						success: true,
+						warning: true,
+						message: `CSRF origin saved to "${normalizedOrigin}". Your current browser origin is "${requestOrigin}" — you may now be locked out.`
+					};
+				}
+				return { success: true, message: 'CSRF origin updated' };
+			} catch (error) {
+				const message = error instanceof Error ? error.message : 'Failed to update CSRF origin';
+				return fail(500, { error: message });
+			}
+		}
+
+		// Clear branch
+		const csrfSkipFlag = await getAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED);
+		if (!env.ORIGIN && csrfSkipFlag !== 'true') {
+			return fail(400, {
+				error:
+					'Cannot clear CSRF origin: no ORIGIN environment variable is set and the CSRF skip flag is not enabled. Clearing would lock all admin POST requests (403). Set ORIGIN in your environment or enable the CSRF skip flag first.'
+			});
+		}
+		try {
+			await deleteAppSetting(AppSettingsKey.CSRF_ORIGIN);
+			const message = env.ORIGIN
+				? 'CSRF origin cleared. Application now uses environment variable.'
+				: 'CSRF origin cleared. CSRF protection is currently disabled — set ORIGIN env or re-add an origin.';
+			return { success: true, message };
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to clear CSRF origin';
+			return fail(500, { error: message });
+		}
+	},
+
+	toggleCsrfSkip: async ({ request }) => {
+		const formData = await request.formData();
+		const enabled = formData.get('enabled') === 'true';
+		try {
+			if (enabled) {
+				const csrfConfig = await getCsrfConfigWithSource();
+				if (csrfConfig.origin.value) {
+					return fail(400, {
+						error:
+							'CSRF is already enforced by the configured origin; skipping is not needed. Remove the origin first if you truly intend to skip.'
+					});
+				}
+				await setAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED, 'true');
+				logger.warn('CSRF origin-skip flag enabled by admin', 'Security');
+				return {
+					success: true,
+					message:
+						'CSRF origin skip enabled. CSRF origin validation is now relaxed — set a proper ORIGIN when possible.'
+				};
+			}
+			const csrfConfig = await getCsrfConfigWithSource();
+			if (!csrfConfig.origin.value) {
+				return fail(400, {
+					error:
+						'Cannot disable CSRF skip while no ORIGIN is configured. Set a CSRF origin first, then disable the skip.'
+				});
+			}
+			await deleteAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED);
+			logger.info('CSRF origin-skip flag disabled by admin', 'Security');
+			return {
+				success: true,
+				message: 'CSRF origin skip disabled. Normal origin validation is restored.'
+			};
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to update CSRF skip setting';
+			logger.error(`Failed to toggle CSRF skip: ${message}`, 'Security');
+			return fail(500, { error: message });
+		}
+	},
+
+	resetCsrfWarning: async () => {
+		try {
+			await resetCsrfWarningDismissal();
+			logger.info('CSRF warning re-enabled by admin', 'Security');
+			return { success: true, message: 'CSRF warning re-enabled for this user' };
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to reset CSRF warning';
+			logger.error(`Failed to reset CSRF warning: ${message}`, 'Security');
+			return fail(500, { error: message });
+		}
+	},
+
+	updateTrustProxy: async ({ request }) => {
+		const trustProxyConfig = await getTrustProxyConfigWithSource();
+		if (trustProxyConfig.trustProxy.isLocked) {
+			return fail(400, {
+				error: 'TRUST_PROXY is set via environment variable and cannot be changed here'
+			});
+		}
+
+		const formData = await request.formData();
+		const parsed = TrustProxySchema.safeParse({
+			enabled: formData.get('enabled'),
+			confirmRisk: formData.get('confirmRisk') ?? undefined,
+			settingsVersion: formData.get('settingsVersion')?.toString() ?? ''
+		});
+		if (!parsed.success) {
+			const fieldErrors = parsed.error.flatten().fieldErrors;
+			if (fieldErrors.settingsVersion?.length) {
+				return fail(409, {
+					conflict: true,
+					error: 'Settings changed in another tab. Please reload.'
+				});
+			}
+			return fail(400, {
+				error:
+					'Invalid input: enabled must be "true" or "false"; confirmRisk must be "true" when provided'
+			});
+		}
+		const enabled = parsed.data.enabled;
+		if (enabled && parsed.data.confirmRisk !== 'true') {
+			return fail(400, {
+				error: 'Confirm the reverse-proxy header trust risk before enabling TRUST_PROXY.'
+			});
+		}
+
+		if (
+			(await inlineOccCheck(parsed.data.settingsVersion, TRUST_PROXY_SETTINGS_KEYS)).status ===
+			'conflict'
+		) {
+			return fail(409, {
+				conflict: true,
+				error: 'Settings changed in another tab. Please reload.'
+			});
+		}
+
+		try {
+			await setAppSetting(AppSettingsKey.TRUST_PROXY, enabled ? 'true' : 'false');
+			_resetTrustProxyCache();
+			if (enabled) {
+				logger.warn(
+					'Reverse-proxy header trust enabled by admin. Verify your upstream proxy strips inbound x-forwarded-* headers.',
+					'Security'
+				);
+			} else {
+				logger.info('Reverse-proxy header trust disabled by admin', 'Security');
+			}
+			return {
+				success: true,
+				message: enabled
+					? 'Reverse-proxy header trust enabled.'
+					: 'Reverse-proxy header trust disabled.'
+			};
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to update TRUST_PROXY';
+			logger.error(`Failed to update TRUST_PROXY: ${message}`, 'Security');
+			return fail(500, { error: message });
+		}
+	}
+});
