@@ -1,5 +1,9 @@
 <script lang="ts">
 import CheckIcon from '@lucide/svelte/icons/check';
+import ChevronLeftIcon from '@lucide/svelte/icons/chevron-left';
+import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
+import ChevronsLeftIcon from '@lucide/svelte/icons/chevrons-left';
+import ChevronsRightIcon from '@lucide/svelte/icons/chevrons-right';
 import ClockIcon from '@lucide/svelte/icons/clock';
 import PauseIcon from '@lucide/svelte/icons/pause';
 import PlayIcon from '@lucide/svelte/icons/play';
@@ -8,6 +12,7 @@ import { browser } from '$app/environment';
 import { enhance } from '$app/forms';
 import { goto, invalidateAll } from '$app/navigation';
 import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
+import { Button } from '$lib/components/ui/button';
 import { validateCronExpression } from '$lib/cron/validation';
 import { handleFormToast } from '$lib/utils/form-toast';
 import { formatDuration as formatDurationMs } from '$lib/utils/format';
@@ -752,31 +757,26 @@ async function goToPage(page: number) {
 
 					<div class="pagination-controls">
 						<!-- First Page -->
-						<button
+						<Button
 							type="button"
-							class="pagination-btn"
+							class="pagination-btn tap-target"
 							disabled={!canGoPrevious || isNavigating}
 							onclick={() => goToPage(1)}
 							aria-label="Go to first page"
 						>
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<polyline points="11 17 6 12 11 7" />
-								<polyline points="18 17 13 12 18 7" />
-							</svg>
-						</button>
+							<ChevronsLeftIcon class="size-[18px]" />
+						</Button>
 
 						<!-- Previous Page -->
-						<button
+						<Button
 							type="button"
-							class="pagination-btn"
+							class="pagination-btn tap-target"
 							disabled={!canGoPrevious || isNavigating}
 							onclick={() => goToPage(data.pagination.page - 1)}
 							aria-label="Go to previous page"
 						>
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<polyline points="15 18 9 12 15 6" />
-							</svg>
-						</button>
+							<ChevronLeftIcon class="size-[18px]" />
+						</Button>
 
 						<!-- Page Numbers -->
 						<div class="pagination-pages">
@@ -823,31 +823,26 @@ async function goToPage(page: number) {
 						</div>
 
 						<!-- Next Page -->
-						<button
+						<Button
 							type="button"
-							class="pagination-btn"
+							class="pagination-btn tap-target"
 							disabled={!canGoNext || isNavigating}
 							onclick={() => goToPage(data.pagination.page + 1)}
 							aria-label="Go to next page"
 						>
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<polyline points="9 18 15 12 9 6" />
-							</svg>
-						</button>
+							<ChevronRightIcon class="size-[18px]" />
+						</Button>
 
 						<!-- Last Page -->
-						<button
+						<Button
 							type="button"
-							class="pagination-btn"
+							class="pagination-btn tap-target"
 							disabled={!canGoNext || isNavigating}
 							onclick={() => goToPage(data.pagination.totalPages)}
 							aria-label="Go to last page"
 						>
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<polyline points="13 17 18 12 13 7" />
-								<polyline points="6 17 11 12 6 7" />
-							</svg>
-						</button>
+							<ChevronsRightIcon class="size-[18px]" />
+						</Button>
 					</div>
 				</div>
 			{/if}
@@ -1805,7 +1800,12 @@ async function goToPage(page: number) {
 			gap: 0.375rem;
 		}
 
-		.pagination-btn {
+		/* `.pagination-btn` is the 4-button nav row (first/prev/next/last).
+		   Hoisted to :global so shadcn Button's child-rendered <button>
+		   inherits the 36px-square shape + muted-default vs primary-on-
+		   hover palette. The `.pagination-btn svg` descendant rule is
+		   dropped — chevron icons sized inline via `class="size-[18px]"`. */
+		:global(.pagination-btn) {
 			display: flex;
 			align-items: center;
 			justify-content: center;
@@ -1819,20 +1819,15 @@ async function goToPage(page: number) {
 			transition: all 0.15s ease;
 		}
 
-		.pagination-btn:hover:not(:disabled) {
+		:global(.pagination-btn:hover:not(:disabled)) {
 			background: oklch(var(--primary) / 0.15);
 			border-color: oklch(var(--primary) / 0.5);
 			color: oklch(var(--primary));
 		}
 
-		.pagination-btn:disabled {
+		:global(.pagination-btn:disabled) {
 			opacity: 0.4;
 			cursor: not-allowed;
-		}
-
-		.pagination-btn svg {
-			width: 18px;
-			height: 18px;
 		}
 
 		.pagination-pages {
@@ -1942,14 +1937,9 @@ async function goToPage(page: number) {
 				padding: 1rem;
 			}
 
-			.pagination-btn {
+			:global(.pagination-btn) {
 				width: 32px;
 				height: 32px;
-			}
-
-			.pagination-btn svg {
-				width: 16px;
-				height: 16px;
 			}
 
 			.pagination-page {
