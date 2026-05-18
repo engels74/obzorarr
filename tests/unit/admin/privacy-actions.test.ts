@@ -176,6 +176,23 @@ describe('privacy nested route — updateUserDefaults', () => {
 		});
 	});
 
+	it('rejects checkbox-style boolean for allowUserControl (FormBooleanSchema strictness)', async () => {
+		// FormBooleanSchema = z.union([z.literal('true'), z.literal('false'),
+		// z.literal(true), z.literal(false)]).transform. The HTML checkbox 'on'
+		// string is NOT in the union — schema validation fails before any
+		// service-layer write. Without this guard, a refactor to z.preprocess
+		// or z.coerce.boolean would silently turn 'on' into false (or true,
+		// depending on the coercion rule) without the operator noticing.
+		const result = await run(
+			makeRequest('updateUserDefaults', {
+				defaultShareMode: 'public',
+				allowUserControl: 'on',
+				settingsVersion: new Date(0).toISOString()
+			})
+		);
+		expect(result).toMatchObject({ status: 400, data: { error: 'Invalid input' } });
+	});
+
 	it('rejects unknown defaultShareMode as 400', async () => {
 		const result = await run(
 			makeRequest('updateUserDefaults', {
