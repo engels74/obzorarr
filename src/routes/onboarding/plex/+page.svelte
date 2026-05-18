@@ -1,5 +1,7 @@
 <script lang="ts">
 import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
+import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+import PlayIcon from '@lucide/svelte/icons/play';
 import { animate, stagger } from 'motion';
 import { browser } from '$app/environment';
 import { enhance } from '$app/forms';
@@ -630,25 +632,24 @@ function formatServerUrl(url: string | null): string {
 			{#if showLoginButton}
 				<div class="action-section animate-item">
 					<p class="instruction">Sign in with your Plex account to verify admin access</p>
-					<button
+					<Button
 						type="button"
-						class="plex-button"
+						class="plex-button tap-target"
 						onclick={handlePlexLogin}
 						disabled={isOAuthLoading || isRedirecting}
+						aria-busy={isOAuthLoading || isRedirecting}
 					>
 						{#if isRedirecting}
-							<span class="button-spinner"></span>
+							<LoaderCircleIcon class="size-[18px] animate-spin" aria-hidden="true" />
 							<span>Redirecting to Plex...</span>
 						{:else if isOAuthLoading}
-							<span class="button-spinner"></span>
+							<LoaderCircleIcon class="size-[18px] animate-spin" aria-hidden="true" />
 							<span>Connecting to Plex...</span>
 						{:else}
-							<svg class="plex-logo" viewBox="0 0 24 24" fill="currentColor">
-								<path d="M6 4l12 8-12 8V4z" />
-							</svg>
+							<PlayIcon class="size-[18px]" fill="currentColor" />
 							<span>Sign in with Plex</span>
 						{/if}
-					</button>
+					</Button>
 					<a class="redirect-fallback" href="?auth=redirect">Use redirect instead</a>
 				</div>
 			{:else if isNonAdminUser}
@@ -686,25 +687,24 @@ function formatServerUrl(url: string | null): string {
 			{#if showLoginButton}
 				<div class="action-section animate-item">
 					<p class="instruction">Sign in with Plex to connect your server</p>
-					<button
+					<Button
 						type="button"
-						class="plex-button"
+						class="plex-button tap-target"
 						onclick={handlePlexLogin}
 						disabled={isOAuthLoading || isRedirecting}
+						aria-busy={isOAuthLoading || isRedirecting}
 					>
 						{#if isRedirecting}
-							<span class="button-spinner"></span>
+							<LoaderCircleIcon class="size-[18px] animate-spin" aria-hidden="true" />
 							<span>Redirecting to Plex...</span>
 						{:else if isOAuthLoading}
-							<span class="button-spinner"></span>
+							<LoaderCircleIcon class="size-[18px] animate-spin" aria-hidden="true" />
 							<span>Connecting to Plex...</span>
 						{:else}
-							<svg class="plex-logo" viewBox="0 0 24 24" fill="currentColor">
-								<path d="M6 4l12 8-12 8V4z" />
-							</svg>
+							<PlayIcon class="size-[18px]" fill="currentColor" />
 							<span>Sign in with Plex</span>
 						{/if}
-					</button>
+					</Button>
 					<a class="redirect-fallback" href="?auth=redirect">Use redirect instead</a>
 				</div>
 			{:else if isNonAdminUser}
@@ -1290,8 +1290,13 @@ function formatServerUrl(url: string | null): string {
 			text-align: center;
 		}
 
-		/* Plex Login Button */
-		.plex-button {
+		/* Plex Login Button — Plex-orange OAuth CTA. Hoisted to :global so
+		   shadcn Button's child-rendered <button> inherits the gradient,
+		   triple shadow (drop + accent + inset highlight), hover translate-y,
+		   and active translate-back. The `.plex-logo` descendant rule
+		   (18px width/height) is dropped; PlayIcon + LoaderCircleIcon
+		   both sized inline via `class="size-[18px]"`. */
+		:global(.plex-button) {
 			display: inline-flex;
 			align-items: center;
 			justify-content: center;
@@ -1312,7 +1317,7 @@ function formatServerUrl(url: string | null): string {
 				inset 0 1px 0 rgba(255, 255, 255, 0.25);
 		}
 
-		.plex-button:hover:not(:disabled) {
+		:global(.plex-button:hover:not(:disabled)) {
 			transform: translateY(-2px);
 			box-shadow:
 				0 6px 24px rgba(229, 160, 13, 0.45),
@@ -1320,18 +1325,13 @@ function formatServerUrl(url: string | null): string {
 				inset 0 1px 0 rgba(255, 255, 255, 0.3);
 		}
 
-		.plex-button:active:not(:disabled) {
+		:global(.plex-button:active:not(:disabled)) {
 			transform: translateY(0);
 		}
 
-		.plex-button:disabled {
+		:global(.plex-button:disabled) {
 			opacity: 0.85;
 			cursor: not-allowed;
-		}
-
-		.plex-logo {
-			width: 18px;
-			height: 18px;
 		}
 
 		.button-spinner {
