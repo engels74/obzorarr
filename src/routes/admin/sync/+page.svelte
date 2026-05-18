@@ -1,7 +1,9 @@
 <script lang="ts">
+import SquareIcon from '@lucide/svelte/icons/square';
 import { browser } from '$app/environment';
 import { enhance } from '$app/forms';
 import { goto, invalidateAll } from '$app/navigation';
+import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import { validateCronExpression } from '$lib/cron/validation';
 import { handleFormToast } from '$lib/utils/form-toast';
 import { formatDuration as formatDurationMs } from '$lib/utils/format';
@@ -412,16 +414,15 @@ async function goToPage(page: number) {
 								};
 							}}
 						>
-							<button type="submit" class="cancel-btn" disabled={isCancelling}>
-								{#if isCancelling}
-									<span class="btn-spinner"></span>
-								{:else}
-									<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-										<rect x="6" y="6" width="12" height="12" rx="2" />
-									</svg>
-								{/if}
-								<span>Cancel</span>
-							</button>
+							<SubmitButton class="cancel-btn tap-target" submitting={isCancelling}>
+								{#snippet children()}
+									<SquareIcon class="size-4" />
+									<span>Cancel</span>
+								{/snippet}
+								{#snippet submittingLabel()}
+									<span>Cancel</span>
+								{/snippet}
+							</SubmitButton>
 						</form>
 					{/if}
 				</div>
@@ -1229,7 +1230,12 @@ async function goToPage(page: number) {
 			flex-shrink: 0;
 		}
 
-		.cancel-btn {
+		/* `.cancel-btn` is the cancel-sync CTA. Hoisted to :global so
+		   SubmitButton's child-rendered <button> inherits the muted-
+		   default vs destructive-on-hover palette swap. The custom
+		   `.btn-spinner` span is replaced by SubmitButton's built-in
+		   LoaderCircleIcon spinner. */
+		:global(.cancel-btn) {
 			display: flex;
 			align-items: center;
 			gap: 0.5rem;
@@ -1244,20 +1250,15 @@ async function goToPage(page: number) {
 			transition: all 0.15s ease;
 		}
 
-		.cancel-btn:hover:not(:disabled) {
+		:global(.cancel-btn:hover:not(:disabled)) {
 			background: oklch(var(--destructive) / 0.15);
 			border-color: oklch(var(--destructive) / 0.5);
 			color: oklch(var(--destructive));
 		}
 
-		.cancel-btn:disabled {
+		:global(.cancel-btn:disabled) {
 			opacity: 0.5;
 			cursor: not-allowed;
-		}
-
-		.cancel-btn svg {
-			width: 16px;
-			height: 16px;
 		}
 
 		/* ===== Sync Form (Idle State) ===== */
