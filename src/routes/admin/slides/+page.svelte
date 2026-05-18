@@ -3,6 +3,7 @@ import Pencil from '@lucide/svelte/icons/pencil';
 import Plus from '@lucide/svelte/icons/plus';
 import { untrack } from 'svelte';
 import { enhance } from '$app/forms';
+import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import type { SlideType } from '$lib/components/slides/types';
 import { DEFAULT_SLIDE_ORDER } from '$lib/components/slides/types';
 import { Button } from '$lib/components/ui/button';
@@ -393,21 +394,22 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 									</span>
 									<form method="POST" action="?/deleteCustom" use:enhance class="delete-form">
 										<input type="hidden" name="id" value={item.id} />
-										<button
-											type="submit"
-											class="confirm-button"
+										<SubmitButton
+											class="confirm-button tap-target"
 											aria-label={`Confirm delete "${item.title}"`}
 										>
-											Delete
-										</button>
+											{#snippet children()}
+												Delete
+											{/snippet}
+										</SubmitButton>
 									</form>
-									<button
+									<Button
 										type="button"
-										class="cancel-delete-button"
+										class="cancel-delete-button tap-target"
 										onclick={() => (deletingSlideId = null)}
 									>
 										Cancel
-									</button>
+									</Button>
 								</div>
 							{:else}
 								<form
@@ -986,7 +988,11 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			font-weight: 600;
 		}
 
-		.confirm-button {
+		/* `.confirm-button` + `.cancel-delete-button` are the destructive-
+		   confirmation pair inside each slide row's delete flow. Hoisted
+		   to :global so SubmitButton (confirm) + shadcn Button (cancel)
+		   inherit their respective palettes (destructive vs muted). */
+		:global(.confirm-button) {
 			padding: 0.25rem 0.5rem;
 			background: oklch(var(--destructive));
 			color: oklch(var(--destructive-foreground));
@@ -997,11 +1003,11 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			cursor: pointer;
 		}
 
-		.confirm-button:hover {
+		:global(.confirm-button:hover) {
 			opacity: 0.9;
 		}
 
-		.cancel-delete-button {
+		:global(.cancel-delete-button) {
 			padding: 0.25rem 0.5rem;
 			background: oklch(var(--muted));
 			color: oklch(var(--muted-foreground));
@@ -1011,7 +1017,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			cursor: pointer;
 		}
 
-		.cancel-delete-button:hover {
+		:global(.cancel-delete-button:hover) {
 			background: oklch(var(--secondary));
 		}
 
