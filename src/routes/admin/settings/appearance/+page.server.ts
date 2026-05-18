@@ -1,6 +1,10 @@
 import { fail } from '@sveltejs/kit';
 import { z } from 'zod';
-import { externalOccCheck, OCC_CONFLICT_CODE } from '$lib/server/admin/occ-helpers';
+import {
+	externalOccCheck,
+	OCC_CONFLICT_CODE,
+	settingsVersionISO
+} from '$lib/server/admin/occ-helpers';
 import {
 	getAppSettingsUpdatedAt,
 	getUITheme,
@@ -62,9 +66,9 @@ export const load: PageServerLoad = async () => {
 		uiTheme,
 		wrappedTheme,
 		wrappedLogoMode,
-		uiThemeVersion: uiThemeUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
-		wrappedThemeVersion: wrappedThemeUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
-		wrappedLogoModeVersion: wrappedLogoModeUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
+		uiThemeVersion: settingsVersionISO(uiThemeUpdatedAt),
+		wrappedThemeVersion: settingsVersionISO(wrappedThemeUpdatedAt),
+		wrappedLogoModeVersion: settingsVersionISO(wrappedLogoModeUpdatedAt),
 		themeOptions: Object.entries(ThemePresets).map(([key, value]) => ({
 			value,
 			label: key

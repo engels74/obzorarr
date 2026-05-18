@@ -26,6 +26,19 @@ export const OCC_CONFLICT_MESSAGE = 'Settings changed in another tab. Please rel
 export const OCC_CONFLICT_CODE = '__OCC_CONFLICT__';
 
 /**
+ * Render a settings-version field for page loads. Returns the row's
+ * `updatedAt` ISO string, or the epoch when the row doesn't exist yet
+ * (fresh-install / all-cleared) — the atomic service helpers accept the
+ * epoch as "older than anything" for OCC purposes, so the very first
+ * save can land without an irrecoverable 409. Zod `.min(1)` on the
+ * `settingsVersion` field rejects empty strings, which is why the epoch
+ * (a real non-empty ISO) is the right sentinel.
+ */
+export function settingsVersionISO(updatedAt: Date | null | undefined): string {
+	return updatedAt?.toISOString() ?? new Date(0).toISOString();
+}
+
+/**
  * External OCC check used by the top-level `z.enum` actions
  * (`updateUITheme`, `updateWrappedTheme`, `updateWrappedLogoMode`) where
  * wrapping the schema in `z.object({...})` to carry an inline

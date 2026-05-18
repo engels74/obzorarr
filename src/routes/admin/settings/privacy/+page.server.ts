@@ -2,7 +2,11 @@ import { fail } from '@sveltejs/kit';
 import { zod4 } from 'sveltekit-superforms/adapters';
 import { superValidate } from 'sveltekit-superforms/server';
 import { z } from 'zod';
-import { inlineOccCheck, OCC_CONFLICT_MESSAGE } from '$lib/server/admin/occ-helpers';
+import {
+	inlineOccCheck,
+	OCC_CONFLICT_MESSAGE,
+	settingsVersionISO
+} from '$lib/server/admin/occ-helpers';
 import {
 	AnonymizationMode,
 	type AnonymizationModeType,
@@ -110,10 +114,8 @@ export const load: PageServerLoad = async () => {
 		getAppSettingsUpdatedAt(USER_DEFAULTS_SETTINGS_KEYS)
 	]);
 
-	const serverWrappedSettingsVersion =
-		serverWrappedSettingsUpdatedAt?.toISOString() ?? new Date(0).toISOString();
-	const userDefaultsSettingsVersion =
-		userDefaultsSettingsUpdatedAt?.toISOString() ?? new Date(0).toISOString();
+	const serverWrappedSettingsVersion = settingsVersionISO(serverWrappedSettingsUpdatedAt);
+	const userDefaultsSettingsVersion = settingsVersionISO(userDefaultsSettingsUpdatedAt);
 
 	const serverWrappedForm = await superValidate(
 		{

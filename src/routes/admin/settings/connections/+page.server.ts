@@ -1,5 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import { z } from 'zod';
+import { settingsVersionISO } from '$lib/server/admin/occ-helpers';
 import {
 	API_CONFIG_KEYS,
 	AppSettingsKey,
@@ -92,7 +93,7 @@ export const load: PageServerLoad = async () => {
 			openaiBaseUrl: apiConfig.openai.baseUrl as SettingValue,
 			openaiModel: apiConfig.openai.model as SettingValue
 		},
-		apiConfigVersion: apiConfigUpdatedAt?.toISOString() ?? new Date(0).toISOString()
+		apiConfigVersion: settingsVersionISO(apiConfigUpdatedAt)
 	};
 };
 

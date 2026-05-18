@@ -1,7 +1,11 @@
 import { fail } from '@sveltejs/kit';
 import { z } from 'zod';
 import { env } from '$env/dynamic/private';
-import { inlineOccCheck, OCC_CONFLICT_MESSAGE } from '$lib/server/admin/occ-helpers';
+import {
+	inlineOccCheck,
+	OCC_CONFLICT_MESSAGE,
+	settingsVersionISO
+} from '$lib/server/admin/occ-helpers';
 import {
 	AppSettingsKey,
 	CSRF_ORIGIN_SETTINGS_KEYS,
@@ -89,8 +93,8 @@ export const load: PageServerLoad = async () => {
 			trustProxySource: trustProxyConfig.trustProxy.source,
 			trustProxyLocked: trustProxyConfig.trustProxy.isLocked
 		},
-		trustProxyVersion: trustProxySettingsUpdatedAt?.toISOString() ?? new Date(0).toISOString(),
-		csrfOriginVersion: csrfOriginSettingsUpdatedAt?.toISOString() ?? new Date(0).toISOString()
+		trustProxyVersion: settingsVersionISO(trustProxySettingsUpdatedAt),
+		csrfOriginVersion: settingsVersionISO(csrfOriginSettingsUpdatedAt)
 	};
 };
 

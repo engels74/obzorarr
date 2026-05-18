@@ -3,7 +3,11 @@ import { fail } from '@sveltejs/kit';
 import { zod4 } from 'sveltekit-superforms/adapters';
 import { superValidate } from 'sveltekit-superforms/server';
 import { z } from 'zod';
-import { inlineOccCheck, OCC_CONFLICT_MESSAGE } from '$lib/server/admin/occ-helpers';
+import {
+	inlineOccCheck,
+	OCC_CONFLICT_MESSAGE,
+	settingsVersionISO
+} from '$lib/server/admin/occ-helpers';
 import { getAppSettingsUpdatedAt, LOG_SETTINGS_KEYS } from '$lib/server/admin/settings.service';
 import { requireAdminActions } from '$lib/server/auth/guards';
 import {
@@ -47,7 +51,7 @@ export const load: PageServerLoad = async () => {
 		getAppSettingsUpdatedAt(LOG_SETTINGS_KEYS)
 	]);
 
-	const logSettingsVersion = logSettingsUpdatedAt?.toISOString() ?? new Date(0).toISOString();
+	const logSettingsVersion = settingsVersionISO(logSettingsUpdatedAt);
 
 	const form = await superValidate(
 		{
