@@ -2,6 +2,7 @@ import { arch as osArch, platform as osPlatform } from 'node:os';
 import { fail } from '@sveltejs/kit';
 import { z } from 'zod';
 import { env } from '$env/dynamic/private';
+import { externalOccCheck } from '$lib/server/admin/occ-helpers';
 import {
 	AnonymizationMode,
 	type AnonymizationModeType,
@@ -265,35 +266,6 @@ interface SettingValue {
 }
 
 type SafeSettingValue = Omit<SettingValue, 'value'> & { hasValue: boolean };
-
-/**
- * External OCC check used by the top-level `z.enum` actions (`updateUITheme`,
- * `updateWrappedTheme`, `updateWrappedLogoMode`) where wrapping the schema
- * in `z.object({...})` to carry an inline `settingsVersion` would change
- * the payload shape. Per v3 plan §A5 Table D2.
- *
- * Returns `{ status: 'ok' }` to proceed, or
- * `{ status: 'conflict', current: <ISO> }` to short-circuit the action with
- * `fail(409, { error: '__OCC_CONFLICT__', settingsVersion: current })`.
- */
-async function externalOccCheck(
-	submittedVersion: string,
-	keys: readonly string[]
-): Promise<{ status: 'ok' } | { status: 'conflict'; current: string }> {
-	if (!submittedVersion) {
-		return { status: 'conflict', current: new Date(0).toISOString() };
-	}
-	const currentUpdatedAt = await getAppSettingsUpdatedAt(keys);
-	const currentMs = currentUpdatedAt?.getTime() ?? 0;
-	const submittedMs = Date.parse(submittedVersion);
-	if (Number.isNaN(submittedMs) || submittedMs < currentMs) {
-		return {
-			status: 'conflict',
-			current: currentUpdatedAt?.toISOString() ?? new Date(0).toISOString()
-		};
-	}
-	return { status: 'ok' };
-}
 
 export const load: PageServerLoad = async () => {
 	const [
