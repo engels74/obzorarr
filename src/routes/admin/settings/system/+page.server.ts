@@ -3,7 +3,7 @@ import { fail } from '@sveltejs/kit';
 import { zod4 } from 'sveltekit-superforms/adapters';
 import { superValidate } from 'sveltekit-superforms/server';
 import { z } from 'zod';
-import { inlineOccCheck } from '$lib/server/admin/occ-helpers';
+import { inlineOccCheck, OCC_CONFLICT_MESSAGE } from '$lib/server/admin/occ-helpers';
 import { getAppSettingsUpdatedAt, LOG_SETTINGS_KEYS } from '$lib/server/admin/settings.service';
 import { requireAdminActions } from '$lib/server/auth/guards';
 import {
@@ -88,7 +88,7 @@ export const actions: Actions = requireAdminActions({
 				return fail(409, {
 					form,
 					conflict: true,
-					error: 'Settings changed in another tab. Please reload.'
+					error: OCC_CONFLICT_MESSAGE
 				});
 			}
 			return fail(400, { form, error: 'Invalid input' });
@@ -101,7 +101,7 @@ export const actions: Actions = requireAdminActions({
 			return fail(409, {
 				form,
 				conflict: true,
-				error: 'Settings changed in another tab. Please reload.'
+				error: OCC_CONFLICT_MESSAGE
 			});
 		}
 

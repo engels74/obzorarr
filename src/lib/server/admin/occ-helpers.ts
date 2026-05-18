@@ -1,6 +1,19 @@
 import { getAppSettingsUpdatedAt } from './settings.service';
 
 /**
+ * Shared 409 error message for inline-OCC conflict paths. Test files
+ * (settings-actions, csrf-action, system/appearance/privacy/data/connections/
+ * security-actions, server-wrapped-route) all assert this exact string;
+ * changing it requires updating those tests in lockstep.
+ *
+ * The external-OCC path uses a different shape (`error: '__OCC_CONFLICT__'`
+ * + `settingsVersion: current`) so clients can distinguish OCC from
+ * regular validation errors — that shape is not parameterised by this
+ * constant.
+ */
+export const OCC_CONFLICT_MESSAGE = 'Settings changed in another tab. Please reload.';
+
+/**
  * External OCC check used by the top-level `z.enum` actions
  * (`updateUITheme`, `updateWrappedTheme`, `updateWrappedLogoMode`) where
  * wrapping the schema in `z.object({...})` to carry an inline

@@ -2,7 +2,7 @@ import { fail } from '@sveltejs/kit';
 import { zod4 } from 'sveltekit-superforms/adapters';
 import { superValidate } from 'sveltekit-superforms/server';
 import { z } from 'zod';
-import { inlineOccCheck } from '$lib/server/admin/occ-helpers';
+import { inlineOccCheck, OCC_CONFLICT_MESSAGE } from '$lib/server/admin/occ-helpers';
 import {
 	AnonymizationMode,
 	type AnonymizationModeType,
@@ -128,7 +128,7 @@ export const actions: Actions = requireAdminActions({
 				return fail(409, {
 					form,
 					conflict: true,
-					error: 'Settings changed in another tab. Please reload.'
+					error: OCC_CONFLICT_MESSAGE
 				});
 			}
 			return fail(400, { form, error: 'Invalid input' });
@@ -141,7 +141,7 @@ export const actions: Actions = requireAdminActions({
 			return fail(409, {
 				form,
 				conflict: true,
-				error: 'Settings changed in another tab. Please reload.'
+				error: OCC_CONFLICT_MESSAGE
 			});
 		}
 
@@ -155,7 +155,7 @@ export const actions: Actions = requireAdminActions({
 				return fail(409, {
 					form,
 					conflict: true,
-					error: 'Settings changed in another tab. Please reload.'
+					error: OCC_CONFLICT_MESSAGE
 				});
 			}
 			return { form, success: true, message: 'Server-wide wrapped settings updated' };
@@ -175,7 +175,7 @@ export const actions: Actions = requireAdminActions({
 				return fail(409, {
 					form,
 					conflict: true,
-					error: 'Settings changed in another tab. Please reload.'
+					error: OCC_CONFLICT_MESSAGE
 				});
 			}
 			return fail(400, { form, error: 'Invalid input' });
@@ -188,7 +188,7 @@ export const actions: Actions = requireAdminActions({
 			return fail(409, {
 				form,
 				conflict: true,
-				error: 'Settings changed in another tab. Please reload.'
+				error: OCC_CONFLICT_MESSAGE
 			});
 		}
 
@@ -202,7 +202,7 @@ export const actions: Actions = requireAdminActions({
 				return fail(409, {
 					form,
 					conflict: true,
-					error: 'Settings changed in another tab. Please reload.'
+					error: OCC_CONFLICT_MESSAGE
 				});
 			}
 			return { form, success: true, message: 'User sharing defaults updated' };

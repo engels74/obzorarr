@@ -1,7 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import { z } from 'zod';
 import { env } from '$env/dynamic/private';
-import { inlineOccCheck } from '$lib/server/admin/occ-helpers';
+import { inlineOccCheck, OCC_CONFLICT_MESSAGE } from '$lib/server/admin/occ-helpers';
 import {
 	AppSettingsKey,
 	CSRF_ORIGIN_SETTINGS_KEYS,
@@ -113,7 +113,7 @@ export const actions: Actions = requireAdminActions({
 		if ((await inlineOccCheck(submittedVersion, CSRF_ORIGIN_SETTINGS_KEYS)).status === 'conflict') {
 			return fail(409, {
 				conflict: true,
-				error: 'Settings changed in another tab. Please reload.'
+				error: OCC_CONFLICT_MESSAGE
 			});
 		}
 
@@ -246,7 +246,7 @@ export const actions: Actions = requireAdminActions({
 			if (fieldErrors.settingsVersion?.length) {
 				return fail(409, {
 					conflict: true,
-					error: 'Settings changed in another tab. Please reload.'
+					error: OCC_CONFLICT_MESSAGE
 				});
 			}
 			return fail(400, {
@@ -267,7 +267,7 @@ export const actions: Actions = requireAdminActions({
 		) {
 			return fail(409, {
 				conflict: true,
-				error: 'Settings changed in another tab. Please reload.'
+				error: OCC_CONFLICT_MESSAGE
 			});
 		}
 
