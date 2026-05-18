@@ -1,5 +1,6 @@
 <script lang="ts">
 import ExternalLink from '@lucide/svelte/icons/external-link';
+import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 import { animate, stagger } from 'motion';
 import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
@@ -341,19 +342,20 @@ function canEnableTrustProxy(): boolean {
 						<span class="diagnostic-eyebrow">Reverse Proxy Header Trust</span>
 						<h3>Connection safety check</h3>
 					</div>
-					<button
+					<Button
 						type="button"
-						class="diagnostic-check-btn"
+						class="diagnostic-check-btn tap-target"
 						onclick={runDiagnostic}
 						disabled={diagnosticStatus === 'checking'}
+						aria-busy={diagnosticStatus === 'checking'}
 					>
 						{#if diagnosticStatus === 'checking'}
-							<span class="spinner small"></span>
+							<LoaderCircleIcon class="size-3.5 animate-spin" aria-hidden="true" />
 							Checking...
 						{:else}
 							Check again
 						{/if}
-					</button>
+					</Button>
 				</div>
 
 				{#if diagnosticStatus === 'checking' && !reverseProxyDiagnostic}
@@ -853,18 +855,18 @@ function canEnableTrustProxy(): boolean {
 				opacity 0.2s;
 		}
 
-		.diagnostic-check-btn {
+		:global(.diagnostic-check-btn) {
 			background: rgba(59, 130, 246, 0.08);
 			border: 1px solid rgba(59, 130, 246, 0.18);
 			color: oklch(0.695 0.1481 259.5);
 		}
 
-		.diagnostic-check-btn:hover:not(:disabled) {
+		:global(.diagnostic-check-btn:hover:not(:disabled)) {
 			background: rgba(59, 130, 246, 0.14);
 			border-color: rgba(59, 130, 246, 0.28);
 		}
 
-		.diagnostic-check-btn:disabled {
+		:global(.diagnostic-check-btn:disabled) {
 			opacity: 0.5;
 			cursor: not-allowed;
 		}
