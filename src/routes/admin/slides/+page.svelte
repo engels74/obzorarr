@@ -356,7 +356,11 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 						</form>
 					{:else}
 						<div class="slide-name-group">
-							<span class="slide-name">{item.title}</span>
+							{#if item.title.trim().length > 0}
+								<span class="slide-name">{item.title}</span>
+							{:else}
+								<span class="slide-name slide-name-untitled">Untitled custom slide</span>
+							{/if}
 							<span class="custom-badge">Custom</span>
 							{#if item.year}
 								<span class="year-badge">{item.year}</span>
@@ -858,6 +862,11 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 		.slide-name {
 			flex: 1;
 			font-weight: 500;
+		}
+
+		.slide-name-untitled {
+			color: oklch(var(--muted-foreground));
+			font-style: italic;
 		}
 
 		.slide-name-group {
