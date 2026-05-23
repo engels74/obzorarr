@@ -253,11 +253,15 @@ export const actions: Actions = requireAdminActions({
 	bulkApplyShareDefaults: async () => {
 		try {
 			const count = await bulkApplyShareDefaults();
-			return { success: true, message: `Updated ${count} user share records` };
+			const message =
+				count === 0
+					? 'No users needed to be updated'
+					: `Updated ${count} user share record${count === 1 ? '' : 's'}`;
+			return { form: null, success: true, message };
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : 'Failed to apply defaults to existing users';
-			return fail(500, { error: message });
+			return fail(500, { form: null, error: message });
 		}
 	}
 });

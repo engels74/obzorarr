@@ -235,10 +235,14 @@ describe('privacy nested route — bulkApplyShareDefaults', () => {
 
 	it('returns success with the affected-row count message', async () => {
 		// No users / no share rows → count is 0 but action still succeeds.
+		// Toast pluralisation is folded into the message (ISSUE-007 fix):
+		// 0 → "No users needed to be updated"
+		// 1 → "Updated 1 user share record"
+		// N>1 → "Updated N user share records"
 		const result = await run();
 		expect(result).toMatchObject({
 			success: true,
-			message: 'Updated 0 user share records'
+			message: 'No users needed to be updated'
 		});
 	});
 
