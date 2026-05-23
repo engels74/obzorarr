@@ -463,6 +463,17 @@ const canContinue = $derived(
 	(data.hasEnvConfig && data.canProceed) || (!data.hasEnvConfig && serverSaved)
 );
 
+const continueDisabledReason = $derived.by(() => {
+	if (canContinue) return null;
+	if (data.hasEnvConfig) {
+		return 'Sign in with Plex above to verify admin access before continuing.';
+	}
+	if (!effectiveIsAuthenticated) {
+		return 'Sign in with Plex above to load your available servers.';
+	}
+	return 'Select a server connection above to continue.';
+});
+
 type MembershipFailureForm = {
 	error?: string;
 	membershipReason?: 'not_reachable' | 'not_in_resources';
@@ -651,7 +662,10 @@ function formatServerUrl(url: string | null): string {
 							<span>Sign in with Plex</span>
 						{/if}
 					</Button>
-					<a class="redirect-fallback" href="?auth=redirect">Use redirect instead</a>
+					<a class="redirect-fallback" href="?auth=redirect">
+						<span class="redirect-fallback-label">Use redirect instead</span>
+						<span class="redirect-fallback-hint">If sign-in doesn't return, use this.</span>
+					</a>
 				</div>
 			{:else if isNonAdminUser}
 				<div class="error-card animate-item">
@@ -706,7 +720,10 @@ function formatServerUrl(url: string | null): string {
 							<span>Sign in with Plex</span>
 						{/if}
 					</Button>
-					<a class="redirect-fallback" href="?auth=redirect">Use redirect instead</a>
+					<a class="redirect-fallback" href="?auth=redirect">
+						<span class="redirect-fallback-label">Use redirect instead</span>
+						<span class="redirect-fallback-hint">If sign-in doesn't return, use this.</span>
+					</a>
 				</div>
 			{:else if isNonAdminUser}
 				<div class="error-card animate-item">
@@ -764,6 +781,9 @@ function formatServerUrl(url: string | null): string {
 										<div class="server-info">
 											<span class="server-name">{server.name}</span>
 											<span class="server-badge owner">Owner</span>
+											{#if !isExpanded && !(isSelected && serverSaved)}
+												<span class="server-hint">Click to select a connection</span>
+											{/if}
 										</div>
 										{#if isSelected && serverSaved}
 											<div class="server-check">
@@ -1082,10 +1102,29 @@ function formatServerUrl(url: string | null): string {
 				</SubmitButton>
 			</form>
 		{:else}
-			<Button type="button" class="continue-button tap-target" disabled>
-				<span>Continue</span>
-				<ArrowRightIcon class="size-[18px]" strokeWidth={2.5} />
-			</Button>
+			<Tooltip.Provider>
+				<Tooltip.Root>
+					<Tooltip.Trigger>
+						{#snippet child({ props })}
+							<span {...props} class="continue-disabled-wrapper">
+								<Button type="button" class="continue-button tap-target" disabled>
+									<span>Continue</span>
+									<ArrowRightIcon class="size-[18px]" strokeWidth={2.5} />
+								</Button>
+							</span>
+						{/snippet}
+					</Tooltip.Trigger>
+					<Tooltip.Content
+						side="top"
+						class="continue-tooltip"
+						sideOffset={8}
+						collisionPadding={16}
+						portalProps={{ to: 'body' }}
+					>
+						<span>{continueDisabledReason}</span>
+					</Tooltip.Content>
+				</Tooltip.Root>
+			</Tooltip.Provider>
 		{/if}
 	{/snippet}
 </OnboardingCard>
@@ -1330,17 +1369,29 @@ function formatServerUrl(url: string | null): string {
 		}
 
 		.redirect-fallback {
-			display: inline-block;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 0.15rem;
 			margin-top: 0.75rem;
+			text-decoration: none;
+			transition: color 0.2s ease;
+		}
+
+		.redirect-fallback-label {
 			font-size: 0.85rem;
 			color: rgba(255, 255, 255, 0.55);
 			text-decoration: underline;
 			text-underline-offset: 3px;
-			transition: color 0.2s ease;
 		}
 
-		.redirect-fallback:hover,
-		.redirect-fallback:focus-visible {
+		.redirect-fallback-hint {
+			font-size: 0.7rem;
+			color: rgba(255, 255, 255, 0.4);
+		}
+
+		.redirect-fallback:hover .redirect-fallback-label,
+		.redirect-fallback:focus-visible .redirect-fallback-label {
 			color: rgba(255, 255, 255, 0.85);
 		}
 
@@ -1644,6 +1695,29 @@ function formatServerUrl(url: string | null): string {
 		.server-badge.owner {
 			background: oklch(var(--primary) / 0.15);
 			color: oklch(var(--primary));
+		}
+
+		.server-hint {
+			font-size: 0.72rem;
+			color: rgba(255, 255, 255, 0.45);
+			font-style: italic;
+		}
+
+		.continue-disabled-wrapper {
+			display: inline-flex;
+		}
+
+		:global(.continue-tooltip) {
+			z-index: 9999;
+			max-width: 220px;
+			padding: 0.5rem 0.7rem;
+			font-size: 0.78rem;
+			line-height: 1.4;
+			color: rgba(255, 255, 255, 0.92);
+			background: oklch(0.2267 0 0);
+			border: 1px solid oklch(0.3008 0 0);
+			border-radius: 8px;
+			box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
 		}
 
 		.server-check {
