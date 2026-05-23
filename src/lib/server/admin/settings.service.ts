@@ -913,13 +913,48 @@ function getOpenAIEnvConfig() {
 	};
 }
 
+/**
+ * Some `.env.example` shipped values are obvious placeholders that new deployers
+ * forget to clear when they copy the template into `.env` (ISSUE-004). Treating
+ * them as authoritative makes the onboarding flow attempt to reach a non-existent
+ * server and surfaces a misleading "transient" error. Detect them here and let
+ * `resolveConfigValue` fall through to the DB / default branch.
+ *
+ * Matches:
+ *   - exactly the shipped sentinel strings (e.g. `your-plex-token-here`)
+ *   - generic placeholders following common conventions (`your-*-here`,
+ *     `change-me`, `placeholder`)
+ *   - the literal `http://localhost:32400` shipped as the example Plex URL,
+ *     but only when no `knownDefaultUrl` is passed (so the helper doesn't
+ *     reject a real localhost setup elsewhere).
+ */
+export function isPlaceholderSentinel(value: string): boolean {
+	const trimmed = value.trim();
+	if (!trimmed) return false;
+
+	const exact = new Set<string>([
+		'your-plex-token-here',
+		'http://localhost:32400',
+		'http://plex-url-here:32400',
+		'plex-url-here'
+	]);
+	if (exact.has(trimmed)) return true;
+
+	const lowered = trimmed.toLowerCase();
+	if (/^your-.*-here$/.test(lowered)) return true;
+	if (/^change-?me$/.test(lowered)) return true;
+	if (lowered === 'placeholder') return true;
+
+	return false;
+}
+
 function resolveConfigValue(
 	dbSettings: Record<string, string>,
 	dbKey: string,
 	envValue: string,
 	defaultValue: string = ''
 ): ConfigValue<string> {
-	if (envValue) {
+	if (envValue && !isPlaceholderSentinel(envValue)) {
 		return { value: envValue, source: 'env', isLocked: true };
 	}
 	const dbValue = dbSettings[dbKey];

@@ -30,6 +30,7 @@ import {
 	hasOpenAIEnvConfig,
 	hasPlexEnvConfig,
 	isCsrfWarningDismissed,
+	isPlaceholderSentinel,
 	isPlexConfigured,
 	resetCsrfWarningDismissal,
 	setAnonymizationMode,
@@ -770,6 +771,47 @@ describe('Admin Settings Service', () => {
 				// Test setup mocks env vars as empty strings
 				const hasConfig = hasOpenAIEnvConfig();
 				expect(hasConfig).toBe(false);
+			});
+		});
+
+		describe('isPlaceholderSentinel', () => {
+			it('detects the shipped Plex token placeholder', () => {
+				expect(isPlaceholderSentinel('your-plex-token-here')).toBe(true);
+			});
+
+			it('detects the shipped Plex URL placeholders', () => {
+				expect(isPlaceholderSentinel('http://localhost:32400')).toBe(true);
+				expect(isPlaceholderSentinel('http://plex-url-here:32400')).toBe(true);
+			});
+
+			it('detects generic your-*-here placeholders', () => {
+				expect(isPlaceholderSentinel('your-api-key-here')).toBe(true);
+				expect(isPlaceholderSentinel('your-secret-here')).toBe(true);
+			});
+
+			it('detects change-me / changeme / placeholder sentinels', () => {
+				expect(isPlaceholderSentinel('change-me')).toBe(true);
+				expect(isPlaceholderSentinel('changeme')).toBe(true);
+				expect(isPlaceholderSentinel('CHANGEME')).toBe(true);
+				expect(isPlaceholderSentinel('placeholder')).toBe(true);
+				expect(isPlaceholderSentinel('PLACEHOLDER')).toBe(true);
+			});
+
+			it('returns false for empty / whitespace strings (caller decides)', () => {
+				expect(isPlaceholderSentinel('')).toBe(false);
+				expect(isPlaceholderSentinel('   ')).toBe(false);
+			});
+
+			it('returns false for real-looking values', () => {
+				expect(isPlaceholderSentinel('abc123def456ghi789')).toBe(false);
+				expect(isPlaceholderSentinel('https://plex.example.com:32400')).toBe(false);
+				expect(isPlaceholderSentinel('http://192.168.1.10:32400')).toBe(false);
+				expect(isPlaceholderSentinel('http://plex.local:32400')).toBe(false);
+			});
+
+			it('trims surrounding whitespace before matching', () => {
+				expect(isPlaceholderSentinel('  your-plex-token-here  ')).toBe(true);
+				expect(isPlaceholderSentinel('  http://localhost:32400 ')).toBe(true);
 			});
 		});
 
