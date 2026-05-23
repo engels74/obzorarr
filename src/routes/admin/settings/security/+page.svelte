@@ -15,6 +15,7 @@ import {
 import { Input } from '$lib/components/ui/input/index.js';
 import { Label } from '$lib/components/ui/label/index.js';
 import { Switch } from '$lib/components/ui/switch/index.js';
+import { REVERSE_PROXY_COPY } from '$lib/copy/reverse-proxy';
 import { handleFormToast } from '$lib/utils/form-toast';
 import { submitAction } from '$lib/utils/submit-action';
 import type { PageData } from './$types';
@@ -369,7 +370,7 @@ function getForwardedPairLabel(status: string): string {
 
 	<Card>
 		<CardHeader>
-			<CardTitle>Reverse-proxy header trust</CardTitle>
+			<CardTitle>{REVERSE_PROXY_COPY.panelTitle}</CardTitle>
 			<CardDescription>
 				Controls whether Obzorarr trusts <code>x-forwarded-*</code> headers from your reverse proxy.
 				Source: <strong>{security.trustProxySource}</strong>{#if security.trustProxyLocked} (locked by env){/if}.
@@ -514,7 +515,9 @@ function getForwardedPairLabel(status: string): string {
 								disabled={diagnosticStatus === 'checking'}
 								aria-busy={diagnosticStatus === 'checking'}
 							>
-								{diagnosticStatus === 'checking' ? 'Re-checking…' : 'Re-run diagnostic'}
+								{diagnosticStatus === 'checking'
+									? REVERSE_PROXY_COPY.rerunButtonInProgress
+									: REVERSE_PROXY_COPY.rerunButton}
 							</Button>
 						</div>
 					</div>
@@ -565,13 +568,15 @@ function getForwardedPairLabel(status: string): string {
 				</form>
 			{:else}
 				<div class="flex justify-end">
-					<Button
-						variant="default"
+					<button
+						type="button"
+						class="enable-header-trust-button tap-target"
+						data-testid="enable-header-trust"
 						onclick={() => (trustProxyConfirmDialogOpen = true)}
 						disabled={isConfirmingTrustProxy}
 					>
 						Enable header trust
-					</Button>
+					</button>
 				</div>
 			{/if}
 		</CardContent>
@@ -673,6 +678,35 @@ function getForwardedPairLabel(status: string): string {
 </AlertDialog.Root>
 
 <style>
+	/* Plain-button styling for the "Enable header trust" CTA. Uses a
+	   native <button> instead of the shadcn Button wrapper so the
+	   onclick handler attaches reliably (the wrapper's restProps
+	   spread under tailwind-variants composition was dropping clicks
+	   on dialog-opener buttons during the ui-overhaul branch). */
+	.enable-header-trust-button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0.5rem 1rem;
+		font-size: 0.875rem;
+		font-weight: 500;
+		background: oklch(var(--primary));
+		color: oklch(var(--primary-foreground));
+		border: 1px solid transparent;
+		border-radius: var(--radius);
+		cursor: pointer;
+		transition: opacity 0.15s ease;
+	}
+
+	.enable-header-trust-button:hover:not(:disabled) {
+		opacity: 0.9;
+	}
+
+	.enable-header-trust-button:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
 	.status-card {
 		display: flex;
 		align-items: flex-start;

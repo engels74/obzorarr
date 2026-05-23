@@ -507,9 +507,10 @@ $effect(() => {
 	<!-- Controls Section -->
 	<section class="section controls-section">
 		<div class="controls-left">
-			<Button
+			<button
 				type="button"
 				class={`control-button tap-target ${autoScroll ? 'active' : ''}`}
+				data-testid="toggle-live-view"
 				onclick={toggleAutoScroll}
 			>
 				{#if autoScroll}
@@ -518,7 +519,7 @@ $effect(() => {
 				{:else}
 					Resume Live View
 				{/if}
-			</Button>
+			</button>
 
 			<form
 				method="POST"
@@ -561,21 +562,23 @@ $effect(() => {
 		</div>
 
 		<div class="controls-right">
-			<Button
+			<button
 				type="button"
 				class="control-button secondary tap-target"
+				data-testid="open-cleanup-dialog"
 				onclick={() => (runCleanupDialogOpen = true)}
 			>
 				Run Cleanup
-			</Button>
+			</button>
 
-			<Button
+			<button
 				type="button"
 				class="control-button danger tap-target"
+				data-testid="open-clear-logs-dialog"
 				onclick={() => (clearLogsDialogOpen = true)}
 			>
 				Clear All Logs
-			</Button>
+			</button>
 		</div>
 	</section>
 
