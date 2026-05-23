@@ -3,6 +3,7 @@ import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 import { enhance } from '$app/forms';
 import { invalidateAll } from '$app/navigation';
+import { SettingsActionBar } from '$lib/components/settings/index.js';
 import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
 import { Button } from '$lib/components/ui/button/index.js';
 import {
@@ -215,6 +216,7 @@ function getForwardedPairLabel(status: string): string {
 		<CardContent class="space-y-4">
 			{#if !security.originLocked}
 				<form
+					id="csrf-origin-form"
 					method="POST"
 					action="?/updateCsrfOrigin"
 					use:enhance={({ cancel }) => {
@@ -263,12 +265,6 @@ function getForwardedPairLabel(status: string): string {
 					</div>
 
 					<input type="hidden" name="settingsVersion" value={data.csrfOriginVersion} />
-
-					<div class="flex flex-wrap gap-2 justify-end">
-						<Button type="submit" class="tap-target" disabled={isSavingCsrf}>
-							{isSavingCsrf ? 'Saving…' : 'Save CSRF origin'}
-						</Button>
-					</div>
 				</form>
 			{:else}
 				<p class="text-sm text-muted-foreground">
@@ -276,95 +272,113 @@ function getForwardedPairLabel(status: string): string {
 				</p>
 			{/if}
 
-			<form
-				method="POST"
-				action="?/testCsrfProtection"
-				use:enhance={({ cancel }) => {
-					if (isTestingCsrf) {
-						cancel();
-						return;
-					}
-					isTestingCsrf = true;
-					return async ({ result }) => {
-						try {
-							if (result.type === 'success' || result.type === 'failure') {
-								handleFormToast(
-									result.data as { success?: boolean; message?: string; error?: string }
-								);
-							}
-						} finally {
-							isTestingCsrf = false;
-						}
-					};
-				}}
-			>
-				<Button type="submit" variant="outline" class="tap-target" disabled={isTestingCsrf}>
-					{isTestingCsrf ? 'Testing…' : 'Test CSRF protection'}
-				</Button>
-			</form>
-
-			{#if !security.csrfEnabled && !security.originLocked}
+			<SettingsActionBar>
 				<form
 					method="POST"
-					action="?/toggleCsrfSkip"
-					use:enhance={({ cancel, formData }) => {
-						if (isClearingCsrfSkip) {
-							cancel();
-							return;
-						}
-						isClearingCsrfSkip = true;
-						formData.set('enabled', security.csrfOriginSkipped ? 'false' : 'true');
-						return async ({ result, update }) => {
-							try {
-								if (result.type === 'success' || result.type === 'failure') {
-									handleFormToast(
-										result.data as { success?: boolean; message?: string; error?: string }
-									);
-								}
-								await update({ reset: false });
-								if (result.type === 'success') await invalidateAll();
-							} finally {
-								isClearingCsrfSkip = false;
-							}
-						};
-					}}
-				>
-					<Button type="submit" variant="outline" class="tap-target" disabled={isClearingCsrfSkip}>
-						{security.csrfOriginSkipped ? 'Disable CSRF skip flag' : 'Enable CSRF skip flag'}
-					</Button>
-				</form>
-			{/if}
-
-			{#if security.warningDismissed}
-				<form
-					method="POST"
-					action="?/resetCsrfWarning"
+					action="?/testCsrfProtection"
 					use:enhance={({ cancel }) => {
-						if (isResetingWarning) {
+						if (isTestingCsrf) {
 							cancel();
 							return;
 						}
-						isResetingWarning = true;
-						return async ({ result, update }) => {
+						isTestingCsrf = true;
+						return async ({ result }) => {
 							try {
 								if (result.type === 'success' || result.type === 'failure') {
 									handleFormToast(
 										result.data as { success?: boolean; message?: string; error?: string }
 									);
 								}
-								await update({ reset: false });
-								if (result.type === 'success') await invalidateAll();
 							} finally {
-								isResetingWarning = false;
+								isTestingCsrf = false;
 							}
 						};
 					}}
 				>
-					<Button type="submit" variant="outline" class="tap-target" disabled={isResetingWarning}>
-						{isResetingWarning ? 'Resetting…' : 'Re-enable CSRF warning banner'}
+					<Button type="submit" variant="outline" class="tap-target" disabled={isTestingCsrf}>
+						{isTestingCsrf ? 'Testing…' : 'Test CSRF protection'}
 					</Button>
 				</form>
-			{/if}
+
+				{#if !security.csrfEnabled && !security.originLocked}
+					<form
+						method="POST"
+						action="?/toggleCsrfSkip"
+						use:enhance={({ cancel, formData }) => {
+							if (isClearingCsrfSkip) {
+								cancel();
+								return;
+							}
+							isClearingCsrfSkip = true;
+							formData.set('enabled', security.csrfOriginSkipped ? 'false' : 'true');
+							return async ({ result, update }) => {
+								try {
+									if (result.type === 'success' || result.type === 'failure') {
+										handleFormToast(
+											result.data as { success?: boolean; message?: string; error?: string }
+										);
+									}
+									await update({ reset: false });
+									if (result.type === 'success') await invalidateAll();
+								} finally {
+									isClearingCsrfSkip = false;
+								}
+							};
+						}}
+					>
+						<Button
+							type="submit"
+							variant="outline"
+							class="tap-target"
+							disabled={isClearingCsrfSkip}
+						>
+							{security.csrfOriginSkipped ? 'Disable CSRF skip flag' : 'Enable CSRF skip flag'}
+						</Button>
+					</form>
+				{/if}
+
+				{#if security.warningDismissed}
+					<form
+						method="POST"
+						action="?/resetCsrfWarning"
+						use:enhance={({ cancel }) => {
+							if (isResetingWarning) {
+								cancel();
+								return;
+							}
+							isResetingWarning = true;
+							return async ({ result, update }) => {
+								try {
+									if (result.type === 'success' || result.type === 'failure') {
+										handleFormToast(
+											result.data as { success?: boolean; message?: string; error?: string }
+										);
+									}
+									await update({ reset: false });
+									if (result.type === 'success') await invalidateAll();
+								} finally {
+									isResetingWarning = false;
+								}
+							};
+						}}
+					>
+						<Button type="submit" variant="outline" class="tap-target" disabled={isResetingWarning}>
+							{isResetingWarning ? 'Resetting…' : 'Re-enable CSRF warning banner'}
+						</Button>
+					</form>
+				{/if}
+
+				{#if !security.originLocked}
+					<Button
+						type="submit"
+						form="csrf-origin-form"
+						class="tap-target"
+						disabled={isSavingCsrf}
+					>
+						{isSavingCsrf ? 'Saving…' : 'Save CSRF origin'}
+					</Button>
+				{/if}
+			</SettingsActionBar>
 		</CardContent>
 	</Card>
 
@@ -555,7 +569,7 @@ function getForwardedPairLabel(status: string): string {
 				>
 					<input type="hidden" name="enabled" value="false" />
 					<input type="hidden" name="settingsVersion" value={data.trustProxyVersion} />
-					<div class="flex justify-end">
+					<SettingsActionBar>
 						<Button
 							type="submit"
 							variant="destructive"
@@ -564,10 +578,10 @@ function getForwardedPairLabel(status: string): string {
 						>
 							{isTogglingTrustProxy ? 'Disabling…' : 'Disable header trust'}
 						</Button>
-					</div>
+					</SettingsActionBar>
 				</form>
 			{:else}
-				<div class="flex justify-end">
+				<SettingsActionBar>
 					<button
 						type="button"
 						class="enable-header-trust-button tap-target"
@@ -577,7 +591,7 @@ function getForwardedPairLabel(status: string): string {
 					>
 						Enable header trust
 					</button>
-				</div>
+				</SettingsActionBar>
 			{/if}
 		</CardContent>
 	</Card>
@@ -687,6 +701,7 @@ function getForwardedPairLabel(status: string): string {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
+		min-height: var(--min-tap-size);
 		padding: 0.5rem 1rem;
 		font-size: 0.875rem;
 		font-weight: 500;
@@ -713,8 +728,8 @@ function getForwardedPairLabel(status: string): string {
 		gap: 0.875rem;
 		padding: 0.875rem 1rem;
 		border-radius: 10px;
-		border: 1px solid hsl(var(--border));
-		background: hsl(var(--muted) / 0.4);
+		border: 1px solid oklch(var(--border));
+		background: oklch(var(--muted) / 0.4);
 	}
 
 	.status-card.success {
@@ -728,7 +743,7 @@ function getForwardedPairLabel(status: string): string {
 	}
 
 	.status-card.neutral {
-		background: hsl(var(--muted) / 0.4);
+		background: oklch(var(--muted) / 0.4);
 	}
 
 	:global(.status-icon) {
@@ -747,7 +762,7 @@ function getForwardedPairLabel(status: string): string {
 	}
 
 	.status-card.neutral :global(.status-icon) {
-		color: hsl(var(--muted-foreground));
+		color: oklch(var(--muted-foreground));
 	}
 
 	.status-text {
@@ -760,13 +775,13 @@ function getForwardedPairLabel(status: string): string {
 	.status-headline {
 		font-size: 0.9rem;
 		font-weight: 600;
-		color: hsl(var(--foreground));
+		color: oklch(var(--foreground));
 	}
 
 	.status-body {
 		font-size: 0.825rem;
 		line-height: 1.5;
-		color: hsl(var(--muted-foreground));
+		color: oklch(var(--muted-foreground));
 	}
 
 	.details-toggle {
@@ -774,27 +789,29 @@ function getForwardedPairLabel(status: string): string {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.375rem;
-		background: transparent;
-		border: none;
-		padding: 0.35rem 0.5rem;
+		background: oklch(var(--background) / 0.3);
+		border: 1px solid oklch(var(--border));
+		padding: 0.42rem 0.6rem;
 		margin: 0;
 		font-size: 0.78rem;
-		font-weight: 500;
-		color: hsl(var(--muted-foreground));
+		font-weight: 600;
+		color: oklch(var(--foreground) / 0.82);
 		cursor: pointer;
-		border-radius: 6px;
+		border-radius: 999px;
 		transition:
 			color 0.2s,
-			background 0.2s;
+			background 0.2s,
+			border-color 0.2s;
 	}
 
 	.details-toggle:hover {
-		color: hsl(var(--foreground));
-		background: hsl(var(--muted) / 0.5);
+		color: oklch(var(--foreground));
+		background: oklch(var(--muted) / 0.5);
+		border-color: oklch(var(--primary) / 0.4);
 	}
 
 	.details-toggle:focus-visible {
-		outline: 2px solid hsl(var(--ring));
+		outline: 2px solid oklch(var(--ring));
 		outline-offset: 2px;
 	}
 
@@ -811,8 +828,8 @@ function getForwardedPairLabel(status: string): string {
 		flex-direction: column;
 		gap: 0.875rem;
 		padding: 0.875rem 1rem;
-		background: hsl(var(--muted) / 0.3);
-		border: 1px solid hsl(var(--border));
+		background: oklch(var(--muted) / 0.3);
+		border: 1px solid oklch(var(--border));
 		border-radius: 10px;
 	}
 
@@ -828,8 +845,8 @@ function getForwardedPairLabel(status: string): string {
 		gap: 0.25rem;
 		min-width: 0;
 		padding: 0.6rem 0.7rem;
-		background: hsl(var(--background) / 0.6);
-		border: 1px solid hsl(var(--border));
+		background: oklch(var(--background) / 0.6);
+		border: 1px solid oklch(var(--border));
 		border-radius: 8px;
 	}
 
@@ -838,7 +855,7 @@ function getForwardedPairLabel(status: string): string {
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		color: hsl(var(--muted-foreground));
+		color: oklch(var(--muted-foreground));
 	}
 
 	.fact-value {
@@ -848,7 +865,7 @@ function getForwardedPairLabel(status: string): string {
 		min-width: 0;
 		font-size: 0.78rem;
 		line-height: 1.35;
-		color: hsl(var(--foreground));
+		color: oklch(var(--foreground));
 		overflow-wrap: anywhere;
 	}
 
@@ -876,13 +893,13 @@ function getForwardedPairLabel(status: string): string {
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		color: hsl(var(--muted-foreground));
+		color: oklch(var(--muted-foreground));
 	}
 
 	.reasons-block ul {
 		margin: 0;
 		padding-left: 1.1rem;
-		color: hsl(var(--muted-foreground));
+		color: oklch(var(--muted-foreground));
 		font-size: 0.8rem;
 		line-height: 1.5;
 	}
@@ -891,7 +908,7 @@ function getForwardedPairLabel(status: string): string {
 		margin: 0;
 		font-size: 0.78rem;
 		line-height: 1.5;
-		color: hsl(var(--muted-foreground));
+		color: oklch(var(--muted-foreground));
 	}
 
 	.re-check {

@@ -1,6 +1,12 @@
 <script lang="ts">
+import FlaskConicalIcon from '@lucide/svelte/icons/flask-conical';
+import KeyRoundIcon from '@lucide/svelte/icons/key-round';
+import ServerIcon from '@lucide/svelte/icons/server';
+import ShieldAlertIcon from '@lucide/svelte/icons/shield-alert';
+import SparklesIcon from '@lucide/svelte/icons/sparkles';
 import { enhance } from '$app/forms';
 import { invalidateAll } from '$app/navigation';
+import { SettingsActionBar, SettingsToggleRow } from '$lib/components/settings/index.js';
 import { Button } from '$lib/components/ui/button/index.js';
 import {
 	Card,
@@ -11,7 +17,6 @@ import {
 } from '$lib/components/ui/card/index.js';
 import { Input } from '$lib/components/ui/input/index.js';
 import { Label } from '$lib/components/ui/label/index.js';
-import { Switch } from '$lib/components/ui/switch/index.js';
 import { handleFormToast } from '$lib/utils/form-toast';
 import type { PageData } from './$types';
 
@@ -67,6 +72,7 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 		</CardHeader>
 		<CardContent class="space-y-4">
 			<form
+				id="plex-settings-form"
 				method="POST"
 				action="?/updateApiConfig"
 				use:enhance={({ cancel }) => {
@@ -130,16 +136,18 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 					{/if}
 				</div>
 
-				<div class="flex items-center justify-between rounded-lg border p-3">
-					<div class="space-y-0.5">
-						<Label>Allow insecure local HTTP</Label>
-						<p class="text-xs text-muted-foreground">
-							Permit non-HTTPS connections to RFC1918 / loopback Plex servers. Required for
-							typical LAN setups.
-						</p>
-					</div>
-					<Switch bind:checked={plexAllowInsecureLocalHttp} />
-				</div>
+				<SettingsToggleRow
+					id="plexAllowInsecureLocalHttpToggle"
+					title="Allow insecure local HTTP"
+					description="Permit non-HTTPS connections to RFC1918 / loopback Plex servers. Required for typical LAN setups."
+					onLabel="Allowed"
+					offLabel="Blocked"
+					bind:checked={plexAllowInsecureLocalHttp}
+				>
+					{#snippet icon()}
+						<ShieldAlertIcon />
+					{/snippet}
+				</SettingsToggleRow>
 				<input
 					type="hidden"
 					name="plexAllowInsecureLocalHttp"
@@ -147,47 +155,53 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 				/>
 
 				<input type="hidden" name="apiConfigVersion" value={data.apiConfigVersion} />
-
-				<div class="flex flex-wrap gap-2 justify-end">
-					<Button type="submit" class="tap-target" disabled={isSavingPlex || plexAnyLocked}>
-						{isSavingPlex ? 'Saving…' : 'Save Plex settings'}
-					</Button>
-				</div>
 			</form>
 
-			<form
-				method="POST"
-				action="?/testPlexConnection"
-				use:enhance={({ cancel, formData }) => {
-					if (isTestingPlex) {
-						cancel();
-						return;
-					}
-					isTestingPlex = true;
-					// Forward the live form state so the test exercises pending edits.
-					formData.set('plexServerUrl', plexServerUrl);
-					if (plexTokenInput) formData.set('plexToken', plexTokenInput);
-					formData.set(
-						'plexAllowInsecureLocalHttp',
-						plexAllowInsecureLocalHttp ? 'true' : 'false'
-					);
-					return async ({ result }) => {
-						try {
-							if (result.type === 'success' || result.type === 'failure') {
-								handleFormToast(
-									result.data as { success?: boolean; message?: string; error?: string }
-								);
-							}
-						} finally {
-							isTestingPlex = false;
+			<SettingsActionBar>
+				<form
+					method="POST"
+					action="?/testPlexConnection"
+					use:enhance={({ cancel, formData }) => {
+						if (isTestingPlex) {
+							cancel();
+							return;
 						}
-					};
-				}}
-			>
-				<Button type="submit" variant="outline" class="tap-target" disabled={isTestingPlex}>
-					{isTestingPlex ? 'Testing…' : 'Test Plex connection'}
+						isTestingPlex = true;
+						// Forward the live form state so the test exercises pending edits.
+						formData.set('plexServerUrl', plexServerUrl);
+						if (plexTokenInput) formData.set('plexToken', plexTokenInput);
+						formData.set(
+							'plexAllowInsecureLocalHttp',
+							plexAllowInsecureLocalHttp ? 'true' : 'false'
+						);
+						return async ({ result }) => {
+							try {
+								if (result.type === 'success' || result.type === 'failure') {
+									handleFormToast(
+										result.data as { success?: boolean; message?: string; error?: string }
+									);
+								}
+							} finally {
+								isTestingPlex = false;
+							}
+						};
+					}}
+				>
+					<Button type="submit" variant="outline" class="tap-target" disabled={isTestingPlex}>
+						<FlaskConicalIcon />
+						{isTestingPlex ? 'Testing…' : 'Test Plex connection'}
+					</Button>
+				</form>
+				<Button
+					type="submit"
+					form="plex-settings-form"
+					class="tap-target"
+					disabled={isSavingPlex || plexAnyLocked}
+				>
+					<ServerIcon />
+					{isSavingPlex ? 'Saving…' : 'Save Plex settings'}
 				</Button>
-			</form>
+			</SettingsActionBar>
 		</CardContent>
 	</Card>
 
@@ -201,6 +215,7 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 		</CardHeader>
 		<CardContent class="space-y-4">
 			<form
+				id="openai-settings-form"
 				method="POST"
 				action="?/updateApiConfig"
 				use:enhance={({ cancel }) => {
@@ -271,15 +286,9 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 				</div>
 
 				<input type="hidden" name="apiConfigVersion" value={data.apiConfigVersion} />
-
-				<div class="flex flex-wrap gap-2 justify-end">
-					<Button type="submit" class="tap-target" disabled={isSavingOpenai || openaiAnyLocked}>
-						{isSavingOpenai ? 'Saving…' : 'Save OpenAI settings'}
-					</Button>
-				</div>
 			</form>
 
-			<div class="flex flex-wrap gap-2">
+			<SettingsActionBar>
 				<form
 					method="POST"
 					action="?/testAIConnection"
@@ -306,6 +315,7 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 					}}
 				>
 					<Button type="submit" variant="outline" class="tap-target" disabled={isTestingOpenai}>
+						<FlaskConicalIcon />
 						{isTestingOpenai ? 'Testing…' : 'Test OpenAI connection'}
 					</Button>
 				</form>
@@ -336,6 +346,7 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 						}}
 					>
 						<Button type="submit" variant="destructive" class="tap-target" disabled={isClearingOpenaiKey}>
+							<KeyRoundIcon />
 							{isClearingOpenaiKey ? 'Clearing…' : 'Clear API key'}
 						</Button>
 					</form>
@@ -366,12 +377,26 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 							};
 						}}
 					>
-						<Button type="submit" variant="destructive" class="tap-target" disabled={isClearingOpenaiModel}>
+						<Button
+							type="submit"
+							variant="outline"
+							class="tap-target"
+							disabled={isClearingOpenaiModel}
+						>
 							{isClearingOpenaiModel ? 'Clearing…' : 'Clear model'}
 						</Button>
 					</form>
 				{/if}
-			</div>
+				<Button
+					type="submit"
+					form="openai-settings-form"
+					class="tap-target"
+					disabled={isSavingOpenai || openaiAnyLocked}
+				>
+					<SparklesIcon />
+					{isSavingOpenai ? 'Saving…' : 'Save OpenAI settings'}
+				</Button>
+			</SettingsActionBar>
 		</CardContent>
 	</Card>
 </div>

@@ -1,6 +1,18 @@
 <script lang="ts">
+import EyeOffIcon from '@lucide/svelte/icons/eye-off';
+import GlobeIcon from '@lucide/svelte/icons/globe';
+import LinkIcon from '@lucide/svelte/icons/link';
+import LockIcon from '@lucide/svelte/icons/lock';
+import ShieldUserIcon from '@lucide/svelte/icons/shield-user';
+import UserCogIcon from '@lucide/svelte/icons/user-cog';
+import UsersIcon from '@lucide/svelte/icons/users';
 import { superForm } from 'sveltekit-superforms';
 import { enhance } from '$app/forms';
+import {
+	SettingsActionBar,
+	SettingsOptionCard,
+	SettingsToggleRow
+} from '$lib/components/settings/index.js';
 import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
 import { Button } from '$lib/components/ui/button/index.js';
 import {
@@ -11,9 +23,7 @@ import {
 	CardTitle
 } from '$lib/components/ui/card/index.js';
 import * as Form from '$lib/components/ui/form/index.js';
-import { Label } from '$lib/components/ui/label/index.js';
 import { RadioGroup, RadioGroupItem } from '$lib/components/ui/radio-group/index.js';
-import { Switch } from '$lib/components/ui/switch/index.js';
 import { handleFormToast } from '$lib/utils/form-toast';
 import type { PageData } from './$types';
 
@@ -59,6 +69,18 @@ const {
 
 let bulkApplyDialogOpen = $state(false);
 let isBulkApplying = $state(false);
+
+function getAnonymizationDescription(value: string): string {
+	if (value === 'anonymous') return 'Hide viewer identity anywhere server-wide stats are shared.';
+	if (value === 'hybrid') return 'Show names to signed-in members and anonymize public views.';
+	return 'Show names as stored for administrators and viewers with access.';
+}
+
+function getShareModeDescription(value: string): string {
+	if (value === 'public') return 'Anyone with the URL can view the wrapped page.';
+	if (value === 'private-link') return 'Require a generated private link token for access.';
+	return 'Require a Plex-authenticated user with permission.';
+}
 </script>
 
 <svelte:head>
@@ -86,12 +108,23 @@ let isBulkApplying = $state(false);
 							<Form.Label>Anonymization mode</Form.Label>
 							<RadioGroup bind:value={$serverWrappedData.anonymizationMode} {...props}>
 								{#each data.anonymizationOptions as opt (opt.value)}
-									<Label
-										class="flex items-center gap-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
+									<SettingsOptionCard
+										title={opt.label}
+										description={getAnonymizationDescription(opt.value)}
 									>
-										<RadioGroupItem value={opt.value} />
-										<span>{opt.label}</span>
-									</Label>
+										{#snippet control()}
+											<RadioGroupItem value={opt.value} />
+										{/snippet}
+										{#snippet icon()}
+											{#if opt.value === 'anonymous'}
+												<EyeOffIcon />
+											{:else if opt.value === 'hybrid'}
+												<ShieldUserIcon />
+											{:else}
+												<UsersIcon />
+											{/if}
+										{/snippet}
+									</SettingsOptionCard>
 								{/each}
 							</RadioGroup>
 						{/snippet}
@@ -104,18 +137,25 @@ let isBulkApplying = $state(false);
 						{#snippet children({ props })}
 							<Form.Label>Server-wide share mode</Form.Label>
 							<RadioGroup bind:value={$serverWrappedData.serverWrappedShareMode} {...props}>
-								<Label
-									class="flex items-center gap-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
+								<SettingsOptionCard title="Public" description={getShareModeDescription('public')}>
+									{#snippet control()}
+										<RadioGroupItem value="public" />
+									{/snippet}
+									{#snippet icon()}
+										<GlobeIcon />
+									{/snippet}
+								</SettingsOptionCard>
+								<SettingsOptionCard
+									title="Private (OAuth)"
+									description={getShareModeDescription('private-oauth')}
 								>
-									<RadioGroupItem value="public" />
-									<span>Public</span>
-								</Label>
-								<Label
-									class="flex items-center gap-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
-								>
-									<RadioGroupItem value="private-oauth" />
-									<span>Private (OAuth)</span>
-								</Label>
+									{#snippet control()}
+										<RadioGroupItem value="private-oauth" />
+									{/snippet}
+									{#snippet icon()}
+										<LockIcon />
+									{/snippet}
+								</SettingsOptionCard>
 							</RadioGroup>
 						{/snippet}
 					</Form.Control>
@@ -131,11 +171,11 @@ let isBulkApplying = $state(false);
 					bind:value={$serverWrappedData.settingsVersion}
 				/>
 
-				<div class="flex justify-end">
+				<SettingsActionBar>
 					<Button type="submit" class="tap-target" disabled={$serverWrappedSubmitting}>
 						{$serverWrappedSubmitting ? 'Saving…' : 'Save server-wide settings'}
 					</Button>
-				</div>
+				</SettingsActionBar>
 			</form>
 		</CardContent>
 	</Card>
@@ -160,24 +200,36 @@ let isBulkApplying = $state(false);
 						{#snippet children({ props })}
 							<Form.Label>Default share mode</Form.Label>
 							<RadioGroup bind:value={$userDefaultsData.defaultShareMode} {...props}>
-								<Label
-									class="flex items-center gap-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
+								<SettingsOptionCard title="Public" description={getShareModeDescription('public')}>
+									{#snippet control()}
+										<RadioGroupItem value="public" />
+									{/snippet}
+									{#snippet icon()}
+										<GlobeIcon />
+									{/snippet}
+								</SettingsOptionCard>
+								<SettingsOptionCard
+									title="Private (OAuth)"
+									description={getShareModeDescription('private-oauth')}
 								>
-									<RadioGroupItem value="public" />
-									<span>Public</span>
-								</Label>
-								<Label
-									class="flex items-center gap-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
+									{#snippet control()}
+										<RadioGroupItem value="private-oauth" />
+									{/snippet}
+									{#snippet icon()}
+										<ShieldUserIcon />
+									{/snippet}
+								</SettingsOptionCard>
+								<SettingsOptionCard
+									title="Private (link)"
+									description={getShareModeDescription('private-link')}
 								>
-									<RadioGroupItem value="private-oauth" />
-									<span>Private (OAuth)</span>
-								</Label>
-								<Label
-									class="flex items-center gap-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
-								>
-									<RadioGroupItem value="private-link" />
-									<span>Private (link)</span>
-								</Label>
+									{#snippet control()}
+										<RadioGroupItem value="private-link" />
+									{/snippet}
+									{#snippet icon()}
+										<LinkIcon />
+									{/snippet}
+								</SettingsOptionCard>
 							</RadioGroup>
 						{/snippet}
 					</Form.Control>
@@ -187,25 +239,25 @@ let isBulkApplying = $state(false);
 				<Form.Field form={userDefaultsForm} name="allowUserControl">
 					<Form.Control>
 						{#snippet children({ props })}
-							<div class="flex items-center justify-between rounded-lg border p-3">
-								<input
-									type="hidden"
-									name="allowUserControl"
-									value={$userDefaultsData.allowUserControl ? 'true' : 'false'}
-								/>
-								<div class="space-y-0.5">
-									<Form.Label>Allow users to change their share settings</Form.Label>
-									<Form.Description>
-										When off, only administrators can change a user's share mode.
-									</Form.Description>
-								</div>
-								<Switch
-									id={props.id}
-									aria-describedby={props['aria-describedby']}
-									aria-invalid={props['aria-invalid']}
-									bind:checked={$userDefaultsData.allowUserControl}
-								/>
-							</div>
+							<input
+								type="hidden"
+								name="allowUserControl"
+								value={$userDefaultsData.allowUserControl ? 'true' : 'false'}
+							/>
+							<SettingsToggleRow
+								id="allow-user-control-toggle"
+								title="Allow users to change their share settings"
+								description="When off, only administrators can change a user's share mode."
+								onLabel="Users can edit"
+								offLabel="Admin only"
+								ariaDescribedby={props['aria-describedby']}
+								ariaInvalid={props['aria-invalid']}
+								bind:checked={$userDefaultsData.allowUserControl}
+							>
+								{#snippet icon()}
+									<UserCogIcon />
+								{/snippet}
+							</SettingsToggleRow>
 						{/snippet}
 					</Form.Control>
 					<Form.FieldErrors />
@@ -217,11 +269,11 @@ let isBulkApplying = $state(false);
 					bind:value={$userDefaultsData.settingsVersion}
 				/>
 
-				<div class="flex justify-end">
+				<SettingsActionBar>
 					<Button type="submit" class="tap-target" disabled={$userDefaultsSubmitting}>
 						{$userDefaultsSubmitting ? 'Saving…' : 'Save user defaults'}
 					</Button>
-				</div>
+				</SettingsActionBar>
 			</form>
 		</CardContent>
 	</Card>
@@ -235,15 +287,17 @@ let isBulkApplying = $state(false);
 			</CardDescription>
 		</CardHeader>
 		<CardContent>
-			<div class="flex justify-end">
+			<SettingsActionBar>
 				<Button
 					variant="outline"
+					class="tap-target"
 					onclick={() => (bulkApplyDialogOpen = true)}
 					disabled={isBulkApplying}
 				>
+					<UsersIcon />
 					Apply current defaults to all users
 				</Button>
-			</div>
+			</SettingsActionBar>
 		</CardContent>
 	</Card>
 </div>

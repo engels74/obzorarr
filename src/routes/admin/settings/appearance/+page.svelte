@@ -1,6 +1,7 @@
 <script lang="ts">
 import { enhance } from '$app/forms';
 import { invalidateAll } from '$app/navigation';
+import { SettingsActionBar, SettingsOptionCard } from '$lib/components/settings/index.js';
 import { Button } from '$lib/components/ui/button/index.js';
 import {
 	Card,
@@ -9,7 +10,6 @@ import {
 	CardHeader,
 	CardTitle
 } from '$lib/components/ui/card/index.js';
-import { Label } from '$lib/components/ui/label/index.js';
 import { RadioGroup, RadioGroupItem } from '$lib/components/ui/radio-group/index.js';
 import { handleFormToast } from '$lib/utils/form-toast';
 import type { PageData } from './$types';
@@ -32,6 +32,48 @@ let selectedWrappedLogoMode = $state(data.wrappedLogoMode);
 let isSavingUITheme = $state(false);
 let isSavingWrappedTheme = $state(false);
 let isSavingWrappedLogoMode = $state(false);
+
+const themeSwatches: Record<string, string[]> = {
+	'modern-minimal': ['oklch(0.6261 0.1859 259.6)', 'oklch(0.2267 0 0)', 'oklch(0.9389 0 0)'],
+	supabase: ['oklch(0.7906 0.171 160.45)', 'oklch(0.2207 0.0083 173.44)', 'oklch(0.9466 0 0)'],
+	'doom-64': [
+		'oklch(0.6885 0.1738 51.21)',
+		'oklch(0.2399 0.011 61.56)',
+		'oklch(0.6599 0.1644 147.39)'
+	],
+	'amber-minimal': [
+		'oklch(0.8309 0.1622 87.87)',
+		'oklch(0.2327 0.0082 91.67)',
+		'oklch(0.9389 0 0)'
+	],
+	'soviet-red': [
+		'oklch(0.5356 0.2041 27.72)',
+		'oklch(0.2083 0.0125 18.2)',
+		'oklch(0.8085 0.1523 88.89)'
+	]
+};
+
+const themeDescriptions: Record<string, string> = {
+	'modern-minimal': 'Cool, neutral admin surfaces with a crisp blue accent.',
+	supabase: 'Deep charcoal and soft green for a calmer dashboard feel.',
+	'doom-64': 'Retro amber contrast with sharper, game-inspired edges.',
+	'amber-minimal': 'Warm amber highlights on a restrained dark base.',
+	'soviet-red': 'High-contrast red accents with a bold cinematic tone.'
+};
+
+function getThemeSwatches(theme: string): string[] {
+	return (
+		themeSwatches[theme] ?? [
+			'oklch(var(--primary))',
+			'oklch(var(--card))',
+			'oklch(var(--foreground))'
+		]
+	);
+}
+
+function getThemeDescription(theme: string): string {
+	return themeDescriptions[theme] ?? 'Theme-aware colors for Obzorarr surfaces.';
+}
 </script>
 
 <svelte:head>
@@ -76,22 +118,25 @@ let isSavingWrappedLogoMode = $state(false);
 			>
 				<RadioGroup bind:value={selectedUITheme} name="theme" class="grid sm:grid-cols-2 gap-2">
 					{#each data.themeOptions as theme (theme.value)}
-						<Label
-							class="flex items-center gap-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
+						<SettingsOptionCard
+							title={theme.label}
+							description={getThemeDescription(theme.value)}
+							swatches={getThemeSwatches(theme.value)}
 						>
-							<RadioGroupItem value={theme.value} />
-							<span>{theme.label}</span>
-						</Label>
+							{#snippet control()}
+								<RadioGroupItem value={theme.value} />
+							{/snippet}
+						</SettingsOptionCard>
 					{/each}
 				</RadioGroup>
 
 				<input type="hidden" name="settingsVersion" value={data.uiThemeVersion} />
 
-				<div class="flex justify-end">
+				<SettingsActionBar>
 					<Button type="submit" class="tap-target" disabled={isSavingUITheme}>
 						{isSavingUITheme ? 'Saving…' : 'Save UI theme'}
 					</Button>
-				</div>
+				</SettingsActionBar>
 			</form>
 		</CardContent>
 	</Card>
@@ -137,22 +182,25 @@ let isSavingWrappedLogoMode = $state(false);
 					class="grid sm:grid-cols-2 gap-2"
 				>
 					{#each data.themeOptions as theme (theme.value)}
-						<Label
-							class="flex items-center gap-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
+						<SettingsOptionCard
+							title={theme.label}
+							description={getThemeDescription(theme.value)}
+							swatches={getThemeSwatches(theme.value)}
 						>
-							<RadioGroupItem value={theme.value} />
-							<span>{theme.label}</span>
-						</Label>
+							{#snippet control()}
+								<RadioGroupItem value={theme.value} />
+							{/snippet}
+						</SettingsOptionCard>
 					{/each}
 				</RadioGroup>
 
 				<input type="hidden" name="settingsVersion" value={data.wrappedThemeVersion} />
 
-				<div class="flex justify-end">
+				<SettingsActionBar>
 					<Button type="submit" class="tap-target" disabled={isSavingWrappedTheme}>
 						{isSavingWrappedTheme ? 'Saving…' : 'Save wrapped theme'}
 					</Button>
-				</div>
+				</SettingsActionBar>
 			</form>
 		</CardContent>
 	</Card>
@@ -196,22 +244,21 @@ let isSavingWrappedLogoMode = $state(false);
 					class="grid gap-2"
 				>
 					{#each data.wrappedLogoOptions as option (option.value)}
-						<Label
-							class="flex items-center gap-3 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
-						>
-							<RadioGroupItem value={option.value} />
-							<span>{option.label}</span>
-						</Label>
+						<SettingsOptionCard title={option.label} meta="Logo">
+							{#snippet control()}
+								<RadioGroupItem value={option.value} />
+							{/snippet}
+						</SettingsOptionCard>
 					{/each}
 				</RadioGroup>
 
 				<input type="hidden" name="settingsVersion" value={data.wrappedLogoModeVersion} />
 
-				<div class="flex justify-end">
+				<SettingsActionBar>
 					<Button type="submit" class="tap-target" disabled={isSavingWrappedLogoMode}>
 						{isSavingWrappedLogoMode ? 'Saving…' : 'Save logo mode'}
 					</Button>
-				</div>
+				</SettingsActionBar>
 			</form>
 		</CardContent>
 	</Card>

@@ -1,6 +1,9 @@
 <script lang="ts">
+import CalculatorIcon from '@lucide/svelte/icons/calculator';
+import Trash2Icon from '@lucide/svelte/icons/trash-2';
 import { enhance } from '$app/forms';
 import { invalidateAll } from '$app/navigation';
+import { SettingsActionBar } from '$lib/components/settings/index.js';
 import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
 import { Button } from '$lib/components/ui/button/index.js';
 import {
@@ -86,7 +89,7 @@ const historyYearLabel = $derived(
 				</div>
 			{/if}
 
-			<div class="flex flex-wrap gap-2 justify-end">
+			<SettingsActionBar>
 				<form
 					method="POST"
 					action="?/getCacheCount"
@@ -113,18 +116,21 @@ const historyYearLabel = $derived(
 					}}
 				>
 					<Button type="submit" variant="outline" class="tap-target" disabled={isCheckingCacheCount}>
+						<CalculatorIcon />
 						{isCheckingCacheCount ? 'Counting…' : 'Count cache entries'}
 					</Button>
 				</form>
 
 				<Button
 					variant="destructive"
+					class="tap-target"
 					onclick={() => (clearCacheDialogOpen = true)}
 					disabled={isClearingCache}
 				>
+					<Trash2Icon />
 					Clear cache
 				</Button>
-			</div>
+			</SettingsActionBar>
 		</CardContent>
 	</Card>
 
@@ -155,7 +161,7 @@ const historyYearLabel = $derived(
 				</div>
 			{/if}
 
-			<div class="flex flex-wrap gap-2 justify-end">
+			<SettingsActionBar>
 				<form
 					method="POST"
 					action="?/getPlayHistoryCount"
@@ -182,18 +188,21 @@ const historyYearLabel = $derived(
 					}}
 				>
 					<Button type="submit" variant="outline" class="tap-target" disabled={isCheckingHistoryCount}>
+						<CalculatorIcon />
 						{isCheckingHistoryCount ? 'Counting…' : 'Count play records'}
 					</Button>
 				</form>
 
 				<Button
 					variant="destructive"
+					class="tap-target"
 					onclick={() => (clearHistoryDialogOpen = true)}
 					disabled={isClearingHistory}
 				>
+					<Trash2Icon />
 					Clear play history
 				</Button>
-			</div>
+			</SettingsActionBar>
 		</CardContent>
 	</Card>
 </div>

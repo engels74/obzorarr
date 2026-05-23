@@ -1,5 +1,7 @@
 <script lang="ts">
+import BugIcon from '@lucide/svelte/icons/bug';
 import { superForm } from 'sveltekit-superforms';
+import { SettingsActionBar, SettingsToggleRow } from '$lib/components/settings/index.js';
 import { Button } from '$lib/components/ui/button/index.js';
 import {
 	Card,
@@ -10,7 +12,6 @@ import {
 } from '$lib/components/ui/card/index.js';
 import * as Form from '$lib/components/ui/form/index.js';
 import { Input } from '$lib/components/ui/input/index.js';
-import { Switch } from '$lib/components/ui/switch/index.js';
 import { handleFormToast } from '$lib/utils/form-toast';
 import type { PageData } from './$types';
 
@@ -120,13 +121,25 @@ function formatUptime(seconds: number): string {
 				<Form.Field {form} name="debugEnabled">
 					<Form.Control>
 						{#snippet children({ props })}
-							<div class="flex items-center justify-between rounded-lg border p-3">
-								<div class="space-y-0.5">
-									<Form.Label>DEBUG-level logging</Form.Label>
-									<Form.Description>Records detailed debug output. May increase log volume.</Form.Description>
-								</div>
-								<Switch {...props} bind:checked={$formData.debugEnabled} />
-							</div>
+							<input
+								type="hidden"
+								name="debugEnabled"
+								value={$formData.debugEnabled ? 'true' : 'false'}
+							/>
+							<SettingsToggleRow
+								id={props.id}
+								title="DEBUG-level logging"
+								description="Records detailed debug output. May increase log volume."
+								onLabel="Debug on"
+								offLabel="Debug off"
+								ariaDescribedby={props['aria-describedby']}
+								ariaInvalid={props['aria-invalid']}
+								bind:checked={$formData.debugEnabled}
+							>
+								{#snippet icon()}
+									<BugIcon />
+								{/snippet}
+							</SettingsToggleRow>
 						{/snippet}
 					</Form.Control>
 					<Form.FieldErrors />
@@ -134,7 +147,7 @@ function formatUptime(seconds: number): string {
 
 				<input type="hidden" name="settingsVersion" bind:value={$formData.settingsVersion} />
 
-				<div class="flex justify-end">
+				<SettingsActionBar>
 					<Button
 						type="submit"
 						class="tap-target"
@@ -142,7 +155,7 @@ function formatUptime(seconds: number): string {
 					>
 						{$submitting ? 'Saving…' : 'Save logging settings'}
 					</Button>
-				</div>
+				</SettingsActionBar>
 			</form>
 		</CardContent>
 	</Card>
