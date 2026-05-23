@@ -6,6 +6,7 @@ import { animate } from 'motion';
 import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
 import { Button } from '$lib/components/ui/button';
+import { REVERSE_PROXY_COPY } from '$lib/copy/reverse-proxy';
 import { submitAction } from '$lib/utils/submit-action';
 import type { ActionData, PageData } from './$types';
 
@@ -284,8 +285,8 @@ function toggleDetails() {
 </script>
 
 <OnboardingCard
-	title="Proxy connection"
-	subtitle="Make sure Obzorarr correctly identifies your visitors"
+	title={REVERSE_PROXY_COPY.panelTitle}
+	subtitle={REVERSE_PROXY_COPY.panelSubtitle}
 >
 	<div class="proxy-content" bind:this={contentRef}>
 		<div class="icon-container" bind:this={iconRef}>
@@ -469,9 +470,9 @@ function toggleDetails() {
 						>
 							{#if diagnosticStatus === 'checking'}
 								<LoaderCircleIcon class="size-3.5 animate-spin" aria-hidden="true" />
-								Re-checking…
+								{REVERSE_PROXY_COPY.rerunButtonInProgress}
 							{:else}
-								Re-run check
+								{REVERSE_PROXY_COPY.rerunButton}
 							{/if}
 						</Button>
 					</div>
