@@ -383,3 +383,23 @@ export async function createReverseProxyDiagnostic(
 		csrfOrigin: csrfOrigin.origin
 	});
 }
+
+export const ENABLE_TRUST_PROXY_NOT_RECOMMENDED_MESSAGE =
+	'The current diagnostic does not recommend enabling reverse proxy header trust.';
+
+export type EnableTrustProxyDecision = { ok: true } | { ok: false; error: string };
+
+/**
+ * Gate the "enable TRUST_PROXY" write on the live diagnostic recommendation.
+ * Both the admin Security page and the onboarding proxy-trust step run the
+ * diagnostic immediately before flipping the setting; this helper is the
+ * single source of truth for the rejection message.
+ */
+export function assertEnableTrustProxyAllowed(
+	diagnostic: ReverseProxyDiagnostic
+): EnableTrustProxyDecision {
+	if (diagnostic.recommendation.action === 'enable') {
+		return { ok: true };
+	}
+	return { ok: false, error: ENABLE_TRUST_PROXY_NOT_RECOMMENDED_MESSAGE };
+}

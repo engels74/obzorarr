@@ -23,7 +23,10 @@ import { requireAdminActions } from '$lib/server/auth/guards';
 import { logger } from '$lib/server/logging';
 import { getOriginFromRequest } from '$lib/server/security/csrf-handle';
 import { _resetTrustProxyCache } from '$lib/server/security/proxy-handle';
-import { createReverseProxyDiagnostic } from '$lib/server/security/reverse-proxy-diagnostic';
+import {
+	assertEnableTrustProxyAllowed,
+	createReverseProxyDiagnostic
+} from '$lib/server/security/reverse-proxy-diagnostic';
 import type { Actions, PageServerLoad } from './$types';
 
 const MAX_BROWSER_ORIGIN_LENGTH = 2048;
@@ -86,7 +89,17 @@ const CsrfOriginSchema = z.object({
 const TrustProxySchema = z.object({
 	enabled: z.enum(['true', 'false']).transform((v) => v === 'true'),
 	confirmRisk: z.enum(['true']).optional(),
-	settingsVersion: z.string().min(1, 'Missing settings version (reload the page)')
+	settingsVersion: z.string().min(1, 'Missing settings version (reload the page)'),
+	browserOrigin: z
+		.string()
+		.min(1, 'Browser origin is required')
+		.max(MAX_BROWSER_ORIGIN_LENGTH, 'browserOrigin is too long')
+		.url('Browser origin is invalid')
+		.refine((url) => url.startsWith('http://') || url.startsWith('https://'), {
+			message: 'Browser origin must start with http:// or https://'
+		})
+		.transform((url) => new URL(url).origin)
+		.optional()
 });
 
 export const load: PageServerLoad = async () => {
@@ -305,7 +318,7 @@ export const actions: Actions = requireAdminActions({
 		}
 	},
 
-	updateTrustProxy: async ({ request }) => {
+	updateTrustProxy: async ({ request, url, getClientAddress }) => {
 		const trustProxyConfig = await getTrustProxyConfigWithSource();
 		if (trustProxyConfig.trustProxy.isLocked) {
 			return fail(400, {
@@ -317,7 +330,8 @@ export const actions: Actions = requireAdminActions({
 		const parsed = TrustProxySchema.safeParse({
 			enabled: formData.get('enabled'),
 			confirmRisk: formData.get('confirmRisk') ?? undefined,
-			settingsVersion: formData.get('settingsVersion')?.toString() ?? ''
+			settingsVersion: formData.get('settingsVersion')?.toString() ?? '',
+			browserOrigin: formData.get('browserOrigin')?.toString() || undefined
 		});
 		if (!parsed.success) {
 			const fieldErrors = parsed.error.flatten().fieldErrors;
@@ -325,6 +339,11 @@ export const actions: Actions = requireAdminActions({
 				return fail(409, {
 					conflict: true,
 					error: OCC_CONFLICT_MESSAGE
+				});
+			}
+			if (fieldErrors.browserOrigin?.length) {
+				return fail(400, {
+					error: fieldErrors.browserOrigin[0] ?? 'Browser origin is invalid'
 				});
 			}
 			return fail(400, {
@@ -347,6 +366,26 @@ export const actions: Actions = requireAdminActions({
 				conflict: true,
 				error: OCC_CONFLICT_MESSAGE
 			});
+		}
+
+		if (enabled) {
+			if (!parsed.data.browserOrigin) {
+				return fail(400, {
+					error:
+						'Browser origin is required to verify the reverse-proxy diagnostic before enabling header trust.'
+				});
+			}
+			const diagnostic = await createReverseProxyDiagnostic({
+				request,
+				rawAppUrl: request.url,
+				effectiveAppUrl: url,
+				browserOrigin: parsed.data.browserOrigin,
+				sourceAddress: getClientAddress()
+			});
+			const gate = assertEnableTrustProxyAllowed(diagnostic);
+			if (!gate.ok) {
+				return fail(400, { error: gate.error });
+			}
 		}
 
 		try {

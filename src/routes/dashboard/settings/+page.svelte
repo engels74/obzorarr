@@ -206,7 +206,11 @@ function getLogoModeDescription(): string {
 					<form
 						method="POST"
 						action="?/updateShareMode"
-						use:enhance={() => {
+						use:enhance={({ cancel }) => {
+							if (isUpdating) {
+								cancel();
+								return;
+							}
 							isUpdating = true;
 							return async ({ result, update }) => {
 								await update({ reset: result.type !== 'failure' });
@@ -437,7 +441,11 @@ function getLogoModeDescription(): string {
 					<form
 						method="POST"
 						action="?/updateLogoPreference"
-						use:enhance={() => {
+						use:enhance={({ cancel }) => {
+							if (isUpdating) {
+								cancel();
+								return;
+							}
 							isUpdating = true;
 							return async ({ update }) => {
 								await update();
@@ -569,7 +577,11 @@ function getLogoModeDescription(): string {
 				<form
 					method="POST"
 					action="?/regenerateToken"
-					use:enhance={() => {
+					use:enhance={({ cancel }) => {
+						if (isRegenerating) {
+							cancel();
+							return;
+						}
 						isRegenerating = true;
 						return async ({ result, update }) => {
 							try {

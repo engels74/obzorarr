@@ -384,6 +384,10 @@ $effect(() => {
 });
 </script>
 
+<svelte:head>
+	<title>Logs — Admin — Obzorarr</title>
+</svelte:head>
+
 <div class="logs-page">
 	<header class="page-header">
 		<h1>Application Logs</h1>

@@ -518,7 +518,7 @@ describe('Sharing Access Control', () => {
 			}
 		});
 
-		it('throws InvalidShareTokenError when mode is private-oauth', async () => {
+		it('throws ShareAccessDeniedError for anonymous viewer when mode is private-oauth', async () => {
 			const token = generateShareToken();
 
 			await db.insert(shareSettings).values({
@@ -533,9 +533,30 @@ describe('Sharing Access Control', () => {
 				await checkTokenAccess(token);
 				expect.unreachable('Should have thrown');
 			} catch (error) {
-				expect(error).toBeInstanceOf(InvalidShareTokenError);
-				expect((error as InvalidShareTokenError).message).toContain('no longer valid');
+				expect(error).toBeInstanceOf(ShareAccessDeniedError);
+				expect((error as ShareAccessDeniedError).message).toContain('Sign in');
 			}
+		});
+
+		it('resolves token URL for signed-in viewer when mode is private-oauth', async () => {
+			const token = generateShareToken();
+
+			await db.insert(shareSettings).values({
+				userId,
+				year,
+				mode: ShareMode.PRIVATE_OAUTH,
+				shareToken: token,
+				canUserControl: false
+			});
+
+			const result = await checkTokenAccess({
+				token,
+				currentUser: { id: 999, plexId: 12345, isAdmin: false }
+			});
+
+			expect(result.userId).toBe(userId);
+			expect(result.year).toBe(year);
+			expect(result.settings.mode).toBe(ShareMode.PRIVATE_OAUTH);
 		});
 
 		it('returns settings for valid token with private-link mode', async () => {

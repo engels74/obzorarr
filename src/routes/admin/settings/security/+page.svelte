@@ -216,7 +216,11 @@ function getForwardedPairLabel(status: string): string {
 				<form
 					method="POST"
 					action="?/updateCsrfOrigin"
-					use:enhance={() => {
+					use:enhance={({ cancel }) => {
+						if (isSavingCsrf) {
+							cancel();
+							return;
+						}
 						isSavingCsrf = true;
 						return async ({ result, update }) => {
 							try {
@@ -274,7 +278,11 @@ function getForwardedPairLabel(status: string): string {
 			<form
 				method="POST"
 				action="?/testCsrfProtection"
-				use:enhance={() => {
+				use:enhance={({ cancel }) => {
+					if (isTestingCsrf) {
+						cancel();
+						return;
+					}
 					isTestingCsrf = true;
 					return async ({ result }) => {
 						try {
@@ -298,7 +306,11 @@ function getForwardedPairLabel(status: string): string {
 				<form
 					method="POST"
 					action="?/toggleCsrfSkip"
-					use:enhance={({ formData }) => {
+					use:enhance={({ cancel, formData }) => {
+						if (isClearingCsrfSkip) {
+							cancel();
+							return;
+						}
 						isClearingCsrfSkip = true;
 						formData.set('enabled', security.csrfOriginSkipped ? 'false' : 'true');
 						return async ({ result, update }) => {
@@ -326,7 +338,11 @@ function getForwardedPairLabel(status: string): string {
 				<form
 					method="POST"
 					action="?/resetCsrfWarning"
-					use:enhance={() => {
+					use:enhance={({ cancel }) => {
+						if (isResetingWarning) {
+							cancel();
+							return;
+						}
 						isResetingWarning = true;
 						return async ({ result, update }) => {
 							try {
@@ -513,7 +529,11 @@ function getForwardedPairLabel(status: string): string {
 				<form
 					method="POST"
 					action="?/updateTrustProxy"
-					use:enhance={() => {
+					use:enhance={({ cancel }) => {
+						if (isTogglingTrustProxy) {
+							cancel();
+							return;
+						}
 						isTogglingTrustProxy = true;
 						return async ({ result, update }) => {
 							try {
@@ -639,6 +659,11 @@ function getForwardedPairLabel(status: string): string {
 				<input type="hidden" name="enabled" value="true" />
 				<input type="hidden" name="confirmRisk" value="true" />
 				<input type="hidden" name="settingsVersion" value={data.trustProxyVersion} />
+				<input
+					type="hidden"
+					name="browserOrigin"
+					value={typeof window !== 'undefined' ? window.location.origin : ''}
+				/>
 				<AlertDialog.Action type="submit" class="tap-target" disabled={isConfirmingTrustProxy}>
 					{isConfirmingTrustProxy ? 'Enabling…' : 'Enable header trust'}
 				</AlertDialog.Action>

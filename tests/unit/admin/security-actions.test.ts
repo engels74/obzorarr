@@ -219,18 +219,38 @@ describe('security nested route — updateTrustProxy (confirmRisk + OCC)', () =>
 		await db.delete(appSettings);
 	});
 
+	// Match the diagnostic's "enable" recommendation shape (cf. settings-actions
+	// test): raw app URL internal, forwarded proto+host matches browser origin.
+	// The new diagnostic gate in updateTrustProxy refuses enable when the
+	// recommendation is anything other than 'enable'.
+	const TRUST_BROWSER_ORIGIN = 'https://obzorarr.example.com';
+	const TRUST_FORWARDED_HOST = 'obzorarr.example.com';
+	const TRUST_APP_URL = `${ORIGIN}/admin/settings/security?/updateTrustProxy`;
+
 	function trustProxyRequest(fields: Record<string, string>): Request {
 		const formData = new FormData();
 		for (const [k, v] of Object.entries(fields)) formData.set(k, v);
-		return new Request(`${ORIGIN}/admin/settings/security?/updateTrustProxy`, {
+		if (!formData.has('browserOrigin')) {
+			formData.set('browserOrigin', TRUST_BROWSER_ORIGIN);
+		}
+		return new Request(TRUST_APP_URL, {
 			method: 'POST',
-			body: formData
+			body: formData,
+			headers: {
+				'x-forwarded-proto': 'https',
+				'x-forwarded-host': TRUST_FORWARDED_HOST
+			}
 		});
 	}
 
 	async function run(request: Request) {
 		const handler = actions.updateTrustProxy as UpdateTrustProxyAction;
-		return handler({ request, locals: adminLocals } as Parameters<UpdateTrustProxyAction>[0]);
+		return handler({
+			request,
+			url: new URL(TRUST_APP_URL),
+			getClientAddress: () => '203.0.113.1',
+			locals: adminLocals
+		} as Parameters<UpdateTrustProxyAction>[0]);
 	}
 
 	it('rejects checkbox-style boolean for enabled (z.enum guards against silent coercion)', async () => {

@@ -62,7 +62,7 @@ describe('dashboard settings per-user share control', () => {
 	});
 
 	it('honors an admin-granted user control row even when the global default is false', async () => {
-		const data = (await load({ locals } as unknown as LoadArgs)) as {
+		const data = (await load({ locals, setHeaders: () => {} } as unknown as LoadArgs)) as {
 			shareSettings: { canUserControl: boolean };
 		};
 		expect(data.shareSettings.canUserControl).toBe(true);

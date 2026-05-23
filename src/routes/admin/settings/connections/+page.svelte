@@ -69,7 +69,11 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 			<form
 				method="POST"
 				action="?/updateApiConfig"
-				use:enhance={() => {
+				use:enhance={({ cancel }) => {
+					if (isSavingPlex) {
+						cancel();
+						return;
+					}
 					isSavingPlex = true;
 					return async ({ result, update }) => {
 						try {
@@ -154,7 +158,11 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 			<form
 				method="POST"
 				action="?/testPlexConnection"
-				use:enhance={({ formData }) => {
+				use:enhance={({ cancel, formData }) => {
+					if (isTestingPlex) {
+						cancel();
+						return;
+					}
 					isTestingPlex = true;
 					// Forward the live form state so the test exercises pending edits.
 					formData.set('plexServerUrl', plexServerUrl);
@@ -195,7 +203,11 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 			<form
 				method="POST"
 				action="?/updateApiConfig"
-				use:enhance={() => {
+				use:enhance={({ cancel }) => {
+					if (isSavingOpenai) {
+						cancel();
+						return;
+					}
 					isSavingOpenai = true;
 					return async ({ result, update }) => {
 						try {
@@ -271,7 +283,11 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 				<form
 					method="POST"
 					action="?/testAIConnection"
-					use:enhance={({ formData }) => {
+					use:enhance={({ cancel, formData }) => {
+						if (isTestingOpenai) {
+							cancel();
+							return;
+						}
 						isTestingOpenai = true;
 						if (openaiApiKeyInput) formData.set('openaiApiKey', openaiApiKeyInput);
 						formData.set('openaiBaseUrl', openaiBaseUrl);
@@ -298,7 +314,11 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 					<form
 						method="POST"
 						action="?/clearOpenaiKey"
-						use:enhance={() => {
+						use:enhance={({ cancel }) => {
+							if (isClearingOpenaiKey) {
+								cancel();
+								return;
+							}
 							isClearingOpenaiKey = true;
 							return async ({ result, update }) => {
 								try {
@@ -325,7 +345,11 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 					<form
 						method="POST"
 						action="?/clearOpenaiModel"
-						use:enhance={() => {
+						use:enhance={({ cancel }) => {
+							if (isClearingOpenaiModel) {
+								cancel();
+								return;
+							}
 							isClearingOpenaiModel = true;
 							return async ({ result, update }) => {
 								try {

@@ -2,6 +2,7 @@
 import { enhance } from '$app/forms';
 import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import { handleFormToast } from '$lib/utils/form-toast';
+import { maskEmail } from '$lib/utils/format';
 import type { ActionData, PageData } from './$types';
 
 /**
@@ -58,6 +59,10 @@ function markAvatarFailed(userId: number): void {
 	failedAvatarUserIds = new Set(failedAvatarUserIds).add(userId);
 }
 </script>
+
+<svelte:head>
+	<title>Users — Admin — Obzorarr</title>
+</svelte:head>
 
 <div class="users-page">
 	<header class="page-header">
@@ -142,7 +147,9 @@ function markAvatarFailed(userId: number): void {
 											</span>
 												{/if}
 											{#if user.email}
-												<span class="user-email">{user.email}</span>
+												<span class="user-email" title="Email masked for privacy">
+													{maskEmail(user.email)}
+												</span>
 											{/if}
 										</div>
 									</div>
@@ -189,18 +196,14 @@ function markAvatarFailed(userId: number): void {
 									</form>
 								</td>
 								<td>
-									{#if user.hasWatchHistory}
-										<a
-											href={user.wrappedHref}
-											target="_blank"
-											rel="noopener noreferrer"
-											class="preview-link"
-										>
-											Preview Wrapped
-										</a>
-									{:else}
-										<span class="preview-link unavailable">No Wrapped yet</span>
-									{/if}
+									<a
+										href={user.wrappedHref}
+										target="_blank"
+										rel="noopener noreferrer"
+										class="preview-link"
+									>
+										{user.hasWatchHistory ? 'Preview Wrapped' : 'Preview (no data)'}
+									</a>
 								</td>
 							</tr>
 						{/each}
@@ -240,7 +243,9 @@ function markAvatarFailed(userId: number): void {
 								</span>
 									{/if}
 								{#if user.email}
-									<span class="user-email">{user.email}</span>
+									<span class="user-email" title="Email masked for privacy">
+										{maskEmail(user.email)}
+									</span>
 								{/if}
 							</div>
 						</div>
@@ -290,18 +295,14 @@ function markAvatarFailed(userId: number): void {
 								</form>
 							</div>
 						</div>
-						{#if user.hasWatchHistory}
-							<a
-								href={user.wrappedHref}
-								target="_blank"
-								rel="noopener noreferrer"
-								class="preview-link mobile-preview-link"
-							>
-								Preview Wrapped
-							</a>
-						{:else}
-							<span class="preview-link unavailable mobile-preview-link">No Wrapped yet</span>
-						{/if}
+						<a
+							href={user.wrappedHref}
+							target="_blank"
+							rel="noopener noreferrer"
+							class="preview-link mobile-preview-link"
+						>
+							{user.hasWatchHistory ? 'Preview Wrapped' : 'Preview (no data)'}
+						</a>
 					</div>
 				{/each}
 			</div>
@@ -605,15 +606,6 @@ function markAvatarFailed(userId: number): void {
 
 		.preview-link:hover {
 			text-decoration: underline;
-		}
-
-		.preview-link.unavailable {
-			color: oklch(var(--muted-foreground));
-			cursor: default;
-		}
-
-		.preview-link.unavailable:hover {
-			text-decoration: none;
 		}
 
 		.mobile-users-list {

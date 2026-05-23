@@ -277,6 +277,10 @@ async function goToPage(page: number) {
 }
 </script>
 
+<svelte:head>
+	<title>Sync — Admin — Obzorarr</title>
+</svelte:head>
+
 <div class="sync-command-center">
 	<!-- Page Header -->
 	<header class="page-header">

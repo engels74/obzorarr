@@ -50,7 +50,11 @@ let isSavingWrappedLogoMode = $state(false);
 			<form
 				method="POST"
 				action="?/updateUITheme"
-				use:enhance={() => {
+				use:enhance={({ cancel }) => {
+					if (isSavingUITheme) {
+						cancel();
+						return;
+					}
 					isSavingUITheme = true;
 					return async ({ result, update }) => {
 						try {
@@ -103,7 +107,11 @@ let isSavingWrappedLogoMode = $state(false);
 			<form
 				method="POST"
 				action="?/updateWrappedTheme"
-				use:enhance={() => {
+				use:enhance={({ cancel }) => {
+					if (isSavingWrappedTheme) {
+						cancel();
+						return;
+					}
 					isSavingWrappedTheme = true;
 					return async ({ result, update }) => {
 						try {
@@ -158,7 +166,11 @@ let isSavingWrappedLogoMode = $state(false);
 			<form
 				method="POST"
 				action="?/updateWrappedLogoMode"
-				use:enhance={() => {
+				use:enhance={({ cancel }) => {
+					if (isSavingWrappedLogoMode) {
+						cancel();
+						return;
+					}
 					isSavingWrappedLogoMode = true;
 					return async ({ result, update }) => {
 						try {

@@ -28,16 +28,33 @@ const form = superForm(data.form, {
 	onUpdated({ form: updated }) {
 		// Surface success / failure toasts via the existing parity helper. The
 		// helper accepts the legacy FormResponse shape; we map the superforms
-		// `valid` flag onto it.
+		// `valid` flag onto it. On validation failure, pull the first
+		// field-level error so the toast says "Retention days must be at
+		// least 1" instead of a generic "Validation failed" — which previously
+		// looked like a false success when the user typed an out-of-range value.
 		if (updated.valid) {
 			handleFormToast({ success: true, message: updated.message ?? 'Settings saved' });
-		} else {
-			handleFormToast({ error: updated.message ?? 'Validation failed' });
+			return;
 		}
+		const errorBag = (updated.errors ?? {}) as Record<string, unknown>;
+		const firstError = Object.values(errorBag)
+			.flatMap((entry) => (Array.isArray(entry) ? entry : [entry]))
+			.find((entry): entry is string => typeof entry === 'string' && entry.length > 0);
+		handleFormToast({ error: firstError ?? updated.message ?? 'Validation failed' });
 	}
 });
 
 const { form: formData, enhance, submitting } = form;
+
+// Block submit when the visible inputs are out of the server-validated range.
+// The HTML5 min/max attributes only clamp some browsers' UI, so a user can
+// still paste -1 / 999999 and trigger a silent no-op save without this check.
+const isLoggingFormInvalid = $derived(
+	$formData.retentionDays < 1 ||
+		$formData.retentionDays > 365 ||
+		$formData.maxCount < 1000 ||
+		$formData.maxCount > 1_000_000
+);
 
 function formatUptime(seconds: number): string {
 	const days = Math.floor(seconds / 86400);
@@ -118,7 +135,11 @@ function formatUptime(seconds: number): string {
 				<input type="hidden" name="settingsVersion" bind:value={$formData.settingsVersion} />
 
 				<div class="flex justify-end">
-					<Button type="submit" class="tap-target" disabled={$submitting}>
+					<Button
+						type="submit"
+						class="tap-target"
+						disabled={$submitting || isLoggingFormInvalid}
+					>
 						{$submitting ? 'Saving…' : 'Save logging settings'}
 					</Button>
 				</div>

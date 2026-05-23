@@ -256,7 +256,11 @@ let isBulkApplying = $state(false);
 			<form
 				method="POST"
 				action="?/bulkApplyShareDefaults"
-				use:enhance={() => {
+				use:enhance={({ cancel }) => {
+					if (isBulkApplying) {
+						cancel();
+						return;
+					}
 					isBulkApplying = true;
 					return async ({ result, update }) => {
 						try {

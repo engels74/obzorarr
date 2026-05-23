@@ -96,6 +96,8 @@ describe('admin UI source regressions', () => {
 	it('does not reset custom fun fact frequency selection on every local click', async () => {
 		const source = await readSource('src/routes/admin/slides/+page.svelte');
 
+		// Server-syncing guard (still required so a load-time prop refresh
+		// doesn't clobber an unsaved Custom selection).
 		expect(source).toContain('syncedFrequencyKey');
 		expect(source).toContain(
 			'untrack(() => `$' + '{data.funFactFrequency.mode}:$' + '{data.funFactFrequency.count}`)'
@@ -104,18 +106,18 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain(
 			'syncedFrequencyKey = `$' + '{frequency.mode}:$' + '{frequency.count}`;'
 		);
-		expect(source).toContain(
-			'function selectFrequencyMode(mode: typeof data.funFactFrequency.mode): void'
-		);
-		expect(source).toContain("checked={selectedFrequencyMode === 'few'}");
-		expect(source).toContain("checked={selectedFrequencyMode === 'normal'}");
-		expect(source).toContain("checked={selectedFrequencyMode === 'many'}");
-		expect(source).toContain("checked={selectedFrequencyMode === 'custom'}");
-		expect(source).toContain("onchange={() => selectFrequencyMode('few')}");
-		expect(source).toContain("onchange={() => selectFrequencyMode('normal')}");
-		expect(source).toContain("onchange={() => selectFrequencyMode('many')}");
-		expect(source).toContain("onchange={() => selectFrequencyMode('custom')}");
-		expect(source).not.toContain('bind:group={selectedFrequencyMode}');
+		// Custom radio is now wired via Svelte 5's bind:group (canonical pattern
+		// for radio groups). The previous manual checked={…} + onchange={…}
+		// round-trip raced against Svelte's DOM update batching on rapid clicks
+		// and silently dropped the Custom selection. Asserting the new pattern
+		// guards against regressions back to the manual flow.
+		expect(source).toContain('bind:group={selectedFrequencyMode}');
+		expect(source).toContain('value="few"');
+		expect(source).toContain('value="normal"');
+		expect(source).toContain('value="many"');
+		expect(source).toContain('value="custom"');
+		expect(source).not.toContain("checked={selectedFrequencyMode === 'few'}");
+		expect(source).not.toContain('onchange={() => selectFrequencyMode(');
 		expect(source).not.toContain('class="frequency-options" onclick');
 	});
 
@@ -226,11 +228,16 @@ describe('admin UI source regressions', () => {
 		expect(clientSource).toContain("if (minutes === 0) return '0h';");
 		expect(clientSource).toContain("if (minutes > 0 && minutes < 60) return '<1h';");
 		expect(clientSource).toContain('{#if user.hasWatchHistory}');
-		expect(clientSource).toContain('<span class="preview-link unavailable">No Wrapped yet</span>');
+		// The "Preview Wrapped" link now renders for every user row, including
+		// the admin's own (who would otherwise be blocked by a No-Wrapped gate
+		// even though they have a real tokenized wrapped URL). When the user has
+		// no plays we still render the link but label it "Preview (no data)" so
+		// the wrapped page handles the empty-state slide rendering.
 		expect(clientSource).toContain(
-			'<span class="preview-link unavailable mobile-preview-link">No Wrapped yet</span>'
+			"user.hasWatchHistory ? 'Preview Wrapped' : 'Preview (no data)'"
 		);
-		expect(clientSource).toContain('.preview-link.unavailable');
+		expect(clientSource).not.toContain('No Wrapped yet');
+		expect(clientSource).not.toContain('.preview-link.unavailable');
 	});
 
 	it('uses client navigation for unmodified admin links while preserving real hrefs', async () => {
@@ -419,14 +426,20 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain('onclick={(event) => handleActionClick(event, onHome)}');
 	});
 
-	it('returns server wrapped users home to the public root', async () => {
+	it('routes server wrapped users home based on auth role', async () => {
+		// Unified with the per-user wrapped page: admins → /admin, signed-in
+		// non-admins → /dashboard, anonymous → /. Anything else strands an
+		// admin viewer on the landing page they were redirected away from on
+		// login (root redirects logged-in users back to /admin).
 		const source = await readSource('src/routes/wrapped/[year]/+page.svelte');
 		const handleHome = source.match(/function handleHome\(\): void \{[\s\S]*?\n\}/)?.[0];
 
 		expect(handleHome).toBeDefined();
-		expect(handleHome).toContain("goto('/');");
-		expect(handleHome).not.toContain("goto('/admin');");
-		expect(handleHome).not.toContain("goto('/dashboard');");
+		expect(handleHome).toContain("goto('/admin')");
+		expect(handleHome).toContain("goto('/dashboard')");
+		expect(handleHome).toContain("goto('/')");
+		expect(handleHome).toContain('data.isAdmin');
+		expect(handleHome).toContain('data.isLoggedIn');
 	});
 
 	it('applies regenerated dashboard share URLs before reloading page data', async () => {

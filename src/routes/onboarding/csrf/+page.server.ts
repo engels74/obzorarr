@@ -79,9 +79,6 @@ async function requireOnboardingCsrfAction(
 	url: URL,
 	errorKey: 'error' | 'testError'
 ) {
-	if (!(await isOnboardingCsrfStep())) {
-		return fail(403, { [errorKey]: 'Not allowed at this onboarding stage' });
-	}
 	try {
 		await requireActiveOnboardingClaim(cookies, { requestUrl: url });
 	} catch (err) {
@@ -89,6 +86,9 @@ async function requireOnboardingCsrfAction(
 			return fail(403, { [errorKey]: err.message });
 		}
 		throw err;
+	}
+	if (!(await isOnboardingCsrfStep())) {
+		return fail(403, { [errorKey]: 'Not allowed at this onboarding stage' });
 	}
 	return null;
 }

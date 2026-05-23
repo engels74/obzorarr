@@ -15,7 +15,10 @@ import {
 	setOnboardingStep
 } from '$lib/server/onboarding';
 import { _resetTrustProxyCache } from '$lib/server/security/proxy-handle';
-import { createReverseProxyDiagnostic } from '$lib/server/security/reverse-proxy-diagnostic';
+import {
+	assertEnableTrustProxyAllowed,
+	createReverseProxyDiagnostic
+} from '$lib/server/security/reverse-proxy-diagnostic';
 import type { Actions, PageServerLoad } from './$types';
 
 async function isOnboardingProxyTrustStep(): Promise<boolean> {
@@ -84,9 +87,6 @@ async function requireOnboardingProxyTrustAction(
 	url: URL,
 	errorKey: 'error' | 'diagnosticError' | 'trustProxyError'
 ) {
-	if (!(await isOnboardingProxyTrustStep())) {
-		return fail(403, { [errorKey]: 'Not allowed at this onboarding stage' });
-	}
 	try {
 		await requireActiveOnboardingClaim(cookies, { requestUrl: url });
 	} catch (err) {
@@ -94,6 +94,9 @@ async function requireOnboardingProxyTrustAction(
 			return fail(403, { [errorKey]: err.message });
 		}
 		throw err;
+	}
+	if (!(await isOnboardingProxyTrustStep())) {
+		return fail(403, { [errorKey]: 'Not allowed at this onboarding stage' });
 	}
 	return null;
 }
@@ -195,11 +198,9 @@ export const actions: Actions = {
 			browserOrigin: browserOriginParsed.data.browserOrigin,
 			sourceAddress: getClientAddress()
 		});
-		if (diagnostic.recommendation.action !== 'enable') {
-			return fail(400, {
-				trustProxyError:
-					'The current diagnostic does not recommend enabling reverse proxy header trust.'
-			});
+		const gate = assertEnableTrustProxyAllowed(diagnostic);
+		if (!gate.ok) {
+			return fail(400, { trustProxyError: gate.error });
 		}
 
 		const parsed = TrustProxyEnableSchema.safeParse({

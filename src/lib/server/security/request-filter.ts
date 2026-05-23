@@ -9,6 +9,16 @@ export const requestFilterHandle: Handle = async ({ event, resolve }) => {
 	const userAgent = event.request.headers.get('user-agent') ?? '';
 	const ip = event.getClientAddress();
 
+	// `/favicon.ico` has no static asset, so SvelteKit's router lets it reach
+	// `handleError` and writes `[ErrorHandler] Unexpected error: Not found:
+	// /favicon.ico` on every clean browser load. Short-circuit it here with a
+	// quiet 404 so the noise stops without committing to shipping a binary
+	// favicon. Other favicon variants (e.g. `/favicon.svg`) can still resolve
+	// if added to static/ later.
+	if (path === '/favicon.ico') {
+		return applySecurityHeaders(new Response(null, { status: 404 }), await isProxiedHttps(event));
+	}
+
 	if (isBlockedPath(path)) {
 		logger.debug(`Blocked scanner probe: ${path}`, 'Security', { ip });
 		// requestFilterHandle runs before proxyHandle, so event.url.protocol is

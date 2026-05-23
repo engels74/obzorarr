@@ -322,6 +322,14 @@ describe('admin updateTrustProxy action', () => {
 		else dynamicEnv.TRUST_PROXY = previousTrustProxyEnv;
 	}
 
+	// Match the diagnostic's "enable" recommendation shape: the raw app URL is
+	// internal, the forwarded proto+host pair is usable and matches the browser
+	// origin. Without this the new diagnostic gate in updateTrustProxy rejects
+	// every enable attempt regardless of confirmRisk.
+	const TRUST_PROXY_BROWSER_ORIGIN = 'https://obzorarr.example.com';
+	const TRUST_PROXY_FORWARDED_HOST = 'obzorarr.example.com';
+	const TRUST_PROXY_APP_URL = 'http://internal.local/admin/settings?/updateTrustProxy';
+
 	function createTrustProxyRequest(
 		enabled: boolean,
 		confirmRisk?: boolean,
@@ -333,16 +341,26 @@ describe('admin updateTrustProxy action', () => {
 		// Far-past timestamp wins OCC for the no-rows-yet case; explicit override
 		// available for the stale-version test.
 		formData.set('settingsVersion', settingsVersion);
+		formData.set('browserOrigin', TRUST_PROXY_BROWSER_ORIGIN);
 
-		return new Request('http://localhost/admin/settings?/updateTrustProxy', {
+		return new Request(TRUST_PROXY_APP_URL, {
 			method: 'POST',
-			body: formData
+			body: formData,
+			headers: {
+				'x-forwarded-proto': 'https',
+				'x-forwarded-host': TRUST_PROXY_FORWARDED_HOST
+			}
 		});
 	}
 
 	async function runUpdateTrustProxy(request: Request) {
 		const handler = securityActions.updateTrustProxy as UpdateTrustProxyAction;
-		return handler({ request, locals: adminLocals } as Parameters<UpdateTrustProxyAction>[0]);
+		return handler({
+			request,
+			url: new URL(TRUST_PROXY_APP_URL),
+			getClientAddress: () => '203.0.113.1',
+			locals: adminLocals
+		} as Parameters<UpdateTrustProxyAction>[0]);
 	}
 
 	it('rejects enabling TRUST_PROXY without explicit risk confirmation', async () => {
