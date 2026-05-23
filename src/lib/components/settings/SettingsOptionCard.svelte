@@ -15,7 +15,7 @@ interface Props {
 let { title, description, control, icon, swatches = [], meta, class: className }: Props = $props();
 </script>
 
-<label class={cn('settings-option-card', className)}>
+<label class={cn('settings-option-card', icon && 'has-icon', meta && 'has-meta', className)}>
 	<span class="option-control">{@render control()}</span>
 
 	{#if icon}
@@ -23,24 +23,24 @@ let { title, description, control, icon, swatches = [], meta, class: className }
 	{/if}
 
 	<span class="option-copy">
-		<span class="option-title">{title}</span>
-		{#if description}
-			<span class="option-description">{description}</span>
-		{/if}
-	</span>
-
-	{#if swatches.length > 0 || meta}
-		<span class="option-meta" aria-hidden={swatches.length > 0 ? 'true' : undefined}>
+		<span class="option-heading" class:has-swatches={swatches.length > 0}>
+			<span class="option-title">{title}</span>
 			{#if swatches.length > 0}
-				<span class="theme-swatches">
+				<span class="theme-swatches" aria-hidden="true">
 					{#each swatches as swatch, index (`${swatch}-${index}`)}
 						<span class="theme-swatch" style={`background: ${swatch};`}></span>
 					{/each}
 				</span>
 			{/if}
-			{#if meta}
-				<span class="meta-text">{meta}</span>
-			{/if}
+		</span>
+		{#if description}
+			<span class="option-description">{description}</span>
+		{/if}
+	</span>
+
+	{#if meta}
+		<span class="option-meta">
+			<span class="meta-text">{meta}</span>
 		</span>
 	{/if}
 </label>
@@ -48,7 +48,7 @@ let { title, description, control, icon, swatches = [], meta, class: className }
 <style>
 	.settings-option-card {
 		display: grid;
-		grid-template-columns: auto auto minmax(0, 1fr) auto;
+		grid-template-columns: auto minmax(0, 1fr);
 		align-items: center;
 		gap: 0.75rem;
 		min-height: 3.6rem;
@@ -62,6 +62,18 @@ let { title, description, control, icon, swatches = [], meta, class: className }
 			background 0.18s ease,
 			box-shadow 0.18s ease,
 			transform 0.18s ease;
+	}
+
+	.settings-option-card.has-icon {
+		grid-template-columns: auto auto minmax(0, 1fr);
+	}
+
+	.settings-option-card.has-meta {
+		grid-template-columns: auto minmax(0, 1fr) auto;
+	}
+
+	.settings-option-card.has-icon.has-meta {
+		grid-template-columns: auto auto minmax(0, 1fr) auto;
 	}
 
 	.settings-option-card:hover {
@@ -110,7 +122,20 @@ let { title, description, control, icon, swatches = [], meta, class: className }
 		gap: 0.25rem;
 	}
 
+	.option-heading {
+		display: block;
+		min-width: 0;
+	}
+
+	.option-heading.has-swatches {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		align-items: center;
+		gap: 0.55rem;
+	}
+
 	.option-title {
+		min-width: 0;
 		color: oklch(var(--foreground));
 		font-size: 0.9rem;
 		font-weight: 650;
@@ -130,20 +155,26 @@ let { title, description, control, icon, swatches = [], meta, class: className }
 	}
 
 	.theme-swatches {
+		gap: 0.22rem;
+		padding: 0.16rem 0.24rem;
+		border: 1px solid oklch(var(--border) / 0.7);
+		border-radius: 999px;
+		background: linear-gradient(
+			135deg,
+			oklch(var(--background) / 0.78),
+			oklch(var(--muted) / 0.42)
+		);
+		box-shadow: inset 0 1px 0 oklch(var(--foreground) / 0.04);
 		isolation: isolate;
 	}
 
 	.theme-swatch {
 		display: inline-block;
-		width: 1.05rem;
-		height: 1.05rem;
-		border: 2px solid oklch(var(--background));
+		width: 0.68rem;
+		height: 0.68rem;
+		border: 1px solid oklch(var(--background) / 0.86);
 		border-radius: 999px;
-		box-shadow: 0 0 0 1px oklch(var(--border));
-	}
-
-	.theme-swatch + .theme-swatch {
-		margin-left: -0.28rem;
+		box-shadow: 0 0 0 1px oklch(var(--border) / 0.7);
 	}
 
 	.meta-text {
@@ -155,7 +186,13 @@ let { title, description, control, icon, swatches = [], meta, class: className }
 	}
 
 	@media (max-width: 560px) {
-		.settings-option-card {
+		.settings-option-card,
+		.settings-option-card.has-icon {
+			grid-template-columns: auto minmax(0, 1fr);
+		}
+
+		.settings-option-card.has-meta,
+		.settings-option-card.has-icon.has-meta {
 			grid-template-columns: auto minmax(0, 1fr) auto;
 		}
 
