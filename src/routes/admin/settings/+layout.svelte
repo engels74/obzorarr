@@ -52,7 +52,7 @@ const tabs = [
 		background:
 			linear-gradient(180deg, oklch(var(--card) / 0.28), transparent),
 			oklch(var(--background) / 0.72);
-		padding: 0.75rem 1.5rem 0;
+		padding: 0.75rem 1.5rem;
 	}
 	.settings-tabs ul {
 		display: flex;
@@ -72,9 +72,7 @@ const tabs = [
 		font-size: 0.875rem;
 		font-weight: 600;
 		border: 1px solid transparent;
-		border-radius: 999px 999px 0 0;
-		border-bottom: 2px solid transparent;
-		margin-bottom: -1px;
+		border-radius: calc(var(--radius) + 0.25rem);
 		transition:
 			color 0.15s ease,
 			border-color 0.15s ease,
@@ -97,10 +95,15 @@ const tabs = [
 	}
 	.settings-tabs a.active {
 		color: oklch(var(--primary));
-		background: oklch(var(--card));
-		border-color: oklch(var(--border));
-		border-bottom-color: oklch(var(--primary));
-		box-shadow: 0 -8px 24px oklch(var(--primary) / 0.08);
+		background: linear-gradient(
+			135deg,
+			oklch(var(--primary) / 0.12),
+			oklch(var(--card) / 0.9)
+		);
+		border-color: oklch(var(--primary) / 0.32);
+		box-shadow:
+			inset 0 0 0 1px oklch(var(--primary) / 0.08),
+			0 8px 24px oklch(var(--primary) / 0.08);
 	}
 	.settings-tabs a.active :global(svg) {
 		opacity: 1;

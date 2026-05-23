@@ -17,11 +17,14 @@ let { children, class: className, align = 'end' }: Props = $props();
 
 <style>
 	.settings-action-bar {
+		--settings-action-min-size: 2.5rem;
+		--settings-action-padding-inline: 0.8rem;
+
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
 		justify-content: flex-end;
-		gap: 0.625rem;
+		gap: 0.5rem;
 		padding-top: 0.25rem;
 	}
 
@@ -36,7 +39,15 @@ let { children, class: className, align = 'end' }: Props = $props();
 
 	:global(.settings-action-bar [data-slot='button']),
 	:global(.settings-action-bar button) {
-		min-height: var(--min-tap-size);
+		min-height: var(--settings-action-min-size);
+	}
+
+	:global(.settings-action-bar [data-slot='button'].tap-target),
+	:global(.settings-action-bar button.tap-target) {
+		min-width: var(--settings-action-min-size);
+		min-height: var(--settings-action-min-size);
+		padding-inline: var(--settings-action-padding-inline);
+		font-size: 0.825rem;
 	}
 
 	@media (max-width: 520px) {
