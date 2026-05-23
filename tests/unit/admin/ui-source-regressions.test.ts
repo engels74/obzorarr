@@ -159,6 +159,21 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain('pointer-events: auto;');
 	});
 
+	it('removes the closed mobile dashboard sidebar from the accessibility tree and tab order', async () => {
+		const source = await readSource('src/routes/dashboard/+layout.svelte');
+
+		expect(source).toContain("window.matchMedia('(max-width: 768px)')");
+		expect(source).toContain(
+			'let sidebarHiddenFromMobile = $derived(isMobileSidebar && !sidebarOpen);'
+		);
+		expect(source).toContain('inert={sidebarHiddenFromMobile}');
+		expect(source).toContain("aria-hidden={sidebarHiddenFromMobile ? 'true' : undefined}");
+		expect(source).toContain('visibility: hidden;');
+		expect(source).toContain('pointer-events: none;');
+		expect(source).toContain('visibility: visible;');
+		expect(source).toContain('pointer-events: auto;');
+	});
+
 	it('traps focus in the open mobile admin drawer and marks page content inert', async () => {
 		const source = await readSource('src/routes/admin/+layout.svelte');
 
@@ -179,6 +194,30 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain('bind:this={sidebarElement}');
 		expect(source).toContain('function handleWindowKeydown(event: KeyboardEvent)');
 		expect(source).toContain('void closeSidebar();');
+		expect(source).toContain('inert={mainContentHiddenFromMobile}');
+		expect(source).toContain("aria-hidden={mainContentHiddenFromMobile ? 'true' : undefined}");
+	});
+
+	it('traps focus in the open mobile dashboard drawer and marks page content inert', async () => {
+		const source = await readSource('src/routes/dashboard/+layout.svelte');
+
+		expect(source).toContain(
+			'let mainContentHiddenFromMobile = $derived(isMobileSidebar && sidebarOpen);'
+		);
+		expect(source).toContain('function trapSidebarFocus(event: KeyboardEvent)');
+		expect(source).toContain(
+			"if (!isMobileSidebar || !sidebarOpen || event.key !== 'Tab') return;"
+		);
+		expect(source).toContain(
+			'(activeElement === last || !sidebarElement?.contains(activeElement))'
+		);
+		expect(source).toContain('if (focusableElements.length === 0) {');
+		expect(source).toContain('sidebarElement?.focus();');
+		expect(source).toMatch(/<aside[\s\S]*tabindex="-1"[\s\S]*bind:this=\{sidebarElement\}/);
+		expect(source).toContain('onkeydown={trapSidebarFocus}');
+		expect(source).toContain('bind:this={sidebarElement}');
+		expect(source).toContain('function handleWindowKeydown(event: KeyboardEvent)');
+		expect(source).toContain('closeSidebar();');
 		expect(source).toContain('inert={mainContentHiddenFromMobile}');
 		expect(source).toContain("aria-hidden={mainContentHiddenFromMobile ? 'true' : undefined}");
 	});
@@ -215,6 +254,19 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain('{#if user.hasWatchHistory}');
 		expect(source).toContain('<a href={user.wrappedHref} class="user-name">');
 		expect(source).toContain('class="preview-link"');
+	});
+
+	it('submits admin privacy allowUserControl as a strict hidden boolean', async () => {
+		const source = await readSource('src/routes/admin/settings/privacy/+page.svelte');
+		const field = source.match(
+			/<Form\.Field form=\{userDefaultsForm\} name="allowUserControl">[\s\S]*?<\/Form\.Field>/
+		)?.[0];
+
+		expect(field).toBeDefined();
+		expect(field).toContain('name="allowUserControl"');
+		expect(field).toContain("value={$userDefaultsData.allowUserControl ? 'true' : 'false'}");
+		expect(field).toContain('bind:checked={$userDefaultsData.allowUserControl}');
+		expect(field).not.toMatch(/<Switch[\s\S]*\{\.\.\.props\}/);
 	});
 
 	it('does not render wrapped links for admin users without watch history', async () => {

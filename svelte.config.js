@@ -10,7 +10,13 @@ const config = {
 			mode: 'nonce',
 			directives: {
 				'default-src': ['self'],
-				'img-src': ['self', 'https://plex.tv', 'https://*.plex.direct', 'data:'],
+				'img-src': [
+					'self',
+					'https://plex.tv',
+					'https://*.plex.direct',
+					'https://secure.gravatar.com',
+					'data:'
+				],
 				'style-src': ['self', 'unsafe-inline', 'https://fonts.googleapis.com'],
 				'font-src': ['self', 'https://fonts.gstatic.com'],
 				'script-src': ['self'],

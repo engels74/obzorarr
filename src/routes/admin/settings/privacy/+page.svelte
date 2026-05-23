@@ -188,6 +188,11 @@ let isBulkApplying = $state(false);
 					<Form.Control>
 						{#snippet children({ props })}
 							<div class="flex items-center justify-between rounded-lg border p-3">
+								<input
+									type="hidden"
+									name="allowUserControl"
+									value={$userDefaultsData.allowUserControl ? 'true' : 'false'}
+								/>
 								<div class="space-y-0.5">
 									<Form.Label>Allow users to change their share settings</Form.Label>
 									<Form.Description>
@@ -195,7 +200,9 @@ let isBulkApplying = $state(false);
 									</Form.Description>
 								</div>
 								<Switch
-									{...props}
+									id={props.id}
+									aria-describedby={props['aria-describedby']}
+									aria-invalid={props['aria-invalid']}
 									bind:checked={$userDefaultsData.allowUserControl}
 								/>
 							</div>

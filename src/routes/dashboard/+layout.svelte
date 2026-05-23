@@ -6,7 +6,8 @@ import Menu from '@lucide/svelte/icons/menu';
 import Settings from '@lucide/svelte/icons/settings';
 import User from '@lucide/svelte/icons/user';
 import X from '@lucide/svelte/icons/x';
-import type { Component, Snippet } from 'svelte';
+import { type Component, type Snippet, tick } from 'svelte';
+import { browser } from '$app/environment';
 import { enhance } from '$app/forms';
 import { page } from '$app/stores';
 import Logo from '$lib/components/Logo.svelte';
@@ -45,7 +46,39 @@ const isActive = $derived((href: string) => {
 
 // Mobile sidebar state
 let sidebarOpen = $state(false);
+let isMobileSidebar = $state(false);
+let sidebarHiddenFromMobile = $derived(isMobileSidebar && !sidebarOpen);
+let mainContentHiddenFromMobile = $derived(isMobileSidebar && sidebarOpen);
 let avatarError = $state(false);
+let sidebarElement = $state<HTMLElement | undefined>();
+
+const FOCUSABLE_SELECTOR = [
+	'a[href]',
+	'button:not([disabled])',
+	'input:not([disabled])',
+	'select:not([disabled])',
+	'textarea:not([disabled])',
+	'[tabindex]:not([tabindex="-1"])'
+].join(',');
+
+$effect(() => {
+	if (!browser) return;
+
+	const query = window.matchMedia('(max-width: 768px)');
+	const syncMobileState = () => {
+		isMobileSidebar = query.matches;
+	};
+
+	syncMobileState();
+	query.addEventListener('change', syncMobileState);
+
+	return () => query.removeEventListener('change', syncMobileState);
+});
+
+async function focusAfterRender(selector: string) {
+	await tick();
+	document.querySelector<HTMLElement>(selector)?.focus();
+}
 
 // Reset avatar error when thumb URL changes so a new URL gets a fresh load attempt
 $effect(() => {
@@ -55,16 +88,65 @@ $effect(() => {
 
 function toggleSidebar() {
 	sidebarOpen = !sidebarOpen;
+
+	if (sidebarOpen) {
+		void focusAfterRender('.sidebar-close-button');
+	}
 }
 
 function closeSidebar() {
 	sidebarOpen = false;
+	if (isMobileSidebar) {
+		void focusAfterRender('.menu-button');
+	}
+}
+
+function getSidebarFocusableElements(): HTMLElement[] {
+	if (!sidebarElement) return [];
+	return Array.from(sidebarElement.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+		(element) => element.tabIndex >= 0 && element.getClientRects().length > 0
+	);
+}
+
+function trapSidebarFocus(event: KeyboardEvent) {
+	if (!isMobileSidebar || !sidebarOpen || event.key !== 'Tab') return;
+
+	const focusableElements = getSidebarFocusableElements();
+	if (focusableElements.length === 0) {
+		event.preventDefault();
+		sidebarElement?.focus();
+		return;
+	}
+
+	const first = focusableElements[0];
+	const last = focusableElements.at(-1);
+	const activeElement = document.activeElement;
+
+	if (event.shiftKey && (activeElement === first || !sidebarElement?.contains(activeElement))) {
+		event.preventDefault();
+		last?.focus();
+	} else if (
+		!event.shiftKey &&
+		(activeElement === last || !sidebarElement?.contains(activeElement))
+	) {
+		event.preventDefault();
+		first?.focus();
+	}
+}
+
+function handleWindowKeydown(event: KeyboardEvent) {
+	if (isMobileSidebar && sidebarOpen && event.key === 'Escape') {
+		event.preventDefault();
+		closeSidebar();
+	}
 }
 </script>
 
+<svelte:window onkeydown={handleWindowKeydown} />
+
 <div class="dashboard-layout">
 	<!-- Mobile header -->
-	<header class="mobile-header">
+	<header class="mobile-header" class:sidebar-open={sidebarOpen}>
 		<button
 			type="button"
 			class="menu-button"
@@ -96,7 +178,15 @@ function closeSidebar() {
 	{/if}
 
 	<!-- Sidebar -->
-	<aside class="sidebar" class:open={sidebarOpen}>
+	<aside
+		class="sidebar"
+		class:open={sidebarOpen}
+		inert={sidebarHiddenFromMobile}
+		aria-hidden={sidebarHiddenFromMobile ? 'true' : undefined}
+		onkeydown={trapSidebarFocus}
+		tabindex="-1"
+		bind:this={sidebarElement}
+	>
 		<div class="sidebar-header">
 			<div class="sidebar-branding">
 				<Logo size="md" />
@@ -105,6 +195,14 @@ function closeSidebar() {
 					<span class="sidebar-subtitle">Your Wrapped</span>
 				</div>
 			</div>
+			<button
+				type="button"
+				class="sidebar-close-button"
+				onclick={closeSidebar}
+				aria-label="Close navigation"
+			>
+				<X class="sidebar-close-icon" />
+			</button>
 		</div>
 
 		<nav class="sidebar-nav" aria-label="Dashboard navigation">
@@ -163,7 +261,11 @@ function closeSidebar() {
 	</aside>
 
 	<!-- Main content -->
-	<main class="main-content">
+	<main
+		class="main-content"
+		inert={mainContentHiddenFromMobile}
+		aria-hidden={mainContentHiddenFromMobile ? 'true' : undefined}
+	>
 		{@render children()}
 	</main>
 </div>
@@ -255,17 +357,25 @@ function closeSidebar() {
 		.sidebar-header {
 			padding: 1.25rem 1.5rem;
 			border-bottom: 1px solid oklch(var(--border) / 0.5);
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 0.75rem;
+			min-width: 0;
 		}
 
 		.sidebar-branding {
 			display: flex;
 			align-items: center;
 			gap: 0.75rem;
+			flex: 1;
+			min-width: 0;
 		}
 
 		.sidebar-text {
 			display: flex;
 			flex-direction: column;
+			min-width: 0;
 		}
 
 		.sidebar-title {
@@ -275,6 +385,9 @@ function closeSidebar() {
 			margin: 0;
 			line-height: 1.2;
 			letter-spacing: -0.01em;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
 		}
 
 		.sidebar-subtitle {
@@ -283,6 +396,33 @@ function closeSidebar() {
 			text-transform: uppercase;
 			letter-spacing: 0.08em;
 			margin-top: 0.125rem;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+
+		.sidebar-close-button {
+			display: none;
+			align-items: center;
+			justify-content: center;
+			width: 2.25rem;
+			height: 2.25rem;
+			flex: 0 0 2.25rem;
+			background: transparent;
+			border: 1px solid oklch(var(--border) / 0.6);
+			color: oklch(var(--foreground));
+			cursor: pointer;
+			border-radius: 0.5rem;
+			transition: all 0.2s ease;
+		}
+
+		.sidebar-close-button:hover {
+			background: oklch(var(--muted));
+		}
+
+		.sidebar-close-button :global(.sidebar-close-icon) {
+			width: 1rem;
+			height: 1rem;
 		}
 
 		.sidebar-nav {
@@ -477,17 +617,33 @@ function closeSidebar() {
 				display: flex;
 			}
 
+			.mobile-header.sidebar-open {
+				visibility: hidden;
+				pointer-events: none;
+			}
+
 			.sidebar-overlay {
 				display: block;
 			}
 
 			.sidebar {
 				transform: translateX(-100%);
-				transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+				visibility: hidden;
+				pointer-events: none;
+				transition:
+					transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+					visibility 0s linear 0.3s;
 			}
 
 			.sidebar.open {
 				transform: translateX(0);
+				visibility: visible;
+				pointer-events: auto;
+				transition-delay: 0s;
+			}
+
+			.sidebar-close-button {
+				display: flex;
 			}
 
 			.main-content {
