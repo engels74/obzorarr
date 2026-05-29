@@ -208,6 +208,11 @@ html[data-theme="supabase"],
 	--slide-bar-end: 0.4236 0.0645 165.77;
 	--slide-peak-start: var(--primary-peak-plus-20);
 	--slide-peak-end: var(--primary-peak-plus-15);
+
+	/* Glass tokens tracked to this theme's primary hue (teal) so wrapped
+	   slide cards tint with the palette instead of the :root blue default. */
+	--slide-glass-bg: oklch(0.2301 0.0163 160.45 / 0.4);
+	--slide-glass-border: oklch(0.4824 0.0676 160.45 / 0.2);
 }
 
 /* Theme: Doom 64 - Retro orange/brown gaming aesthetic */
@@ -253,6 +258,11 @@ html[data-theme="doom-64"],
 	--slide-bar-end: 0.3869 0.053 59.61;
 	--slide-peak-start: var(--primary-peak-plus-20);
 	--slide-peak-end: var(--primary-peak-plus-15);
+
+	/* Glass tokens tracked to this theme's primary hue (orange) so wrapped
+	   slide cards tint with the palette instead of the :root blue default. */
+	--slide-glass-bg: oklch(0.2301 0.0163 51.21 / 0.4);
+	--slide-glass-border: oklch(0.4824 0.0676 51.21 / 0.2);
 }
 
 /* Theme: Amber Minimal - Warm amber/yellow tones */
@@ -298,6 +308,11 @@ html[data-theme="amber-minimal"],
 	--slide-bar-end: 0.422 0.058 91.37;
 	--slide-peak-start: var(--primary-peak-plus-20);
 	--slide-peak-end: var(--primary-peak-plus-15);
+
+	/* Glass tokens tracked to this theme's primary hue (amber) so wrapped
+	   slide cards tint with the palette instead of the :root blue default. */
+	--slide-glass-bg: oklch(0.2301 0.0163 87.87 / 0.4);
+	--slide-glass-border: oklch(0.4824 0.0676 87.87 / 0.2);
 }
 
 /* Theme: Soviet Red - Classic red aesthetic */
@@ -343,6 +358,11 @@ html[data-theme="soviet-red"],
 	--slide-bar-end: 0.3416 0.0755 21.85;
 	--slide-peak-start: var(--primary-peak-plus-20);
 	--slide-peak-end: var(--primary-peak-plus-15);
+
+	/* Glass tokens tracked to this theme's primary hue (red) so wrapped
+	   slide cards tint with the palette instead of the :root blue default. */
+	--slide-glass-bg: oklch(0.2301 0.0163 27.72 / 0.4);
+	--slide-glass-border: oklch(0.4824 0.0676 27.72 / 0.2);
 }
 
 /* =============================================================================
