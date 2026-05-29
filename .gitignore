@@ -36,6 +36,3 @@ docs/
 bundle-stats.html
 .omx/
 
-# Test artifacts
-screenshots/
-dogfood-output/
