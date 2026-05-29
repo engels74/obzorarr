@@ -485,6 +485,16 @@ function handleCancelRedirect(): void {
 			transform: none;
 		}
 
+		/* Restore the focus-visible ring the shadcn Button primitive ships in its
+		   base class — the `:480 box-shadow: none` above clobbers it. Reuse the
+		   same ring values as `.username-input:focus` (:390) so keyboard focus is
+		   cohesive across the hero controls; `--ring` is theme-redefined in
+		   app.css, so it recolors per theme. `:focus-visible` keeps mouse clicks
+		   ring-free. Specificity (0,3,0) + later source order beats `:480`. */
+		:global(.login-button.secondary:focus-visible) {
+			box-shadow: 0 0 0 2px oklch(var(--ring) / 0.2);
+		}
+
 		:global(.login-button:disabled) {
 			opacity: 0.8;
 			cursor: not-allowed;
@@ -517,6 +527,12 @@ function handleCancelRedirect(): void {
 
 		.link-button:hover {
 			opacity: 0.8;
+		}
+
+		/* The native "Sign in now" link had no focus-visible rule — match the
+		   button/input ring so keyboard users can see it. */
+		:global(.link-button:focus-visible) {
+			box-shadow: 0 0 0 2px oklch(var(--ring) / 0.2);
 		}
 
 		/* Footer */

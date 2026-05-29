@@ -764,6 +764,57 @@ describe('Admin Settings Service', () => {
 				const hasConfig = hasPlexEnvConfig();
 				expect(hasConfig).toBe(true);
 			});
+
+			it('treats shipped .env.example placeholders as unset (ISSUE-004 lockout guard)', () => {
+				// A deployer who uncomments the .env.example template without editing
+				// it must NOT be flipped into the env-locked onboarding flow: the same
+				// placeholders resolve to empty in getApiConfigWithSources, so claiming
+				// "env config present" strands them with no usable config and no manual
+				// picker / 400-blocked forceManualSelection. Must match resolveConfigValue.
+				const dynamicEnv = env as Record<string, string | undefined>;
+				const prevUrl = dynamicEnv.PLEX_SERVER_URL;
+				const prevToken = dynamicEnv.PLEX_TOKEN;
+				dynamicEnv.PLEX_SERVER_URL = 'http://localhost:32400';
+				dynamicEnv.PLEX_TOKEN = 'your-plex-token-here';
+
+				try {
+					expect(hasPlexEnvConfig()).toBe(false);
+				} finally {
+					dynamicEnv.PLEX_SERVER_URL = prevUrl;
+					dynamicEnv.PLEX_TOKEN = prevToken;
+				}
+			});
+
+			it('returns true when at least one Plex env var is a real (non-placeholder) value', () => {
+				const dynamicEnv = env as Record<string, string | undefined>;
+				const prevUrl = dynamicEnv.PLEX_SERVER_URL;
+				const prevToken = dynamicEnv.PLEX_TOKEN;
+				// Real URL + placeholder token -> still authoritative via the URL.
+				dynamicEnv.PLEX_SERVER_URL = 'https://plex.example.com:32400';
+				dynamicEnv.PLEX_TOKEN = 'your-plex-token-here';
+
+				try {
+					expect(hasPlexEnvConfig()).toBe(true);
+				} finally {
+					dynamicEnv.PLEX_SERVER_URL = prevUrl;
+					dynamicEnv.PLEX_TOKEN = prevToken;
+				}
+			});
+
+			it('returns false when both Plex env vars are empty', () => {
+				const dynamicEnv = env as Record<string, string | undefined>;
+				const prevUrl = dynamicEnv.PLEX_SERVER_URL;
+				const prevToken = dynamicEnv.PLEX_TOKEN;
+				dynamicEnv.PLEX_SERVER_URL = '';
+				dynamicEnv.PLEX_TOKEN = '';
+
+				try {
+					expect(hasPlexEnvConfig()).toBe(false);
+				} finally {
+					dynamicEnv.PLEX_SERVER_URL = prevUrl;
+					dynamicEnv.PLEX_TOKEN = prevToken;
+				}
+			});
 		});
 
 		describe('hasOpenAIEnvConfig', () => {

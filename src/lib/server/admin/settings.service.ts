@@ -950,13 +950,24 @@ export function isPlaceholderSentinel(value: string): boolean {
 	return false;
 }
 
+/**
+ * An env value locks configuration (source: 'env') only when it is non-empty
+ * AND not a shipped `.env.example` placeholder sentinel. This is the single
+ * predicate behind every "is this env value authoritative?" check —
+ * resolveConfigValue, hasPlexEnvConfig, and the machineId cache invalidation —
+ * so the env-lock semantics can never drift between them.
+ */
+export function isAuthoritativeEnvValue(value: string): boolean {
+	return Boolean(value) && !isPlaceholderSentinel(value);
+}
+
 function resolveConfigValue(
 	dbSettings: Record<string, string>,
 	dbKey: string,
 	envValue: string,
 	defaultValue: string = ''
 ): ConfigValue<string> {
-	if (envValue && !isPlaceholderSentinel(envValue)) {
+	if (isAuthoritativeEnvValue(envValue)) {
 		return { value: envValue, source: 'env', isLocked: true };
 	}
 	const dbValue = dbSettings[dbKey];
@@ -995,7 +1006,13 @@ export async function getApiConfigWithSources(): Promise<ApiConfigWithSources> {
 }
 
 export function hasPlexEnvConfig(): boolean {
-	return Boolean(env.PLEX_SERVER_URL || env.PLEX_TOKEN);
+	// Uses isAuthoritativeEnvValue so a placeholder-only template copy is NOT
+	// reported as env config: otherwise the onboarding Connect step flips into
+	// the env-locked flow (ENV badge, no manual picker, forceManualSelection ->
+	// 400) while getApiConfigWithSources resolves those placeholders to empty —
+	// stranding the operator with no usable config and no UI escape (ISSUE-004).
+	const { serverUrl, token } = getPlexEnvConfig();
+	return isAuthoritativeEnvValue(serverUrl) || isAuthoritativeEnvValue(token);
 }
 
 export function hasOpenAIEnvConfig(): boolean {
@@ -1132,9 +1149,8 @@ export async function clearConflictingDbSettings(): Promise<string[]> {
 	// have been derived from a different PLEX_SERVER_URL/PLEX_TOKEN (e.g. the env
 	// changed between restarts). Drop the cache so the next call to
 	// getConfiguredServerMachineId() re-fetches /identity against the current config.
-	const plexServerUrlAuthoritative =
-		Boolean(plexEnv.serverUrl) && !isPlaceholderSentinel(plexEnv.serverUrl);
-	const plexTokenAuthoritative = Boolean(plexEnv.token) && !isPlaceholderSentinel(plexEnv.token);
+	const plexServerUrlAuthoritative = isAuthoritativeEnvValue(plexEnv.serverUrl);
+	const plexTokenAuthoritative = isAuthoritativeEnvValue(plexEnv.token);
 	if (
 		(plexServerUrlAuthoritative || plexTokenAuthoritative) &&
 		dbSettings[AppSettingsKey.SERVER_MACHINE_ID]
