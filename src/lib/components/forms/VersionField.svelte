@@ -12,7 +12,7 @@
  * For `z.object()` schemas the inline `settingsVersion` field is preferable
  * and this component is not needed.
  */
-let { version }: { version: number | string } = $props();
+let { version }: { version: string } = $props();
 </script>
 
-<input type="hidden" name="settingsVersion" value={String(version)} />
+<input type="hidden" name="settingsVersion" value={version} />

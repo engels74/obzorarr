@@ -23,6 +23,19 @@ describe('externalOccCheck', () => {
 		expect((result as { current: string }).current).toBe(new Date(0).toISOString());
 	});
 
+	it('reports the real updatedAt for blank submittedVersion when rows exist', async () => {
+		await setAppSetting(AppSettingsKey.UI_THEME, 'modern-minimal');
+
+		const result = await externalOccCheck('', UI_THEME_SETTINGS_KEYS);
+
+		expect(result.status).toBe('conflict');
+		// With rows present, `current` must be the row's actual updatedAt — not
+		// the epoch — so a client trusting the payload refreshes to the true
+		// version instead of a perpetually-stale 1970 timestamp.
+		const current = (result as { current: string }).current;
+		expect(Date.parse(current)).toBeGreaterThan(0);
+	});
+
 	it('returns conflict for unparseable submittedVersion', async () => {
 		const result = await externalOccCheck('not-a-date', UI_THEME_SETTINGS_KEYS);
 

@@ -58,10 +58,17 @@ export async function externalOccCheck(
 	submittedVersion: string,
 	keys: readonly string[]
 ): Promise<{ status: 'ok' } | { status: 'conflict'; current: string }> {
-	if (!submittedVersion) {
-		return { status: 'conflict', current: new Date(0).toISOString() };
-	}
 	const currentUpdatedAt = await getAppSettingsUpdatedAt(keys);
+	if (!submittedVersion) {
+		// Blank/missing version is always stale, but report the row's real
+		// `updatedAt` (epoch only when no rows exist) so a client trusting the
+		// 409 payload's `settingsVersion` can refresh to the true current
+		// version rather than an artificially stale epoch and re-conflict.
+		return {
+			status: 'conflict',
+			current: currentUpdatedAt?.toISOString() ?? new Date(0).toISOString()
+		};
+	}
 	const currentMs = currentUpdatedAt?.getTime() ?? 0;
 	const submittedMs = Date.parse(submittedVersion);
 	if (Number.isNaN(submittedMs) || submittedMs < currentMs) {
