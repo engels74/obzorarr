@@ -105,8 +105,10 @@ services:
       - PGID=1000
       - UMASK=002
       - TZ=Etc/UTC
-      - PLEX_SERVER_URL=http://plex-url-here:32400
-      - PLEX_TOKEN=your-plex-token-here
+      # Optional: lock Plex connection at the env layer. You can also leave
+      # these unset and configure the server from the admin UI after onboarding.
+      # - PLEX_SERVER_URL=http://plex-url-here:32400
+      # - PLEX_TOKEN=your-plex-token-here
     volumes:
       - /<host_folder_config>:/config
 ```

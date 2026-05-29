@@ -110,8 +110,8 @@ let { data }: Props = $props();
 			align-items: center;
 			gap: 0.5rem;
 			padding: 0.375rem 0.875rem;
-			background: hsl(var(--primary) / 0.1);
-			border: 1px solid hsl(var(--primary) / 0.2);
+			background: oklch(var(--primary) / 0.1);
+			border: 1px solid oklch(var(--primary) / 0.2);
 			border-radius: 9999px;
 			margin-bottom: 1rem;
 		}
@@ -119,13 +119,13 @@ let { data }: Props = $props();
 		.greeting :global(.greeting-icon) {
 			width: 0.875rem;
 			height: 0.875rem;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 		}
 
 		.greeting-text {
 			font-size: 0.75rem;
 			font-weight: 600;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			text-transform: uppercase;
 			letter-spacing: 0.08em;
 		}
@@ -133,10 +133,10 @@ let { data }: Props = $props();
 		.page-title {
 			font-size: 2.5rem;
 			font-weight: 800;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			margin: 0 0 0.5rem;
 			letter-spacing: -0.025em;
-			background: linear-gradient(135deg, hsl(var(--foreground)) 0%, hsl(var(--primary)) 100%);
+			background: linear-gradient(135deg, oklch(var(--foreground)) 0%, oklch(var(--primary)) 100%);
 			-webkit-background-clip: text;
 			-webkit-text-fill-color: transparent;
 			background-clip: text;
@@ -144,7 +144,7 @@ let { data }: Props = $props();
 
 		.page-subtitle {
 			font-size: 1rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin: 0;
 			max-width: 400px;
 			margin-inline: auto;
@@ -157,7 +157,7 @@ let { data }: Props = $props();
 			transform: translate(-50%, -50%);
 			width: 300px;
 			height: 150px;
-			background: radial-gradient(ellipse, hsl(var(--primary) / 0.12) 0%, transparent 70%);
+			background: radial-gradient(ellipse, oklch(var(--primary) / 0.12) 0%, transparent 70%);
 			pointer-events: none;
 		}
 
@@ -173,8 +173,8 @@ let { data }: Props = $props();
 			display: flex;
 			flex-direction: column;
 			padding: 2rem;
-			background: hsl(var(--card));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--card));
+			border: 1px solid oklch(var(--border));
 			border-radius: 1rem;
 			text-decoration: none;
 			overflow: hidden;
@@ -182,11 +182,11 @@ let { data }: Props = $props();
 		}
 
 		.wrapped-card:hover {
-			border-color: hsl(var(--primary) / 0.5);
+			border-color: oklch(var(--primary) / 0.5);
 			transform: translateY(-4px);
 			box-shadow:
-				0 12px 32px -8px hsl(var(--primary) / 0.2),
-				0 0 0 1px hsl(var(--primary) / 0.1);
+				0 12px 32px -8px oklch(var(--primary) / 0.2),
+				0 0 0 1px oklch(var(--primary) / 0.1);
 		}
 
 		.card-glow {
@@ -202,11 +202,11 @@ let { data }: Props = $props();
 		}
 
 		.wrapped-card.personal .card-glow {
-			background: radial-gradient(circle, hsl(var(--primary) / 0.2) 0%, transparent 70%);
+			background: radial-gradient(circle, oklch(var(--primary) / 0.2) 0%, transparent 70%);
 		}
 
 		.wrapped-card.server .card-glow {
-			background: radial-gradient(circle, hsl(175 70% 50% / 0.2) 0%, transparent 70%);
+			background: radial-gradient(circle, oklch(0.7986 0.1344 185.85 / 0.2) 0%, transparent 70%);
 		}
 
 		.wrapped-card:hover .card-glow {
@@ -226,15 +226,15 @@ let { data }: Props = $props();
 		}
 
 		.wrapped-card.personal .card-badge {
-			background: hsl(var(--primary) / 0.15);
-			color: hsl(var(--primary));
-			border: 1px solid hsl(var(--primary) / 0.2);
+			background: oklch(var(--primary) / 0.15);
+			color: oklch(var(--primary));
+			border: 1px solid oklch(var(--primary) / 0.2);
 		}
 
 		.wrapped-card.server .card-badge {
-			background: hsl(175 70% 50% / 0.15);
-			color: hsl(175 70% 55%);
-			border: 1px solid hsl(175 70% 50% / 0.2);
+			background: oklch(0.7986 0.1344 185.85 / 0.15);
+			color: oklch(0.813 0.1296 186.59);
+			border: 1px solid oklch(0.7986 0.1344 185.85 / 0.2);
 		}
 
 		.card-icon-wrap {
@@ -255,15 +255,15 @@ let { data }: Props = $props();
 		.wrapped-card.personal .card-icon-wrap {
 			background: linear-gradient(
 				135deg,
-				hsl(var(--primary) / 0.2) 0%,
-				hsl(var(--primary) / 0.1) 100%
+				oklch(var(--primary) / 0.2) 0%,
+				oklch(var(--primary) / 0.1) 100%
 			);
-			border: 1px solid hsl(var(--primary) / 0.2);
+			border: 1px solid oklch(var(--primary) / 0.2);
 		}
 
 		.wrapped-card.server .card-icon-wrap {
-			background: linear-gradient(135deg, hsl(175 70% 50% / 0.2) 0%, hsl(175 70% 50% / 0.1) 100%);
-			border: 1px solid hsl(175 70% 50% / 0.2);
+			background: linear-gradient(135deg, oklch(0.7986 0.1344 185.85 / 0.2) 0%, oklch(0.7986 0.1344 185.85 / 0.1) 100%);
+			border: 1px solid oklch(0.7986 0.1344 185.85 / 0.2);
 		}
 
 		.wrapped-card :global(.card-icon) {
@@ -272,11 +272,11 @@ let { data }: Props = $props();
 		}
 
 		.wrapped-card.personal :global(.card-icon) {
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 		}
 
 		.wrapped-card.server :global(.card-icon) {
-			color: hsl(175 70% 55%);
+			color: oklch(0.813 0.1296 186.59);
 		}
 
 		.card-content {
@@ -288,14 +288,14 @@ let { data }: Props = $props();
 		.card-title {
 			font-size: 1.5rem;
 			font-weight: 700;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			margin: 0 0 0.5rem;
 			letter-spacing: -0.01em;
 		}
 
 		.card-description {
 			font-size: 0.9375rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin: 0;
 			line-height: 1.5;
 			max-width: 400px;
@@ -308,16 +308,16 @@ let { data }: Props = $props();
 			margin-top: 1.5rem;
 			font-size: 0.875rem;
 			font-weight: 600;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			transition: all 0.2s ease;
 		}
 
 		.wrapped-card:hover .card-action {
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 		}
 
 		.wrapped-card.server:hover .card-action {
-			color: hsl(175 70% 55%);
+			color: oklch(0.813 0.1296 186.59);
 		}
 
 		.card-action :global(.card-arrow) {
@@ -337,19 +337,19 @@ let { data }: Props = $props();
 			gap: 0.75rem;
 			margin-top: 2rem;
 			padding-top: 2rem;
-			border-top: 1px solid hsl(var(--border) / 0.5);
+			border-top: 1px solid oklch(var(--border) / 0.5);
 		}
 
 		.year-badge {
 			font-size: 1.25rem;
 			font-weight: 800;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			letter-spacing: -0.02em;
 		}
 
 		.year-text {
 			font-size: 0.8125rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-transform: uppercase;
 			letter-spacing: 0.08em;
 		}

@@ -181,7 +181,7 @@ $effect(() => {
 		.title {
 			font-size: 1rem;
 			font-weight: 600;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-transform: uppercase;
 			letter-spacing: 0.1em;
 			opacity: 0.9;
@@ -201,14 +201,14 @@ $effect(() => {
 			letter-spacing: -0.03em;
 			background: linear-gradient(
 				180deg,
-				hsl(var(--primary)) 0%,
-				hsl(calc(var(--primary-hue) + 15) 60% 55%) 100%
+				oklch(var(--primary)) 0%,
+				oklch(var(--primary-grad-plus-15)) 100%
 			);
 			-webkit-background-clip: text;
 			-webkit-text-fill-color: transparent;
 			background-clip: text;
-			filter: drop-shadow(0 0 30px var(--slide-glow-color, hsl(var(--primary) / 0.5)))
-				drop-shadow(0 0 60px var(--slide-accent-glow, hsl(var(--primary) / 0.3)));
+			filter: drop-shadow(0 0 30px var(--slide-glow-color, oklch(var(--primary) / 0.5)))
+				drop-shadow(0 0 60px var(--slide-accent-glow, oklch(var(--primary) / 0.3)));
 		}
 
 		.stat-unit {
@@ -217,19 +217,19 @@ $effect(() => {
 			letter-spacing: -0.03em;
 			background: linear-gradient(
 				180deg,
-				hsl(var(--primary)) 0%,
-				hsl(calc(var(--primary-hue) + 15) 60% 55%) 100%
+				oklch(var(--primary)) 0%,
+				oklch(var(--primary-grad-plus-15)) 100%
 			);
 			-webkit-background-clip: text;
 			-webkit-text-fill-color: transparent;
 			background-clip: text;
-			filter: drop-shadow(0 0 30px var(--slide-glow-color, hsl(var(--primary) / 0.5)))
-				drop-shadow(0 0 60px var(--slide-accent-glow, hsl(var(--primary) / 0.3)));
+			filter: drop-shadow(0 0 30px var(--slide-glow-color, oklch(var(--primary) / 0.5)))
+				drop-shadow(0 0 60px var(--slide-accent-glow, oklch(var(--primary) / 0.3)));
 		}
 
 		.subtitle {
 			font-size: 1.25rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-style: italic;
 			opacity: 0.85;
 		}
@@ -250,14 +250,14 @@ $effect(() => {
 
 			.stat-value {
 				font-size: clamp(2.5rem, 14vw, 4rem);
-				filter: drop-shadow(0 0 20px var(--slide-glow-color, hsl(var(--primary) / 0.4)))
-					drop-shadow(0 0 40px var(--slide-accent-glow, hsl(var(--primary) / 0.2)));
+				filter: drop-shadow(0 0 20px var(--slide-glow-color, oklch(var(--primary) / 0.4)))
+					drop-shadow(0 0 40px var(--slide-accent-glow, oklch(var(--primary) / 0.2)));
 			}
 
 			.stat-unit {
 				font-size: clamp(1.5rem, 10vw, 2.5rem);
-				filter: drop-shadow(0 0 20px var(--slide-glow-color, hsl(var(--primary) / 0.4)))
-					drop-shadow(0 0 40px var(--slide-accent-glow, hsl(var(--primary) / 0.2)));
+				filter: drop-shadow(0 0 20px var(--slide-glow-color, oklch(var(--primary) / 0.4)))
+					drop-shadow(0 0 40px var(--slide-accent-glow, oklch(var(--primary) / 0.2)));
 			}
 
 			.subtitle {
@@ -297,16 +297,16 @@ $effect(() => {
 
 			.stat-value {
 				font-size: clamp(4rem, 12vw, 8rem);
-				filter: drop-shadow(0 0 40px var(--slide-glow-color, hsl(var(--primary) / 0.5)))
-					drop-shadow(0 0 80px var(--slide-accent-glow, hsl(var(--primary) / 0.35)))
-					drop-shadow(0 0 120px hsl(var(--primary) / 0.2));
+				filter: drop-shadow(0 0 40px var(--slide-glow-color, oklch(var(--primary) / 0.5)))
+					drop-shadow(0 0 80px var(--slide-accent-glow, oklch(var(--primary) / 0.35)))
+					drop-shadow(0 0 120px oklch(var(--primary) / 0.2));
 			}
 
 			.stat-unit {
 				font-size: clamp(2.5rem, 8vw, 5.5rem);
-				filter: drop-shadow(0 0 40px var(--slide-glow-color, hsl(var(--primary) / 0.5)))
-					drop-shadow(0 0 80px var(--slide-accent-glow, hsl(var(--primary) / 0.35)))
-					drop-shadow(0 0 120px hsl(var(--primary) / 0.2));
+				filter: drop-shadow(0 0 40px var(--slide-glow-color, oklch(var(--primary) / 0.5)))
+					drop-shadow(0 0 80px var(--slide-accent-glow, oklch(var(--primary) / 0.35)))
+					drop-shadow(0 0 120px oklch(var(--primary) / 0.2));
 			}
 
 			.subtitle {

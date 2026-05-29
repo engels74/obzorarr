@@ -191,8 +191,8 @@ function handleKeyDown(event: KeyboardEvent): void {
 				--slide-bg-gradient,
 				linear-gradient(
 					135deg,
-					hsl(var(--primary-hue) 30% 12%) 0%,
-					hsl(var(--primary-hue) 20% 8%) 100%
+					oklch(var(--slide-bg-start)) 0%,
+					oklch(var(--slide-bg-end)) 100%
 				)
 			);
 			/* Fix background to viewport for seamless scrolling */
@@ -221,7 +221,7 @@ function handleKeyDown(event: KeyboardEvent): void {
 			background: radial-gradient(
 				ellipse 80% 80% at 50% 50%,
 				transparent 0%,
-				hsl(0 0% 0% / var(--slide-vignette-opacity, 0.4)) 100%
+				oklch(0 0 0 / var(--slide-vignette-opacity, 0.4)) 100%
 			);
 			pointer-events: none;
 			z-index: 0;

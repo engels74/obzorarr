@@ -146,8 +146,8 @@ async function handlePermanentDismiss() {
 
 <style>
 	.csrf-warning-banner {
-			background: linear-gradient(135deg, hsl(25 95% 53% / 0.15) 0%, hsl(25 95% 53% / 0.08) 100%);
-			border: 1px solid hsl(25 95% 53% / 0.3);
+			background: linear-gradient(135deg, oklch(0.7065 0.186 48.13 / 0.15) 0%, oklch(0.7065 0.186 48.13 / 0.08) 100%);
+			border: 1px solid oklch(0.7065 0.186 48.13 / 0.3);
 			border-radius: 0.5rem;
 			padding: 0.875rem 1rem;
 			margin: 1rem;
@@ -166,7 +166,7 @@ async function handlePermanentDismiss() {
 			justify-content: center;
 			width: 2.25rem;
 			height: 2.25rem;
-			background: hsl(25 95% 53% / 0.15);
+			background: oklch(0.7065 0.186 48.13 / 0.15);
 			border-radius: 0.5rem;
 			flex-shrink: 0;
 		}
@@ -174,19 +174,19 @@ async function handlePermanentDismiss() {
 		.banner-icon :global(.icon) {
 			width: 1.25rem;
 			height: 1.25rem;
-			color: hsl(25 95% 53%);
+			color: oklch(0.7065 0.186 48.13);
 		}
 
 		.banner-text {
 			flex: 1;
 			font-size: 0.875rem;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			line-height: 1.5;
 			min-width: 200px;
 		}
 
 		.banner-text strong {
-			color: hsl(25 95% 53%);
+			color: oklch(0.7065 0.186 48.13);
 		}
 
 		.banner-actions {
@@ -203,8 +203,8 @@ async function handlePermanentDismiss() {
 			padding: 0.5rem 0.875rem;
 			font-size: 0.8125rem;
 			font-weight: 600;
-			color: hsl(var(--primary-foreground));
-			background: hsl(25 95% 53%);
+			color: oklch(var(--primary-foreground));
+			background: oklch(0.7065 0.186 48.13);
 			border: none;
 			border-radius: 0.375rem;
 			text-decoration: none;
@@ -216,8 +216,8 @@ async function handlePermanentDismiss() {
 		}
 
 		.configure-button:hover {
-			background: hsl(25 95% 48%);
-			box-shadow: 0 0 0 3px hsl(25 95% 53% / 0.2);
+			background: oklch(0.6726 0.1876 45.95);
+			box-shadow: 0 0 0 3px oklch(0.7065 0.186 48.13 / 0.2);
 		}
 
 		.configure-button :global(.button-icon) {
@@ -232,17 +232,17 @@ async function handlePermanentDismiss() {
 			width: 2rem;
 			height: 2rem;
 			background: transparent;
-			border: 1px solid hsl(var(--border));
+			border: 1px solid oklch(var(--border));
 			border-radius: 0.375rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			cursor: pointer;
 			transition: all 0.15s ease;
 		}
 
 		.dismiss-button:hover {
-			background: hsl(var(--muted) / 0.5);
-			color: hsl(var(--foreground));
-			border-color: hsl(var(--border));
+			background: oklch(var(--muted) / 0.5);
+			color: oklch(var(--foreground));
+			border-color: oklch(var(--border));
 		}
 
 		.dismiss-button :global(.dismiss-icon) {
@@ -277,13 +277,13 @@ async function handlePermanentDismiss() {
 		}
 
 		.dialog-icon.warning {
-			background: hsl(25 95% 53% / 0.15);
-			color: hsl(25 95% 53%);
+			background: oklch(0.7065 0.186 48.13 / 0.15);
+			color: oklch(0.7065 0.186 48.13);
 		}
 
 		.dialog-icon.danger {
-			background: hsl(var(--destructive) / 0.15);
-			color: hsl(var(--destructive));
+			background: oklch(var(--destructive) / 0.15);
+			color: oklch(var(--destructive));
 		}
 
 		.dialog-icon :global(.icon) {
@@ -299,13 +299,13 @@ async function handlePermanentDismiss() {
 		}
 
 		.warning-card {
-			background: hsl(25 95% 53% / 0.1);
-			border: 1px solid hsl(25 95% 53% / 0.2);
+			background: oklch(0.7065 0.186 48.13 / 0.1);
+			border: 1px solid oklch(0.7065 0.186 48.13 / 0.2);
 		}
 
 		.info-card {
-			background: hsl(var(--muted) / 0.5);
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--muted) / 0.5);
+			border: 1px solid oklch(var(--border));
 		}
 
 		.warning-card p,
@@ -313,7 +313,7 @@ async function handlePermanentDismiss() {
 			margin: 0;
 			font-size: 0.8125rem;
 			line-height: 1.5;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.proceed-button {
@@ -324,8 +324,8 @@ async function handlePermanentDismiss() {
 			padding: 0 1rem;
 			font-size: 0.875rem;
 			font-weight: 600;
-			color: hsl(var(--primary-foreground));
-			background: hsl(25 95% 53%);
+			color: oklch(var(--primary-foreground));
+			background: oklch(0.7065 0.186 48.13);
 			border: none;
 			border-radius: calc(var(--radius) + 2px);
 			cursor: pointer;
@@ -335,8 +335,8 @@ async function handlePermanentDismiss() {
 		}
 
 		.proceed-button:hover {
-			background: hsl(25 95% 48%);
-			box-shadow: 0 0 0 3px hsl(25 95% 53% / 0.2);
+			background: oklch(0.6726 0.1876 45.95);
+			box-shadow: 0 0 0 3px oklch(0.7065 0.186 48.13 / 0.2);
 		}
 
 		.danger-button {
@@ -347,8 +347,8 @@ async function handlePermanentDismiss() {
 			padding: 0 1rem;
 			font-size: 0.875rem;
 			font-weight: 600;
-			color: hsl(var(--destructive-foreground));
-			background: hsl(var(--destructive));
+			color: oklch(var(--destructive-foreground));
+			background: oklch(var(--destructive));
 			border: none;
 			border-radius: calc(var(--radius) + 2px);
 			cursor: pointer;
@@ -358,8 +358,8 @@ async function handlePermanentDismiss() {
 		}
 
 		.danger-button:hover:not(:disabled) {
-			background: hsl(var(--destructive) / 0.9);
-			box-shadow: 0 0 0 3px hsl(var(--destructive) / 0.2);
+			background: oklch(var(--destructive) / 0.9);
+			box-shadow: 0 0 0 3px oklch(var(--destructive) / 0.2);
 		}
 
 		.danger-button:disabled {

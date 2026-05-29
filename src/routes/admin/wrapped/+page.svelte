@@ -189,14 +189,14 @@ function handleConfigNavigation(event: MouseEvent): void {
 		.ambient-glow.amber {
 			top: -200px;
 			left: -150px;
-			background: hsl(38 92% 50%);
+			background: oklch(0.7697 0.1645 70.61);
 			animation-delay: 0s;
 		}
 
 		.ambient-glow.cyan {
 			bottom: -200px;
 			right: -150px;
-			background: hsl(175 70% 50%);
+			background: oklch(0.7986 0.1344 185.85);
 			animation-delay: 4s;
 		}
 
@@ -218,12 +218,12 @@ function handleConfigNavigation(event: MouseEvent): void {
 			align-items: center;
 			gap: 0.5rem;
 			padding: 0.5rem 1rem;
-			background: hsl(var(--primary) / 0.1);
-			border: 1px solid hsl(var(--primary) / 0.2);
+			background: oklch(var(--primary) / 0.1);
+			border: 1px solid oklch(var(--primary) / 0.2);
 			border-radius: 9999px;
 			font-size: 0.8125rem;
 			font-weight: 600;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			text-transform: uppercase;
 			letter-spacing: 0.08em;
 			margin-bottom: 1.25rem;
@@ -252,26 +252,26 @@ function handleConfigNavigation(event: MouseEvent): void {
 			line-height: 1;
 			background: linear-gradient(
 				135deg,
-				hsl(38 92% 60%) 0%,
-				hsl(var(--primary)) 50%,
-				hsl(175 70% 55%) 100%
+				oklch(0.8092 0.1503 76.61) 0%,
+				oklch(var(--primary)) 50%,
+				oklch(0.813 0.1296 186.59) 100%
 			);
 			-webkit-background-clip: text;
 			-webkit-text-fill-color: transparent;
 			background-clip: text;
-			filter: drop-shadow(0 4px 12px hsl(var(--primary) / 0.3));
+			filter: drop-shadow(0 4px 12px oklch(var(--primary) / 0.3));
 		}
 
 		.title-text {
 			font-size: 1.75rem;
 			font-weight: 700;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			letter-spacing: -0.02em;
 		}
 
 		.hero-subtitle {
 			font-size: 1rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin: 0;
 			max-width: 400px;
 			margin: 0 auto;
@@ -295,7 +295,7 @@ function handleConfigNavigation(event: MouseEvent): void {
 			left: 50%;
 			transform: translate(-50%, -50%);
 			border-radius: 50%;
-			border: 1px solid hsl(var(--primary) / 0.1);
+			border: 1px solid oklch(var(--primary) / 0.1);
 			animation: ringExpand 4s ease-in-out infinite;
 		}
 
@@ -324,7 +324,7 @@ function handleConfigNavigation(event: MouseEvent): void {
 			gap: 0.5rem;
 			font-size: 0.75rem;
 			font-weight: 600;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-transform: uppercase;
 			letter-spacing: 0.1em;
 			margin-bottom: 1rem;
@@ -354,8 +354,8 @@ function handleConfigNavigation(event: MouseEvent): void {
 			display: flex;
 			flex-direction: column;
 			padding: 2rem;
-			background: hsl(var(--card));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--card));
+			border: 1px solid oklch(var(--border));
 			border-radius: 1rem;
 			text-decoration: none;
 			overflow: hidden;
@@ -366,8 +366,8 @@ function handleConfigNavigation(event: MouseEvent): void {
 		.showcase-card:hover {
 			transform: translateY(-6px);
 			box-shadow:
-				0 20px 40px -12px hsl(var(--primary) / 0.2),
-				0 0 0 1px hsl(var(--primary) / 0.15);
+				0 20px 40px -12px oklch(var(--primary) / 0.2),
+				0 0 0 1px oklch(var(--primary) / 0.15);
 		}
 
 		/* Card Glow Effect */
@@ -385,11 +385,11 @@ function handleConfigNavigation(event: MouseEvent): void {
 		}
 
 		.showcase-card.personal .card-glow {
-			background: radial-gradient(circle, hsl(38 92% 50% / 0.25) 0%, transparent 70%);
+			background: radial-gradient(circle, oklch(0.7697 0.1645 70.61 / 0.25) 0%, transparent 70%);
 		}
 
 		.showcase-card.server .card-glow {
-			background: radial-gradient(circle, hsl(175 70% 50% / 0.25) 0%, transparent 70%);
+			background: radial-gradient(circle, oklch(0.7986 0.1344 185.85 / 0.25) 0%, transparent 70%);
 		}
 
 		.showcase-card:hover .card-glow {
@@ -406,7 +406,7 @@ function handleConfigNavigation(event: MouseEvent): void {
 			background: linear-gradient(
 				90deg,
 				transparent 0%,
-				hsl(var(--foreground) / 0.03) 50%,
+				oklch(var(--foreground) / 0.03) 50%,
 				transparent 100%
 			);
 			transition: left 0.6s ease;
@@ -438,13 +438,13 @@ function handleConfigNavigation(event: MouseEvent): void {
 		}
 
 		.showcase-card.personal .card-icon-wrap {
-			background: linear-gradient(135deg, hsl(38 92% 50% / 0.2) 0%, hsl(38 92% 40% / 0.1) 100%);
-			box-shadow: 0 4px 16px -4px hsl(38 92% 50% / 0.3);
+			background: linear-gradient(135deg, oklch(0.7697 0.1645 70.61 / 0.2) 0%, oklch(0.6526 0.1387 71.11 / 0.1) 100%);
+			box-shadow: 0 4px 16px -4px oklch(0.7697 0.1645 70.61 / 0.3);
 		}
 
 		.showcase-card.server .card-icon-wrap {
-			background: linear-gradient(135deg, hsl(175 70% 50% / 0.2) 0%, hsl(175 70% 40% / 0.1) 100%);
-			box-shadow: 0 4px 16px -4px hsl(175 70% 50% / 0.3);
+			background: linear-gradient(135deg, oklch(0.7986 0.1344 185.85 / 0.2) 0%, oklch(0.6765 0.1132 185.95 / 0.1) 100%);
+			box-shadow: 0 4px 16px -4px oklch(0.7986 0.1344 185.85 / 0.3);
 		}
 
 		.showcase-card:hover .card-icon-wrap {
@@ -457,11 +457,11 @@ function handleConfigNavigation(event: MouseEvent): void {
 		}
 
 		.showcase-card.personal :global(.card-icon) {
-			color: hsl(38 92% 60%);
+			color: oklch(0.8092 0.1503 76.61);
 		}
 
 		.showcase-card.server :global(.card-icon) {
-			color: hsl(175 70% 55%);
+			color: oklch(0.813 0.1296 186.59);
 		}
 
 		.card-text {
@@ -471,14 +471,14 @@ function handleConfigNavigation(event: MouseEvent): void {
 		.card-title {
 			font-size: 1.375rem;
 			font-weight: 700;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			margin: 0 0 0.5rem;
 			letter-spacing: -0.02em;
 		}
 
 		.card-description {
 			font-size: 0.9375rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin: 0;
 			line-height: 1.5;
 		}
@@ -490,7 +490,7 @@ function handleConfigNavigation(event: MouseEvent): void {
 			gap: 0.5rem;
 			margin-top: 1.5rem;
 			padding-top: 1rem;
-			border-top: 1px solid hsl(var(--border) / 0.5);
+			border-top: 1px solid oklch(var(--border) / 0.5);
 		}
 
 		.cta-text {
@@ -500,11 +500,11 @@ function handleConfigNavigation(event: MouseEvent): void {
 		}
 
 		.showcase-card.personal .cta-text {
-			color: hsl(38 92% 60%);
+			color: oklch(0.8092 0.1503 76.61);
 		}
 
 		.showcase-card.server .cta-text {
-			color: hsl(175 70% 55%);
+			color: oklch(0.813 0.1296 186.59);
 		}
 
 		.showcase-card :global(.cta-arrow) {
@@ -514,11 +514,11 @@ function handleConfigNavigation(event: MouseEvent): void {
 		}
 
 		.showcase-card.personal :global(.cta-arrow) {
-			color: hsl(38 92% 60%);
+			color: oklch(0.8092 0.1503 76.61);
 		}
 
 		.showcase-card.server :global(.cta-arrow) {
-			color: hsl(175 70% 55%);
+			color: oklch(0.813 0.1296 186.59);
 		}
 
 		.showcase-card:hover :global(.cta-arrow) {
@@ -537,11 +537,11 @@ function handleConfigNavigation(event: MouseEvent): void {
 		}
 
 		.showcase-card.personal .card-accent {
-			background: linear-gradient(90deg, hsl(38 92% 50%), hsl(38 92% 60%));
+			background: linear-gradient(90deg, oklch(0.7697 0.1645 70.61), oklch(0.8092 0.1503 76.61));
 		}
 
 		.showcase-card.server .card-accent {
-			background: linear-gradient(90deg, hsl(175 70% 45%), hsl(175 70% 55%));
+			background: linear-gradient(90deg, oklch(0.7382 0.124 185.9), oklch(0.813 0.1296 186.59));
 		}
 
 		.showcase-card:hover .card-accent {
@@ -564,16 +564,16 @@ function handleConfigNavigation(event: MouseEvent): void {
 			align-items: center;
 			gap: 1rem;
 			padding: 1rem 1.25rem;
-			background: hsl(var(--card));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--card));
+			border: 1px solid oklch(var(--border));
 			border-radius: 0.75rem;
 			text-decoration: none;
 			transition: all 0.25s ease;
 		}
 
 		.config-card:hover {
-			background: hsl(var(--primary) / 0.05);
-			border-color: hsl(var(--primary) / 0.3);
+			background: oklch(var(--primary) / 0.05);
+			border-color: oklch(var(--primary) / 0.3);
 			transform: translateX(4px);
 		}
 
@@ -583,25 +583,25 @@ function handleConfigNavigation(event: MouseEvent): void {
 			justify-content: center;
 			width: 2.5rem;
 			height: 2.5rem;
-			background: hsl(var(--secondary));
+			background: oklch(var(--secondary));
 			border-radius: 0.625rem;
 			flex-shrink: 0;
 			transition: all 0.25s ease;
 		}
 
 		.config-card:hover .config-icon-wrap {
-			background: hsl(var(--primary) / 0.15);
+			background: oklch(var(--primary) / 0.15);
 		}
 
 		.config-card :global(.config-icon) {
 			width: 1.125rem;
 			height: 1.125rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			transition: color 0.25s ease;
 		}
 
 		.config-card:hover :global(.config-icon) {
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 		}
 
 		.config-content {
@@ -614,23 +614,23 @@ function handleConfigNavigation(event: MouseEvent): void {
 		.config-title {
 			font-size: 0.9375rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.config-desc {
 			font-size: 0.8125rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.config-card :global(.config-arrow) {
 			width: 1rem;
 			height: 1rem;
-			color: hsl(var(--muted-foreground) / 0.5);
+			color: oklch(var(--muted-foreground) / 0.5);
 			transition: all 0.25s ease;
 		}
 
 		.config-card:hover :global(.config-arrow) {
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			transform: translateX(2px);
 		}
 

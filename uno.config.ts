@@ -2,7 +2,7 @@ import {
 	defineConfig,
 	presetIcons,
 	presetTypography,
-	presetUno,
+	presetWind4,
 	transformerDirectives,
 	transformerVariantGroup
 } from 'unocss';
@@ -87,10 +87,39 @@ export default defineConfig({
 		'focus-visible:ring-offset-2',
 		// Disabled states
 		'disabled:pointer-events-none',
-		'disabled:opacity-50'
+		'disabled:opacity-50',
+		// data-state variants used by Radix-style primitives (Dialog, Tabs,
+		// Accordion, Switch, Tooltip, etc.) ported into shadcn-svelte. These
+		// classes are produced inside portalled markup so UnoCSS may miss them
+		// during the static scan — pin them here.
+		'data-[state=open]:bg-accent',
+		'data-[state=open]:text-accent-foreground',
+		'data-[state=closed]:fade-out-0',
+		'data-[state=closed]:zoom-out-95',
+		'data-[state=open]:fade-in-0',
+		'data-[state=open]:zoom-in-95',
+		'data-[state=active]:bg-background',
+		'data-[state=active]:text-foreground',
+		'data-[state=on]:bg-accent',
+		'data-[state=on]:text-accent-foreground',
+		'data-[state=checked]:bg-primary',
+		'data-[state=checked]:text-primary-foreground',
+		'data-[state=unchecked]:bg-input',
+		// data-side variants (Tooltip / Popover / Dropdown content positioning)
+		'data-[side=top]:slide-in-from-bottom-2',
+		'data-[side=bottom]:slide-in-from-top-2',
+		'data-[side=left]:slide-in-from-right-2',
+		'data-[side=right]:slide-in-from-left-2',
+		// Sidebar primitive classes (introduced in PR-2 admin shell)
+		'group-data-[collapsible=icon]:w-12',
+		'group-data-[collapsible=icon]:hidden',
+		'group-data-[state=collapsed]:w-16',
+		'group-data-[state=expanded]:w-64',
+		// Serif typography variant used by select wrapped surfaces
+		'font-serif'
 	],
 	presets: [
-		presetUno(),
+		presetWind4(),
 		presetIcons({
 			scale: 1.2,
 			extraProperties: {
@@ -115,7 +144,8 @@ export default defineConfig({
 			]
 		}
 	},
-	// Theme colors are defined in app.css using oklch for maximum flexibility
+	// Theme colors live in src/app.css as OKLCH custom properties consumed via
+	// oklch(var(--…)). Each shadcn-svelte primitive references the same token set.
 	theme: {
 		// Extend default theme as needed
 	}

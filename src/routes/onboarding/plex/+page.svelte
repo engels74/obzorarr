@@ -1,4 +1,8 @@
 <script lang="ts">
+import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
+import CircleCheckIcon from '@lucide/svelte/icons/circle-check';
+import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+import PlayIcon from '@lucide/svelte/icons/play';
 import { animate, stagger } from 'motion';
 import { browser } from '$app/environment';
 import { enhance } from '$app/forms';
@@ -11,7 +15,9 @@ import {
 	startPlexLoginRedirect
 } from '$lib/client/plex-login';
 import PopupBlockedModal from '$lib/components/auth/PopupBlockedModal.svelte';
+import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
+import { Button } from '$lib/components/ui/button';
 import * as Tooltip from '$lib/components/ui/tooltip';
 import { toast } from '$lib/services/toast';
 import type { ActionData, PageData } from './$types';
@@ -457,6 +463,17 @@ const canContinue = $derived(
 	(data.hasEnvConfig && data.canProceed) || (!data.hasEnvConfig && serverSaved)
 );
 
+const continueDisabledReason = $derived.by(() => {
+	if (canContinue) return null;
+	if (data.hasEnvConfig) {
+		return 'Sign in with Plex above to verify admin access before continuing.';
+	}
+	if (!effectiveIsAuthenticated) {
+		return 'Sign in with Plex above to load your available servers.';
+	}
+	return 'Select a server connection above to continue.';
+});
+
 type MembershipFailureForm = {
 	error?: string;
 	membershipReason?: 'not_reachable' | 'not_in_resources';
@@ -571,7 +588,11 @@ function formatServerUrl(url: string | null): string {
 								'Obzorarr could not reach the server at the configured URL.'}
 						</p>
 						<form method="POST" action="?/forceManualSelection" use:enhance class="error-action-form">
-							<button type="submit" class="error-action-btn">Use a different server</button>
+							<SubmitButton class="error-action-btn tap-target">
+								{#snippet children()}
+									Use a different server
+								{/snippet}
+							</SubmitButton>
 						</form>
 					</div>
 				</div>
@@ -599,14 +620,21 @@ function formatServerUrl(url: string | null): string {
 						</label>
 						<div class="override-actions">
 							<form method="POST" action="?/confirmOwnershipOverride" use:enhance>
-								<button type="submit" class="error-action-btn" disabled={!confirmOwnershipChecked}
-									>Continue anyway</button
+								<SubmitButton
+									class="error-action-btn tap-target"
+									disabled={!confirmOwnershipChecked}
 								>
+									{#snippet children()}
+										Continue anyway
+									{/snippet}
+								</SubmitButton>
 							</form>
 							<form method="POST" action="?/forceManualSelection" use:enhance>
-								<button type="submit" class="error-action-btn secondary"
-									>Use a different server</button
-								>
+								<SubmitButton class="error-action-btn secondary tap-target">
+									{#snippet children()}
+										Use a different server
+									{/snippet}
+								</SubmitButton>
 							</form>
 						</div>
 					</div>
@@ -616,26 +644,28 @@ function formatServerUrl(url: string | null): string {
 			{#if showLoginButton}
 				<div class="action-section animate-item">
 					<p class="instruction">Sign in with your Plex account to verify admin access</p>
-					<button
+					<Button
 						type="button"
-						class="plex-button"
+						class="plex-button tap-target"
 						onclick={handlePlexLogin}
 						disabled={isOAuthLoading || isRedirecting}
+						aria-busy={isOAuthLoading || isRedirecting}
 					>
 						{#if isRedirecting}
-							<span class="button-spinner"></span>
+							<LoaderCircleIcon class="size-[18px] animate-spin" aria-hidden="true" />
 							<span>Redirecting to Plex...</span>
 						{:else if isOAuthLoading}
-							<span class="button-spinner"></span>
+							<LoaderCircleIcon class="size-[18px] animate-spin" aria-hidden="true" />
 							<span>Connecting to Plex...</span>
 						{:else}
-							<svg class="plex-logo" viewBox="0 0 24 24" fill="currentColor">
-								<path d="M6 4l12 8-12 8V4z" />
-							</svg>
+							<PlayIcon class="size-[18px]" fill="currentColor" />
 							<span>Sign in with Plex</span>
 						{/if}
-					</button>
-					<a class="redirect-fallback" href="?auth=redirect">Use redirect instead</a>
+					</Button>
+					<a class="redirect-fallback" href="?auth=redirect">
+						<span class="redirect-fallback-label">Use redirect instead</span>
+						<span class="redirect-fallback-hint">If sign-in doesn't return, use this.</span>
+					</a>
 				</div>
 			{:else if isNonAdminUser}
 				<div class="error-card animate-item">
@@ -672,26 +702,28 @@ function formatServerUrl(url: string | null): string {
 			{#if showLoginButton}
 				<div class="action-section animate-item">
 					<p class="instruction">Sign in with Plex to connect your server</p>
-					<button
+					<Button
 						type="button"
-						class="plex-button"
+						class="plex-button tap-target"
 						onclick={handlePlexLogin}
 						disabled={isOAuthLoading || isRedirecting}
+						aria-busy={isOAuthLoading || isRedirecting}
 					>
 						{#if isRedirecting}
-							<span class="button-spinner"></span>
+							<LoaderCircleIcon class="size-[18px] animate-spin" aria-hidden="true" />
 							<span>Redirecting to Plex...</span>
 						{:else if isOAuthLoading}
-							<span class="button-spinner"></span>
+							<LoaderCircleIcon class="size-[18px] animate-spin" aria-hidden="true" />
 							<span>Connecting to Plex...</span>
 						{:else}
-							<svg class="plex-logo" viewBox="0 0 24 24" fill="currentColor">
-								<path d="M6 4l12 8-12 8V4z" />
-							</svg>
+							<PlayIcon class="size-[18px]" fill="currentColor" />
 							<span>Sign in with Plex</span>
 						{/if}
-					</button>
-					<a class="redirect-fallback" href="?auth=redirect">Use redirect instead</a>
+					</Button>
+					<a class="redirect-fallback" href="?auth=redirect">
+						<span class="redirect-fallback-label">Use redirect instead</span>
+						<span class="redirect-fallback-hint">If sign-in doesn't return, use this.</span>
+					</a>
 				</div>
 			{:else if isNonAdminUser}
 				<div class="error-card animate-item">
@@ -749,6 +781,9 @@ function formatServerUrl(url: string | null): string {
 										<div class="server-info">
 											<span class="server-name">{server.name}</span>
 											<span class="server-badge owner">Owner</span>
+											{#if !isExpanded && !(isSelected && serverSaved)}
+												<span class="server-hint">Click to select a connection</span>
+											{/if}
 										</div>
 										{#if isSelected && serverSaved}
 											<div class="server-check">
@@ -949,38 +984,23 @@ function formatServerUrl(url: string | null): string {
 															aria-label="Custom Plex server URL"
 															aria-describedby="custom-url-help"
 														/>
-														<button
+														<Button
 															type="button"
-															class="custom-url-test-btn"
+															class="custom-url-test-btn tap-target"
 															onclick={() => testCustomConnection(server)}
 															disabled={!isValidUrl(customUrl) ||
 																isTestingCustomUrl ||
 																isSavingServer}
+															aria-busy={isTestingCustomUrl}
 														>
 															{#if isTestingCustomUrl}
-																<span class="test-spinner"></span>
+																<LoaderCircleIcon class="size-4 animate-spin" aria-hidden="true" />
 																<span>Testing...</span>
 															{:else}
-																<svg
-																	viewBox="0 0 24 24"
-																	fill="none"
-																	stroke="currentColor"
-																	stroke-width="2"
-																>
-																	<path
-																		d="M22 11.08V12a10 10 0 11-5.93-9.14"
-																		stroke-linecap="round"
-																		stroke-linejoin="round"
-																	/>
-																	<path
-																		d="M22 4L12 14.01l-3-3"
-																		stroke-linecap="round"
-																		stroke-linejoin="round"
-																	/>
-																</svg>
+																<CircleCheckIcon class="size-4" />
 																<span>Test Connection</span>
 															{/if}
-														</button>
+														</Button>
 													</div>
 
 													{#if isHttpUrl(customUrl)}
@@ -1065,29 +1085,46 @@ function formatServerUrl(url: string | null): string {
 	{#snippet footer()}
 		{#if data.hasEnvConfig && data.canProceed}
 			<form method="POST" action="?/verifyAdmin" use:enhance>
-				<button type="submit" class="continue-button">
-					<span>Continue</span>
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-						<path d="M5 12h14M12 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" />
-					</svg>
-				</button>
+				<SubmitButton class="continue-button tap-target">
+					{#snippet children()}
+						<span>Continue</span>
+						<ArrowRightIcon class="size-[18px]" strokeWidth={2.5} />
+					{/snippet}
+				</SubmitButton>
 			</form>
 		{:else if !data.hasEnvConfig && serverSaved}
 			<form method="POST" action="?/continueAfterServerSelection" use:enhance>
-				<button type="submit" class="continue-button">
-					<span>Continue</span>
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-						<path d="M5 12h14M12 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" />
-					</svg>
-				</button>
+				<SubmitButton class="continue-button tap-target">
+					{#snippet children()}
+						<span>Continue</span>
+						<ArrowRightIcon class="size-[18px]" strokeWidth={2.5} />
+					{/snippet}
+				</SubmitButton>
 			</form>
 		{:else}
-			<button type="button" class="continue-button" disabled>
-				<span>Continue</span>
-				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-					<path d="M5 12h14M12 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" />
-				</svg>
-			</button>
+			<Tooltip.Provider>
+				<Tooltip.Root>
+					<Tooltip.Trigger>
+						{#snippet child({ props })}
+							<span {...props} class="continue-disabled-wrapper">
+								<Button type="button" class="continue-button tap-target" disabled>
+									<span>Continue</span>
+									<ArrowRightIcon class="size-[18px]" strokeWidth={2.5} />
+								</Button>
+							</span>
+						{/snippet}
+					</Tooltip.Trigger>
+					<Tooltip.Content
+						side="top"
+						class="continue-tooltip"
+						sideOffset={8}
+						collisionPadding={16}
+						portalProps={{ to: 'body' }}
+					>
+						<span>{continueDisabledReason}</span>
+					</Tooltip.Content>
+				</Tooltip.Root>
+			</Tooltip.Provider>
 		{/if}
 	{/snippet}
 </OnboardingCard>
@@ -1120,7 +1157,7 @@ function formatServerUrl(url: string | null): string {
 		.plex-icon-glow {
 			position: absolute;
 			inset: -8px;
-			background: radial-gradient(circle, hsl(var(--primary) / 0.4) 0%, transparent 70%);
+			background: radial-gradient(circle, oklch(var(--primary) / 0.4) 0%, transparent 70%);
 			border-radius: 50%;
 			animation: icon-pulse 3s ease-in-out infinite;
 		}
@@ -1179,7 +1216,7 @@ function formatServerUrl(url: string | null): string {
 			justify-content: center;
 			background: rgba(34, 197, 94, 0.12);
 			border-radius: 11px;
-			color: hsl(142, 71%, 55%);
+			color: oklch(0.7946 0.1951 150.81);
 			position: relative;
 		}
 
@@ -1225,7 +1262,7 @@ function formatServerUrl(url: string | null): string {
 			text-transform: uppercase;
 			letter-spacing: 0.05em;
 			background: rgba(34, 197, 94, 0.2);
-			color: hsl(142, 71%, 60%);
+			color: oklch(0.8116 0.1789 152.1);
 			border-radius: 5px;
 			border: 1px solid rgba(34, 197, 94, 0.3);
 		}
@@ -1254,7 +1291,7 @@ function formatServerUrl(url: string | null): string {
 			justify-content: center;
 			background: rgba(34, 197, 94, 0.15);
 			border-radius: 50%;
-			color: hsl(142, 71%, 55%);
+			color: oklch(0.7946 0.1951 150.81);
 		}
 
 		.preconfigured-check svg {
@@ -1278,8 +1315,13 @@ function formatServerUrl(url: string | null): string {
 			text-align: center;
 		}
 
-		/* Plex Login Button */
-		.plex-button {
+		/* Plex Login Button — Plex-orange OAuth CTA. Hoisted to :global so
+		   shadcn Button's child-rendered <button> inherits the gradient,
+		   triple shadow (drop + accent + inset highlight), hover translate-y,
+		   and active translate-back. The `.plex-logo` descendant rule
+		   (18px width/height) is dropped; PlayIcon + LoaderCircleIcon
+		   both sized inline via `class="size-[18px]"`. */
+		:global(.plex-button) {
 			display: inline-flex;
 			align-items: center;
 			justify-content: center;
@@ -1288,7 +1330,7 @@ function formatServerUrl(url: string | null): string {
 			min-width: 220px;
 			font-size: 1rem;
 			font-weight: 600;
-			color: hsl(30, 20%, 10%);
+			color: oklch(0.2198 0.0126 67.09);
 			background: linear-gradient(135deg, #e5a00d 0%, #cc8400 100%);
 			border: none;
 			border-radius: 12px;
@@ -1300,7 +1342,7 @@ function formatServerUrl(url: string | null): string {
 				inset 0 1px 0 rgba(255, 255, 255, 0.25);
 		}
 
-		.plex-button:hover:not(:disabled) {
+		:global(.plex-button:hover:not(:disabled)) {
 			transform: translateY(-2px);
 			box-shadow:
 				0 6px 24px rgba(229, 160, 13, 0.45),
@@ -1308,18 +1350,13 @@ function formatServerUrl(url: string | null): string {
 				inset 0 1px 0 rgba(255, 255, 255, 0.3);
 		}
 
-		.plex-button:active:not(:disabled) {
+		:global(.plex-button:active:not(:disabled)) {
 			transform: translateY(0);
 		}
 
-		.plex-button:disabled {
+		:global(.plex-button:disabled) {
 			opacity: 0.85;
 			cursor: not-allowed;
-		}
-
-		.plex-logo {
-			width: 18px;
-			height: 18px;
 		}
 
 		.button-spinner {
@@ -1332,17 +1369,29 @@ function formatServerUrl(url: string | null): string {
 		}
 
 		.redirect-fallback {
-			display: inline-block;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 0.15rem;
 			margin-top: 0.75rem;
+			text-decoration: none;
+			transition: color 0.2s ease;
+		}
+
+		.redirect-fallback-label {
 			font-size: 0.85rem;
 			color: rgba(255, 255, 255, 0.55);
 			text-decoration: underline;
 			text-underline-offset: 3px;
-			transition: color 0.2s ease;
 		}
 
-		.redirect-fallback:hover,
-		.redirect-fallback:focus-visible {
+		.redirect-fallback-hint {
+			font-size: 0.7rem;
+			color: rgba(255, 255, 255, 0.4);
+		}
+
+		.redirect-fallback:hover .redirect-fallback-label,
+		.redirect-fallback:focus-visible .redirect-fallback-label {
 			color: rgba(255, 255, 255, 0.85);
 		}
 
@@ -1362,7 +1411,7 @@ function formatServerUrl(url: string | null): string {
 			flex-shrink: 0;
 			width: 24px;
 			height: 24px;
-			color: hsl(142, 71%, 55%);
+			color: oklch(0.7946 0.1951 150.81);
 		}
 
 		.success-icon svg {
@@ -1403,7 +1452,7 @@ function formatServerUrl(url: string | null): string {
 			flex-shrink: 0;
 			width: 24px;
 			height: 24px;
-			color: hsl(0, 84%, 60%);
+			color: oklch(0.6356 0.2082 25.38);
 		}
 
 		.error-icon svg {
@@ -1442,14 +1491,20 @@ function formatServerUrl(url: string | null): string {
 			margin-top: 0.75rem;
 		}
 
-		.error-action-btn {
+		/* `.error-action-btn` is the destructive-variant CTA used in 3
+		   error-card panels (configured-url-unreachable, not-in-resources,
+		   etc.). Hoisted to :global so SubmitButton's child-rendered
+		   <button> inherits the red palette + hover-darken + optional
+		   .secondary modifier (white/transparent variant for the
+		   alternative action in the dual-button error card). */
+		:global(.error-action-btn) {
 			display: inline-flex;
 			align-items: center;
 			gap: 0.4rem;
 			padding: 0.5rem 0.875rem;
 			font-size: 0.85rem;
 			font-weight: 500;
-			color: hsl(0, 84%, 70%);
+			color: oklch(0.7052 0.1587 21.97);
 			background: rgba(239, 68, 68, 0.1);
 			border: 1px solid rgba(239, 68, 68, 0.3);
 			border-radius: 8px;
@@ -1457,23 +1512,23 @@ function formatServerUrl(url: string | null): string {
 			transition: all 0.2s ease;
 		}
 
-		.error-action-btn:hover:not(:disabled) {
+		:global(.error-action-btn:hover:not(:disabled)) {
 			background: rgba(239, 68, 68, 0.18);
 			border-color: rgba(239, 68, 68, 0.5);
 		}
 
-		.error-action-btn:disabled {
+		:global(.error-action-btn:disabled) {
 			opacity: 0.4;
 			cursor: not-allowed;
 		}
 
-		.error-action-btn.secondary {
+		:global(.error-action-btn.secondary) {
 			color: rgba(255, 255, 255, 0.7);
 			background: rgba(255, 255, 255, 0.04);
 			border-color: rgba(255, 255, 255, 0.12);
 		}
 
-		.error-action-btn.secondary:hover:not(:disabled) {
+		:global(.error-action-btn.secondary:hover:not(:disabled)) {
 			background: rgba(255, 255, 255, 0.08);
 			border-color: rgba(255, 255, 255, 0.2);
 		}
@@ -1492,7 +1547,7 @@ function formatServerUrl(url: string | null): string {
 		.override-checkbox input[type='checkbox'] {
 			margin-top: 0.15rem;
 			flex-shrink: 0;
-			accent-color: hsl(var(--primary));
+			accent-color: oklch(var(--primary));
 		}
 
 		.override-actions {
@@ -1524,7 +1579,7 @@ function formatServerUrl(url: string | null): string {
 			width: 20px;
 			height: 20px;
 			border: 2px solid rgba(255, 255, 255, 0.2);
-			border-top-color: hsl(var(--primary));
+			border-top-color: oklch(var(--primary));
 			border-radius: 50%;
 			animation: spin 0.8s linear infinite;
 		}
@@ -1585,9 +1640,9 @@ function formatServerUrl(url: string | null): string {
 		}
 
 		.server-card.selected {
-			background: hsl(var(--primary) / 0.1);
-			border-color: hsl(var(--primary) / 0.4);
-			box-shadow: 0 0 0 1px hsl(var(--primary) / 0.2);
+			background: oklch(var(--primary) / 0.1);
+			border-color: oklch(var(--primary) / 0.4);
+			box-shadow: 0 0 0 1px oklch(var(--primary) / 0.2);
 		}
 
 		.server-card:disabled {
@@ -1638,15 +1693,38 @@ function formatServerUrl(url: string | null): string {
 		}
 
 		.server-badge.owner {
-			background: hsl(var(--primary) / 0.15);
-			color: hsl(var(--primary));
+			background: oklch(var(--primary) / 0.15);
+			color: oklch(var(--primary));
+		}
+
+		.server-hint {
+			font-size: 0.72rem;
+			color: rgba(255, 255, 255, 0.45);
+			font-style: italic;
+		}
+
+		.continue-disabled-wrapper {
+			display: inline-flex;
+		}
+
+		:global(.continue-tooltip) {
+			z-index: 9999;
+			max-width: 220px;
+			padding: 0.5rem 0.7rem;
+			font-size: 0.78rem;
+			line-height: 1.4;
+			color: rgba(255, 255, 255, 0.92);
+			background: oklch(0.2267 0 0);
+			border: 1px solid oklch(0.3008 0 0);
+			border-radius: 8px;
+			box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
 		}
 
 		.server-check {
 			flex-shrink: 0;
 			width: 24px;
 			height: 24px;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 		}
 
 		.server-check svg {
@@ -1675,8 +1753,8 @@ function formatServerUrl(url: string | null): string {
 			display: block;
 			width: 20px;
 			height: 20px;
-			border: 2px solid hsl(var(--primary) / 0.3);
-			border-top-color: hsl(var(--primary));
+			border: 2px solid oklch(var(--primary) / 0.3);
+			border-top-color: oklch(var(--primary));
 			border-radius: 50%;
 			animation: spin 0.8s linear infinite;
 		}
@@ -1715,7 +1793,7 @@ function formatServerUrl(url: string | null): string {
 		.insecure-http-toggle input {
 			width: 1rem;
 			height: 1rem;
-			accent-color: hsl(var(--primary));
+			accent-color: oklch(var(--primary));
 		}
 
 		.connections-list {
@@ -1787,7 +1865,7 @@ function formatServerUrl(url: string | null): string {
 
 		.connection-badge.secure {
 			background: linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(16, 185, 129, 0.15) 100%);
-			color: hsl(142, 71%, 55%);
+			color: oklch(0.7946 0.1951 150.81);
 			border: 1px solid rgba(34, 197, 94, 0.3);
 			box-shadow:
 				0 0 8px rgba(34, 197, 94, 0.15),
@@ -1808,17 +1886,17 @@ function formatServerUrl(url: string | null): string {
 
 		.connection-badge.local {
 			background: rgba(59, 130, 246, 0.15);
-			color: hsl(217, 91%, 60%);
+			color: oklch(0.6261 0.1859 259.6);
 		}
 
 		.connection-badge.remote {
 			background: rgba(168, 85, 247, 0.15);
-			color: hsl(271, 91%, 65%);
+			color: oklch(0.6268 0.2332 304.11);
 		}
 
 		.connection-badge.relay {
 			background: rgba(251, 191, 36, 0.15);
-			color: hsl(43, 96%, 56%);
+			color: oklch(0.8334 0.1641 83.87);
 		}
 
 		.connection-desc {
@@ -1839,7 +1917,7 @@ function formatServerUrl(url: string | null): string {
 			flex-shrink: 0;
 			width: 20px;
 			height: 20px;
-			color: hsl(142, 71%, 55%);
+			color: oklch(0.7946 0.1951 150.81);
 		}
 
 		.connection-check svg {
@@ -1866,7 +1944,7 @@ function formatServerUrl(url: string | null): string {
 			border-radius: 10px;
 			width: 100%;
 			font-size: 0.875rem;
-			color: hsl(0, 84%, 70%);
+			color: oklch(0.7052 0.1587 21.97);
 		}
 
 		.error-banner svg {
@@ -1875,8 +1953,15 @@ function formatServerUrl(url: string | null): string {
 			height: 18px;
 		}
 
-		/* Continue Button */
-		.continue-button {
+		/* Continue Button — hoisted to :global so SubmitButton + Button
+		   (both shadcn primitives render the button element inside a
+		   child component) inherit the primary palette, hover translate-y,
+		   and dual shadow (drop + inset highlight). `.continue-button svg`
+		   descendant rule dropped; ArrowRightIcon is sized inline via
+		   `class="size-[18px]"`. Same migration template as iteration 88's
+		   onboarding/sync continue-button (which uses identical CSS;
+		   eventual consolidation candidate). */
+		:global(.continue-button) {
 			display: inline-flex;
 			align-items: center;
 			justify-content: center;
@@ -1884,34 +1969,29 @@ function formatServerUrl(url: string | null): string {
 			padding: 0.75rem 1.5rem;
 			font-size: 0.95rem;
 			font-weight: 600;
-			color: hsl(var(--primary-foreground));
-			background: hsl(var(--primary));
+			color: oklch(var(--primary-foreground));
+			background: oklch(var(--primary));
 			border: none;
 			border-radius: 10px;
 			cursor: pointer;
 			transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 			box-shadow:
-				0 2px 12px hsl(var(--primary) / 0.3),
+				0 2px 12px oklch(var(--primary) / 0.3),
 				inset 0 1px 0 rgba(255, 255, 255, 0.2);
 		}
 
-		.continue-button:hover:not(:disabled) {
+		:global(.continue-button:hover:not(:disabled)) {
 			transform: translateY(-1px);
 			box-shadow:
-				0 4px 16px hsl(var(--primary) / 0.4),
+				0 4px 16px oklch(var(--primary) / 0.4),
 				inset 0 1px 0 rgba(255, 255, 255, 0.25);
 		}
 
-		.continue-button:disabled {
+		:global(.continue-button:disabled) {
 			opacity: 0.4;
 			cursor: not-allowed;
 			transform: none;
 			box-shadow: none;
-		}
-
-		.continue-button svg {
-			width: 18px;
-			height: 18px;
 		}
 
 		/* SSL Connection Card Enhancement */
@@ -1966,7 +2046,7 @@ function formatServerUrl(url: string | null): string {
 		}
 
 		.tooltip-header.ssl {
-			color: hsl(142, 71%, 55%);
+			color: oklch(0.7946 0.1951 150.81);
 		}
 
 		.tooltip-header strong {
@@ -2100,8 +2180,8 @@ function formatServerUrl(url: string | null): string {
 
 		.custom-url-input:focus {
 			outline: none;
-			border-color: hsl(var(--primary) / 0.5);
-			box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
+			border-color: oklch(var(--primary) / 0.5);
+			box-shadow: 0 0 0 3px oklch(var(--primary) / 0.1);
 		}
 
 		.custom-url-input::placeholder {
@@ -2121,15 +2201,21 @@ function formatServerUrl(url: string | null): string {
 			box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
 		}
 
-		.custom-url-test-btn {
+		/* `.custom-url-test-btn` is the connection-test CTA in the
+		   reverse-proxy URL form. Hoisted to :global so shadcn Button
+		   inherits the primary-tinted background + hover-darken. The
+		   `.custom-url-test-btn svg` descendant rule is dropped;
+		   CircleCheckIcon + LoaderCircleIcon are sized inline via
+		   `class="size-4"`. */
+		:global(.custom-url-test-btn) {
 			display: inline-flex;
 			align-items: center;
 			gap: 0.5rem;
 			padding: 0.75rem 1rem;
-			background: hsl(var(--primary) / 0.15);
-			border: 1px solid hsl(var(--primary) / 0.3);
+			background: oklch(var(--primary) / 0.15);
+			border: 1px solid oklch(var(--primary) / 0.3);
 			border-radius: 8px;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			font-size: 0.85rem;
 			font-weight: 500;
 			white-space: nowrap;
@@ -2137,26 +2223,21 @@ function formatServerUrl(url: string | null): string {
 			transition: all 0.2s ease;
 		}
 
-		.custom-url-test-btn:hover:not(:disabled) {
-			background: hsl(var(--primary) / 0.25);
-			border-color: hsl(var(--primary) / 0.5);
+		:global(.custom-url-test-btn:hover:not(:disabled)) {
+			background: oklch(var(--primary) / 0.25);
+			border-color: oklch(var(--primary) / 0.5);
 		}
 
-		.custom-url-test-btn:disabled {
+		:global(.custom-url-test-btn:disabled) {
 			opacity: 0.5;
 			cursor: not-allowed;
-		}
-
-		.custom-url-test-btn svg {
-			width: 16px;
-			height: 16px;
 		}
 
 		.test-spinner {
 			width: 16px;
 			height: 16px;
-			border: 2px solid hsl(var(--primary) / 0.3);
-			border-top-color: hsl(var(--primary));
+			border: 2px solid oklch(var(--primary) / 0.3);
+			border-top-color: oklch(var(--primary));
 			border-radius: 50%;
 			animation: spin 0.8s linear infinite;
 		}
@@ -2186,13 +2267,13 @@ function formatServerUrl(url: string | null): string {
 		.custom-url-status.success {
 			background: rgba(34, 197, 94, 0.1);
 			border: 1px solid rgba(34, 197, 94, 0.25);
-			color: hsl(142, 71%, 55%);
+			color: oklch(0.7946 0.1951 150.81);
 		}
 
 		.custom-url-status.error {
 			background: rgba(239, 68, 68, 0.1);
 			border: 1px solid rgba(239, 68, 68, 0.25);
-			color: hsl(0, 84%, 70%);
+			color: oklch(0.7052 0.1587 21.97);
 		}
 
 		.custom-url-status .status-icon {

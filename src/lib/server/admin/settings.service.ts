@@ -152,6 +152,47 @@ export const USER_DEFAULTS_SETTINGS_KEYS = [
 ] as const;
 
 /**
+ * Keys covered by the System tab Logging form (retention days + max log count
+ * + debug flag). The three values land via `setLogRetentionDays`,
+ * `setLogMaxCount`, and `setDebugEnabled` from `$lib/server/logging/service`;
+ * each writes its own `app_settings` row, so the OCC version is the max of
+ * their `updatedAt` columns. Used for the inline `settingsVersion` retrofit on
+ * `updateLogSettings` (US-020 partial / inline-OCC pattern).
+ */
+export const LOG_SETTINGS_KEYS = [
+	'log_retention_days',
+	'log_max_count',
+	'log_debug_enabled'
+] as const;
+
+/**
+ * Single-key OCC tuple for the Security tab Trust Proxy toggle. The form has
+ * exactly one persisted value (`AppSettingsKey.TRUST_PROXY`) so the version
+ * is just that row's `updatedAt`. Wrapped in a tuple to share the
+ * `getAppSettingsUpdatedAt(...)` helper that the multi-key OCC paths use.
+ */
+export const TRUST_PROXY_SETTINGS_KEYS = [AppSettingsKey.TRUST_PROXY] as const;
+
+/**
+ * Single-key OCC tuple for the Security tab CSRF Origin field (the textarea
+ * + "Save CSRF Origin" / "Clear" form). Only covers the origin value; the
+ * skip flag (`CSRF_ORIGIN_SKIPPED`) has its own toggle and is intentionally
+ * NOT part of this group so the two controls don't false-409 each other.
+ */
+export const CSRF_ORIGIN_SETTINGS_KEYS = [AppSettingsKey.CSRF_ORIGIN] as const;
+
+/**
+ * Single-key OCC tuples for the three Appearance-tab `z.enum` forms. Per
+ * v3 plan §A5 Table D2 these use EXTERNAL OCC (validated before
+ * `safeParse` in the action) because the schemas are top-level `z.enum`,
+ * not `z.object`, and wrapping them in `z.object({...})` would change the
+ * payload shape.
+ */
+export const UI_THEME_SETTINGS_KEYS = [AppSettingsKey.UI_THEME] as const;
+export const WRAPPED_THEME_SETTINGS_KEYS = [AppSettingsKey.WRAPPED_THEME] as const;
+export const WRAPPED_LOGO_MODE_SETTINGS_KEYS = [AppSettingsKey.WRAPPED_LOGO_MODE] as const;
+
+/**
  * Keys covered by the API configuration panel (Plex + OpenAI connections).
  * Used for the optimistic-concurrency timestamp on `updateApiConfig`.
  *
@@ -872,13 +913,61 @@ function getOpenAIEnvConfig() {
 	};
 }
 
+/**
+ * Some `.env.example` shipped values are obvious placeholders that new deployers
+ * forget to clear when they copy the template into `.env` (ISSUE-004). Treating
+ * them as authoritative makes the onboarding flow attempt to reach a non-existent
+ * server and surfaces a misleading "transient" error. Detect them here and let
+ * `resolveConfigValue` fall through to the DB / default branch.
+ *
+ * Matches:
+ *   - exactly the shipped sentinel strings (e.g. `your-plex-token-here`)
+ *   - generic placeholders following common conventions (`your-*-here`,
+ *     `change-me`, `placeholder`)
+ *   - the literal `http://localhost:32400` shipped as the example Plex URL.
+ *     This is treated as a placeholder unconditionally so the `.env.example`
+ *     default can never be mistaken for real config; a genuine localhost
+ *     deployment must be configured via the DB / admin UI, which
+ *     `resolveConfigValue` falls through to.
+ */
+export function isPlaceholderSentinel(value: string): boolean {
+	const trimmed = value.trim();
+	if (!trimmed) return false;
+
+	const exact = new Set<string>([
+		'your-plex-token-here',
+		'http://localhost:32400',
+		'http://plex-url-here:32400',
+		'plex-url-here'
+	]);
+	if (exact.has(trimmed)) return true;
+
+	const lowered = trimmed.toLowerCase();
+	if (/^your-.*-here$/.test(lowered)) return true;
+	if (/^change-?me$/.test(lowered)) return true;
+	if (lowered === 'placeholder') return true;
+
+	return false;
+}
+
+/**
+ * An env value locks configuration (source: 'env') only when it is non-empty
+ * AND not a shipped `.env.example` placeholder sentinel. This is the single
+ * predicate behind every "is this env value authoritative?" check —
+ * resolveConfigValue, hasPlexEnvConfig, and the machineId cache invalidation —
+ * so the env-lock semantics can never drift between them.
+ */
+export function isAuthoritativeEnvValue(value: string): boolean {
+	return Boolean(value) && !isPlaceholderSentinel(value);
+}
+
 function resolveConfigValue(
 	dbSettings: Record<string, string>,
 	dbKey: string,
 	envValue: string,
 	defaultValue: string = ''
 ): ConfigValue<string> {
-	if (envValue) {
+	if (isAuthoritativeEnvValue(envValue)) {
 		return { value: envValue, source: 'env', isLocked: true };
 	}
 	const dbValue = dbSettings[dbKey];
@@ -917,7 +1006,13 @@ export async function getApiConfigWithSources(): Promise<ApiConfigWithSources> {
 }
 
 export function hasPlexEnvConfig(): boolean {
-	return Boolean(env.PLEX_SERVER_URL || env.PLEX_TOKEN);
+	// Uses isAuthoritativeEnvValue so a placeholder-only template copy is NOT
+	// reported as env config: otherwise the onboarding Connect step flips into
+	// the env-locked flow (ENV badge, no manual picker, forceManualSelection ->
+	// 400) while getApiConfigWithSources resolves those placeholders to empty —
+	// stranding the operator with no usable config and no UI escape (ISSUE-004).
+	const { serverUrl, token } = getPlexEnvConfig();
+	return isAuthoritativeEnvValue(serverUrl) || isAuthoritativeEnvValue(token);
 }
 
 export function hasOpenAIEnvConfig(): boolean {
@@ -1039,7 +1134,12 @@ export async function clearConflictingDbSettings(): Promise<string[]> {
 	const dbSettings = await getAllAppSettings();
 
 	for (const { envValue, dbKey, label } of envToDbMapping) {
-		if (envValue && dbSettings[dbKey]) {
+		// Only an env value that resolveConfigValue would actually treat as
+		// authoritative (non-empty AND not a placeholder sentinel) may clear a
+		// conflicting DB row. Otherwise a shipped .env.example placeholder like
+		// `http://localhost:32400` would delete a real admin-configured value and
+		// resolveConfigValue would then fall through to the empty default.
+		if (envValue && !isPlaceholderSentinel(envValue) && dbSettings[dbKey]) {
 			await deleteAppSetting(dbKey);
 			clearedSettings.push(label);
 		}
@@ -1049,7 +1149,12 @@ export async function clearConflictingDbSettings(): Promise<string[]> {
 	// have been derived from a different PLEX_SERVER_URL/PLEX_TOKEN (e.g. the env
 	// changed between restarts). Drop the cache so the next call to
 	// getConfiguredServerMachineId() re-fetches /identity against the current config.
-	if ((plexEnv.serverUrl || plexEnv.token) && dbSettings[AppSettingsKey.SERVER_MACHINE_ID]) {
+	const plexServerUrlAuthoritative = isAuthoritativeEnvValue(plexEnv.serverUrl);
+	const plexTokenAuthoritative = isAuthoritativeEnvValue(plexEnv.token);
+	if (
+		(plexServerUrlAuthoritative || plexTokenAuthoritative) &&
+		dbSettings[AppSettingsKey.SERVER_MACHINE_ID]
+	) {
 		await deleteAppSetting(AppSettingsKey.SERVER_MACHINE_ID);
 		clearedSettings.push('SERVER_MACHINE_ID');
 	}

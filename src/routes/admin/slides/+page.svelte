@@ -1,9 +1,13 @@
 <script lang="ts">
+import Pencil from '@lucide/svelte/icons/pencil';
 import Plus from '@lucide/svelte/icons/plus';
+import Trash2 from '@lucide/svelte/icons/trash-2';
 import { untrack } from 'svelte';
 import { enhance } from '$app/forms';
+import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import type { SlideType } from '$lib/components/slides/types';
 import { DEFAULT_SLIDE_ORDER } from '$lib/components/slides/types';
+import { Button } from '$lib/components/ui/button';
 import { handleFormToast } from '$lib/utils/form-toast';
 import { submitAction } from '$lib/utils/submit-action';
 import type { ActionData, PageData } from './$types';
@@ -60,10 +64,6 @@ let customCount = $state(untrack(() => data.funFactFrequency.count));
 let syncedFrequencyKey = $state(
 	untrack(() => `${data.funFactFrequency.mode}:${data.funFactFrequency.count}`)
 );
-
-function selectFrequencyMode(mode: typeof data.funFactFrequency.mode): void {
-	selectedFrequencyMode = mode;
-}
 
 // Avoid resetting the radio while the user is selecting Custom before submit.
 $effect(() => {
@@ -291,6 +291,10 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 }
 </script>
 
+<svelte:head>
+	<title>Slides — Admin — Obzorarr</title>
+</svelte:head>
+
 <div class="admin-container">
 	<div class="admin-page-content" inert={showEditor} aria-hidden={showEditor ? 'true' : undefined}>
 	<header class="admin-header">
@@ -307,10 +311,10 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 					Drag and drop to reorder. Toggle to enable or disable slides.
 				</p>
 			</div>
-			<button type="button" class="add-button" onclick={openNewEditor}>
+			<Button type="button" class="add-button tap-target" onclick={openNewEditor}>
 				<Plus class="add-button-icon" />
 				Add Custom Slide
-			</button>
+			</Button>
 		</div>
 
 		<!-- Hidden form for reordering -->
@@ -341,18 +345,22 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 
 						<form method="POST" action="?/toggleSlide" use:enhance class="toggle-form">
 							<input type="hidden" name="slideType" value={item.slideType} />
-							<button
-								type="submit"
-								class="toggle-button"
-								class:enabled={item.enabled}
+							<SubmitButton
+								class={`toggle-button tap-target ${item.enabled ? 'enabled' : ''}`}
 								aria-label={item.enabled ? 'Disable slide' : 'Enable slide'}
 							>
-								{item.enabled ? 'Enabled' : 'Disabled'}
-							</button>
+								{#snippet children()}
+									{item.enabled ? 'Enabled' : 'Disabled'}
+								{/snippet}
+							</SubmitButton>
 						</form>
 					{:else}
 						<div class="slide-name-group">
-							<span class="slide-name">{item.title}</span>
+							{#if item.title.trim().length > 0}
+								<span class="slide-name">{item.title}</span>
+							{:else}
+								<span class="slide-name slide-name-untitled">Untitled custom slide</span>
+							{/if}
 							<span class="custom-badge">Custom</span>
 							{#if item.year}
 								<span class="year-badge">{item.year}</span>
@@ -360,41 +368,28 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 						</div>
 
 						<div class="slide-actions">
-							<button
+							<Button
 								type="button"
-								class="action-button edit-action"
+								class="action-button edit-action tap-target"
 								onclick={() => {
 									const slide = getCustomSlideForEdit(item);
 									if (slide) openEditEditor(slide);
 								}}
 								aria-label="Edit custom slide"
 							>
-								<svg
-									xmlns="http://www.w3.org/2000/svg"
-									width="14"
-									height="14"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-								>
-									<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-									<path d="m15 5 4 4" />
-								</svg>
-							</button>
+								<Pencil class="size-[14px]" />
+							</Button>
 
 							<form method="POST" action="?/toggleCustomSlide" use:enhance class="toggle-form">
 								<input type="hidden" name="id" value={item.id} />
-								<button
-									type="submit"
-									class="toggle-button"
-									class:enabled={item.enabled}
+								<SubmitButton
+									class={`toggle-button tap-target ${item.enabled ? 'enabled' : ''}`}
 									aria-label={item.enabled ? 'Disable slide' : 'Enable slide'}
 								>
-									{item.enabled ? 'Enabled' : 'Disabled'}
-								</button>
+									{#snippet children()}
+										{item.enabled ? 'Enabled' : 'Disabled'}
+									{/snippet}
+								</SubmitButton>
 							</form>
 
 							{#if deletingSlideId === item.id}
@@ -404,21 +399,22 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 									</span>
 									<form method="POST" action="?/deleteCustom" use:enhance class="delete-form">
 										<input type="hidden" name="id" value={item.id} />
-										<button
-											type="submit"
-											class="confirm-button"
+										<SubmitButton
+											class="confirm-button tap-target"
 											aria-label={`Confirm delete "${item.title}"`}
 										>
-											Delete
-										</button>
+											{#snippet children()}
+												Delete
+											{/snippet}
+										</SubmitButton>
 									</form>
-									<button
+									<Button
 										type="button"
-										class="cancel-delete-button"
+										class="cancel-delete-button tap-target"
 										onclick={() => (deletingSlideId = null)}
 									>
 										Cancel
-									</button>
+									</Button>
 								</div>
 							{:else}
 								<form
@@ -432,27 +428,14 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 									}}
 								>
 									<input type="hidden" name="id" value={item.id} />
-									<button
-										type="submit"
-										class="action-button delete-action"
+									<SubmitButton
+										class="action-button delete-action tap-target"
 										aria-label="Delete custom slide"
 									>
-										<svg
-											xmlns="http://www.w3.org/2000/svg"
-											width="14"
-											height="14"
-											viewBox="0 0 24 24"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="2"
-											stroke-linecap="round"
-											stroke-linejoin="round"
-										>
-											<path d="M3 6h18" />
-											<path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-											<path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-										</svg>
-									</button>
+										{#snippet children()}
+											<Trash2 class="size-[14px]" />
+										{/snippet}
+									</SubmitButton>
 								</form>
 							{/if}
 						</div>
@@ -490,13 +473,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 		>
 			<div class="frequency-options">
 				<label class="frequency-option">
-					<input
-						type="radio"
-						name="mode"
-						value="few"
-						checked={selectedFrequencyMode === 'few'}
-						onchange={() => selectFrequencyMode('few')}
-					/>
+					<input type="radio" name="mode" value="few" bind:group={selectedFrequencyMode} />
 					<span class="frequency-label">
 						<span class="frequency-name">Few</span>
 						<span class="frequency-desc">2 fun facts</span>
@@ -504,13 +481,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 				</label>
 
 				<label class="frequency-option">
-					<input
-						type="radio"
-						name="mode"
-						value="normal"
-						checked={selectedFrequencyMode === 'normal'}
-						onchange={() => selectFrequencyMode('normal')}
-					/>
+					<input type="radio" name="mode" value="normal" bind:group={selectedFrequencyMode} />
 					<span class="frequency-label">
 						<span class="frequency-name">Normal</span>
 						<span class="frequency-desc">4 fun facts</span>
@@ -518,13 +489,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 				</label>
 
 				<label class="frequency-option">
-					<input
-						type="radio"
-						name="mode"
-						value="many"
-						checked={selectedFrequencyMode === 'many'}
-						onchange={() => selectFrequencyMode('many')}
-					/>
+					<input type="radio" name="mode" value="many" bind:group={selectedFrequencyMode} />
 					<span class="frequency-label">
 						<span class="frequency-name">Many</span>
 						<span class="frequency-desc">8 fun facts</span>
@@ -532,13 +497,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 				</label>
 
 				<label class="frequency-option">
-					<input
-						type="radio"
-						name="mode"
-						value="custom"
-						checked={selectedFrequencyMode === 'custom'}
-						onchange={() => selectFrequencyMode('custom')}
-					/>
+					<input type="radio" name="mode" value="custom" bind:group={selectedFrequencyMode} />
 					<span class="frequency-label">
 						<span class="frequency-name">Custom</span>
 						<span class="frequency-desc">1-15 fun facts</span>
@@ -564,13 +523,14 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 				</div>
 			{/if}
 
-			<button
-				type="submit"
-				class="save-frequency-button"
+			<SubmitButton
+				class="save-frequency-button tap-target"
 				disabled={selectedFrequencyMode === 'custom' && (customCount < 1 || customCount > 15)}
 			>
-			Save Frequency Settings
-		</button>
+				{#snippet children()}
+					Save Frequency Settings
+				{/snippet}
+			</SubmitButton>
 	</form>
 	</section>
 	</div>
@@ -592,9 +552,14 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 					<h2 id="editor-title">
 						{editingSlide ? 'Edit Custom Slide' : 'Create Custom Slide'}
 					</h2>
-					<button type="button" class="close-button" onclick={closeEditor} aria-label="Close">
+					<Button
+						type="button"
+						class="close-button tap-target"
+						onclick={closeEditor}
+						aria-label="Close"
+					>
 						&times;
-					</button>
+					</Button>
 				</header>
 
 				<form
@@ -682,7 +647,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 					<!-- Preview Section -->
 					<div class="preview-section">
 						<h3>Preview</h3>
-						<button
+						<Button
 							type="button"
 							class="preview-button tap-target"
 							onclick={async () => {
@@ -736,7 +701,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 							}}
 						>
 							Update Preview
-						</button>
+						</Button>
 
 						<div class="preview-content">
 							{#if previewError}
@@ -755,10 +720,14 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 					</div>
 
 					<div class="modal-actions">
-						<button type="button" class="cancel-button" onclick={closeEditor}> Cancel </button>
-						<button type="submit" class="save-button">
-							{editingSlide ? 'Save Changes' : 'Create Slide'}
-						</button>
+						<Button type="button" class="cancel-button tap-target" onclick={closeEditor}>
+							Cancel
+						</Button>
+						<SubmitButton class="save-button tap-target">
+							{#snippet children()}
+								{editingSlide ? 'Save Changes' : 'Create Slide'}
+							{/snippet}
+						</SubmitButton>
 					</div>
 				</form>
 			</div>
@@ -776,7 +745,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 		.field-error {
 			display: block;
 			font-size: 0.75rem;
-			color: hsl(var(--destructive));
+			color: oklch(var(--destructive));
 			margin-top: 0.375rem;
 		}
 
@@ -787,18 +756,18 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 		.admin-header h1 {
 			font-size: 2rem;
 			font-weight: 700;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			margin: 0 0 0.5rem;
 		}
 
 		.subtitle {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin: 0;
 		}
 
 		.section {
-			background: hsl(var(--card));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--card));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
 			padding: 1.5rem;
 			margin-bottom: 2rem;
@@ -807,7 +776,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 		.section h2 {
 			font-size: 1.25rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			margin: 0 0 0.5rem;
 		}
 
@@ -832,7 +801,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 		}
 
 		.section-description {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-size: 0.875rem;
 			margin: 0 0 1rem;
 		}
@@ -848,7 +817,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			align-items: center;
 			gap: 1rem;
 			padding: 0.75rem 1rem;
-			background: hsl(var(--secondary));
+			background: oklch(var(--secondary));
 			border-radius: var(--radius);
 			margin-bottom: 0.5rem;
 			cursor: grab;
@@ -860,7 +829,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 		}
 
 		.slide-item:hover {
-			background: hsl(var(--muted));
+			background: oklch(var(--muted));
 		}
 
 		.slide-item.dragging {
@@ -868,22 +837,22 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 		}
 
 		.slide-item.drag-over {
-			border: 2px dashed hsl(var(--primary));
-			border-left: 3px solid hsl(var(--primary));
+			border: 2px dashed oklch(var(--primary));
+			border-left: 3px solid oklch(var(--primary));
 		}
 
 		/* Custom slide styling with distinct visual indicator */
 		.slide-item.is-custom {
-			border-left: 3px solid hsl(280 65% 60%);
-			background: linear-gradient(90deg, hsl(280 65% 60% / 0.08) 0%, hsl(var(--secondary)) 100%);
+			border-left: 3px solid oklch(0.6192 0.2037 312.73);
+			background: linear-gradient(90deg, oklch(0.6192 0.2037 312.73 / 0.08) 0%, oklch(var(--secondary)) 100%);
 		}
 
 		.slide-item.is-custom:hover {
-			background: linear-gradient(90deg, hsl(280 65% 60% / 0.12) 0%, hsl(var(--muted)) 100%);
+			background: linear-gradient(90deg, oklch(0.6192 0.2037 312.73 / 0.12) 0%, oklch(var(--muted)) 100%);
 		}
 
 		.drag-handle {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-size: 1.25rem;
 			cursor: grab;
 			user-select: none;
@@ -893,6 +862,11 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 		.slide-name {
 			flex: 1;
 			font-weight: 500;
+		}
+
+		.slide-name-untitled {
+			color: oklch(var(--muted-foreground));
+			font-style: italic;
 		}
 
 		.slide-name-group {
@@ -907,8 +881,8 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			display: inline-flex;
 			align-items: center;
 			padding: 0.125rem 0.5rem;
-			background: hsl(280 65% 60% / 0.2);
-			color: hsl(280 65% 75%);
+			background: oklch(0.6192 0.2037 312.73 / 0.2);
+			color: oklch(0.7546 0.1294 313.96);
 			border-radius: 9999px;
 			font-size: 0.625rem;
 			font-weight: 600;
@@ -920,8 +894,8 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			display: inline-flex;
 			align-items: center;
 			padding: 0.125rem 0.375rem;
-			background: hsl(var(--muted));
-			color: hsl(var(--muted-foreground));
+			background: oklch(var(--muted));
+			color: oklch(var(--muted-foreground));
 			border-radius: var(--radius);
 			font-size: 0.625rem;
 			font-weight: 500;
@@ -933,36 +907,43 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			gap: 0.375rem;
 		}
 
-		.action-button {
+		/* `.action-button` is the per-row 28px-square icon-action CTA
+		   (edit-action + delete-action variants). Hoisted to :global so
+		   shadcn Button's child-rendered <button> inherits the muted-
+		   default + primary-on-hover (edit) / destructive-on-hover
+		   (delete) palette swaps. The `.delete-action` button stays
+		   native this iteration (inside the confirm/cancel flow); the
+		   shared rules below cover both consumers. */
+		:global(.action-button) {
 			display: inline-flex;
 			align-items: center;
 			justify-content: center;
 			width: 28px;
 			height: 28px;
 			padding: 0;
-			background: hsl(var(--muted));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--muted));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			cursor: pointer;
 			transition: all 0.15s ease;
 		}
 
-		.action-button:hover {
-			background: hsl(var(--secondary));
-			color: hsl(var(--foreground));
+		:global(.action-button:hover) {
+			background: oklch(var(--secondary));
+			color: oklch(var(--foreground));
 		}
 
-		.action-button.edit-action:hover {
-			background: hsl(var(--primary));
-			color: hsl(var(--primary-foreground));
-			border-color: hsl(var(--primary));
+		:global(.action-button.edit-action:hover) {
+			background: oklch(var(--primary));
+			color: oklch(var(--primary-foreground));
+			border-color: oklch(var(--primary));
 		}
 
-		.action-button.delete-action:hover {
-			background: hsl(var(--destructive));
-			color: hsl(var(--destructive-foreground));
-			border-color: hsl(var(--destructive));
+		:global(.action-button.delete-action:hover) {
+			background: oklch(var(--destructive));
+			color: oklch(var(--destructive-foreground));
+			border-color: oklch(var(--destructive));
 		}
 
 		.delete-form {
@@ -982,18 +963,22 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 
 		.confirm-delete-text {
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.confirm-delete-text strong {
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			font-weight: 600;
 		}
 
-		.confirm-button {
+		/* `.confirm-button` + `.cancel-delete-button` are the destructive-
+		   confirmation pair inside each slide row's delete flow. Hoisted
+		   to :global so SubmitButton (confirm) + shadcn Button (cancel)
+		   inherit their respective palettes (destructive vs muted). */
+		:global(.confirm-button) {
 			padding: 0.25rem 0.5rem;
-			background: hsl(var(--destructive));
-			color: hsl(var(--destructive-foreground));
+			background: oklch(var(--destructive));
+			color: oklch(var(--destructive-foreground));
 			border: none;
 			border-radius: var(--radius);
 			font-size: 0.75rem;
@@ -1001,57 +986,69 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			cursor: pointer;
 		}
 
-		.confirm-button:hover {
+		:global(.confirm-button:hover) {
 			opacity: 0.9;
 		}
 
-		.cancel-delete-button {
+		:global(.cancel-delete-button) {
 			padding: 0.25rem 0.5rem;
-			background: hsl(var(--muted));
-			color: hsl(var(--muted-foreground));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--muted));
+			color: oklch(var(--muted-foreground));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
 			font-size: 0.75rem;
 			cursor: pointer;
 		}
 
-		.cancel-delete-button:hover {
-			background: hsl(var(--secondary));
+		:global(.cancel-delete-button:hover) {
+			background: oklch(var(--secondary));
 		}
 
 		.toggle-form {
 			margin: 0;
 		}
 
-		.toggle-button {
+		/* `.toggle-button` is the per-row Enabled/Disabled toggle CTA
+		   (used by both built-in slides + custom slides). Hoisted to
+		   :global so SubmitButton's child-rendered <button> inherits
+		   the muted-default vs primary-enabled palette swap. The
+		   `.enabled` modifier toggles via template-literal class prop
+		   (same pattern as admin/users iteration 108). */
+		:global(.toggle-button) {
 			padding: 0.375rem 0.75rem;
-			border: 1px solid hsl(var(--border));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
-			background: hsl(var(--muted));
-			color: hsl(var(--muted-foreground));
+			background: oklch(var(--muted));
+			color: oklch(var(--muted-foreground));
 			font-size: 0.75rem;
 			font-weight: 500;
 			cursor: pointer;
 			transition: all 0.15s ease;
 		}
 
-		.toggle-button.enabled {
-			background: hsl(var(--primary));
-			color: hsl(var(--primary-foreground));
-			border-color: hsl(var(--primary));
+		:global(.toggle-button.enabled) {
+			background: oklch(var(--primary));
+			color: oklch(var(--primary-foreground));
+			border-color: oklch(var(--primary));
 		}
 
-		.toggle-button:hover {
+		:global(.toggle-button:hover) {
 			opacity: 0.9;
 		}
 
-		.add-button {
+		/* `.add-button` is the section-header primary CTA ("Add Custom
+		   Slide"). Hoisted to :global so shadcn Button's child-rendered
+		   <button> inherits the primary palette + hover translate-y.
+		   The `.add-button-icon` descendant rule (lucide Plus sizing)
+		   stays — the previous hybrid scoped+global selector is fully
+		   globalised now. */
+		:global(.add-button) {
 			display: inline-flex;
 			align-items: center;
 			gap: 0.5rem;
 			padding: 0.5rem 1rem;
-			background: hsl(var(--primary));
-			color: hsl(var(--primary-foreground));
+			background: oklch(var(--primary));
+			color: oklch(var(--primary-foreground));
 			border: none;
 			border-radius: var(--radius);
 			font-weight: 500;
@@ -1062,19 +1059,19 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			flex-shrink: 0;
 		}
 
-		.add-button:hover {
+		:global(.add-button:hover) {
 			opacity: 0.9;
 			transform: translateY(-1px);
 		}
 
-		.add-button :global(.add-button-icon) {
+		:global(.add-button .add-button-icon) {
 			width: 1rem;
 			height: 1rem;
 			flex-shrink: 0;
 		}
 
 		.empty-message {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-align: center;
 			padding: 2rem;
 		}
@@ -1092,8 +1089,8 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 		}
 
 		.modal {
-			background: hsl(var(--card));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--card));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
 			width: 100%;
 			max-width: 600px;
@@ -1106,7 +1103,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			justify-content: space-between;
 			align-items: center;
 			padding: 1rem 1.5rem;
-			border-bottom: 1px solid hsl(var(--border));
+			border-bottom: 1px solid oklch(var(--border));
 		}
 
 		.modal-header h2 {
@@ -1115,18 +1112,21 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			margin: 0;
 		}
 
-		.close-button {
+		/* `.close-button` is the modal-header X dismiss CTA. Hoisted to
+		   :global so shadcn Button's child-rendered <button> inherits
+		   the transparent background + large × glyph treatment. */
+		:global(.close-button) {
 			background: none;
 			border: none;
 			font-size: 1.5rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			cursor: pointer;
 			padding: 0;
 			line-height: 1;
 		}
 
-		.close-button:hover {
-			color: hsl(var(--foreground));
+		:global(.close-button:hover) {
+			color: oklch(var(--foreground));
 		}
 
 		.modal form {
@@ -1142,17 +1142,17 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			font-size: 0.875rem;
 			font-weight: 500;
 			margin-bottom: 0.375rem;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.form-group input[type='text'],
 		.form-group textarea {
 			width: 100%;
 			padding: 0.5rem 0.75rem;
-			background: hsl(var(--input));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--input));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			font-size: 0.875rem;
 			font-family: inherit;
 		}
@@ -1160,8 +1160,8 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 		.form-group input:focus,
 		.form-group textarea:focus {
 			outline: none;
-			border-color: hsl(var(--ring));
-			box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+			border-color: oklch(var(--ring));
+			box-shadow: 0 0 0 2px oklch(var(--ring) / 0.2);
 		}
 
 		.form-group textarea {
@@ -1195,10 +1195,10 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 		.year-select {
 			width: 100%;
 			padding: 0.5rem 0.75rem;
-			background: hsl(var(--input));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--input));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			font-size: 0.875rem;
 			font-family: inherit;
 			cursor: pointer;
@@ -1206,14 +1206,14 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 
 		.year-select:focus {
 			outline: none;
-			border-color: hsl(var(--ring));
-			box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+			border-color: oklch(var(--ring));
+			box-shadow: 0 0 0 2px oklch(var(--ring) / 0.2);
 		}
 
 		.field-hint {
 			display: block;
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin-top: 0.375rem;
 		}
 
@@ -1223,38 +1223,38 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			gap: 0.625rem;
 			cursor: pointer;
 			padding: 0.5rem 0.75rem;
-			background: hsl(var(--input));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--input));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
 			transition: all 0.15s ease;
 		}
 
 		.checkbox-toggle:hover {
-			background: hsl(var(--muted));
+			background: oklch(var(--muted));
 		}
 
 		.checkbox-toggle:has(input:checked) {
-			background: hsl(var(--primary) / 0.15);
-			border-color: hsl(var(--primary) / 0.5);
+			background: oklch(var(--primary) / 0.15);
+			border-color: oklch(var(--primary) / 0.5);
 		}
 
 		.checkbox-toggle input {
 			width: 1rem;
 			height: 1rem;
-			accent-color: hsl(var(--primary));
+			accent-color: oklch(var(--primary));
 			margin: 0;
 		}
 
 		.toggle-label {
 			font-size: 0.875rem;
 			font-weight: 500;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.preview-section {
 			margin-top: 1.5rem;
 			padding-top: 1rem;
-			border-top: 1px solid hsl(var(--border));
+			border-top: 1px solid oklch(var(--border));
 		}
 
 		.preview-section h3 {
@@ -1263,24 +1263,31 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			margin: 0 0 0.75rem;
 		}
 
-		.preview-button {
+		/* `.preview-button` is the "Update Preview" CTA inside the slide
+		   editor (triggers an async ?/previewMarkdown submitAction call).
+		   Hoisted to :global so shadcn Button's child-rendered <button>
+		   inherits the secondary palette + hover-darken. The button stays
+		   client-side `type="button"` because the async submitAction
+		   handler manages the preview state directly rather than relying
+		   on form submission. */
+		:global(.preview-button) {
 			padding: 0.375rem 0.75rem;
-			background: hsl(var(--secondary));
-			color: hsl(var(--foreground));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--secondary));
+			color: oklch(var(--foreground));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
 			font-size: 0.75rem;
 			cursor: pointer;
 			margin-bottom: 0.75rem;
 		}
 
-		.preview-button:hover {
-			background: hsl(var(--muted));
+		:global(.preview-button:hover) {
+			background: oklch(var(--muted));
 		}
 
 		.preview-content {
-			background: hsl(var(--background));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--background));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
 			padding: 1rem;
 			min-height: 100px;
@@ -1293,7 +1300,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 		}
 
 		.preview-placeholder {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-style: italic;
 			margin: 0;
 		}
@@ -1305,30 +1312,33 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			margin-top: 1.5rem;
 			padding-top: 0.75rem;
 			padding-bottom: 0.25rem;
-			border-top: 1px solid hsl(var(--border));
+			border-top: 1px solid oklch(var(--border));
 			position: sticky;
 			bottom: 0;
-			background: hsl(var(--card));
+			background: oklch(var(--card));
 			z-index: 1;
 		}
 
-		.cancel-button {
+		/* `.cancel-button` + `.save-button` are the editor modal's footer
+		   action pair. Hoisted to :global so shadcn Button (cancel) +
+		   SubmitButton (save) inherit their secondary/primary palettes. */
+		:global(.cancel-button) {
 			padding: 0.5rem 1rem;
-			background: hsl(var(--secondary));
-			color: hsl(var(--foreground));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--secondary));
+			color: oklch(var(--foreground));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
 			cursor: pointer;
 		}
 
-		.cancel-button:hover {
-			background: hsl(var(--muted));
+		:global(.cancel-button:hover) {
+			background: oklch(var(--muted));
 		}
 
-		.save-button {
+		:global(.save-button) {
 			padding: 0.5rem 1rem;
-			background: hsl(var(--primary));
-			color: hsl(var(--primary-foreground));
+			background: oklch(var(--primary));
+			color: oklch(var(--primary-foreground));
 			border: none;
 			border-radius: var(--radius);
 			font-weight: 500;
@@ -1337,7 +1347,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			z-index: 2;
 		}
 
-		.save-button:hover {
+		:global(.save-button:hover) {
 			opacity: 0.9;
 		}
 
@@ -1345,7 +1355,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 		.preview-content :global(h1),
 		.preview-content :global(h2),
 		.preview-content :global(h3) {
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			margin-top: 1rem;
 			margin-bottom: 0.5rem;
 		}
@@ -1373,12 +1383,12 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 		}
 
 		.preview-content :global(strong) {
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			font-weight: 700;
 		}
 
 		.preview-content :global(code) {
-			background: hsl(var(--muted));
+			background: oklch(var(--muted));
 			padding: 0.125rem 0.25rem;
 			border-radius: 0.25rem;
 			font-family: monospace;
@@ -1386,10 +1396,10 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 		}
 
 		.preview-content :global(blockquote) {
-			border-left: 3px solid hsl(var(--primary));
+			border-left: 3px solid oklch(var(--primary));
 			padding-left: 1rem;
 			margin: 0.75rem 0;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-style: italic;
 		}
 
@@ -1406,25 +1416,25 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			align-items: center;
 			gap: 0.75rem;
 			padding: 0.75rem 1rem;
-			background: hsl(var(--secondary));
+			background: oklch(var(--secondary));
 			border-radius: var(--radius);
 			cursor: pointer;
 			transition: background 0.15s ease;
 		}
 
 		.frequency-option:hover {
-			background: hsl(var(--muted));
+			background: oklch(var(--muted));
 		}
 
 		.frequency-option:has(input:checked) {
-			background: hsl(var(--primary) / 0.15);
-			outline: 2px solid hsl(var(--primary));
+			background: oklch(var(--primary) / 0.15);
+			outline: 2px solid oklch(var(--primary));
 		}
 
 		.frequency-option input[type='radio'] {
 			width: 1rem;
 			height: 1rem;
-			accent-color: hsl(var(--primary));
+			accent-color: oklch(var(--primary));
 			margin: 0;
 		}
 
@@ -1437,12 +1447,12 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 		.frequency-name {
 			font-weight: 600;
 			font-size: 0.875rem;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.frequency-desc {
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.custom-count-input {
@@ -1451,46 +1461,52 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			gap: 0.75rem;
 			margin-bottom: 1rem;
 			padding: 0.75rem 1rem;
-			background: hsl(var(--secondary));
+			background: oklch(var(--secondary));
 			border-radius: var(--radius);
 		}
 
 		.custom-count-input label {
 			font-size: 0.875rem;
 			font-weight: 500;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.custom-count-input input[type='number'] {
 			width: 80px;
 			padding: 0.375rem 0.5rem;
-			background: hsl(var(--input));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--input));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			font-size: 0.875rem;
 		}
 
 		.custom-count-input input[type='number']:focus {
 			outline: none;
-			border-color: hsl(var(--ring));
-			box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+			border-color: oklch(var(--ring));
+			box-shadow: 0 0 0 2px oklch(var(--ring) / 0.2);
 		}
 
 		.custom-count-error {
 			font-size: 0.75rem;
-			color: hsl(var(--destructive));
+			color: oklch(var(--destructive));
 		}
 
-		.save-frequency-button:disabled {
+		/* `.save-frequency-button` is the Fun Fact frequency form's
+		   submit CTA. Hoisted to :global so SubmitButton's child-
+		   rendered <button> inherits the primary palette + hover-fade.
+		   The :disabled fade gates on the custom-count out-of-range
+		   condition (1-15 range enforced by the parent's disabled
+		   predicate). */
+		:global(.save-frequency-button:disabled) {
 			opacity: 0.5;
 			cursor: not-allowed;
 		}
 
-		.save-frequency-button {
+		:global(.save-frequency-button) {
 			padding: 0.5rem 1rem;
-			background: hsl(var(--primary));
-			color: hsl(var(--primary-foreground));
+			background: oklch(var(--primary));
+			color: oklch(var(--primary-foreground));
 			border: none;
 			border-radius: var(--radius);
 			font-weight: 500;
@@ -1498,7 +1514,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			transition: opacity 0.15s ease;
 		}
 
-		.save-frequency-button:hover {
+		:global(.save-frequency-button:hover) {
 			opacity: 0.9;
 		}
 
@@ -1508,7 +1524,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 				align-items: stretch;
 			}
 
-			.add-button {
+			:global(.add-button) {
 				width: 100%;
 				justify-content: center;
 			}

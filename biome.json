@@ -68,7 +68,7 @@
 			"!**/.svelte-kit",
 			"!**/.omc",
 			"!**/node_modules",
-			"!**/data",
+			"!/data",
 			"!**/dogfood-output",
 			"!**/drizzle",
 			"!**/*.db",

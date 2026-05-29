@@ -1,11 +1,15 @@
 <script lang="ts">
+import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
+import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 import { animate } from 'motion';
 import { tick, untrack } from 'svelte';
 import { enhance } from '$app/forms';
+import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
+import { Button } from '$lib/components/ui/button';
 import { handleFormToast } from '$lib/utils/form-toast';
 import { submitAction } from '$lib/utils/submit-action';
-import { loadThemeFont } from '$lib/utils/theme-fonts';
+import { loadThemeFonts } from '$lib/utils/theme-fonts';
 import type { ActionData, PageData } from './$types';
 
 /**
@@ -73,7 +77,7 @@ $effect(() => {
 	document.body.classList.add(themeClass);
 
 	// Load theme-specific font
-	loadThemeFont(uiTheme);
+	loadThemeFonts(uiTheme);
 });
 
 // Slide toggles
@@ -763,71 +767,50 @@ function getThemeColors(themeValue: string) {
 	{#snippet footer()}
 		<div class="footer-actions">
 			<!-- Previous Button -->
-			<button
+			<Button
 				type="button"
-				class="btn-nav btn-prev"
+				class="btn-nav btn-prev tap-target"
 				disabled={isFirstSubStep || isSubmitting}
 				onclick={prevSubStep}
 			>
-				<svg
-					class="nav-arrow"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-				>
-					<path d="M19 12H5M12 19l-7-7 7-7" />
-				</svg>
+				<ArrowLeftIcon class="nav-arrow" />
 				Previous
-			</button>
+			</Button>
 
 			<!-- Skip Link (center) -->
 			<form method="POST" action="?/skipSettings" use:enhance class="skip-form">
-				<button type="submit" class="btn-skip-link" disabled={isSubmitting}> Skip setup </button>
+				<SubmitButton class="btn-skip-link tap-target" disabled={isSubmitting}>
+					{#snippet children()}
+						Skip setup
+					{/snippet}
+				</SubmitButton>
 			</form>
 
 			<!-- Next / Save Button -->
 			{#if isLastSubStep}
-				<button
-					type="submit"
+				<SubmitButton
 					form="onboarding-settings-form"
-					class="btn-nav btn-save"
-					disabled={isSubmitting}
+					class="btn-nav btn-save tap-target"
+					submitting={isSubmitting}
 				>
-					{#if isSubmitting}
-						<span class="spinner"></span>
-						Saving...
-					{:else}
+					{#snippet children()}
 						Save & Continue
-						<svg
-							class="nav-arrow"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-						>
-							<path d="M5 12h14M12 5l7 7-7 7" />
-						</svg>
-					{/if}
-				</button>
+						<ArrowRightIcon class="nav-arrow" />
+					{/snippet}
+					{#snippet submittingLabel()}
+						Saving...
+					{/snippet}
+				</SubmitButton>
 			{:else}
-				<button
+				<Button
 					type="button"
-					class="btn-nav btn-next"
+					class="btn-nav btn-next tap-target"
 					disabled={isSubmitting}
 					onclick={nextSubStep}
 				>
 					Next
-					<svg
-						class="nav-arrow"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-					>
-						<path d="M5 12h14M12 5l7 7-7 7" />
-					</svg>
-				</button>
+					<ArrowRightIcon class="nav-arrow" />
+				</Button>
 			{/if}
 		</div>
 	{/snippet}
@@ -885,7 +868,7 @@ function getThemeColors(themeValue: string) {
 			gap: 1rem;
 			padding: 0.875rem 1rem;
 			background: rgba(0, 0, 0, 0.2);
-			border: 1px solid hsl(var(--primary) / 0.1);
+			border: 1px solid oklch(var(--primary) / 0.1);
 			border-radius: 0.875rem;
 			margin-bottom: 1rem;
 		}
@@ -934,14 +917,14 @@ function getThemeColors(themeValue: string) {
 		}
 
 		.substep-dot.completed {
-			border-color: hsl(142, 71%, 45%);
-			background: linear-gradient(135deg, hsl(142, 71%, 45%) 0%, hsl(142, 71%, 35%) 100%);
+			border-color: oklch(0.7205 0.192 149.49);
+			background: linear-gradient(135deg, oklch(0.7205 0.192 149.49) 0%, oklch(0.5988 0.1576 149.72) 100%);
 		}
 
 		.substep-dot.active {
-			border-color: hsl(var(--primary));
-			background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
-			box-shadow: 0 0 12px hsl(var(--primary) / 0.4);
+			border-color: oklch(var(--primary));
+			background: linear-gradient(135deg, oklch(var(--primary)) 0%, oklch(var(--accent)) 100%);
+			box-shadow: 0 0 12px oklch(var(--primary) / 0.4);
 		}
 
 		.dot-check {
@@ -1038,7 +1021,11 @@ function getThemeColors(themeValue: string) {
 			transform: translateX(-50%);
 		}
 
-		.btn-skip-link {
+		/* `.btn-skip-link` styled as a low-emphasis text link (underline-
+		   on-hover, transparent background). Hoisted to :global so
+		   SubmitButton's child-rendered <button> inherits the link-style
+		   palette + hover treatment + :disabled fade. */
+		:global(.btn-skip-link) {
 			background: transparent;
 			border: none;
 			color: rgba(255, 255, 255, 0.4);
@@ -1051,17 +1038,23 @@ function getThemeColors(themeValue: string) {
 			text-underline-offset: 2px;
 		}
 
-		.btn-skip-link:hover:not(:disabled) {
+		:global(.btn-skip-link:hover:not(:disabled)) {
 			color: rgba(255, 255, 255, 0.6);
 			text-decoration-color: currentColor;
 		}
 
-		.btn-skip-link:disabled {
+		:global(.btn-skip-link:disabled) {
 			opacity: 0.5;
 			cursor: not-allowed;
 		}
 
-		.btn-nav {
+		/* `.btn-nav` is the shared base for the footer nav trio
+		   (btn-prev + btn-next + btn-save). Hoisted to :global so the
+		   SubmitButton-rendered btn-save (this iteration) inherits the
+		   layout while btn-prev + btn-next stay scoped (still native
+		   <button>s in this file's template — they continue to match
+		   the global selector). */
+		:global(.btn-nav) {
 			display: flex;
 			align-items: center;
 			justify-content: center;
@@ -1074,65 +1067,65 @@ function getThemeColors(themeValue: string) {
 			transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 		}
 
-		.btn-prev {
+		:global(.btn-prev) {
 			background: transparent;
 			border: 1px solid rgba(255, 255, 255, 0.15);
 			color: rgba(255, 255, 255, 0.7);
 		}
 
-		.btn-prev:hover:not(:disabled) {
+		:global(.btn-prev:hover:not(:disabled)) {
 			background: rgba(255, 255, 255, 0.05);
 			border-color: rgba(255, 255, 255, 0.25);
 			color: rgba(255, 255, 255, 0.9);
 		}
 
-		.btn-prev:disabled {
+		:global(.btn-prev:disabled) {
 			opacity: 0.35;
 			cursor: not-allowed;
 		}
 
-		.btn-next {
-			background: hsl(var(--primary) / 0.15);
-			border: 1px solid hsl(var(--primary) / 0.3);
-			color: hsl(var(--primary));
+		:global(.btn-next) {
+			background: oklch(var(--primary) / 0.15);
+			border: 1px solid oklch(var(--primary) / 0.3);
+			color: oklch(var(--primary));
 		}
 
-		.btn-next:hover:not(:disabled) {
-			background: hsl(var(--primary) / 0.25);
-			border-color: hsl(var(--primary) / 0.5);
+		:global(.btn-next:hover:not(:disabled)) {
+			background: oklch(var(--primary) / 0.25);
+			border-color: oklch(var(--primary) / 0.5);
 			transform: translateX(2px);
 		}
 
-		.btn-save {
-			background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+		:global(.btn-save) {
+			background: linear-gradient(135deg, oklch(var(--primary)) 0%, oklch(var(--accent)) 100%);
 			border: none;
-			color: hsl(var(--primary-foreground));
+			color: oklch(var(--primary-foreground));
 			font-weight: 600;
-			box-shadow: 0 4px 16px hsl(var(--primary) / 0.25);
+			box-shadow: 0 4px 16px oklch(var(--primary) / 0.25);
 		}
 
-		.btn-save:hover:not(:disabled) {
+		:global(.btn-save:hover:not(:disabled)) {
 			transform: translateY(-2px);
-			box-shadow: 0 6px 24px hsl(var(--primary) / 0.35);
+			box-shadow: 0 6px 24px oklch(var(--primary) / 0.35);
 		}
 
-		.btn-save:disabled {
+		:global(.btn-save:disabled) {
 			opacity: 0.7;
 			cursor: not-allowed;
 			transform: none;
 		}
 
-		.nav-arrow {
+		:global(.nav-arrow) {
 			width: 1rem;
 			height: 1rem;
 			transition: transform 0.2s ease;
 		}
 
-		.btn-next:hover:not(:disabled) .nav-arrow {
+		:global(.btn-next:hover:not(:disabled) .nav-arrow) {
 			transform: translateX(2px);
 		}
 
-		.btn-prev:hover:not(:disabled) .nav-arrow {
+		:global(.btn-prev:hover:not(:disabled) .nav-arrow) {
 			transform: translateX(-2px);
 		}
 		/* Setting Groups */
@@ -1254,7 +1247,7 @@ function getThemeColors(themeValue: string) {
 		}
 
 		.radio-card:focus-within .radio-card-content {
-			outline: 2px solid hsl(var(--primary));
+			outline: 2px solid oklch(var(--primary));
 			outline-offset: 2px;
 		}
 
@@ -1275,8 +1268,8 @@ function getThemeColors(themeValue: string) {
 		}
 
 		.radio-card.selected .radio-card-content {
-			background: hsl(var(--primary) / 0.08);
-			border-color: hsl(var(--primary) / 0.35);
+			background: oklch(var(--primary) / 0.08);
+			border-color: oklch(var(--primary) / 0.35);
 		}
 
 		.radio-indicator {
@@ -1293,8 +1286,8 @@ function getThemeColors(themeValue: string) {
 		}
 
 		.radio-card.selected .radio-indicator {
-			border-color: hsl(var(--primary));
-			background: hsl(var(--primary));
+			border-color: oklch(var(--primary));
+			background: oklch(var(--primary));
 		}
 
 		.radio-dot {
@@ -1306,7 +1299,7 @@ function getThemeColors(themeValue: string) {
 		}
 
 		.radio-card.selected .radio-dot {
-			background: hsl(var(--primary-foreground));
+			background: oklch(var(--primary-foreground));
 		}
 
 		.radio-text {
@@ -1383,7 +1376,7 @@ function getThemeColors(themeValue: string) {
 		}
 
 		.toggle-switch.active {
-			background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+			background: linear-gradient(135deg, oklch(var(--primary)), oklch(var(--accent)));
 		}
 
 		.toggle-knob {
@@ -1455,7 +1448,7 @@ function getThemeColors(themeValue: string) {
 		}
 
 		.slide-toggle.enabled {
-			border-color: hsl(var(--primary) / 0.2);
+			border-color: oklch(var(--primary) / 0.2);
 		}
 
 		.slide-name {
@@ -1466,7 +1459,7 @@ function getThemeColors(themeValue: string) {
 		/* Frequency Options */
 		.frequency-group {
 			padding-left: 1.5rem;
-			border-left: 2px solid hsl(var(--primary) / 0.2);
+			border-left: 2px solid oklch(var(--primary) / 0.2);
 			animation: fadeSlide 0.3s ease;
 		}
 
@@ -1513,8 +1506,8 @@ function getThemeColors(themeValue: string) {
 		}
 
 		.frequency-option.selected {
-			background: hsl(var(--primary) / 0.1);
-			border-color: hsl(var(--primary) / 0.4);
+			background: oklch(var(--primary) / 0.1);
+			border-color: oklch(var(--primary) / 0.4);
 		}
 
 		.frequency-label {
@@ -1557,7 +1550,7 @@ function getThemeColors(themeValue: string) {
 		.text-input:focus {
 			outline: none;
 			background: rgba(0, 0, 0, 0.35);
-			border-color: hsl(var(--primary) / 0.5);
+			border-color: oklch(var(--primary) / 0.5);
 		}
 
 		.text-input.has-error {
@@ -1622,8 +1615,8 @@ function getThemeColors(themeValue: string) {
 		.spinner {
 			width: 1rem;
 			height: 1rem;
-			border: 2px solid hsl(var(--primary-foreground) / 0.3);
-			border-top-color: hsl(var(--primary-foreground));
+			border: 2px solid oklch(var(--primary-foreground) / 0.3);
+			border-top-color: oklch(var(--primary-foreground));
 			border-radius: 50%;
 			animation: spin 0.8s linear infinite;
 		}
@@ -1708,12 +1701,12 @@ function getThemeColors(themeValue: string) {
 				margin-bottom: 0.5rem;
 			}
 
-			.btn-nav {
+			:global(.btn-nav) {
 				padding: 0.625rem 1rem;
 				font-size: 0.8rem;
 			}
 
-			.btn-skip-link {
+			:global(.btn-skip-link) {
 				font-size: 0.75rem;
 			}
 		}

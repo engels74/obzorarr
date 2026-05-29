@@ -42,18 +42,18 @@ const eraMessage = $derived.by(() => {
 });
 
 const decadeColors: Record<string, string> = {
-	'1950s': 'hsl(45 60% 45%)',
-	'1960s': 'hsl(35 55% 50%)',
-	'1970s': 'hsl(25 60% 50%)',
-	'1980s': 'hsl(330 60% 55%)',
-	'1990s': 'hsl(280 55% 55%)',
-	'2000s': 'hsl(200 60% 50%)',
-	'2010s': 'hsl(170 55% 45%)',
-	'2020s': 'hsl(var(--primary))'
+	'1950s': 'oklch(0.6841 0.1237 89.62)',
+	'1960s': 'oklch(0.6805 0.1199 72.14)',
+	'1970s': 'oklch(0.6436 0.1358 52.91)',
+	'1980s': 'oklch(0.6094 0.1849 353.12)',
+	'1990s': 'oklch(0.5806 0.196 312.63)',
+	'2000s': 'oklch(0.6475 0.1187 235.02)',
+	'2010s': 'oklch(0.6902 0.1123 179.13)',
+	'2020s': 'oklch(var(--primary))'
 };
 
 function getDecadeColor(decade: string): string {
-	return decadeColors[decade] ?? 'hsl(var(--primary))';
+	return decadeColors[decade] ?? 'oklch(var(--primary))';
 }
 
 let container: HTMLElement | undefined = $state();
@@ -206,19 +206,19 @@ $effect(() => {
 		.title {
 			font-size: 1.75rem;
 			font-weight: 700;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			text-transform: uppercase;
 			letter-spacing: 0.05em;
-			text-shadow: 0 0 30px var(--slide-glow-color, hsl(var(--primary) / 0.3));
+			text-shadow: 0 0 30px var(--slide-glow-color, oklch(var(--primary) / 0.3));
 		}
 
 		.chart-container {
 			width: 100%;
 			padding: 1.5rem;
-			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
+			background: var(--slide-glass-bg);
 			backdrop-filter: blur(var(--slide-glass-blur, 20px));
 			-webkit-backdrop-filter: blur(var(--slide-glass-blur, 20px));
-			border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
+			border: 1px solid var(--slide-glass-border);
 			border-radius: calc(var(--radius) * 2);
 		}
 
@@ -275,17 +275,17 @@ $effect(() => {
 		.bar-count {
 			font-size: 0.6875rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.bar-label {
 			font-size: 0.6875rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-weight: 500;
 		}
 
 		.bar-label.top {
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			font-weight: 700;
 		}
 
@@ -312,7 +312,7 @@ $effect(() => {
 
 		.era-message {
 			font-size: 0.875rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.no-data {
@@ -328,14 +328,14 @@ $effect(() => {
 		}
 
 		.empty-message {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-style: italic;
 			font-size: 1.125rem;
 			margin: 0;
 		}
 
 		.empty-hint {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-size: 0.875rem;
 			opacity: 0.7;
 			margin: 0;

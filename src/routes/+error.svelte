@@ -54,15 +54,15 @@ function goBack(): void {
 		align-items: center;
 		justify-content: center;
 		padding: 2rem;
-		background: hsl(var(--background));
+		background: oklch(var(--background));
 	}
 
 	.error-card {
 		max-width: 480px;
 		width: 100%;
 		text-align: center;
-		background: hsl(var(--card));
-		border: 1px solid hsl(var(--border));
+		background: oklch(var(--card));
+		border: 1px solid oklch(var(--border));
 		border-radius: var(--radius);
 		padding: 2.5rem 2rem;
 	}
@@ -70,7 +70,7 @@ function goBack(): void {
 	.status-code {
 		font-size: 4rem;
 		font-weight: 800;
-		color: hsl(var(--primary));
+		color: oklch(var(--primary));
 		line-height: 1;
 		margin-bottom: 0.5rem;
 	}
@@ -79,11 +79,11 @@ function goBack(): void {
 		font-size: 1.5rem;
 		font-weight: 600;
 		margin: 0 0 0.75rem;
-		color: hsl(var(--foreground));
+		color: oklch(var(--foreground));
 	}
 
 	p {
-		color: hsl(var(--muted-foreground));
+		color: oklch(var(--muted-foreground));
 		margin: 0 0 2rem;
 		line-height: 1.5;
 	}
@@ -101,7 +101,7 @@ function goBack(): void {
 		font-size: 0.875rem;
 		font-weight: 500;
 		cursor: pointer;
-		border: 1px solid hsl(var(--border));
+		border: 1px solid oklch(var(--border));
 		transition: opacity 0.15s ease;
 		text-decoration: none;
 		display: inline-flex;
@@ -115,13 +115,13 @@ function goBack(): void {
 	}
 
 	.btn.primary {
-		background: hsl(var(--primary));
-		color: hsl(var(--primary-foreground));
-		border-color: hsl(var(--primary));
+		background: oklch(var(--primary));
+		color: oklch(var(--primary-foreground));
+		border-color: oklch(var(--primary));
 	}
 
 	.btn.secondary {
-		background: hsl(var(--muted));
-		color: hsl(var(--foreground));
+		background: oklch(var(--muted));
+		color: oklch(var(--foreground));
 	}
 </style>

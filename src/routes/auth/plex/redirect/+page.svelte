@@ -1,4 +1,8 @@
 <script lang="ts">
+import CheckIcon from '@lucide/svelte/icons/check';
+import CircleAlertIcon from '@lucide/svelte/icons/circle-alert';
+import CircleXIcon from '@lucide/svelte/icons/circle-x';
+import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 import { onMount } from 'svelte';
 import { browser } from '$app/environment';
 import type { ServerPinFallback } from '$lib/client/plex-login';
@@ -9,6 +13,8 @@ import {
 	resolveRedirectPinData,
 	sanitizeCompletedLoginResponse
 } from '$lib/client/plex-login';
+import { Button } from '$lib/components/ui/button';
+import * as Card from '$lib/components/ui/card';
 import type { PageData } from './$types';
 
 type Status = 'loading' | 'success' | 'error' | 'cancelled';
@@ -111,153 +117,51 @@ function handleRetry(): void {
 </svelte:head>
 
 <div class="redirect-container">
-	{#if status === 'loading'}
-		<div class="status-box loading">
-			<div class="spinner"></div>
-			<h1>Completing Authentication</h1>
-			<p>Please wait while we verify your Plex account...</p>
-		</div>
-	{:else if status === 'success'}
-		<div class="status-box success">
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				width="48"
-				height="48"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-			>
-				<polyline points="20 6 9 17 4 12" />
-			</svg>
-			<h1>Authentication Successful</h1>
-			<p>Redirecting you now...</p>
-		</div>
-	{:else if status === 'cancelled'}
-		<div class="status-box cancelled">
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				width="48"
-				height="48"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-			>
-				<circle cx="12" cy="12" r="10" />
-				<line x1="15" y1="9" x2="9" y2="15" />
-				<line x1="9" y1="9" x2="15" y2="15" />
-			</svg>
-			<h1>Authentication Cancelled</h1>
-			<p>You cancelled the Plex authentication.</p>
-			<button type="button" onclick={handleRetry} class="retry-button">Try Again</button>
-		</div>
-	{:else if status === 'error'}
-		<div class="status-box error">
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				width="48"
-				height="48"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2"
-				stroke-linecap="round"
-				stroke-linejoin="round"
-			>
-				<circle cx="12" cy="12" r="10" />
-				<line x1="12" y1="8" x2="12" y2="12" />
-				<line x1="12" y1="16" x2="12.01" y2="16" />
-			</svg>
-			<h1>Authentication Error</h1>
-			<p>{errorMessage}</p>
-			<button type="button" onclick={handleRetry} class="retry-button">Try Again</button>
-		</div>
-	{/if}
+	<Card.Root class="redirect-card">
+		<Card.Header class="items-center text-center">
+			{#if status === 'loading'}
+				<LoaderCircleIcon class="size-12 text-primary animate-spin" />
+				<Card.Title>Completing Authentication</Card.Title>
+				<Card.Description>Please wait while we verify your Plex account...</Card.Description>
+			{:else if status === 'success'}
+				<CheckIcon class="size-12 text-success" />
+				<Card.Title>Authentication Successful</Card.Title>
+				<Card.Description>Redirecting you now...</Card.Description>
+			{:else if status === 'cancelled'}
+				<CircleXIcon class="size-12 text-muted-foreground" />
+				<Card.Title>Authentication Cancelled</Card.Title>
+				<Card.Description>You cancelled the Plex authentication.</Card.Description>
+			{:else if status === 'error'}
+				<CircleAlertIcon class="size-12 text-destructive" />
+				<Card.Title>Authentication Error</Card.Title>
+				<Card.Description>{errorMessage}</Card.Description>
+			{/if}
+		</Card.Header>
+
+		{#if status === 'cancelled' || status === 'error'}
+			<Card.Footer class="justify-center">
+				<Button class="tap-target" onclick={handleRetry}>Try Again</Button>
+			</Card.Footer>
+		{/if}
+	</Card.Root>
 </div>
 
 <style>
 	.redirect-container {
-			display: flex;
-			justify-content: center;
-			align-items: center;
-			min-height: 100vh;
-			padding: 1rem;
-			background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
-		}
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		min-height: 100vh;
+		padding: 1rem;
+		background: linear-gradient(135deg, oklch(0.12 0 0) 0%, oklch(0.18 0.04 270) 100%);
+	}
 
-		.status-box {
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			text-align: center;
-			padding: 2.5rem;
-			background: hsl(var(--card));
-			border: 1px solid hsl(var(--border));
-			border-radius: 12px;
-			max-width: 400px;
-			width: 100%;
-		}
+	:global(.redirect-card) {
+		max-width: 400px;
+		width: 100%;
+	}
 
-		.status-box h1 {
-			margin: 1rem 0 0.5rem;
-			font-size: 1.5rem;
-			font-weight: 600;
-			color: hsl(var(--foreground));
-		}
-
-		.status-box p {
-			margin: 0;
-			font-size: 0.875rem;
-			color: hsl(var(--muted-foreground));
-			line-height: 1.5;
-		}
-
-		.spinner {
-			width: 48px;
-			height: 48px;
-			border: 3px solid hsl(var(--border));
-			border-top-color: hsl(var(--primary));
-			border-radius: 50%;
-			animation: spin 1s linear infinite;
-		}
-
-		@keyframes spin {
-			to {
-				transform: rotate(360deg);
-			}
-		}
-
-		.success svg {
-			color: #22c55e;
-		}
-
-		.cancelled svg {
-			color: hsl(var(--muted-foreground));
-		}
-
-		.error svg {
-			color: #ef4444;
-		}
-
-		.retry-button {
-			margin-top: 1.5rem;
-			padding: 0.75rem 1.5rem;
-			font-size: 0.875rem;
-			font-weight: 500;
-			color: hsl(var(--primary-foreground));
-			background: hsl(var(--primary));
-			border: none;
-			border-radius: 8px;
-			cursor: pointer;
-			transition: opacity 0.15s ease;
-		}
-
-		.retry-button:hover {
-			opacity: 0.9;
-		}
+	:global(.text-success) {
+		color: oklch(0.72 0.18 145);
+	}
 </style>

@@ -149,7 +149,7 @@ $effect(() => {
 		.title {
 			font-size: 1.5rem;
 			font-weight: 600;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-transform: uppercase;
 			letter-spacing: 0.1em;
 		}
@@ -173,13 +173,13 @@ $effect(() => {
 			border-radius: 50%;
 			background: conic-gradient(
 				from 0deg,
-				hsl(var(--primary)),
-				hsl(calc(var(--primary-hue) + 60) 70% 60%),
-				hsl(calc(var(--primary-hue) + 120) 70% 60%),
-				hsl(calc(var(--primary-hue) + 180) 70% 60%),
-				hsl(calc(var(--primary-hue) + 240) 70% 60%),
-				hsl(calc(var(--primary-hue) + 300) 70% 60%),
-				hsl(var(--primary))
+				oklch(var(--primary)),
+				oklch(var(--primary-wheel-plus-60)),
+				oklch(var(--primary-wheel-plus-120)),
+				oklch(var(--primary-wheel-plus-180)),
+				oklch(var(--primary-wheel-plus-240)),
+				oklch(var(--primary-wheel-plus-300)),
+				oklch(var(--primary))
 			);
 			mask: radial-gradient(farthest-side, transparent calc(100% - 5px), black calc(100% - 4px));
 			-webkit-mask: radial-gradient(
@@ -215,13 +215,13 @@ $effect(() => {
 		.top-performer .gradient-ring {
 			background: conic-gradient(
 				from 0deg,
-				hsl(45 90% 50%),
-				hsl(35 85% 55%),
-				hsl(55 90% 60%),
-				hsl(45 90% 50%),
-				hsl(35 85% 55%),
-				hsl(55 90% 60%),
-				hsl(45 90% 50%)
+				oklch(0.8153 0.1652 85.67),
+				oklch(0.7585 0.1524 69.32),
+				oklch(0.9085 0.1755 103.97),
+				oklch(0.8153 0.1652 85.67),
+				oklch(0.7585 0.1524 69.32),
+				oklch(0.9085 0.1755 103.97),
+				oklch(0.8153 0.1652 85.67)
 			);
 			opacity: 0.9;
 			filter: blur(0.5px);
@@ -233,16 +233,16 @@ $effect(() => {
 			align-items: center;
 			padding: 2rem;
 			border-radius: 50%;
-			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.5));
+			background: var(--slide-glass-bg);
 			backdrop-filter: blur(var(--slide-glass-blur, 20px));
 			-webkit-backdrop-filter: blur(var(--slide-glass-blur, 20px));
 			width: calc(100% - 10px);
 			aspect-ratio: 1;
 			justify-content: center;
 			box-shadow:
-				inset 0 2px 4px hsl(0 0% 100% / 0.1),
-				inset 0 -2px 4px hsl(0 0% 0% / 0.2),
-				var(--shadow-elevation-high, 0 8px 24px hsl(0 0% 0% / 0.4));
+				inset 0 2px 4px oklch(1 0 0 / 0.1),
+				inset 0 -2px 4px oklch(0 0 0 / 0.2),
+				var(--shadow-elevation-high, 0 8px 24px oklch(0 0 0 / 0.4));
 			position: relative;
 			z-index: 1;
 		}
@@ -250,15 +250,15 @@ $effect(() => {
 		/* Glow effect for top performer */
 		.top-performer .stat-container {
 			box-shadow:
-				inset 0 2px 4px hsl(0 0% 100% / 0.15),
-				inset 0 -2px 4px hsl(0 0% 0% / 0.2),
-				var(--shadow-elevation-high, 0 8px 24px hsl(0 0% 0% / 0.4)),
-				0 0 50px hsl(45 90% 50% / 0.25);
+				inset 0 2px 4px oklch(1 0 0 / 0.15),
+				inset 0 -2px 4px oklch(0 0 0 / 0.2),
+				var(--shadow-elevation-high, 0 8px 24px oklch(0 0 0 / 0.4)),
+				0 0 50px oklch(0.8153 0.1652 85.67 / 0.25);
 		}
 
 		.prefix {
 			font-size: 1.125rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-transform: uppercase;
 			letter-spacing: 0.1em;
 			font-weight: 500;
@@ -271,49 +271,49 @@ $effect(() => {
 			/* Gradient text effect */
 			background: linear-gradient(
 				180deg,
-				hsl(var(--primary)) 0%,
-				hsl(calc(var(--primary-hue) + 20) 70% 65%) 100%
+				oklch(var(--primary)) 0%,
+				oklch(var(--primary-accent-plus-20)) 100%
 			);
 			-webkit-background-clip: text;
 			-webkit-text-fill-color: transparent;
 			background-clip: text;
-			filter: drop-shadow(0 0 15px hsl(var(--primary) / 0.4));
+			filter: drop-shadow(0 0 15px oklch(var(--primary) / 0.4));
 		}
 
 		/* Gold gradient for top performer */
 		.top-performer .percentage {
-			background: linear-gradient(180deg, hsl(45 90% 55%) 0%, hsl(35 85% 50%) 100%);
+			background: linear-gradient(180deg, oklch(0.8309 0.1622 87.87) 0%, oklch(0.7358 0.1599 66.01) 100%);
 			-webkit-background-clip: text;
 			-webkit-text-fill-color: transparent;
 			background-clip: text;
-			filter: drop-shadow(0 0 20px hsl(45 90% 50% / 0.5));
+			filter: drop-shadow(0 0 20px oklch(0.8153 0.1652 85.67 / 0.5));
 		}
 
 		.message {
 			font-size: 1.5rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			text-align: center;
 			padding: 0.75rem 1.5rem;
-			background: hsl(var(--primary) / 0.1);
+			background: oklch(var(--primary) / 0.1);
 			border-radius: calc(var(--radius) * 1.5);
-			box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.05);
+			box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.05);
 		}
 
 		/* Gold styling for top performer message */
 		.top-performer ~ .message {
-			background: hsl(45 90% 50% / 0.12);
-			color: hsl(45 75% 65%);
+			background: oklch(0.8153 0.1652 85.67 / 0.12);
+			color: oklch(0.8394 0.1254 91.1);
 			box-shadow:
-				inset 0 1px 0 hsl(45 90% 70% / 0.1),
-				0 0 20px hsl(45 90% 50% / 0.15);
+				inset 0 1px 0 oklch(0.8816 0.1283 91.19 / 0.1),
+				0 0 20px oklch(0.8153 0.1652 85.67 / 0.15);
 		}
 
 		.total-users {
 			font-size: 0.9375rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			padding: 0.375rem 0.875rem;
-			background: hsl(var(--primary) / 0.06);
+			background: oklch(var(--primary) / 0.06);
 			border-radius: var(--radius);
 		}
 

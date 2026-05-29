@@ -73,7 +73,7 @@ const secondaryText = $derived.by(() => {
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			background: hsl(var(--background, 0 0% 4%));
+			background: oklch(var(--background));
 		}
 
 		.loading-content {
@@ -94,8 +94,8 @@ const secondaryText = $derived.by(() => {
 		.spinner {
 			width: 3rem;
 			height: 3rem;
-			border: 3px solid hsl(var(--primary, 0 70% 50%) / 0.2);
-			border-top-color: hsl(var(--primary, 0 70% 50%));
+			border: 3px solid oklch(var(--primary) / 0.2);
+			border-top-color: oklch(var(--primary));
 			border-radius: 50%;
 			animation: spin 1s linear infinite;
 		}
@@ -103,13 +103,13 @@ const secondaryText = $derived.by(() => {
 		.status-text {
 			font-size: 1.25rem;
 			font-weight: 500;
-			color: hsl(var(--foreground, 0 0% 98%));
+			color: oklch(var(--foreground));
 			margin: 0;
 		}
 
 		.secondary-text {
 			font-size: 0.875rem;
-			color: hsl(var(--muted-foreground, 0 0% 64%));
+			color: oklch(var(--muted-foreground));
 			margin: 0;
 		}
 

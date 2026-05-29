@@ -4,8 +4,12 @@ import { AppSettingsKey, setAppSetting } from '$lib/server/admin/settings.servic
 import { db } from '$lib/server/db/client';
 import { appSettings } from '$lib/server/db/schema';
 import {
+	assertEnableTrustProxyAllowed,
 	classifySourceAddress,
-	createReverseProxyDiagnostic
+	createReverseProxyDiagnostic,
+	ENABLE_TRUST_PROXY_NOT_RECOMMENDED_MESSAGE,
+	type ReverseProxyDiagnostic,
+	type ReverseProxyRecommendationAction
 } from '$lib/server/security/reverse-proxy-diagnostic';
 
 function envRecord(): Record<string, string | undefined> {
@@ -232,4 +236,58 @@ describe('reverse proxy diagnostic', () => {
 		expect(classifySourceAddress('8.8.8.8')).toBe('public');
 		expect(classifySourceAddress('not-an-address')).toBe('unknown');
 	});
+});
+
+describe('assertEnableTrustProxyAllowed', () => {
+	function diagnosticWith(action: ReverseProxyRecommendationAction): ReverseProxyDiagnostic {
+		return {
+			trustProxy: { enabled: false, source: 'default', isLocked: false },
+			origins: {
+				rawApp: null,
+				effectiveApp: null,
+				browser: { origin: null, isValid: false },
+				configuredPublic: {
+					origin: null,
+					isValid: false,
+					source: 'default',
+					isConfigured: false,
+					isLocked: false
+				}
+			},
+			forwardedHeaders: {
+				present: [],
+				pair: { status: 'missing', isUsable: false, protoPresent: false, hostPresent: false }
+			},
+			sourceAddress: { category: 'unknown' },
+			originComparison: {
+				browserMatchesRawApp: null,
+				browserMatchesEffectiveApp: null,
+				forwardedPairMatchesBrowser: null
+			},
+			recommendation: { action, summary: '' },
+			reasons: [],
+			safetyNotice: ''
+		};
+	}
+
+	it('allows enabling when the diagnostic recommends enable', () => {
+		expect(assertEnableTrustProxyAllowed(diagnosticWith('enable'))).toEqual({ ok: true });
+	});
+
+	const blockedActions: ReverseProxyRecommendationAction[] = [
+		'leave-disabled',
+		'review-proxy',
+		'appears-working',
+		'unable-to-determine',
+		'env-controlled'
+	];
+
+	for (const action of blockedActions) {
+		it(`rejects enabling when the diagnostic recommendation is "${action}"`, () => {
+			expect(assertEnableTrustProxyAllowed(diagnosticWith(action))).toEqual({
+				ok: false,
+				error: ENABLE_TRUST_PROXY_NOT_RECOMMENDED_MESSAGE
+			});
+		});
+	}
 });

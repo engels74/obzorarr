@@ -6,7 +6,8 @@ import Menu from '@lucide/svelte/icons/menu';
 import Settings from '@lucide/svelte/icons/settings';
 import User from '@lucide/svelte/icons/user';
 import X from '@lucide/svelte/icons/x';
-import type { Component, Snippet } from 'svelte';
+import { type Component, type Snippet, tick } from 'svelte';
+import { browser } from '$app/environment';
 import { enhance } from '$app/forms';
 import { page } from '$app/stores';
 import Logo from '$lib/components/Logo.svelte';
@@ -45,7 +46,39 @@ const isActive = $derived((href: string) => {
 
 // Mobile sidebar state
 let sidebarOpen = $state(false);
+let isMobileSidebar = $state(false);
+let sidebarHiddenFromMobile = $derived(isMobileSidebar && !sidebarOpen);
+let mainContentHiddenFromMobile = $derived(isMobileSidebar && sidebarOpen);
 let avatarError = $state(false);
+let sidebarElement = $state<HTMLElement | undefined>();
+
+const FOCUSABLE_SELECTOR = [
+	'a[href]',
+	'button:not([disabled])',
+	'input:not([disabled])',
+	'select:not([disabled])',
+	'textarea:not([disabled])',
+	'[tabindex]:not([tabindex="-1"])'
+].join(',');
+
+$effect(() => {
+	if (!browser) return;
+
+	const query = window.matchMedia('(max-width: 768px)');
+	const syncMobileState = () => {
+		isMobileSidebar = query.matches;
+	};
+
+	syncMobileState();
+	query.addEventListener('change', syncMobileState);
+
+	return () => query.removeEventListener('change', syncMobileState);
+});
+
+async function focusAfterRender(selector: string) {
+	await tick();
+	document.querySelector<HTMLElement>(selector)?.focus();
+}
 
 // Reset avatar error when thumb URL changes so a new URL gets a fresh load attempt
 $effect(() => {
@@ -55,16 +88,65 @@ $effect(() => {
 
 function toggleSidebar() {
 	sidebarOpen = !sidebarOpen;
+
+	if (sidebarOpen) {
+		void focusAfterRender('.sidebar-close-button');
+	}
 }
 
 function closeSidebar() {
 	sidebarOpen = false;
+	if (isMobileSidebar) {
+		void focusAfterRender('.menu-button');
+	}
+}
+
+function getSidebarFocusableElements(): HTMLElement[] {
+	if (!sidebarElement) return [];
+	return Array.from(sidebarElement.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+		(element) => element.tabIndex >= 0 && element.getClientRects().length > 0
+	);
+}
+
+function trapSidebarFocus(event: KeyboardEvent) {
+	if (!isMobileSidebar || !sidebarOpen || event.key !== 'Tab') return;
+
+	const focusableElements = getSidebarFocusableElements();
+	if (focusableElements.length === 0) {
+		event.preventDefault();
+		sidebarElement?.focus();
+		return;
+	}
+
+	const first = focusableElements[0];
+	const last = focusableElements.at(-1);
+	const activeElement = document.activeElement;
+
+	if (event.shiftKey && (activeElement === first || !sidebarElement?.contains(activeElement))) {
+		event.preventDefault();
+		last?.focus();
+	} else if (
+		!event.shiftKey &&
+		(activeElement === last || !sidebarElement?.contains(activeElement))
+	) {
+		event.preventDefault();
+		first?.focus();
+	}
+}
+
+function handleWindowKeydown(event: KeyboardEvent) {
+	if (isMobileSidebar && sidebarOpen && event.key === 'Escape') {
+		event.preventDefault();
+		closeSidebar();
+	}
 }
 </script>
 
+<svelte:window onkeydown={handleWindowKeydown} />
+
 <div class="dashboard-layout">
 	<!-- Mobile header -->
-	<header class="mobile-header">
+	<header class="mobile-header" class:sidebar-open={sidebarOpen}>
 		<button
 			type="button"
 			class="menu-button"
@@ -96,7 +178,15 @@ function closeSidebar() {
 	{/if}
 
 	<!-- Sidebar -->
-	<aside class="sidebar" class:open={sidebarOpen}>
+	<aside
+		class="sidebar"
+		class:open={sidebarOpen}
+		inert={sidebarHiddenFromMobile}
+		aria-hidden={sidebarHiddenFromMobile ? 'true' : undefined}
+		onkeydown={trapSidebarFocus}
+		tabindex="-1"
+		bind:this={sidebarElement}
+	>
 		<div class="sidebar-header">
 			<div class="sidebar-branding">
 				<Logo size="md" />
@@ -105,6 +195,14 @@ function closeSidebar() {
 					<span class="sidebar-subtitle">Your Wrapped</span>
 				</div>
 			</div>
+			<button
+				type="button"
+				class="sidebar-close-button"
+				onclick={closeSidebar}
+				aria-label="Close navigation"
+			>
+				<X class="sidebar-close-icon" />
+			</button>
 		</div>
 
 		<nav class="sidebar-nav" aria-label="Dashboard navigation">
@@ -163,7 +261,11 @@ function closeSidebar() {
 	</aside>
 
 	<!-- Main content -->
-	<main class="main-content">
+	<main
+		class="main-content"
+		inert={mainContentHiddenFromMobile}
+		aria-hidden={mainContentHiddenFromMobile ? 'true' : undefined}
+	>
 		{@render children()}
 	</main>
 </div>
@@ -172,7 +274,7 @@ function closeSidebar() {
 	.dashboard-layout {
 			display: flex;
 			min-height: 100vh;
-			background: hsl(var(--background));
+			background: oklch(var(--background));
 		}
 
 		/* Mobile header */
@@ -183,9 +285,9 @@ function closeSidebar() {
 			left: 0;
 			right: 0;
 			height: 56px;
-			background: hsl(var(--card) / 0.95);
+			background: oklch(var(--card) / 0.95);
 			backdrop-filter: blur(12px);
-			border-bottom: 1px solid hsl(var(--border));
+			border-bottom: 1px solid oklch(var(--border));
 			padding: 0 1rem;
 			align-items: center;
 			gap: 1rem;
@@ -200,14 +302,14 @@ function closeSidebar() {
 			height: 40px;
 			background: transparent;
 			border: none;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			cursor: pointer;
 			border-radius: 0.5rem;
 			transition: all 0.2s ease;
 		}
 
 		.menu-button:hover {
-			background: hsl(var(--muted));
+			background: oklch(var(--muted));
 		}
 
 		.menu-button :global(.menu-icon) {
@@ -224,7 +326,7 @@ function closeSidebar() {
 		.mobile-title {
 			font-size: 1.125rem;
 			font-weight: 600;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			margin: 0;
 		}
 
@@ -233,7 +335,7 @@ function closeSidebar() {
 			display: none;
 			position: fixed;
 			inset: 0;
-			background: hsl(0 0% 0% / 0.6);
+			background: oklch(0 0 0 / 0.6);
 			backdrop-filter: blur(4px);
 			z-index: 45;
 		}
@@ -245,8 +347,8 @@ function closeSidebar() {
 			left: 0;
 			bottom: 0;
 			width: 260px;
-			background: hsl(var(--card));
-			border-right: 1px solid hsl(var(--border));
+			background: oklch(var(--card));
+			border-right: 1px solid oklch(var(--border));
 			display: flex;
 			flex-direction: column;
 			z-index: 50;
@@ -254,35 +356,73 @@ function closeSidebar() {
 
 		.sidebar-header {
 			padding: 1.25rem 1.5rem;
-			border-bottom: 1px solid hsl(var(--border) / 0.5);
+			border-bottom: 1px solid oklch(var(--border) / 0.5);
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 0.75rem;
+			min-width: 0;
 		}
 
 		.sidebar-branding {
 			display: flex;
 			align-items: center;
 			gap: 0.75rem;
+			flex: 1;
+			min-width: 0;
 		}
 
 		.sidebar-text {
 			display: flex;
 			flex-direction: column;
+			min-width: 0;
 		}
 
 		.sidebar-title {
 			font-size: 1.25rem;
 			font-weight: 700;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			margin: 0;
 			line-height: 1.2;
 			letter-spacing: -0.01em;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
 		}
 
 		.sidebar-subtitle {
 			font-size: 0.6875rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-transform: uppercase;
 			letter-spacing: 0.08em;
 			margin-top: 0.125rem;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+
+		.sidebar-close-button {
+			display: none;
+			align-items: center;
+			justify-content: center;
+			width: 2.25rem;
+			height: 2.25rem;
+			flex: 0 0 2.25rem;
+			background: transparent;
+			border: 1px solid oklch(var(--border) / 0.6);
+			color: oklch(var(--foreground));
+			cursor: pointer;
+			border-radius: 0.5rem;
+			transition: all 0.2s ease;
+		}
+
+		.sidebar-close-button:hover {
+			background: oklch(var(--muted));
+		}
+
+		.sidebar-close-button :global(.sidebar-close-icon) {
+			width: 1rem;
+			height: 1rem;
 		}
 
 		.sidebar-nav {
@@ -305,7 +445,7 @@ function closeSidebar() {
 			align-items: center;
 			gap: 0.75rem;
 			padding: 0.625rem 0.875rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-decoration: none;
 			font-weight: 500;
 			border-radius: 0.5rem;
@@ -314,13 +454,13 @@ function closeSidebar() {
 		}
 
 		.nav-link:hover {
-			background: hsl(var(--muted) / 0.5);
-			color: hsl(var(--foreground));
+			background: oklch(var(--muted) / 0.5);
+			color: oklch(var(--foreground));
 		}
 
 		.nav-link.active {
-			background: hsl(var(--primary) / 0.12);
-			color: hsl(var(--primary));
+			background: oklch(var(--primary) / 0.12);
+			color: oklch(var(--primary));
 		}
 
 		.nav-icon-wrap {
@@ -330,16 +470,16 @@ function closeSidebar() {
 			width: 2rem;
 			height: 2rem;
 			border-radius: 0.375rem;
-			background: hsl(var(--muted) / 0.5);
+			background: oklch(var(--muted) / 0.5);
 			transition: all 0.2s ease;
 		}
 
 		.nav-link:hover .nav-icon-wrap {
-			background: hsl(var(--muted));
+			background: oklch(var(--muted));
 		}
 
 		.nav-icon-wrap.active {
-			background: hsl(var(--primary) / 0.15);
+			background: oklch(var(--primary) / 0.15);
 		}
 
 		.nav-link :global(.nav-icon) {
@@ -349,7 +489,7 @@ function closeSidebar() {
 		}
 
 		.nav-link.active :global(.nav-icon) {
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 		}
 
 		.nav-label {
@@ -360,7 +500,7 @@ function closeSidebar() {
 		.nav-link :global(.nav-indicator) {
 			width: 1rem;
 			height: 1rem;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			opacity: 0;
 			transform: translateX(-4px);
 			transition: all 0.2s ease;
@@ -373,7 +513,7 @@ function closeSidebar() {
 
 		.sidebar-footer {
 			padding: 1rem;
-			border-top: 1px solid hsl(var(--border) / 0.5);
+			border-top: 1px solid oklch(var(--border) / 0.5);
 			display: flex;
 			flex-direction: column;
 			gap: 0.75rem;
@@ -384,9 +524,9 @@ function closeSidebar() {
 			align-items: center;
 			gap: 0.75rem;
 			padding: 0.75rem;
-			background: hsl(var(--muted) / 0.3);
+			background: oklch(var(--muted) / 0.3);
 			border-radius: 0.5rem;
-			border: 1px solid hsl(var(--border) / 0.5);
+			border: 1px solid oklch(var(--border) / 0.5);
 		}
 
 		.user-avatar {
@@ -395,7 +535,7 @@ function closeSidebar() {
 			justify-content: center;
 			width: 2.25rem;
 			height: 2.25rem;
-			background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.8) 100%);
+			background: linear-gradient(135deg, oklch(var(--primary)) 0%, oklch(var(--primary) / 0.8) 100%);
 			border-radius: 0.5rem;
 			flex-shrink: 0;
 			overflow: hidden;
@@ -404,7 +544,7 @@ function closeSidebar() {
 		.user-avatar :global(.user-avatar-icon) {
 			width: 1.125rem;
 			height: 1.125rem;
-			color: hsl(var(--primary-foreground));
+			color: oklch(var(--primary-foreground));
 		}
 
 		.user-avatar-img {
@@ -423,7 +563,7 @@ function closeSidebar() {
 		.user-name {
 			font-size: 0.875rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			overflow: hidden;
 			text-overflow: ellipsis;
 			white-space: nowrap;
@@ -431,7 +571,7 @@ function closeSidebar() {
 
 		.user-role {
 			font-size: 0.6875rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-transform: uppercase;
 			letter-spacing: 0.05em;
 		}
@@ -443,9 +583,9 @@ function closeSidebar() {
 			gap: 0.5rem;
 			width: 100%;
 			padding: 0.5rem 0.75rem;
-			background: hsl(var(--muted) / 0.3);
-			color: hsl(var(--muted-foreground));
-			border: 1px solid hsl(var(--border) / 0.5);
+			background: oklch(var(--muted) / 0.3);
+			color: oklch(var(--muted-foreground));
+			border: 1px solid oklch(var(--border) / 0.5);
 			border-radius: 0.5rem;
 			font-size: 0.8125rem;
 			font-weight: 500;
@@ -454,9 +594,9 @@ function closeSidebar() {
 		}
 
 		.logout-button:hover {
-			background: hsl(var(--destructive) / 0.15);
-			color: hsl(var(--destructive));
-			border-color: hsl(var(--destructive) / 0.3);
+			background: oklch(var(--destructive) / 0.15);
+			color: oklch(var(--destructive));
+			border-color: oklch(var(--destructive) / 0.3);
 		}
 
 		.logout-button :global(.logout-icon) {
@@ -477,17 +617,33 @@ function closeSidebar() {
 				display: flex;
 			}
 
+			.mobile-header.sidebar-open {
+				visibility: hidden;
+				pointer-events: none;
+			}
+
 			.sidebar-overlay {
 				display: block;
 			}
 
 			.sidebar {
 				transform: translateX(-100%);
-				transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+				visibility: hidden;
+				pointer-events: none;
+				transition:
+					transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+					visibility 0s linear 0.3s;
 			}
 
 			.sidebar.open {
 				transform: translateX(0);
+				visibility: visible;
+				pointer-events: auto;
+				transition-delay: 0s;
+			}
+
+			.sidebar-close-button {
+				display: flex;
 			}
 
 			.main-content {

@@ -1,7 +1,18 @@
 <script lang="ts">
+import CheckIcon from '@lucide/svelte/icons/check';
+import ChevronLeftIcon from '@lucide/svelte/icons/chevron-left';
+import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
+import ChevronsLeftIcon from '@lucide/svelte/icons/chevrons-left';
+import ChevronsRightIcon from '@lucide/svelte/icons/chevrons-right';
+import ClockIcon from '@lucide/svelte/icons/clock';
+import PauseIcon from '@lucide/svelte/icons/pause';
+import PlayIcon from '@lucide/svelte/icons/play';
+import SquareIcon from '@lucide/svelte/icons/square';
 import { browser } from '$app/environment';
 import { enhance } from '$app/forms';
 import { goto, invalidateAll } from '$app/navigation';
+import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
+import { Button } from '$lib/components/ui/button';
 import { validateCronExpression } from '$lib/cron/validation';
 import { handleFormToast } from '$lib/utils/form-toast';
 import { formatDuration as formatDurationMs } from '$lib/utils/format';
@@ -266,6 +277,10 @@ async function goToPage(page: number) {
 }
 </script>
 
+<svelte:head>
+	<title>Sync — Admin — Obzorarr</title>
+</svelte:head>
+
 <div class="sync-command-center">
 	<!-- Page Header -->
 	<header class="page-header">
@@ -412,16 +427,15 @@ async function goToPage(page: number) {
 								};
 							}}
 						>
-							<button type="submit" class="cancel-btn" disabled={isCancelling}>
-								{#if isCancelling}
-									<span class="btn-spinner"></span>
-								{:else}
-									<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-										<rect x="6" y="6" width="12" height="12" rx="2" />
-									</svg>
-								{/if}
-								<span>Cancel</span>
-							</button>
+							<SubmitButton class="cancel-btn tap-target" submitting={isCancelling}>
+								{#snippet children()}
+									<SquareIcon class="size-4" />
+									<span>Cancel</span>
+								{/snippet}
+								{#snippet submittingLabel()}
+									<span>Cancel</span>
+								{/snippet}
+							</SubmitButton>
 						</form>
 					{/if}
 				</div>
@@ -463,17 +477,15 @@ async function goToPage(page: number) {
 						</div>
 					</div>
 
-					<button type="submit" class="sync-btn" disabled={isSyncing}>
-						{#if isSyncing}
-							<span class="btn-spinner"></span>
-							<span>Initializing...</span>
-						{:else}
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-								<polygon points="5 3 19 12 5 21 5 3" />
-							</svg>
+					<SubmitButton class="sync-btn tap-target" submitting={isSyncing}>
+						{#snippet children()}
+							<PlayIcon class="size-[18px]" strokeWidth={2.5} />
 							<span>Start Sync</span>
-						{/if}
-					</button>
+						{/snippet}
+						{#snippet submittingLabel()}
+							<span>Initializing...</span>
+						{/snippet}
+					</SubmitButton>
 				</form>
 
 				{#if data.lastSync}
@@ -541,48 +553,45 @@ async function goToPage(page: number) {
 				<div class="scheduler-controls">
 					{#if data.schedulerStatus.isPaused}
 						<form method="POST" action="?/resumeScheduler" use:enhance>
-							<button type="submit" class="control-btn resume">
-								<svg viewBox="0 0 24 24" fill="currentColor">
-									<polygon points="5 3 19 12 5 21 5 3" />
-								</svg>
-								Resume
-							</button>
+							<SubmitButton class="control-btn resume tap-target">
+								{#snippet children()}
+									<PlayIcon class="size-4" fill="currentColor" />
+									Resume
+								{/snippet}
+							</SubmitButton>
 						</form>
 					{:else if data.schedulerStatus.isRunning}
 						<form method="POST" action="?/pauseScheduler" use:enhance>
-							<button type="submit" class="control-btn pause">
-								<svg viewBox="0 0 24 24" fill="currentColor">
-									<rect x="6" y="4" width="4" height="16" />
-									<rect x="14" y="4" width="4" height="16" />
-								</svg>
-								Pause
-							</button>
+							<SubmitButton class="control-btn pause tap-target">
+								{#snippet children()}
+									<PauseIcon class="size-4" fill="currentColor" />
+									Pause
+								{/snippet}
+							</SubmitButton>
 						</form>
 					{:else}
 						<form method="POST" action="?/initScheduler" use:enhance>
 							<input type="hidden" name="cronExpression" value={cronExpression} />
-							<button
-								type="submit"
-								class="control-btn init"
+							<SubmitButton
+								class="control-btn init tap-target"
 								disabled={!!cronError}
 								aria-describedby={cronError ? 'cronExpression-error' : undefined}
 							>
-								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-									<circle cx="12" cy="12" r="10" />
-									<polyline points="12 6 12 12 16 14" />
-								</svg>
-								Initialize
-							</button>
+								{#snippet children()}
+									<ClockIcon class="size-4" />
+									Initialize
+								{/snippet}
+							</SubmitButton>
 						</form>
 					{/if}
 					{#if data.schedulerStatus.isRunning || data.schedulerStatus.isPaused}
 						<form method="POST" action="?/stopScheduler" use:enhance>
-							<button type="submit" class="control-btn stop">
-								<svg viewBox="0 0 24 24" fill="currentColor">
-									<rect x="6" y="6" width="12" height="12" rx="2" />
-								</svg>
-								Stop
-							</button>
+							<SubmitButton class="control-btn stop tap-target">
+								{#snippet children()}
+									<SquareIcon class="size-4" fill="currentColor" />
+									Stop
+								{/snippet}
+							</SubmitButton>
 						</form>
 					{/if}
 				</div>
@@ -614,23 +623,16 @@ async function goToPage(page: number) {
 							aria-invalid={cronError ? 'true' : 'false'}
 							aria-describedby={cronError ? 'cronExpression-error' : undefined}
 						/>
-						<button
-							type="submit"
-							class="cron-update-btn"
+						<SubmitButton
+							class="cron-update-btn tap-target"
 							disabled={!!cronError}
 							aria-label={cronError ? 'Fix cron expression before saving' : 'Update schedule'}
 							aria-describedby={cronError ? 'cronExpression-error' : undefined}
 						>
-							<svg
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
-								aria-hidden="true"
-							>
-								<polyline points="20 6 9 17 4 12" />
-							</svg>
-						</button>
+							{#snippet children()}
+								<CheckIcon class="size-[18px]" aria-hidden="true" />
+							{/snippet}
+						</SubmitButton>
 					</div>
 
 					{#if cronError}
@@ -759,31 +761,26 @@ async function goToPage(page: number) {
 
 					<div class="pagination-controls">
 						<!-- First Page -->
-						<button
+						<Button
 							type="button"
-							class="pagination-btn"
+							class="pagination-btn tap-target"
 							disabled={!canGoPrevious || isNavigating}
 							onclick={() => goToPage(1)}
 							aria-label="Go to first page"
 						>
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<polyline points="11 17 6 12 11 7" />
-								<polyline points="18 17 13 12 18 7" />
-							</svg>
-						</button>
+							<ChevronsLeftIcon class="size-[18px]" />
+						</Button>
 
 						<!-- Previous Page -->
-						<button
+						<Button
 							type="button"
-							class="pagination-btn"
+							class="pagination-btn tap-target"
 							disabled={!canGoPrevious || isNavigating}
 							onclick={() => goToPage(data.pagination.page - 1)}
 							aria-label="Go to previous page"
 						>
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<polyline points="15 18 9 12 15 6" />
-							</svg>
-						</button>
+							<ChevronLeftIcon class="size-[18px]" />
+						</Button>
 
 						<!-- Page Numbers -->
 						<div class="pagination-pages">
@@ -830,31 +827,26 @@ async function goToPage(page: number) {
 						</div>
 
 						<!-- Next Page -->
-						<button
+						<Button
 							type="button"
-							class="pagination-btn"
+							class="pagination-btn tap-target"
 							disabled={!canGoNext || isNavigating}
 							onclick={() => goToPage(data.pagination.page + 1)}
 							aria-label="Go to next page"
 						>
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<polyline points="9 18 15 12 9 6" />
-							</svg>
-						</button>
+							<ChevronRightIcon class="size-[18px]" />
+						</Button>
 
 						<!-- Last Page -->
-						<button
+						<Button
 							type="button"
-							class="pagination-btn"
+							class="pagination-btn tap-target"
 							disabled={!canGoNext || isNavigating}
 							onclick={() => goToPage(data.pagination.totalPages)}
 							aria-label="Go to last page"
 						>
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<polyline points="13 17 18 12 13 7" />
-								<polyline points="6 17 11 12 6 7" />
-							</svg>
-						</button>
+							<ChevronsRightIcon class="size-[18px]" />
+						</Button>
 					</div>
 				</div>
 			{/if}
@@ -877,7 +869,7 @@ async function goToPage(page: number) {
 			align-items: center;
 			margin-bottom: 2rem;
 			padding-bottom: 1.5rem;
-			border-bottom: 1px solid hsl(var(--border));
+			border-bottom: 1px solid oklch(var(--border));
 		}
 
 		.header-content {
@@ -892,10 +884,10 @@ async function goToPage(page: number) {
 			justify-content: center;
 			width: 56px;
 			height: 56px;
-			background: linear-gradient(135deg, hsl(var(--primary) / 0.15), hsl(var(--primary) / 0.05));
-			border: 1px solid hsl(var(--primary) / 0.3);
+			background: linear-gradient(135deg, oklch(var(--primary) / 0.15), oklch(var(--primary) / 0.05));
+			border: 1px solid oklch(var(--primary) / 0.3);
 			border-radius: 16px;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 		}
 
 		.header-icon svg {
@@ -906,14 +898,14 @@ async function goToPage(page: number) {
 		.header-text h1 {
 			font-size: 1.75rem;
 			font-weight: 700;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			margin: 0;
 			letter-spacing: -0.02em;
 		}
 
 		.header-subtitle {
 			font-size: 0.875rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin: 0.25rem 0 0;
 		}
 
@@ -931,13 +923,13 @@ async function goToPage(page: number) {
 		.header-stat-value {
 			font-size: 1.5rem;
 			font-weight: 700;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			font-variant-numeric: tabular-nums;
 		}
 
 		.header-stat-label {
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-transform: uppercase;
 			letter-spacing: 0.05em;
 		}
@@ -952,8 +944,8 @@ async function goToPage(page: number) {
 
 		/* ===== Panel Base ===== */
 		.panel {
-			background: hsl(var(--card));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--card));
+			border: 1px solid oklch(var(--border));
 			border-radius: 16px;
 			overflow: hidden;
 		}
@@ -963,8 +955,8 @@ async function goToPage(page: number) {
 			justify-content: space-between;
 			align-items: center;
 			padding: 1rem 1.25rem;
-			border-bottom: 1px solid hsl(var(--border));
-			background: hsl(var(--muted) / 0.3);
+			border-bottom: 1px solid oklch(var(--border));
+			background: oklch(var(--muted) / 0.3);
 		}
 
 		.panel-header h2 {
@@ -973,7 +965,7 @@ async function goToPage(page: number) {
 			gap: 0.5rem;
 			font-size: 0.9375rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			margin: 0;
 		}
 
@@ -987,8 +979,8 @@ async function goToPage(page: number) {
 		}
 
 		.sync-panel.active {
-			border-color: hsl(var(--primary) / 0.5);
-			box-shadow: 0 0 30px hsl(var(--primary) / 0.1);
+			border-color: oklch(var(--primary) / 0.5);
+			box-shadow: 0 0 30px oklch(var(--primary) / 0.1);
 		}
 
 		.connection-indicator {
@@ -996,26 +988,26 @@ async function goToPage(page: number) {
 			align-items: center;
 			gap: 0.375rem;
 			padding: 0.25rem 0.625rem;
-			background: hsl(var(--muted));
+			background: oklch(var(--muted));
 			border-radius: 9999px;
 			font-size: 0.6875rem;
 			font-weight: 600;
 			text-transform: uppercase;
 			letter-spacing: 0.04em;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.indicator-dot {
 			width: 6px;
 			height: 6px;
 			border-radius: 50%;
-			background: hsl(var(--muted-foreground));
+			background: oklch(var(--muted-foreground));
 			transition: background 0.3s ease;
 		}
 
 		.connection-indicator.connected .indicator-dot {
-			background: hsl(145 70% 50%);
-			box-shadow: 0 0 8px hsl(145 70% 50% / 0.5);
+			background: oklch(0.7776 0.199 151.21);
+			box-shadow: 0 0 8px oklch(0.7776 0.199 151.21 / 0.5);
 		}
 
 		.connection-indicator.syncing .indicator-dot {
@@ -1026,11 +1018,11 @@ async function goToPage(page: number) {
 			0%,
 			100% {
 				opacity: 1;
-				box-shadow: 0 0 8px hsl(145 70% 50% / 0.5);
+				box-shadow: 0 0 8px oklch(0.7776 0.199 151.21 / 0.5);
 			}
 			50% {
 				opacity: 0.5;
-				box-shadow: 0 0 16px hsl(145 70% 50% / 0.8);
+				box-shadow: 0 0 16px oklch(0.7776 0.199 151.21 / 0.8);
 			}
 		}
 
@@ -1053,7 +1045,7 @@ async function goToPage(page: number) {
 			position: absolute;
 			inset: 0;
 			border-radius: 50%;
-			background: linear-gradient(135deg, hsl(var(--muted)), hsl(var(--background)));
+			background: linear-gradient(135deg, oklch(var(--muted)), oklch(var(--background)));
 			padding: 4px;
 		}
 
@@ -1061,7 +1053,7 @@ async function goToPage(page: number) {
 			width: 100%;
 			height: 100%;
 			border-radius: 50%;
-			background: hsl(var(--card));
+			background: oklch(var(--card));
 			display: flex;
 			align-items: center;
 			justify-content: center;
@@ -1073,20 +1065,20 @@ async function goToPage(page: number) {
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.status-icon.running {
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 		}
 
 		.status-icon.completed {
-			color: hsl(145 70% 50%);
+			color: oklch(0.7776 0.199 151.21);
 		}
 
 		.status-icon.failed,
 		.status-icon.cancelled {
-			color: hsl(var(--destructive));
+			color: oklch(var(--destructive));
 		}
 
 		.status-icon svg {
@@ -1113,13 +1105,13 @@ async function goToPage(page: number) {
 
 		.progress-track {
 			fill: none;
-			stroke: hsl(var(--muted));
+			stroke: oklch(var(--muted));
 			stroke-width: 4;
 		}
 
 		.progress-fill {
 			fill: none;
-			stroke: hsl(var(--primary));
+			stroke: oklch(var(--primary));
 			stroke-width: 4;
 			stroke-linecap: round;
 			transition: stroke-dashoffset 0.5s ease;
@@ -1136,7 +1128,7 @@ async function goToPage(page: number) {
 		.sync-status-text {
 			font-size: 1.25rem;
 			font-weight: 700;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.sync-metrics {
@@ -1144,7 +1136,7 @@ async function goToPage(page: number) {
 			align-items: center;
 			gap: 1rem;
 			padding: 0.75rem 1.25rem;
-			background: hsl(var(--muted) / 0.5);
+			background: oklch(var(--muted) / 0.5);
 			border-radius: 12px;
 		}
 
@@ -1159,20 +1151,20 @@ async function goToPage(page: number) {
 			font-size: 1.25rem;
 			font-weight: 700;
 			font-variant-numeric: tabular-nums;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.metric-value.accent {
-			color: hsl(145 70% 50%);
+			color: oklch(0.7776 0.199 151.21);
 		}
 
 		.metric-value.muted {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.metric-label {
 			font-size: 0.6875rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-transform: uppercase;
 			letter-spacing: 0.04em;
 		}
@@ -1180,14 +1172,14 @@ async function goToPage(page: number) {
 		.metric-divider {
 			width: 1px;
 			height: 28px;
-			background: hsl(var(--border));
+			background: oklch(var(--border));
 		}
 
 		.enrichment-bar {
 			position: relative;
 			width: 100%;
 			height: 32px;
-			background: hsl(var(--muted));
+			background: oklch(var(--muted));
 			border-radius: 8px;
 			overflow: hidden;
 		}
@@ -1195,7 +1187,7 @@ async function goToPage(page: number) {
 		.enrichment-progress {
 			position: absolute;
 			inset: 0;
-			background: linear-gradient(90deg, hsl(var(--primary) / 0.3), hsl(var(--primary) / 0.5));
+			background: linear-gradient(90deg, oklch(var(--primary) / 0.3), oklch(var(--primary) / 0.5));
 			transition: width 0.5s ease;
 		}
 
@@ -1207,7 +1199,7 @@ async function goToPage(page: number) {
 			height: 100%;
 			font-size: 0.75rem;
 			font-weight: 500;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.sync-error {
@@ -1215,11 +1207,11 @@ async function goToPage(page: number) {
 			align-items: center;
 			gap: 0.5rem;
 			padding: 0.75rem 1rem;
-			background: hsl(var(--destructive) / 0.15);
-			border: 1px solid hsl(var(--destructive) / 0.3);
+			background: oklch(var(--destructive) / 0.15);
+			border: 1px solid oklch(var(--destructive) / 0.3);
 			border-radius: 8px;
 			font-size: 0.8125rem;
-			color: hsl(var(--destructive));
+			color: oklch(var(--destructive));
 			width: 100%;
 		}
 
@@ -1229,35 +1221,35 @@ async function goToPage(page: number) {
 			flex-shrink: 0;
 		}
 
-		.cancel-btn {
+		/* `.cancel-btn` is the cancel-sync CTA. Hoisted to :global so
+		   SubmitButton's child-rendered <button> inherits the muted-
+		   default vs destructive-on-hover palette swap. The custom
+		   `.btn-spinner` span is replaced by SubmitButton's built-in
+		   LoaderCircleIcon spinner. */
+		:global(.cancel-btn) {
 			display: flex;
 			align-items: center;
 			gap: 0.5rem;
 			padding: 0.625rem 1.25rem;
-			background: hsl(var(--muted));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--muted));
+			border: 1px solid oklch(var(--border));
 			border-radius: 10px;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			font-size: 0.8125rem;
 			font-weight: 600;
 			cursor: pointer;
 			transition: all 0.15s ease;
 		}
 
-		.cancel-btn:hover:not(:disabled) {
-			background: hsl(var(--destructive) / 0.15);
-			border-color: hsl(var(--destructive) / 0.5);
-			color: hsl(var(--destructive));
+		:global(.cancel-btn:hover:not(:disabled)) {
+			background: oklch(var(--destructive) / 0.15);
+			border-color: oklch(var(--destructive) / 0.5);
+			color: oklch(var(--destructive));
 		}
 
-		.cancel-btn:disabled {
+		:global(.cancel-btn:disabled) {
 			opacity: 0.5;
 			cursor: not-allowed;
-		}
-
-		.cancel-btn svg {
-			width: 16px;
-			height: 16px;
 		}
 
 		/* ===== Sync Form (Idle State) ===== */
@@ -1272,7 +1264,7 @@ async function goToPage(page: number) {
 			display: block;
 			font-size: 0.8125rem;
 			font-weight: 500;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin-bottom: 0.5rem;
 		}
 
@@ -1283,10 +1275,10 @@ async function goToPage(page: number) {
 		.select-wrapper select {
 			width: 100%;
 			padding: 0.75rem 2.5rem 0.75rem 1rem;
-			background: hsl(var(--muted));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--muted));
+			border: 1px solid oklch(var(--border));
 			border-radius: 10px;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			font-size: 0.9375rem;
 			appearance: none;
 			cursor: pointer;
@@ -1294,8 +1286,8 @@ async function goToPage(page: number) {
 
 		.select-wrapper select:focus {
 			outline: none;
-			border-color: hsl(var(--primary));
-			box-shadow: 0 0 0 3px hsl(var(--primary) / 0.15);
+			border-color: oklch(var(--primary));
+			box-shadow: 0 0 0 3px oklch(var(--primary) / 0.15);
 		}
 
 		.select-arrow {
@@ -1305,52 +1297,43 @@ async function goToPage(page: number) {
 			transform: translateY(-50%);
 			width: 20px;
 			height: 20px;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			pointer-events: none;
 		}
 
-		.sync-btn {
+		/* `.sync-btn` is the primary "Start Sync" CTA. Hoisted to :global
+		   so SubmitButton's child-rendered <button> inherits the
+		   gradient primary palette + hover translate-y + shadow glow.
+		   The `.sync-btn svg` descendant rule is dropped; PlayIcon is
+		   sized inline via `class="size-[18px]"`. */
+		:global(.sync-btn) {
 			display: flex;
 			align-items: center;
 			justify-content: center;
 			gap: 0.625rem;
 			padding: 0.875rem 1.5rem;
-			background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.85));
+			background: linear-gradient(135deg, oklch(var(--primary)), oklch(var(--primary) / 0.85));
 			border: none;
 			border-radius: 12px;
-			color: hsl(var(--primary-foreground));
+			color: oklch(var(--primary-foreground));
 			font-size: 0.9375rem;
 			font-weight: 600;
 			cursor: pointer;
 			transition: all 0.2s ease;
 		}
 
-		.sync-btn:hover:not(:disabled) {
+		:global(.sync-btn:hover:not(:disabled)) {
 			transform: translateY(-1px);
-			box-shadow: 0 8px 24px hsl(var(--primary) / 0.3);
+			box-shadow: 0 8px 24px oklch(var(--primary) / 0.3);
 		}
 
-		.sync-btn:active:not(:disabled) {
+		:global(.sync-btn:active:not(:disabled)) {
 			transform: translateY(0);
 		}
 
-		.sync-btn:disabled {
+		:global(.sync-btn:disabled) {
 			opacity: 0.6;
 			cursor: not-allowed;
-		}
-
-		.sync-btn svg {
-			width: 18px;
-			height: 18px;
-		}
-
-		.btn-spinner {
-			width: 18px;
-			height: 18px;
-			border: 2px solid hsl(var(--primary-foreground) / 0.3);
-			border-top-color: hsl(var(--primary-foreground));
-			border-radius: 50%;
-			animation: spin 0.8s linear infinite;
 		}
 
 		.last-sync-info {
@@ -1360,10 +1343,10 @@ async function goToPage(page: number) {
 			gap: 0.5rem;
 			padding: 0.75rem;
 			margin: 0 1.5rem 1.5rem;
-			background: hsl(var(--muted) / 0.5);
+			background: oklch(var(--muted) / 0.5);
 			border-radius: 8px;
 			font-size: 0.8125rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.last-sync-time {
@@ -1380,17 +1363,17 @@ async function goToPage(page: number) {
 			font-size: 0.625rem;
 			font-weight: 600;
 			text-transform: uppercase;
-			background: hsl(var(--muted));
+			background: oklch(var(--muted));
 		}
 
 		.last-sync-status.success {
-			background: hsl(145 40% 25%);
-			color: hsl(145 60% 85%);
+			background: oklch(0.4208 0.0746 155.64);
+			color: oklch(0.9147 0.0597 159.37);
 		}
 
 		.last-sync-status.error {
-			background: hsl(var(--destructive) / 0.2);
-			color: hsl(var(--destructive));
+			background: oklch(var(--destructive) / 0.2);
+			color: oklch(var(--destructive));
 		}
 
 		/* ===== Scheduler Panel ===== */
@@ -1411,18 +1394,18 @@ async function goToPage(page: number) {
 		}
 
 		.scheduler-status-badge.active {
-			background: hsl(145 40% 25%);
-			color: hsl(145 60% 85%);
+			background: oklch(0.4208 0.0746 155.64);
+			color: oklch(0.9147 0.0597 159.37);
 		}
 
 		.scheduler-status-badge.paused {
-			background: hsl(45 60% 30%);
-			color: hsl(45 80% 90%);
+			background: oklch(0.5107 0.0902 89.92);
+			color: oklch(0.9544 0.0415 91.72);
 		}
 
 		.scheduler-status-badge.inactive {
-			background: hsl(var(--muted));
-			color: hsl(var(--muted-foreground));
+			background: oklch(var(--muted));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.scheduler-times {
@@ -1430,7 +1413,7 @@ async function goToPage(page: number) {
 			flex-direction: column;
 			gap: 0.625rem;
 			padding: 0.875rem 1rem;
-			background: hsl(var(--muted) / 0.5);
+			background: oklch(var(--muted) / 0.5);
 			border-radius: 10px;
 		}
 
@@ -1442,13 +1425,13 @@ async function goToPage(page: number) {
 
 		.time-label {
 			font-size: 0.8125rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.time-value {
 			font-size: 0.8125rem;
 			font-weight: 500;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.scheduler-controls {
@@ -1456,7 +1439,14 @@ async function goToPage(page: number) {
 			gap: 0.5rem;
 		}
 
-		.control-btn {
+		/* `.control-btn` is the scheduler control quartet (resume / pause
+		   / init / stop). 4 per-variant palettes (green / amber /
+		   primary / muted), each with a hover state. Hoisted to :global
+		   so SubmitButton's child-rendered <button> inherits each
+		   variant's color. The `.control-btn svg` descendant rule is
+		   dropped — PlayIcon / PauseIcon / ClockIcon / SquareIcon are
+		   sized inline via `class="size-4"`. */
+		:global(.control-btn) {
 			flex: 1;
 			display: flex;
 			align-items: center;
@@ -1470,49 +1460,44 @@ async function goToPage(page: number) {
 			transition: all 0.15s ease;
 		}
 
-		.control-btn svg {
-			width: 16px;
-			height: 16px;
+		:global(.control-btn.resume) {
+			background: oklch(0.4863 0.0951 154.82);
+			border: 1px solid oklch(0.5972 0.1198 154.58);
+			color: oklch(0.9426 0.0399 159.98);
 		}
 
-		.control-btn.resume {
-			background: hsl(145 45% 30%);
-			border: 1px solid hsl(145 45% 40%);
-			color: hsl(145 60% 90%);
+		:global(.control-btn.resume:hover) {
+			background: oklch(0.553 0.117 154.02);
 		}
 
-		.control-btn.resume:hover {
-			background: hsl(145 50% 35%);
+		:global(.control-btn.pause) {
+			background: oklch(0.4944 0.0796 90.72);
+			border: 1px solid oklch(0.607 0.0999 90.58);
+			color: oklch(0.9504 0.0364 91.69);
 		}
 
-		.control-btn.pause {
-			background: hsl(45 50% 30%);
-			border: 1px solid hsl(45 50% 40%);
-			color: hsl(45 70% 90%);
+		:global(.control-btn.pause:hover) {
+			background: oklch(0.5606 0.096 90.25);
 		}
 
-		.control-btn.pause:hover {
-			background: hsl(45 55% 35%);
+		:global(.control-btn.init) {
+			background: oklch(var(--primary));
+			border: 1px solid oklch(var(--primary));
+			color: oklch(var(--primary-foreground));
 		}
 
-		.control-btn.init {
-			background: hsl(var(--primary));
-			border: 1px solid hsl(var(--primary));
-			color: hsl(var(--primary-foreground));
-		}
-
-		.control-btn.init:hover {
+		:global(.control-btn.init:hover) {
 			opacity: 0.9;
 		}
 
-		.control-btn.stop {
-			background: hsl(var(--muted));
-			border: 1px solid hsl(var(--border));
-			color: hsl(var(--foreground));
+		:global(.control-btn.stop) {
+			background: oklch(var(--muted));
+			border: 1px solid oklch(var(--border));
+			color: oklch(var(--foreground));
 		}
 
-		.control-btn.stop:hover {
-			background: hsl(var(--muted) / 0.8);
+		:global(.control-btn.stop:hover) {
+			background: oklch(var(--muted) / 0.8);
 		}
 
 		.cron-config {
@@ -1524,7 +1509,7 @@ async function goToPage(page: number) {
 		.cron-label {
 			font-size: 0.75rem;
 			font-weight: 500;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-transform: uppercase;
 			letter-spacing: 0.04em;
 		}
@@ -1537,56 +1522,56 @@ async function goToPage(page: number) {
 		.cron-input {
 			flex: 1;
 			padding: 0.625rem 0.875rem;
-			background: hsl(var(--muted));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--muted));
+			border: 1px solid oklch(var(--border));
 			border-radius: 8px;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			font-size: 0.875rem;
 			font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
 		}
 
 		.cron-input:focus {
 			outline: none;
-			border-color: hsl(var(--primary));
-			box-shadow: 0 0 0 3px hsl(var(--primary) / 0.15);
+			border-color: oklch(var(--primary));
+			box-shadow: 0 0 0 3px oklch(var(--primary) / 0.15);
 		}
 
 		.cron-input-error {
-			border-color: hsl(var(--destructive));
+			border-color: oklch(var(--destructive));
 		}
 
 		.cron-input-error:focus {
-			border-color: hsl(var(--destructive));
-			box-shadow: 0 0 0 3px hsl(var(--destructive) / 0.15);
+			border-color: oklch(var(--destructive));
+			box-shadow: 0 0 0 3px oklch(var(--destructive) / 0.15);
 		}
 
 		.cron-error {
 			font-size: 0.75rem;
-			color: hsl(var(--destructive));
+			color: oklch(var(--destructive));
 		}
 
-		.cron-update-btn {
+		/* `.cron-update-btn` is the icon-only commit-cron-expression CTA
+		   (40px wide). Hoisted to :global so SubmitButton's child-
+		   rendered <button> inherits the muted-default vs primary-on-
+		   hover palette swap. `.cron-update-btn svg` descendant rule
+		   dropped — CheckIcon sized inline via `class="size-[18px]"`. */
+		:global(.cron-update-btn) {
 			display: flex;
 			align-items: center;
 			justify-content: center;
 			width: 40px;
-			background: hsl(var(--muted));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--muted));
+			border: 1px solid oklch(var(--border));
 			border-radius: 8px;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			cursor: pointer;
 			transition: all 0.15s ease;
 		}
 
-		.cron-update-btn:hover {
-			background: hsl(var(--primary));
-			border-color: hsl(var(--primary));
-			color: hsl(var(--primary-foreground));
-		}
-
-		.cron-update-btn svg {
-			width: 18px;
-			height: 18px;
+		:global(.cron-update-btn:hover) {
+			background: oklch(var(--primary));
+			border-color: oklch(var(--primary));
+			color: oklch(var(--primary-foreground));
 		}
 
 		.cron-presets {
@@ -1597,10 +1582,10 @@ async function goToPage(page: number) {
 
 		.preset-chip {
 			padding: 0.375rem 0.75rem;
-			background: hsl(var(--muted));
+			background: oklch(var(--muted));
 			border: 1px solid transparent;
 			border-radius: 9999px;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-size: 0.75rem;
 			font-weight: 500;
 			cursor: pointer;
@@ -1608,13 +1593,13 @@ async function goToPage(page: number) {
 		}
 
 		.preset-chip:hover {
-			background: hsl(var(--primary) / 0.1);
-			color: hsl(var(--primary));
+			background: oklch(var(--primary) / 0.1);
+			color: oklch(var(--primary));
 		}
 
 		.preset-chip.active {
-			background: hsl(var(--primary));
-			color: hsl(var(--primary-foreground));
+			background: oklch(var(--primary));
+			color: oklch(var(--primary-foreground));
 		}
 
 		/* ===== History Panel ===== */
@@ -1624,7 +1609,7 @@ async function goToPage(page: number) {
 
 		.history-count {
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.history-list.loading {
@@ -1644,7 +1629,7 @@ async function goToPage(page: number) {
 		.empty-icon {
 			width: 64px;
 			height: 64px;
-			color: hsl(var(--muted-foreground) / 0.5);
+			color: oklch(var(--muted-foreground) / 0.5);
 			margin-bottom: 1rem;
 		}
 
@@ -1656,13 +1641,13 @@ async function goToPage(page: number) {
 		.empty-state p {
 			font-size: 1rem;
 			font-weight: 500;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			margin: 0 0 0.25rem;
 		}
 
 		.empty-state span {
 			font-size: 0.8125rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.history-list {
@@ -1676,7 +1661,7 @@ async function goToPage(page: number) {
 			align-items: center;
 			gap: 1rem;
 			padding: 1rem 1.25rem;
-			border-bottom: 1px solid hsl(var(--border) / 0.5);
+			border-bottom: 1px solid oklch(var(--border) / 0.5);
 			transition: background 0.15s ease;
 		}
 
@@ -1685,7 +1670,7 @@ async function goToPage(page: number) {
 		}
 
 		.history-item:hover {
-			background: hsl(var(--muted) / 0.3);
+			background: oklch(var(--muted) / 0.3);
 		}
 
 		.history-status-indicator {
@@ -1702,19 +1687,19 @@ async function goToPage(page: number) {
 		}
 
 		.history-item.completed .history-status-indicator {
-			color: hsl(145 60% 50%);
+			color: oklch(0.7471 0.1783 152.43);
 		}
 
 		.history-item.failed .history-status-indicator {
-			color: hsl(var(--destructive));
+			color: oklch(var(--destructive));
 		}
 
 		.history-item.running .history-status-indicator {
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 		}
 
 		.history-item.cancelled .history-status-indicator {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.running-indicator {
@@ -1736,12 +1721,12 @@ async function goToPage(page: number) {
 		.time-relative {
 			font-size: 0.875rem;
 			font-weight: 500;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.time-absolute {
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.history-stats {
@@ -1755,13 +1740,13 @@ async function goToPage(page: number) {
 			font-size: 0.8125rem;
 			font-weight: 600;
 			font-variant-numeric: tabular-nums;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.stat-records {
 			font-size: 0.75rem;
 			font-variant-numeric: tabular-nums;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.stat-records small {
@@ -1775,10 +1760,10 @@ async function goToPage(page: number) {
 			align-items: center;
 			gap: 0.375rem;
 			padding: 0.5rem 0.75rem;
-			background: hsl(var(--destructive) / 0.1);
+			background: oklch(var(--destructive) / 0.1);
 			border-radius: 6px;
 			font-size: 0.75rem;
-			color: hsl(var(--destructive));
+			color: oklch(var(--destructive));
 		}
 
 		.history-error svg {
@@ -1794,8 +1779,8 @@ async function goToPage(page: number) {
 			align-items: center;
 			gap: 1rem;
 			padding: 1.25rem;
-			border-top: 1px solid hsl(var(--border) / 0.5);
-			background: hsl(var(--muted) / 0.2);
+			border-top: 1px solid oklch(var(--border) / 0.5);
+			background: oklch(var(--muted) / 0.2);
 		}
 
 		.pagination.loading {
@@ -1809,7 +1794,7 @@ async function goToPage(page: number) {
 
 		.pagination-range {
 			font-size: 0.8125rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-variant-numeric: tabular-nums;
 		}
 
@@ -1819,34 +1804,34 @@ async function goToPage(page: number) {
 			gap: 0.375rem;
 		}
 
-		.pagination-btn {
+		/* `.pagination-btn` is the 4-button nav row (first/prev/next/last).
+		   Hoisted to :global so shadcn Button's child-rendered <button>
+		   inherits the 36px-square shape + muted-default vs primary-on-
+		   hover palette. The `.pagination-btn svg` descendant rule is
+		   dropped — chevron icons sized inline via `class="size-[18px]"`. */
+		:global(.pagination-btn) {
 			display: flex;
 			align-items: center;
 			justify-content: center;
 			width: 36px;
 			height: 36px;
-			background: hsl(var(--muted));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--muted));
+			border: 1px solid oklch(var(--border));
 			border-radius: 8px;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			cursor: pointer;
 			transition: all 0.15s ease;
 		}
 
-		.pagination-btn:hover:not(:disabled) {
-			background: hsl(var(--primary) / 0.15);
-			border-color: hsl(var(--primary) / 0.5);
-			color: hsl(var(--primary));
+		:global(.pagination-btn:hover:not(:disabled)) {
+			background: oklch(var(--primary) / 0.15);
+			border-color: oklch(var(--primary) / 0.5);
+			color: oklch(var(--primary));
 		}
 
-		.pagination-btn:disabled {
+		:global(.pagination-btn:disabled) {
 			opacity: 0.4;
 			cursor: not-allowed;
-		}
-
-		.pagination-btn svg {
-			width: 18px;
-			height: 18px;
 		}
 
 		.pagination-pages {
@@ -1866,7 +1851,7 @@ async function goToPage(page: number) {
 			background: transparent;
 			border: 1px solid transparent;
 			border-radius: 8px;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-size: 0.875rem;
 			font-weight: 500;
 			font-variant-numeric: tabular-nums;
@@ -1875,14 +1860,14 @@ async function goToPage(page: number) {
 		}
 
 		.pagination-page:hover:not(:disabled):not(.active) {
-			background: hsl(var(--muted));
-			color: hsl(var(--foreground));
+			background: oklch(var(--muted));
+			color: oklch(var(--foreground));
 		}
 
 		.pagination-page.active {
-			background: hsl(var(--primary));
-			border-color: hsl(var(--primary));
-			color: hsl(var(--primary-foreground));
+			background: oklch(var(--primary));
+			border-color: oklch(var(--primary));
+			color: oklch(var(--primary-foreground));
 			font-weight: 600;
 		}
 
@@ -1895,7 +1880,7 @@ async function goToPage(page: number) {
 			align-items: center;
 			justify-content: center;
 			width: 28px;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-size: 0.875rem;
 		}
 
@@ -1956,14 +1941,9 @@ async function goToPage(page: number) {
 				padding: 1rem;
 			}
 
-			.pagination-btn {
+			:global(.pagination-btn) {
 				width: 32px;
 				height: 32px;
-			}
-
-			.pagination-btn svg {
-				width: 16px;
-				height: 16px;
 			}
 
 			.pagination-page {

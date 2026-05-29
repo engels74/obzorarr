@@ -1,8 +1,12 @@
 <script lang="ts">
+import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
+import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
+import SquareIcon from '@lucide/svelte/icons/square';
 import { animate, stagger } from 'motion';
 import { untrack } from 'svelte';
 import { browser } from '$app/environment';
 import { enhance } from '$app/forms';
+import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
 import type { ActionData, PageData } from './$types';
 
@@ -302,27 +306,15 @@ function formatNumber(n: number): string {
 					};
 				}}
 			>
-				<button type="submit" class="start-button animate-item" disabled={isStarting}>
-					{#if isStarting}
-						<span class="btn-spinner"></span>
-						<span>Starting sync...</span>
-					{:else}
-						<svg
-							class="btn-icon"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-						>
-							<path
-								d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-							/>
-						</svg>
+				<SubmitButton class="start-button animate-item tap-target" submitting={isStarting}>
+					{#snippet children()}
+						<RefreshCwIcon class="size-5" />
 						<span>Start Sync</span>
-					{/if}
-				</button>
+					{/snippet}
+					{#snippet submittingLabel()}
+						<span>Starting sync...</span>
+					{/snippet}
+				</SubmitButton>
 			</form>
 			<p class="pre-sync-hint animate-item">
 				Sync will continue in the background if you proceed to the next step.
@@ -405,25 +397,24 @@ function formatNumber(n: number): string {
 						};
 					}}
 				>
-					<button type="submit" class="cancel-button" disabled={isCancelling}>
-						{#if isCancelling}
-							<span class="btn-spinner"></span>
-						{:else}
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<rect x="6" y="6" width="12" height="12" rx="2" />
-							</svg>
-						{/if}
-						<span>Cancel</span>
-					</button>
+					<SubmitButton class="cancel-button tap-target" submitting={isCancelling}>
+						{#snippet children()}
+							<SquareIcon class="size-[18px]" />
+							<span>Cancel</span>
+						{/snippet}
+						{#snippet submittingLabel()}
+							<span>Cancel</span>
+						{/snippet}
+					</SubmitButton>
 				</form>
 			{/if}
 			<form method="POST" action="?/continue" use:enhance>
-				<button type="submit" class="continue-button" disabled={!hasStarted}>
-					<span>Continue</span>
-					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-						<path d="M5 12h14M12 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" />
-					</svg>
-				</button>
+				<SubmitButton class="continue-button tap-target" disabled={!hasStarted}>
+					{#snippet children()}
+						<span>Continue</span>
+						<ArrowRightIcon class="size-[18px]" strokeWidth={2.5} />
+					{/snippet}
+				</SubmitButton>
 			</form>
 		</div>
 	{/snippet}
@@ -470,7 +461,7 @@ function formatNumber(n: number): string {
 
 		.ring-progress circle {
 			fill: none;
-			stroke: hsl(var(--primary));
+			stroke: oklch(var(--primary));
 			stroke-width: 8;
 			stroke-linecap: round;
 			stroke-dasharray: 326.7;
@@ -490,16 +481,16 @@ function formatNumber(n: number): string {
 				stroke: rgba(255, 255, 255, 0.08);
 			}
 			50% {
-				stroke: hsl(var(--primary) / 0.15);
+				stroke: oklch(var(--primary) / 0.15);
 			}
 		}
 
 		.progress-ring.complete .ring-progress circle {
-			stroke: hsl(142, 71%, 50%);
+			stroke: oklch(0.7794 0.2087 149.41);
 		}
 
 		.progress-ring.failed .ring-progress circle {
-			stroke: hsl(0, 84%, 60%);
+			stroke: oklch(0.6356 0.2082 25.38);
 		}
 
 		/* Ring center */
@@ -529,11 +520,11 @@ function formatNumber(n: number): string {
 		}
 
 		.ring-icon.complete {
-			color: hsl(142, 71%, 55%);
+			color: oklch(0.7946 0.1951 150.81);
 		}
 
 		.ring-icon.failed {
-			color: hsl(0, 84%, 60%);
+			color: oklch(0.6356 0.2082 25.38);
 		}
 
 		/* Spinner dots */
@@ -545,7 +536,7 @@ function formatNumber(n: number): string {
 		.spinner-dots span {
 			width: 10px;
 			height: 10px;
-			background: hsl(var(--primary));
+			background: oklch(var(--primary));
 			border-radius: 50%;
 			animation: dot-bounce 1.4s ease-in-out infinite;
 		}
@@ -578,7 +569,7 @@ function formatNumber(n: number): string {
 			position: absolute;
 			inset: -10px;
 			border-radius: 50%;
-			background: radial-gradient(circle, hsl(var(--primary) / 0.2) 0%, transparent 70%);
+			background: radial-gradient(circle, oklch(var(--primary) / 0.2) 0%, transparent 70%);
 			opacity: 0;
 			transition: opacity 0.4s ease;
 			pointer-events: none;
@@ -627,15 +618,15 @@ function formatNumber(n: number): string {
 		}
 
 		.phase-text.running {
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 		}
 
 		.phase-text.complete {
-			color: hsl(142, 71%, 55%);
+			color: oklch(0.7946 0.1951 150.81);
 		}
 
 		.phase-text.failed {
-			color: hsl(0, 84%, 60%);
+			color: oklch(0.6356 0.2082 25.38);
 		}
 
 		/* Stats row */
@@ -707,7 +698,7 @@ function formatNumber(n: number): string {
 
 		.enrichment-fill {
 			height: 100%;
-			background: linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+			background: linear-gradient(90deg, oklch(var(--primary)) 0%, oklch(var(--accent)) 100%);
 			border-radius: 2px;
 			transition: width 0.3s ease;
 		}
@@ -720,8 +711,13 @@ function formatNumber(n: number): string {
 			text-align: center;
 		}
 
-		/* Start button */
-		.start-button {
+		/* Start button — hoisted to :global so SubmitButton's
+		   child-rendered <button> inherits the primary palette, hover
+		   translate-y (-2px), and triple shadow (drop + accent + inset
+		   highlight). The `.btn-icon` descendant rule was dropped when
+		   the inline SVG was replaced with the lucide RefreshCwIcon
+		   sized inline via `class="size-5"`. */
+		:global(.start-button) {
 			display: inline-flex;
 			align-items: center;
 			justify-content: center;
@@ -730,50 +726,31 @@ function formatNumber(n: number): string {
 			min-width: 180px;
 			font-size: 1rem;
 			font-weight: 600;
-			color: hsl(var(--primary-foreground));
-			background: hsl(var(--primary));
+			color: oklch(var(--primary-foreground));
+			background: oklch(var(--primary));
 			border: none;
 			border-radius: 12px;
 			cursor: pointer;
 			transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 			box-shadow:
-				0 4px 16px hsl(var(--primary) / 0.35),
+				0 4px 16px oklch(var(--primary) / 0.35),
 				0 2px 4px rgba(0, 0, 0, 0.2),
 				inset 0 1px 0 rgba(255, 255, 255, 0.2);
 		}
 
-		.start-button:hover:not(:disabled) {
+		:global(.start-button:hover:not(:disabled)) {
 			transform: translateY(-2px);
 			box-shadow:
-				0 6px 24px hsl(var(--primary) / 0.45),
+				0 6px 24px oklch(var(--primary) / 0.45),
 				0 4px 8px rgba(0, 0, 0, 0.25),
 				inset 0 1px 0 rgba(255, 255, 255, 0.25);
 		}
 
-		.start-button:disabled {
+		:global(.start-button:disabled) {
 			opacity: 0.8;
 			cursor: not-allowed;
 		}
 
-		.btn-icon {
-			width: 20px;
-			height: 20px;
-		}
-
-		.btn-spinner {
-			width: 18px;
-			height: 18px;
-			border: 2px solid hsl(var(--primary-foreground) / 0.2);
-			border-top-color: hsl(var(--primary-foreground) / 0.7);
-			border-radius: 50%;
-			animation: spin 0.8s linear infinite;
-		}
-
-		@keyframes spin {
-			to {
-				transform: rotate(360deg);
-			}
-		}
 
 		/* Warning banner */
 		.warning-banner {
@@ -792,7 +769,7 @@ function formatNumber(n: number): string {
 			flex-shrink: 0;
 			width: 22px;
 			height: 22px;
-			color: hsl(45, 93%, 55%);
+			color: oklch(0.8376 0.1649 87.55);
 		}
 
 		.warning-icon svg {
@@ -808,7 +785,7 @@ function formatNumber(n: number): string {
 			margin: 0;
 			font-size: 0.9rem;
 			font-weight: 600;
-			color: hsl(45, 93%, 65%);
+			color: oklch(0.869 0.1467 90.38);
 		}
 
 		.warning-text {
@@ -829,7 +806,7 @@ function formatNumber(n: number): string {
 			border-radius: 10px;
 			width: 100%;
 			font-size: 0.9rem;
-			color: hsl(142, 71%, 60%);
+			color: oklch(0.8116 0.1789 152.1);
 			animation: fade-slide-in 0.3s ease-out;
 		}
 
@@ -850,7 +827,7 @@ function formatNumber(n: number): string {
 			border-radius: 10px;
 			width: 100%;
 			font-size: 0.875rem;
-			color: hsl(0, 84%, 70%);
+			color: oklch(0.7052 0.1587 21.97);
 			animation: fade-slide-in 0.3s ease-out;
 		}
 
@@ -886,8 +863,12 @@ function formatNumber(n: number): string {
 			flex-wrap: wrap;
 		}
 
-		/* Cancel button */
-		.cancel-button {
+		/* Cancel button — destructive variant. Hoisted to :global so
+		   SubmitButton's child-rendered <button> inherits the red palette
+		   + hover-darken effect. The `.cancel-button svg` descendant rule
+		   is dropped; the lucide SquareIcon is sized inline via
+		   `class="size-[18px]"`. */
+		:global(.cancel-button) {
 			display: inline-flex;
 			align-items: center;
 			justify-content: center;
@@ -895,7 +876,7 @@ function formatNumber(n: number): string {
 			padding: 0.75rem 1.5rem;
 			font-size: 0.95rem;
 			font-weight: 600;
-			color: hsl(0, 84%, 70%);
+			color: oklch(0.7052 0.1587 21.97);
 			background: rgba(239, 68, 68, 0.08);
 			border: 1px solid rgba(239, 68, 68, 0.3);
 			border-radius: 10px;
@@ -903,23 +884,22 @@ function formatNumber(n: number): string {
 			transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 		}
 
-		.cancel-button:hover:not(:disabled) {
+		:global(.cancel-button:hover:not(:disabled)) {
 			background: rgba(239, 68, 68, 0.15);
 			border-color: rgba(239, 68, 68, 0.5);
 		}
 
-		.cancel-button:disabled {
+		:global(.cancel-button:disabled) {
 			opacity: 0.6;
 			cursor: not-allowed;
 		}
 
-		.cancel-button svg {
-			width: 18px;
-			height: 18px;
-		}
-
-		/* Continue button */
-		.continue-button {
+		/* Continue button — hoisted to :global so SubmitButton's
+		   child-rendered <button> inherits the primary palette, hover
+		   translate-y, and dual shadow (drop + inset highlight). The
+		   `.continue-button svg` descendant rule is dropped because the
+		   lucide ArrowRightIcon is sized explicitly via `class="size-[18px]"`. */
+		:global(.continue-button) {
 			display: inline-flex;
 			align-items: center;
 			justify-content: center;
@@ -927,34 +907,29 @@ function formatNumber(n: number): string {
 			padding: 0.75rem 1.5rem;
 			font-size: 0.95rem;
 			font-weight: 600;
-			color: hsl(var(--primary-foreground));
-			background: hsl(var(--primary));
+			color: oklch(var(--primary-foreground));
+			background: oklch(var(--primary));
 			border: none;
 			border-radius: 10px;
 			cursor: pointer;
 			transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 			box-shadow:
-				0 2px 12px hsl(var(--primary) / 0.3),
+				0 2px 12px oklch(var(--primary) / 0.3),
 				inset 0 1px 0 rgba(255, 255, 255, 0.2);
 		}
 
-		.continue-button:hover:not(:disabled) {
+		:global(.continue-button:hover:not(:disabled)) {
 			transform: translateY(-1px);
 			box-shadow:
-				0 4px 16px hsl(var(--primary) / 0.4),
+				0 4px 16px oklch(var(--primary) / 0.4),
 				inset 0 1px 0 rgba(255, 255, 255, 0.25);
 		}
 
-		.continue-button:disabled {
+		:global(.continue-button:disabled) {
 			opacity: 0.4;
 			cursor: not-allowed;
 			transform: none;
 			box-shadow: none;
-		}
-
-		.continue-button svg {
-			width: 18px;
-			height: 18px;
 		}
 
 		/* Responsive */
@@ -978,7 +953,7 @@ function formatNumber(n: number): string {
 				font-size: 1.25rem;
 			}
 
-			.start-button {
+			:global(.start-button) {
 				width: 100%;
 				min-width: unset;
 			}

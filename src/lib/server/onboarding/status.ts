@@ -10,6 +10,7 @@ import { clearOnboardingClaim } from './bootstrap';
 export const OnboardingSteps = {
 	CLAIM: 'claim',
 	CSRF: 'csrf',
+	PROXY_TRUST: 'proxy-trust',
 	PLEX: 'plex',
 	SYNC: 'sync',
 	SETTINGS: 'settings',
@@ -85,46 +86,32 @@ export async function getOnboardingStatus(): Promise<OnboardingStatus> {
 	};
 }
 
+const ONBOARDING_STEP_ORDER: OnboardingStep[] = [
+	OnboardingSteps.CLAIM,
+	OnboardingSteps.CSRF,
+	OnboardingSteps.PROXY_TRUST,
+	OnboardingSteps.PLEX,
+	OnboardingSteps.SYNC,
+	OnboardingSteps.SETTINGS,
+	OnboardingSteps.COMPLETE
+];
+
 export function getStepNumber(step: OnboardingStep): number {
-	const stepOrder: OnboardingStep[] = [
-		OnboardingSteps.CLAIM,
-		OnboardingSteps.CSRF,
-		OnboardingSteps.PLEX,
-		OnboardingSteps.SYNC,
-		OnboardingSteps.SETTINGS,
-		OnboardingSteps.COMPLETE
-	];
-	return stepOrder.indexOf(step) + 1;
+	return ONBOARDING_STEP_ORDER.indexOf(step) + 1;
 }
 
 export function getNextStep(currentStep: OnboardingStep): OnboardingStep | null {
-	const stepOrder: OnboardingStep[] = [
-		OnboardingSteps.CLAIM,
-		OnboardingSteps.CSRF,
-		OnboardingSteps.PLEX,
-		OnboardingSteps.SYNC,
-		OnboardingSteps.SETTINGS,
-		OnboardingSteps.COMPLETE
-	];
-	const currentIndex = stepOrder.indexOf(currentStep);
-	if (currentIndex === -1 || currentIndex >= stepOrder.length - 1) {
+	const currentIndex = ONBOARDING_STEP_ORDER.indexOf(currentStep);
+	if (currentIndex === -1 || currentIndex >= ONBOARDING_STEP_ORDER.length - 1) {
 		return null;
 	}
-	return stepOrder[currentIndex + 1] ?? null;
+	return ONBOARDING_STEP_ORDER[currentIndex + 1] ?? null;
 }
 
 export function getPreviousStep(currentStep: OnboardingStep): OnboardingStep | null {
-	const stepOrder: OnboardingStep[] = [
-		OnboardingSteps.CLAIM,
-		OnboardingSteps.CSRF,
-		OnboardingSteps.PLEX,
-		OnboardingSteps.SYNC,
-		OnboardingSteps.SETTINGS,
-		OnboardingSteps.COMPLETE
-	];
-	const currentIndex = stepOrder.indexOf(currentStep);
+	const currentIndex = ONBOARDING_STEP_ORDER.indexOf(currentStep);
 	if (currentIndex <= 0) {
 		return null;
 	}
-	return stepOrder[currentIndex - 1] ?? null;
+	return ONBOARDING_STEP_ORDER[currentIndex - 1] ?? null;
 }

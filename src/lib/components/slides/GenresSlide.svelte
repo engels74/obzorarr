@@ -28,28 +28,28 @@ let {
 }: Props = $props();
 
 const GENRE_COLORS: Record<string, string> = {
-	Action: 'hsl(15 70% 50%)',
-	Adventure: 'hsl(35 65% 55%)',
-	Animation: 'hsl(145 55% 50%)',
-	Comedy: 'hsl(50 70% 55%)',
-	Crime: 'hsl(240 30% 45%)',
-	Documentary: 'hsl(180 45% 45%)',
-	Drama: 'hsl(5 65% 45%)',
-	Family: 'hsl(120 45% 50%)',
-	Fantasy: 'hsl(280 55% 50%)',
-	History: 'hsl(40 35% 50%)',
-	Horror: 'hsl(350 50% 35%)',
-	Music: 'hsl(310 60% 55%)',
-	Mystery: 'hsl(220 40% 45%)',
-	Romance: 'hsl(350 60% 55%)',
-	'Science Fiction': 'hsl(200 50% 50%)',
-	'Sci-Fi': 'hsl(200 50% 50%)',
-	Thriller: 'hsl(270 35% 40%)',
-	War: 'hsl(80 25% 45%)',
-	Western: 'hsl(30 45% 50%)'
+	Action: 'oklch(0.6137 0.1775 37.8)',
+	Adventure: 'oklch(0.7266 0.1261 72.35)',
+	Animation: 'oklch(0.7321 0.1672 153.08)',
+	Comedy: 'oklch(0.8135 0.1489 97.47)',
+	Crime: 'oklch(0.4665 0.1096 281.28)',
+	Documentary: 'oklch(0.6676 0.0937 195.14)',
+	Drama: 'oklch(0.5339 0.1756 29.35)',
+	Family: 'oklch(0.6957 0.186 143.25)',
+	Fantasy: 'oklch(0.5409 0.2125 311.88)',
+	History: 'oklch(0.6622 0.0859 83.55)',
+	Horror: 'oklch(0.4319 0.122 13.97)',
+	Music: 'oklch(0.6286 0.2128 335.12)',
+	Mystery: 'oklch(0.5068 0.1043 263.06)',
+	Romance: 'oklch(0.5961 0.173 14.32)',
+	'Science Fiction': 'oklch(0.6351 0.1031 233.5)',
+	'Sci-Fi': 'oklch(0.6351 0.1031 233.5)',
+	Thriller: 'oklch(0.4537 0.1174 305.29)',
+	War: 'oklch(0.622 0.0835 123.83)',
+	Western: 'oklch(0.6447 0.1025 64.2)'
 };
 
-const DEFAULT_GENRE_COLOR = 'hsl(var(--primary))';
+const DEFAULT_GENRE_COLOR = 'oklch(var(--primary))';
 
 function getGenreColor(genreTitle: string): string {
 	return GENRE_COLORS[genreTitle.trim()] ?? DEFAULT_GENRE_COLOR;
@@ -235,10 +235,10 @@ $effect(() => {
 		.title {
 			font-size: 1.75rem;
 			font-weight: 700;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			text-transform: uppercase;
 			letter-spacing: 0.05em;
-			text-shadow: 0 0 30px var(--slide-glow-color, hsl(var(--primary) / 0.3));
+			text-shadow: 0 0 30px var(--slide-glow-color, oklch(var(--primary) / 0.3));
 		}
 
 		.genre-list {
@@ -247,14 +247,14 @@ $effect(() => {
 			flex-direction: column;
 			gap: 1rem;
 			padding: 1.5rem;
-			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
+			background: var(--slide-glass-bg);
 			backdrop-filter: blur(var(--slide-glass-blur, 20px));
 			-webkit-backdrop-filter: blur(var(--slide-glass-blur, 20px));
-			border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
+			border: 1px solid var(--slide-glass-border);
 			border-radius: calc(var(--radius) * 2);
 			box-shadow:
-				var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.3)),
-				inset 0 1px 0 hsl(0 0% 100% / 0.05);
+				var(--shadow-elevation-medium, 0 4px 12px oklch(0 0 0 / 0.3)),
+				inset 0 1px 0 oklch(1 0 0 / 0.05);
 			position: relative;
 		}
 
@@ -266,14 +266,14 @@ $effect(() => {
 			left: 0;
 			right: 0;
 			height: 1px;
-			background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.4), transparent);
+			background: linear-gradient(90deg, transparent, oklch(var(--primary) / 0.4), transparent);
 			border-radius: inherit;
 		}
 
 		.genre-item {
 			padding: 1rem 1.25rem;
 			border-radius: calc(var(--radius) * 1.25);
-			background: hsl(var(--primary-hue) 20% 15% / 0.3);
+			background: oklch(var(--slide-bg-start) / 0.3);
 			border: 1px solid transparent;
 			position: relative;
 			transition:
@@ -285,18 +285,18 @@ $effect(() => {
 
 		.genre-item:hover {
 			transform: translateX(4px);
-			background: hsl(var(--primary-hue) 20% 18% / 0.4);
-			border-color: hsl(var(--primary) / 0.2);
-			box-shadow: 0 2px 12px hsl(0 0% 0% / 0.25);
+			background: oklch(var(--slide-bg-start) / 0.4);
+			border-color: oklch(var(--primary) / 0.2);
+			box-shadow: 0 2px 12px oklch(0 0 0 / 0.25);
 		}
 
 		/* First genre gets special treatment */
 		.genre-item.first {
-			border-color: hsl(var(--primary) / 0.25);
+			border-color: oklch(var(--primary) / 0.25);
 			background: linear-gradient(
 				135deg,
-				hsl(var(--primary) / 0.12) 0%,
-				hsl(var(--primary-hue) 20% 15% / 0.3) 100%
+				oklch(var(--primary) / 0.12) 0%,
+				oklch(var(--slide-bg-start) / 0.3) 100%
 			);
 		}
 
@@ -307,7 +307,7 @@ $effect(() => {
 			left: 0;
 			right: 0;
 			height: 1px;
-			background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.4), transparent);
+			background: linear-gradient(90deg, transparent, oklch(var(--primary) / 0.4), transparent);
 			border-radius: inherit;
 		}
 
@@ -321,7 +321,7 @@ $effect(() => {
 		.genre-name {
 			font-size: 1rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			overflow: hidden;
 			text-overflow: ellipsis;
 			white-space: nowrap;
@@ -329,23 +329,23 @@ $effect(() => {
 		}
 
 		.first .genre-name {
-			color: hsl(var(--primary));
-			text-shadow: 0 0 10px hsl(var(--primary) / 0.3);
+			color: oklch(var(--primary));
+			text-shadow: 0 0 10px oklch(var(--primary) / 0.3);
 		}
 
 		.genre-count {
 			font-size: 0.8125rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-weight: 500;
 			padding: 0.125rem 0.5rem;
-			background: hsl(var(--primary) / 0.08);
+			background: oklch(var(--primary) / 0.08);
 			border-radius: var(--radius);
 		}
 
 		.bar-container {
 			width: 100%;
 			height: 12px;
-			background: hsl(var(--muted) / 0.2);
+			background: oklch(var(--muted) / 0.2);
 			border-radius: 6px;
 			overflow: visible;
 			position: relative;
@@ -365,7 +365,7 @@ $effect(() => {
 		}
 
 		.bar-container :global(button[data-slot='tooltip-trigger']:focus-visible) {
-			outline: 2px solid hsl(var(--primary) / 0.5);
+			outline: 2px solid oklch(var(--primary) / 0.5);
 			outline-offset: 2px;
 			border-radius: 4px;
 		}
@@ -386,7 +386,7 @@ $effect(() => {
 			cursor: pointer;
 			box-shadow:
 				0 0 10px color-mix(in srgb, var(--genre-color) 40%, transparent),
-				inset 0 1px 0 hsl(0 0% 100% / 0.2);
+				inset 0 1px 0 oklch(1 0 0 / 0.2);
 			transition:
 				transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
 				filter 0.3s ease,
@@ -399,7 +399,7 @@ $effect(() => {
 			left: 0;
 			right: 0;
 			height: 40%;
-			background: linear-gradient(180deg, hsl(0 0% 100% / 0.25) 0%, hsl(0 0% 100% / 0) 100%);
+			background: linear-gradient(180deg, oklch(1 0 0 / 0.25) 0%, oklch(1 0 0 / 0) 100%);
 			border-radius: 6px 6px 0 0;
 			pointer-events: none;
 		}
@@ -410,17 +410,17 @@ $effect(() => {
 			box-shadow:
 				0 0 15px var(--genre-color),
 				0 0 30px color-mix(in srgb, var(--genre-color) 40%, transparent),
-				inset 0 1px 0 hsl(0 0% 100% / 0.3);
+				inset 0 1px 0 oklch(1 0 0 / 0.3);
 		}
 
 		.empty-message {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-style: italic;
 			font-size: 1.125rem;
 		}
 
 		.empty-hint {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-size: 0.875rem;
 			opacity: 0.7;
 		}
@@ -431,14 +431,14 @@ $effect(() => {
 
 		/* Tooltip styling - premium glass effect */
 		:global(.tooltip-content) {
-			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.8)) !important;
+			background: var(--slide-glass-bg) !important;
 			backdrop-filter: blur(12px);
 			-webkit-backdrop-filter: blur(12px);
-			color: hsl(var(--foreground)) !important;
-			border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.3)) !important;
+			color: oklch(var(--foreground)) !important;
+			border: 1px solid var(--slide-glass-border) !important;
 			padding: 0.75rem 1rem !important;
 			border-radius: var(--radius) !important;
-			box-shadow: var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.3)) !important;
+			box-shadow: var(--shadow-elevation-medium, 0 4px 12px oklch(0 0 0 / 0.3)) !important;
 		}
 
 		.tooltip-inner {
@@ -449,14 +449,14 @@ $effect(() => {
 		}
 
 		.tooltip-title {
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			font-size: 0.9375rem;
 			font-weight: 600;
 		}
 
 		.tooltip-stat {
 			font-size: 0.8125rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin: 0;
 		}
 

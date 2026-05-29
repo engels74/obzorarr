@@ -3,7 +3,9 @@ import { browser } from '$app/environment';
 import { enhance } from '$app/forms';
 import { goto, invalidateAll } from '$app/navigation';
 import { page } from '$app/stores';
+import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import * as AlertDialog from '$lib/components/ui/alert-dialog';
+import { Button } from '$lib/components/ui/button';
 import type { LogEntry, LogLevelType } from '$lib/server/logging';
 import { toast } from '$lib/services/toast';
 import { handleFormToast } from '$lib/utils/form-toast';
@@ -382,6 +384,10 @@ $effect(() => {
 });
 </script>
 
+<svelte:head>
+	<title>Logs — Admin — Obzorarr</title>
+</svelte:head>
+
 <div class="logs-page">
 	<header class="page-header">
 		<h1>Application Logs</h1>
@@ -412,7 +418,9 @@ $effect(() => {
 	<section class="section filters-section">
 		<div class="filters-header">
 			<h2>Filters</h2>
-			<button type="button" class="clear-filters-button" onclick={clearFilters}> Clear All </button>
+			<Button type="button" class="clear-filters-button tap-target" onclick={clearFilters}>
+				Clear All
+			</Button>
 		</div>
 
 		<div class="filters-grid">
@@ -501,8 +509,8 @@ $effect(() => {
 		<div class="controls-left">
 			<button
 				type="button"
-				class="control-button"
-				class:active={autoScroll}
+				class={`control-button tap-target ${autoScroll ? 'active' : ''}`}
+				data-testid="toggle-live-view"
 				onclick={toggleAutoScroll}
 			>
 				{#if autoScroll}
@@ -545,14 +553,19 @@ $effect(() => {
 				}}
 				class="inline-form"
 			>
-				<button type="submit" class="control-button secondary"> Export JSON </button>
+				<SubmitButton class="control-button secondary tap-target">
+					{#snippet children()}
+						Export JSON
+					{/snippet}
+				</SubmitButton>
 			</form>
 		</div>
 
 		<div class="controls-right">
 			<button
 				type="button"
-				class="control-button secondary"
+				class="control-button secondary tap-target"
+				data-testid="open-cleanup-dialog"
 				onclick={() => (runCleanupDialogOpen = true)}
 			>
 				Run Cleanup
@@ -560,7 +573,8 @@ $effect(() => {
 
 			<button
 				type="button"
-				class="control-button danger"
+				class="control-button danger tap-target"
+				data-testid="open-clear-logs-dialog"
 				onclick={() => (clearLogsDialogOpen = true)}
 			>
 				Clear All Logs
@@ -617,14 +631,14 @@ $effect(() => {
 									{/if}
 								</td>
 								<td class="col-actions">
-									<button
+									<Button
 										type="button"
-										class="copy-button"
+										class="copy-button tap-target"
 										title="Copy to clipboard"
 										onclick={() => copyLog(log)}
 									>
 										Copy
-									</button>
+									</Button>
 								</td>
 							</tr>
 						{/each}
@@ -638,12 +652,12 @@ $effect(() => {
 			{@const lastLog = data.logs[data.logs.length - 1]}
 			{#if lastLog}
 				<div class="load-more">
-					<a
+					<Button
 						href="/admin/logs?cursor={lastLog.id}&{$page.url.searchParams.toString()}"
-						class="load-more-button"
+						class="load-more-button tap-target"
 					>
 						Load More
-					</a>
+					</Button>
 				</div>
 			{/if}
 		{/if}
@@ -798,12 +812,12 @@ $effect(() => {
 		.page-header h1 {
 			font-size: 2rem;
 			font-weight: 700;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			margin: 0 0 0.5rem;
 		}
 
 		.subtitle {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin: 0;
 		}
 
@@ -816,43 +830,43 @@ $effect(() => {
 		}
 
 		.stat-card {
-			background: hsl(var(--card));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--card));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
 			padding: 1rem;
 			text-align: center;
 		}
 
 		.stat-card.level-info {
-			border-left: 3px solid hsl(200 60% 50%);
+			border-left: 3px solid oklch(0.6475 0.1187 235.02);
 		}
 
 		.stat-card.level-warn {
-			border-left: 3px solid hsl(45 80% 50%);
+			border-left: 3px solid oklch(0.7899 0.1569 87.11);
 		}
 
 		.stat-card.level-error {
-			border-left: 3px solid hsl(var(--destructive));
+			border-left: 3px solid oklch(var(--destructive));
 		}
 
 		.stat-value {
 			display: block;
 			font-size: 1.5rem;
 			font-weight: 700;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.stat-label {
 			display: block;
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin-top: 0.25rem;
 		}
 
 		/* Section */
 		.section {
-			background: hsl(var(--card));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--card));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
 			padding: 1.5rem;
 			margin-bottom: 1.5rem;
@@ -861,7 +875,7 @@ $effect(() => {
 		.section h2 {
 			font-size: 1.125rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			margin: 0;
 		}
 
@@ -873,19 +887,23 @@ $effect(() => {
 			margin-bottom: 1rem;
 		}
 
-		.clear-filters-button {
+		/* `.clear-filters-button` is the muted-tertiary "Clear All" CTA
+		   in the filters header. Hoisted to :global so shadcn Button's
+		   child-rendered <button> inherits the transparent background +
+		   border + hover-darken treatment. */
+		:global(.clear-filters-button) {
 			padding: 0.25rem 0.5rem;
 			font-size: 0.75rem;
 			background: transparent;
-			color: hsl(var(--muted-foreground));
-			border: 1px solid hsl(var(--border));
+			color: oklch(var(--muted-foreground));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
 			cursor: pointer;
 		}
 
-		.clear-filters-button:hover {
-			color: hsl(var(--foreground));
-			border-color: hsl(var(--foreground));
+		:global(.clear-filters-button:hover) {
+			color: oklch(var(--foreground));
+			border-color: oklch(var(--foreground));
 		}
 
 		.filters-grid {
@@ -904,16 +922,16 @@ $effect(() => {
 		.filter-label {
 			font-size: 0.875rem;
 			font-weight: 500;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.filter-group input,
 		.filter-group select {
 			padding: 0.5rem 0.75rem;
-			background: hsl(var(--input));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--input));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			font-size: 0.875rem;
 			min-width: 0;
 			width: 100%;
@@ -932,9 +950,9 @@ $effect(() => {
 			padding: 0.375rem 0.75rem;
 			font-size: 0.75rem;
 			font-weight: 500;
-			background: hsl(var(--muted) / 0.4);
-			color: hsl(var(--muted-foreground));
-			border: 1px dashed hsl(var(--border));
+			background: oklch(var(--muted) / 0.4);
+			color: oklch(var(--muted-foreground));
+			border: 1px dashed oklch(var(--border));
 			border-radius: var(--radius);
 			cursor: pointer;
 			opacity: 0.7;
@@ -942,7 +960,7 @@ $effect(() => {
 		}
 
 		.level-toggle:hover {
-			background: hsl(var(--muted) / 0.7);
+			background: oklch(var(--muted) / 0.7);
 			opacity: 1;
 		}
 
@@ -972,27 +990,27 @@ $effect(() => {
 		}
 
 		.level-toggle.active.level-error {
-			background: hsl(var(--destructive));
-			color: hsl(var(--destructive-foreground));
-			border-color: hsl(var(--destructive));
+			background: oklch(var(--destructive));
+			color: oklch(var(--destructive-foreground));
+			border-color: oklch(var(--destructive));
 		}
 
 		.level-toggle.active.level-warn {
-			background: hsl(45 80% 40%);
+			background: oklch(0.6697 0.1323 87.37);
 			color: white;
-			border-color: hsl(45 80% 40%);
+			border-color: oklch(0.6697 0.1323 87.37);
 		}
 
 		.level-toggle.active.level-info {
-			background: hsl(200 60% 45%);
+			background: oklch(0.5996 0.1091 234.92);
 			color: white;
-			border-color: hsl(200 60% 45%);
+			border-color: oklch(0.5996 0.1091 234.92);
 		}
 
 		.level-toggle.active.level-debug {
-			background: hsl(var(--muted-foreground));
-			color: hsl(var(--background));
-			border-color: hsl(var(--muted-foreground));
+			background: oklch(var(--muted-foreground));
+			color: oklch(var(--background));
+			border-color: oklch(var(--muted-foreground));
 		}
 
 		.level-count {
@@ -1020,12 +1038,17 @@ $effect(() => {
 			display: inline;
 		}
 
-		.control-button {
+		/* `.control-button` is the log-page actions group (live-view
+		   toggle + Export/Cleanup/Clear). 4 variants (default primary +
+		   .secondary + .danger + .active) all hoisted to :global so the
+		   shadcn Button + SubmitButton consumers inherit each variant's
+		   palette. */
+		:global(.control-button) {
 			padding: 0.5rem 1rem;
 			font-size: 0.875rem;
 			font-weight: 500;
-			background: hsl(var(--primary));
-			color: hsl(var(--primary-foreground));
+			background: oklch(var(--primary));
+			color: oklch(var(--primary-foreground));
 			border: none;
 			border-radius: var(--radius);
 			cursor: pointer;
@@ -1035,23 +1058,23 @@ $effect(() => {
 			transition: opacity 0.15s ease;
 		}
 
-		.control-button:hover {
+		:global(.control-button:hover) {
 			opacity: 0.9;
 		}
 
-		.control-button.secondary {
-			background: hsl(var(--secondary));
-			color: hsl(var(--secondary-foreground));
-			border: 1px solid hsl(var(--border));
+		:global(.control-button.secondary) {
+			background: oklch(var(--secondary));
+			color: oklch(var(--secondary-foreground));
+			border: 1px solid oklch(var(--border));
 		}
 
-		.control-button.danger {
-			background: hsl(var(--destructive));
-			color: hsl(var(--destructive-foreground));
+		:global(.control-button.danger) {
+			background: oklch(var(--destructive));
+			color: oklch(var(--destructive-foreground));
 		}
 
-		.control-button.active {
-			background: hsl(120 40% 35%);
+		:global(.control-button.active) {
+			background: oklch(0.5266 0.1278 143.49);
 		}
 
 		.pulse-dot {
@@ -1087,7 +1110,7 @@ $effect(() => {
 
 		.logs-count {
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.logs-table-wrapper {
@@ -1106,23 +1129,23 @@ $effect(() => {
 		.logs-table td {
 			padding: 0.625rem 0.75rem;
 			text-align: left;
-			border-bottom: 1px solid hsl(var(--border));
+			border-bottom: 1px solid oklch(var(--border));
 			vertical-align: top;
 		}
 
 		.logs-table th {
 			position: sticky;
 			top: 0;
-			background: hsl(var(--card));
+			background: oklch(var(--card));
 			font-weight: 600;
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-transform: uppercase;
 			z-index: 1;
 		}
 
 		.logs-table tbody tr:hover {
-			background: hsl(var(--muted) / 0.3);
+			background: oklch(var(--muted) / 0.3);
 		}
 
 		.col-time {
@@ -1148,13 +1171,13 @@ $effect(() => {
 
 		.time-relative {
 			display: block;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.time-full {
 			display: block;
 			font-size: 0.6875rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.level-badge {
@@ -1167,32 +1190,32 @@ $effect(() => {
 		}
 
 		.level-badge.level-error {
-			background: hsl(var(--destructive));
-			color: hsl(var(--destructive-foreground));
+			background: oklch(var(--destructive));
+			color: oklch(var(--destructive-foreground));
 		}
 
 		.level-badge.level-warn {
-			background: hsl(45 80% 35%);
-			color: hsl(45 100% 95%);
+			background: oklch(0.6075 0.1196 87.55);
+			color: oklch(0.9809 0.026 91.62);
 		}
 
 		.level-badge.level-info {
-			background: hsl(200 60% 40%);
-			color: hsl(200 100% 95%);
+			background: oklch(0.5508 0.0994 234.79);
+			color: oklch(0.9646 0.0213 229.05);
 		}
 
 		.level-badge.level-debug {
-			background: hsl(var(--muted));
-			color: hsl(var(--muted-foreground));
+			background: oklch(var(--muted));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.source-tag {
 			display: inline-block;
 			padding: 0.125rem 0.375rem;
-			background: hsl(var(--muted));
+			background: oklch(var(--muted));
 			border-radius: var(--radius);
 			font-size: 0.75rem;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.message-text {
@@ -1208,36 +1231,40 @@ $effect(() => {
 		.metadata-details summary {
 			cursor: pointer;
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.metadata-json {
 			margin: 0.5rem 0 0;
 			padding: 0.5rem;
-			background: hsl(var(--muted));
+			background: oklch(var(--muted));
 			border-radius: var(--radius);
 			font-size: 0.75rem;
 			overflow-x: auto;
 		}
 
-		.copy-button {
+		/* `.copy-button` is the per-row copy-to-clipboard CTA in the log
+		   table. Hoisted to :global so shadcn Button's child-rendered
+		   <button> inherits the muted-default vs primary-on-hover
+		   palette swap. */
+		:global(.copy-button) {
 			padding: 0.25rem 0.5rem;
 			font-size: 0.6875rem;
-			background: hsl(var(--muted));
-			color: hsl(var(--muted-foreground));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--muted));
+			color: oklch(var(--muted-foreground));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
 			cursor: pointer;
 		}
 
-		.copy-button:hover {
-			background: hsl(var(--primary));
-			color: hsl(var(--primary-foreground));
-			border-color: hsl(var(--primary));
+		:global(.copy-button:hover) {
+			background: oklch(var(--primary));
+			color: oklch(var(--primary-foreground));
+			border-color: oklch(var(--primary));
 		}
 
 		.empty-message {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-align: center;
 			padding: 2rem;
 		}
@@ -1247,19 +1274,24 @@ $effect(() => {
 			padding: 1rem;
 		}
 
-		.load-more-button {
+		/* `.load-more-button` renders as an <a> tag (pagination cursor
+		   link). shadcn Button with `href` prop renders <a> internally.
+		   Hoisted to :global so the rendered anchor inherits the
+		   secondary palette + border + hover-darken. text-decoration:none
+		   stays for the underline-removal. */
+		:global(.load-more-button) {
 			display: inline-block;
 			padding: 0.5rem 1.5rem;
-			background: hsl(var(--secondary));
-			color: hsl(var(--foreground));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--secondary));
+			color: oklch(var(--foreground));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
 			text-decoration: none;
 			font-size: 0.875rem;
 		}
 
-		.load-more-button:hover {
-			background: hsl(var(--muted));
+		:global(.load-more-button:hover) {
+			background: oklch(var(--muted));
 		}
 
 		/* Settings Info */
@@ -1277,29 +1309,29 @@ $effect(() => {
 			display: flex;
 			justify-content: space-between;
 			padding: 0.5rem;
-			background: hsl(var(--muted) / 0.5);
+			background: oklch(var(--muted) / 0.5);
 			border-radius: var(--radius);
 		}
 
 		.setting-label {
 			font-size: 0.8125rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.setting-value {
 			font-size: 0.8125rem;
 			font-weight: 500;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.settings-note {
 			margin-top: 1rem;
 			font-size: 0.8125rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.settings-note a {
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 		}
 
 		/* Responsive */
@@ -1362,7 +1394,7 @@ $effect(() => {
 				width: 100%;
 			}
 
-			.control-button {
+			:global(.control-button) {
 				width: 100%;
 				justify-content: center;
 			}

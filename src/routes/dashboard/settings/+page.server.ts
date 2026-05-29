@@ -31,7 +31,13 @@ async function getSessionExpiration(userId: number): Promise<Date | null> {
 	return result[0]?.expiresAt ?? null;
 }
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, setHeaders }) => {
+	// The floor message and disabled-radio state are derived from the live
+	// global default share mode (admin-controlled). Browsers MUST refetch on
+	// every navigation, otherwise the page renders with a stale floor when the
+	// admin flips the global default in another tab.
+	setHeaders({ 'cache-control': 'no-store' });
+
 	const userId = locals.user!.id;
 	const currentYear = new Date().getFullYear();
 

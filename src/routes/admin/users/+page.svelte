@@ -1,6 +1,8 @@
 <script lang="ts">
 import { enhance } from '$app/forms';
+import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import { handleFormToast } from '$lib/utils/form-toast';
+import { maskEmail } from '$lib/utils/format';
 import type { ActionData, PageData } from './$types';
 
 /**
@@ -57,6 +59,10 @@ function markAvatarFailed(userId: number): void {
 	failedAvatarUserIds = new Set(failedAvatarUserIds).add(userId);
 }
 </script>
+
+<svelte:head>
+	<title>Users — Admin — Obzorarr</title>
+</svelte:head>
 
 <div class="users-page">
 	<header class="page-header">
@@ -141,7 +147,9 @@ function markAvatarFailed(userId: number): void {
 											</span>
 												{/if}
 											{#if user.email}
-												<span class="user-email">{user.email}</span>
+												<span class="user-email" title="Email masked for privacy">
+													{maskEmail(user.email)}
+												</span>
 											{/if}
 										</div>
 									</div>
@@ -175,31 +183,27 @@ function markAvatarFailed(userId: number): void {
 											name="canUserControl"
 											value={user.canUserControl ? 'false' : 'true'}
 										/>
-										<button
-											type="submit"
-											class="toggle-button"
-											class:enabled={user.canUserControl}
+										<SubmitButton
+											class={`toggle-button tap-target ${user.canUserControl ? 'enabled' : ''}`}
 											title={user.canUserControl
 												? 'Click to revoke control'
 												: 'Click to grant control'}
 										>
-											{user.canUserControl ? 'Yes' : 'No'}
-										</button>
+											{#snippet children()}
+												{user.canUserControl ? 'Yes' : 'No'}
+											{/snippet}
+										</SubmitButton>
 									</form>
 								</td>
 								<td>
-									{#if user.hasWatchHistory}
-										<a
-											href={user.wrappedHref}
-											target="_blank"
-											rel="noopener noreferrer"
-											class="preview-link"
-										>
-											Preview Wrapped
-										</a>
-									{:else}
-										<span class="preview-link unavailable">No Wrapped yet</span>
-									{/if}
+									<a
+										href={user.wrappedHref}
+										target="_blank"
+										rel="noopener noreferrer"
+										class="preview-link"
+									>
+										{user.hasWatchHistory ? 'Preview Wrapped' : 'Preview (no data)'}
+									</a>
 								</td>
 							</tr>
 						{/each}
@@ -239,7 +243,9 @@ function markAvatarFailed(userId: number): void {
 								</span>
 									{/if}
 								{#if user.email}
-									<span class="user-email">{user.email}</span>
+									<span class="user-email" title="Email masked for privacy">
+										{maskEmail(user.email)}
+									</span>
 								{/if}
 							</div>
 						</div>
@@ -276,29 +282,27 @@ function markAvatarFailed(userId: number): void {
 										name="canUserControl"
 										value={user.canUserControl ? 'false' : 'true'}
 									/>
-									<button
-										type="submit"
-										class="toggle-button"
-										class:enabled={user.canUserControl}
-										title={user.canUserControl ? 'Click to revoke control' : 'Click to grant control'}
+									<SubmitButton
+										class={`toggle-button tap-target ${user.canUserControl ? 'enabled' : ''}`}
+										title={user.canUserControl
+											? 'Click to revoke control'
+											: 'Click to grant control'}
 									>
-										{user.canUserControl ? 'Yes' : 'No'}
-									</button>
+										{#snippet children()}
+											{user.canUserControl ? 'Yes' : 'No'}
+										{/snippet}
+									</SubmitButton>
 								</form>
 							</div>
 						</div>
-						{#if user.hasWatchHistory}
-							<a
-								href={user.wrappedHref}
-								target="_blank"
-								rel="noopener noreferrer"
-								class="preview-link mobile-preview-link"
-							>
-								Preview Wrapped
-							</a>
-						{:else}
-							<span class="preview-link unavailable mobile-preview-link">No Wrapped yet</span>
-						{/if}
+						<a
+							href={user.wrappedHref}
+							target="_blank"
+							rel="noopener noreferrer"
+							class="preview-link mobile-preview-link"
+						>
+							{user.hasWatchHistory ? 'Preview Wrapped' : 'Preview (no data)'}
+						</a>
 					</div>
 				{/each}
 			</div>
@@ -344,17 +348,17 @@ function markAvatarFailed(userId: number): void {
 		.page-header h1 {
 			font-size: 2rem;
 			font-weight: 700;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			margin: 0 0 0.5rem;
 		}
 
 		.subtitle {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin: 0;
 		}
 
 		.empty-hint {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-size: 0.875rem;
 			margin: 0.5rem 0 0;
 		}
@@ -372,18 +376,18 @@ function markAvatarFailed(userId: number): void {
 
 		.year-selector {
 			padding: 0.5rem 0.75rem;
-			background: hsl(var(--input));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--input));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			font-size: 0.875rem;
 			cursor: pointer;
 		}
 
 		.year-selector:focus {
 			outline: none;
-			border-color: hsl(var(--ring));
-			box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+			border-color: oklch(var(--ring));
+			box-shadow: 0 0 0 2px oklch(var(--ring) / 0.2);
 		}
 
 		.year-selector:disabled {
@@ -392,8 +396,8 @@ function markAvatarFailed(userId: number): void {
 		}
 
 		.section {
-			background: hsl(var(--card));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--card));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
 			padding: 1.5rem;
 			margin-bottom: 1.5rem;
@@ -403,14 +407,14 @@ function markAvatarFailed(userId: number): void {
 		.section h2 {
 			font-size: 1.125rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			margin: 0 0 0.5rem;
 		}
 
 		.section h3 {
 			font-size: 1rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			margin: 0 0 0.75rem;
 		}
 
@@ -427,7 +431,7 @@ function markAvatarFailed(userId: number): void {
 
 		.user-count {
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		/* Users Table */
@@ -450,18 +454,18 @@ function markAvatarFailed(userId: number): void {
 		.users-table td {
 			padding: 0.75rem;
 			text-align: left;
-			border-bottom: 1px solid hsl(var(--border));
+			border-bottom: 1px solid oklch(var(--border));
 		}
 
 		.users-table th {
 			font-weight: 600;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-size: 0.75rem;
 			text-transform: uppercase;
 		}
 
 		.users-table tbody tr:hover {
-			background: hsl(var(--muted) / 0.5);
+			background: oklch(var(--muted) / 0.5);
 		}
 
 		.user-cell {
@@ -491,8 +495,8 @@ function markAvatarFailed(userId: number): void {
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			background: hsl(var(--muted));
-			color: hsl(var(--muted-foreground));
+			background: oklch(var(--muted));
+			color: oklch(var(--muted-foreground));
 			font-size: 1.25rem;
 		}
 
@@ -504,27 +508,27 @@ function markAvatarFailed(userId: number): void {
 
 		.user-name {
 			font-weight: 500;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			display: flex;
 			align-items: center;
 			gap: 0.5rem;
 		}
 
 		.user-name[href]:hover {
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 		}
 
 		.user-email {
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			overflow-wrap: anywhere;
 		}
 
 		.admin-badge {
 			display: inline-block;
 			padding: 0.125rem 0.375rem;
-			background: hsl(var(--primary));
-			color: hsl(var(--primary-foreground));
+			background: oklch(var(--primary));
+			color: oklch(var(--primary-foreground));
 			font-size: 0.625rem;
 			font-weight: 600;
 			border-radius: 9999px;
@@ -533,7 +537,7 @@ function markAvatarFailed(userId: number): void {
 
 		.watch-time {
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.share-mode {
@@ -542,68 +546,66 @@ function markAvatarFailed(userId: number): void {
 			border-radius: var(--radius);
 			font-size: 0.75rem;
 			font-weight: 500;
-			background: hsl(var(--muted));
-			color: hsl(var(--muted-foreground));
+			background: oklch(var(--muted));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.share-mode.public {
-			background: hsl(120 40% 25%);
-			color: hsl(120 60% 90%);
+			background: oklch(0.4165 0.0976 143.57);
+			color: oklch(0.9393 0.0518 145.15);
 		}
 
 		.share-mode.oauth {
-			background: hsl(220 60% 30%);
-			color: hsl(220 80% 90%);
+			background: oklch(0.3737 0.1106 262.4);
+			color: oklch(0.901 0.0402 264.35);
 		}
 
 		.share-mode.link {
-			background: hsl(270 50% 30%);
-			color: hsl(270 70% 90%);
+			background: oklch(0.3621 0.1272 303.65);
+			color: oklch(0.8943 0.0518 307.82);
 		}
 
 		.permission-form {
 			margin: 0;
 		}
 
-		.toggle-button {
+		/* `.toggle-button` is the Yes/No permission toggle in the user
+		   table cells (desktop) + mobile list. Hoisted to :global so
+		   SubmitButton's child-rendered <button> inherits the muted-
+		   default vs green-enabled palettes + hover-fade. The `.enabled`
+		   modifier toggles via a template literal in the consuming
+		   class prop (Svelte `class:foo` syntax doesn't compose with
+		   component class props — only DOM-level). */
+		:global(.toggle-button) {
 			padding: 0.25rem 0.5rem;
-			border: 1px solid hsl(var(--border));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
 			font-size: 0.75rem;
 			font-weight: 500;
 			cursor: pointer;
-			background: hsl(var(--muted));
-			color: hsl(var(--muted-foreground));
+			background: oklch(var(--muted));
+			color: oklch(var(--muted-foreground));
 			transition: all 0.15s ease;
 		}
 
-		.toggle-button.enabled {
-			background: hsl(120 40% 25%);
-			color: hsl(120 60% 90%);
-			border-color: hsl(120 40% 25%);
+		:global(.toggle-button.enabled) {
+			background: oklch(0.4165 0.0976 143.57);
+			color: oklch(0.9393 0.0518 145.15);
+			border-color: oklch(0.4165 0.0976 143.57);
 		}
 
-		.toggle-button:hover {
+		:global(.toggle-button:hover) {
 			opacity: 0.8;
 		}
 
 		.preview-link {
 			font-size: 0.75rem;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			text-decoration: none;
 		}
 
 		.preview-link:hover {
 			text-decoration: underline;
-		}
-
-		.preview-link.unavailable {
-			color: hsl(var(--muted-foreground));
-			cursor: default;
-		}
-
-		.preview-link.unavailable:hover {
-			text-decoration: none;
 		}
 
 		.mobile-users-list {
@@ -615,7 +617,7 @@ function markAvatarFailed(userId: number): void {
 			flex-direction: column;
 			gap: 0.875rem;
 			padding: 1rem 0;
-			border-bottom: 1px solid hsl(var(--border));
+			border-bottom: 1px solid oklch(var(--border));
 			min-width: 0;
 		}
 
@@ -654,7 +656,7 @@ function markAvatarFailed(userId: number): void {
 		}
 
 		.mobile-meta-label {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-size: 0.6875rem;
 			font-weight: 600;
 			text-transform: uppercase;
@@ -665,14 +667,14 @@ function markAvatarFailed(userId: number): void {
 		}
 
 		.empty-message {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-align: center;
 			padding: 2rem;
 		}
 
 		/* Legend */
 		.legend-section {
-			background: hsl(var(--muted) / 0.3);
+			background: oklch(var(--muted) / 0.3);
 		}
 
 		.legend-grid {
@@ -689,7 +691,7 @@ function markAvatarFailed(userId: number): void {
 
 		.legend-desc {
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		/* Responsive */

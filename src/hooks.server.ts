@@ -1,5 +1,5 @@
 import type { Handle, HandleServerError } from '@sveltejs/kit';
-import { isRedirect } from '@sveltejs/kit';
+import { isHttpError, isRedirect } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
@@ -230,13 +230,20 @@ const authorizationHandle: Handle = async ({ event, resolve }) => {
 };
 
 export const handleError: HandleServerError = async ({ error, event }) => {
-	// Log the full error for debugging
-	logger.error(`Unexpected error: ${error}`, 'ErrorHandler', {
+	const metadata = {
 		route: event.route.id ?? '<unmatched>',
 		method: event.request.method
-	});
+	};
 
-	// Return sanitized error message to client
+	// Route-not-found and other expected HTTP errors are routine, not exceptions.
+	// Demote them to [NotFound] / info so they don't dominate error-channel triage.
+	if (isHttpError(error) && error.status === 404) {
+		logger.info(`Not found: ${event.url.pathname}`, 'NotFound', metadata);
+		return { message: error.body.message ?? 'Not found' };
+	}
+
+	logger.error(`Unexpected error: ${error}`, 'ErrorHandler', metadata);
+
 	return {
 		message: 'An unexpected error occurred'
 	};

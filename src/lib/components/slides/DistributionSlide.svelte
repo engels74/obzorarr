@@ -457,10 +457,10 @@ function formatPlays(plays: number): string {
 		.title {
 			font-size: 1.75rem;
 			font-weight: 700;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			text-transform: uppercase;
 			letter-spacing: 0.05em;
-			text-shadow: 0 0 30px hsl(var(--primary) / 0.3);
+			text-shadow: 0 0 30px oklch(var(--primary) / 0.3);
 		}
 
 		.chart-container {
@@ -471,14 +471,14 @@ function formatPlays(plays: number): string {
 			height: 220px;
 			width: 100%;
 			padding: 1.5rem 1.25rem 1rem;
-			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
+			background: var(--slide-glass-bg);
 			backdrop-filter: blur(var(--slide-glass-blur, 20px));
 			-webkit-backdrop-filter: blur(var(--slide-glass-blur, 20px));
-			border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
+			border: 1px solid var(--slide-glass-border);
 			border-radius: calc(var(--radius) * 2);
 			box-shadow:
-				var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.3)),
-				inset 0 1px 0 hsl(0 0% 100% / 0.05);
+				var(--shadow-elevation-medium, 0 4px 12px oklch(0 0 0 / 0.3)),
+				inset 0 1px 0 oklch(1 0 0 / 0.05);
 			position: relative;
 		}
 
@@ -490,7 +490,7 @@ function formatPlays(plays: number): string {
 			left: 0;
 			right: 0;
 			height: 1px;
-			background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.4), transparent);
+			background: linear-gradient(90deg, transparent, oklch(var(--primary) / 0.4), transparent);
 			border-radius: inherit;
 		}
 
@@ -524,7 +524,7 @@ function formatPlays(plays: number): string {
 		}
 
 		.bar-wrapper :global(button[data-slot='tooltip-trigger']:focus-visible) {
-			outline: 2px solid hsl(var(--primary) / 0.5);
+			outline: 2px solid oklch(var(--primary) / 0.5);
 			outline-offset: 2px;
 		}
 
@@ -534,7 +534,7 @@ function formatPlays(plays: number): string {
 
 		.data-label {
 			font-size: 0.5625rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin-bottom: 0.125rem;
 			opacity: 0;
 			transition: opacity 0.2s ease;
@@ -548,16 +548,16 @@ function formatPlays(plays: number): string {
 
 		.peak .data-label.visible {
 			opacity: 1;
-			color: hsl(var(--accent));
+			color: oklch(var(--accent));
 			font-weight: 600;
-			text-shadow: 0 0 8px hsl(var(--accent) / 0.4);
+			text-shadow: 0 0 8px oklch(var(--accent) / 0.4);
 		}
 
 		.bar {
 			width: 100%;
 			background: var(
 				--slide-bar-gradient,
-				linear-gradient(180deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.6) 100%)
+				linear-gradient(180deg, oklch(var(--primary)) 0%, oklch(var(--primary) / 0.6) 100%)
 			);
 			border-radius: 3px 3px 0 0;
 			transform-origin: bottom center;
@@ -566,8 +566,8 @@ function formatPlays(plays: number): string {
 			overflow: hidden;
 			cursor: pointer;
 			box-shadow:
-				0 0 8px hsl(var(--primary) / 0.3),
-				inset 0 1px 0 hsl(0 0% 100% / 0.15);
+				0 0 8px oklch(var(--primary) / 0.3),
+				inset 0 1px 0 oklch(1 0 0 / 0.15);
 			transition:
 				transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
 				filter 0.3s ease,
@@ -580,7 +580,7 @@ function formatPlays(plays: number): string {
 			left: 0;
 			right: 0;
 			height: 40%;
-			background: linear-gradient(180deg, hsl(0 0% 100% / 0.2) 0%, hsl(0 0% 100% / 0) 100%);
+			background: linear-gradient(180deg, oklch(1 0 0 / 0.2) 0%, oklch(1 0 0 / 0) 100%);
 			border-radius: 3px 3px 0 0;
 			pointer-events: none;
 		}
@@ -589,31 +589,31 @@ function formatPlays(plays: number): string {
 			transform: scaleX(1.2) !important;
 			filter: brightness(1.15);
 			box-shadow:
-				0 0 20px hsl(var(--primary) / 0.5),
-				0 0 40px hsl(var(--primary) / 0.3),
-				inset 0 1px 0 hsl(0 0% 100% / 0.25);
+				0 0 20px oklch(var(--primary) / 0.5),
+				0 0 40px oklch(var(--primary) / 0.3),
+				inset 0 1px 0 oklch(1 0 0 / 0.25);
 		}
 
 		.peak .bar {
 			background: var(
 				--slide-peak-gradient,
-				linear-gradient(180deg, hsl(var(--accent)) 0%, hsl(var(--accent) / 0.6) 100%)
+				linear-gradient(180deg, oklch(var(--accent)) 0%, oklch(var(--accent) / 0.6) 100%)
 			);
 			box-shadow:
-				0 0 12px hsl(var(--accent) / 0.4),
-				inset 0 1px 0 hsl(0 0% 100% / 0.2);
+				0 0 12px oklch(var(--accent) / 0.4),
+				inset 0 1px 0 oklch(1 0 0 / 0.2);
 		}
 
 		.peak .bar:hover {
 			box-shadow:
-				0 0 25px hsl(var(--accent) / 0.6),
-				0 0 50px hsl(var(--accent) / 0.3),
-				inset 0 1px 0 hsl(0 0% 100% / 0.3);
+				0 0 25px oklch(var(--accent) / 0.6),
+				0 0 50px oklch(var(--accent) / 0.3),
+				inset 0 1px 0 oklch(1 0 0 / 0.3);
 		}
 
 		.label {
 			font-size: 0.625rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin-top: 0.375rem;
 			white-space: nowrap;
 		}
@@ -624,15 +624,15 @@ function formatPlays(plays: number): string {
 
 		.peak-info {
 			font-size: 1rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			padding: 0.5rem 1rem;
-			background: hsl(var(--primary) / 0.08);
+			background: oklch(var(--primary) / 0.08);
 			border-radius: var(--radius);
 		}
 
 		.peak-info strong {
-			color: hsl(var(--primary));
-			text-shadow: 0 0 10px hsl(var(--primary) / 0.3);
+			color: oklch(var(--primary));
+			text-shadow: 0 0 10px oklch(var(--primary) / 0.3);
 		}
 
 		.extra {
@@ -641,14 +641,14 @@ function formatPlays(plays: number): string {
 
 		/* Tooltip styling - premium glass effect */
 		:global(.tooltip-content) {
-			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.85)) !important;
+			background: var(--slide-glass-bg) !important;
 			backdrop-filter: blur(12px);
 			-webkit-backdrop-filter: blur(12px);
-			color: hsl(var(--foreground)) !important;
-			border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.3)) !important;
+			color: oklch(var(--foreground)) !important;
+			border: 1px solid var(--slide-glass-border) !important;
 			padding: 0.75rem 1rem !important;
 			border-radius: var(--radius) !important;
-			box-shadow: var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.3)) !important;
+			box-shadow: var(--shadow-elevation-medium, 0 4px 12px oklch(0 0 0 / 0.3)) !important;
 		}
 
 		.tooltip-inner {
@@ -659,7 +659,7 @@ function formatPlays(plays: number): string {
 		}
 
 		.tooltip-title {
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			font-size: 0.9375rem;
 			font-weight: 600;
 			margin-bottom: 0.25rem;
@@ -667,7 +667,7 @@ function formatPlays(plays: number): string {
 
 		.tooltip-stat {
 			font-size: 0.8125rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin: 0;
 		}
 
@@ -696,7 +696,7 @@ function formatPlays(plays: number): string {
 		.section-title {
 			font-size: 1rem;
 			font-weight: 600;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-transform: uppercase;
 			letter-spacing: 0.05em;
 		}
@@ -745,10 +745,10 @@ function formatPlays(plays: number): string {
 			display: flex;
 			gap: 0.25rem;
 			padding: 0.25rem;
-			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.5));
+			background: var(--slide-glass-bg);
 			backdrop-filter: blur(8px);
 			-webkit-backdrop-filter: blur(8px);
-			border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
+			border: 1px solid var(--slide-glass-border);
 			border-radius: calc(var(--radius) * 1.5);
 		}
 
@@ -756,7 +756,7 @@ function formatPlays(plays: number): string {
 			padding: 0.5rem 1rem;
 			border: none;
 			background: transparent;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-size: 0.8125rem;
 			font-weight: 500;
 			border-radius: var(--radius);
@@ -765,20 +765,20 @@ function formatPlays(plays: number): string {
 		}
 
 		.view-toggle button:hover {
-			color: hsl(var(--foreground));
-			background: hsl(var(--primary) / 0.1);
+			color: oklch(var(--foreground));
+			background: oklch(var(--primary) / 0.1);
 		}
 
 		.view-toggle button.active {
-			background: hsl(var(--primary));
-			color: hsl(var(--primary-foreground));
+			background: oklch(var(--primary));
+			color: oklch(var(--primary-foreground));
 			box-shadow:
-				0 0 12px hsl(var(--primary) / 0.4),
-				inset 0 1px 0 hsl(0 0% 100% / 0.15);
+				0 0 12px oklch(var(--primary) / 0.4),
+				inset 0 1px 0 oklch(1 0 0 / 0.15);
 		}
 
 		.view-toggle button:focus-visible {
-			outline: 2px solid hsl(var(--primary) / 0.5);
+			outline: 2px solid oklch(var(--primary) / 0.5);
 			outline-offset: 2px;
 		}
 

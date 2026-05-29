@@ -20,9 +20,9 @@ let {
 }: TopViewersSlideProps = $props();
 
 const medalColors = {
-	1: { bg: 'hsl(45 90% 50%)', glow: 'hsl(45 90% 50% / 0.4)' }, // Gold
-	2: { bg: 'hsl(210 10% 70%)', glow: 'hsl(210 10% 70% / 0.4)' }, // Silver
-	3: { bg: 'hsl(30 60% 45%)', glow: 'hsl(30 60% 45% / 0.4)' } // Bronze
+	1: { bg: 'oklch(0.8153 0.1652 85.67)', glow: 'oklch(0.8153 0.1652 85.67 / 0.4)' }, // Gold
+	2: { bg: 'oklch(0.7615 0.0139 248.01)', glow: 'oklch(0.7615 0.0139 248.01 / 0.4)' }, // Silver
+	3: { bg: 'oklch(0.6165 0.1196 61.92)', glow: 'oklch(0.6165 0.1196 61.92 / 0.4)' } // Bronze
 } as const;
 
 const displayedViewers = $derived(topViewers.slice(0, limit));
@@ -231,10 +231,10 @@ $effect(() => {
 		.title {
 			font-size: 1.75rem;
 			font-weight: 700;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			text-transform: uppercase;
 			letter-spacing: 0.05em;
-			text-shadow: 0 0 30px hsl(var(--primary) / 0.3);
+			text-shadow: 0 0 30px oklch(var(--primary) / 0.3);
 		}
 
 		.viewer-list {
@@ -252,14 +252,14 @@ $effect(() => {
 			align-items: center;
 			gap: 1rem;
 			padding: 1rem 1.25rem;
-			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
+			background: var(--slide-glass-bg);
 			backdrop-filter: blur(var(--slide-glass-blur, 20px));
 			-webkit-backdrop-filter: blur(var(--slide-glass-blur, 20px));
-			border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
+			border: 1px solid var(--slide-glass-border);
 			border-radius: calc(var(--radius) * 1.5);
 			box-shadow:
-				var(--shadow-elevation-low, 0 2px 8px hsl(0 0% 0% / 0.25)),
-				inset 0 1px 0 hsl(0 0% 100% / 0.05);
+				var(--shadow-elevation-low, 0 2px 8px oklch(0 0 0 / 0.25)),
+				inset 0 1px 0 oklch(1 0 0 / 0.05);
 			position: relative;
 			transition:
 				transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
@@ -275,7 +275,7 @@ $effect(() => {
 			left: 0;
 			right: 0;
 			height: 1px;
-			background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.3), transparent);
+			background: linear-gradient(90deg, transparent, oklch(var(--primary) / 0.3), transparent);
 			border-radius: inherit;
 			opacity: 0;
 			transition: opacity 0.3s ease;
@@ -284,9 +284,9 @@ $effect(() => {
 		.viewer-item:hover {
 			transform: translateY(-3px) scale(1.01);
 			box-shadow:
-				var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.35)),
-				0 0 20px hsl(var(--primary) / 0.1);
-			border-color: hsl(var(--primary) / 0.25);
+				var(--shadow-elevation-medium, 0 4px 12px oklch(0 0 0 / 0.35)),
+				0 0 20px oklch(var(--primary) / 0.1);
+			border-color: oklch(var(--primary) / 0.25);
 		}
 
 		.viewer-item:hover::before {
@@ -295,40 +295,40 @@ $effect(() => {
 
 		/* Top 3 special styling */
 		.viewer-item.top-three {
-			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.45));
-			border-color: hsl(var(--primary) / 0.25);
+			background: var(--slide-glass-bg);
+			border-color: oklch(var(--primary) / 0.25);
 		}
 
 		.viewer-item.first {
-			border-color: hsl(45 90% 50% / 0.4);
+			border-color: oklch(0.8153 0.1652 85.67 / 0.4);
 			box-shadow:
-				var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.3)),
-				0 0 25px hsl(45 90% 50% / 0.15);
+				var(--shadow-elevation-medium, 0 4px 12px oklch(0 0 0 / 0.3)),
+				0 0 25px oklch(0.8153 0.1652 85.67 / 0.15);
 		}
 
 		.viewer-item.first::before {
-			background: linear-gradient(90deg, transparent, hsl(45 90% 50% / 0.5), transparent);
+			background: linear-gradient(90deg, transparent, oklch(0.8153 0.1652 85.67 / 0.5), transparent);
 			opacity: 1;
 		}
 
 		.viewer-item.second {
-			border-color: hsl(210 10% 70% / 0.4);
+			border-color: oklch(0.7615 0.0139 248.01 / 0.4);
 			box-shadow:
-				var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.3)),
-				0 0 20px hsl(210 10% 70% / 0.1);
+				var(--shadow-elevation-medium, 0 4px 12px oklch(0 0 0 / 0.3)),
+				0 0 20px oklch(0.7615 0.0139 248.01 / 0.1);
 		}
 
 		.viewer-item.third {
-			border-color: hsl(30 60% 45% / 0.4);
+			border-color: oklch(0.6165 0.1196 61.92 / 0.4);
 			box-shadow:
-				var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.3)),
-				0 0 15px hsl(30 60% 45% / 0.1);
+				var(--shadow-elevation-medium, 0 4px 12px oklch(0 0 0 / 0.3)),
+				0 0 15px oklch(0.6165 0.1196 61.92 / 0.1);
 		}
 
 		.rank {
 			font-size: 1.125rem;
 			font-weight: 700;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			min-width: 2.5rem;
 			text-align: center;
 		}
@@ -345,8 +345,8 @@ $effect(() => {
 			justify-content: center;
 			box-shadow:
 				0 2px 10px var(--medal-glow),
-				inset 0 1px 0 hsl(0 0% 100% / 0.3),
-				inset 0 -1px 0 hsl(0 0% 0% / 0.2);
+				inset 0 1px 0 oklch(1 0 0 / 0.3),
+				inset 0 -1px 0 oklch(0 0 0 / 0.2);
 			position: relative;
 		}
 
@@ -357,17 +357,17 @@ $effect(() => {
 			border-radius: 50%;
 			background: linear-gradient(
 				135deg,
-				hsl(0 0% 100% / 0.25) 0%,
+				oklch(1 0 0 / 0.25) 0%,
 				transparent 50%,
-				hsl(0 0% 0% / 0.1) 100%
+				oklch(0 0 0 / 0.1) 100%
 			);
 		}
 
 		.medal-rank {
 			font-size: 0.875rem;
 			font-weight: 800;
-			color: hsl(0 0% 10%);
-			text-shadow: 0 1px 0 hsl(0 0% 100% / 0.3);
+			color: oklch(0.2156 0 0);
+			text-shadow: 0 1px 0 oklch(1 0 0 / 0.3);
 			position: relative;
 			z-index: 1;
 		}
@@ -377,10 +377,10 @@ $effect(() => {
 			height: 52px;
 			background: linear-gradient(
 				135deg,
-				hsl(var(--primary) / 0.2) 0%,
-				hsl(var(--primary) / 0.1) 100%
+				oklch(var(--primary) / 0.2) 0%,
+				oklch(var(--primary) / 0.1) 100%
 			);
-			border: 1px solid hsl(var(--primary) / 0.2);
+			border: 1px solid oklch(var(--primary) / 0.2);
 			border-radius: 50%;
 			display: flex;
 			align-items: center;
@@ -396,7 +396,7 @@ $effect(() => {
 		}
 
 		.avatar-icon {
-			color: hsl(var(--primary) / 0.6);
+			color: oklch(var(--primary) / 0.6);
 		}
 
 		.icon {
@@ -415,24 +415,24 @@ $effect(() => {
 		.username {
 			font-size: 1rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.watch-time {
 			font-size: 0.8125rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			padding: 0.125rem 0.5rem;
-			background: hsl(var(--primary) / 0.08);
+			background: oklch(var(--primary) / 0.08);
 			border-radius: calc(var(--radius) * 0.75);
 		}
 
 		.empty-message {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-style: italic;
 			padding: 2rem;
-			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.3));
+			background: var(--slide-glass-bg);
 			border-radius: calc(var(--radius) * 1.5);
-			border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
+			border: 1px solid var(--slide-glass-border);
 		}
 
 		.extra {

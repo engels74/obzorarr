@@ -4,6 +4,27 @@ async function readSource(path: string): Promise<string> {
 	return Bun.file(path).text();
 }
 
+// US-022 disposition log — when the 4779-line monolith at
+// src/routes/admin/settings/+page.svelte was deleted (commit cf958fa),
+// 9 tests in this file fell out:
+//
+//   - renders security help as real disclosure buttons              → DELETED  (feature deferred from nested-route Security tab)
+//   - labels mobile settings tab buttons                            → DELETED  (mobile tab UX not in nested layout)
+//   - requires confirmation before enabling reverse-proxy header trust → RE-POINTED to security/+page.svelte
+//   - auto-runs the reverse-proxy diagnostic                        → DELETED  (feature deferred)
+//   - guards duplicate reverse-proxy diagnostic requests            → DELETED  (feature deferred)
+//   - keeps the diagnostic read-only                                → DELETED  (feature deferred)
+//   - explains env-locked reverse-proxy trust + setup examples      → DELETED  (docs section deferred)
+//   - updates wrapped logo mode selection explicitly                → REPLACED (logo-mode RadioGroup spot-check in appearance/+page.svelte)
+//   - renders accessible status feedback for data count             → RE-POINTED to data/+page.svelte
+//
+// The deletes correspond to features deliberately not carried over to the
+// nested routes (the reverse-proxy diagnostic auto-run + dup-guard + read-only
+// + env-locked docs section; the security-help disclosures; the mobile tab
+// UX — those last two ate the monolith's tab nav, which the nested layout
+// replaces with desktop-style tab links). Each is recoverable as a follow-up
+// if any of those features turn out to be load-bearing.
+
 describe('admin UI source regressions', () => {
 	it('uses the effective visible log collection for empty filtered results', async () => {
 		const source = await readSource('src/routes/admin/logs/+page.svelte');
@@ -47,89 +68,20 @@ describe('admin UI source regressions', () => {
 		);
 	});
 
-	it('renders security help as real disclosure buttons', async () => {
-		const source = await readSource('src/routes/admin/settings/+page.svelte');
-
-		expect(source).toContain('aria-expanded={csrfHelpOpen}');
-		expect(source).toContain('aria-controls="csrf-help-panel"');
-		expect(source).toContain('aria-expanded={trustProxyHelpOpen}');
-		expect(source).toContain('aria-controls="trust-proxy-help-panel"');
-		expect(source).not.toContain('role="button"');
-	});
-
-	it('labels mobile settings tab buttons and exposes their active state', async () => {
-		const source = await readSource('src/routes/admin/settings/+page.svelte');
-
-		expect(source).toContain('aria-label={`Open $' + '{tab.label} settings`}');
-		expect(source).toContain('aria-pressed={activeTab === tab.value}');
-		expect(source).toContain("aria-current={activeTab === tab.value ? 'page' : undefined}");
-	});
-
-	it('requires confirmation before enabling reverse-proxy header trust', async () => {
-		const source = await readSource('src/routes/admin/settings/+page.svelte');
+	// MONOLITH-DELETED (US-022, commit replacing the 4779-line +page.svelte
+	// with a redirect stub). The following monolith-pinned tests were
+	// dispositioned per the in-file audit:
+	//   - security-help disclosure buttons  → DELETED (feature not in nested route Security tab)
+	//   - mobile settings tab button labels → DELETED (nested layout uses desktop tab nav)
+	//   - reverse-proxy diagnostic auto-run + dup-guard + read-only + env-locked docs
+	//     → DELETED (diagnostic + docs section intentionally not ported to nested route)
+	// Trust-proxy confirmation dialog re-points to the nested Security route:
+	it('requires confirmation before enabling reverse-proxy header trust (nested Security route)', async () => {
+		const source = await readSource('src/routes/admin/settings/security/+page.svelte');
 
 		expect(source).toContain('bind:open={trustProxyConfirmDialogOpen}');
 		expect(source).toContain('name="confirmRisk" value="true"');
 		expect(source).toContain('Enable reverse-proxy header trust?');
-	});
-
-	it('auto-runs the reverse-proxy diagnostic once on the security tab', async () => {
-		const source = await readSource('src/routes/admin/settings/+page.svelte');
-
-		expect(source).toContain('let isCheckingTrustProxyDiagnostic = $state(false);');
-		expect(source).toContain('let trustProxyDiagnosticAutoRunStarted = $state(false);');
-		expect(source).toContain(
-			"if (activeTab !== 'security' || trustProxyDiagnosticAutoRunStarted) return;"
-		);
-		expect(source).toContain('trustProxyDiagnosticAutoRunStarted = true;');
-		expect(source).toContain('void runTrustProxyDiagnostic();');
-	});
-
-	it('guards duplicate reverse-proxy diagnostic requests and exposes a manual check', async () => {
-		const source = await readSource('src/routes/admin/settings/+page.svelte');
-
-		expect(source).toContain('async function runTrustProxyDiagnostic()');
-		expect(source).toContain('if (isCheckingTrustProxyDiagnostic) return;');
-		expect(source).toContain('/api/security/reverse-proxy-diagnostic');
-		expect(source).toContain("params.set('browserOrigin', browserOrigin);");
-		expect(source).toContain('Check again');
-		expect(source).toContain('disabled={isCheckingTrustProxyDiagnostic}');
-		expect(source).toContain('What your browser used');
-		expect(source).toContain('What Obzorarr sees');
-		expect(source).toContain('Forwarded headers detected');
-		expect(source).toContain('Recommendation');
-	});
-
-	it('keeps the diagnostic read-only while preserving the explicit enable flow', async () => {
-		const source = await readSource('src/routes/admin/settings/+page.svelte');
-		const diagnosticFunction = source.match(
-			/async function runTrustProxyDiagnostic\(\) \{[\s\S]*?\n\}/
-		)?.[0];
-
-		expect(diagnosticFunction).toBeDefined();
-		expect(diagnosticFunction).not.toContain('?/updateTrustProxy');
-		expect(source).toContain('bind:open={trustProxyConfirmDialogOpen}');
-		expect(source).toContain('name="confirmRisk" value="true"');
-	});
-
-	it('explains env-locked reverse-proxy trust and common setup examples', async () => {
-		const source = await readSource('src/routes/admin/settings/+page.svelte');
-
-		expect(source).toContain('Change');
-		expect(source).toContain('it in your environment, container, or compose configuration');
-		expect(source).toContain('Update your environment or');
-		expect(source).toContain('container configuration to change it.');
-		expect(source).toContain('Already controlled by environment');
-		expect(source).toContain('Nginx Proxy Manager');
-		expect(source).toContain('Nginx');
-		expect(source).toContain('Caddy');
-		expect(source).toContain('Traefik');
-		expect(source).toContain('Pangolin');
-		expect(source).toContain('Tailscale/headscale');
-		expect(source).toContain('Docker bridge or host networking');
-		expect(source).toContain('LAN/private IP access');
-		expect(source).toContain('localhost setups');
-		expect(source).toContain('strips visitor-supplied');
 	});
 
 	it('keeps the users table desktop-only and renders a mobile list', async () => {
@@ -144,6 +96,8 @@ describe('admin UI source regressions', () => {
 	it('does not reset custom fun fact frequency selection on every local click', async () => {
 		const source = await readSource('src/routes/admin/slides/+page.svelte');
 
+		// Server-syncing guard (still required so a load-time prop refresh
+		// doesn't clobber an unsaved Custom selection).
 		expect(source).toContain('syncedFrequencyKey');
 		expect(source).toContain(
 			'untrack(() => `$' + '{data.funFactFrequency.mode}:$' + '{data.funFactFrequency.count}`)'
@@ -152,18 +106,18 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain(
 			'syncedFrequencyKey = `$' + '{frequency.mode}:$' + '{frequency.count}`;'
 		);
-		expect(source).toContain(
-			'function selectFrequencyMode(mode: typeof data.funFactFrequency.mode): void'
-		);
-		expect(source).toContain("checked={selectedFrequencyMode === 'few'}");
-		expect(source).toContain("checked={selectedFrequencyMode === 'normal'}");
-		expect(source).toContain("checked={selectedFrequencyMode === 'many'}");
-		expect(source).toContain("checked={selectedFrequencyMode === 'custom'}");
-		expect(source).toContain("onchange={() => selectFrequencyMode('few')}");
-		expect(source).toContain("onchange={() => selectFrequencyMode('normal')}");
-		expect(source).toContain("onchange={() => selectFrequencyMode('many')}");
-		expect(source).toContain("onchange={() => selectFrequencyMode('custom')}");
-		expect(source).not.toContain('bind:group={selectedFrequencyMode}');
+		// Custom radio is now wired via Svelte 5's bind:group (canonical pattern
+		// for radio groups). The previous manual checked={…} + onchange={…}
+		// round-trip raced against Svelte's DOM update batching on rapid clicks
+		// and silently dropped the Custom selection. Asserting the new pattern
+		// guards against regressions back to the manual flow.
+		expect(source).toContain('bind:group={selectedFrequencyMode}');
+		expect(source).toContain('value="few"');
+		expect(source).toContain('value="normal"');
+		expect(source).toContain('value="many"');
+		expect(source).toContain('value="custom"');
+		expect(source).not.toContain("checked={selectedFrequencyMode === 'few'}");
+		expect(source).not.toContain('onchange={() => selectFrequencyMode(');
 		expect(source).not.toContain('class="frequency-options" onclick');
 	});
 
@@ -205,6 +159,21 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain('pointer-events: auto;');
 	});
 
+	it('removes the closed mobile dashboard sidebar from the accessibility tree and tab order', async () => {
+		const source = await readSource('src/routes/dashboard/+layout.svelte');
+
+		expect(source).toContain("window.matchMedia('(max-width: 768px)')");
+		expect(source).toContain(
+			'let sidebarHiddenFromMobile = $derived(isMobileSidebar && !sidebarOpen);'
+		);
+		expect(source).toContain('inert={sidebarHiddenFromMobile}');
+		expect(source).toContain("aria-hidden={sidebarHiddenFromMobile ? 'true' : undefined}");
+		expect(source).toContain('visibility: hidden;');
+		expect(source).toContain('pointer-events: none;');
+		expect(source).toContain('visibility: visible;');
+		expect(source).toContain('pointer-events: auto;');
+	});
+
 	it('traps focus in the open mobile admin drawer and marks page content inert', async () => {
 		const source = await readSource('src/routes/admin/+layout.svelte');
 
@@ -225,6 +194,30 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain('bind:this={sidebarElement}');
 		expect(source).toContain('function handleWindowKeydown(event: KeyboardEvent)');
 		expect(source).toContain('void closeSidebar();');
+		expect(source).toContain('inert={mainContentHiddenFromMobile}');
+		expect(source).toContain("aria-hidden={mainContentHiddenFromMobile ? 'true' : undefined}");
+	});
+
+	it('traps focus in the open mobile dashboard drawer and marks page content inert', async () => {
+		const source = await readSource('src/routes/dashboard/+layout.svelte');
+
+		expect(source).toContain(
+			'let mainContentHiddenFromMobile = $derived(isMobileSidebar && sidebarOpen);'
+		);
+		expect(source).toContain('function trapSidebarFocus(event: KeyboardEvent)');
+		expect(source).toContain(
+			"if (!isMobileSidebar || !sidebarOpen || event.key !== 'Tab') return;"
+		);
+		expect(source).toContain(
+			'(activeElement === last || !sidebarElement?.contains(activeElement))'
+		);
+		expect(source).toContain('if (focusableElements.length === 0) {');
+		expect(source).toContain('sidebarElement?.focus();');
+		expect(source).toMatch(/<aside[\s\S]*tabindex="-1"[\s\S]*bind:this=\{sidebarElement\}/);
+		expect(source).toContain('onkeydown={trapSidebarFocus}');
+		expect(source).toContain('bind:this={sidebarElement}');
+		expect(source).toContain('function handleWindowKeydown(event: KeyboardEvent)');
+		expect(source).toContain('closeSidebar();');
 		expect(source).toContain('inert={mainContentHiddenFromMobile}');
 		expect(source).toContain("aria-hidden={mainContentHiddenFromMobile ? 'true' : undefined}");
 	});
@@ -263,6 +256,19 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain('class="preview-link"');
 	});
 
+	it('submits admin privacy allowUserControl as a strict hidden boolean', async () => {
+		const source = await readSource('src/routes/admin/settings/privacy/+page.svelte');
+		const field = source.match(
+			/<Form\.Field form=\{userDefaultsForm\} name="allowUserControl">[\s\S]*?<\/Form\.Field>/
+		)?.[0];
+
+		expect(field).toBeDefined();
+		expect(field).toContain('name="allowUserControl"');
+		expect(field).toContain("value={$userDefaultsData.allowUserControl ? 'true' : 'false'}");
+		expect(field).toContain('bind:checked={$userDefaultsData.allowUserControl}');
+		expect(field).not.toMatch(/<Switch[\s\S]*\{\.\.\.props\}/);
+	});
+
 	it('does not render wrapped links for admin users without watch history', async () => {
 		const [clientSource, serverSource] = await Promise.all([
 			readSource('src/routes/admin/users/+page.svelte'),
@@ -274,11 +280,16 @@ describe('admin UI source regressions', () => {
 		expect(clientSource).toContain("if (minutes === 0) return '0h';");
 		expect(clientSource).toContain("if (minutes > 0 && minutes < 60) return '<1h';");
 		expect(clientSource).toContain('{#if user.hasWatchHistory}');
-		expect(clientSource).toContain('<span class="preview-link unavailable">No Wrapped yet</span>');
+		// The "Preview Wrapped" link now renders for every user row, including
+		// the admin's own (who would otherwise be blocked by a No-Wrapped gate
+		// even though they have a real tokenized wrapped URL). When the user has
+		// no plays we still render the link but label it "Preview (no data)" so
+		// the wrapped page handles the empty-state slide rendering.
 		expect(clientSource).toContain(
-			'<span class="preview-link unavailable mobile-preview-link">No Wrapped yet</span>'
+			"user.hasWatchHistory ? 'Preview Wrapped' : 'Preview (no data)'"
 		);
-		expect(clientSource).toContain('.preview-link.unavailable');
+		expect(clientSource).not.toContain('No Wrapped yet');
+		expect(clientSource).not.toContain('.preview-link.unavailable');
 	});
 
 	it('uses client navigation for unmodified admin links while preserving real hrefs', async () => {
@@ -343,23 +354,18 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain('justify-content: center;');
 	});
 
-	it('updates wrapped logo mode selection explicitly without resetting local clicks', async () => {
-		const source = await readSource('src/routes/admin/settings/+page.svelte');
+	// US-022 / monolith deletion — wrapped logo mode is now an Appearance tab
+	// RadioGroup driven by use:enhance (commit a46279c). The monolith's
+	// selectedWrappedLogoMode + syncedWrappedLogoMode state machine doesn't
+	// exist anymore; the equivalent UX is handled by the RadioGroup
+	// primitive's controlled value. Source assertion re-points to the nested
+	// Appearance route:
+	it('binds the wrapped logo mode RadioGroup in the Appearance route', async () => {
+		const source = await readSource('src/routes/admin/settings/appearance/+page.svelte');
 
-		expect(source).toContain(
-			'let selectedWrappedLogoMode = $state<WrappedLogoModeValue>(untrack(() => data.wrappedLogoMode));'
-		);
-		expect(source).toContain(
-			'let syncedWrappedLogoMode = $state<WrappedLogoModeValue>(untrack(() => data.wrappedLogoMode));'
-		);
-		expect(source).toContain('if (serverWrappedLogoMode === syncedWrappedLogoMode) return;');
-		expect(source).toContain('function selectWrappedLogoMode(mode: WrappedLogoModeValue): void');
-		expect(source).toContain('{#each data.wrappedLogoOptions as option}');
-		expect(source).toContain('for={optionId}');
+		expect(source).toContain('action="?/updateWrappedLogoMode"');
+		expect(source).toContain('bind:value={selectedWrappedLogoMode}');
 		expect(source).toContain('name="logoMode"');
-		expect(source).toContain('checked={selectedWrappedLogoMode === option.value}');
-		expect(source).toContain('onchange={() => selectWrappedLogoMode(option.value)}');
-		expect(source).not.toContain('bind:group={selectedWrappedLogoMode}');
 	});
 
 	it('uses real onboarding privacy field names for submitted controls', async () => {
@@ -472,14 +478,20 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain('onclick={(event) => handleActionClick(event, onHome)}');
 	});
 
-	it('returns server wrapped users home to the public root', async () => {
+	it('routes server wrapped users home based on auth role', async () => {
+		// Unified with the per-user wrapped page: admins → /admin, signed-in
+		// non-admins → /dashboard, anonymous → /. Anything else strands an
+		// admin viewer on the landing page they were redirected away from on
+		// login (root redirects logged-in users back to /admin).
 		const source = await readSource('src/routes/wrapped/[year]/+page.svelte');
 		const handleHome = source.match(/function handleHome\(\): void \{[\s\S]*?\n\}/)?.[0];
 
 		expect(handleHome).toBeDefined();
-		expect(handleHome).toContain("goto('/');");
-		expect(handleHome).not.toContain("goto('/admin');");
-		expect(handleHome).not.toContain("goto('/dashboard');");
+		expect(handleHome).toContain("goto('/admin')");
+		expect(handleHome).toContain("goto('/dashboard')");
+		expect(handleHome).toContain("goto('/')");
+		expect(handleHome).toContain('data.isAdmin');
+		expect(handleHome).toContain('data.isLoggedIn');
 	});
 
 	it('applies regenerated dashboard share URLs before reloading page data', async () => {
@@ -495,25 +507,15 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain('await invalidateAll();');
 	});
 
-	it('renders accessible status feedback for data count actions', async () => {
-		const source = await readSource('src/routes/admin/settings/+page.svelte');
+	// US-022 / monolith deletion — the Data tab's count result panels are
+	// now in the nested Data route (commit 0b8685d). The monolith's
+	// focusCountResult / prefersReducedMotion scroll-on-focus pattern was
+	// not carried over (deliberate scope cut; the nested route uses
+	// role="status" aria-live="polite" panels that update on result.data
+	// without auto-scroll). Two role+aria-live regions still guarded:
+	it('renders accessible status feedback for data count actions (nested Data route)', async () => {
+		const source = await readSource('src/routes/admin/settings/data/+page.svelte');
 
-		expect(source).toContain('let cacheCountResultElement: HTMLElement | undefined = $state();');
-		expect(source).toContain('let historyCountResultElement: HTMLElement | undefined = $state();');
-		expect(source).toContain('async function focusCountResult');
-		expect(source).toContain("import { prefersReducedMotion } from 'svelte/motion';");
-		expect(source).toContain("behavior: prefersReducedMotion.current ? 'auto' : 'smooth'");
-		expect(source).toContain('element.focus({ preventScroll: true });');
-		expect(source).toContain(
-			'message: `$' + '{cacheCountResult.label}: $' + '{formatRecordCount(cacheCountResult.count)}`'
-		);
-		expect(source).toContain(
-			'message: `$' +
-				'{historyCountResult.label}: $' +
-				'{formatRecordCount(historyCountResult.count)}`'
-		);
-		expect(source).toContain('bind:this={cacheCountResultElement}');
-		expect(source).toContain('bind:this={historyCountResultElement}');
 		expect(source.match(/role="status"/g)).toHaveLength(2);
 		expect(source.match(/aria-live="polite"/g)).toHaveLength(2);
 	});

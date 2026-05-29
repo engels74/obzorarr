@@ -1,48 +1,15 @@
 <script lang="ts">
+import CheckIcon from '@lucide/svelte/icons/check';
 import ExternalLink from '@lucide/svelte/icons/external-link';
+import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 import { animate, stagger } from 'motion';
+import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
+import { Button } from '$lib/components/ui/button';
 import { submitAction } from '$lib/utils/submit-action';
 import type { ActionData, PageData } from './$types';
 
 let { data, form }: { data: PageData; form: ActionData } = $props();
-
-type ReverseProxyDiagnosticView = {
-	trustProxy: {
-		enabled: boolean;
-		source: 'env' | 'db' | 'default';
-		isLocked: boolean;
-	};
-	forwardedHeaders: {
-		present: string[];
-		pair: {
-			status: string;
-			isUsable: boolean;
-			protoPresent: boolean;
-			hostPresent: boolean;
-		};
-	};
-	sourceAddress: {
-		category: string;
-	};
-	originComparison: {
-		browserMatchesRawApp: boolean | null;
-		browserMatchesEffectiveApp: boolean | null;
-		forwardedPairMatchesBrowser: boolean | null;
-	};
-	recommendation: {
-		action:
-			| 'enable'
-			| 'leave-disabled'
-			| 'review-proxy'
-			| 'appears-working'
-			| 'unable-to-determine'
-			| 'env-controlled';
-		summary: string;
-	};
-	reasons: string[];
-	safetyNotice: string;
-};
 
 function getInitialOrigin(): string {
 	return data.csrfConfig.value || data.detection.detectedOrigin;
@@ -61,37 +28,6 @@ let testResult = $state<'idle' | 'testing' | 'success' | 'failure'>(
 );
 let testError = $state<string | null>(null);
 let testedOrigin = $state<string | null>(initialOriginVerified ? initialOrigin : null);
-let browserOrigin = $state<string>('');
-let reverseProxyDiagnostic = $state<ReverseProxyDiagnosticView | null>(null);
-let diagnosticStatus = $state<'idle' | 'checking' | 'success' | 'failure'>('idle');
-let diagnosticError = $state<string | null>(null);
-let hasRunInitialDiagnostic = $state(false);
-let hasRefreshedAfterTrustProxySuccess = $state(false);
-
-function updateDiagnosticFromActionForm() {
-	if (form?.trustProxySuccess) {
-		diagnosticError = null;
-		if (!hasRefreshedAfterTrustProxySuccess) {
-			hasRefreshedAfterTrustProxySuccess = true;
-			hasRunInitialDiagnostic = true;
-			void runDiagnostic();
-		}
-		return;
-	}
-	if (hasRefreshedAfterTrustProxySuccess) {
-		hasRefreshedAfterTrustProxySuccess = false;
-	}
-	if (form?.reverseProxyDiagnostic) {
-		reverseProxyDiagnostic = form.reverseProxyDiagnostic as ReverseProxyDiagnosticView;
-		diagnosticStatus = 'success';
-		diagnosticError = null;
-	}
-	if (form?.diagnosticError) {
-		reverseProxyDiagnostic = null;
-		diagnosticStatus = 'failure';
-		diagnosticError = form.diagnosticError;
-	}
-}
 
 let previousInput = $state<string>(initialOrigin);
 $effect(() => {
@@ -107,51 +43,6 @@ $effect(() => {
 			testedOrigin = null;
 		}
 	}
-});
-
-async function runDiagnostic() {
-	if (diagnosticStatus === 'checking') return;
-
-	browserOrigin = window.location.origin;
-	reverseProxyDiagnostic = null;
-	diagnosticStatus = 'checking';
-	diagnosticError = null;
-
-	const formData = new FormData();
-	formData.set('browserOrigin', browserOrigin);
-
-	try {
-		const result = await submitAction<{
-			reverseProxyDiagnostic?: ReverseProxyDiagnosticView;
-			diagnosticError?: string;
-		}>('?/diagnoseReverseProxy', formData);
-
-		if (result.type === 'success') {
-			if (result.data.reverseProxyDiagnostic) {
-				reverseProxyDiagnostic = result.data.reverseProxyDiagnostic;
-				diagnosticStatus = 'success';
-			} else {
-				diagnosticStatus = 'failure';
-				diagnosticError = 'Diagnostic response was incomplete';
-			}
-		} else if (result.type === 'failure') {
-			diagnosticStatus = 'failure';
-			diagnosticError = result.data.diagnosticError ?? 'Diagnostic failed';
-		} else {
-			diagnosticStatus = 'failure';
-			diagnosticError = 'Unexpected diagnostic response';
-		}
-	} catch {
-		diagnosticStatus = 'failure';
-		diagnosticError = 'Network error - could not complete diagnostic';
-	}
-}
-
-$effect(() => {
-	updateDiagnosticFromActionForm();
-	if (hasRunInitialDiagnostic) return;
-	hasRunInitialDiagnostic = true;
-	void runDiagnostic();
 });
 
 async function runTest() {
@@ -226,39 +117,6 @@ $effect(() => {
 function useDetectedOrigin() {
 	csrfOriginInput = data.detection.detectedOrigin;
 }
-
-function getForwardedPairLabel(status: string): string {
-	switch (status) {
-		case 'usable':
-			return 'Forwarded scheme and host look usable';
-		case 'missing':
-			return 'No forwarded scheme/host pair detected';
-		case 'partial':
-			return 'Forwarded scheme/host pair is incomplete';
-		case 'invalid-proto':
-		case 'unsafe-host':
-		case 'invalid-host':
-			return 'Forwarded scheme/host pair is invalid';
-		default:
-			return 'Forwarded scheme/host pair needs review';
-	}
-}
-
-function getRecommendationTone(
-	action: ReverseProxyDiagnosticView['recommendation']['action']
-): string {
-	if (action === 'enable' || action === 'appears-working') return 'success';
-	if (action === 'leave-disabled') return 'neutral';
-	return 'warning';
-}
-
-function canEnableTrustProxy(): boolean {
-	return (
-		diagnosticStatus === 'success' &&
-		reverseProxyDiagnostic?.recommendation.action === 'enable' &&
-		!reverseProxyDiagnostic.trustProxy.isLocked
-	);
-}
 </script>
 
 <OnboardingCard title="Security Settings" subtitle="Configure CSRF protection for your application">
@@ -331,131 +189,10 @@ function canEnableTrustProxy(): boolean {
 					<span class="detection-value origin">{data.detection.detectedOrigin}</span>
 				</div>
 			</div>
-			</div>
+		</div>
 
-			<div class="diagnostic-card animate-item">
-				<div class="diagnostic-header">
-					<div>
-						<span class="diagnostic-eyebrow">Reverse Proxy Header Trust</span>
-						<h3>Connection safety check</h3>
-					</div>
-					<button
-						type="button"
-						class="diagnostic-check-btn"
-						onclick={runDiagnostic}
-						disabled={diagnosticStatus === 'checking'}
-					>
-						{#if diagnosticStatus === 'checking'}
-							<span class="spinner small"></span>
-							Checking...
-						{:else}
-							Check again
-						{/if}
-					</button>
-				</div>
-
-				{#if diagnosticStatus === 'checking' && !reverseProxyDiagnostic}
-					<div class="diagnostic-loading">
-						<span class="spinner"></span>
-						<span>Checking whether Obzorarr should trust proxy headers...</span>
-					</div>
-				{:else if diagnosticStatus === 'failure'}
-					<div class="test-result error">
-						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-							<circle cx="12" cy="12" r="10" />
-							<line x1="15" y1="9" x2="9" y2="15" stroke-linecap="round" />
-							<line x1="9" y1="9" x2="15" y2="15" stroke-linecap="round" />
-						</svg>
-						<span>{diagnosticError ?? 'Diagnostic failed'}</span>
-					</div>
-				{/if}
-
-				{#if reverseProxyDiagnostic}
-					<div
-						class="diagnostic-recommendation {getRecommendationTone(
-							reverseProxyDiagnostic.recommendation.action
-						)}"
-					>
-						<span class="recommendation-title">
-							{reverseProxyDiagnostic.recommendation.summary}
-						</span>
-						<ul>
-							{#each reverseProxyDiagnostic.reasons as reason}
-								<li>{reason}</li>
-							{/each}
-						</ul>
-					</div>
-
-					<div class="diagnostic-facts">
-						<div>
-							<span class="fact-label">Forwarded headers</span>
-							<span class="fact-value">
-								{getForwardedPairLabel(reverseProxyDiagnostic.forwardedHeaders.pair.status)}
-							</span>
-						</div>
-						<div>
-							<span class="fact-label">Signals present</span>
-							<span class="fact-value">
-								{reverseProxyDiagnostic.forwardedHeaders.present.length > 0
-									? reverseProxyDiagnostic.forwardedHeaders.present.join(', ')
-									: 'None'}
-							</span>
-						</div>
-						<div>
-							<span class="fact-label">Current setting</span>
-							<span class="fact-value">
-								{reverseProxyDiagnostic.trustProxy.enabled ? 'Enabled' : 'Disabled'}
-								{#if reverseProxyDiagnostic.trustProxy.isLocked}
-									<span class="inline-badge">ENV</span>
-								{/if}
-							</span>
-						</div>
-					</div>
-
-					<p class="diagnostic-safety">{reverseProxyDiagnostic.safetyNotice}</p>
-
-					{#if reverseProxyDiagnostic.recommendation.action === 'env-controlled'}
-						<p class="diagnostic-safety">
-							Change <code>TRUST_PROXY</code> in your environment or container configuration,
-							then restart Obzorarr.
-						</p>
-					{:else if canEnableTrustProxy()}
-						<form method="POST" action="?/enableTrustProxy" class="trust-proxy-enable-form">
-							<input type="hidden" name="browserOrigin" value={browserOrigin} />
-							<label class="risk-confirmation">
-								<input type="checkbox" name="confirmRisk" value="true" required />
-								<span>
-									I confirm my reverse proxy strips visitor-supplied forwarding headers before
-									requests reach Obzorarr.
-								</span>
-							</label>
-							<button type="submit" class="enable-trust-btn">Enable Header Trust</button>
-						</form>
-					{/if}
-
-					{#if form?.trustProxySuccess}
-						<div class="test-result success">
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<circle cx="12" cy="12" r="10" />
-								<path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round" />
-							</svg>
-							<span>{form.trustProxyMessage ?? 'Reverse-proxy header trust enabled.'}</span>
-						</div>
-					{:else if form?.trustProxyError}
-						<div class="test-result error">
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-								<circle cx="12" cy="12" r="10" />
-								<line x1="15" y1="9" x2="9" y2="15" stroke-linecap="round" />
-								<line x1="9" y1="9" x2="15" y2="15" stroke-linecap="round" />
-							</svg>
-							<span>{form.trustProxyError}</span>
-						</div>
-					{/if}
-				{/if}
-			</div>
-
-			{#if data.csrfConfig.isLocked}
-				<div class="preconfigured-card animate-item">
+		{#if data.csrfConfig.isLocked}
+			<div class="preconfigured-card animate-item">
 				<div class="preconfigured-icon">
 					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
 						<path
@@ -521,29 +258,31 @@ function canEnableTrustProxy(): boolean {
 						class:error={form?.error}
 					/>
 					{#if csrfOriginInput !== data.detection.detectedOrigin}
-						<button type="button" class="use-detected-btn" onclick={useDetectedOrigin}>
+						<Button
+							type="button"
+							class="use-detected-btn tap-target"
+							onclick={useDetectedOrigin}
+						>
 							Detect URL
-						</button>
+						</Button>
 					{/if}
-					<button
+					<Button
 						type="button"
 						onclick={runTest}
 						disabled={testResult === 'testing' || !csrfOriginInput}
-						class="test-btn"
-						class:success={testResult === 'success'}
+						aria-busy={testResult === 'testing'}
+						class={`test-btn tap-target ${testResult === 'success' ? 'success' : ''}`}
 					>
 						{#if testResult === 'testing'}
-							<span class="spinner small"></span>
+							<LoaderCircleIcon class="size-3.5 animate-spin" aria-hidden="true" />
 							Testing...
 						{:else if testResult === 'success'}
-							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-								<path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round" />
-							</svg>
+							<CheckIcon class="size-3.5" strokeWidth={2.5} />
 							Verified
 						{:else}
 							Test URL
 						{/if}
-					</button>
+					</Button>
 				</div>
 				{#if form?.error}
 					<span class="error-message">{form.error}</span>
@@ -653,20 +392,23 @@ function canEnableTrustProxy(): boolean {
 	{#snippet footer()}
 		<div class="button-group">
 			<form method="POST" action="?/skipCsrf" class="skip-form">
-				<button type="submit" class="skip-btn" formnovalidate>
-					{data.csrfConfig.isLocked ? 'Continue' : 'Skip'}
-				</button>
+				<SubmitButton class="skip-btn tap-target" formnovalidate>
+					{#snippet children()}
+						{data.csrfConfig.isLocked ? 'Continue' : 'Skip'}
+					{/snippet}
+				</SubmitButton>
 			</form>
 			{#if !data.csrfConfig.isLocked}
 				<form method="POST" action="?/saveOrigin" class="save-form">
 					<input type="hidden" name="csrfOrigin" value={csrfOriginInput ?? ''} />
-					<button
-						type="submit"
-						class="save-btn"
+					<SubmitButton
+						class="save-btn tap-target"
 						disabled={!csrfOriginInput || testResult !== 'success'}
 					>
-						Save & Continue
-					</button>
+						{#snippet children()}
+							Save & Continue
+						{/snippet}
+					</SubmitButton>
 				</form>
 			{/if}
 		</div>
@@ -675,1006 +417,749 @@ function canEnableTrustProxy(): boolean {
 
 <style>
 	.csrf-content {
-			display: flex;
-			flex-direction: column;
-			gap: 1.5rem;
-			width: 100%;
-		}
+		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
+		width: 100%;
+	}
 
-		.icon-container {
-			display: flex;
-			justify-content: center;
-			margin-bottom: 0.5rem;
-		}
+	.icon-container {
+		display: flex;
+		justify-content: center;
+		margin-bottom: 0.5rem;
+	}
 
-		.icon-wrapper {
-			width: 72px;
-			height: 72px;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.05) 100%);
-			border-radius: 18px;
-			color: hsl(217, 91%, 60%);
-		}
+	.icon-wrapper {
+		width: 72px;
+		height: 72px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.05) 100%);
+		border-radius: 18px;
+		color: oklch(0.6261 0.1859 259.6);
+	}
 
-		.icon-wrapper svg {
-			width: 40px;
-			height: 40px;
-		}
+	.icon-wrapper svg {
+		width: 40px;
+		height: 40px;
+	}
 
-		/* Detection Card */
-		.detection-card {
-			background: rgba(255, 255, 255, 0.03);
-			border: 1px solid rgba(255, 255, 255, 0.08);
-			border-radius: 12px;
-			padding: 1rem 1.25rem;
-		}
+	/* Detection Card */
+	.detection-card {
+		background: rgba(255, 255, 255, 0.03);
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		border-radius: 12px;
+		padding: 1rem 1.25rem;
+	}
 
-		.detection-header {
-			display: flex;
-			align-items: center;
-			gap: 0.5rem;
-			margin-bottom: 0.875rem;
-			padding-bottom: 0.75rem;
-			border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-		}
+	.detection-header {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin-bottom: 0.875rem;
+		padding-bottom: 0.75rem;
+		border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+	}
 
-		.detection-icon {
-			width: 18px;
-			height: 18px;
-			color: rgba(255, 255, 255, 0.5);
-		}
+	.detection-icon {
+		width: 18px;
+		height: 18px;
+		color: rgba(255, 255, 255, 0.5);
+	}
 
-		.detection-title {
-			font-size: 0.8rem;
-			font-weight: 500;
-			color: rgba(255, 255, 255, 0.6);
-			text-transform: uppercase;
-			letter-spacing: 0.05em;
-		}
+	.detection-title {
+		font-size: 0.8rem;
+		font-weight: 500;
+		color: rgba(255, 255, 255, 0.6);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
 
-		.detection-content {
-			display: flex;
-			flex-direction: column;
-			gap: 0.625rem;
-		}
+	.detection-content {
+		display: flex;
+		flex-direction: column;
+		gap: 0.625rem;
+	}
 
+	.detection-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 1rem;
+	}
+
+	.detection-label {
+		font-size: 0.875rem;
+		color: rgba(255, 255, 255, 0.5);
+	}
+
+	.detection-value {
+		display: flex;
+		align-items: center;
+		gap: 0.375rem;
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: rgba(255, 255, 255, 0.9);
+	}
+
+	.detection-value svg {
+		width: 14px;
+		height: 14px;
+	}
+
+	.detection-value.proxy {
+		color: oklch(0.6684 0.1625 259.49);
+	}
+
+	.detection-value.direct {
+		color: oklch(0.7946 0.1951 150.81);
+	}
+
+	.detection-value.origin {
+		font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+		font-size: 0.8rem;
+		color: rgba(255, 255, 255, 0.7);
+	}
+
+	/* Preconfigured Card */
+	.preconfigured-card {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		padding: 1.125rem 1.25rem;
+		background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(34, 197, 94, 0.02) 100%);
+		border: 1px solid rgba(34, 197, 94, 0.2);
+		border-radius: 12px;
+		width: fit-content;
+		max-width: 100%;
+		margin: 0 auto;
+		position: relative;
+		overflow: hidden;
+	}
+
+	.preconfigured-card::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background: radial-gradient(ellipse at top left, rgba(34, 197, 94, 0.1) 0%, transparent 50%);
+		pointer-events: none;
+	}
+
+	.preconfigured-icon {
+		flex-shrink: 0;
+		width: 44px;
+		height: 44px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: rgba(34, 197, 94, 0.12);
+		border-radius: 11px;
+		color: oklch(0.7946 0.1951 150.81);
+		position: relative;
+	}
+
+	.preconfigured-icon svg {
+		width: 24px;
+		height: 24px;
+	}
+
+	.preconfigured-info {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 0.375rem;
+		min-width: 0;
+	}
+
+	.preconfigured-header {
+		display: flex;
+		align-items: center;
+		gap: 0.625rem;
+		flex-wrap: wrap;
+	}
+
+	.preconfigured-title {
+		font-size: 0.95rem;
+		font-weight: 600;
+		color: rgba(255, 255, 255, 0.95);
+	}
+
+	.preconfigured-badge {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		padding: 0.2rem 0.5rem;
+		font-size: 0.65rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		background: rgba(34, 197, 94, 0.15);
+		color: oklch(0.8116 0.1789 152.1);
+		border-radius: 5px;
+		border: 1px solid rgba(34, 197, 94, 0.3);
+	}
+
+	.preconfigured-badge .lock-icon {
+		width: 10px;
+		height: 10px;
+	}
+
+	.preconfigured-url {
+		font-size: 0.8rem;
+		color: rgba(255, 255, 255, 0.45);
+		font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+		letter-spacing: -0.01em;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.preconfigured-check {
+		flex-shrink: 0;
+		width: 28px;
+		height: 28px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: rgba(34, 197, 94, 0.15);
+		border-radius: 50%;
+		color: oklch(0.7946 0.1951 150.81);
+	}
+
+	.preconfigured-check svg {
+		width: 15px;
+		height: 15px;
+	}
+
+	.info-text {
+		font-size: 0.875rem;
+		color: rgba(255, 255, 255, 0.5);
+		line-height: 1.5;
+		text-align: center;
+	}
+
+	.info-text code {
+		font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+		font-size: 0.8rem;
+		background: rgba(255, 255, 255, 0.08);
+		padding: 0.125rem 0.375rem;
+		border-radius: 4px;
+		color: rgba(255, 255, 255, 0.7);
+	}
+
+	/* Input Section */
+	.input-section {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.input-label {
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: rgba(255, 255, 255, 0.8);
+	}
+
+	.input-wrapper {
+		position: relative;
+		display: flex;
+		gap: 0.5rem;
+	}
+
+	.origin-input {
+		flex: 1;
+		padding: 0.75rem 1rem;
+		background: rgba(255, 255, 255, 0.05);
+		border: 1px solid rgba(255, 255, 255, 0.12);
+		border-radius: 8px;
+		font-size: 0.9rem;
+		color: rgba(255, 255, 255, 0.95);
+		font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+		transition:
+			border-color 0.2s,
+			background 0.2s;
+	}
+
+	.origin-input::placeholder {
+		color: rgba(255, 255, 255, 0.3);
+	}
+
+	.origin-input:focus {
+		outline: none;
+		border-color: rgba(59, 130, 246, 0.5);
+		background: rgba(255, 255, 255, 0.07);
+	}
+
+	.origin-input.error {
+		border-color: rgba(239, 68, 68, 0.5);
+	}
+
+	:global(.use-detected-btn) {
+		flex-shrink: 0;
+		padding: 0.5rem 0.75rem;
+		background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.08) 100%);
+		border: 1px solid rgba(59, 130, 246, 0.25);
+		border-radius: 6px;
+		font-size: 0.75rem;
+		font-weight: 500;
+		color: oklch(0.6684 0.1625 259.49);
+		cursor: pointer;
+		box-shadow:
+			0 1px 2px rgba(0, 0, 0, 0.1),
+			inset 0 1px 0 rgba(255, 255, 255, 0.05);
+		transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+	}
+
+	:global(.use-detected-btn:hover) {
+		background: linear-gradient(135deg, rgba(59, 130, 246, 0.22) 0%, rgba(59, 130, 246, 0.12) 100%);
+		border-color: rgba(59, 130, 246, 0.4);
+		box-shadow:
+			0 4px 12px rgba(59, 130, 246, 0.15),
+			inset 0 1px 0 rgba(255, 255, 255, 0.08);
+		transform: translateY(-1px);
+	}
+
+	:global(.use-detected-btn:active) {
+		transform: translateY(0) scale(0.98);
+	}
+
+	:global(.use-detected-btn:focus-visible) {
+		outline: 2px solid oklch(0.6684 0.1625 259.49);
+		outline-offset: 2px;
+	}
+
+	:global(.test-btn) {
+		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		gap: 0.375rem;
+		padding: 0.5rem 2rem;
+		background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(34, 197, 94, 0.08) 100%);
+		border: 1px solid rgba(34, 197, 94, 0.25);
+		border-radius: 6px;
+		font-size: 0.75rem;
+		font-weight: 500;
+		color: oklch(0.7946 0.1951 150.81);
+		cursor: pointer;
+		box-shadow:
+			0 1px 2px rgba(0, 0, 0, 0.1),
+			inset 0 1px 0 rgba(255, 255, 255, 0.05);
+		transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+	}
+
+	:global(.test-btn:hover:not(:disabled):not(.success)) {
+		background: linear-gradient(135deg, rgba(34, 197, 94, 0.22) 0%, rgba(34, 197, 94, 0.12) 100%);
+		border-color: rgba(34, 197, 94, 0.4);
+		box-shadow:
+			0 4px 12px rgba(34, 197, 94, 0.15),
+			inset 0 1px 0 rgba(255, 255, 255, 0.08);
+		transform: translateY(-1px);
+	}
+
+	:global(.test-btn:active:not(:disabled):not(.success)) {
+		transform: translateY(0) scale(0.98);
+	}
+
+	:global(.test-btn:focus-visible) {
+		outline: 2px solid oklch(0.7946 0.1951 150.81);
+		outline-offset: 2px;
+	}
+
+	:global(.test-btn:disabled) {
+		opacity: 0.4;
+		cursor: not-allowed;
+		filter: grayscale(0.3);
+	}
+
+	:global(.test-btn.success) {
+		background: linear-gradient(135deg, rgba(34, 197, 94, 0.25) 0%, rgba(34, 197, 94, 0.15) 100%);
+		border-color: rgba(34, 197, 94, 0.5);
+		box-shadow:
+			0 0 0 1px rgba(34, 197, 94, 0.1),
+			0 4px 16px rgba(34, 197, 94, 0.2),
+			inset 0 1px 0 rgba(255, 255, 255, 0.1);
+		cursor: default;
+	}
+
+	:global(.test-btn.success svg) {
+		animation: checkmark-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+	}
+
+	@keyframes checkmark-pop {
+		0% {
+			opacity: 0;
+			transform: scale(0.5);
+		}
+		100% {
+			opacity: 1;
+			transform: scale(1);
+		}
+	}
+
+	.test-result {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.5rem;
+		padding: 0.75rem 1rem;
+		border-radius: 8px;
+		font-size: 0.85rem;
+		line-height: 1.4;
+	}
+
+	.test-result svg {
+		flex-shrink: 0;
+		width: 18px;
+		height: 18px;
+		margin-top: 0.1rem;
+	}
+
+	.test-result.success {
+		background: rgba(34, 197, 94, 0.1);
+		border: 1px solid rgba(34, 197, 94, 0.2);
+		color: oklch(0.7946 0.1951 150.81);
+	}
+
+	.test-result.error {
+		background: rgba(239, 68, 68, 0.1);
+		border: 1px solid rgba(239, 68, 68, 0.2);
+		color: oklch(0.6356 0.2082 25.38);
+	}
+
+	.error-message {
+		font-size: 0.8rem;
+		color: oklch(0.6356 0.2082 25.38);
+	}
+
+	.input-hint {
+		font-size: 0.8rem;
+		color: rgba(255, 255, 255, 0.45);
+		line-height: 1.5;
+	}
+
+	/* Info Callout */
+	.info-callout {
+		display: flex;
+		gap: 0.875rem;
+		padding: 1rem 1.125rem;
+		background: rgba(59, 130, 246, 0.06);
+		border: 1px solid rgba(59, 130, 246, 0.15);
+		border-radius: 10px;
+	}
+
+	.callout-icon {
+		flex-shrink: 0;
+		width: 20px;
+		height: 20px;
+		color: oklch(0.6261 0.1859 259.6);
+		margin-top: 0.125rem;
+	}
+
+	.callout-content {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+
+	.callout-title {
+		font-size: 0.85rem;
+		font-weight: 600;
+		color: rgba(255, 255, 255, 0.9);
+	}
+
+	.callout-text {
+		font-size: 0.8rem;
+		color: rgba(255, 255, 255, 0.55);
+		line-height: 1.5;
+	}
+
+	.callout-links {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.625rem;
+		margin-top: 0.875rem;
+		padding-top: 0.875rem;
+		border-top: 1px solid rgba(59, 130, 246, 0.12);
+	}
+
+	.edu-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.375rem;
+		padding: 0.375rem 0.625rem;
+		background: rgba(59, 130, 246, 0.08);
+		border: 1px solid rgba(59, 130, 246, 0.18);
+		border-radius: 6px;
+		color: oklch(0.695 0.1481 259.5);
+		text-decoration: none;
+		font-size: 0.75rem;
+		font-weight: 500;
+		transition: all 0.2s ease;
+	}
+
+	.edu-link:hover {
+		background: rgba(59, 130, 246, 0.14);
+		border-color: rgba(59, 130, 246, 0.28);
+		transform: translateY(-1px);
+	}
+
+	.edu-link:focus-visible {
+		outline: 2px solid oklch(0.6684 0.1625 259.49);
+		outline-offset: 2px;
+	}
+
+	.callout-links :global(.link-icon) {
+		width: 12px;
+		height: 12px;
+		opacity: 0.75;
+	}
+
+	.links-divider {
+		display: block;
+		width: 100%;
+		height: 1px;
+		background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+		margin: 0.25rem 0;
+	}
+
+	.proxy-docs-label {
+		font-size: 0.65rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: rgba(255, 255, 255, 0.4);
+	}
+
+	.proxy-links {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.375rem;
+	}
+
+	.proxy-links a {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.2rem;
+		color: oklch(0.6703 0.1523 259.49);
+		text-decoration: none;
+		font-size: 0.7rem;
+		font-weight: 500;
+		padding: 0.25rem 0.375rem;
+		border-radius: 4px;
+		transition: all 0.15s ease;
+	}
+
+	.proxy-links a:hover {
+		background: rgba(59, 130, 246, 0.1);
+		color: oklch(0.7313 0.1288 259.57);
+	}
+
+	.proxy-links a:focus-visible {
+		outline: 2px solid oklch(0.6684 0.1625 259.49);
+		outline-offset: 1px;
+	}
+
+	.callout-links :global(.link-icon-sm) {
+		width: 10px;
+		height: 10px;
+		opacity: 0.6;
+	}
+
+	.dot-sep {
+		color: rgba(255, 255, 255, 0.2);
+		font-size: 0.65rem;
+		user-select: none;
+	}
+
+	.locked-docs {
+		display: flex;
+		justify-content: center;
+	}
+
+	.locked-docs a {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.375rem;
+		padding: 0.5rem 0.875rem;
+		background: rgba(59, 130, 246, 0.06);
+		border: 1px solid rgba(59, 130, 246, 0.15);
+		border-radius: 8px;
+		color: oklch(0.695 0.1481 259.5);
+		text-decoration: none;
+		font-size: 0.8rem;
+		font-weight: 500;
+		transition: all 0.2s ease;
+	}
+
+	.locked-docs a:hover {
+		background: rgba(59, 130, 246, 0.12);
+		border-color: rgba(59, 130, 246, 0.25);
+		transform: translateY(-1px);
+	}
+
+	.locked-docs a:focus-visible {
+		outline: 2px solid oklch(0.6684 0.1625 259.49);
+		outline-offset: 2px;
+	}
+
+	.locked-docs :global(.link-icon) {
+		width: 13px;
+		height: 13px;
+		opacity: 0.7;
+	}
+
+	.button-group {
+		display: flex;
+		gap: 0.75rem;
+		width: 100%;
+	}
+
+	.skip-form,
+	.save-form {
+		display: flex;
+		margin: 0;
+		min-width: 0;
+	}
+
+	.skip-form {
+		flex: 1;
+	}
+
+	.save-form {
+		flex: 2;
+	}
+
+	:global(.skip-btn) {
+		width: 100%;
+		padding: 0.875rem 1.5rem;
+		background: rgba(255, 255, 255, 0.06);
+		border: 1px solid rgba(255, 255, 255, 0.12);
+		border-radius: 10px;
+		font-size: 0.9rem;
+		font-weight: 500;
+		color: rgba(255, 255, 255, 0.7);
+		cursor: pointer;
+		transition:
+			background 0.2s,
+			border-color 0.2s;
+	}
+
+	:global(.skip-btn:hover:not(:disabled)) {
+		background: rgba(255, 255, 255, 0.1);
+		border-color: rgba(255, 255, 255, 0.2);
+	}
+
+	:global(.skip-btn:disabled) {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	:global(.save-btn) {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		padding: 0.875rem 1.5rem;
+		background: linear-gradient(135deg, oklch(0.5869 0.2079 260) 0%, oklch(0.5516 0.2278 260.85) 100%);
+		border: none;
+		border-radius: 10px;
+		font-size: 0.9rem;
+		font-weight: 600;
+		color: white;
+		cursor: pointer;
+		transition:
+			opacity 0.2s,
+			transform 0.2s;
+	}
+
+	:global(.save-btn:hover:not(:disabled)) {
+		opacity: 0.9;
+		transform: translateY(-1px);
+	}
+
+	:global(.save-btn:disabled) {
+		opacity: 0.5;
+		cursor: not-allowed;
+		transform: none;
+	}
+
+	@media (max-width: 480px) {
 		.detection-row {
-			display: flex;
-			justify-content: space-between;
-			align-items: center;
-			gap: 1rem;
-		}
-
-		.detection-label {
-			font-size: 0.875rem;
-			color: rgba(255, 255, 255, 0.5);
-		}
-
-		.detection-value {
-			display: flex;
-			align-items: center;
-			gap: 0.375rem;
-			font-size: 0.875rem;
-			font-weight: 500;
-			color: rgba(255, 255, 255, 0.9);
-		}
-
-		.detection-value svg {
-			width: 14px;
-			height: 14px;
-		}
-
-		.detection-value.proxy {
-			color: hsl(217, 91%, 65%);
-		}
-
-		.detection-value.direct {
-			color: hsl(142, 71%, 55%);
-		}
-
-		.detection-value.origin {
-			font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
-			font-size: 0.8rem;
-			color: rgba(255, 255, 255, 0.7);
-		}
-
-		/* Reverse Proxy Diagnostic */
-		.diagnostic-card {
-			display: flex;
 			flex-direction: column;
-			gap: 1rem;
-			padding: 1rem 1.25rem;
-			background: rgba(255, 255, 255, 0.035);
-			border: 1px solid rgba(255, 255, 255, 0.09);
-			border-radius: 12px;
-		}
-
-		.diagnostic-header {
-			display: flex;
 			align-items: flex-start;
-			justify-content: space-between;
-			gap: 1rem;
-		}
-
-		.diagnostic-eyebrow {
-			display: block;
-			margin-bottom: 0.25rem;
-			font-size: 0.65rem;
-			font-weight: 600;
-			text-transform: uppercase;
-			letter-spacing: 0.06em;
-			color: rgba(255, 255, 255, 0.45);
-		}
-
-		.diagnostic-header h3 {
-			margin: 0;
-			font-size: 1rem;
-			line-height: 1.3;
-			color: rgba(255, 255, 255, 0.94);
-		}
-
-		.diagnostic-check-btn,
-		.enable-trust-btn {
-			flex-shrink: 0;
-			display: inline-flex;
-			align-items: center;
-			justify-content: center;
-			gap: 0.375rem;
-			padding: 0.5rem 0.75rem;
-			border-radius: 6px;
-			font-size: 0.75rem;
-			font-weight: 600;
-			cursor: pointer;
-			transition:
-				background 0.2s,
-				border-color 0.2s,
-				opacity 0.2s;
-		}
-
-		.diagnostic-check-btn {
-			background: rgba(59, 130, 246, 0.08);
-			border: 1px solid rgba(59, 130, 246, 0.18);
-			color: hsl(217, 91%, 68%);
-		}
-
-		.diagnostic-check-btn:hover:not(:disabled) {
-			background: rgba(59, 130, 246, 0.14);
-			border-color: rgba(59, 130, 246, 0.28);
-		}
-
-		.diagnostic-check-btn:disabled {
-			opacity: 0.5;
-			cursor: not-allowed;
-		}
-
-		.diagnostic-loading {
-			display: flex;
-			align-items: center;
-			gap: 0.75rem;
-			font-size: 0.85rem;
-			color: rgba(255, 255, 255, 0.55);
-		}
-
-		.diagnostic-recommendation {
-			padding: 0.875rem 1rem;
-			border-radius: 10px;
-			border: 1px solid rgba(255, 255, 255, 0.1);
-		}
-
-		.diagnostic-recommendation.success {
-			background: rgba(34, 197, 94, 0.09);
-			border-color: rgba(34, 197, 94, 0.22);
-		}
-
-		.diagnostic-recommendation.warning {
-			background: rgba(245, 158, 11, 0.09);
-			border-color: rgba(245, 158, 11, 0.22);
-		}
-
-		.diagnostic-recommendation.neutral {
-			background: rgba(255, 255, 255, 0.04);
-		}
-
-		.recommendation-title {
-			display: block;
-			margin-bottom: 0.5rem;
-			font-size: 0.9rem;
-			font-weight: 600;
-			color: rgba(255, 255, 255, 0.92);
-		}
-
-		.diagnostic-recommendation ul {
-			margin: 0;
-			padding-left: 1rem;
-			color: rgba(255, 255, 255, 0.6);
-			font-size: 0.8rem;
-			line-height: 1.45;
-		}
-
-		.diagnostic-facts {
-			display: grid;
-			grid-template-columns: repeat(3, minmax(0, 1fr));
-			gap: 0.75rem;
-		}
-
-		.diagnostic-facts > div {
-			display: flex;
-			flex-direction: column;
 			gap: 0.25rem;
-			min-width: 0;
-			padding: 0.75rem;
-			background: rgba(255, 255, 255, 0.035);
-			border: 1px solid rgba(255, 255, 255, 0.07);
-			border-radius: 8px;
 		}
 
-		.fact-label {
-			font-size: 0.65rem;
-			font-weight: 600;
-			text-transform: uppercase;
-			letter-spacing: 0.05em;
-			color: rgba(255, 255, 255, 0.38);
-		}
-
-		.fact-value {
-			display: flex;
-			align-items: center;
-			gap: 0.375rem;
-			min-width: 0;
-			font-size: 0.8rem;
-			line-height: 1.35;
-			color: rgba(255, 255, 255, 0.72);
-			overflow-wrap: anywhere;
-		}
-
-		.inline-badge {
-			display: inline-flex;
-			align-items: center;
-			padding: 0.1rem 0.35rem;
-			border-radius: 4px;
-			background: rgba(34, 197, 94, 0.14);
-			border: 1px solid rgba(34, 197, 94, 0.25);
-			color: hsl(142, 71%, 60%);
-			font-size: 0.6rem;
-			font-weight: 700;
-			letter-spacing: 0.05em;
-		}
-
-		.diagnostic-safety {
-			margin: 0;
-			font-size: 0.8rem;
-			line-height: 1.5;
-			color: rgba(255, 255, 255, 0.52);
-		}
-
-		.diagnostic-safety code {
-			font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
-			font-size: 0.76rem;
-			background: rgba(255, 255, 255, 0.08);
-			padding: 0.125rem 0.35rem;
-			border-radius: 4px;
-			color: rgba(255, 255, 255, 0.72);
-		}
-
-		.trust-proxy-enable-form {
-			display: flex;
-			flex-direction: column;
-			gap: 0.75rem;
-			margin: 0;
-			padding-top: 0.125rem;
-		}
-
-		.risk-confirmation {
-			display: flex;
-			align-items: flex-start;
-			gap: 0.625rem;
-			font-size: 0.78rem;
-			line-height: 1.45;
-			color: rgba(255, 255, 255, 0.62);
-		}
-
-		.risk-confirmation input {
-			flex-shrink: 0;
-			margin-top: 0.15rem;
-			accent-color: hsl(217, 91%, 60%);
-		}
-
-		.enable-trust-btn {
-			width: fit-content;
-			background: rgba(34, 197, 94, 0.12);
-			border: 1px solid rgba(34, 197, 94, 0.28);
-			color: hsl(142, 71%, 58%);
-		}
-
-		.enable-trust-btn:hover {
-			background: rgba(34, 197, 94, 0.18);
-			border-color: rgba(34, 197, 94, 0.38);
-		}
-
-		/* Preconfigured Card */
 		.preconfigured-card {
-			display: flex;
-			align-items: center;
-			gap: 1rem;
-			padding: 1.125rem 1.25rem;
-			background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(34, 197, 94, 0.02) 100%);
-			border: 1px solid rgba(34, 197, 94, 0.2);
-			border-radius: 12px;
-			width: fit-content;
-			max-width: 100%;
-			margin: 0 auto;
-			position: relative;
-			overflow: hidden;
-		}
-
-		.preconfigured-card::before {
-			content: '';
-			position: absolute;
-			inset: 0;
-			background: radial-gradient(ellipse at top left, rgba(34, 197, 94, 0.1) 0%, transparent 50%);
-			pointer-events: none;
+			padding: 1rem;
+			gap: 0.875rem;
 		}
 
 		.preconfigured-icon {
-			flex-shrink: 0;
-			width: 44px;
-			height: 44px;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			background: rgba(34, 197, 94, 0.12);
-			border-radius: 11px;
-			color: hsl(142, 71%, 55%);
-			position: relative;
+			width: 38px;
+			height: 38px;
 		}
 
 		.preconfigured-icon svg {
-			width: 24px;
-			height: 24px;
-		}
-
-		.preconfigured-info {
-			flex: 1;
-			display: flex;
-			flex-direction: column;
-			gap: 0.375rem;
-			min-width: 0;
-		}
-
-		.preconfigured-header {
-			display: flex;
-			align-items: center;
-			gap: 0.625rem;
-			flex-wrap: wrap;
+			width: 20px;
+			height: 20px;
 		}
 
 		.preconfigured-title {
-			font-size: 0.95rem;
-			font-weight: 600;
-			color: rgba(255, 255, 255, 0.95);
-		}
-
-		.preconfigured-badge {
-			display: inline-flex;
-			align-items: center;
-			gap: 0.3rem;
-			padding: 0.2rem 0.5rem;
-			font-size: 0.65rem;
-			font-weight: 600;
-			text-transform: uppercase;
-			letter-spacing: 0.05em;
-			background: rgba(34, 197, 94, 0.15);
-			color: hsl(142, 71%, 60%);
-			border-radius: 5px;
-			border: 1px solid rgba(34, 197, 94, 0.3);
-		}
-
-		.preconfigured-badge .lock-icon {
-			width: 10px;
-			height: 10px;
+			font-size: 0.875rem;
 		}
 
 		.preconfigured-url {
-			font-size: 0.8rem;
-			color: rgba(255, 255, 255, 0.45);
-			font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
-			letter-spacing: -0.01em;
-			overflow: hidden;
-			text-overflow: ellipsis;
-			white-space: nowrap;
-		}
-
-		.preconfigured-check {
-			flex-shrink: 0;
-			width: 28px;
-			height: 28px;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			background: rgba(34, 197, 94, 0.15);
-			border-radius: 50%;
-			color: hsl(142, 71%, 55%);
-		}
-
-		.preconfigured-check svg {
-			width: 15px;
-			height: 15px;
-		}
-
-		.info-text {
-			font-size: 0.875rem;
-			color: rgba(255, 255, 255, 0.5);
-			line-height: 1.5;
-			text-align: center;
-		}
-
-		.info-text code {
-			font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
-			font-size: 0.8rem;
-			background: rgba(255, 255, 255, 0.08);
-			padding: 0.125rem 0.375rem;
-			border-radius: 4px;
-			color: rgba(255, 255, 255, 0.7);
-		}
-
-		/* Input Section */
-		.input-section {
-			display: flex;
-			flex-direction: column;
-			gap: 0.5rem;
-		}
-
-		.input-label {
-			font-size: 0.875rem;
-			font-weight: 500;
-			color: rgba(255, 255, 255, 0.8);
-		}
-
-		.input-wrapper {
-			position: relative;
-			display: flex;
-			gap: 0.5rem;
-		}
-
-		.origin-input {
-			flex: 1;
-			padding: 0.75rem 1rem;
-			background: rgba(255, 255, 255, 0.05);
-			border: 1px solid rgba(255, 255, 255, 0.12);
-			border-radius: 8px;
-			font-size: 0.9rem;
-			color: rgba(255, 255, 255, 0.95);
-			font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
-			transition:
-				border-color 0.2s,
-				background 0.2s;
-		}
-
-		.origin-input::placeholder {
-			color: rgba(255, 255, 255, 0.3);
-		}
-
-		.origin-input:focus {
-			outline: none;
-			border-color: rgba(59, 130, 246, 0.5);
-			background: rgba(255, 255, 255, 0.07);
-		}
-
-		.origin-input.error {
-			border-color: rgba(239, 68, 68, 0.5);
-		}
-
-		.use-detected-btn {
-			flex-shrink: 0;
-			padding: 0.5rem 0.75rem;
-			background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.08) 100%);
-			border: 1px solid rgba(59, 130, 246, 0.25);
-			border-radius: 6px;
 			font-size: 0.75rem;
-			font-weight: 500;
-			color: hsl(217, 91%, 65%);
-			cursor: pointer;
-			box-shadow:
-				0 1px 2px rgba(0, 0, 0, 0.1),
-				inset 0 1px 0 rgba(255, 255, 255, 0.05);
-			transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 		}
 
-		.use-detected-btn:hover {
-			background: linear-gradient(135deg, rgba(59, 130, 246, 0.22) 0%, rgba(59, 130, 246, 0.12) 100%);
-			border-color: rgba(59, 130, 246, 0.4);
-			box-shadow:
-				0 4px 12px rgba(59, 130, 246, 0.15),
-				inset 0 1px 0 rgba(255, 255, 255, 0.08);
-			transform: translateY(-1px);
-		}
-
-		.use-detected-btn:active {
-			transform: translateY(0) scale(0.98);
-		}
-
-		.use-detected-btn:focus-visible {
-			outline: 2px solid hsl(217, 91%, 65%);
-			outline-offset: 2px;
-		}
-
-		.test-btn {
-			flex-shrink: 0;
-			display: flex;
-			align-items: center;
-			gap: 0.375rem;
-			padding: 0.5rem 2rem;
-			background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(34, 197, 94, 0.08) 100%);
-			border: 1px solid rgba(34, 197, 94, 0.25);
-			border-radius: 6px;
-			font-size: 0.75rem;
-			font-weight: 500;
-			color: hsl(142, 71%, 55%);
-			cursor: pointer;
-			box-shadow:
-				0 1px 2px rgba(0, 0, 0, 0.1),
-				inset 0 1px 0 rgba(255, 255, 255, 0.05);
-			transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-		}
-
-		.test-btn:hover:not(:disabled):not(.success) {
-			background: linear-gradient(135deg, rgba(34, 197, 94, 0.22) 0%, rgba(34, 197, 94, 0.12) 100%);
-			border-color: rgba(34, 197, 94, 0.4);
-			box-shadow:
-				0 4px 12px rgba(34, 197, 94, 0.15),
-				inset 0 1px 0 rgba(255, 255, 255, 0.08);
-			transform: translateY(-1px);
-		}
-
-		.test-btn:active:not(:disabled):not(.success) {
-			transform: translateY(0) scale(0.98);
-		}
-
-		.test-btn:focus-visible {
-			outline: 2px solid hsl(142, 71%, 55%);
-			outline-offset: 2px;
-		}
-
-		.test-btn:disabled {
-			opacity: 0.4;
-			cursor: not-allowed;
-			filter: grayscale(0.3);
-		}
-
-		.test-btn.success {
-			background: linear-gradient(135deg, rgba(34, 197, 94, 0.25) 0%, rgba(34, 197, 94, 0.15) 100%);
-			border-color: rgba(34, 197, 94, 0.5);
-			box-shadow:
-				0 0 0 1px rgba(34, 197, 94, 0.1),
-				0 4px 16px rgba(34, 197, 94, 0.2),
-				inset 0 1px 0 rgba(255, 255, 255, 0.1);
-			cursor: default;
-		}
-
-		.test-btn svg {
-			width: 14px;
-			height: 14px;
-		}
-
-		.test-btn.success svg {
-			animation: checkmark-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-		}
-
-		@keyframes checkmark-pop {
-			0% {
-				opacity: 0;
-				transform: scale(0.5);
-			}
-			100% {
-				opacity: 1;
-				transform: scale(1);
-			}
-		}
-
-		.spinner.small {
-			width: 12px;
-			height: 12px;
-			border-width: 1.5px;
-		}
-
-		.test-result {
-			display: flex;
-			align-items: flex-start;
-			gap: 0.5rem;
-			padding: 0.75rem 1rem;
-			border-radius: 8px;
-			font-size: 0.85rem;
-			line-height: 1.4;
-		}
-
-		.test-result svg {
-			flex-shrink: 0;
-			width: 18px;
-			height: 18px;
-			margin-top: 0.1rem;
-		}
-
-		.test-result.success {
-			background: rgba(34, 197, 94, 0.1);
-			border: 1px solid rgba(34, 197, 94, 0.2);
-			color: hsl(142, 71%, 55%);
-		}
-
-		.test-result.error {
-			background: rgba(239, 68, 68, 0.1);
-			border: 1px solid rgba(239, 68, 68, 0.2);
-			color: hsl(0, 84%, 60%);
-		}
-
-		.error-message {
-			font-size: 0.8rem;
-			color: hsl(0, 84%, 60%);
-		}
-
-		.input-hint {
-			font-size: 0.8rem;
-			color: rgba(255, 255, 255, 0.45);
-			line-height: 1.5;
-		}
-
-		/* Info Callout */
-		.info-callout {
-			display: flex;
-			gap: 0.875rem;
-			padding: 1rem 1.125rem;
-			background: rgba(59, 130, 246, 0.06);
-			border: 1px solid rgba(59, 130, 246, 0.15);
-			border-radius: 10px;
-		}
-
-		.callout-icon {
-			flex-shrink: 0;
-			width: 20px;
-			height: 20px;
-			color: hsl(217, 91%, 60%);
-			margin-top: 0.125rem;
-		}
-
-		.callout-content {
-			display: flex;
-			flex-direction: column;
-			gap: 0.25rem;
-		}
-
-		.callout-title {
-			font-size: 0.85rem;
-			font-weight: 600;
-			color: rgba(255, 255, 255, 0.9);
-		}
-
-		.callout-text {
-			font-size: 0.8rem;
-			color: rgba(255, 255, 255, 0.55);
-			line-height: 1.5;
-		}
-
-		/* Educational Links */
-		.callout-links {
-			display: flex;
-			flex-wrap: wrap;
-			align-items: center;
-			gap: 0.625rem;
-			margin-top: 0.875rem;
-			padding-top: 0.875rem;
-			border-top: 1px solid rgba(59, 130, 246, 0.12);
-		}
-
-		.edu-link {
-			display: inline-flex;
-			align-items: center;
-			gap: 0.375rem;
-			padding: 0.375rem 0.625rem;
-			background: rgba(59, 130, 246, 0.08);
-			border: 1px solid rgba(59, 130, 246, 0.18);
-			border-radius: 6px;
-			color: hsl(217, 91%, 68%);
-			text-decoration: none;
-			font-size: 0.75rem;
-			font-weight: 500;
-			transition: all 0.2s ease;
-		}
-
-		.edu-link:hover {
-			background: rgba(59, 130, 246, 0.14);
-			border-color: rgba(59, 130, 246, 0.28);
-			transform: translateY(-1px);
-		}
-
-		.edu-link:focus-visible {
-			outline: 2px solid hsl(217, 91%, 65%);
-			outline-offset: 2px;
-		}
-
-		.callout-links :global(.link-icon) {
-			width: 12px;
-			height: 12px;
-			opacity: 0.75;
-		}
-
-		.links-divider {
-			display: block;
-			width: 100%;
-			height: 1px;
-			background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
-			margin: 0.25rem 0;
-		}
-
-		.proxy-docs-label {
-			font-size: 0.65rem;
-			font-weight: 600;
-			text-transform: uppercase;
-			letter-spacing: 0.06em;
-			color: rgba(255, 255, 255, 0.4);
-		}
-
-		.proxy-links {
-			display: flex;
-			flex-wrap: wrap;
-			align-items: center;
-			gap: 0.375rem;
-		}
-
-		.proxy-links a {
-			display: inline-flex;
-			align-items: center;
-			gap: 0.2rem;
-			color: hsl(217, 85%, 65%);
-			text-decoration: none;
-			font-size: 0.7rem;
-			font-weight: 500;
-			padding: 0.25rem 0.375rem;
-			border-radius: 4px;
-			transition: all 0.15s ease;
-		}
-
-		.proxy-links a:hover {
-			background: rgba(59, 130, 246, 0.1);
-			color: hsl(217, 91%, 72%);
-		}
-
-		.proxy-links a:focus-visible {
-			outline: 2px solid hsl(217, 91%, 65%);
-			outline-offset: 1px;
-		}
-
-		.callout-links :global(.link-icon-sm) {
-			width: 10px;
-			height: 10px;
-			opacity: 0.6;
-		}
-
-		.dot-sep {
-			color: rgba(255, 255, 255, 0.2);
-			font-size: 0.65rem;
-			user-select: none;
-		}
-
-		/* Locked State Documentation Link */
-		.locked-docs {
-			display: flex;
-			justify-content: center;
-		}
-
-		.locked-docs a {
-			display: inline-flex;
-			align-items: center;
-			gap: 0.375rem;
-			padding: 0.5rem 0.875rem;
-			background: rgba(59, 130, 246, 0.06);
-			border: 1px solid rgba(59, 130, 246, 0.15);
-			border-radius: 8px;
-			color: hsl(217, 91%, 68%);
-			text-decoration: none;
-			font-size: 0.8rem;
-			font-weight: 500;
-			transition: all 0.2s ease;
-		}
-
-		.locked-docs a:hover {
-			background: rgba(59, 130, 246, 0.12);
-			border-color: rgba(59, 130, 246, 0.25);
-			transform: translateY(-1px);
-		}
-
-		.locked-docs a:focus-visible {
-			outline: 2px solid hsl(217, 91%, 65%);
-			outline-offset: 2px;
-		}
-
-		.locked-docs :global(.link-icon) {
-			width: 13px;
-			height: 13px;
-			opacity: 0.7;
-		}
-
-		/* Button Group */
 		.button-group {
-			display: flex;
-			gap: 0.75rem;
-			width: 100%;
+			flex-direction: column;
 		}
 
 		.skip-form,
 		.save-form {
-			display: flex;
-			margin: 0;
-			min-width: 0;
+			flex: none;
 		}
 
-		.skip-form {
-			flex: 1;
+		:global(.skip-btn),
+		:global(.save-btn) {
+			flex: none;
 		}
 
-		.save-form {
-			flex: 2;
+		.input-wrapper {
+			flex-direction: column;
 		}
 
-		.skip-btn {
+		:global(.use-detected-btn) {
 			width: 100%;
-			padding: 0.875rem 1.5rem;
-			background: rgba(255, 255, 255, 0.06);
-			border: 1px solid rgba(255, 255, 255, 0.12);
-			border-radius: 10px;
-			font-size: 0.9rem;
-			font-weight: 500;
-			color: rgba(255, 255, 255, 0.7);
-			cursor: pointer;
-			transition:
-				background 0.2s,
-				border-color 0.2s;
+			padding: 0.625rem;
 		}
 
-		.skip-btn:hover:not(:disabled) {
-			background: rgba(255, 255, 255, 0.1);
-			border-color: rgba(255, 255, 255, 0.2);
+		.callout-links {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 0.75rem;
 		}
 
-		.skip-btn:disabled {
-			opacity: 0.5;
-			cursor: not-allowed;
+		.links-divider {
+			display: none;
 		}
 
-		.save-btn {
-			width: 100%;
-			display: flex;
-			align-items: center;
-			justify-content: center;
+		.proxy-docs-label {
+			margin-top: 0.25rem;
+		}
+
+		.proxy-links {
 			gap: 0.5rem;
-			padding: 0.875rem 1.5rem;
-			background: linear-gradient(135deg, hsl(217, 91%, 55%) 0%, hsl(217, 91%, 50%) 100%);
-			border: none;
-			border-radius: 10px;
-			font-size: 0.9rem;
-			font-weight: 600;
-			color: white;
-			cursor: pointer;
-			transition:
-				opacity 0.2s,
-				transform 0.2s;
 		}
 
-		.save-btn:hover:not(:disabled) {
-			opacity: 0.9;
-			transform: translateY(-1px);
+		.locked-docs a {
+			width: 100%;
+			justify-content: center;
 		}
-
-		.save-btn:disabled {
-			opacity: 0.5;
-			cursor: not-allowed;
-			transform: none;
-		}
-
-		.spinner {
-			width: 16px;
-			height: 16px;
-			border: 2px solid rgba(255, 255, 255, 0.3);
-			border-top-color: white;
-			border-radius: 50%;
-			animation: spin 0.8s linear infinite;
-		}
-
-		@keyframes spin {
-			to {
-				transform: rotate(360deg);
-			}
-		}
-
-		/* Responsive */
-		@media (max-width: 480px) {
-			.detection-row {
-				flex-direction: column;
-				align-items: flex-start;
-				gap: 0.25rem;
-			}
-
-			.diagnostic-header {
-				flex-direction: column;
-				align-items: stretch;
-			}
-
-			.diagnostic-check-btn,
-			.enable-trust-btn {
-				width: 100%;
-			}
-
-			.diagnostic-facts {
-				grid-template-columns: 1fr;
-			}
-
-			.preconfigured-card {
-				padding: 1rem;
-				gap: 0.875rem;
-			}
-
-			.preconfigured-icon {
-				width: 38px;
-				height: 38px;
-			}
-
-			.preconfigured-icon svg {
-				width: 20px;
-				height: 20px;
-			}
-
-			.preconfigured-title {
-				font-size: 0.875rem;
-			}
-
-			.preconfigured-url {
-				font-size: 0.75rem;
-			}
-
-			.button-group {
-				flex-direction: column;
-			}
-
-			.skip-form,
-			.save-form {
-				flex: none;
-			}
-
-			.skip-btn,
-			.save-btn {
-				flex: none;
-			}
-
-			.input-wrapper {
-				flex-direction: column;
-			}
-
-			.use-detected-btn {
-				width: 100%;
-				padding: 0.625rem;
-			}
-
-			.callout-links {
-				flex-direction: column;
-				align-items: flex-start;
-				gap: 0.75rem;
-			}
-
-			.links-divider {
-				display: none;
-			}
-
-			.proxy-docs-label {
-				margin-top: 0.25rem;
-			}
-
-			.proxy-links {
-				gap: 0.5rem;
-			}
-
-			.locked-docs a {
-				width: 100%;
-				justify-content: center;
-			}
-		}
+	}
 </style>

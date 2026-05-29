@@ -19,15 +19,31 @@ import {
 	getGlobalDefaultShareMode,
 	getServerWrappedShareMode
 } from '$lib/server/sharing/service';
-import { actions } from '../../../src/routes/admin/settings/+page.server';
+// Post-US-022 (cf958fa): the monolith /admin/settings/+page.server.ts UI was
+// deleted, but its action handlers remain as orphans for legacy-URL POSTs
+// (and originally for this test file). This file re-points to each nested
+// route — `connections/security/appearance/privacy/system` — so the
+// monolith action handlers can be deleted in a follow-up. The action
+// contracts are byte-identical between monolith and nested-route copies
+// (the nested route handlers were verbatim copies in commits 97152be,
+// 853561f, a46279c, 3c32486, b9dc5ac, 220f6ad, fd526aa, e8ebcab); the
+// Superforms-driven handlers in privacy + system return responses with
+// an extra `form` field that `toMatchObject` ignores by design.
+import { actions as appearanceActions } from '../../../src/routes/admin/settings/appearance/+page.server';
+import { actions as connectionsActions } from '../../../src/routes/admin/settings/connections/+page.server';
+import { actions as privacyActions } from '../../../src/routes/admin/settings/privacy/+page.server';
+import { actions as securityActions } from '../../../src/routes/admin/settings/security/+page.server';
+import { actions as systemActions } from '../../../src/routes/admin/settings/system/+page.server';
 
-type UpdateUserDefaultsAction = NonNullable<typeof actions.updateUserDefaults>;
-type UpdateApiConfigAction = NonNullable<typeof actions.updateApiConfig>;
-type ClearOpenaiModelAction = NonNullable<typeof actions.clearOpenaiModel>;
-type UpdateTrustProxyAction = NonNullable<typeof actions.updateTrustProxy>;
-type UpdateWrappedLogoModeAction = NonNullable<typeof actions.updateWrappedLogoMode>;
-type UpdateServerWrappedSettingsAction = NonNullable<typeof actions.updateServerWrappedSettings>;
-type UpdateLogSettingsAction = NonNullable<typeof actions.updateLogSettings>;
+type UpdateUserDefaultsAction = NonNullable<typeof privacyActions.updateUserDefaults>;
+type UpdateApiConfigAction = NonNullable<typeof connectionsActions.updateApiConfig>;
+type ClearOpenaiModelAction = NonNullable<typeof connectionsActions.clearOpenaiModel>;
+type UpdateTrustProxyAction = NonNullable<typeof securityActions.updateTrustProxy>;
+type UpdateWrappedLogoModeAction = NonNullable<typeof appearanceActions.updateWrappedLogoMode>;
+type UpdateServerWrappedSettingsAction = NonNullable<
+	typeof privacyActions.updateServerWrappedSettings
+>;
+type UpdateLogSettingsAction = NonNullable<typeof systemActions.updateLogSettings>;
 
 const adminLocals = {
 	user: { id: 1, plexId: 1, username: 'admin', isAdmin: true }
@@ -52,7 +68,7 @@ function createUserDefaultsRequest(overrides: Record<string, string> = {}): Requ
 }
 
 async function runUpdateUserDefaults(request: Request) {
-	const updateUserDefaults = actions.updateUserDefaults as UpdateUserDefaultsAction;
+	const updateUserDefaults = privacyActions.updateUserDefaults as UpdateUserDefaultsAction;
 	return updateUserDefaults({
 		request,
 		locals: adminLocals
@@ -132,7 +148,7 @@ describe('admin updateApiConfig schema hardening', () => {
 	}
 
 	async function runUpdateApiConfig(request: Request) {
-		const handler = actions.updateApiConfig as UpdateApiConfigAction;
+		const handler = connectionsActions.updateApiConfig as UpdateApiConfigAction;
 		return handler({ request, locals: adminLocals } as Parameters<UpdateApiConfigAction>[0]);
 	}
 
@@ -247,7 +263,7 @@ describe('admin clearOpenaiModel action', () => {
 	});
 
 	async function runClearOpenaiModel() {
-		const handler = actions.clearOpenaiModel as ClearOpenaiModelAction;
+		const handler = connectionsActions.clearOpenaiModel as ClearOpenaiModelAction;
 		const request = new Request('http://localhost/admin/settings?/clearOpenaiModel', {
 			method: 'POST',
 			body: new FormData()
@@ -306,20 +322,45 @@ describe('admin updateTrustProxy action', () => {
 		else dynamicEnv.TRUST_PROXY = previousTrustProxyEnv;
 	}
 
-	function createTrustProxyRequest(enabled: boolean, confirmRisk?: boolean): Request {
+	// Match the diagnostic's "enable" recommendation shape: the raw app URL is
+	// internal, the forwarded proto+host pair is usable and matches the browser
+	// origin. Without this the new diagnostic gate in updateTrustProxy rejects
+	// every enable attempt regardless of confirmRisk.
+	const TRUST_PROXY_BROWSER_ORIGIN = 'https://obzorarr.example.com';
+	const TRUST_PROXY_FORWARDED_HOST = 'obzorarr.example.com';
+	const TRUST_PROXY_APP_URL = 'http://internal.local/admin/settings?/updateTrustProxy';
+
+	function createTrustProxyRequest(
+		enabled: boolean,
+		confirmRisk?: boolean,
+		settingsVersion: string = new Date(0).toISOString()
+	): Request {
 		const formData = new FormData();
 		formData.set('enabled', enabled ? 'true' : 'false');
 		if (confirmRisk) formData.set('confirmRisk', 'true');
+		// Far-past timestamp wins OCC for the no-rows-yet case; explicit override
+		// available for the stale-version test.
+		formData.set('settingsVersion', settingsVersion);
+		formData.set('browserOrigin', TRUST_PROXY_BROWSER_ORIGIN);
 
-		return new Request('http://localhost/admin/settings?/updateTrustProxy', {
+		return new Request(TRUST_PROXY_APP_URL, {
 			method: 'POST',
-			body: formData
+			body: formData,
+			headers: {
+				'x-forwarded-proto': 'https',
+				'x-forwarded-host': TRUST_PROXY_FORWARDED_HOST
+			}
 		});
 	}
 
 	async function runUpdateTrustProxy(request: Request) {
-		const handler = actions.updateTrustProxy as UpdateTrustProxyAction;
-		return handler({ request, locals: adminLocals } as Parameters<UpdateTrustProxyAction>[0]);
+		const handler = securityActions.updateTrustProxy as UpdateTrustProxyAction;
+		return handler({
+			request,
+			url: new URL(TRUST_PROXY_APP_URL),
+			getClientAddress: () => '203.0.113.1',
+			locals: adminLocals
+		} as Parameters<UpdateTrustProxyAction>[0]);
 	}
 
 	it('rejects enabling TRUST_PROXY without explicit risk confirmation', async () => {
@@ -343,6 +384,7 @@ describe('admin updateTrustProxy action', () => {
 			const formData = new FormData();
 			formData.set('enabled', 'true');
 			formData.set('confirmRisk', 'false');
+			formData.set('settingsVersion', new Date(0).toISOString());
 
 			const result = await runUpdateTrustProxy(
 				new Request('http://localhost/admin/settings?/updateTrustProxy', {
@@ -359,6 +401,42 @@ describe('admin updateTrustProxy action', () => {
 				}
 			});
 			expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBeNull();
+		} finally {
+			restoreTrustProxyEnv();
+		}
+	});
+
+	it('rejects updateTrustProxy with blank settingsVersion as 409 conflict', async () => {
+		try {
+			const result = await runUpdateTrustProxy(createTrustProxyRequest(true, true, ''));
+			expect(result).toMatchObject({
+				status: 409,
+				data: {
+					conflict: true,
+					error: 'Settings changed in another tab. Please reload.'
+				}
+			});
+			expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBeNull();
+		} finally {
+			restoreTrustProxyEnv();
+		}
+	});
+
+	it('rejects updateTrustProxy with stale settingsVersion as 409 conflict', async () => {
+		try {
+			// First write succeeds + advances the row's updatedAt.
+			await runUpdateTrustProxy(createTrustProxyRequest(true, true));
+			expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBe('true');
+			// Stale tab tries to disable using the original epoch timestamp.
+			const result = await runUpdateTrustProxy(
+				createTrustProxyRequest(false, undefined, new Date(0).toISOString())
+			);
+			expect(result).toMatchObject({
+				status: 409,
+				data: { conflict: true }
+			});
+			// First write's value still in place — stale tab did not flip it.
+			expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBe('true');
 		} finally {
 			restoreTrustProxyEnv();
 		}
@@ -382,7 +460,11 @@ describe('admin updateTrustProxy action', () => {
 		try {
 			await setAppSetting(AppSettingsKey.TRUST_PROXY, 'true');
 
-			const result = await runUpdateTrustProxy(createTrustProxyRequest(false));
+			// setAppSetting just wrote the row at ~Date.now(); use a future timestamp
+			// so the inline-OCC check sees the submitted version as fresh-enough.
+			const result = await runUpdateTrustProxy(
+				createTrustProxyRequest(false, undefined, new Date(Date.now() + 60_000).toISOString())
+			);
 
 			expect(result).toMatchObject({
 				success: true,
@@ -400,9 +482,15 @@ describe('admin updateWrappedLogoMode action', () => {
 		await db.delete(appSettings);
 	});
 
-	function createWrappedLogoModeRequest(logoMode?: string): Request {
+	function createWrappedLogoModeRequest(
+		logoMode?: string,
+		settingsVersion: string = new Date(0).toISOString()
+	): Request {
 		const formData = new FormData();
 		if (logoMode !== undefined) formData.set('logoMode', logoMode);
+		// External-OCC enum action: defaults to epoch (wins for no-rows-yet);
+		// tests that pre-seed the row must override.
+		formData.set('settingsVersion', settingsVersion);
 
 		return new Request('http://localhost/admin/settings?/updateWrappedLogoMode', {
 			method: 'POST',
@@ -411,7 +499,7 @@ describe('admin updateWrappedLogoMode action', () => {
 	}
 
 	async function runUpdateWrappedLogoMode(request: Request) {
-		const handler = actions.updateWrappedLogoMode as UpdateWrappedLogoModeAction;
+		const handler = appearanceActions.updateWrappedLogoMode as UpdateWrappedLogoModeAction;
 		return handler({ request, locals: adminLocals } as Parameters<UpdateWrappedLogoModeAction>[0]);
 	}
 
@@ -435,7 +523,13 @@ describe('admin updateWrappedLogoMode action', () => {
 	it('rejects invalid logo mode without persisting a change', async () => {
 		await setAppSetting(AppSettingsKey.WRAPPED_LOGO_MODE, WrappedLogoMode.ALWAYS_HIDE);
 
-		const result = await runUpdateWrappedLogoMode(createWrappedLogoModeRequest('invalid'));
+		// Pre-seed bumps updatedAt to ~Date.now(); pass a future timestamp so the
+		// external-OCC check sees the version as fresh-enough and the test
+		// exercises the schema validation rather than 409.
+		const futureVersion = new Date(Date.now() + 60_000).toISOString();
+		const result = await runUpdateWrappedLogoMode(
+			createWrappedLogoModeRequest('invalid', futureVersion)
+		);
 
 		expect(result).toMatchObject({
 			status: 400,
@@ -449,7 +543,10 @@ describe('admin updateWrappedLogoMode action', () => {
 	it('rejects missing logo mode without persisting a change', async () => {
 		await setAppSetting(AppSettingsKey.WRAPPED_LOGO_MODE, WrappedLogoMode.ALWAYS_HIDE);
 
-		const result = await runUpdateWrappedLogoMode(createWrappedLogoModeRequest());
+		const futureVersion = new Date(Date.now() + 60_000).toISOString();
+		const result = await runUpdateWrappedLogoMode(
+			createWrappedLogoModeRequest(undefined, futureVersion)
+		);
 
 		expect(result).toMatchObject({
 			status: 400,
@@ -458,6 +555,46 @@ describe('admin updateWrappedLogoMode action', () => {
 			}
 		});
 		expect(await getWrappedLogoMode()).toBe(WrappedLogoMode.ALWAYS_HIDE);
+	});
+
+	it('rejects updateWrappedLogoMode with blank settingsVersion as 409 (__OCC_CONFLICT__)', async () => {
+		// Pre-seed to ALWAYS_HIDE so the assertion below distinguishes "OCC blocked
+		// the write" from "default value happens to match".
+		await setAppSetting(AppSettingsKey.WRAPPED_LOGO_MODE, WrappedLogoMode.ALWAYS_HIDE);
+
+		const result = await runUpdateWrappedLogoMode(
+			createWrappedLogoModeRequest(WrappedLogoMode.ALWAYS_SHOW, '')
+		);
+		expect(result).toMatchObject({
+			status: 409,
+			data: {
+				error: 'Settings changed in another tab. Please reload.',
+				code: '__OCC_CONFLICT__'
+			}
+		});
+		// Conflict response includes the current version so the client can refresh.
+		expect(typeof (result as { data: { settingsVersion: unknown } }).data.settingsVersion).toBe(
+			'string'
+		);
+		// Row left intact — OCC blocked the write before any service call.
+		expect(await getWrappedLogoMode()).toBe(WrappedLogoMode.ALWAYS_HIDE);
+	});
+
+	it('rejects updateWrappedLogoMode with stale settingsVersion as 409', async () => {
+		// First write succeeds and advances updatedAt.
+		await runUpdateWrappedLogoMode(createWrappedLogoModeRequest(WrappedLogoMode.ALWAYS_SHOW));
+		expect(await getWrappedLogoMode()).toBe(WrappedLogoMode.ALWAYS_SHOW);
+
+		// Stale tab tries to flip back using the epoch timestamp.
+		const result = await runUpdateWrappedLogoMode(
+			createWrappedLogoModeRequest(WrappedLogoMode.ALWAYS_HIDE, new Date(0).toISOString())
+		);
+		expect(result).toMatchObject({
+			status: 409,
+			data: { error: 'Settings changed in another tab. Please reload.', code: '__OCC_CONFLICT__' }
+		});
+		// First write's value still in place.
+		expect(await getWrappedLogoMode()).toBe(WrappedLogoMode.ALWAYS_SHOW);
 	});
 });
 
@@ -482,7 +619,7 @@ describe('admin updateServerWrappedSettings action — round-trip', () => {
 	}
 
 	async function run(request: Request) {
-		const handler = actions.updateServerWrappedSettings as UpdateServerWrappedSettingsAction;
+		const handler = privacyActions.updateServerWrappedSettings as UpdateServerWrappedSettingsAction;
 		return handler({
 			request,
 			locals: adminLocals
@@ -539,6 +676,9 @@ describe('admin updateLogSettings action — round-trip', () => {
 		formData.set('retentionDays', '14');
 		formData.set('maxCount', '2000');
 		formData.set('debugEnabled', 'true');
+		// Use a far-past timestamp so OCC succeeds when the keys don't yet exist
+		// in the DB (no rows → maxMs is 0). Empty/missing is rejected as 409.
+		formData.set('settingsVersion', new Date(0).toISOString());
 		for (const [k, v] of Object.entries(overrides)) formData.set(k, v);
 		return new Request('http://localhost/admin/settings?/updateLogSettings', {
 			method: 'POST',
@@ -547,7 +687,7 @@ describe('admin updateLogSettings action — round-trip', () => {
 	}
 
 	async function run(request: Request) {
-		const handler = actions.updateLogSettings as UpdateLogSettingsAction;
+		const handler = systemActions.updateLogSettings as UpdateLogSettingsAction;
 		return handler({ request, locals: adminLocals } as Parameters<UpdateLogSettingsAction>[0]);
 	}
 
@@ -574,5 +714,52 @@ describe('admin updateLogSettings action — round-trip', () => {
 		expect(await getLogRetentionDays()).toBe(7);
 		expect(await getLogMaxCount()).toBe(50000);
 		expect(await isDebugEnabled()).toBe(false);
+	});
+
+	it('rejects updateLogSettings with blank settingsVersion as 409 conflict', async () => {
+		const result = await run(createRequest({ settingsVersion: '' }));
+		expect(result).toMatchObject({
+			status: 409,
+			data: {
+				conflict: true,
+				error: 'Settings changed in another tab. Please reload.'
+			}
+		});
+		expect(await getLogRetentionDays()).toBe(7);
+		expect(await getLogMaxCount()).toBe(50000);
+		expect(await isDebugEnabled()).toBe(false);
+	});
+
+	it('rejects updateLogSettings with stale settingsVersion as 409 conflict', async () => {
+		// First write succeeds and advances the row's updatedAt.
+		await expect(run(createRequest())).resolves.toMatchObject({ success: true });
+		// Second write uses the original (now-stale) epoch timestamp.
+		const result = await run(
+			createRequest({
+				settingsVersion: new Date(0).toISOString(),
+				retentionDays: '21'
+			})
+		);
+		expect(result).toMatchObject({
+			status: 409,
+			data: { conflict: true }
+		});
+		// First write's values still in place — stale tab did not clobber them.
+		expect(await getLogRetentionDays()).toBe(14);
+		expect(await getLogMaxCount()).toBe(2000);
+	});
+
+	it('allows a follow-up save with the bumped settingsVersion (no spurious 409)', async () => {
+		await expect(run(createRequest())).resolves.toMatchObject({ success: true });
+		// Re-read the freshly bumped settingsVersion (using a future ISO works because
+		// the OCC check compares submitted >= current).
+		const result = await run(
+			createRequest({
+				settingsVersion: new Date(Date.now() + 60_000).toISOString(),
+				retentionDays: '21'
+			})
+		);
+		expect(result).toMatchObject({ success: true });
+		expect(await getLogRetentionDays()).toBe(21);
 	});
 });

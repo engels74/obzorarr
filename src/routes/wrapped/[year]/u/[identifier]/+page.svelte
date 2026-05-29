@@ -352,8 +352,8 @@ function handleLogoToggle(): void {
 				--slide-bg-gradient,
 				linear-gradient(
 					135deg,
-					hsl(var(--primary-hue, 217) 30% 12%) 0%,
-					hsl(var(--primary-hue, 217) 20% 8%) 100%
+					oklch(var(--slide-bg-start)) 0%,
+					oklch(var(--slide-bg-end)) 100%
 				)
 			);
 		}
@@ -486,8 +486,8 @@ function handleLogoToggle(): void {
 		}
 
 		.empty-btn.primary {
-			background: hsl(var(--primary));
-			color: hsl(var(--primary-foreground));
+			background: oklch(var(--primary));
+			color: oklch(var(--primary-foreground));
 		}
 
 		.empty-btn.secondary {

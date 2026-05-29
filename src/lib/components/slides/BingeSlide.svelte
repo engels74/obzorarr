@@ -184,7 +184,7 @@ $effect(() => {
 		.title {
 			font-size: 1.5rem;
 			font-weight: 600;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-transform: uppercase;
 			letter-spacing: 0.1em;
 		}
@@ -195,15 +195,15 @@ $effect(() => {
 			align-items: center;
 			padding: 2.75rem 4.5rem;
 			max-width: 400px;
-			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
+			background: var(--slide-glass-bg);
 			backdrop-filter: blur(var(--slide-glass-blur, 20px));
 			-webkit-backdrop-filter: blur(var(--slide-glass-blur, 20px));
 			border-radius: calc(var(--radius) * 2);
-			border: 2px solid hsl(var(--primary) / 0.4);
+			border: 2px solid oklch(var(--primary) / 0.4);
 			box-shadow:
-				var(--shadow-elevation-high, 0 8px 24px hsl(0 0% 0% / 0.4)),
-				0 0 40px var(--slide-glow-color, hsl(var(--primary) / 0.2)),
-				inset 0 1px 0 hsl(0 0% 100% / 0.1);
+				var(--shadow-elevation-high, 0 8px 24px oklch(0 0 0 / 0.4)),
+				0 0 40px var(--slide-glow-color, oklch(var(--primary) / 0.2)),
+				inset 0 1px 0 oklch(1 0 0 / 0.1);
 			position: relative;
 		}
 
@@ -215,7 +215,7 @@ $effect(() => {
 			left: 0;
 			right: 0;
 			height: 1px;
-			background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.6), transparent);
+			background: linear-gradient(90deg, transparent, oklch(var(--primary) / 0.6), transparent);
 			border-radius: inherit;
 		}
 
@@ -226,18 +226,18 @@ $effect(() => {
 			/* Gradient text effect */
 			background: linear-gradient(
 				180deg,
-				hsl(var(--primary)) 0%,
-				hsl(calc(var(--primary-hue) + 20) 70% 65%) 100%
+				oklch(var(--primary)) 0%,
+				oklch(var(--primary-accent-plus-20)) 100%
 			);
 			-webkit-background-clip: text;
 			-webkit-text-fill-color: transparent;
 			background-clip: text;
-			filter: drop-shadow(0 0 20px hsl(var(--primary) / 0.4));
+			filter: drop-shadow(0 0 20px oklch(var(--primary) / 0.4));
 		}
 
 		.duration-label {
 			font-size: 1rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-transform: uppercase;
 			letter-spacing: 0.15em;
 			margin-top: -0.25rem;
@@ -245,56 +245,56 @@ $effect(() => {
 
 		.content-duration {
 			font-size: 1rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin-top: 0.5rem;
 		}
 
 		.plays {
 			font-size: 1.25rem;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			margin-top: 0.75rem;
 			padding: 0.25rem 0.75rem;
-			background: hsl(var(--primary) / 0.1);
+			background: oklch(var(--primary) / 0.1);
 			border-radius: var(--radius);
 		}
 
 		.details {
 			text-align: center;
 			padding: 1rem 1.75rem;
-			background: hsl(var(--primary) / 0.08);
+			background: oklch(var(--primary) / 0.08);
 			border-radius: calc(var(--radius) * 1.5);
-			box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.03);
+			box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.03);
 		}
 
 		.date {
 			font-size: 1.125rem;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			font-weight: 500;
 		}
 
 		.time-range {
 			font-size: 0.875rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin-top: 0.375rem;
 		}
 
 		.no-binge {
 			text-align: center;
 			padding: 2rem;
-			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.3));
+			background: var(--slide-glass-bg);
 			border-radius: calc(var(--radius) * 1.5);
-			border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
+			border: 1px solid var(--slide-glass-border);
 		}
 
 		.no-binge-message {
 			font-size: 1.25rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-style: italic;
 		}
 
 		.no-binge-hint {
 			font-size: 0.875rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			opacity: 0.7;
 			margin-top: 0.5rem;
 		}
@@ -388,7 +388,7 @@ $effect(() => {
 
 			.duration {
 				font-size: clamp(3rem, 10vw, 5rem);
-				filter: drop-shadow(0 0 30px hsl(var(--primary) / 0.5));
+				filter: drop-shadow(0 0 30px oklch(var(--primary) / 0.5));
 			}
 
 			.duration-label {

@@ -247,10 +247,10 @@ $effect(() => {
 		.title {
 			font-size: 1.75rem;
 			font-weight: 700;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			text-transform: uppercase;
 			letter-spacing: 0.05em;
-			text-shadow: 0 0 30px var(--slide-glow-color, hsl(var(--primary) / 0.3));
+			text-shadow: 0 0 30px var(--slide-glow-color, oklch(var(--primary) / 0.3));
 		}
 
 		.chart-container {
@@ -272,15 +272,15 @@ $effect(() => {
 		}
 
 		.donut-segment.movies {
-			stroke: hsl(220 70% 55%);
+			stroke: oklch(0.5716 0.1737 262.35);
 		}
 
 		.donut-segment.episodes {
-			stroke: hsl(280 60% 55%);
+			stroke: oklch(0.5797 0.2102 312.33);
 		}
 
 		.donut-segment.tracks {
-			stroke: hsl(150 60% 45%);
+			stroke: oklch(0.6931 0.1535 156.04);
 		}
 
 		.chart-center {
@@ -296,7 +296,7 @@ $effect(() => {
 
 		.total-label {
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-transform: uppercase;
 			letter-spacing: 0.1em;
 		}
@@ -304,7 +304,7 @@ $effect(() => {
 		.total-count {
 			font-size: 1.5rem;
 			font-weight: 700;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.stat-cards {
@@ -320,10 +320,10 @@ $effect(() => {
 			align-items: center;
 			gap: 0.25rem;
 			padding: 1rem 1.25rem;
-			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
+			background: var(--slide-glass-bg);
 			backdrop-filter: blur(var(--slide-glass-blur, 12px));
 			-webkit-backdrop-filter: blur(var(--slide-glass-blur, 12px));
-			border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
+			border: 1px solid var(--slide-glass-border);
 			border-radius: calc(var(--radius) * 1.5);
 			min-width: 100px;
 			transition:
@@ -336,23 +336,23 @@ $effect(() => {
 		}
 
 		.stat-card.dominant {
-			border-color: hsl(var(--primary) / 0.5);
-			box-shadow: 0 0 20px hsl(var(--primary) / 0.2);
+			border-color: oklch(var(--primary) / 0.5);
+			box-shadow: 0 0 20px oklch(var(--primary) / 0.2);
 		}
 
 		.stat-card.movies.dominant {
-			border-color: hsl(220 70% 55% / 0.5);
-			box-shadow: 0 0 20px hsl(220 70% 55% / 0.2);
+			border-color: oklch(0.5716 0.1737 262.35 / 0.5);
+			box-shadow: 0 0 20px oklch(0.5716 0.1737 262.35 / 0.2);
 		}
 
 		.stat-card.episodes.dominant {
-			border-color: hsl(280 60% 55% / 0.5);
-			box-shadow: 0 0 20px hsl(280 60% 55% / 0.2);
+			border-color: oklch(0.5797 0.2102 312.33 / 0.5);
+			box-shadow: 0 0 20px oklch(0.5797 0.2102 312.33 / 0.2);
 		}
 
 		.stat-card.tracks.dominant {
-			border-color: hsl(150 60% 45% / 0.5);
-			box-shadow: 0 0 20px hsl(150 60% 45% / 0.2);
+			border-color: oklch(0.6931 0.1535 156.04 / 0.5);
+			box-shadow: 0 0 20px oklch(0.6931 0.1535 156.04 / 0.2);
 		}
 
 		.stat-icon {
@@ -361,7 +361,7 @@ $effect(() => {
 
 		.stat-label {
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-transform: uppercase;
 			letter-spacing: 0.05em;
 		}
@@ -369,31 +369,31 @@ $effect(() => {
 		.stat-count {
 			font-size: 1.25rem;
 			font-weight: 700;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.stat-time {
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.stat-percent {
 			font-size: 0.875rem;
 			font-weight: 600;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 		}
 
 		.personality-badge {
 			padding: 0.75rem 1.5rem;
-			background: linear-gradient(135deg, hsl(var(--primary) / 0.2), hsl(var(--primary) / 0.1));
-			border: 1px solid hsl(var(--primary) / 0.3);
+			background: linear-gradient(135deg, oklch(var(--primary) / 0.2), oklch(var(--primary) / 0.1));
+			border: 1px solid oklch(var(--primary) / 0.3);
 			border-radius: 2rem;
 		}
 
 		.badge-text {
 			font-size: 1.125rem;
 			font-weight: 600;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			text-transform: uppercase;
 			letter-spacing: 0.1em;
 		}

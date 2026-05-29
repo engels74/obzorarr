@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test';
+import { actions } from '../../src/routes/+page.server';
 
 /**
  * Source-regression tests for the 2026-05-14 dogfood fixes. Each test pins
@@ -9,51 +10,25 @@ async function readSource(path: string): Promise<string> {
 	return Bun.file(path).text();
 }
 
+// dogfood ISSUE-003 — the monolith form's restoreLogSettings() + manual
+// invalidate-on-failure pattern lived in the deleted /admin/settings/+page.svelte.
+// The nested-route system tab (src/routes/admin/settings/system/+page.server.ts +
+// +page.svelte) handles the same invariant through Superforms' built-in
+// stateful update + the matching test cases in tests/unit/admin/system-actions.test.ts.
+// The appVersion-from-load assertion re-points to the nested system route.
 describe('dogfood ISSUE-003 — admin log settings persistence', () => {
-	it('runs invalidateAll on success and restores state on failure', async () => {
-		const source = await readSource('src/routes/admin/settings/+page.svelte');
-
-		expect(source).toContain('function restoreLogSettings(): void {');
-		expect(source).toContain('logRetentionDays = data.logSettings.retentionDays;');
-		expect(source).toContain('logMaxCount = data.logSettings.maxCount;');
-		expect(source).toContain('logDebugEnabled = data.logSettings.debugEnabled;');
-
-		const enhanceStart = source.indexOf('action="?/updateLogSettings"');
-		expect(enhanceStart).toBeGreaterThan(-1);
-		const enhanceSlice = source.slice(enhanceStart, enhanceStart + 1200);
-		expect(enhanceSlice).toContain('await update({ invalidateAll: true });');
-		expect(enhanceSlice).toContain('await invalidateAll();');
-		expect(enhanceSlice).toContain('restoreLogSettings();');
-	});
-
-	it('returns appVersion from the admin settings load function', async () => {
-		const source = await readSource('src/routes/admin/settings/+page.server.ts');
+	it('returns appVersion from the System tab load function', async () => {
+		const source = await readSource('src/routes/admin/settings/system/+page.server.ts');
 		expect(source).toContain("import { getAppVersion } from '$lib/server/version';");
 		expect(source).toContain('appVersion: getAppVersion()');
 	});
 });
 
-describe('dogfood ISSUE-002 — server-wide wrapped + user defaults persistence', () => {
-	it('invalidates on the failure path so OCC settingsVersion refreshes', async () => {
-		const source = await readSource('src/routes/admin/settings/+page.svelte');
-
-		const serverWrappedStart = source.indexOf('action="?/updateServerWrappedSettings"');
-		expect(serverWrappedStart).toBeGreaterThan(-1);
-		const serverWrappedSlice = source.slice(serverWrappedStart, serverWrappedStart + 1200);
-		expect(serverWrappedSlice).toContain('restoreServerWrappedSettings();');
-		// Two await invalidateAll() calls in the block: one in the success
-		// branch, one after restore in the failure branch.
-		const occurrences = serverWrappedSlice.match(/await invalidateAll\(\);/g);
-		expect(occurrences?.length).toBeGreaterThanOrEqual(2);
-
-		const userDefaultsStart = source.indexOf('action="?/updateUserDefaults"');
-		expect(userDefaultsStart).toBeGreaterThan(-1);
-		const userDefaultsSlice = source.slice(userDefaultsStart, userDefaultsStart + 1200);
-		expect(userDefaultsSlice).toContain('restoreUserDefaults();');
-		const userOccurrences = userDefaultsSlice.match(/await invalidateAll\(\);/g);
-		expect(userOccurrences?.length).toBeGreaterThanOrEqual(2);
-	});
-});
+// dogfood ISSUE-002 — the monolith form's two-stage invalidateAll() +
+// restoreServerWrappedSettings()/restoreUserDefaults() pattern is replaced by
+// Superforms' resetForm: false + onUpdated re-fetch in the nested privacy tab.
+// OCC settingsVersion refresh is covered end-to-end by
+// tests/unit/admin/privacy-actions.test.ts (stale-version 409 paths).
 
 describe('dogfood ISSUE-005 — Watch Again must return to slide 0', () => {
 	it('server-wide wrapped clears the URL hash before remounting StoryMode', async () => {
@@ -144,22 +119,82 @@ describe('dogfood ISSUE-007 — --min-tap-size token rolled out everywhere', () 
 		}
 	});
 
-	it('applies the token to admin chrome controls', async () => {
+	it('applies the token to admin layout chrome (sidebar menu button)', async () => {
 		const layoutSource = await readSource('src/routes/admin/+layout.svelte');
 		expect(layoutSource).toContain('width: var(--min-tap-size);');
 		expect(layoutSource).toContain('height: var(--min-tap-size);');
+	});
 
-		const settingsSource = await readSource('src/routes/admin/settings/+page.svelte');
-		// `.tab-button` got a min-height floor; `.input-action` got both axes.
-		const tabButtonIdx = settingsSource.indexOf('.tab-button {');
-		expect(tabButtonIdx).toBeGreaterThan(-1);
-		expect(settingsSource.slice(tabButtonIdx, tabButtonIdx + 600)).toContain(
-			'min-height: var(--min-tap-size);'
-		);
-		const inputActionIdx = settingsSource.indexOf('.input-action {');
-		expect(inputActionIdx).toBeGreaterThan(-1);
-		const inputActionSlice = settingsSource.slice(inputActionIdx, inputActionIdx + 600);
-		expect(inputActionSlice).toContain('min-width: var(--min-tap-size);');
-		expect(inputActionSlice).toContain('min-height: var(--min-tap-size);');
+	it('applies the token to nested-route settings submit buttons via the tap-target class', async () => {
+		// US-022 replaced the monolith's `.tab-button` + `.input-action` rules
+		// with `class="tap-target"` on the 24 shadcn Button + AlertDialog.Action
+		// instances across the 6 nested-route settings tabs (commit e59d7e5).
+		// Spot-check one button per tab so a regression that drops the class
+		// is caught at the source-pin level.
+		const tabs = [
+			'src/routes/admin/settings/system/+page.svelte',
+			'src/routes/admin/settings/appearance/+page.svelte',
+			'src/routes/admin/settings/privacy/+page.svelte',
+			'src/routes/admin/settings/data/+page.svelte',
+			'src/routes/admin/settings/connections/+page.svelte',
+			'src/routes/admin/settings/security/+page.svelte'
+		];
+		for (const path of tabs) {
+			const source = await readSource(path);
+			expect(source).toContain('class="tap-target"');
+		}
+	});
+});
+
+// dogfood 2026-05-29 F1 — the onboarding Done page rendered the visible
+// "Setup Complete!" heading as <h2> while OnboardingCard emitted an empty
+// <h1> (title=""), skipping the h1 level. Fix promotes the visible title to
+// <h1> in place (preserving the class-based shimmer + showContent fade-in),
+// guards the card header so the empty title emits no <h1>, and demotes the
+// summary <h3> to <h2> so heading order is h1->h2 with no skip.
+describe('dogfood 2026-05-29 F1 — onboarding Done page heading hierarchy', () => {
+	it('promotes the visible Done-page title to <h1> in place', async () => {
+		const source = await readSource('src/routes/onboarding/complete/+page.svelte');
+		expect(source).toContain('<h1 class="completion-title">Setup Complete!</h1>');
+		expect(source).not.toContain('<h2 class="completion-title">');
+	});
+
+	it('demotes the configuration summary heading to <h2> (no skipped level)', async () => {
+		const source = await readSource('src/routes/onboarding/complete/+page.svelte');
+		expect(source).toContain('<h2 class="summary-title">');
+		expect(source).not.toContain('<h3 class="summary-title">');
+	});
+
+	it('guards the OnboardingCard header so an empty title emits no <h1>', async () => {
+		const source = await readSource('src/lib/components/onboarding/OnboardingCard.svelte');
+		const headerStart = source.indexOf('<header class="card-header">');
+		expect(headerStart).toBeGreaterThan(-1);
+		const headerSlice = source.slice(headerStart, headerStart + 200);
+		expect(headerSlice).toContain('{#if title}');
+		expect(headerSlice).toContain('<h1 class="card-title">{title}</h1>');
+	});
+});
+
+// dogfood 2026-05-29 F3 — a 1001-char username submitted from the landing
+// lookup form was reported as a "silent reset". Verified working in source:
+// UsernameSchema caps length at 100 and the action returns fail(400) before
+// touching the DB, so the form surfaces "Username is too long" via
+// handleFormToast. This behavioural test pins that path so it can't regress.
+describe('dogfood 2026-05-29 F3 — long username lookup returns fail(400)', () => {
+	it('rejects a >100-char username with fail(400) "Username is too long"', async () => {
+		const formData = new FormData();
+		formData.set('username', 'a'.repeat(1001));
+		const request = new Request('http://localhost/?/lookupUser', {
+			method: 'POST',
+			body: formData
+		});
+		const handler = actions.lookupUser as NonNullable<typeof actions.lookupUser>;
+		const result = await handler({ request } as Parameters<
+			NonNullable<typeof actions.lookupUser>
+		>[0]);
+		expect(result).toMatchObject({
+			status: 400,
+			data: { error: 'Username is too long', requiresAuth: false }
+		});
 	});
 });

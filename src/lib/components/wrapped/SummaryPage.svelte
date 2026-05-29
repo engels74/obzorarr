@@ -344,11 +344,11 @@ $effect(() => {
 				--slide-bg-gradient,
 				linear-gradient(
 					180deg,
-					hsl(var(--primary-hue) 30% 8%) 0%,
-					hsl(var(--primary-hue) 25% 5%) 100%
+					oklch(var(--slide-bg-start)) 0%,
+					oklch(var(--slide-bg-end)) 100%
 				)
 			);
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			position: relative;
 			overflow-x: hidden;
 			overflow-y: auto;
@@ -359,7 +359,7 @@ $effect(() => {
 			content: '';
 			position: absolute;
 			inset: 0;
-			background: radial-gradient(ellipse at center, transparent 0%, hsl(0 0% 0% / 0.5) 100%);
+			background: radial-gradient(ellipse at center, transparent 0%, oklch(0 0 0 / 0.5) 100%);
 			pointer-events: none;
 		}
 
@@ -389,7 +389,7 @@ $effect(() => {
 
 		/* Restore a visible focus indicator for keyboard users on the title heading. */
 		.title:focus-visible {
-			outline: 2px solid hsl(var(--primary));
+			outline: 2px solid oklch(var(--primary));
 			outline-offset: 4px;
 			border-radius: 4px;
 		}
@@ -401,18 +401,18 @@ $effect(() => {
 			/* Gradient text effect */
 			background: linear-gradient(
 				180deg,
-				hsl(var(--primary)) 0%,
-				hsl(calc(var(--primary-hue) + 20) 70% 65%) 100%
+				oklch(var(--primary)) 0%,
+				oklch(var(--primary-accent-plus-20)) 100%
 			);
 			-webkit-background-clip: text;
 			-webkit-text-fill-color: transparent;
 			background-clip: text;
-			filter: drop-shadow(0 0 25px hsl(var(--primary) / 0.4));
+			filter: drop-shadow(0 0 25px oklch(var(--primary) / 0.4));
 		}
 
 		.subtitle {
 			font-size: 1.125rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin: 0;
 			text-transform: uppercase;
 			letter-spacing: 0.15em;
@@ -432,7 +432,7 @@ $effect(() => {
 			z-index: 1;
 			margin-bottom: 2.5rem;
 			padding: 1.5rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-align: center;
 		}
 
@@ -441,10 +441,10 @@ $effect(() => {
 		}
 
 		.stat-card {
-			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
+			background: var(--slide-glass-bg);
 			backdrop-filter: blur(16px);
 			-webkit-backdrop-filter: blur(16px);
-			border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
+			border: 1px solid var(--slide-glass-border);
 			border-radius: calc(var(--radius) * 2);
 			padding: 1.5rem 1.25rem;
 			text-align: center;
@@ -452,7 +452,7 @@ $effect(() => {
 			flex-direction: column;
 			align-items: center;
 			gap: 0.625rem;
-			box-shadow: var(--shadow-elevation-low, 0 2px 8px hsl(0 0% 0% / 0.25));
+			box-shadow: var(--shadow-elevation-low, 0 2px 8px oklch(0 0 0 / 0.25));
 			position: relative;
 			transition:
 				transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
@@ -468,7 +468,7 @@ $effect(() => {
 			left: 0;
 			right: 0;
 			height: 1px;
-			background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.3), transparent);
+			background: linear-gradient(90deg, transparent, oklch(var(--primary) / 0.3), transparent);
 			border-radius: inherit;
 			opacity: 0;
 			transition: opacity 0.3s ease;
@@ -477,9 +477,9 @@ $effect(() => {
 		.stat-card:hover {
 			transform: translateY(-4px) scale(1.02);
 			box-shadow:
-				var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.35)),
-				0 0 25px hsl(var(--primary) / 0.1);
-			border-color: hsl(var(--primary) / 0.3);
+				var(--shadow-elevation-medium, 0 4px 12px oklch(0 0 0 / 0.35)),
+				0 0 25px oklch(var(--primary) / 0.1);
+			border-color: oklch(var(--primary) / 0.3);
 		}
 
 		.stat-card:hover::before {
@@ -488,27 +488,27 @@ $effect(() => {
 
 		/* Highlight card (Total Watch Time) */
 		.stat-card.highlight {
-			border-color: hsl(var(--primary) / 0.4);
+			border-color: oklch(var(--primary) / 0.4);
 			background: linear-gradient(
 				135deg,
-				hsl(var(--primary) / 0.2) 0%,
-				hsl(var(--primary) / 0.08) 100%
+				oklch(var(--primary) / 0.2) 0%,
+				oklch(var(--primary) / 0.08) 100%
 			);
 			box-shadow:
-				var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.3)),
-				0 0 30px hsl(var(--primary) / 0.15);
+				var(--shadow-elevation-medium, 0 4px 12px oklch(0 0 0 / 0.3)),
+				0 0 30px oklch(var(--primary) / 0.15);
 		}
 
 		.stat-card.highlight::before {
-			background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.5), transparent);
+			background: linear-gradient(90deg, transparent, oklch(var(--primary) / 0.5), transparent);
 			opacity: 1;
 		}
 
 		.stat-card.highlight .stat-value {
 			background: linear-gradient(
 				180deg,
-				hsl(var(--primary)) 0%,
-				hsl(calc(var(--primary-hue) + 20) 70% 65%) 100%
+				oklch(var(--primary)) 0%,
+				oklch(var(--primary-accent-plus-20)) 100%
 			);
 			-webkit-background-clip: text;
 			-webkit-text-fill-color: transparent;
@@ -517,20 +517,20 @@ $effect(() => {
 
 		/* Accent card (Percentile/Ranking) */
 		.stat-card.accent {
-			border-color: hsl(45 90% 50% / 0.4);
-			background: linear-gradient(135deg, hsl(45 90% 50% / 0.15) 0%, hsl(45 90% 50% / 0.05) 100%);
+			border-color: oklch(0.8153 0.1652 85.67 / 0.4);
+			background: linear-gradient(135deg, oklch(0.8153 0.1652 85.67 / 0.15) 0%, oklch(0.8153 0.1652 85.67 / 0.05) 100%);
 			box-shadow:
-				var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.3)),
-				0 0 25px hsl(45 90% 50% / 0.12);
+				var(--shadow-elevation-medium, 0 4px 12px oklch(0 0 0 / 0.3)),
+				0 0 25px oklch(0.8153 0.1652 85.67 / 0.12);
 		}
 
 		.stat-card.accent::before {
-			background: linear-gradient(90deg, transparent, hsl(45 90% 50% / 0.5), transparent);
+			background: linear-gradient(90deg, transparent, oklch(0.8153 0.1652 85.67 / 0.5), transparent);
 			opacity: 1;
 		}
 
 		.stat-card.accent .stat-value {
-			background: linear-gradient(180deg, hsl(45 90% 55%) 0%, hsl(35 85% 50%) 100%);
+			background: linear-gradient(180deg, oklch(0.8309 0.1622 87.87) 0%, oklch(0.7358 0.1599 66.01) 100%);
 			-webkit-background-clip: text;
 			-webkit-text-fill-color: transparent;
 			background-clip: text;
@@ -538,13 +538,13 @@ $effect(() => {
 
 		.stat-icon {
 			font-size: 1.75rem;
-			filter: drop-shadow(0 0 8px hsl(var(--primary) / 0.3));
+			filter: drop-shadow(0 0 8px oklch(var(--primary) / 0.3));
 		}
 
 		.stat-value {
 			font-size: clamp(1.25rem, 3vw, 1.75rem);
 			font-weight: 700;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			line-height: 1.2;
 		}
 
@@ -557,7 +557,7 @@ $effect(() => {
 
 		.stat-label {
 			font-size: 0.8125rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-transform: uppercase;
 			letter-spacing: 0.05em;
 		}
@@ -596,37 +596,35 @@ $effect(() => {
 		}
 
 		.btn-primary {
-			background: hsl(var(--primary));
-			color: hsl(var(--primary-foreground));
+			background: oklch(var(--primary));
+			color: oklch(var(--primary-foreground));
 			box-shadow:
-				0 4px 14px hsl(var(--primary) / 0.35),
-				inset 0 1px 0 hsl(0 0% 100% / 0.15);
+				0 4px 14px oklch(var(--primary) / 0.35),
+				inset 0 1px 0 oklch(1 0 0 / 0.15);
 		}
 
 		.btn-primary:hover {
-			background: hsl(
-				var(--primary-hue) var(--primary-saturation) calc(var(--primary-lightness) + 5%)
-			);
+			background: oklch(var(--primary-grad-plus-15));
 			box-shadow:
-				0 6px 20px hsl(var(--primary) / 0.45),
-				inset 0 1px 0 hsl(0 0% 100% / 0.2);
+				0 6px 20px oklch(var(--primary) / 0.45),
+				inset 0 1px 0 oklch(1 0 0 / 0.2);
 		}
 
 		.btn-secondary {
-			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 15% / 0.5));
+			background: var(--slide-glass-bg);
 			backdrop-filter: blur(8px);
 			-webkit-backdrop-filter: blur(8px);
-			color: hsl(var(--foreground));
-			border: 1px solid hsl(var(--primary) / 0.2);
-			box-shadow: var(--shadow-elevation-low, 0 2px 8px hsl(0 0% 0% / 0.2));
+			color: oklch(var(--foreground));
+			border: 1px solid oklch(var(--primary) / 0.2);
+			box-shadow: var(--shadow-elevation-low, 0 2px 8px oklch(0 0 0 / 0.2));
 		}
 
 		.btn-secondary:hover {
-			background: hsl(var(--primary) / 0.15);
-			border-color: hsl(var(--primary) / 0.35);
+			background: oklch(var(--primary) / 0.15);
+			border-color: oklch(var(--primary) / 0.35);
 			box-shadow:
-				var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.25)),
-				0 0 15px hsl(var(--primary) / 0.1);
+				var(--shadow-elevation-medium, 0 4px 12px oklch(0 0 0 / 0.25)),
+				0 0 15px oklch(var(--primary) / 0.1);
 		}
 
 		/* Mobile: stack buttons vertically */

@@ -309,6 +309,20 @@ describe('wrapped/[year]/u/[identifier] loader: identifier validation (F-303)', 
 		await expectStatus('550e8400-e29b-41d4-a716-446655449999', 404);
 	});
 
+	it('returns 403 for an anonymous viewer on a valid numeric id in private-oauth mode (ISSUE-002)', async () => {
+		// F-015/ISSUE-002 regression: a logged-out viewer hitting a valid user's
+		// numeric wrapped URL while the effective mode is private-oauth must get
+		// ShareAccessDeniedError -> error(403) ("sign in"), NOT a 404. The 404
+		// anti-enumeration path is reserved for stale/unknown tokens (covered
+		// above); a known user in an auth-gated mode is correctly a 403.
+		await setGlobalShareDefaults({
+			defaultShareMode: ShareMode.PRIVATE_OAUTH,
+			allowUserControl: false
+		});
+
+		await expectStatus(String(USER_ID), 403);
+	});
+
 	it('resolves a valid numeric identifier to the matching user', async () => {
 		const data = await invokeLoad({
 			year: ORIGIN_YEAR,

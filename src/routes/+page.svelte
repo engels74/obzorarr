@@ -1,4 +1,5 @@
 <script lang="ts">
+import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 import { animate } from 'motion';
 import { prefersReducedMotion } from 'svelte/motion';
 import { browser } from '$app/environment';
@@ -11,7 +12,10 @@ import {
 	startPlexLoginRedirect
 } from '$lib/client/plex-login';
 import PopupBlockedModal from '$lib/components/auth/PopupBlockedModal.svelte';
+import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import Logo from '$lib/components/Logo.svelte';
+import { Button } from '$lib/components/ui/button';
+import { Input } from '$lib/components/ui/input';
 import type { ActionData, PageData } from './$types';
 
 /**
@@ -164,7 +168,7 @@ function handleCancelRedirect(): void {
 				>
 					<div class="username-input-group">
 						<label for="username-input" class="sr-only">Plex username</label>
-						<input
+						<Input
 							id="username-input"
 							type="text"
 							name="username"
@@ -177,14 +181,18 @@ function handleCancelRedirect(): void {
 							spellcheck="false"
 							onblur={() => (usernameTouched = true)}
 						/>
-						<button type="submit" class="view-button" disabled={isLookingUp || !username.trim()}>
-							{#if isLookingUp}
-								<span class="spinner small" aria-hidden="true"></span>
-								Looking up...
-							{:else}
+						<SubmitButton
+							class="view-button tap-target"
+							submitting={isLookingUp}
+							disabled={!username.trim()}
+						>
+							{#snippet children()}
 								View My {data.currentYear} Wrapped
-							{/if}
-						</button>
+							{/snippet}
+							{#snippet submittingLabel()}
+								Looking up...
+							{/snippet}
+						</SubmitButton>
 					</div>
 
 					{#if form?.error}
@@ -209,29 +217,24 @@ function handleCancelRedirect(): void {
 			<!-- SECONDARY: Plex OAuth Login -->
 			<div class="login-section">
 				<p class="login-prompt">Want to access your dashboard or change settings?</p>
-				<button
+				<Button
 					type="button"
-					class="login-button secondary"
+					class="login-button secondary tap-target"
 					onclick={handlePlexLogin}
 					disabled={isOAuthLoading || isRedirecting}
+					aria-busy={isOAuthLoading || isRedirecting}
 				>
 					{#if isRedirecting}
-						<span class="button-loading">
-							<span class="spinner" aria-hidden="true"></span>
-							Redirecting to Plex...
-						</span>
+						<LoaderCircleIcon class="size-4 animate-spin" aria-hidden="true" />
+						Redirecting to Plex...
 					{:else if isOAuthLoading}
-						<span class="button-loading">
-							<span class="spinner" aria-hidden="true"></span>
-							Connecting to Plex...
-						</span>
+						<LoaderCircleIcon class="size-4 animate-spin" aria-hidden="true" />
+						Connecting to Plex...
 					{:else}
-						<span class="button-content">
-							<span class="plex-icon" aria-hidden="true">&#9654;</span>
-							Sign in with Plex
-						</span>
+						<span class="plex-icon" aria-hidden="true">&#9654;</span>
+						Sign in with Plex
 					{/if}
-				</button>
+				</Button>
 
 				{#if oauthError}
 					<p class="error-message" role="alert">{oauthError}</p>
@@ -257,7 +260,7 @@ function handleCancelRedirect(): void {
 			min-height: 100vh;
 			display: flex;
 			flex-direction: column;
-			background: hsl(var(--background));
+			background: oklch(var(--background));
 		}
 
 		/* Hero Section */
@@ -276,7 +279,7 @@ function handleCancelRedirect(): void {
 			content: '';
 			position: absolute;
 			inset: 0;
-			background: radial-gradient(ellipse at center, hsl(var(--primary) / 0.1) 0%, transparent 70%);
+			background: radial-gradient(ellipse at center, oklch(var(--primary) / 0.1) 0%, transparent 70%);
 			pointer-events: none;
 		}
 
@@ -289,8 +292,8 @@ function handleCancelRedirect(): void {
 
 		.logo-glow {
 			margin-bottom: 1rem;
-			filter: drop-shadow(0 0 20px hsl(var(--primary) / 0.5))
-				drop-shadow(0 0 40px hsl(var(--primary) / 0.3));
+			filter: drop-shadow(0 0 20px oklch(var(--primary) / 0.5))
+				drop-shadow(0 0 40px oklch(var(--primary) / 0.3));
 		}
 
 		.hero-title {
@@ -302,10 +305,10 @@ function handleCancelRedirect(): void {
 			font-size: clamp(2.5rem, 8vw, 4rem);
 			font-weight: 900;
 			letter-spacing: 0.15em;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			text-shadow:
-				2px 2px 0 hsl(var(--primary) / 0.3),
-				4px 4px 0 hsl(var(--primary) / 0.1);
+				2px 2px 0 oklch(var(--primary) / 0.3),
+				4px 4px 0 oklch(var(--primary) / 0.1);
 		}
 
 		.title-sub {
@@ -314,14 +317,14 @@ function handleCancelRedirect(): void {
 			font-weight: 400;
 			letter-spacing: 0.3em;
 			text-transform: uppercase;
-			color: hsl(var(--accent));
+			color: oklch(var(--accent));
 			margin-top: 0.5rem;
 		}
 
 		.hero-description {
 			font-size: 1.125rem;
 			line-height: 1.7;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin: 0 0 2rem;
 		}
 
@@ -355,37 +358,62 @@ function handleCancelRedirect(): void {
 			border: 0;
 		}
 
-		.username-input {
+		/* Paired :global hoist for the username form input — same migration
+		   story as `.view-button` above: PR-3 / US-024 swaps the native
+		   <input class="username-input"> for the shadcn Input primitive
+		   which renders inside a child component beyond Svelte 5's
+		   component-scope. Globalising the rules now preserves the
+		   hand-tuned focus ring + max-width without forcing the Input
+		   consumer to re-implement them. */
+		:global(.username-input) {
 			flex: 1;
 			min-width: 200px;
 			max-width: 300px;
 			padding: 0.875rem 1rem;
 			font-size: 1rem;
-			background: hsl(var(--input));
-			border: 1px solid hsl(var(--border));
+			background: oklch(var(--input));
+			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			transition:
 				border-color 0.2s ease,
 				box-shadow 0.2s ease;
 		}
 
-		.username-input::placeholder {
-			color: hsl(var(--muted-foreground));
+		:global(.username-input::placeholder) {
+			color: oklch(var(--muted-foreground));
 		}
 
-		.username-input:focus {
+		/* `:focus-visible` (not `:focus`) keeps mouse clicks from over-styling;
+		   text inputs still match it on click per the UA heuristic, so the ring
+		   shows for both keyboard and pointer focus. The ring is a *solid*
+		   `oklch(var(--ring))` (no alpha): a 0.2-alpha shadow composites to
+		   <1.6:1 against the dark hero bg on every theme — below WCAG 2.1 AA's
+		   3:1 non-text minimum — and the red theme can't clear 3:1 below full
+		   opacity. Solid clears 3:1 on all themes (3.34–10.83). Matches the
+		   `.login-button.secondary` + `.link-button` rings below for cohesion. */
+		:global(.username-input:focus-visible) {
 			outline: none;
-			border-color: hsl(var(--ring));
-			box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+			border-color: oklch(var(--ring));
+			box-shadow: 0 0 0 2px oklch(var(--ring));
 		}
 
-		.username-input:disabled {
+		:global(.username-input:disabled) {
 			opacity: 0.7;
 			cursor: not-allowed;
 		}
 
-		.view-button {
+		/* `.view-button` is consumed at scope today by the native <button> in the
+		   username form, but PR-3 / US-024 will swap that for the shadcn
+		   SubmitButton primitive which renders the button element inside a
+		   child component — Svelte 5 component-scoped CSS doesn't reach
+		   inside a child, so the styling has to be globalised now. The rules
+		   are unchanged; only the selector scope is bumped to :global so the
+		   primitive consumer can keep the hero CTA's hover translate-y + glow
+		   without re-implementing them. The .username-input rules below have
+		   the same migration story; the matching :global hoist is paired with
+		   the shadcn Input swap pre-work. */
+		:global(.view-button) {
 			display: inline-flex;
 			align-items: center;
 			justify-content: center;
@@ -393,31 +421,31 @@ function handleCancelRedirect(): void {
 			padding: 0.875rem 1.5rem;
 			font-size: 1rem;
 			font-weight: 600;
-			color: hsl(var(--primary-foreground));
-			background: hsl(var(--primary));
+			color: oklch(var(--primary-foreground));
+			background: oklch(var(--primary));
 			border: none;
 			border-radius: var(--radius);
 			cursor: pointer;
 			transition: all 0.2s ease;
 			white-space: nowrap;
 			box-shadow:
-				0 4px 14px hsl(var(--primary) / 0.4),
-				0 0 0 0 hsl(var(--accent) / 0);
+				0 4px 14px oklch(var(--primary) / 0.4),
+				0 0 0 0 oklch(var(--accent) / 0);
 		}
 
-		.view-button:hover:not(:disabled) {
-			background: hsl(var(--primary) / 0.9);
+		:global(.view-button:hover:not(:disabled)) {
+			background: oklch(var(--primary) / 0.9);
 			transform: translateY(-2px);
 			box-shadow:
-				0 6px 20px hsl(var(--primary) / 0.5),
-				0 0 0 3px hsl(var(--accent) / 0.3);
+				0 6px 20px oklch(var(--primary) / 0.5),
+				0 0 0 3px oklch(var(--accent) / 0.3);
 		}
 
-		.view-button:active:not(:disabled) {
+		:global(.view-button:active:not(:disabled)) {
 			transform: translateY(0);
 		}
 
-		.view-button:disabled {
+		:global(.view-button:disabled) {
 			opacity: 0.6;
 			cursor: not-allowed;
 		}
@@ -425,16 +453,21 @@ function handleCancelRedirect(): void {
 		/* Login Section - SECONDARY */
 		.login-section {
 			padding-top: 1.5rem;
-			border-top: 1px solid hsl(var(--border) / 0.5);
+			border-top: 1px solid oklch(var(--border) / 0.5);
 		}
 
 		.login-prompt {
 			font-size: 0.875rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			margin: 0 0 0.75rem;
 		}
 
-		.login-button {
+		/* `.login-button` is the secondary Plex-OAuth CTA. Same :global hoist
+		   story as .view-button + .username-input above — prep for the
+		   future shadcn Button swap so the child component's rendered
+		   element inherits the styling across Svelte 5's component-scope
+		   boundary. Rule bodies are byte-identical. */
+		:global(.login-button) {
 			display: inline-flex;
 			align-items: center;
 			justify-content: center;
@@ -448,70 +481,52 @@ function handleCancelRedirect(): void {
 			transition: all 0.2s ease;
 		}
 
-		.login-button.secondary {
-			background: hsl(var(--secondary));
-			color: hsl(var(--secondary-foreground));
-			border: 1px solid hsl(var(--border));
+		:global(.login-button.secondary) {
+			background: oklch(var(--secondary));
+			color: oklch(var(--secondary-foreground));
+			border: 1px solid oklch(var(--border));
 			box-shadow: none;
 		}
 
-		.login-button.secondary:hover:not(:disabled) {
-			background: hsl(var(--muted));
+		:global(.login-button.secondary:hover:not(:disabled)) {
+			background: oklch(var(--muted));
 			transform: none;
 		}
 
-		.login-button:disabled {
-			opacity: 0.8;
-			cursor: not-allowed;
+		/* Restore the focus-visible ring the shadcn Button primitive ships in its
+		   base class — the `:480 box-shadow: none` above clobbers it. Reuse the
+		   same solid ring as `.username-input:focus-visible` so keyboard focus is
+		   cohesive across the hero controls and clears WCAG 2.1 AA 3:1; `--ring`
+		   is theme-redefined in app.css, so it recolors per theme. `:focus-visible`
+		   keeps mouse clicks ring-free. Specificity (0,3,0) + later source order
+		   beats `:480`. */
+		:global(.login-button.secondary:focus-visible) {
+			box-shadow: 0 0 0 2px oklch(var(--ring));
 		}
 
-		.button-content,
-		.button-loading {
-			display: flex;
-			align-items: center;
-			gap: 0.75rem;
+		:global(.login-button:disabled) {
+			opacity: 0.8;
+			cursor: not-allowed;
 		}
 
 		.plex-icon {
 			font-size: 1.125rem;
 		}
 
-		/* Shared Elements */
-		.spinner {
-			display: inline-block;
-			width: 1.25rem;
-			height: 1.25rem;
-			border: 2px solid hsl(var(--primary-foreground) / 0.3);
-			border-top-color: hsl(var(--primary-foreground));
-			border-radius: 50%;
-			animation: spin 1s linear infinite;
-		}
-
-		.spinner.small {
-			width: 1rem;
-			height: 1rem;
-		}
-
-		@keyframes spin {
-			to {
-				transform: rotate(360deg);
-			}
-		}
-
 		.error-message {
 			margin-top: 0.75rem;
 			padding: 0.75rem 1rem;
-			background: hsl(var(--destructive) / 0.2);
-			border: 1px solid hsl(var(--destructive));
+			background: oklch(var(--destructive) / 0.2);
+			border: 1px solid oklch(var(--destructive));
 			border-radius: var(--radius);
-			color: hsl(var(--destructive-foreground));
+			color: oklch(var(--destructive-foreground));
 			font-size: 0.875rem;
 		}
 
 		.link-button {
 			background: none;
 			border: none;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			text-decoration: underline;
 			cursor: pointer;
 			font-size: inherit;
@@ -523,17 +538,23 @@ function handleCancelRedirect(): void {
 			opacity: 0.8;
 		}
 
+		/* The native "Sign in now" link had no focus-visible rule — match the
+		   solid button/input ring so keyboard users can see it at >=3:1. */
+		:global(.link-button:focus-visible) {
+			box-shadow: 0 0 0 2px oklch(var(--ring));
+		}
+
 		/* Footer */
 		.footer {
 			padding: 1.5rem 2rem;
 			text-align: center;
-			border-top: 1px solid hsl(var(--border));
+			border-top: 1px solid oklch(var(--border));
 		}
 
 		.footer p {
 			margin: 0;
 			font-size: 0.75rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			letter-spacing: 0.05em;
 		}
 
@@ -558,16 +579,16 @@ function handleCancelRedirect(): void {
 				align-items: stretch;
 			}
 
-			.username-input {
+			:global(.username-input) {
 				max-width: none;
 			}
 
-			.view-button {
+			:global(.view-button) {
 				justify-content: center;
 				width: 100%;
 			}
 
-			.login-button {
+			:global(.login-button) {
 				width: 100%;
 				min-width: unset;
 			}
@@ -575,13 +596,9 @@ function handleCancelRedirect(): void {
 
 		/* Reduced motion */
 		@media (prefers-reduced-motion: reduce) {
-			.spinner {
-				animation: none;
-			}
-
-			.view-button,
-			.login-button,
-			.username-input {
+			:global(.view-button),
+			:global(.login-button),
+			:global(.username-input) {
 				transition: none;
 			}
 		}

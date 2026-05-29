@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, spyOn } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import type { Cookies } from '@sveltejs/kit';
 import { isHttpError } from '@sveltejs/kit';
 import * as sessionModule from '$lib/server/auth/session';
@@ -66,12 +66,28 @@ describe('GET /api/onboarding/servers', () => {
 		expect(await claimOnboardingInstance(cookies as unknown as Cookies, token)).toBe('claimed');
 	}
 
+	beforeEach(async () => {
+		// Isolate each test: clear any claim cookies, bootstrap state, and
+		// app_settings rows leaked from prior tests. Without this, a `createClaim`
+		// in an earlier test leaves stale cookies in `claimValues`, which makes
+		// the claim guard pass in tests that intentionally probe the no-claim
+		// branch (now the first gate per ISSUE-017).
+		claimValues = new Map();
+		clearBootstrapToken();
+		await db.delete(appSettings);
+	});
+
 	afterEach(() => {
 		// bun:test's spyOn returns a spy that we reset by restoring the original
 		// module bindings; recreating spies per-test keeps state isolated.
 	});
 
 	it('returns 401 when the request is unauthenticated', async () => {
+		// Establish a valid claim so the claim guard passes and the test exercises
+		// the auth check. Without a claim, the claim-required gate fires first
+		// (per ISSUE-017: claim guard runs before auth) and we never reach the
+		// 401 branch.
+		await createClaim();
 		try {
 			await runGet({} as HandlerArgs['locals']);
 			expect.unreachable('Expected error to be thrown');
@@ -83,6 +99,7 @@ describe('GET /api/onboarding/servers', () => {
 	});
 
 	it('returns 403 when the user is authenticated but not an admin', async () => {
+		await createClaim();
 		const locals = {
 			user: { id: 1, plexId: 100, username: 'nonadmin', isAdmin: false }
 		} as HandlerArgs['locals'];
@@ -95,6 +112,21 @@ describe('GET /api/onboarding/servers', () => {
 			if (!isHttpError(err)) throw err;
 			expect(err.status).toBe(403);
 			expect(err.body.message).toBe('Only server owners can configure Obzorarr');
+		}
+	});
+
+	it('returns 403 + claim-required when no active claim is present (regardless of auth)', async () => {
+		// Sanity: with no claim and no user, claim guard short-circuits to 403
+		// with the same message as POST endpoints. Mirrors the POST guard shape
+		// per ISSUE-017.
+		try {
+			await runGet({} as HandlerArgs['locals']);
+			expect.unreachable('Expected error to be thrown');
+		} catch (err) {
+			expect(isHttpError(err)).toBe(true);
+			if (!isHttpError(err)) throw err;
+			expect(err.status).toBe(403);
+			expect(err.body.message).toBe(ONBOARDING_CLAIM_REQUIRED_MESSAGE);
 		}
 	});
 

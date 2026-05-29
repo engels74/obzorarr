@@ -32,7 +32,7 @@ let { active = true, class: klass = '', variant = 'default', children }: Props =
 			padding: 2rem 1.5rem;
 			text-align: center;
 			background: transparent;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			position: relative;
 			overflow: visible;
 		}
@@ -55,7 +55,7 @@ let { active = true, class: klass = '', variant = 'default', children }: Props =
 			inset: 0;
 			background: radial-gradient(
 				ellipse 60% 40% at 50% 0%,
-				var(--slide-glow-color, hsl(var(--primary) / 0.15)) 0%,
+				var(--slide-glow-color, oklch(var(--primary) / 0.15)) 0%,
 				transparent 70%
 			);
 			pointer-events: none;
@@ -70,15 +70,15 @@ let { active = true, class: klass = '', variant = 'default', children }: Props =
 		.variant-glass > :global(.content),
 		.variant-glass > :global(.slide-content),
 		.variant-glass > :global(.glass-container) {
-			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
+			background: var(--slide-glass-bg);
 			backdrop-filter: blur(var(--slide-glass-blur, 20px));
 			-webkit-backdrop-filter: blur(var(--slide-glass-blur, 20px));
-			border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.3));
+			border: 1px solid var(--slide-glass-border);
 			border-radius: calc(var(--radius) * 2);
 			padding: 2rem;
 			box-shadow:
-				var(--shadow-elevation-medium, 0 4px 8px hsl(0 0% 0% / 0.4), 0 8px 16px hsl(0 0% 0% / 0.2)),
-				inset 0 1px 0 hsl(0 0% 100% / 0.08);
+				var(--shadow-elevation-medium, 0 4px 8px oklch(0 0 0 / 0.4), 0 8px 16px oklch(0 0 0 / 0.2)),
+				inset 0 1px 0 oklch(1 0 0 / 0.08);
 			position: relative;
 			z-index: 3;
 		}
@@ -93,7 +93,7 @@ let { active = true, class: klass = '', variant = 'default', children }: Props =
 			left: 0;
 			right: 0;
 			height: 1px;
-			background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.4), transparent);
+			background: linear-gradient(90deg, transparent, oklch(var(--primary) / 0.4), transparent);
 			border-radius: inherit;
 		}
 

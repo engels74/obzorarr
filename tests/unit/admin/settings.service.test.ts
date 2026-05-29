@@ -30,6 +30,7 @@ import {
 	hasOpenAIEnvConfig,
 	hasPlexEnvConfig,
 	isCsrfWarningDismissed,
+	isPlaceholderSentinel,
 	isPlexConfigured,
 	resetCsrfWarningDismissal,
 	setAnonymizationMode,
@@ -763,6 +764,57 @@ describe('Admin Settings Service', () => {
 				const hasConfig = hasPlexEnvConfig();
 				expect(hasConfig).toBe(true);
 			});
+
+			it('treats shipped .env.example placeholders as unset (ISSUE-004 lockout guard)', () => {
+				// A deployer who uncomments the .env.example template without editing
+				// it must NOT be flipped into the env-locked onboarding flow: the same
+				// placeholders resolve to empty in getApiConfigWithSources, so claiming
+				// "env config present" strands them with no usable config and no manual
+				// picker / 400-blocked forceManualSelection. Must match resolveConfigValue.
+				const dynamicEnv = env as Record<string, string | undefined>;
+				const prevUrl = dynamicEnv.PLEX_SERVER_URL;
+				const prevToken = dynamicEnv.PLEX_TOKEN;
+				dynamicEnv.PLEX_SERVER_URL = 'http://localhost:32400';
+				dynamicEnv.PLEX_TOKEN = 'your-plex-token-here';
+
+				try {
+					expect(hasPlexEnvConfig()).toBe(false);
+				} finally {
+					dynamicEnv.PLEX_SERVER_URL = prevUrl;
+					dynamicEnv.PLEX_TOKEN = prevToken;
+				}
+			});
+
+			it('returns true when at least one Plex env var is a real (non-placeholder) value', () => {
+				const dynamicEnv = env as Record<string, string | undefined>;
+				const prevUrl = dynamicEnv.PLEX_SERVER_URL;
+				const prevToken = dynamicEnv.PLEX_TOKEN;
+				// Real URL + placeholder token -> still authoritative via the URL.
+				dynamicEnv.PLEX_SERVER_URL = 'https://plex.example.com:32400';
+				dynamicEnv.PLEX_TOKEN = 'your-plex-token-here';
+
+				try {
+					expect(hasPlexEnvConfig()).toBe(true);
+				} finally {
+					dynamicEnv.PLEX_SERVER_URL = prevUrl;
+					dynamicEnv.PLEX_TOKEN = prevToken;
+				}
+			});
+
+			it('returns false when both Plex env vars are empty', () => {
+				const dynamicEnv = env as Record<string, string | undefined>;
+				const prevUrl = dynamicEnv.PLEX_SERVER_URL;
+				const prevToken = dynamicEnv.PLEX_TOKEN;
+				dynamicEnv.PLEX_SERVER_URL = '';
+				dynamicEnv.PLEX_TOKEN = '';
+
+				try {
+					expect(hasPlexEnvConfig()).toBe(false);
+				} finally {
+					dynamicEnv.PLEX_SERVER_URL = prevUrl;
+					dynamicEnv.PLEX_TOKEN = prevToken;
+				}
+			});
 		});
 
 		describe('hasOpenAIEnvConfig', () => {
@@ -770,6 +822,47 @@ describe('Admin Settings Service', () => {
 				// Test setup mocks env vars as empty strings
 				const hasConfig = hasOpenAIEnvConfig();
 				expect(hasConfig).toBe(false);
+			});
+		});
+
+		describe('isPlaceholderSentinel', () => {
+			it('detects the shipped Plex token placeholder', () => {
+				expect(isPlaceholderSentinel('your-plex-token-here')).toBe(true);
+			});
+
+			it('detects the shipped Plex URL placeholders', () => {
+				expect(isPlaceholderSentinel('http://localhost:32400')).toBe(true);
+				expect(isPlaceholderSentinel('http://plex-url-here:32400')).toBe(true);
+			});
+
+			it('detects generic your-*-here placeholders', () => {
+				expect(isPlaceholderSentinel('your-api-key-here')).toBe(true);
+				expect(isPlaceholderSentinel('your-secret-here')).toBe(true);
+			});
+
+			it('detects change-me / changeme / placeholder sentinels', () => {
+				expect(isPlaceholderSentinel('change-me')).toBe(true);
+				expect(isPlaceholderSentinel('changeme')).toBe(true);
+				expect(isPlaceholderSentinel('CHANGEME')).toBe(true);
+				expect(isPlaceholderSentinel('placeholder')).toBe(true);
+				expect(isPlaceholderSentinel('PLACEHOLDER')).toBe(true);
+			});
+
+			it('returns false for empty / whitespace strings (caller decides)', () => {
+				expect(isPlaceholderSentinel('')).toBe(false);
+				expect(isPlaceholderSentinel('   ')).toBe(false);
+			});
+
+			it('returns false for real-looking values', () => {
+				expect(isPlaceholderSentinel('abc123def456ghi789')).toBe(false);
+				expect(isPlaceholderSentinel('https://plex.example.com:32400')).toBe(false);
+				expect(isPlaceholderSentinel('http://192.168.1.10:32400')).toBe(false);
+				expect(isPlaceholderSentinel('http://plex.local:32400')).toBe(false);
+			});
+
+			it('trims surrounding whitespace before matching', () => {
+				expect(isPlaceholderSentinel('  your-plex-token-here  ')).toBe(true);
+				expect(isPlaceholderSentinel('  http://localhost:32400 ')).toBe(true);
 			});
 		});
 
@@ -865,6 +958,56 @@ describe('Admin Settings Service', () => {
 				const cleared = await clearConflictingDbSettings();
 
 				expect(cleared).toEqual([]);
+			});
+
+			it('preserves real DB values when ENV is a placeholder sentinel', async () => {
+				// Deployer copies .env.example unedited (placeholder) but configures a
+				// real Plex URL/token via the admin UI (DB). The placeholder env must
+				// NOT clear the real DB rows, matching resolveConfigValue's behavior.
+				const dynamicEnv = env as Record<string, string | undefined>;
+				const previousPlexServerUrl = dynamicEnv.PLEX_SERVER_URL;
+				const previousPlexToken = dynamicEnv.PLEX_TOKEN;
+				dynamicEnv.PLEX_SERVER_URL = 'http://localhost:32400';
+				dynamicEnv.PLEX_TOKEN = 'your-plex-token-here';
+
+				try {
+					await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, 'https://real-plex:32400');
+					await setAppSetting(AppSettingsKey.PLEX_TOKEN, 'real-token');
+
+					const cleared = await clearConflictingDbSettings();
+
+					expect(cleared).not.toContain('PLEX_SERVER_URL');
+					expect(cleared).not.toContain('PLEX_TOKEN');
+
+					const dbUrl = await getAppSetting(AppSettingsKey.PLEX_SERVER_URL);
+					const dbToken = await getAppSetting(AppSettingsKey.PLEX_TOKEN);
+					expect(dbUrl).toBe('https://real-plex:32400');
+					expect(dbToken).toBe('real-token');
+				} finally {
+					dynamicEnv.PLEX_SERVER_URL = previousPlexServerUrl;
+					dynamicEnv.PLEX_TOKEN = previousPlexToken;
+				}
+			});
+
+			it('preserves cached machineId when ENV Plex config is a placeholder', async () => {
+				const dynamicEnv = env as Record<string, string | undefined>;
+				const previousPlexServerUrl = dynamicEnv.PLEX_SERVER_URL;
+				const previousPlexToken = dynamicEnv.PLEX_TOKEN;
+				dynamicEnv.PLEX_SERVER_URL = 'http://localhost:32400';
+				dynamicEnv.PLEX_TOKEN = 'your-plex-token-here';
+
+				try {
+					await setAppSetting(AppSettingsKey.SERVER_MACHINE_ID, 'cached-machine-id');
+
+					const cleared = await clearConflictingDbSettings();
+
+					expect(cleared).not.toContain('SERVER_MACHINE_ID');
+					const machineId = await getAppSetting(AppSettingsKey.SERVER_MACHINE_ID);
+					expect(machineId).toBe('cached-machine-id');
+				} finally {
+					dynamicEnv.PLEX_SERVER_URL = previousPlexServerUrl;
+					dynamicEnv.PLEX_TOKEN = previousPlexToken;
+				}
 			});
 		});
 

@@ -200,10 +200,10 @@ $effect(() => {
 		.title {
 			font-size: 1.75rem;
 			font-weight: 700;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			text-transform: uppercase;
 			letter-spacing: 0.05em;
-			text-shadow: 0 0 30px var(--slide-glow-color, hsl(var(--primary) / 0.3));
+			text-shadow: 0 0 30px var(--slide-glow-color, oklch(var(--primary) / 0.3));
 		}
 
 		.comparison-container {
@@ -212,10 +212,10 @@ $effect(() => {
 			flex-direction: column;
 			gap: 1.5rem;
 			padding: 1.5rem;
-			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
+			background: var(--slide-glass-bg);
 			backdrop-filter: blur(var(--slide-glass-blur, 20px));
 			-webkit-backdrop-filter: blur(var(--slide-glass-blur, 20px));
-			border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
+			border: 1px solid var(--slide-glass-border);
 			border-radius: calc(var(--radius) * 2);
 		}
 
@@ -228,7 +228,7 @@ $effect(() => {
 		.year-label {
 			font-size: 0.875rem;
 			font-weight: 600;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-transform: uppercase;
 			letter-spacing: 0.05em;
 		}
@@ -236,7 +236,7 @@ $effect(() => {
 		.bar-track {
 			width: 100%;
 			height: 40px;
-			background: hsl(var(--muted) / 0.2);
+			background: oklch(var(--muted) / 0.2);
 			border-radius: var(--radius);
 			overflow: hidden;
 		}
@@ -253,22 +253,22 @@ $effect(() => {
 		}
 
 		.bar.this-year {
-			background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--primary) / 0.8));
-			box-shadow: 0 0 15px hsl(var(--primary) / 0.3);
+			background: linear-gradient(90deg, oklch(var(--primary)), oklch(var(--primary) / 0.8));
+			box-shadow: 0 0 15px oklch(var(--primary) / 0.3);
 		}
 
 		.bar.last-year {
 			background: linear-gradient(
 				90deg,
-				hsl(var(--muted-foreground) / 0.5),
-				hsl(var(--muted-foreground) / 0.3)
+				oklch(var(--muted-foreground) / 0.5),
+				oklch(var(--muted-foreground) / 0.3)
 			);
 		}
 
 		.bar-value {
 			font-size: 1rem;
 			font-weight: 700;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 		}
 
 		.change-indicator {
@@ -278,18 +278,18 @@ $effect(() => {
 			gap: 0.5rem;
 			padding: 1.25rem 2rem;
 			border-radius: calc(var(--radius) * 2);
-			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.3));
-			border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.15));
+			background: var(--slide-glass-bg);
+			border: 1px solid var(--slide-glass-border);
 		}
 
 		.change-indicator.increase {
-			border-color: hsl(120 50% 45% / 0.3);
-			background: hsl(120 50% 45% / 0.1);
+			border-color: oklch(0.6568 0.1848 143.11 / 0.3);
+			background: oklch(0.6568 0.1848 143.11 / 0.1);
 		}
 
 		.change-indicator.decrease {
-			border-color: hsl(220 50% 55% / 0.3);
-			background: hsl(220 50% 55% / 0.1);
+			border-color: oklch(0.584 0.1257 262.99 / 0.3);
+			background: oklch(0.584 0.1257 262.99 / 0.1);
 		}
 
 		.change-arrow {
@@ -297,11 +297,11 @@ $effect(() => {
 		}
 
 		.change-indicator.increase .change-arrow {
-			color: hsl(120 50% 45%);
+			color: oklch(0.6568 0.1848 143.11);
 		}
 
 		.change-indicator.decrease .change-arrow {
-			color: hsl(220 50% 55%);
+			color: oklch(0.584 0.1257 262.99);
 		}
 
 		.change-percent {
@@ -310,21 +310,21 @@ $effect(() => {
 		}
 
 		.change-indicator.increase .change-percent {
-			color: hsl(120 50% 45%);
+			color: oklch(0.6568 0.1848 143.11);
 		}
 
 		.change-indicator.decrease .change-percent {
-			color: hsl(220 50% 55%);
+			color: oklch(0.584 0.1257 262.99);
 		}
 
 		.change-message {
 			font-size: 0.875rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			text-align: center;
 		}
 
 		.empty-message {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-style: italic;
 			font-size: 1.125rem;
 		}

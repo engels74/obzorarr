@@ -205,10 +205,10 @@ $effect(() => {
 		.title {
 			font-size: 1.75rem;
 			font-weight: 700;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			text-transform: uppercase;
 			letter-spacing: 0.05em;
-			text-shadow: 0 0 30px hsl(var(--primary) / 0.3);
+			text-shadow: 0 0 30px oklch(var(--primary) / 0.3);
 		}
 
 		.cards {
@@ -224,17 +224,17 @@ $effect(() => {
 			flex-direction: column;
 			align-items: center;
 			padding: 2rem;
-			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.4));
+			background: var(--slide-glass-bg);
 			backdrop-filter: blur(var(--slide-glass-blur, 20px));
 			-webkit-backdrop-filter: blur(var(--slide-glass-blur, 20px));
-			border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
+			border: 1px solid var(--slide-glass-border);
 			border-radius: calc(var(--radius) * 2);
 			min-width: 240px;
 			max-width: 320px;
 			flex: 1;
 			box-shadow:
-				var(--shadow-elevation-high, 0 8px 24px hsl(0 0% 0% / 0.4)),
-				inset 0 1px 0 hsl(0 0% 100% / 0.05);
+				var(--shadow-elevation-high, 0 8px 24px oklch(0 0 0 / 0.4)),
+				inset 0 1px 0 oklch(1 0 0 / 0.05);
 			position: relative;
 			transition:
 				transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
@@ -250,29 +250,29 @@ $effect(() => {
 			left: 0;
 			right: 0;
 			height: 1px;
-			background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.4), transparent);
+			background: linear-gradient(90deg, transparent, oklch(var(--primary) / 0.4), transparent);
 			border-radius: inherit;
 		}
 
 		.card:hover {
 			transform: translateY(-6px) scale(1.02);
 			box-shadow:
-				var(--shadow-elevation-high, 0 8px 24px hsl(0 0% 0% / 0.5)),
-				0 0 40px var(--slide-accent-glow, hsl(var(--primary) / 0.2));
-			border-color: hsl(var(--primary) / 0.4);
+				var(--shadow-elevation-high, 0 8px 24px oklch(0 0 0 / 0.5)),
+				0 0 40px var(--slide-accent-glow, oklch(var(--primary) / 0.2));
+			border-color: oklch(var(--primary) / 0.4);
 		}
 
 		.card-label {
 			font-size: 0.8125rem;
 			text-transform: uppercase;
 			letter-spacing: 0.1em;
-			color: hsl(var(--primary));
+			color: oklch(var(--primary));
 			margin-bottom: 1.25rem;
 			font-weight: 600;
 			padding: 0.375rem 0.875rem;
-			background: hsl(var(--primary) / 0.12);
+			background: oklch(var(--primary) / 0.12);
 			border-radius: var(--radius);
-			text-shadow: 0 0 10px hsl(var(--primary) / 0.3);
+			text-shadow: 0 0 10px oklch(var(--primary) / 0.3);
 		}
 
 		.thumb {
@@ -282,8 +282,8 @@ $effect(() => {
 			border-radius: calc(var(--radius) * 1.25);
 			margin-bottom: 1.25rem;
 			box-shadow:
-				var(--shadow-elevation-medium, 0 4px 12px hsl(0 0% 0% / 0.4)),
-				0 0 20px hsl(var(--primary) / 0.1);
+				var(--shadow-elevation-medium, 0 4px 12px oklch(0 0 0 / 0.4)),
+				0 0 20px oklch(var(--primary) / 0.1);
 			transition:
 				transform 0.3s ease,
 				box-shadow 0.3s ease;
@@ -292,14 +292,14 @@ $effect(() => {
 		.card:hover .thumb {
 			transform: scale(1.05);
 			box-shadow:
-				var(--shadow-elevation-high, 0 8px 24px hsl(0 0% 0% / 0.5)),
-				0 0 35px var(--slide-glow-color, hsl(var(--primary) / 0.2));
+				var(--shadow-elevation-high, 0 8px 24px oklch(0 0 0 / 0.5)),
+				0 0 35px var(--slide-glow-color, oklch(var(--primary) / 0.2));
 		}
 
 		.thumb-placeholder {
 			width: 140px;
 			height: 210px;
-			background: linear-gradient(135deg, hsl(var(--muted)) 0%, hsl(var(--secondary)) 100%);
+			background: linear-gradient(135deg, oklch(var(--muted)) 0%, oklch(var(--secondary)) 100%);
 			border-radius: calc(var(--radius) * 1.25);
 			margin-bottom: 1.25rem;
 		}
@@ -312,7 +312,7 @@ $effect(() => {
 			display: block;
 			font-size: 1rem;
 			font-weight: 600;
-			color: hsl(var(--foreground));
+			color: oklch(var(--foreground));
 			margin-bottom: 0.375rem;
 			overflow: hidden;
 			text-overflow: ellipsis;
@@ -325,16 +325,16 @@ $effect(() => {
 
 		.card-meta {
 			font-size: 0.8125rem;
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 		}
 
 		.no-data {
-			color: hsl(var(--muted-foreground));
+			color: oklch(var(--muted-foreground));
 			font-style: italic;
 			padding: 2rem;
-			background: var(--slide-glass-bg, hsl(var(--primary-hue) 20% 12% / 0.3));
+			background: var(--slide-glass-bg);
 			border-radius: calc(var(--radius) * 1.5);
-			border: 1px solid var(--slide-glass-border, hsl(var(--primary-hue) 30% 40% / 0.2));
+			border: 1px solid var(--slide-glass-border);
 		}
 
 		.extra {

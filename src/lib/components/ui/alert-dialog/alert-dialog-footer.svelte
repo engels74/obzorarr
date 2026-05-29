@@ -1,19 +1,22 @@
 <script lang="ts">
-import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
-import { cn } from '$lib/utils.js';
+import { cn, type WithElementRef } from '$lib/utils.js';
 
 let {
+	ref = $bindable(null),
 	class: className,
 	children,
 	...restProps
-}: HTMLAttributes<HTMLDivElement> & { children?: Snippet } = $props();
+}: WithElementRef<HTMLAttributes<HTMLDivElement>> = $props();
 </script>
 
 <div
+	bind:this={ref}
 	data-slot="alert-dialog-footer"
-	class={cn('flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2', className)}
-	style="display: flex; flex-direction: row; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem;"
+	class={cn(
+		"bg-muted/50 -mx-4 -mb-4 rounded-b-xl border-t p-4 flex flex-col-reverse gap-2 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2 sm:flex-row sm:justify-end",
+		className
+	)}
 	{...restProps}
 >
 	{@render children?.()}

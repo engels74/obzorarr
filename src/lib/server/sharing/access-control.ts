@@ -160,10 +160,23 @@ export async function checkTokenAccess(
 	}
 
 	// A per-user mode that is explicitly MORE restrictive than private-link
-	// (e.g. private-oauth) means the owner has chosen auth over tokens; the
-	// token is stale regardless of the global floor.
+	// (e.g. private-oauth) means the owner has chosen auth over tokens. The
+	// share link itself is still tied to a real user, so anonymous viewers
+	// should be told to sign in (403) rather than receive a generic
+	// "invalid link" 404 that hides the actual state of the resource.
+	// Signed-in server members already satisfy the auth requirement and the
+	// page resolves normally.
 	if (ShareModePrivacyLevel[settings.mode] > ShareModePrivacyLevel[ShareMode.PRIVATE_LINK]) {
-		throw new InvalidShareTokenError('This share link is no longer valid.');
+		if (!currentUser) {
+			throw new ShareAccessDeniedError(
+				'This wrapped is visible only to members of this Plex server. Sign in with your Plex account to view.'
+			);
+		}
+		return {
+			settings,
+			userId: settings.userId,
+			year: settings.year
+		};
 	}
 
 	// Resolve against the global privacy floor. This mirrors the effective-mode

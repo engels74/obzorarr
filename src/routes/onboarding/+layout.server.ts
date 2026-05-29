@@ -51,6 +51,7 @@ export const load: LayoutServerLoad = async ({ cookies, locals, url }) => {
 	const steps: { id: OnboardingStep; label: string }[] = [
 		{ id: OnboardingSteps.CLAIM, label: 'Claim' },
 		{ id: OnboardingSteps.CSRF, label: 'Security' },
+		{ id: OnboardingSteps.PROXY_TRUST, label: 'Reverse proxy' },
 		{ id: OnboardingSteps.PLEX, label: 'Connect' },
 		{ id: OnboardingSteps.SYNC, label: 'Sync' },
 		{ id: OnboardingSteps.SETTINGS, label: 'Configure' },
