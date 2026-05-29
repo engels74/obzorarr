@@ -8,6 +8,7 @@ import UserCogIcon from '@lucide/svelte/icons/user-cog';
 import UsersIcon from '@lucide/svelte/icons/users';
 import { superForm } from 'sveltekit-superforms';
 import { enhance } from '$app/forms';
+import { invalidateAll } from '$app/navigation';
 import {
 	SettingsActionBar,
 	SettingsOptionCard,
@@ -331,6 +332,9 @@ function getShareModeDescription(value: string): string {
 								);
 							}
 							await update({ reset: false });
+							if (result.type === 'success') {
+								await invalidateAll();
+							}
 						} finally {
 							isBulkApplying = false;
 							bulkApplyDialogOpen = false;
