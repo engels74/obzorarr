@@ -37,7 +37,9 @@ $effect(() => {
 	<div class="card-glow"></div>
 	<div class="card-inner">
 		<header class="card-header">
-			<h1 class="card-title">{title}</h1>
+			{#if title}
+				<h1 class="card-title">{title}</h1>
+			{/if}
 			{#if subtitle}
 				<p class="card-subtitle">{subtitle}</p>
 			{/if}

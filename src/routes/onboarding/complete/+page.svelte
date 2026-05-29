@@ -121,7 +121,7 @@ const summaryItems = $derived([
 
 			<!-- Title -->
 			<div class="completion-header" class:visible={showContent}>
-				<h2 class="completion-title">Setup Complete!</h2>
+				<h1 class="completion-title">Setup Complete!</h1>
 				<p class="completion-subtitle">Your Plex Wrapped is ready to go</p>
 			</div>
 
@@ -148,7 +148,7 @@ const summaryItems = $derived([
 
 			<!-- Configuration Summary -->
 			<div class="summary-section" class:visible={showContent}>
-				<h3 class="summary-title">Your Configuration</h3>
+				<h2 class="summary-title">Your Configuration</h2>
 				<div class="summary-grid">
 					{#each summaryItems as item, i}
 						<div class="summary-card" style="--delay: {i * 80}ms">

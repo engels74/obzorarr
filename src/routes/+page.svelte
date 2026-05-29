@@ -384,10 +384,18 @@ function handleCancelRedirect(): void {
 			color: oklch(var(--muted-foreground));
 		}
 
-		:global(.username-input:focus) {
+		/* `:focus-visible` (not `:focus`) keeps mouse clicks from over-styling;
+		   text inputs still match it on click per the UA heuristic, so the ring
+		   shows for both keyboard and pointer focus. The ring is a *solid*
+		   `oklch(var(--ring))` (no alpha): a 0.2-alpha shadow composites to
+		   <1.6:1 against the dark hero bg on every theme — below WCAG 2.1 AA's
+		   3:1 non-text minimum — and the red theme can't clear 3:1 below full
+		   opacity. Solid clears 3:1 on all themes (3.34–10.83). Matches the
+		   `.login-button.secondary` + `.link-button` rings below for cohesion. */
+		:global(.username-input:focus-visible) {
 			outline: none;
 			border-color: oklch(var(--ring));
-			box-shadow: 0 0 0 2px oklch(var(--ring) / 0.2);
+			box-shadow: 0 0 0 2px oklch(var(--ring));
 		}
 
 		:global(.username-input:disabled) {
@@ -487,12 +495,13 @@ function handleCancelRedirect(): void {
 
 		/* Restore the focus-visible ring the shadcn Button primitive ships in its
 		   base class — the `:480 box-shadow: none` above clobbers it. Reuse the
-		   same ring values as `.username-input:focus` (:390) so keyboard focus is
-		   cohesive across the hero controls; `--ring` is theme-redefined in
-		   app.css, so it recolors per theme. `:focus-visible` keeps mouse clicks
-		   ring-free. Specificity (0,3,0) + later source order beats `:480`. */
+		   same solid ring as `.username-input:focus-visible` so keyboard focus is
+		   cohesive across the hero controls and clears WCAG 2.1 AA 3:1; `--ring`
+		   is theme-redefined in app.css, so it recolors per theme. `:focus-visible`
+		   keeps mouse clicks ring-free. Specificity (0,3,0) + later source order
+		   beats `:480`. */
 		:global(.login-button.secondary:focus-visible) {
-			box-shadow: 0 0 0 2px oklch(var(--ring) / 0.2);
+			box-shadow: 0 0 0 2px oklch(var(--ring));
 		}
 
 		:global(.login-button:disabled) {
@@ -530,9 +539,9 @@ function handleCancelRedirect(): void {
 		}
 
 		/* The native "Sign in now" link had no focus-visible rule — match the
-		   button/input ring so keyboard users can see it. */
+		   solid button/input ring so keyboard users can see it at >=3:1. */
 		:global(.link-button:focus-visible) {
-			box-shadow: 0 0 0 2px oklch(var(--ring) / 0.2);
+			box-shadow: 0 0 0 2px oklch(var(--ring));
 		}
 
 		/* Footer */

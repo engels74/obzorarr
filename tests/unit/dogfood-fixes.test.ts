@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test';
+import { actions } from '../../src/routes/+page.server';
 
 /**
  * Source-regression tests for the 2026-05-14 dogfood fixes. Each test pins
@@ -142,5 +143,58 @@ describe('dogfood ISSUE-007 — --min-tap-size token rolled out everywhere', () 
 			const source = await readSource(path);
 			expect(source).toContain('class="tap-target"');
 		}
+	});
+});
+
+// dogfood 2026-05-29 F1 — the onboarding Done page rendered the visible
+// "Setup Complete!" heading as <h2> while OnboardingCard emitted an empty
+// <h1> (title=""), skipping the h1 level. Fix promotes the visible title to
+// <h1> in place (preserving the class-based shimmer + showContent fade-in),
+// guards the card header so the empty title emits no <h1>, and demotes the
+// summary <h3> to <h2> so heading order is h1->h2 with no skip.
+describe('dogfood 2026-05-29 F1 — onboarding Done page heading hierarchy', () => {
+	it('promotes the visible Done-page title to <h1> in place', async () => {
+		const source = await readSource('src/routes/onboarding/complete/+page.svelte');
+		expect(source).toContain('<h1 class="completion-title">Setup Complete!</h1>');
+		expect(source).not.toContain('<h2 class="completion-title">');
+	});
+
+	it('demotes the configuration summary heading to <h2> (no skipped level)', async () => {
+		const source = await readSource('src/routes/onboarding/complete/+page.svelte');
+		expect(source).toContain('<h2 class="summary-title">');
+		expect(source).not.toContain('<h3 class="summary-title">');
+	});
+
+	it('guards the OnboardingCard header so an empty title emits no <h1>', async () => {
+		const source = await readSource('src/lib/components/onboarding/OnboardingCard.svelte');
+		const headerStart = source.indexOf('<header class="card-header">');
+		expect(headerStart).toBeGreaterThan(-1);
+		const headerSlice = source.slice(headerStart, headerStart + 200);
+		expect(headerSlice).toContain('{#if title}');
+		expect(headerSlice).toContain('<h1 class="card-title">{title}</h1>');
+	});
+});
+
+// dogfood 2026-05-29 F3 — a 1001-char username submitted from the landing
+// lookup form was reported as a "silent reset". Verified working in source:
+// UsernameSchema caps length at 100 and the action returns fail(400) before
+// touching the DB, so the form surfaces "Username is too long" via
+// handleFormToast. This behavioural test pins that path so it can't regress.
+describe('dogfood 2026-05-29 F3 — long username lookup returns fail(400)', () => {
+	it('rejects a >100-char username with fail(400) "Username is too long"', async () => {
+		const formData = new FormData();
+		formData.set('username', 'a'.repeat(1001));
+		const request = new Request('http://localhost/?/lookupUser', {
+			method: 'POST',
+			body: formData
+		});
+		const handler = actions.lookupUser as NonNullable<typeof actions.lookupUser>;
+		const result = await handler({ request } as Parameters<
+			NonNullable<typeof actions.lookupUser>
+		>[0]);
+		expect(result).toMatchObject({
+			status: 400,
+			data: { error: 'Username is too long', requiresAuth: false }
+		});
 	});
 });
