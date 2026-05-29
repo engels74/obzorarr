@@ -924,9 +924,11 @@ function getOpenAIEnvConfig() {
  *   - exactly the shipped sentinel strings (e.g. `your-plex-token-here`)
  *   - generic placeholders following common conventions (`your-*-here`,
  *     `change-me`, `placeholder`)
- *   - the literal `http://localhost:32400` shipped as the example Plex URL,
- *     but only when no `knownDefaultUrl` is passed (so the helper doesn't
- *     reject a real localhost setup elsewhere).
+ *   - the literal `http://localhost:32400` shipped as the example Plex URL.
+ *     This is treated as a placeholder unconditionally so the `.env.example`
+ *     default can never be mistaken for real config; a genuine localhost
+ *     deployment must be configured via the DB / admin UI, which
+ *     `resolveConfigValue` falls through to.
  */
 export function isPlaceholderSentinel(value: string): boolean {
 	const trimmed = value.trim();
@@ -1115,7 +1117,12 @@ export async function clearConflictingDbSettings(): Promise<string[]> {
 	const dbSettings = await getAllAppSettings();
 
 	for (const { envValue, dbKey, label } of envToDbMapping) {
-		if (envValue && dbSettings[dbKey]) {
+		// Only an env value that resolveConfigValue would actually treat as
+		// authoritative (non-empty AND not a placeholder sentinel) may clear a
+		// conflicting DB row. Otherwise a shipped .env.example placeholder like
+		// `http://localhost:32400` would delete a real admin-configured value and
+		// resolveConfigValue would then fall through to the empty default.
+		if (envValue && !isPlaceholderSentinel(envValue) && dbSettings[dbKey]) {
 			await deleteAppSetting(dbKey);
 			clearedSettings.push(label);
 		}
@@ -1125,7 +1132,13 @@ export async function clearConflictingDbSettings(): Promise<string[]> {
 	// have been derived from a different PLEX_SERVER_URL/PLEX_TOKEN (e.g. the env
 	// changed between restarts). Drop the cache so the next call to
 	// getConfiguredServerMachineId() re-fetches /identity against the current config.
-	if ((plexEnv.serverUrl || plexEnv.token) && dbSettings[AppSettingsKey.SERVER_MACHINE_ID]) {
+	const plexServerUrlAuthoritative =
+		Boolean(plexEnv.serverUrl) && !isPlaceholderSentinel(plexEnv.serverUrl);
+	const plexTokenAuthoritative = Boolean(plexEnv.token) && !isPlaceholderSentinel(plexEnv.token);
+	if (
+		(plexServerUrlAuthoritative || plexTokenAuthoritative) &&
+		dbSettings[AppSettingsKey.SERVER_MACHINE_ID]
+	) {
 		await deleteAppSetting(AppSettingsKey.SERVER_MACHINE_ID);
 		clearedSettings.push('SERVER_MACHINE_ID');
 	}

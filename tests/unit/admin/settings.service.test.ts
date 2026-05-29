@@ -908,6 +908,56 @@ describe('Admin Settings Service', () => {
 
 				expect(cleared).toEqual([]);
 			});
+
+			it('preserves real DB values when ENV is a placeholder sentinel', async () => {
+				// Deployer copies .env.example unedited (placeholder) but configures a
+				// real Plex URL/token via the admin UI (DB). The placeholder env must
+				// NOT clear the real DB rows, matching resolveConfigValue's behavior.
+				const dynamicEnv = env as Record<string, string | undefined>;
+				const previousPlexServerUrl = dynamicEnv.PLEX_SERVER_URL;
+				const previousPlexToken = dynamicEnv.PLEX_TOKEN;
+				dynamicEnv.PLEX_SERVER_URL = 'http://localhost:32400';
+				dynamicEnv.PLEX_TOKEN = 'your-plex-token-here';
+
+				try {
+					await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, 'https://real-plex:32400');
+					await setAppSetting(AppSettingsKey.PLEX_TOKEN, 'real-token');
+
+					const cleared = await clearConflictingDbSettings();
+
+					expect(cleared).not.toContain('PLEX_SERVER_URL');
+					expect(cleared).not.toContain('PLEX_TOKEN');
+
+					const dbUrl = await getAppSetting(AppSettingsKey.PLEX_SERVER_URL);
+					const dbToken = await getAppSetting(AppSettingsKey.PLEX_TOKEN);
+					expect(dbUrl).toBe('https://real-plex:32400');
+					expect(dbToken).toBe('real-token');
+				} finally {
+					dynamicEnv.PLEX_SERVER_URL = previousPlexServerUrl;
+					dynamicEnv.PLEX_TOKEN = previousPlexToken;
+				}
+			});
+
+			it('preserves cached machineId when ENV Plex config is a placeholder', async () => {
+				const dynamicEnv = env as Record<string, string | undefined>;
+				const previousPlexServerUrl = dynamicEnv.PLEX_SERVER_URL;
+				const previousPlexToken = dynamicEnv.PLEX_TOKEN;
+				dynamicEnv.PLEX_SERVER_URL = 'http://localhost:32400';
+				dynamicEnv.PLEX_TOKEN = 'your-plex-token-here';
+
+				try {
+					await setAppSetting(AppSettingsKey.SERVER_MACHINE_ID, 'cached-machine-id');
+
+					const cleared = await clearConflictingDbSettings();
+
+					expect(cleared).not.toContain('SERVER_MACHINE_ID');
+					const machineId = await getAppSetting(AppSettingsKey.SERVER_MACHINE_ID);
+					expect(machineId).toBe('cached-machine-id');
+				} finally {
+					dynamicEnv.PLEX_SERVER_URL = previousPlexServerUrl;
+					dynamicEnv.PLEX_TOKEN = previousPlexToken;
+				}
+			});
 		});
 
 		describe('isPlexConfigured', () => {
