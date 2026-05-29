@@ -11,17 +11,18 @@ import { getAppSettingsUpdatedAt } from './settings.service';
 export const OCC_CONFLICT_MESSAGE = 'Settings changed in another tab. Please reload.';
 
 /**
- * Sentinel `error` field value for the external-OCC conflict shape.
+ * Sentinel `code` discriminator for the external-OCC conflict shape.
  * Action handlers for the top-level `z.enum` schemas (UI / wrapped theme,
  * wrapped logo mode) return:
- *   `fail(409, { error: OCC_CONFLICT_CODE, settingsVersion: current })`
- * so the client can distinguish OCC conflicts from regular validation
+ *   `fail(409, { error: OCC_CONFLICT_MESSAGE, code: OCC_CONFLICT_CODE, settingsVersion: current })`
+ * The human-readable `error` is what `handleFormToast` surfaces to the user
+ * (clients cannot import this server-only constant), while `code` lets any
+ * future client logic distinguish OCC conflicts from regular validation
  * failures and refresh its local version before retrying.
  *
- * VersionField.svelte and the appearance/+page.server.ts handlers depend on
- * this exact string; tests in occ-helpers.test.ts + appearance-actions.test.ts
- * also assert against the literal. Lockstep rules apply if the sentinel
- * ever needs to change.
+ * The appearance/+page.server.ts handlers depend on this exact string; tests
+ * in occ-helpers.test.ts + appearance-actions.test.ts also assert against the
+ * literal. Lockstep rules apply if the sentinel ever needs to change.
  */
 export const OCC_CONFLICT_CODE = '__OCC_CONFLICT__';
 

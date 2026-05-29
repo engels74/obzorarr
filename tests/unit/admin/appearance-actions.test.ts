@@ -58,7 +58,7 @@ describe('appearance nested route — updateUITheme', () => {
 		);
 		expect(result).toMatchObject({
 			status: 409,
-			data: { error: '__OCC_CONFLICT__' }
+			data: { error: 'Settings changed in another tab. Please reload.', code: '__OCC_CONFLICT__' }
 		});
 		// `current` ISO included so the client can refresh
 		expect(typeof (result as { data: { settingsVersion: unknown } }).data.settingsVersion).toBe(
@@ -81,7 +81,10 @@ describe('appearance nested route — updateUITheme', () => {
 				settingsVersion: new Date(0).toISOString()
 			})
 		);
-		expect(result).toMatchObject({ status: 409, data: { error: '__OCC_CONFLICT__' } });
+		expect(result).toMatchObject({
+			status: 409,
+			data: { error: 'Settings changed in another tab. Please reload.', code: '__OCC_CONFLICT__' }
+		});
 		expect(await getUITheme()).toBe('soviet-red');
 	});
 
@@ -154,7 +157,10 @@ describe('appearance nested route — updateWrappedTheme', () => {
 				settingsVersion: new Date(0).toISOString()
 			})
 		);
-		expect(result).toMatchObject({ status: 409, data: { error: '__OCC_CONFLICT__' } });
+		expect(result).toMatchObject({
+			status: 409,
+			data: { error: 'Settings changed in another tab. Please reload.', code: '__OCC_CONFLICT__' }
+		});
 		expect(await getWrappedTheme()).toBe('supabase');
 	});
 });
@@ -198,7 +204,7 @@ describe('appearance nested route — updateWrappedLogoMode', () => {
 		);
 		expect(result).toMatchObject({
 			status: 409,
-			data: { error: '__OCC_CONFLICT__' }
+			data: { error: 'Settings changed in another tab. Please reload.', code: '__OCC_CONFLICT__' }
 		});
 	});
 

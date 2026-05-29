@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
 	externalOccCheck,
 	OCC_CONFLICT_CODE,
+	OCC_CONFLICT_MESSAGE,
 	settingsVersionISO
 } from '$lib/server/admin/occ-helpers';
 import {
@@ -95,7 +96,11 @@ export const actions: Actions = requireAdminActions({
 			UI_THEME_SETTINGS_KEYS
 		);
 		if (occ.status === 'conflict') {
-			return fail(409, { error: OCC_CONFLICT_CODE, settingsVersion: occ.current });
+			return fail(409, {
+				error: OCC_CONFLICT_MESSAGE,
+				code: OCC_CONFLICT_CODE,
+				settingsVersion: occ.current
+			});
 		}
 
 		const parsed = ThemeSchema.safeParse(formData.get('theme'));
@@ -118,7 +123,11 @@ export const actions: Actions = requireAdminActions({
 			WRAPPED_THEME_SETTINGS_KEYS
 		);
 		if (occ.status === 'conflict') {
-			return fail(409, { error: OCC_CONFLICT_CODE, settingsVersion: occ.current });
+			return fail(409, {
+				error: OCC_CONFLICT_MESSAGE,
+				code: OCC_CONFLICT_CODE,
+				settingsVersion: occ.current
+			});
 		}
 
 		const parsed = ThemeSchema.safeParse(formData.get('wrappedTheme') ?? formData.get('theme'));
@@ -141,7 +150,11 @@ export const actions: Actions = requireAdminActions({
 			WRAPPED_LOGO_MODE_SETTINGS_KEYS
 		);
 		if (occ.status === 'conflict') {
-			return fail(409, { error: OCC_CONFLICT_CODE, settingsVersion: occ.current });
+			return fail(409, {
+				error: OCC_CONFLICT_MESSAGE,
+				code: OCC_CONFLICT_CODE,
+				settingsVersion: occ.current
+			});
 		}
 
 		const parsed = WrappedLogoModeSchema.safeParse(formData.get('logoMode'));

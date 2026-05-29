@@ -568,7 +568,8 @@ describe('admin updateWrappedLogoMode action', () => {
 		expect(result).toMatchObject({
 			status: 409,
 			data: {
-				error: '__OCC_CONFLICT__'
+				error: 'Settings changed in another tab. Please reload.',
+				code: '__OCC_CONFLICT__'
 			}
 		});
 		// Conflict response includes the current version so the client can refresh.
@@ -590,7 +591,7 @@ describe('admin updateWrappedLogoMode action', () => {
 		);
 		expect(result).toMatchObject({
 			status: 409,
-			data: { error: '__OCC_CONFLICT__' }
+			data: { error: 'Settings changed in another tab. Please reload.', code: '__OCC_CONFLICT__' }
 		});
 		// First write's value still in place.
 		expect(await getWrappedLogoMode()).toBe(WrappedLogoMode.ALWAYS_SHOW);
