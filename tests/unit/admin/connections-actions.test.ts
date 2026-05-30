@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
+import { env } from '$env/dynamic/private';
 import {
 	AppSettingsKey,
 	getApiConfigWithSources,
@@ -111,6 +112,110 @@ describe('connections nested route — updateApiConfig (OCC + schema)', () => {
 			})
 		);
 		expect(result).toMatchObject({ status: 400 });
+	});
+
+	// The blank-URL guard (ISSUE-005) only fires when the Plex URL is NOT
+	// env-locked. The test harness mocks PLEX_SERVER_URL/PLEX_TOKEN (so the field
+	// is locked by default), so these tests clear those env vars to exercise the
+	// unlocked DB-backed path, then restore them.
+	const dynamicEnv = env as Record<string, string | undefined>;
+	async function withUnlockedPlex(fn: () => Promise<void>): Promise<void> {
+		const prevUrl = dynamicEnv.PLEX_SERVER_URL;
+		const prevToken = dynamicEnv.PLEX_TOKEN;
+		dynamicEnv.PLEX_SERVER_URL = '';
+		dynamicEnv.PLEX_TOKEN = '';
+		try {
+			await fn();
+		} finally {
+			dynamicEnv.PLEX_SERVER_URL = prevUrl;
+			dynamicEnv.PLEX_TOKEN = prevToken;
+		}
+	}
+
+	it('rejects a present-but-blank Plex URL as 400 and leaves the stored row intact (ISSUE-005)', async () => {
+		await withUnlockedPlex(async () => {
+			// Seed a stored Plex URL so we can prove the blank submit does not clear it.
+			await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, 'http://plex.local:32400');
+			expect((await getApiConfigWithSources()).plex.serverUrl.value).toBe(
+				'http://plex.local:32400'
+			);
+
+			const result = await run(
+				makeRequest('updateApiConfig', {
+					plexServerUrl: '',
+					apiConfigVersion: new Date(Date.now() + 60_000).toISOString()
+				})
+			);
+
+			expect(result).toMatchObject({
+				status: 400,
+				data: { error: 'Plex server URL is required' }
+			});
+			// The stored row must be untouched — a blank submit must not delete it.
+			expect((await getApiConfigWithSources()).plex.serverUrl.value).toBe(
+				'http://plex.local:32400'
+			);
+		});
+	});
+
+	it('rejects a whitespace-only Plex URL as 400 (trimmed to blank) (ISSUE-005)', async () => {
+		await withUnlockedPlex(async () => {
+			await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, 'http://plex.local:32400');
+
+			const result = await run(
+				makeRequest('updateApiConfig', {
+					plexServerUrl: '   ',
+					apiConfigVersion: new Date(Date.now() + 60_000).toISOString()
+				})
+			);
+
+			expect(result).toMatchObject({
+				status: 400,
+				data: { error: 'Plex server URL is required' }
+			});
+			expect((await getApiConfigWithSources()).plex.serverUrl.value).toBe(
+				'http://plex.local:32400'
+			);
+		});
+	});
+
+	it('does NOT 400 on a blank Plex URL when the field is ENV-locked', async () => {
+		// With the harness's mocked PLEX_SERVER_URL env var, the field is locked;
+		// a blank submit must NOT hit the required-field guard (the lock path owns
+		// the value and setApiConfigAtomic ignores locked fields).
+		const result = await run(
+			makeRequest('updateApiConfig', {
+				plexServerUrl: '',
+				apiConfigVersion: new Date(Date.now() + 60_000).toISOString()
+			})
+		);
+		expect(result).not.toMatchObject({ data: { error: 'Plex server URL is required' } });
+	});
+
+	it('does NOT trip the blank-URL guard when plexServerUrl is absent (OpenAI-only save)', async () => {
+		await withUnlockedPlex(async () => {
+			// An OpenAI-only panel save omits the Plex inputs entirely; the absent
+			// field parses to `undefined` (not ''), so the required-URL guard is
+			// skipped and the save succeeds without wiping the stored Plex URL.
+			await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, 'http://plex.local:32400');
+
+			const formData = new FormData();
+			formData.set('openaiModel', 'gpt-4o-mini');
+			formData.set('apiConfigVersion', new Date(Date.now() + 60_000).toISOString());
+			// plexServerUrl intentionally absent
+			const request = new Request('http://localhost/admin/settings/connections?/updateApiConfig', {
+				method: 'POST',
+				body: formData
+			});
+
+			const result = await run(request);
+			// Whatever the outcome, it must NOT be the blank-URL required-field 400.
+			expect(result).not.toMatchObject({ data: { error: 'Plex server URL is required' } });
+			// And the stored Plex URL is preserved.
+			expect((await getApiConfigWithSources()).plex.serverUrl.value).toBe(
+				'http://plex.local:32400'
+			);
+		});
 	});
 
 	it('rejects checkbox-style boolean for plexAllowInsecureLocalHttp', async () => {

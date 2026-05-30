@@ -218,7 +218,14 @@ export async function isDebugEnabled(): Promise<boolean> {
 	return result[0]?.value === 'true';
 }
 
-export async function setLogRetentionDays(days: number): Promise<void> {
+/**
+ * Returns the `updatedAt` it wrote so the OCC caller can derive the new
+ * `settingsVersion` from the actual mutation timestamp instead of a separate
+ * post-write `max(updatedAt)` re-read — that re-read can observe a concurrent
+ * writer's newer timestamp and hand the client a version it never wrote,
+ * letting a later stale-UI save pass OCC (TOCTOU window).
+ */
+export async function setLogRetentionDays(days: number): Promise<Date> {
 	const now = new Date();
 	await db
 		.insert(appSettings)
@@ -227,9 +234,10 @@ export async function setLogRetentionDays(days: number): Promise<void> {
 			target: appSettings.key,
 			set: { value: days.toString(), updatedAt: now }
 		});
+	return now;
 }
 
-export async function setLogMaxCount(count: number): Promise<void> {
+export async function setLogMaxCount(count: number): Promise<Date> {
 	const now = new Date();
 	await db
 		.insert(appSettings)
@@ -238,9 +246,10 @@ export async function setLogMaxCount(count: number): Promise<void> {
 			target: appSettings.key,
 			set: { value: count.toString(), updatedAt: now }
 		});
+	return now;
 }
 
-export async function setDebugEnabled(enabled: boolean): Promise<void> {
+export async function setDebugEnabled(enabled: boolean): Promise<Date> {
 	const now = new Date();
 	await db
 		.insert(appSettings)
@@ -249,4 +258,5 @@ export async function setDebugEnabled(enabled: boolean): Promise<void> {
 			target: appSettings.key,
 			set: { value: enabled.toString(), updatedAt: now }
 		});
+	return now;
 }

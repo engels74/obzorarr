@@ -134,6 +134,22 @@ export const actions: Actions = requireAdminActions({
 
 		try {
 			const apiConfig = await getApiConfigWithSources();
+
+			// ISSUE-005: a present-but-blank Plex URL must NOT silently clear the
+			// stored row behind a success toast. Reject it as a required-field 400,
+			// but ONLY when the field was actually submitted (post-Zod value is the
+			// empty string, not `undefined`) and the URL isn't ENV-locked. An absent
+			// field — e.g. an OpenAI-only save — parses to `undefined`, so it skips
+			// this guard and never wipes the stored Plex config. The lock branch is
+			// left to setApiConfigAtomic, which ignores locked fields entirely.
+			//
+			// Asymmetry by design: blank `openaiBaseUrl`/`openaiModel` stay an
+			// intentional clear-to-default (parity with the `clearOpenai*` actions),
+			// so they are deliberately NOT guarded here.
+			if (parsed.data.plexServerUrl === '' && !apiConfig.plex.serverUrl.isLocked) {
+				return fail(400, { error: 'Plex server URL is required' });
+			}
+
 			const values = {
 				plexServerUrl: parsed.data.plexServerUrl,
 				plexToken: parsed.data.plexToken,

@@ -7,7 +7,6 @@ import ShieldUserIcon from '@lucide/svelte/icons/shield-user';
 import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 import UserCogIcon from '@lucide/svelte/icons/user-cog';
 import UsersIcon from '@lucide/svelte/icons/users';
-import type { ActionResult } from '@sveltejs/kit';
 import { superForm } from 'sveltekit-superforms';
 import { enhance } from '$app/forms';
 import { invalidateAll } from '$app/navigation';
@@ -30,6 +29,7 @@ import * as Form from '$lib/components/ui/form/index.js';
 import { RadioGroup, RadioGroupItem } from '$lib/components/ui/radio-group/index.js';
 import { publicLandingLookupCopy } from '$lib/sharing/options';
 import { handleFormToast } from '$lib/utils/form-toast';
+import { surfaceOccConflict } from '$lib/utils/occ-form';
 import type { PageData } from './$types';
 
 interface Props {
@@ -37,22 +37,6 @@ interface Props {
 }
 
 let { data }: Props = $props();
-
-// An OCC stale-write returns fail(409, { form, conflict, error }) AFTER validation,
-// so the returned `form` is still valid — `onUpdated` would otherwise fire a false
-// "Saved" success toast while the write was actually discarded (ISSUE-006). Detect
-// the conflict in `onUpdate`, surface the server's reload message, and cancel() so
-// the success path never runs and the stale settingsVersion stays put for reload.
-function surfaceOccConflict(event: { result: ActionResult; cancel: () => void }): void {
-	const { result } = event;
-	if (result.type === 'failure' && (result.data as { conflict?: boolean } | undefined)?.conflict) {
-		const message =
-			(result.data as { error?: string } | undefined)?.error ??
-			'Settings changed in another tab. Please reload.';
-		handleFormToast({ error: message });
-		event.cancel();
-	}
-}
 
 // svelte-ignore state_referenced_locally
 const serverWrappedForm = superForm(data.serverWrappedForm, {
@@ -329,6 +313,12 @@ let showContradictionWarning = $derived(
 							</SettingsToggleRow>
 						{/snippet}
 					</Form.Control>
+					<Form.Description>
+						Applies to newly-created users. It does not change existing users — use
+						“Apply current defaults to all users” below, or each user’s “Can Control”
+						toggle on the <a href="/admin/users" class="underline">Users</a> page, to update
+						them.
+					</Form.Description>
 					<Form.FieldErrors />
 				</Form.Field>
 

@@ -110,12 +110,24 @@ export const actions: Actions = requireAdminActions({
 		}
 
 		try {
-			await Promise.all([
+			const writtenAt = await Promise.all([
 				setLogRetentionDays(form.data.retentionDays),
 				setLogMaxCount(form.data.maxCount),
 				setDebugEnabled(form.data.debugEnabled)
 			]);
 			logger.clearDebugCache();
+			// ISSUE-004: refresh the returned settingsVersion to the row's new
+			// updatedAt so a second consecutive save in the same page load isn't
+			// rejected as a stale-version 409. The hidden field is bind:value-bound
+			// to the superForm store, so this propagates without a reload.
+			//
+			// Derive the version from the timestamps THIS action wrote (max of the
+			// three setters) rather than a separate post-write
+			// `getAppSettingsUpdatedAt` re-read. The re-read can observe a concurrent
+			// writer's newer `updatedAt` and hand the client a version it never wrote,
+			// which would then let that client's next stale-UI save pass OCC (TOCTOU).
+			const maxWrittenMs = Math.max(...writtenAt.map((d) => d.getTime()));
+			form.data.settingsVersion = settingsVersionISO(new Date(maxWrittenMs));
 			return { form, success: true, message: 'Logging settings updated' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to update settings';

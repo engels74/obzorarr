@@ -95,4 +95,38 @@ describe('system — updateLogSettings OCC on UPDATE path (ISSUE-006 repro)', ()
 			}
 		});
 	});
+
+	it('advances the returned settingsVersion so two consecutive saves both succeed (ISSUE-004)', async () => {
+		// First save (INSERT) from the epoch sentinel.
+		const first = (await run(
+			makeRequest({
+				retentionDays: '14',
+				maxCount: '2000',
+				debugEnabled: 'false',
+				settingsVersion: new Date(0).toISOString()
+			})
+		)) as { form: { data: { settingsVersion: string } }; success?: boolean };
+
+		expect(first).toMatchObject({ success: true });
+		// The action must return an ADVANCED version (not the submitted epoch),
+		// otherwise the next save would false-409 without a page reload.
+		const returnedVersion = first.form.data.settingsVersion;
+		expect(returnedVersion).not.toBe(new Date(0).toISOString());
+		expect(returnedVersion).toBe((await getAppSettingsUpdatedAt(LOG_SETTINGS_KEYS))!.toISOString());
+
+		// Tiny delay so the second UPDATE's updatedAt is strictly greater.
+		await new Promise<void>((resolve) => setTimeout(resolve, 10));
+
+		// Second consecutive save using the version the FIRST save returned —
+		// must succeed (no reload needed).
+		const second = await run(
+			makeRequest({
+				retentionDays: '30',
+				maxCount: '5000',
+				debugEnabled: 'true',
+				settingsVersion: returnedVersion
+			})
+		);
+		expect(second).toMatchObject({ success: true });
+	});
 });

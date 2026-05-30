@@ -1,5 +1,20 @@
 import sanitizeHtml from 'sanitize-html';
 
+/**
+ * Custom-slide image policy (ISSUE-006 / FIX-6b decision):
+ *
+ * `<img>` is INTENTIONALLY allowed in custom-slide markdown, but only as an
+ * inert image embed. The `allowedAttributes.img` allowlist below admits just
+ * `src`/`alt`/`title`/`width`/`height` — every event-handler attribute
+ * (`onerror`, `onload`, …) is stripped by sanitize-html because it isn't on the
+ * allowlist, so the classic `<img onerror=...>` XSS vector cannot survive
+ * sanitization. Remote `src` is restricted to http/https and `data:` URIs are
+ * MIME-validated to real raster image types via `isValidImageDataUri`, so a
+ * `data:text/html` / `data:image/svg+xml` script payload is rejected. This runs
+ * server-side, so the stored/rendered HTML is already safe and no extra client
+ * gating is needed. Tighten the allowlist here (not at the call sites) if the
+ * policy ever needs to drop `<img>` entirely.
+ */
 const ALLOWED_IMAGE_MIME_TYPES = /^image\/(png|jpe?g|gif|webp)$/i;
 
 function isValidImageDataUri(src: string): boolean {

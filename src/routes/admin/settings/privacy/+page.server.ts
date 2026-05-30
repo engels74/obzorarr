@@ -227,13 +227,20 @@ export const actions: Actions = requireAdminActions({
 				serverWrappedShareMode: form.data.serverWrappedShareMode,
 				submittedVersion: form.data.settingsVersion
 			});
-			if (result === 'conflict') {
+			if (result.status === 'conflict') {
 				return fail(409, {
 					form,
 					conflict: true,
 					error: OCC_CONFLICT_MESSAGE
 				});
 			}
+			// ISSUE-004: advance the returned settingsVersion so a second consecutive
+			// save in the same page load isn't false-409'd. Use the timestamp the
+			// transaction actually wrote rather than a post-write
+			// `getAppSettingsUpdatedAt` re-read — that re-read could observe a
+			// concurrent writer's newer version and let the client's next stale save
+			// pass OCC (TOCTOU).
+			form.data.settingsVersion = settingsVersionISO(result.version);
 			return { form, success: true, message: 'Server-wide wrapped settings updated' };
 		} catch (error) {
 			const message =
@@ -274,13 +281,18 @@ export const actions: Actions = requireAdminActions({
 				allowUserControl: form.data.allowUserControl,
 				submittedVersion: form.data.settingsVersion
 			});
-			if (result === 'conflict') {
+			if (result.status === 'conflict') {
 				return fail(409, {
 					form,
 					conflict: true,
 					error: OCC_CONFLICT_MESSAGE
 				});
 			}
+			// ISSUE-004: advance the returned settingsVersion so a second consecutive
+			// save in the same page load isn't false-409'd. Use the timestamp the
+			// transaction actually wrote rather than a post-write
+			// `getAppSettingsUpdatedAt` re-read (TOCTOU — see updateServerWrappedSettings).
+			form.data.settingsVersion = settingsVersionISO(result.version);
 			return { form, success: true, message: 'User sharing defaults updated' };
 		} catch (error) {
 			const message =
@@ -320,13 +332,18 @@ export const actions: Actions = requireAdminActions({
 				enabled: form.data.publicLandingLookup,
 				submittedVersion: form.data.settingsVersion
 			});
-			if (result === 'conflict') {
+			if (result.status === 'conflict') {
 				return fail(409, {
 					form,
 					conflict: true,
 					error: OCC_CONFLICT_MESSAGE
 				});
 			}
+			// ISSUE-004: advance the returned settingsVersion so a second consecutive
+			// save in the same page load isn't false-409'd. Use the timestamp the
+			// transaction actually wrote rather than a post-write
+			// `getAppSettingsUpdatedAt` re-read (TOCTOU — see updateServerWrappedSettings).
+			form.data.settingsVersion = settingsVersionISO(result.version);
 			return { form, success: true, message: 'Public landing lookup updated' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);

@@ -257,6 +257,17 @@ function nextOccVersionDate(dbFloorMs: number): Date {
 }
 
 /**
+ * Result of an OCC-guarded atomic write. On success it carries the exact
+ * `version` (`updatedAt`) the transaction wrote, so the calling action can set
+ * the form's `settingsVersion` from the value it actually persisted rather than
+ * re-reading `max(updatedAt)` afterwards. That post-write re-read is a TOCTOU
+ * hole: a concurrent writer landing between the commit and the re-read would
+ * return ITS newer timestamp, handing the client a version it never wrote and
+ * letting the client's next stale-UI save slip past the OCC check.
+ */
+export type OccWriteResult = { status: 'ok'; version: Date } | { status: 'conflict' };
+
+/**
  * Atomically validates that the "Server-wide Wrapped" settings (anonymization
  * mode + server-wide share mode) have not changed since `submittedVersion`
  * and, if so, writes both values in a single SQLite transaction. Returns
@@ -266,7 +277,7 @@ export async function setServerWrappedSettingsAtomic(opts: {
 	anonymizationMode: AnonymizationModeType;
 	serverWrappedShareMode: string;
 	submittedVersion: string;
-}): Promise<'ok' | 'conflict'> {
+}): Promise<OccWriteResult> {
 	return db.transaction(async (tx) => {
 		const rows = await tx
 			.select({ updatedAt: appSettings.updatedAt })
@@ -278,7 +289,7 @@ export async function setServerWrappedSettingsAtomic(opts: {
 		// row-count gate would silently skip OCC.
 		const submittedMs = opts.submittedVersion ? Date.parse(opts.submittedVersion) : Number.NaN;
 		if (Number.isNaN(submittedMs)) {
-			return 'conflict';
+			return { status: 'conflict' };
 		}
 		// Compute `maxMs` over the existing rows so the OCC check and the write
 		// timestamp share the same DB floor. With no rows, `maxMs = 0` is fine —
@@ -289,7 +300,7 @@ export async function setServerWrappedSettingsAtomic(opts: {
 			if (t > maxMs) maxMs = t;
 		}
 		if (rows.length > 0 && submittedMs < maxMs) {
-			return 'conflict';
+			return { status: 'conflict' };
 		}
 
 		const now = nextOccVersionDate(maxMs);
@@ -318,7 +329,7 @@ export async function setServerWrappedSettingsAtomic(opts: {
 				set: { value: opts.serverWrappedShareMode, updatedAt: now }
 			});
 
-		return 'ok';
+		return { status: 'ok', version: now };
 	});
 }
 
@@ -332,7 +343,7 @@ export async function setUserDefaultsAtomic(opts: {
 	defaultShareMode: string;
 	allowUserControl: boolean;
 	submittedVersion: string;
-}): Promise<'ok' | 'conflict'> {
+}): Promise<OccWriteResult> {
 	return db.transaction(async (tx) => {
 		const rows = await tx
 			.select({ updatedAt: appSettings.updatedAt })
@@ -343,7 +354,7 @@ export async function setUserDefaultsAtomic(opts: {
 		// count — defends against the fresh-install/all-cleared loophole.
 		const submittedMs = opts.submittedVersion ? Date.parse(opts.submittedVersion) : Number.NaN;
 		if (Number.isNaN(submittedMs)) {
-			return 'conflict';
+			return { status: 'conflict' };
 		}
 		// Compute `maxMs` over the existing rows so the OCC check and the write
 		// timestamp share the same DB floor. With no rows, `maxMs = 0` is fine —
@@ -354,7 +365,7 @@ export async function setUserDefaultsAtomic(opts: {
 			if (t > maxMs) maxMs = t;
 		}
 		if (rows.length > 0 && submittedMs < maxMs) {
-			return 'conflict';
+			return { status: 'conflict' };
 		}
 
 		const now = nextOccVersionDate(maxMs);
@@ -390,7 +401,7 @@ export async function setUserDefaultsAtomic(opts: {
 				.where(eq(shareSettings.modeSource, ShareModeSource.DEFAULT));
 		}
 
-		return 'ok';
+		return { status: 'ok', version: now };
 	});
 }
 
@@ -1210,7 +1221,7 @@ export async function setPublicLandingLookupEnabled(enabled: boolean): Promise<v
 export async function setPublicLandingLookupEnabledAtomic(opts: {
 	enabled: boolean;
 	submittedVersion: string;
-}): Promise<'ok' | 'conflict'> {
+}): Promise<OccWriteResult> {
 	return db.transaction(async (tx) => {
 		const rows = await tx
 			.select({ updatedAt: appSettings.updatedAt })
@@ -1221,7 +1232,7 @@ export async function setPublicLandingLookupEnabledAtomic(opts: {
 		// count — defends against the fresh-install/all-cleared loophole.
 		const submittedMs = opts.submittedVersion ? Date.parse(opts.submittedVersion) : Number.NaN;
 		if (Number.isNaN(submittedMs)) {
-			return 'conflict';
+			return { status: 'conflict' };
 		}
 		// Compute `maxMs` over the existing rows so the OCC check and the write
 		// timestamp share the same DB floor. With no rows, `maxMs = 0` is fine —
@@ -1232,7 +1243,7 @@ export async function setPublicLandingLookupEnabledAtomic(opts: {
 			if (t > maxMs) maxMs = t;
 		}
 		if (rows.length > 0 && submittedMs < maxMs) {
-			return 'conflict';
+			return { status: 'conflict' };
 		}
 
 		const now = nextOccVersionDate(maxMs);
@@ -1246,7 +1257,7 @@ export async function setPublicLandingLookupEnabledAtomic(opts: {
 				set: { value, updatedAt: now }
 			});
 
-		return 'ok';
+		return { status: 'ok', version: now };
 	});
 }
 

@@ -188,6 +188,9 @@ function markAvatarFailed(userId: number): void {
 											title={user.canUserControl
 												? 'Click to revoke control'
 												: 'Click to grant control'}
+											aria-label={`Toggle share control for ${user.username} (currently ${
+												user.canUserControl ? 'on' : 'off'
+											})`}
 										>
 											{#snippet children()}
 												{user.canUserControl ? 'Yes' : 'No'}
@@ -287,6 +290,9 @@ function markAvatarFailed(userId: number): void {
 										title={user.canUserControl
 											? 'Click to revoke control'
 											: 'Click to grant control'}
+										aria-label={`Toggle share control for ${user.username} (currently ${
+											user.canUserControl ? 'on' : 'off'
+										})`}
 									>
 										{#snippet children()}
 											{user.canUserControl ? 'Yes' : 'No'}

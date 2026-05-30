@@ -13,6 +13,7 @@ import {
 import * as Form from '$lib/components/ui/form/index.js';
 import { Input } from '$lib/components/ui/input/index.js';
 import { handleFormToast } from '$lib/utils/form-toast';
+import { surfaceOccConflict } from '$lib/utils/occ-form';
 import type { PageData } from './$types';
 
 interface Props {
@@ -26,6 +27,11 @@ let { data }: Props = $props();
 // svelte-ignore state_referenced_locally
 const form = superForm(data.form, {
 	resetForm: false,
+	// An OCC stale-write returns fail(409, { form, conflict }) AFTER validation,
+	// so `updated.valid` stays true and `onUpdated` would fire a false "Settings
+	// saved" toast while the write was discarded (ISSUE-006). Detect + cancel the
+	// conflict in `onUpdate` (before `onUpdated`) so the success path never runs.
+	onUpdate: surfaceOccConflict,
 	onUpdated({ form: updated }) {
 		// Surface success / failure toasts via the existing parity helper. The
 		// helper accepts the legacy FormResponse shape; we map the superforms
