@@ -20,6 +20,7 @@ import {
 	USER_DEFAULTS_SETTINGS_KEYS
 } from '$lib/server/admin/settings.service';
 import { requireAdminActions } from '$lib/server/auth/guards';
+import { logger } from '$lib/server/logging';
 import {
 	bulkApplyShareDefaults,
 	getGlobalAllowUserControl,
@@ -330,7 +331,8 @@ export const actions: Actions = requireAdminActions({
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : 'Failed to update public landing lookup';
-			return fail(500, { form, error: message });
+			logger.error(`Failed to update public landing lookup: ${message}`, 'Privacy');
+			return fail(500, { form, error: 'Failed to update public landing lookup' });
 		}
 	},
 
