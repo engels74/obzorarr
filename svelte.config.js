@@ -15,6 +15,10 @@ const config = {
 					'https://plex.tv',
 					'https://*.plex.direct',
 					'https://secure.gravatar.com',
+					// Plex proxies some user avatars through WordPress/Gravatar's image CDN
+					// (i0.wp.com); without this the avatar is blocked and logs a CSP
+					// violation on /admin (ISSUE-002).
+					'https://i0.wp.com',
 					'data:'
 				],
 				'style-src': ['self', 'unsafe-inline', 'https://fonts.googleapis.com'],

@@ -9,7 +9,7 @@ import {
 	slideConfig,
 	users
 } from '$lib/server/db/schema';
-import { setGlobalShareDefaults } from '$lib/server/sharing/service';
+import { getOwnerWrappedHref, setGlobalShareDefaults } from '$lib/server/sharing/service';
 import { ShareMode, ShareModeSource } from '$lib/server/sharing/types';
 import { load as loadServerWrapped } from '../../../src/routes/wrapped/[year]/+page.server';
 import { actions, load } from '../../../src/routes/wrapped/[year]/u/[identifier]/+page.server';
@@ -768,5 +768,109 @@ describe('wrapped/[year]/u/[identifier] actions: token regeneration', () => {
 			availableYears: [YEAR]
 		});
 		expect(data.userId).toBe(USER_ID);
+	});
+});
+
+/**
+ * ISSUE-004 (D) contract-lock: the "Server Members" (private-oauth) access boundary
+ * is auth, NOT the URL identifier. These tests freeze that contract so a future
+ * change can't silently regress it. NO tokenization, NO normalization — the
+ * enumerable integer id and the intentional 403-vs-404 split are by-design (F-015).
+ * See .omc/research/dogfood-d-threatmodel-2026-05-30.md.
+ */
+describe('wrapped/[year]/u/[identifier] loader: ISSUE-004 private-oauth contract-lock', () => {
+	const MEMBER_ID = 2;
+	const UNKNOWN_ID = 999;
+	const YEAR = 2024;
+
+	beforeEach(async () => {
+		await db.delete(shareSettings);
+		await db.delete(appSettings);
+		await db.delete(users);
+		await db.delete(cachedStats);
+		await db.delete(playHistory);
+		await db.delete(slideConfig);
+
+		await setGlobalShareDefaults({
+			defaultShareMode: ShareMode.PRIVATE_OAUTH,
+			allowUserControl: false
+		});
+	});
+
+	it('returns 404 for an UNKNOWN numeric id and mints NO share_settings row (anti-enumeration, no orphan)', async () => {
+		// Unknown id: no users row, no share_settings row. The loader's existence
+		// check (+page.server.ts:132-139) must 404 BEFORE getOrCreateShareSettings,
+		// so no row is created for a non-existent user.
+		await expectLoadStatus(
+			{ year: YEAR, identifier: String(UNKNOWN_ID), currentUser: undefined },
+			404
+		);
+
+		const rows = await db.select().from(shareSettings).where(eq(shareSettings.userId, UNKNOWN_ID));
+		expect(rows.length).toBe(0);
+	});
+
+	it('allows a signed-in server member (non-owner) to view a known private-oauth numeric id (200)', async () => {
+		const OWNER_ID = 5;
+		await seedUser(OWNER_ID, 100005, 200005);
+		await seedUser(MEMBER_ID, 100002, 200002);
+		await seedShareSettings({
+			userId: OWNER_ID,
+			year: YEAR,
+			mode: ShareMode.PRIVATE_OAUTH,
+			token: null
+		});
+
+		const data = await invokeLoad({
+			year: YEAR,
+			identifier: String(OWNER_ID),
+			availableYears: [YEAR],
+			currentUser: {
+				id: MEMBER_ID,
+				plexId: 100002,
+				username: `user-${MEMBER_ID}`,
+				isAdmin: false
+			}
+		});
+
+		expect(data.userId).toBe(OWNER_ID);
+		// Members get the canonical (integer) page; never a copyable token.
+		expect(data.shareSettings.shareToken).toBeNull();
+	});
+
+	it('getOwnerWrappedHref emits the integer URL (no token) for private-oauth and a token URL only for private-link', async () => {
+		const OWNER_ID = 5;
+		await seedUser(OWNER_ID, 100005, 200005);
+
+		// private-oauth: integer URL, no token minted/emitted.
+		await seedShareSettings({
+			userId: OWNER_ID,
+			year: YEAR,
+			mode: ShareMode.PRIVATE_OAUTH,
+			token: null
+		});
+		const oauthHref = await getOwnerWrappedHref(OWNER_ID, YEAR);
+		expect(oauthHref).toBe(`/wrapped/${YEAR}/u/${OWNER_ID}`);
+		expect(await getStoredToken(OWNER_ID, YEAR)).toBeNull();
+
+		// Flip to private-link (with a token) under a PUBLIC floor so the effective
+		// mode stays private-link (a private-oauth floor would correctly elevate it
+		// back to the integer URL — covered by the floor tests above). The token URL
+		// is emitted only when the effective mode is genuinely private-link.
+		await setGlobalShareDefaults({
+			defaultShareMode: ShareMode.PUBLIC,
+			allowUserControl: false
+		});
+		const LINK_TOKEN = '550e8400-e29b-41d4-a716-446655442222';
+		await db
+			.update(shareSettings)
+			.set({
+				mode: ShareMode.PRIVATE_LINK,
+				modeSource: ShareModeSource.EXPLICIT,
+				shareToken: LINK_TOKEN
+			})
+			.where(and(eq(shareSettings.userId, OWNER_ID), eq(shareSettings.year, YEAR)));
+		const linkHref = await getOwnerWrappedHref(OWNER_ID, YEAR);
+		expect(linkHref).toBe(`/wrapped/${YEAR}/u/${LINK_TOKEN}`);
 	});
 });

@@ -6,7 +6,11 @@ import ShieldAlertIcon from '@lucide/svelte/icons/shield-alert';
 import SparklesIcon from '@lucide/svelte/icons/sparkles';
 import { enhance } from '$app/forms';
 import { invalidateAll } from '$app/navigation';
-import { SettingsActionBar, SettingsToggleRow } from '$lib/components/settings/index.js';
+import {
+	SettingsActionBar,
+	SettingsStatusPill,
+	SettingsToggleRow
+} from '$lib/components/settings/index.js';
 import { Button } from '$lib/components/ui/button/index.js';
 import {
 	Card,
@@ -101,7 +105,12 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 				class="space-y-4"
 			>
 				<div class="space-y-2">
-					<Label for="plexServerUrl">Plex server URL</Label>
+					<div class="flex items-center gap-2">
+						<Label for="plexServerUrl">Plex server URL</Label>
+						{#if plexServerUrlLocked}
+							<SettingsStatusPill tone="warning">ENV</SettingsStatusPill>
+						{/if}
+					</div>
 					<Input
 						id="plexServerUrl"
 						name="plexServerUrl"
@@ -116,12 +125,17 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 				</div>
 
 				<div class="space-y-2">
-					<Label for="plexToken">
-						Plex token
-						{#if settings.plexToken.hasValue}
-							<span class="text-xs text-muted-foreground">(stored — leave blank to keep)</span>
+					<div class="flex items-center gap-2">
+						<Label for="plexToken">
+							Plex token
+							{#if settings.plexToken.hasValue}
+								<span class="text-xs text-muted-foreground">(stored — leave blank to keep)</span>
+							{/if}
+						</Label>
+						{#if plexTokenLocked}
+							<SettingsStatusPill tone="warning">ENV</SettingsStatusPill>
 						{/if}
-					</Label>
+					</div>
 					<Input
 						id="plexToken"
 						name="plexToken"
@@ -244,12 +258,17 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 				class="space-y-4"
 			>
 				<div class="space-y-2">
-					<Label for="openaiApiKey">
-						OpenAI API key
-						{#if settings.openaiApiKey.hasValue}
-							<span class="text-xs text-muted-foreground">(stored — leave blank to keep)</span>
+					<div class="flex items-center gap-2">
+						<Label for="openaiApiKey">
+							OpenAI API key
+							{#if settings.openaiApiKey.hasValue}
+								<span class="text-xs text-muted-foreground">(stored — leave blank to keep)</span>
+							{/if}
+						</Label>
+						{#if openaiApiKeyLocked}
+							<SettingsStatusPill tone="warning">ENV</SettingsStatusPill>
 						{/if}
-					</Label>
+					</div>
 					<Input
 						id="openaiApiKey"
 						name="openaiApiKey"
@@ -262,7 +281,12 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 				</div>
 
 				<div class="space-y-2">
-					<Label for="openaiBaseUrl">Base URL (optional)</Label>
+					<div class="flex items-center gap-2">
+						<Label for="openaiBaseUrl">Base URL (optional)</Label>
+						{#if openaiBaseUrlLocked}
+							<SettingsStatusPill tone="warning">ENV</SettingsStatusPill>
+						{/if}
+					</div>
 					<Input
 						id="openaiBaseUrl"
 						name="openaiBaseUrl"
@@ -274,7 +298,12 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 				</div>
 
 				<div class="space-y-2">
-					<Label for="openaiModel">Model</Label>
+					<div class="flex items-center gap-2">
+						<Label for="openaiModel">Model</Label>
+						{#if openaiModelLocked}
+							<SettingsStatusPill tone="warning">ENV</SettingsStatusPill>
+						{/if}
+					</div>
 					<Input
 						id="openaiModel"
 						name="openaiModel"
