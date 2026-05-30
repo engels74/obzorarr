@@ -12,6 +12,7 @@ import {
 import { requireServerMembership, verifyServerOwnership } from './membership';
 import { clearPinTransaction, getPinTransactionForRequest } from './pin-transactions';
 import { checkPinStatus, getPlexUserInfo } from './plex-oauth';
+import { markSessionRevalidated } from './revalidation';
 import { createSession } from './session';
 import { NotServerMemberError, PinExpiredError, SESSION_DURATION_MS } from './types';
 
@@ -125,6 +126,15 @@ export async function createSessionFromPlexToken(
 		plexToken: authToken,
 		isAdmin
 	});
+
+	// Membership/ownership was just verified above, so prime the revalidation
+	// cache for this session. Without this, the very next request (e.g. the
+	// GET /admin that follows onboarding completion) is the session's first-ever
+	// revalidation and re-probes Plex immediately; a transient /identity blip on
+	// that probe would hard-revoke a legitimately authenticated owner (observed
+	// in the dogfood: owner revoked the instant onboarding completed). Seeding
+	// does not alter the ownership/isAdmin decision made above.
+	markSessionRevalidated(sessionId, { isMember: true, isOwner: isAdmin });
 
 	cookies.set('session', sessionId, COOKIE_OPTIONS);
 
