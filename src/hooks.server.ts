@@ -3,7 +3,10 @@ import { isHttpError, isRedirect } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
-import { clearConflictingDbSettings } from '$lib/server/admin/settings.service';
+import {
+	clearConflictingDbSettings,
+	ensurePublicLandingLookupDefault
+} from '$lib/server/admin/settings.service';
 import { getOrCreateDevSession, isDevBypassEnabled } from '$lib/server/auth/dev-bypass';
 import { isAdminRouteId } from '$lib/server/auth/guards';
 import {
@@ -65,6 +68,12 @@ const COOKIE_OPTIONS = {
 
 let devBypassLogged = false;
 let settingsConflictsCleared = false;
+// Hot-path optimisation only: initializationHandle runs on every request, so this
+// flag short-circuits the per-request PK lookup after the first attempt. It is NOT
+// the idempotency guard — ensurePublicLandingLookupDefault()'s DB row-absence check
+// is what keeps the backfill safe across replicas and restarts. Kept distinct from
+// settingsConflictsCleared so the two startup concerns never gate each other.
+let publicLandingLookupBackfilled = false;
 
 const initializationHandle: Handle = async ({ event, resolve }) => {
 	if (!settingsConflictsCleared) {
@@ -80,6 +89,19 @@ const initializationHandle: Handle = async ({ event, resolve }) => {
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			logger.error(`Failed to clear conflicting DB settings: ${errorMessage}`, 'Startup');
+		}
+	}
+	// Runs AFTER the ENV-clear above, but as a separate concern: the auto-clear
+	// deletes ENV-shadowed rows, whereas this seeds a default for an upgrade. Because
+	// initializationHandle precedes every landing `load` in the `sequence(...)` below,
+	// the backfill is guaranteed to run before the first getPublicLandingLookupEnabled().
+	if (!publicLandingLookupBackfilled) {
+		publicLandingLookupBackfilled = true;
+		try {
+			await ensurePublicLandingLookupDefault();
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			logger.error(`Failed to backfill public landing lookup default: ${errorMessage}`, 'Startup');
 		}
 	}
 	try {

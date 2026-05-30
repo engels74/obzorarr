@@ -19,10 +19,10 @@ import {
 	UI_THEME_SETTINGS_KEYS,
 	WRAPPED_LOGO_MODE_SETTINGS_KEYS,
 	WRAPPED_THEME_SETTINGS_KEYS,
-	WrappedLogoMode,
 	type WrappedLogoModeType
 } from '$lib/server/admin/settings.service';
 import { requireAdminActions } from '$lib/server/auth/guards';
+import { wrappedLogoOptions } from '$lib/sharing/options';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
@@ -77,13 +77,8 @@ export const load: PageServerLoad = async () => {
 				.toLowerCase()
 				.replace(/\b\w/g, (c) => c.toUpperCase())
 		})),
-		wrappedLogoOptions: Object.entries(WrappedLogoMode).map(([key, value]) => ({
-			value,
-			label: key
-				.replace(/_/g, ' ')
-				.toLowerCase()
-				.replace(/\b\w/g, (c) => c.toUpperCase())
-		}))
+		// Shared copy so settings (appearance) and onboarding (privacy) read identically.
+		wrappedLogoOptions
 	};
 };
 

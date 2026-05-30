@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test';
+import { setPublicLandingLookupEnabled } from '$lib/server/admin/settings.service';
 import { actions } from '../../src/routes/+page.server';
 
 /**
@@ -177,11 +178,14 @@ describe('dogfood 2026-05-29 F1 — onboarding Done page heading hierarchy', () 
 
 // dogfood 2026-05-29 F3 — a 1001-char username submitted from the landing
 // lookup form was reported as a "silent reset". Verified working in source:
-// UsernameSchema caps length at 100 and the action returns fail(400) before
-// touching the DB, so the form surfaces "Username is too long" via
-// handleFormToast. This behavioural test pins that path so it can't regress.
+// UsernameSchema caps length at 100 and the action returns fail(400), so the
+// form surfaces "Username is too long" via handleFormToast. This behavioural
+// test pins that path so it can't regress. The public-landing-lookup toggle is
+// enabled first so the (newer) toggle guard doesn't short-circuit with a 403
+// before the username-length validation runs.
 describe('dogfood 2026-05-29 F3 — long username lookup returns fail(400)', () => {
 	it('rejects a >100-char username with fail(400) "Username is too long"', async () => {
+		await setPublicLandingLookupEnabled(true);
 		const formData = new FormData();
 		formData.set('username', 'a'.repeat(1001));
 		const request = new Request('http://localhost/?/lookupUser', {

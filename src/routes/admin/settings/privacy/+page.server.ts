@@ -8,11 +8,13 @@ import {
 	settingsVersionISO
 } from '$lib/server/admin/occ-helpers';
 import {
-	AnonymizationMode,
 	type AnonymizationModeType,
 	getAnonymizationMode,
 	getAppSettingsUpdatedAt,
+	getPublicLandingLookupEnabled,
+	PUBLIC_LANDING_LOOKUP_SETTINGS_KEYS,
 	SERVER_WRAPPED_SETTINGS_KEYS,
+	setPublicLandingLookupEnabled,
 	setServerWrappedSettingsAtomic,
 	setUserDefaultsAtomic,
 	USER_DEFAULTS_SETTINGS_KEYS
@@ -24,6 +26,11 @@ import {
 	getGlobalDefaultShareMode,
 	getServerWrappedShareMode
 } from '$lib/server/sharing/service';
+import {
+	anonymizationOptions,
+	serverWrappedShareModeOptions,
+	shareModeOptions
+} from '$lib/sharing/options';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
@@ -97,25 +104,42 @@ const UserDefaultsSettingsSchema = z.object({
 	settingsVersion: z.string().min(1, 'Missing settings version (reload the page)')
 });
 
+/**
+ * OCC strategy: INLINE `settingsVersion` over its OWN single-key group
+ * (`PUBLIC_LANDING_LOOKUP_SETTINGS_KEYS`). Kept as a separate form + action from
+ * the server-wide and user-default forms so the three privacy controls never
+ * false-409 one another. Reuses `FormBooleanSchema` so a stray 'on' fails
+ * validation rather than silently flipping a privacy toggle.
+ */
+const PublicLandingLookupSchema = z.object({
+	publicLandingLookup: FormBooleanSchema,
+	settingsVersion: z.string().min(1, 'Missing settings version (reload the page)')
+});
+
 export const load: PageServerLoad = async () => {
 	const [
 		anonymizationMode,
 		defaultShareMode,
 		allowUserControl,
 		serverWrappedShareMode,
+		publicLandingLookupEnabled,
 		serverWrappedSettingsUpdatedAt,
-		userDefaultsSettingsUpdatedAt
+		userDefaultsSettingsUpdatedAt,
+		publicLandingLookupUpdatedAt
 	] = await Promise.all([
 		getAnonymizationMode(),
 		getGlobalDefaultShareMode(),
 		getGlobalAllowUserControl(),
 		getServerWrappedShareMode(),
+		getPublicLandingLookupEnabled(),
 		getAppSettingsUpdatedAt(SERVER_WRAPPED_SETTINGS_KEYS),
-		getAppSettingsUpdatedAt(USER_DEFAULTS_SETTINGS_KEYS)
+		getAppSettingsUpdatedAt(USER_DEFAULTS_SETTINGS_KEYS),
+		getAppSettingsUpdatedAt(PUBLIC_LANDING_LOOKUP_SETTINGS_KEYS)
 	]);
 
 	const serverWrappedSettingsVersion = settingsVersionISO(serverWrappedSettingsUpdatedAt);
 	const userDefaultsSettingsVersion = settingsVersionISO(userDefaultsSettingsUpdatedAt);
+	const publicLandingLookupSettingsVersion = settingsVersionISO(publicLandingLookupUpdatedAt);
 
 	const serverWrappedForm = await superValidate(
 		{
@@ -137,12 +161,22 @@ export const load: PageServerLoad = async () => {
 		{ id: 'userDefaults' }
 	);
 
+	const publicLandingLookupForm = await superValidate(
+		{
+			publicLandingLookup: publicLandingLookupEnabled,
+			settingsVersion: publicLandingLookupSettingsVersion
+		},
+		zod4(PublicLandingLookupSchema),
+		{ id: 'publicLandingLookup' }
+	);
+
 	return {
 		anonymizationMode,
-		anonymizationOptions: Object.entries(AnonymizationMode).map(([key, value]) => ({
-			value,
-			label: key.charAt(0).toUpperCase() + key.slice(1).toLowerCase()
-		})),
+		// Option copy is sourced from the shared module so onboarding and settings
+		// never drift. Icons stay route-local (chosen per value in the template).
+		anonymizationOptions,
+		shareModeOptions,
+		serverWrappedShareModeOptions,
 		globalDefaults: {
 			defaultShareMode,
 			allowUserControl
@@ -150,8 +184,10 @@ export const load: PageServerLoad = async () => {
 		serverWrappedShareMode,
 		serverWrappedSettingsVersion,
 		userDefaultsSettingsVersion,
+		publicLandingLookupSettingsVersion,
 		serverWrappedForm,
-		userDefaultsForm
+		userDefaultsForm,
+		publicLandingLookupForm
 	};
 };
 
@@ -246,6 +282,42 @@ export const actions: Actions = requireAdminActions({
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : 'Failed to update user sharing defaults';
+			return fail(500, { form, error: message });
+		}
+	},
+
+	updatePublicLandingLookup: async ({ request }) => {
+		const form = await superValidate(request, zod4(PublicLandingLookupSchema), {
+			id: 'publicLandingLookup'
+		});
+		if (!form.valid) {
+			if (form.errors.settingsVersion?.length) {
+				return fail(409, {
+					form,
+					conflict: true,
+					error: OCC_CONFLICT_MESSAGE
+				});
+			}
+			return fail(400, { form, error: 'Invalid input' });
+		}
+
+		if (
+			(await inlineOccCheck(form.data.settingsVersion, PUBLIC_LANDING_LOOKUP_SETTINGS_KEYS))
+				.status === 'conflict'
+		) {
+			return fail(409, {
+				form,
+				conflict: true,
+				error: OCC_CONFLICT_MESSAGE
+			});
+		}
+
+		try {
+			await setPublicLandingLookupEnabled(form.data.publicLandingLookup);
+			return { form, success: true, message: 'Public landing lookup updated' };
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : 'Failed to update public landing lookup';
 			return fail(500, { form, error: message });
 		}
 	},

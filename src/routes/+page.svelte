@@ -33,10 +33,14 @@ let username = $state('');
 let usernameTouched = $state(false);
 let isLookingUp = $state(false);
 
-// Sync username from form response (preserves user input on error)
+// Sync username from form response (preserves user input on error).
+// The 403 "public lookup disabled" failure has no `username` field, so narrow
+// the ActionData union with an `in` check before reading it.
 $effect(() => {
-	if (form?.username) {
-		username = form.username;
+	const echoed =
+		form && 'username' in form && typeof form.username === 'string' ? form.username : null;
+	if (echoed) {
+		username = echoed;
 	}
 });
 
@@ -152,67 +156,80 @@ function handleCancelRedirect(): void {
 				summaries of your media consumption.
 			</p>
 
-			<!-- PRIMARY CTA: Username Lookup -->
-			<div class="username-section">
-				<form
-					method="POST"
-					action="?/lookupUser"
-					use:enhance={() => {
-						isLookingUp = true;
-						return async ({ update }) => {
-							isLookingUp = false;
-							await update();
-						};
-					}}
-					class="username-form"
-				>
-					<div class="username-input-group">
-						<label for="username-input" class="sr-only">Plex username</label>
-						<Input
-							id="username-input"
-							type="text"
-							name="username"
-							bind:value={username}
-							placeholder="Enter your Plex username"
-							disabled={isLookingUp}
-							class="username-input"
-							autocomplete="off"
-							autocapitalize="off"
-							spellcheck="false"
-							onblur={() => (usernameTouched = true)}
-						/>
-						<SubmitButton
-							class="view-button tap-target"
-							submitting={isLookingUp}
-							disabled={!username.trim()}
-						>
-							{#snippet children()}
-								View My {data.currentYear} Wrapped
-							{/snippet}
-							{#snippet submittingLabel()}
-								Looking up...
-							{/snippet}
-						</SubmitButton>
-					</div>
+			{#if data.publicLookupEnabled}
+				<!-- PRIMARY CTA: Username Lookup -->
+				<div class="username-section">
+					<form
+						method="POST"
+						action="?/lookupUser"
+						use:enhance={() => {
+							isLookingUp = true;
+							return async ({ update }) => {
+								isLookingUp = false;
+								await update();
+							};
+						}}
+						class="username-form"
+					>
+						<div class="username-input-group">
+							<label for="username-input" class="sr-only">Plex username</label>
+							<Input
+								id="username-input"
+								type="text"
+								name="username"
+								bind:value={username}
+								placeholder="Enter your Plex username"
+								disabled={isLookingUp}
+								class="username-input"
+								autocomplete="off"
+								autocapitalize="off"
+								spellcheck="false"
+								onblur={() => (usernameTouched = true)}
+							/>
+							<SubmitButton
+								class="view-button tap-target"
+								submitting={isLookingUp}
+								disabled={!username.trim()}
+							>
+								{#snippet children()}
+									View My {data.currentYear} Wrapped
+								{/snippet}
+								{#snippet submittingLabel()}
+									Looking up...
+								{/snippet}
+							</SubmitButton>
+						</div>
 
-					{#if form?.error}
-						<p class="error-message" role="alert">
-							{form.error}
-							{#if form.requiresAuth}
-								<button type="button" class="link-button" onclick={handlePlexLogin}>
-									Sign in now
-								</button>
-							{/if}
-						</p>
-					{/if}
+						{#if form?.error}
+							<p class="error-message" role="alert">
+								{form.error}
+								{#if form.requiresAuth}
+									<button type="button" class="link-button" onclick={handlePlexLogin}>
+										Sign in now
+									</button>
+								{/if}
+							</p>
+						{/if}
 
-					{#if usernameTouched && username.trim() === '' && username.length > 0}
-						<p class="error-message" role="alert">
-							Username cannot be empty or whitespace only.
-						</p>
-					{/if}
-				</form>
-			</div>
+						{#if usernameTouched && username.trim() === '' && username.length > 0}
+							<p class="error-message" role="alert">
+								Username cannot be empty or whitespace only.
+							</p>
+						{/if}
+					</form>
+				</div>
+			{:else}
+				<!-- Public lookup disabled by the admin: sign-in CTA instead of the
+				     username field. A real <a> navigation so it works without JS;
+				     anonymous SSR only (authenticated users are redirected in load). -->
+				<div class="username-section">
+					<p class="signin-required-note">This server requires sign-in to view Wrapped.</p>
+					<a href={data.loginHref} class="view-button cta-link tap-target">
+						<span class="plex-icon" aria-hidden="true">&#9654;</span>
+						Sign in with Plex
+					</a>
+				</div>
+			{/if}
 
 			<!-- SECONDARY: Plex OAuth Login -->
 			<div class="login-section">
@@ -339,11 +356,29 @@ function handleCancelRedirect(): void {
 			gap: 0.75rem;
 		}
 
+		/* Sign-in CTA rendered when public lookup is disabled. Reuses the primary
+		   `.view-button` pill look; `.cta-link` only neutralises the anchor's
+		   default underline and centers the CTA within the section. */
+		.signin-required-note {
+			font-size: 0.95rem;
+			color: oklch(var(--muted-foreground));
+			margin: 0 0 0.75rem;
+		}
+
+		:global(a.cta-link) {
+			text-decoration: none;
+		}
+
 		.username-input-group {
 			display: flex;
 			gap: 0.5rem;
 			flex-wrap: wrap;
 			justify-content: center;
+			/* Without this the input and the taller SubmitButton align to flex-start
+			   and the button sits visibly offset. Centering + the matching 1px
+			   transparent border on `.view-button` below give the two controls equal
+			   border-box height and a shared vertical center so they read as one. */
+			align-items: center;
 		}
 
 		.sr-only {
@@ -423,7 +458,10 @@ function handleCancelRedirect(): void {
 			font-weight: 600;
 			color: oklch(var(--primary-foreground));
 			background: oklch(var(--primary));
-			border: none;
+			/* 1px transparent border matches `.username-input`'s 1px solid border so
+			   both controls share the same border-box height (identical padding + font
+			   already); paired with `align-items: center` they line up as one control. */
+			border: 1px solid transparent;
 			border-radius: var(--radius);
 			cursor: pointer;
 			transition: all 0.2s ease;

@@ -4,6 +4,7 @@ import GlobeIcon from '@lucide/svelte/icons/globe';
 import LinkIcon from '@lucide/svelte/icons/link';
 import LockIcon from '@lucide/svelte/icons/lock';
 import ShieldUserIcon from '@lucide/svelte/icons/shield-user';
+import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 import UserCogIcon from '@lucide/svelte/icons/user-cog';
 import UsersIcon from '@lucide/svelte/icons/users';
 import { superForm } from 'sveltekit-superforms';
@@ -14,6 +15,7 @@ import {
 	SettingsOptionCard,
 	SettingsToggleRow
 } from '$lib/components/settings/index.js';
+import { Alert, AlertDescription } from '$lib/components/ui/alert/index.js';
 import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
 import { Button } from '$lib/components/ui/button/index.js';
 import {
@@ -25,6 +27,7 @@ import {
 } from '$lib/components/ui/card/index.js';
 import * as Form from '$lib/components/ui/form/index.js';
 import { RadioGroup, RadioGroupItem } from '$lib/components/ui/radio-group/index.js';
+import { publicLandingLookupCopy } from '$lib/sharing/options';
 import { handleFormToast } from '$lib/utils/form-toast';
 import type { PageData } from './$types';
 
@@ -68,20 +71,33 @@ const {
 	submitting: userDefaultsSubmitting
 } = userDefaultsForm;
 
+// svelte-ignore state_referenced_locally
+const publicLandingLookupForm = superForm(data.publicLandingLookupForm, {
+	resetForm: false,
+	onUpdated({ form: updated }) {
+		if (updated.valid) {
+			handleFormToast({ success: true, message: updated.message ?? 'Saved' });
+		} else {
+			handleFormToast({ error: updated.message ?? 'Validation failed' });
+		}
+	}
+});
+const {
+	form: publicLandingLookupData,
+	enhance: publicLandingLookupEnhance,
+	submitting: publicLandingLookupSubmitting
+} = publicLandingLookupForm;
+
 let bulkApplyDialogOpen = $state(false);
 let isBulkApplying = $state(false);
 
-function getAnonymizationDescription(value: string): string {
-	if (value === 'anonymous') return 'Hide viewer identity anywhere server-wide stats are shared.';
-	if (value === 'hybrid') return 'Show names to signed-in members and anonymize public views.';
-	return 'Show names as stored for administrators and viewers with access.';
-}
-
-function getShareModeDescription(value: string): string {
-	if (value === 'public') return 'Anyone with the URL can view the wrapped page.';
-	if (value === 'private-link') return 'Require a generated private link token for access.';
-	return 'Require a Plex-authenticated user with permission.';
-}
+// Live contradiction warning: the toggle is the SOLE landing-page gate (D1), so a
+// non-public per-user default means visitors see the form but every lookup 404s.
+// Surface that to the admin instead of silently hiding the form. Reads across two
+// Superform stores so it updates as the admin edits either control.
+let showContradictionWarning = $derived(
+	$publicLandingLookupData.publicLandingLookup && $userDefaultsData.defaultShareMode !== 'public'
+);
 </script>
 
 <svelte:head>
@@ -109,10 +125,7 @@ function getShareModeDescription(value: string): string {
 							<Form.Label>Anonymization mode</Form.Label>
 							<RadioGroup bind:value={$serverWrappedData.anonymizationMode} {...props}>
 								{#each data.anonymizationOptions as opt (opt.value)}
-									<SettingsOptionCard
-										title={opt.label}
-										description={getAnonymizationDescription(opt.value)}
-									>
+									<SettingsOptionCard title={opt.label} description={opt.description}>
 										{#snippet control()}
 											<RadioGroupItem value={opt.value} />
 										{/snippet}
@@ -138,25 +151,20 @@ function getShareModeDescription(value: string): string {
 						{#snippet children({ props })}
 							<Form.Label>Server-wide share mode</Form.Label>
 							<RadioGroup bind:value={$serverWrappedData.serverWrappedShareMode} {...props}>
-								<SettingsOptionCard title="Public" description={getShareModeDescription('public')}>
-									{#snippet control()}
-										<RadioGroupItem value="public" />
-									{/snippet}
-									{#snippet icon()}
-										<GlobeIcon />
-									{/snippet}
-								</SettingsOptionCard>
-								<SettingsOptionCard
-									title="Private (OAuth)"
-									description={getShareModeDescription('private-oauth')}
-								>
-									{#snippet control()}
-										<RadioGroupItem value="private-oauth" />
-									{/snippet}
-									{#snippet icon()}
-										<LockIcon />
-									{/snippet}
-								</SettingsOptionCard>
+								{#each data.serverWrappedShareModeOptions as opt (opt.value)}
+									<SettingsOptionCard title={opt.label} description={opt.description}>
+										{#snippet control()}
+											<RadioGroupItem value={opt.value} />
+										{/snippet}
+										{#snippet icon()}
+											{#if opt.value === 'public'}
+												<GlobeIcon />
+											{:else}
+												<LockIcon />
+											{/if}
+										{/snippet}
+									</SettingsOptionCard>
+								{/each}
 							</RadioGroup>
 						{/snippet}
 					</Form.Control>
@@ -183,6 +191,60 @@ function getShareModeDescription(value: string): string {
 
 	<Card>
 		<CardHeader>
+			<CardTitle>Public landing lookup</CardTitle>
+			<CardDescription>{publicLandingLookupCopy.helper}</CardDescription>
+		</CardHeader>
+		<CardContent>
+			<form
+				method="POST"
+				action="?/updatePublicLandingLookup"
+				use:publicLandingLookupEnhance
+				class="space-y-4"
+			>
+				<input
+					type="hidden"
+					name="publicLandingLookup"
+					value={$publicLandingLookupData.publicLandingLookup ? 'true' : 'false'}
+				/>
+				<SettingsToggleRow
+					id="public-landing-lookup-toggle"
+					title={publicLandingLookupCopy.label}
+					description={$publicLandingLookupData.publicLandingLookup
+						? publicLandingLookupCopy.enabledDescription
+						: publicLandingLookupCopy.disabledDescription}
+					onLabel="Public lookup on"
+					offLabel="Sign-in required"
+					bind:checked={$publicLandingLookupData.publicLandingLookup}
+				>
+					{#snippet icon()}
+						<GlobeIcon />
+					{/snippet}
+				</SettingsToggleRow>
+
+				{#if showContradictionWarning}
+					<Alert>
+						<TriangleAlertIcon />
+						<AlertDescription>{publicLandingLookupCopy.contradictionWarning}</AlertDescription>
+					</Alert>
+				{/if}
+
+				<input
+					type="hidden"
+					name="settingsVersion"
+					bind:value={$publicLandingLookupData.settingsVersion}
+				/>
+
+				<SettingsActionBar>
+					<Button type="submit" class="tap-target" disabled={$publicLandingLookupSubmitting}>
+						{$publicLandingLookupSubmitting ? 'Saving…' : 'Save public lookup'}
+					</Button>
+				</SettingsActionBar>
+			</form>
+		</CardContent>
+	</Card>
+
+	<Card>
+		<CardHeader>
 			<CardTitle>User sharing defaults</CardTitle>
 			<CardDescription>
 				Default share mode for newly-created users, and whether users can change their own
@@ -201,36 +263,22 @@ function getShareModeDescription(value: string): string {
 						{#snippet children({ props })}
 							<Form.Label>Default share mode</Form.Label>
 							<RadioGroup bind:value={$userDefaultsData.defaultShareMode} {...props}>
-								<SettingsOptionCard title="Public" description={getShareModeDescription('public')}>
-									{#snippet control()}
-										<RadioGroupItem value="public" />
-									{/snippet}
-									{#snippet icon()}
-										<GlobeIcon />
-									{/snippet}
-								</SettingsOptionCard>
-								<SettingsOptionCard
-									title="Private (OAuth)"
-									description={getShareModeDescription('private-oauth')}
-								>
-									{#snippet control()}
-										<RadioGroupItem value="private-oauth" />
-									{/snippet}
-									{#snippet icon()}
-										<ShieldUserIcon />
-									{/snippet}
-								</SettingsOptionCard>
-								<SettingsOptionCard
-									title="Private (link)"
-									description={getShareModeDescription('private-link')}
-								>
-									{#snippet control()}
-										<RadioGroupItem value="private-link" />
-									{/snippet}
-									{#snippet icon()}
-										<LinkIcon />
-									{/snippet}
-								</SettingsOptionCard>
+								{#each data.shareModeOptions as opt (opt.value)}
+									<SettingsOptionCard title={opt.label} description={opt.description}>
+										{#snippet control()}
+											<RadioGroupItem value={opt.value} />
+										{/snippet}
+										{#snippet icon()}
+											{#if opt.value === 'public'}
+												<GlobeIcon />
+											{:else if opt.value === 'private-link'}
+												<LinkIcon />
+											{:else}
+												<ShieldUserIcon />
+											{/if}
+										{/snippet}
+									</SettingsOptionCard>
+								{/each}
 							</RadioGroup>
 						{/snippet}
 					</Form.Control>

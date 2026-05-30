@@ -567,6 +567,14 @@ $effect(() => {
 			gap: 1rem;
 			flex-wrap: wrap;
 			justify-content: center;
+			/* `position: relative` activates the existing (previously inert) z-index,
+			   and `isolation: isolate` puts the buttons' colored hover glow into its
+			   own stacking context so it is no longer sampled by the stat-cards'
+			   backdrop-filter or smeared by the page's blended ::before/::after
+			   layers — fixing the stray color behind the cards on hover. The glow
+			   itself is unchanged, so the buttons keep their hover affordance. */
+			position: relative;
+			isolation: isolate;
 			z-index: 1;
 		}
 

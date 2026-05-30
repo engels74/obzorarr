@@ -184,6 +184,9 @@ function handleConfigNavigation(event: MouseEvent): void {
 			opacity: 0.12;
 			pointer-events: none;
 			animation: ambientPulse 8s ease-in-out infinite;
+			/* Defensive: hold the 0% keyframe during the cyan blob's 4s delay so it
+			   can't flash from its static default before the pulse begins. */
+			animation-fill-mode: backwards;
 		}
 
 		.ambient-glow.amber {
@@ -297,6 +300,10 @@ function handleConfigNavigation(event: MouseEvent): void {
 			border-radius: 50%;
 			border: 1px solid oklch(var(--primary) / 0.1);
 			animation: ringExpand 4s ease-in-out infinite;
+			/* Hold the 0% keyframe (scale 0.8, opacity 0) during each ring's
+			   animation-delay window instead of the static visible default — kills
+			   the "two big rings stuck, then breathe" flash on the staggered rings. */
+			animation-fill-mode: backwards;
 		}
 
 		.ring-1 {
@@ -686,6 +693,37 @@ function handleConfigNavigation(event: MouseEvent): void {
 			}
 			50% {
 				transform: scale(1.2) rotate(15deg);
+			}
+		}
+
+		/* Reduced motion: this page's scoped animations are NOT covered by the global
+		   block in app.css (which only targets .text-shimmer/.glow-pulse/.breathe/
+		   .float), so they previously ran unconditionally. Disable them and pin each
+		   element to a calm, visible end state — never leaving anything stuck at an
+		   invisible 0%/backwards keyframe. */
+		@media (prefers-reduced-motion: reduce) {
+			.floating-ring {
+				animation: none;
+				opacity: 0.12;
+				transform: translate(-50%, -50%) scale(1);
+			}
+
+			.ambient-glow {
+				animation: none;
+			}
+
+			.year-badge,
+			.hero-title,
+			.hero-subtitle,
+			.wrapped-showcase,
+			.config-section {
+				animation: none;
+				opacity: 1;
+				transform: none;
+			}
+
+			.year-badge :global(.sparkle-icon) {
+				animation: none;
 			}
 		}
 

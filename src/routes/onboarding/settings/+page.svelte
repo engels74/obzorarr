@@ -7,6 +7,7 @@ import { enhance } from '$app/forms';
 import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
 import { Button } from '$lib/components/ui/button';
+import { publicLandingLookupCopy } from '$lib/sharing/options';
 import { handleFormToast } from '$lib/utils/form-toast';
 import { submitAction } from '$lib/utils/submit-action';
 import { loadThemeFonts } from '$lib/utils/theme-fonts';
@@ -27,7 +28,14 @@ let anonymizationMode = $state(untrack(() => data.settings.anonymizationMode));
 let wrappedLogoMode = $state(untrack(() => data.settings.wrappedLogoMode));
 let defaultShareMode = $state(untrack(() => data.settings.defaultShareMode));
 let allowUserControl = $state(untrack(() => data.settings.allowUserControl));
+let serverWrappedShareMode = $state(untrack(() => data.settings.serverWrappedShareMode));
+let publicLandingLookup = $state(untrack(() => data.settings.publicLandingLookup));
 let enableFunFacts = $state(false);
+
+// Live contradiction warning (parity with the settings Privacy page): the landing
+// toggle is the sole gate, so a non-public default means the form shows but every
+// lookup 404s. Surface it to the admin instead of silently hiding the form.
+let showLandingContradiction = $derived(publicLandingLookup && defaultShareMode !== 'public');
 let funFactFrequency = $state(untrack(() => data.funFactConfig.mode || 'normal'));
 let openaiApiKey = $state('');
 let openaiBaseUrl = $state(
@@ -296,6 +304,12 @@ function getThemeColors(themeValue: string) {
 				<input type="hidden" name="logoMode" value={wrappedLogoMode} />
 				<input type="hidden" name="defaultShareMode" value={defaultShareMode} />
 				<input type="hidden" name="allowUserControl" value={allowUserControl ? 'true' : 'false'} />
+				<input type="hidden" name="serverWrappedShareMode" value={serverWrappedShareMode} />
+				<input
+					type="hidden"
+					name="publicLandingLookup"
+					value={publicLandingLookup ? 'true' : 'false'}
+				/>
 				<input type="hidden" name="enabledSlides" value={enabledSlidesString} />
 				<input type="hidden" name="enableFunFacts" value={enableFunFacts ? 'true' : 'false'} />
 				<input
@@ -476,6 +490,38 @@ function getThemeColors(themeValue: string) {
 							</div>
 
 							<div class="setting-group">
+								<span class="setting-label">Server-wide Wrapped Sharing</span>
+								<p class="setting-description">
+									Who can view the server-wide /wrapped recap
+								</p>
+								<div class="radio-cards">
+									{#each data.serverWrappedShareModeOptions as option}
+										<label
+											class="radio-card"
+											class:selected={serverWrappedShareMode === option.value}
+										>
+											<input
+												type="radio"
+												name="serverWrappedShareModeRadio"
+												value={option.value}
+												checked={serverWrappedShareMode === option.value}
+												onchange={() => (serverWrappedShareMode = option.value)}
+											/>
+											<div class="radio-card-content">
+												<div class="radio-indicator">
+													<div class="radio-dot"></div>
+												</div>
+												<div class="radio-text">
+													<span class="radio-label">{option.label}</span>
+													<span class="radio-description">{option.description}</span>
+												</div>
+											</div>
+										</label>
+									{/each}
+								</div>
+							</div>
+
+							<div class="setting-group">
 								<label class="toggle-row">
 									<div class="toggle-text">
 										<span class="toggle-label">Allow User Control</span>
@@ -503,6 +549,30 @@ function getThemeColors(themeValue: string) {
 										aria-hidden="true"
 									/>
 								</label>
+							</div>
+
+							<div class="setting-group">
+								<label class="toggle-row">
+									<div class="toggle-text">
+										<span class="toggle-label">{publicLandingLookupCopy.label}</span>
+										<span class="toggle-description">{publicLandingLookupCopy.helper}</span>
+									</div>
+									<button
+										type="button"
+										class="toggle-switch"
+										class:active={publicLandingLookup}
+										onclick={() => (publicLandingLookup = !publicLandingLookup)}
+										aria-pressed={publicLandingLookup}
+										aria-label={publicLandingLookupCopy.label}
+									>
+										<span class="toggle-knob"></span>
+									</button>
+								</label>
+								{#if showLandingContradiction}
+									<p class="landing-warning" role="status">
+										{publicLandingLookupCopy.contradictionWarning}
+									</p>
+								{/if}
 							</div>
 						</div>
 					{:else if currentStepData.id === 'slides'}
@@ -1150,6 +1220,18 @@ function getThemeColors(themeValue: string) {
 			font-size: 0.8rem;
 			color: rgba(255, 255, 255, 0.45);
 			margin-bottom: 0.75rem;
+		}
+
+		/* Admin contradiction notice: landing lookup on + non-public default. */
+		.landing-warning {
+			margin: 0.625rem 0 0;
+			padding: 0.625rem 0.75rem;
+			font-size: 0.78rem;
+			line-height: 1.4;
+			color: #fcd34d;
+			background: rgba(245, 158, 11, 0.12);
+			border: 1px solid rgba(245, 158, 11, 0.35);
+			border-radius: 0.625rem;
 		}
 
 		/* Theme Swatches */

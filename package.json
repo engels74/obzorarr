@@ -17,7 +17,6 @@
 		"lint": "biome lint .",
 		"lint:fix": "biome lint --write .",
 		"check:biome": "biome check .",
-		"check:tweakcn-drift": "bun run scripts/tweakcn-drift.ts",
 		"dogfood:scrub": "bun run scripts/scrub-dogfood-output.ts",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "bun run scripts/migrate.ts",
