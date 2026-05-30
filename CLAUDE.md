@@ -120,8 +120,6 @@ ENV vars take precedence over DB rows; conflicting DB rows are auto-cleared at s
 - Import database types/tables from `src/lib/server/db/schema.ts`; never open a second
   `bun:sqlite` connection — use the shared `db` from `src/lib/server/db/client.ts`.
 - Theme colors are OKLCH custom properties in `src/app.css`, consumed as `oklch(var(--token))`.
-  After editing theme tokens, run `bun run check:tweakcn-drift` (CI gates token drift against
-  `tests/fixtures/oklch-baseline.json`; re-baseline with `bun run check:tweakcn-drift -- --update`).
 - Return generic error messages to clients; log the real error server-side with `logger`
   (see the slide-error contract in `src/lib/server/slides/types.ts`) to avoid leaking SQL/internals.
 - Plex/server URLs must be normalized via `$lib/server/security/credentialed-url`

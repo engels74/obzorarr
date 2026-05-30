@@ -8,6 +8,7 @@ import {
 	getAnonymizationMode,
 	getAppSetting,
 	getFunFactFrequency,
+	getPublicLandingLookupEnabled,
 	getUITheme,
 	getWrappedLogoMode,
 	getWrappedTheme,
@@ -22,7 +23,11 @@ import {
 	clearBootstrapToken,
 	createBootstrapToken
 } from '$lib/server/onboarding/bootstrap';
-import { getGlobalAllowUserControl, getGlobalDefaultShareMode } from '$lib/server/sharing/service';
+import {
+	getGlobalAllowUserControl,
+	getGlobalDefaultShareMode,
+	getServerWrappedShareMode
+} from '$lib/server/sharing/service';
 import { initializeDefaultSlideConfig } from '$lib/server/slides/config.service';
 import { actions } from '../../../src/routes/onboarding/settings/+page.server';
 
@@ -53,6 +58,8 @@ function createSettingsRequest(overrides: Record<string, string> = {}): Request 
 	formData.set('logoMode', 'always_show');
 	formData.set('defaultShareMode', 'public');
 	formData.set('allowUserControl', 'false');
+	formData.set('serverWrappedShareMode', 'public');
+	formData.set('publicLandingLookup', 'true');
 	formData.set('enabledSlides', '');
 	formData.set('enableFunFacts', 'false');
 
@@ -172,6 +179,33 @@ describe('onboarding settings actions', () => {
 		expect(await getGlobalDefaultShareMode()).toBe('private-link');
 		expect(await getGlobalAllowUserControl()).toBe(true);
 		expect(await getOnboardingStep()).toBe(OnboardingSteps.COMPLETE);
+	});
+
+	it('persists server-wide share mode and public-landing-lookup (privacy parity)', async () => {
+		// Onboarding must write the SAME privacy keys the settings actions write, so a
+		// fresh install and a settings edit converge on the same app_settings rows.
+		const request = createSettingsRequest({
+			anonymizationMode: AnonymizationMode.HYBRID,
+			defaultShareMode: 'private-oauth',
+			allowUserControl: 'true',
+			serverWrappedShareMode: 'private-oauth',
+			publicLandingLookup: 'false'
+		});
+
+		await expectRedirect(() => runSaveSettings(request), '/onboarding/complete');
+
+		expect(await getAnonymizationMode()).toBe(AnonymizationMode.HYBRID);
+		expect(await getGlobalDefaultShareMode()).toBe('private-oauth');
+		expect(await getGlobalAllowUserControl()).toBe(true);
+		expect(await getServerWrappedShareMode()).toBe('private-oauth');
+		expect(await getPublicLandingLookupEnabled()).toBe(false);
+	});
+
+	it('writes the public-landing-lookup toggle as on when submitted true', async () => {
+		const request = createSettingsRequest({ publicLandingLookup: 'true' });
+		await expectRedirect(() => runSaveSettings(request), '/onboarding/complete');
+		expect(await getPublicLandingLookupEnabled()).toBe(true);
+		expect(await getAppSetting(AppSettingsKey.PUBLIC_LANDING_LOOKUP)).toBe('true');
 	});
 
 	it('persists enabled fun fact frequency when AI credentials are supplied', async () => {

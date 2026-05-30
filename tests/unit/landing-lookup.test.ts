@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import { isRedirect } from '@sveltejs/kit';
+import {
+	getPublicLandingLookupEnabled,
+	setPublicLandingLookupEnabled
+} from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
 import { appSettings, plexAccounts, shareSettings, users } from '$lib/server/db/schema';
 import { logger } from '$lib/server/logging';
@@ -17,8 +21,9 @@ let liveSyncCalls: string[] = [];
 
 let triggerLiveSyncSpy: ReturnType<typeof spyOn<typeof liveSync, 'triggerLiveSyncIfNeeded'>>;
 
-const { actions } = await import('../../src/routes/+page.server');
+const { actions, load } = await import('../../src/routes/+page.server');
 type LookupAction = NonNullable<typeof actions.lookupUser>;
+type LandingLoad = typeof load;
 
 const USER_ID = 42;
 const YEAR = new Date().getFullYear();
@@ -93,6 +98,10 @@ describe('landing username lookup', () => {
 		await db.delete(appSettings);
 		await db.delete(users);
 		await db.delete(plexAccounts);
+		// The public lookup form is now gated behind PUBLIC_LANDING_LOOKUP (default
+		// off). These cases all exercise the form being available, so enable it; the
+		// dedicated toggle-off cases below disable it explicitly.
+		await setPublicLandingLookupEnabled(true);
 		liveSyncCalls = [];
 		liveSyncResult = { triggered: false, syncInProgress: false, reason: 'disabled' };
 		triggerLiveSyncSpy = spyOn(liveSync, 'triggerLiveSyncIfNeeded');
@@ -217,5 +226,93 @@ describe('landing username lookup', () => {
 
 		const createdUsers = await db.select().from(users);
 		expect(createdUsers).toHaveLength(0);
+	});
+
+	describe('public landing lookup gate', () => {
+		it('rejects the lookup with 403 (no redirect) when the toggle is off', async () => {
+			// Toggle off even though the user would otherwise be publicly reachable —
+			// proves the action guard is independent of the per-user share mode.
+			await setPublicLandingLookupEnabled(false);
+			await setGlobalShareDefaults({
+				defaultShareMode: ShareMode.PUBLIC,
+				allowUserControl: false
+			});
+			await seedUser();
+
+			const warnSpy = spyOn(logger, 'warn').mockImplementation(() => {});
+			try {
+				const result = await invokeLookup('alice', '198.51.100.7');
+				expect(result).toEqual({
+					status: 403,
+					data: {
+						error: 'Public lookup is disabled on this server.',
+						requiresAuth: true
+					}
+				});
+				// Guard short-circuits before any live-sync work runs.
+				expect(liveSyncCalls).toHaveLength(0);
+			} finally {
+				warnSpy.mockRestore();
+			}
+		});
+
+		it('still 404s a non-public user when the toggle is on (per-user gate intact)', async () => {
+			await setGlobalShareDefaults({
+				defaultShareMode: ShareMode.PUBLIC,
+				allowUserControl: false
+			});
+			await seedUser(ShareMode.PRIVATE_OAUTH);
+
+			const result = await invokeLookup('alice', '198.51.100.8');
+			expect(result).toEqual({
+				status: 404,
+				data: {
+					error: 'No public Wrapped found for that username.',
+					username: 'alice',
+					requiresAuth: true
+				}
+			});
+		});
+	});
+
+	describe('landing load gating', () => {
+		// `load` is typed `void | PageData` (the authenticated branch redirects). These
+		// cases pass an anonymous `locals`, so the data branch always returns; cast to
+		// the known shape so the assertions type-check.
+		const invokeLoad = async (): Promise<{
+			currentYear: number;
+			publicLookupEnabled: boolean;
+			loginHref: string;
+		}> =>
+			(await (load as LandingLoad)({ locals: {} } as unknown as Parameters<LandingLoad>[0])) as {
+				currentYear: number;
+				publicLookupEnabled: boolean;
+				loginHref: string;
+			};
+
+		it('returns publicLookupEnabled === toggle value regardless of default share mode', async () => {
+			// Toggle on but default non-public: load still reports the toggle value
+			// (sole-gate semantics), and surfaces the sign-in href.
+			await setPublicLandingLookupEnabled(true);
+			await setGlobalShareDefaults({
+				defaultShareMode: ShareMode.PRIVATE_OAUTH,
+				allowUserControl: false
+			});
+
+			const onData = await invokeLoad();
+			expect(onData.publicLookupEnabled).toBe(true);
+			expect(onData.loginHref).toBe('/auth/plex');
+
+			await setPublicLandingLookupEnabled(false);
+			const offData = await invokeLoad();
+			expect(offData.publicLookupEnabled).toBe(false);
+		});
+
+		it('defaults publicLookupEnabled to false when no row exists', async () => {
+			await db.delete(appSettings);
+			expect(await getPublicLandingLookupEnabled()).toBe(false);
+			const data = await invokeLoad();
+			expect(data.publicLookupEnabled).toBe(false);
+		});
 	});
 });

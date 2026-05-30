@@ -49,7 +49,15 @@ export const AppSettingsKey = {
 	CSRF_ORIGIN_SKIPPED: 'csrf_origin_skipped',
 	CSRF_WARNING_DISMISSED: 'csrf_warning_dismissed',
 	TRUST_PROXY: 'trust_proxy',
-	THUMBNAIL_SIGNING_SECRET: 'thumbnail_signing_secret'
+	THUMBNAIL_SIGNING_SECRET: 'thumbnail_signing_secret',
+	/**
+	 * Admin opt-in for the public username lookup form on the landing page. When
+	 * absent, `getPublicLandingLookupEnabled()` defaults to `false` (login-only).
+	 * DB-only (no ENV companion) so it is NOT subject to `clearConflictingDbSettings`;
+	 * `ensurePublicLandingLookupDefault()` seeds `true` for already-onboarded servers
+	 * on upgrade so a live public landing page never silently flips to login-required.
+	 */
+	PUBLIC_LANDING_LOOKUP: 'public_landing_lookup'
 } as const;
 
 export type AppSettingsKeyType = (typeof AppSettingsKey)[keyof typeof AppSettingsKey];
@@ -172,6 +180,16 @@ export const LOG_SETTINGS_KEYS = [
  * `getAppSettingsUpdatedAt(...)` helper that the multi-key OCC paths use.
  */
 export const TRUST_PROXY_SETTINGS_KEYS = [AppSettingsKey.TRUST_PROXY] as const;
+
+/**
+ * Single-key OCC tuple for the Privacy tab "Allow public Wrapped lookup" toggle.
+ * Intentionally NOT folded into `SERVER_WRAPPED_SETTINGS_KEYS` or
+ * `USER_DEFAULTS_SETTINGS_KEYS`: each privacy form keeps its own optimistic-lock
+ * version so the toggle and the server-wide / user-default share-mode forms can
+ * never false-409 one another (same rationale as the split between the existing
+ * server-wide and user-default groups above).
+ */
+export const PUBLIC_LANDING_LOOKUP_SETTINGS_KEYS = [AppSettingsKey.PUBLIC_LANDING_LOOKUP] as const;
 
 /**
  * Single-key OCC tuple for the Security tab CSRF Origin field (the textarea
@@ -1160,6 +1178,109 @@ export async function clearConflictingDbSettings(): Promise<string[]> {
 	}
 
 	return clearedSettings;
+}
+
+/**
+ * Whether the landing page should offer the public username-lookup form.
+ * Defaults to `false` (login-only) when no row exists, so a brand-new install is
+ * never accidentally public before the admin makes the choice in onboarding.
+ * Mirrors the `getGlobalAllowUserControl` boolean-row pattern.
+ */
+export async function getPublicLandingLookupEnabled(): Promise<boolean> {
+	return (await getAppSetting(AppSettingsKey.PUBLIC_LANDING_LOOKUP)) === 'true';
+}
+
+export async function setPublicLandingLookupEnabled(enabled: boolean): Promise<void> {
+	await setAppSetting(AppSettingsKey.PUBLIC_LANDING_LOOKUP, String(enabled));
+}
+
+/**
+ * Atomically validates that the "Allow public Wrapped lookup" toggle has not
+ * changed since `submittedVersion` and, if so, writes the value in a single
+ * SQLite transaction. Returns `'conflict'` when the submitted version is stale.
+ *
+ * Mirrors `setServerWrappedSettingsAtomic`/`setUserDefaultsAtomic`: the inline
+ * `inlineOccCheck` in the action is only a pre-write guard, so the same
+ * second OCC check inside the transaction (plus `nextOccVersionDate` for
+ * monotonic `updatedAt`) is required to close the TOCTOU window where two
+ * concurrent admin submissions both pass the pre-check. The blind
+ * `setPublicLandingLookupEnabled` upsert remains for the onboarding path,
+ * which writes the value with no optimistic-concurrency version.
+ */
+export async function setPublicLandingLookupEnabledAtomic(opts: {
+	enabled: boolean;
+	submittedVersion: string;
+}): Promise<'ok' | 'conflict'> {
+	return db.transaction(async (tx) => {
+		const rows = await tx
+			.select({ updatedAt: appSettings.updatedAt })
+			.from(appSettings)
+			.where(inArray(appSettings.key, PUBLIC_LANDING_LOOKUP_SETTINGS_KEYS as unknown as string[]));
+
+		// Treat a missing/blank submittedVersion as a stale tab regardless of row
+		// count — defends against the fresh-install/all-cleared loophole.
+		const submittedMs = opts.submittedVersion ? Date.parse(opts.submittedVersion) : Number.NaN;
+		if (Number.isNaN(submittedMs)) {
+			return 'conflict';
+		}
+		// Compute `maxMs` over the existing rows so the OCC check and the write
+		// timestamp share the same DB floor. With no rows, `maxMs = 0` is fine —
+		// `Date.now()` dominates inside `nextOccVersionDate`.
+		let maxMs = 0;
+		for (const row of rows) {
+			const t = row.updatedAt.getTime();
+			if (t > maxMs) maxMs = t;
+		}
+		if (rows.length > 0 && submittedMs < maxMs) {
+			return 'conflict';
+		}
+
+		const now = nextOccVersionDate(maxMs);
+		const value = String(opts.enabled);
+
+		await tx
+			.insert(appSettings)
+			.values({ key: AppSettingsKey.PUBLIC_LANDING_LOOKUP, value, updatedAt: now })
+			.onConflictDoUpdate({
+				target: appSettings.key,
+				set: { value, updatedAt: now }
+			});
+
+		return 'ok';
+	});
+}
+
+/**
+ * DB-idempotent backfill for `PUBLIC_LANDING_LOOKUP`. Seeds `'true'` for servers
+ * that completed onboarding *before* this toggle existed, so upgrading never
+ * silently flips a live public landing page to login-required. Correctness is
+ * guaranteed by the DB row-absence check (safe across replicas/restarts); the
+ * caller (`initializationHandle`) wraps this in a process-local "attempted" flag
+ * purely as a hot-path optimisation — that flag is never the idempotency guard.
+ *
+ * Seeds ONLY when `ONBOARDING_COMPLETED === 'true'` AND no row exists:
+ *   - a not-yet-onboarded install is left untouched (onboarding writes the
+ *     toggle explicitly so the admin sees the choice);
+ *   - an explicit `'true'`/`'false'` is never overwritten — the leading
+ *     null-check skips the write, and `onConflictDoNothing` makes the insert a
+ *     no-op under a concurrent first-request race.
+ *
+ * This is a *backfill*, not a schema migration: `app_settings` is a generic
+ * key/value table, so no `db:generate` is required (per CLAUDE.md, the
+ * "add a table/column" workflow does not apply to key/value rows).
+ */
+export async function ensurePublicLandingLookupDefault(): Promise<void> {
+	const onboardingCompleted = await getAppSetting(AppSettingsKey.ONBOARDING_COMPLETED);
+	if (onboardingCompleted !== 'true') return;
+
+	const existing = await getAppSetting(AppSettingsKey.PUBLIC_LANDING_LOOKUP);
+	if (existing !== null) return;
+
+	const now = new Date();
+	await db
+		.insert(appSettings)
+		.values({ key: AppSettingsKey.PUBLIC_LANDING_LOOKUP, value: 'true', updatedAt: now })
+		.onConflictDoNothing({ target: appSettings.key });
 }
 
 export async function isCsrfWarningDismissed(): Promise<boolean> {

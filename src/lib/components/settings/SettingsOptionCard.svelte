@@ -157,13 +157,12 @@ let { title, description, control, icon, swatches = [], meta, class: className }
 	.theme-swatches {
 		gap: 0.22rem;
 		padding: 0.16rem 0.24rem;
-		border: 1px solid oklch(var(--border) / 0.7);
+		border: 1px solid oklch(var(--border));
 		border-radius: 999px;
-		background: linear-gradient(
-			135deg,
-			oklch(var(--background) / 0.78),
-			oklch(var(--muted) / 0.42)
-		);
+		/* Lighter, near-opaque card surface so a dark swatch (one of the three is
+		   near `--background` lightness on every theme) no longer disappears against
+		   a near-black pill. Replaces the previous background→muted gradient. */
+		background: oklch(var(--card) / 0.9);
 		box-shadow: inset 0 1px 0 oklch(var(--foreground) / 0.04);
 		isolation: isolate;
 	}
@@ -172,9 +171,12 @@ let { title, description, control, icon, swatches = [], meta, class: className }
 		display: inline-block;
 		width: 0.68rem;
 		height: 0.68rem;
-		border: 1px solid oklch(var(--background) / 0.86);
+		/* Light inner edge + a stronger `--foreground`-tinted outer ring (was a faint
+		   `--border` ring) so every swatch keeps a visible boundary even when its fill
+		   nearly matches the pill surface. */
+		border: 1px solid oklch(var(--foreground) / 0.2);
 		border-radius: 999px;
-		box-shadow: 0 0 0 1px oklch(var(--border) / 0.7);
+		box-shadow: 0 0 0 1px oklch(var(--foreground) / 0.3);
 	}
 
 	.meta-text {

@@ -18,6 +18,7 @@ import {
 	getApiConfigWithSources,
 	getAppSetting,
 	getFunFactFrequency,
+	getPublicLandingLookupEnabled,
 	getUITheme,
 	getWrappedLogoMode,
 	getWrappedTheme,
@@ -25,6 +26,7 @@ import {
 	setAnonymizationMode,
 	setAppSetting,
 	setFunFactFrequency,
+	setPublicLandingLookupEnabled,
 	setUITheme,
 	setWrappedLogoMode,
 	setWrappedTheme,
@@ -49,13 +51,21 @@ import {
 import {
 	getGlobalAllowUserControl,
 	getGlobalDefaultShareMode,
-	setGlobalShareDefaults
+	getServerWrappedShareMode,
+	setGlobalShareDefaults,
+	setServerWrappedShareMode
 } from '$lib/server/sharing/service';
 import {
 	getAllSlideConfigs,
 	initializeDefaultSlideConfig,
 	updateSlideConfig
 } from '$lib/server/slides/config.service';
+import {
+	anonymizationOptions,
+	serverWrappedShareModeOptions,
+	shareModeOptions,
+	wrappedLogoOptions
+} from '$lib/sharing/options';
 import { ShareMode, type ShareModeType } from '$lib/sharing/types';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -92,6 +102,13 @@ const SettingsSchema = z.object({
 	]),
 	defaultShareMode: z.enum([ShareMode.PUBLIC, ShareMode.PRIVATE_OAUTH, ShareMode.PRIVATE_LINK]),
 	allowUserControl: z.enum(['true', 'false']).transform((v) => v === 'true'),
+	// Server-wide wrapped recap share mode — only public | private-oauth (parity
+	// with the settings Privacy page; private-link is not supported server-wide).
+	serverWrappedShareMode: z.enum([ShareMode.PUBLIC, ShareMode.PRIVATE_OAUTH]),
+	// New dedicated landing-page public-lookup toggle. Defaults to off (login-only)
+	// on a fresh install — the form is seeded from getPublicLandingLookupEnabled(),
+	// which returns false when no DB row exists, so it's never public before the admin opts in.
+	publicLandingLookup: z.enum(['true', 'false']).transform((v) => v === 'true'),
 
 	// Slides (comma-separated list of enabled slide types)
 	enabledSlides: z.string().optional(),
@@ -129,6 +146,8 @@ export const load: PageServerLoad = async ({ parent }) => {
 		wrappedLogoMode,
 		defaultShareMode,
 		allowUserControl,
+		serverWrappedShareMode,
+		publicLandingLookupEnabled,
 		slideConfigs,
 		funFactConfig,
 		openaiBaseUrl,
@@ -141,6 +160,8 @@ export const load: PageServerLoad = async ({ parent }) => {
 		getWrappedLogoMode(),
 		getGlobalDefaultShareMode(),
 		getGlobalAllowUserControl(),
+		getServerWrappedShareMode(),
+		getPublicLandingLookupEnabled(),
 		getAllSlideConfigs(),
 		getFunFactFrequency(),
 		getAppSetting(AppSettingsKey.OPENAI_BASE_URL),
@@ -160,44 +181,6 @@ export const load: PageServerLoad = async ({ parent }) => {
 			.replace(/\b\w/g, (c) => c.toUpperCase())
 	}));
 
-	// Build anonymization options
-	const anonymizationOptions = [
-		{
-			value: AnonymizationMode.REAL,
-			label: 'Real Names',
-			description: 'Show actual usernames in server-wide stats'
-		},
-		{
-			value: AnonymizationMode.ANONYMOUS,
-			label: 'Anonymous',
-			description: 'Hide all usernames (e.g., "User #1", "User #2")'
-		},
-		{
-			value: AnonymizationMode.HYBRID,
-			label: 'Hybrid',
-			description: 'Users see their own name, others are anonymized'
-		}
-	];
-
-	// Build share mode options
-	const shareModeOptions = [
-		{
-			value: ShareMode.PUBLIC,
-			label: 'Public',
-			description: 'Anyone with the link can view'
-		},
-		{
-			value: ShareMode.PRIVATE_OAUTH,
-			label: 'Server Members Only',
-			description: 'Only authenticated Plex server members'
-		},
-		{
-			value: ShareMode.PRIVATE_LINK,
-			label: 'Private Link',
-			description: 'Requires unique share token'
-		}
-	];
-
 	// Build slide options (only built-in slides)
 	const slideOptions = slideConfigs
 		.filter((config) => DEFAULT_SLIDE_ORDER.includes(config.slideType as SlideType))
@@ -214,24 +197,6 @@ export const load: PageServerLoad = async ({ parent }) => {
 		{ value: FunFactFrequency.MANY, label: 'Many', description: '6-10 facts' }
 	];
 
-	const wrappedLogoOptions = [
-		{
-			value: WrappedLogoMode.ALWAYS_SHOW,
-			label: 'Always Show',
-			description: 'Logo always visible on wrapped pages'
-		},
-		{
-			value: WrappedLogoMode.ALWAYS_HIDE,
-			label: 'Always Hide',
-			description: 'Logo hidden on all wrapped pages'
-		},
-		{
-			value: WrappedLogoMode.USER_CHOICE,
-			label: 'User Choice',
-			description: 'Users can toggle logo visibility'
-		}
-	];
-
 	return {
 		...parentData,
 		settings: {
@@ -240,12 +205,16 @@ export const load: PageServerLoad = async ({ parent }) => {
 			anonymizationMode,
 			wrappedLogoMode,
 			defaultShareMode,
-			allowUserControl
+			allowUserControl,
+			serverWrappedShareMode: serverWrappedShareMode === 'public' ? 'public' : 'private-oauth',
+			publicLandingLookup: publicLandingLookupEnabled
 		},
 		slideOptions,
 		themeOptions,
+		// Shared copy so onboarding (privacy) and the settings pages never drift.
 		anonymizationOptions,
 		shareModeOptions,
+		serverWrappedShareModeOptions,
 		wrappedLogoOptions,
 		hasOpenAI,
 		funFactConfig,
@@ -330,6 +299,8 @@ export const actions: Actions = {
 				logoMode: formData.get('logoMode'),
 				defaultShareMode: formData.get('defaultShareMode'),
 				allowUserControl: formData.get('allowUserControl'),
+				serverWrappedShareMode: formData.get('serverWrappedShareMode'),
+				publicLandingLookup: formData.get('publicLandingLookup'),
 				enabledSlides: formData.get('enabledSlides'),
 				enableFunFacts: formData.get('enableFunFacts'),
 				funFactFrequency: optionalString('funFactFrequency'),
@@ -385,6 +356,11 @@ export const actions: Actions = {
 					defaultShareMode: data.defaultShareMode as ShareModeType,
 					allowUserControl: data.allowUserControl
 				}),
+				// Server-wide share mode via the plain non-OCC setter: onboarding is a
+				// linear single-admin wizard with no OCC version in flight, and the keys
+				// may not exist yet on a fresh install (the atomic setter would 409).
+				setServerWrappedShareMode(data.serverWrappedShareMode as ShareModeType),
+				setPublicLandingLookupEnabled(data.publicLandingLookup),
 
 				// AI Features (only if enabled)
 				data.enableFunFacts && data.funFactFrequency

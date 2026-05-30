@@ -244,7 +244,7 @@ function getThemeDescription(theme: string): string {
 					class="grid gap-2"
 				>
 					{#each data.wrappedLogoOptions as option (option.value)}
-						<SettingsOptionCard title={option.label} meta="Logo">
+						<SettingsOptionCard title={option.label} description={option.description} meta="Logo">
 							{#snippet control()}
 								<RadioGroupItem value={option.value} />
 							{/snippet}

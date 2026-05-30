@@ -1,5 +1,6 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { z } from 'zod';
+import { getPublicLandingLookupEnabled } from '$lib/server/admin/settings.service';
 import { logger } from '$lib/server/logging';
 import { getEffectiveShareMode } from '$lib/server/sharing/service';
 import { ShareMode } from '$lib/server/sharing/types';
@@ -22,13 +23,31 @@ export const load: PageServerLoad = async ({ locals }) => {
 		redirect(303, locals.user.isAdmin ? '/admin' : '/dashboard');
 	}
 
+	// The toggle is the SOLE visibility gate (decision D1): the form renders iff
+	// the admin opted in, independent of the default share mode. A contradictory
+	// config (toggle on + non-public default) is surfaced to the admin as a
+	// warning in settings/onboarding rather than hidden from visitors here.
 	return {
-		currentYear: new Date().getFullYear()
+		currentYear: new Date().getFullYear(),
+		publicLookupEnabled: await getPublicLandingLookupEnabled(),
+		loginHref: '/auth/plex'
 	};
 };
 
 export const actions: Actions = {
 	lookupUser: async ({ request, cookies }) => {
+		// Defense in depth: the template hides the form when the toggle is off, but
+		// a crafted POST would still reach this action. Refuse before doing any
+		// lookup work. The per-user getEffectiveShareMode 404 below remains the
+		// deepest data gate regardless of this toggle.
+		if (!(await getPublicLandingLookupEnabled())) {
+			logger.debug('Rejected landing lookup: public lookup is disabled', 'LandingLookup');
+			return fail(403, {
+				error: 'Public lookup is disabled on this server.',
+				requiresAuth: true
+			});
+		}
+
 		const formData = await request.formData();
 		const rawUsername = formData.get('username')?.toString() ?? '';
 
