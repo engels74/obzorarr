@@ -7,6 +7,7 @@ import ShieldUserIcon from '@lucide/svelte/icons/shield-user';
 import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 import UserCogIcon from '@lucide/svelte/icons/user-cog';
 import UsersIcon from '@lucide/svelte/icons/users';
+import type { ActionResult } from '@sveltejs/kit';
 import { superForm } from 'sveltekit-superforms';
 import { enhance } from '$app/forms';
 import { invalidateAll } from '$app/navigation';
@@ -37,9 +38,26 @@ interface Props {
 
 let { data }: Props = $props();
 
+// An OCC stale-write returns fail(409, { form, conflict, error }) AFTER validation,
+// so the returned `form` is still valid — `onUpdated` would otherwise fire a false
+// "Saved" success toast while the write was actually discarded (ISSUE-006). Detect
+// the conflict in `onUpdate`, surface the server's reload message, and cancel() so
+// the success path never runs and the stale settingsVersion stays put for reload.
+function surfaceOccConflict(event: { result: ActionResult; cancel: () => void }): void {
+	const { result } = event;
+	if (result.type === 'failure' && (result.data as { conflict?: boolean } | undefined)?.conflict) {
+		const message =
+			(result.data as { error?: string } | undefined)?.error ??
+			'Settings changed in another tab. Please reload.';
+		handleFormToast({ error: message });
+		event.cancel();
+	}
+}
+
 // svelte-ignore state_referenced_locally
 const serverWrappedForm = superForm(data.serverWrappedForm, {
 	resetForm: false,
+	onUpdate: surfaceOccConflict,
 	onUpdated({ form: updated }) {
 		if (updated.valid) {
 			handleFormToast({ success: true, message: updated.message ?? 'Saved' });
@@ -57,6 +75,7 @@ const {
 // svelte-ignore state_referenced_locally
 const userDefaultsForm = superForm(data.userDefaultsForm, {
 	resetForm: false,
+	onUpdate: surfaceOccConflict,
 	onUpdated({ form: updated }) {
 		if (updated.valid) {
 			handleFormToast({ success: true, message: updated.message ?? 'Saved' });
@@ -74,6 +93,7 @@ const {
 // svelte-ignore state_referenced_locally
 const publicLandingLookupForm = superForm(data.publicLandingLookupForm, {
 	resetForm: false,
+	onUpdate: surfaceOccConflict,
 	onUpdated({ form: updated }) {
 		if (updated.valid) {
 			handleFormToast({ success: true, message: updated.message ?? 'Saved' });
