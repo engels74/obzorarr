@@ -96,9 +96,9 @@ const initializationHandle: Handle = async ({ event, resolve }) => {
 	// initializationHandle precedes every landing `load` in the `sequence(...)` below,
 	// the backfill is guaranteed to run before the first getPublicLandingLookupEnabled().
 	if (!publicLandingLookupBackfilled) {
-		publicLandingLookupBackfilled = true;
 		try {
 			await ensurePublicLandingLookupDefault();
+			publicLandingLookupBackfilled = true;
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			logger.error(`Failed to backfill public landing lookup default: ${errorMessage}`, 'Startup');

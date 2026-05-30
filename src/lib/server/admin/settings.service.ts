@@ -1195,6 +1195,62 @@ export async function setPublicLandingLookupEnabled(enabled: boolean): Promise<v
 }
 
 /**
+ * Atomically validates that the "Allow public Wrapped lookup" toggle has not
+ * changed since `submittedVersion` and, if so, writes the value in a single
+ * SQLite transaction. Returns `'conflict'` when the submitted version is stale.
+ *
+ * Mirrors `setServerWrappedSettingsAtomic`/`setUserDefaultsAtomic`: the inline
+ * `inlineOccCheck` in the action is only a pre-write guard, so the same
+ * second OCC check inside the transaction (plus `nextOccVersionDate` for
+ * monotonic `updatedAt`) is required to close the TOCTOU window where two
+ * concurrent admin submissions both pass the pre-check. The blind
+ * `setPublicLandingLookupEnabled` upsert remains for the onboarding path,
+ * which writes the value with no optimistic-concurrency version.
+ */
+export async function setPublicLandingLookupEnabledAtomic(opts: {
+	enabled: boolean;
+	submittedVersion: string;
+}): Promise<'ok' | 'conflict'> {
+	return db.transaction(async (tx) => {
+		const rows = await tx
+			.select({ updatedAt: appSettings.updatedAt })
+			.from(appSettings)
+			.where(inArray(appSettings.key, PUBLIC_LANDING_LOOKUP_SETTINGS_KEYS as unknown as string[]));
+
+		// Treat a missing/blank submittedVersion as a stale tab regardless of row
+		// count — defends against the fresh-install/all-cleared loophole.
+		const submittedMs = opts.submittedVersion ? Date.parse(opts.submittedVersion) : Number.NaN;
+		if (Number.isNaN(submittedMs)) {
+			return 'conflict';
+		}
+		// Compute `maxMs` over the existing rows so the OCC check and the write
+		// timestamp share the same DB floor. With no rows, `maxMs = 0` is fine —
+		// `Date.now()` dominates inside `nextOccVersionDate`.
+		let maxMs = 0;
+		for (const row of rows) {
+			const t = row.updatedAt.getTime();
+			if (t > maxMs) maxMs = t;
+		}
+		if (rows.length > 0 && submittedMs < maxMs) {
+			return 'conflict';
+		}
+
+		const now = nextOccVersionDate(maxMs);
+		const value = String(opts.enabled);
+
+		await tx
+			.insert(appSettings)
+			.values({ key: AppSettingsKey.PUBLIC_LANDING_LOOKUP, value, updatedAt: now })
+			.onConflictDoUpdate({
+				target: appSettings.key,
+				set: { value, updatedAt: now }
+			});
+
+		return 'ok';
+	});
+}
+
+/**
  * DB-idempotent backfill for `PUBLIC_LANDING_LOOKUP`. Seeds `'true'` for servers
  * that completed onboarding *before* this toggle existed, so upgrading never
  * silently flips a live public landing page to login-required. Correctness is

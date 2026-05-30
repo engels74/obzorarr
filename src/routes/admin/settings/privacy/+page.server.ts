@@ -14,7 +14,7 @@ import {
 	getPublicLandingLookupEnabled,
 	PUBLIC_LANDING_LOOKUP_SETTINGS_KEYS,
 	SERVER_WRAPPED_SETTINGS_KEYS,
-	setPublicLandingLookupEnabled,
+	setPublicLandingLookupEnabledAtomic,
 	setServerWrappedSettingsAtomic,
 	setUserDefaultsAtomic,
 	USER_DEFAULTS_SETTINGS_KEYS
@@ -109,7 +109,9 @@ const UserDefaultsSettingsSchema = z.object({
  * (`PUBLIC_LANDING_LOOKUP_SETTINGS_KEYS`). Kept as a separate form + action from
  * the server-wide and user-default forms so the three privacy controls never
  * false-409 one another. Reuses `FormBooleanSchema` so a stray 'on' fails
- * validation rather than silently flipping a privacy toggle.
+ * validation rather than silently flipping a privacy toggle. Same two-stage OCC
+ * (Zod min(1) + inlineOccCheck + transactional check in
+ * `setPublicLandingLookupEnabledAtomic`) as the two schemas above.
  */
 const PublicLandingLookupSchema = z.object({
 	publicLandingLookup: FormBooleanSchema,
@@ -313,7 +315,17 @@ export const actions: Actions = requireAdminActions({
 		}
 
 		try {
-			await setPublicLandingLookupEnabled(form.data.publicLandingLookup);
+			const result = await setPublicLandingLookupEnabledAtomic({
+				enabled: form.data.publicLandingLookup,
+				submittedVersion: form.data.settingsVersion
+			});
+			if (result === 'conflict') {
+				return fail(409, {
+					form,
+					conflict: true,
+					error: OCC_CONFLICT_MESSAGE
+				});
+			}
 			return { form, success: true, message: 'Public landing lookup updated' };
 		} catch (error) {
 			const message =

@@ -105,7 +105,9 @@ const SettingsSchema = z.object({
 	// Server-wide wrapped recap share mode — only public | private-oauth (parity
 	// with the settings Privacy page; private-link is not supported server-wide).
 	serverWrappedShareMode: z.enum([ShareMode.PUBLIC, ShareMode.PRIVATE_OAUTH]),
-	// New dedicated landing-page public-lookup toggle (default on in onboarding).
+	// New dedicated landing-page public-lookup toggle. Defaults to off (login-only)
+	// on a fresh install — the form is seeded from getPublicLandingLookupEnabled(),
+	// which returns false when no DB row exists, so it's never public before the admin opts in.
 	publicLandingLookup: z.enum(['true', 'false']).transform((v) => v === 'true'),
 
 	// Slides (comma-separated list of enabled slide types)
