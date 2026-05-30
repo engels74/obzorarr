@@ -219,31 +219,34 @@ export async function isDebugEnabled(): Promise<boolean> {
 }
 
 export async function setLogRetentionDays(days: number): Promise<void> {
+	const now = new Date();
 	await db
 		.insert(appSettings)
-		.values({ key: LogSettingsKey.RETENTION_DAYS, value: days.toString() })
+		.values({ key: LogSettingsKey.RETENTION_DAYS, value: days.toString(), updatedAt: now })
 		.onConflictDoUpdate({
 			target: appSettings.key,
-			set: { value: days.toString() }
+			set: { value: days.toString(), updatedAt: now }
 		});
 }
 
 export async function setLogMaxCount(count: number): Promise<void> {
+	const now = new Date();
 	await db
 		.insert(appSettings)
-		.values({ key: LogSettingsKey.MAX_COUNT, value: count.toString() })
+		.values({ key: LogSettingsKey.MAX_COUNT, value: count.toString(), updatedAt: now })
 		.onConflictDoUpdate({
 			target: appSettings.key,
-			set: { value: count.toString() }
+			set: { value: count.toString(), updatedAt: now }
 		});
 }
 
 export async function setDebugEnabled(enabled: boolean): Promise<void> {
+	const now = new Date();
 	await db
 		.insert(appSettings)
-		.values({ key: LogSettingsKey.DEBUG_ENABLED, value: enabled.toString() })
+		.values({ key: LogSettingsKey.DEBUG_ENABLED, value: enabled.toString(), updatedAt: now })
 		.onConflictDoUpdate({
 			target: appSettings.key,
-			set: { value: enabled.toString() }
+			set: { value: enabled.toString(), updatedAt: now }
 		});
 }
