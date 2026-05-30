@@ -329,8 +329,7 @@ export const actions: Actions = requireAdminActions({
 			}
 			return { form, success: true, message: 'Public landing lookup updated' };
 		} catch (error) {
-			const message =
-				error instanceof Error ? error.message : 'Failed to update public landing lookup';
+			const message = error instanceof Error ? error.message : String(error);
 			logger.error(`Failed to update public landing lookup: ${message}`, 'Privacy');
 			return fail(500, { form, error: 'Failed to update public landing lookup' });
 		}

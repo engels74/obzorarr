@@ -41,7 +41,7 @@ export const actions: Actions = {
 		// lookup work. The per-user getEffectiveShareMode 404 below remains the
 		// deepest data gate regardless of this toggle.
 		if (!(await getPublicLandingLookupEnabled())) {
-			logger.warn('Rejected landing lookup: public lookup is disabled', 'LandingLookup');
+			logger.debug('Rejected landing lookup: public lookup is disabled', 'LandingLookup');
 			return fail(403, {
 				error: 'Public lookup is disabled on this server.',
 				requiresAuth: true
