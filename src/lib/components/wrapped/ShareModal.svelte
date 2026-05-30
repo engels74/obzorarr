@@ -80,7 +80,13 @@ const isMembersOnly = $derived(displayMode === 'private-oauth');
 const canControlShare = $derived(
 	(isOwner || isAdmin) && (shareSettings?.canUserControl || isAdmin) && !isServerWrapped
 );
-const canRegenerateToken = $derived(canControlShare && displayMode === 'private-link');
+// ISSUE-002: when the stored mode is `private-link` but that mode sits below
+// the active global floor, the radio option is already disabled — so the
+// regenerate control must hide too, otherwise it offers to rotate a token for
+// a mode the user can no longer select. Mirror the radio's floor gating.
+const canRegenerateToken = $derived(
+	canControlShare && displayMode === 'private-link' && !isBelowFloor(displayMode)
+);
 
 // Available modes based on permissions
 const availableModes = $derived.by(() => {

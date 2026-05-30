@@ -234,6 +234,11 @@ export const actions: Actions = requireAdminActions({
 					error: OCC_CONFLICT_MESSAGE
 				});
 			}
+			// ISSUE-004: advance the returned settingsVersion (own keys) so a second
+			// consecutive save in the same page load isn't false-409'd.
+			form.data.settingsVersion = settingsVersionISO(
+				await getAppSettingsUpdatedAt(SERVER_WRAPPED_SETTINGS_KEYS)
+			);
 			return { form, success: true, message: 'Server-wide wrapped settings updated' };
 		} catch (error) {
 			const message =
@@ -281,6 +286,11 @@ export const actions: Actions = requireAdminActions({
 					error: OCC_CONFLICT_MESSAGE
 				});
 			}
+			// ISSUE-004: advance the returned settingsVersion (own keys) so a second
+			// consecutive save in the same page load isn't false-409'd.
+			form.data.settingsVersion = settingsVersionISO(
+				await getAppSettingsUpdatedAt(USER_DEFAULTS_SETTINGS_KEYS)
+			);
 			return { form, success: true, message: 'User sharing defaults updated' };
 		} catch (error) {
 			const message =
@@ -327,6 +337,11 @@ export const actions: Actions = requireAdminActions({
 					error: OCC_CONFLICT_MESSAGE
 				});
 			}
+			// ISSUE-004: advance the returned settingsVersion (own keys) so a second
+			// consecutive save in the same page load isn't false-409'd.
+			form.data.settingsVersion = settingsVersionISO(
+				await getAppSettingsUpdatedAt(PUBLIC_LANDING_LOOKUP_SETTINGS_KEYS)
+			);
 			return { form, success: true, message: 'Public landing lookup updated' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);

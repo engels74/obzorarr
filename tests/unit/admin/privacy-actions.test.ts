@@ -94,6 +94,34 @@ describe('privacy nested route — updateServerWrappedSettings', () => {
 		expect(await getAnonymizationMode()).toBe('anonymous');
 	});
 
+	it('advances the returned settingsVersion so two consecutive saves both succeed (ISSUE-004)', async () => {
+		const first = (await run(
+			makeRequest('updateServerWrappedSettings', {
+				anonymizationMode: 'anonymous',
+				serverWrappedShareMode: 'private-oauth',
+				settingsVersion: new Date(0).toISOString()
+			})
+		)) as { form: { data: { settingsVersion: string } }; success?: boolean };
+		expect(first).toMatchObject({ success: true });
+		// The action must hand back an advanced version, not the submitted epoch.
+		const returnedVersion = first.form.data.settingsVersion;
+		expect(returnedVersion).not.toBe(new Date(0).toISOString());
+
+		await new Promise<void>((resolve) => setTimeout(resolve, 10));
+
+		// Second consecutive save reusing the FIRST save's returned version must
+		// succeed without a reload (no false 409).
+		const second = await run(
+			makeRequest('updateServerWrappedSettings', {
+				anonymizationMode: 'real',
+				serverWrappedShareMode: 'public',
+				settingsVersion: returnedVersion
+			})
+		);
+		expect(second).toMatchObject({ success: true });
+		expect(await getAnonymizationMode()).toBe('real');
+	});
+
 	it('rejects private-link for serverWrappedShareMode as 400 (server-wide only supports public + private-oauth)', async () => {
 		const result = await run(
 			makeRequest('updateServerWrappedSettings', {
@@ -157,6 +185,31 @@ describe('privacy nested route — updateUserDefaults', () => {
 		);
 		expect(result).toMatchObject({ success: true });
 		expect(await getGlobalAllowUserControl()).toBe(false);
+	});
+
+	it('advances the returned settingsVersion so two consecutive saves both succeed (ISSUE-004)', async () => {
+		const first = (await run(
+			makeRequest('updateUserDefaults', {
+				defaultShareMode: 'public',
+				allowUserControl: 'true',
+				settingsVersion: new Date(0).toISOString()
+			})
+		)) as { form: { data: { settingsVersion: string } }; success?: boolean };
+		expect(first).toMatchObject({ success: true });
+		const returnedVersion = first.form.data.settingsVersion;
+		expect(returnedVersion).not.toBe(new Date(0).toISOString());
+
+		await new Promise<void>((resolve) => setTimeout(resolve, 10));
+
+		const second = await run(
+			makeRequest('updateUserDefaults', {
+				defaultShareMode: 'private-oauth',
+				allowUserControl: 'false',
+				settingsVersion: returnedVersion
+			})
+		);
+		expect(second).toMatchObject({ success: true });
+		expect(await getGlobalDefaultShareMode()).toBe('private-oauth');
 	});
 
 	it('rejects blank settingsVersion as 409 conflict', async () => {

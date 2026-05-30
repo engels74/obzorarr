@@ -116,6 +116,13 @@ export const actions: Actions = requireAdminActions({
 				setDebugEnabled(form.data.debugEnabled)
 			]);
 			logger.clearDebugCache();
+			// ISSUE-004: refresh the returned settingsVersion to the row's new
+			// updatedAt so a second consecutive save in the same page load isn't
+			// rejected as a stale-version 409. The hidden field is bind:value-bound
+			// to the superForm store, so this propagates without a reload.
+			form.data.settingsVersion = settingsVersionISO(
+				await getAppSettingsUpdatedAt(LOG_SETTINGS_KEYS)
+			);
 			return { form, success: true, message: 'Logging settings updated' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to update settings';
