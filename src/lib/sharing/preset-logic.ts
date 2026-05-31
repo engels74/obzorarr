@@ -145,7 +145,7 @@ export function derivePreview(
 	const warnings: string[] = [];
 
 	// Landing lookup on while the default is non-public: the form shows but every
-	// lookup 404s until users opt into public sharing. Mirrors the live warning
+	// lookup 404s until at least one Wrapped is set to public sharing. Mirrors the live warning
 	// both flows already surface; sourced from the shared copy module.
 	if (values.publicLandingLookup && values.defaultShareMode !== 'public') {
 		warnings.push(publicLandingLookupCopy.contradictionWarning);

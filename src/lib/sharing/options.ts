@@ -119,7 +119,7 @@ export const wrappedLogoOptions: OptionCopy<WrappedLogoOptionValue>[] = [
  * Copy for the public-landing-lookup toggle (the new dedicated admin setting).
  * `contradictionWarning` is surfaced in both settings and onboarding when the
  * toggle is on while the default share mode is non-public — visitors would see
- * the lookup form but every lookup would 404 until users opt into public sharing.
+ * the lookup form but every lookup would 404 until at least one Wrapped is set to public sharing.
  */
 export const publicLandingLookupCopy = {
 	label: 'Allow public Wrapped lookup on the landing page',
@@ -130,7 +130,7 @@ export const publicLandingLookupCopy = {
 	disabledDescription:
 		'The landing page hides the lookup field and shows a "Sign in with Plex" button instead.',
 	contradictionWarning:
-		'Public lookup is on, but your default share mode is non-public — visitors will not find any Wrapped until users opt into public sharing.'
+		'Public lookup is on, but your default share mode is non-public — visitors will not find any Wrapped until at least one Wrapped is set to public sharing.'
 } as const;
 
 // ============================================================================
