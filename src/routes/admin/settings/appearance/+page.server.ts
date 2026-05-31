@@ -159,7 +159,17 @@ export const actions: Actions = requireAdminActions({
 	},
 
 	updateWrappedTheme: async ({ request }) => {
-		const form = await superValidate(request, zod4(WrappedThemeSchema), { id: 'wrappedTheme' });
+		// Read FormData once (consumes the body) so we can detect an absent
+		// `wrappedTheme` field before handing the parsed object to superValidate.
+		// Without this guard a request that omits `wrappedTheme` (e.g. a stale
+		// client) would have the required z.enum silently filled with its first
+		// member ('modern-minimal') and persisted as if intentionally selected.
+		const formData = await request.formData();
+		if (!formData.has('wrappedTheme')) {
+			const form = await superValidate(formData, zod4(WrappedThemeSchema), { id: 'wrappedTheme' });
+			return fail(400, { form, error: 'Invalid theme selection' });
+		}
+		const form = await superValidate(formData, zod4(WrappedThemeSchema), { id: 'wrappedTheme' });
 		if (!form.valid) {
 			if (form.errors.settingsVersion?.length) {
 				return fail(409, { form, conflict: true, error: OCC_CONFLICT_MESSAGE });
@@ -188,7 +198,19 @@ export const actions: Actions = requireAdminActions({
 	},
 
 	updateWrappedLogoMode: async ({ request }) => {
-		const form = await superValidate(request, zod4(WrappedLogoModeSchema), {
+		// Read FormData once (consumes the body) so we can detect an absent
+		// `logoMode` field before handing the parsed object to superValidate.
+		// Without this guard a request that omits `logoMode` (e.g. a stale client)
+		// would have the required z.enum silently filled with its first member
+		// ('always_show') and persisted as if intentionally selected.
+		const formData = await request.formData();
+		if (!formData.has('logoMode')) {
+			const form = await superValidate(formData, zod4(WrappedLogoModeSchema), {
+				id: 'wrappedLogoMode'
+			});
+			return fail(400, { form, error: 'Invalid logo mode' });
+		}
+		const form = await superValidate(formData, zod4(WrappedLogoModeSchema), {
 			id: 'wrappedLogoMode'
 		});
 		if (!form.valid) {

@@ -213,6 +213,17 @@ describe('appearance nested route — updateWrappedTheme', () => {
 		);
 		expect(result).toMatchObject({ status: 400, data: { error: 'Invalid theme selection' } });
 	});
+
+	it('rejects an absent wrappedTheme field as 400 instead of silently persisting the enum default', async () => {
+		// A request that omits wrappedTheme entirely (e.g. a stale client) must not
+		// have the required z.enum silently filled with its first member
+		// ('modern-minimal') and persisted. Expect a 400, no write.
+		const result = await run(
+			makeRequest('updateWrappedTheme', { settingsVersion: new Date(0).toISOString() })
+		);
+		expect(result).toMatchObject({ status: 400, data: { error: 'Invalid theme selection' } });
+		expect(await getWrappedTheme()).toBe('modern-minimal'); // unchanged DB default, not a persisted write
+	});
 });
 
 describe('appearance nested route — updateWrappedLogoMode', () => {
@@ -289,6 +300,17 @@ describe('appearance nested route — updateWrappedLogoMode', () => {
 			})
 		);
 		expect(result).toMatchObject({ status: 400, data: { error: 'Invalid logo mode' } });
+	});
+
+	it('rejects an absent logoMode field as 400 instead of silently persisting the enum default', async () => {
+		// A request that omits logoMode entirely (e.g. a stale client) must not
+		// have the required z.enum silently filled with its first member
+		// ('always_show') and persisted. Expect a 400, no write.
+		const result = await run(
+			makeRequest('updateWrappedLogoMode', { settingsVersion: new Date(0).toISOString() })
+		);
+		expect(result).toMatchObject({ status: 400, data: { error: 'Invalid logo mode' } });
+		expect(await getWrappedLogoMode()).toBe(WrappedLogoMode.ALWAYS_SHOW); // unchanged DB default
 	});
 });
 

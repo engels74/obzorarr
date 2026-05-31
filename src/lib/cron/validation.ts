@@ -57,7 +57,8 @@ function isFieldInRange(token: string, min: number, max: number): boolean {
 		);
 	}
 
-	// Plain integer
+	// Plain integer — reject empty token (Number('') === 0 would falsely pass for min=0 fields)
+	if (!token) return false;
 	const num = Number(token);
 	return Number.isInteger(num) && num >= min && num <= max;
 }

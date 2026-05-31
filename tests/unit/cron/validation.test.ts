@@ -130,5 +130,17 @@ describe('validateCronExpression', () => {
 		it('rejects range with extra segments: 1-5-2 * * * *', () => {
 			expect(validateCronExpression('1-5-2 * * * *')).toBe(CRON_RANGE_MESSAGE);
 		});
+
+		it('rejects list with trailing empty segment: 1, * * * *', () => {
+			expect(validateCronExpression('1, * * * *')).toBe(CRON_RANGE_MESSAGE);
+		});
+
+		it('rejects list with leading empty segment: ,5 * * * *', () => {
+			expect(validateCronExpression(',5 * * * *')).toBe(CRON_RANGE_MESSAGE);
+		});
+
+		it('rejects list with interior empty segment: 1,,2 * * * *', () => {
+			expect(validateCronExpression('1,,2 * * * *')).toBe(CRON_RANGE_MESSAGE);
+		});
 	});
 });
