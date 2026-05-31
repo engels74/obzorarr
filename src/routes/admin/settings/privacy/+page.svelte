@@ -64,6 +64,12 @@ let { data }: Props = $props();
 // saves successfully (in that form's onUpdated). The unsaved-sections banner and
 // the "Current (saved)" preview read these — never the original load snapshot —
 // so a save in one OCC group correctly clears just that section's pending state.
+// These are deliberate $state snapshots, NOT $derived from `data`: $derived would
+// re-track every load and zero out unsavedSectionCount after navigation, defeating
+// the per-section unsaved tracking. The state_referenced_locally suppressors are
+// intentional — we want the one-time mount snapshot. (A re-load from a concurrent
+// external write can leave "Current (saved)" one version behind until the next
+// save/navigation; that's cosmetic and OCC catches any real overwrite conflict.)
 // svelte-ignore state_referenced_locally
 let savedServerWrapped = $state({
 	anonymizationMode: data.serverWrappedForm.data.anonymizationMode,
