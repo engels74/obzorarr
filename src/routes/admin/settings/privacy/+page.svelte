@@ -42,6 +42,7 @@ import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 import {
 	PRIVACY_PRESETS,
 	PRIVACY_PREVIEW_ROW_TOOLTIPS,
+	PRIVACY_PREVIEW_VALUE_TOOLTIPS,
 	type PrivacyPreset,
 	type PrivacyPresetId,
 	type PrivacyPreviewRowKey,
@@ -339,23 +340,58 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 		</dt>
 	{/snippet}
 
+	<!-- Value tooltip: explains the specific effect of the selected value, mirroring
+	     the tipDt label-trigger styling but right-aligned + emphasized like the value. -->
+	{#snippet previewDd(tip: string, label: string)}
+		<dd class="text-right font-medium">
+			<Tooltip.Root>
+				<Tooltip.Trigger
+					class="inline-flex items-center gap-1 rounded text-right font-medium underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+				>
+					{label}
+					<InfoIcon class="size-3 shrink-0 opacity-70" aria-hidden="true" />
+				</Tooltip.Trigger>
+				<Tooltip.Content
+					side="top"
+					sideOffset={6}
+					collisionPadding={16}
+					portalProps={{ to: 'body' }}
+				>
+					<p class="text-left">{tip}</p>
+				</Tooltip.Content>
+			</Tooltip.Root>
+		</dd>
+	{/snippet}
+
 	{#snippet previewRows(model: PrivacyPreviewModel)}
 		<dl class="space-y-1.5 text-sm">
 			<div class="flex justify-between gap-3">
 				{@render tipDt('namesInStats', 'Names in stats')}
-				<dd class="text-right font-medium">{PREVIEW_NAME_DISPLAY_LABELS[model.nameDisplay]}</dd>
+				{@render previewDd(
+					PRIVACY_PREVIEW_VALUE_TOOLTIPS.namesInStats[model.nameDisplay],
+					PREVIEW_NAME_DISPLAY_LABELS[model.nameDisplay]
+				)}
 			</div>
 			<div class="flex justify-between gap-3">
 				{@render tipDt('newUserDefault', 'New-user default')}
-				<dd class="text-right font-medium">{PREVIEW_PER_USER_DEFAULT_LABELS[model.perUserDefaultForNewUsers]}</dd>
+				{@render previewDd(
+					PRIVACY_PREVIEW_VALUE_TOOLTIPS.newUserDefault[model.perUserDefaultForNewUsers],
+					PREVIEW_PER_USER_DEFAULT_LABELS[model.perUserDefaultForNewUsers]
+				)}
 			</div>
 			<div class="flex justify-between gap-3">
 				{@render tipDt('serverWideRecap', 'Server-wide recap')}
-				<dd class="text-right font-medium">{PREVIEW_RECAP_VISIBILITY_LABELS[model.serverRecapVisibility]}</dd>
+				{@render previewDd(
+					PRIVACY_PREVIEW_VALUE_TOOLTIPS.serverWideRecap[model.serverRecapVisibility],
+					PREVIEW_RECAP_VISIBILITY_LABELS[model.serverRecapVisibility]
+				)}
 			</div>
 			<div class="flex justify-between gap-3">
 				{@render tipDt('landingLookupForm', 'Landing lookup form')}
-				<dd class="text-right font-medium">{model.landingLookupForm === 'visible' ? 'Shown' : 'Hidden'}</dd>
+				{@render previewDd(
+					PRIVACY_PREVIEW_VALUE_TOOLTIPS.landingLookupForm[model.landingLookupForm],
+					model.landingLookupForm === 'visible' ? 'Shown' : 'Hidden'
+				)}
 			</div>
 		</dl>
 		<!-- The only preview warning is the landing-lookup contradiction, which the

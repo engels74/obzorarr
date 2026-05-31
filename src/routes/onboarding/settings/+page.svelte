@@ -19,6 +19,7 @@ import * as Tooltip from '$lib/components/ui/tooltip';
 import {
 	PRIVACY_PRESETS,
 	PRIVACY_PREVIEW_ROW_TOOLTIPS,
+	PRIVACY_PREVIEW_VALUE_TOOLTIPS,
 	type PrivacyPreset,
 	type PrivacyPresetId,
 	type PrivacyPreviewRowKey,
@@ -615,30 +616,70 @@ function getThemeColors(themeValue: string) {
 									</Tooltip.Root>
 								</dt>
 							{/snippet}
+							<!-- Value tooltip: explains the specific effect of the selected value -->
+							{#snippet previewDd(tip: string, label: string)}
+								<dd>
+									<Tooltip.Root>
+										<Tooltip.Trigger class="preview-dd-trigger">
+											{label}
+											<InfoIcon class="preview-info-icon" aria-hidden="true" />
+										</Tooltip.Trigger>
+										<Tooltip.Content
+											side="top"
+											sideOffset={6}
+											collisionPadding={16}
+											portalProps={{ to: 'body' }}
+										>
+											<p class="text-left">{tip}</p>
+										</Tooltip.Content>
+									</Tooltip.Root>
+								</dd>
+							{/snippet}
 							<div class="privacy-preview" aria-live="polite">
 								<span class="preview-title">What this exposes</span>
 								<Tooltip.Provider delayDuration={150}>
 									<dl class="preview-rows">
 										<div class="preview-row">
 											{@render previewDt('namesInStats', 'Names in stats')}
-											<dd>{PREVIEW_NAME_DISPLAY_LABELS[privacyPreview.nameDisplay]}</dd>
+											{@render previewDd(
+												PRIVACY_PREVIEW_VALUE_TOOLTIPS.namesInStats[privacyPreview.nameDisplay],
+												PREVIEW_NAME_DISPLAY_LABELS[privacyPreview.nameDisplay]
+											)}
 										</div>
 										<div class="preview-row">
 											{@render previewDt('newUserDefault', 'New-user default')}
-											<dd>{PREVIEW_PER_USER_DEFAULT_LABELS[privacyPreview.perUserDefaultForNewUsers]}</dd>
+											{@render previewDd(
+												PRIVACY_PREVIEW_VALUE_TOOLTIPS.newUserDefault[
+													privacyPreview.perUserDefaultForNewUsers
+												],
+												PREVIEW_PER_USER_DEFAULT_LABELS[privacyPreview.perUserDefaultForNewUsers]
+											)}
 										</div>
 										<div class="preview-row">
 											{@render previewDt('serverWideRecap', 'Server-wide recap')}
-											<dd>{PREVIEW_RECAP_VISIBILITY_LABELS[privacyPreview.serverRecapVisibility]}</dd>
+											{@render previewDd(
+												PRIVACY_PREVIEW_VALUE_TOOLTIPS.serverWideRecap[
+													privacyPreview.serverRecapVisibility
+												],
+												PREVIEW_RECAP_VISIBILITY_LABELS[privacyPreview.serverRecapVisibility]
+											)}
 										</div>
 										<div class="preview-row">
 											{@render previewDt('landingLookupForm', 'Landing lookup form')}
-											<dd>{privacyPreview.landingLookupForm === 'visible' ? 'Shown' : 'Hidden'}</dd>
+											{@render previewDd(
+												PRIVACY_PREVIEW_VALUE_TOOLTIPS.landingLookupForm[
+													privacyPreview.landingLookupForm
+												],
+												privacyPreview.landingLookupForm === 'visible' ? 'Shown' : 'Hidden'
+											)}
 										</div>
 										{#if privacyPreview.logoVisibility}
 											<div class="preview-row">
 												<dt>Wrapped logo</dt>
-												<dd>{PREVIEW_LOGO_VISIBILITY_LABELS[privacyPreview.logoVisibility]}</dd>
+												{@render previewDd(
+													PRIVACY_PREVIEW_VALUE_TOOLTIPS.wrappedLogo[privacyPreview.logoVisibility],
+													PREVIEW_LOGO_VISIBILITY_LABELS[privacyPreview.logoVisibility]
+												)}
 											</div>
 										{/if}
 									</dl>
@@ -1668,6 +1709,32 @@ function getThemeColors(themeValue: string) {
 			font-weight: 500;
 			color: rgba(255, 255, 255, 0.9);
 			text-align: right;
+		}
+
+		/* Tooltip trigger on each preview VALUE: mirrors .preview-dt-trigger so the
+		   value + info icon read as one help target. Inherits the dd's font weight +
+		   color so the selected value still reads as the emphasized right column. */
+		.preview-row :global(.preview-dd-trigger) {
+			display: inline-flex;
+			align-items: center;
+			gap: 0.3rem;
+			padding: 0;
+			background: none;
+			border: none;
+			font: inherit;
+			color: inherit;
+			cursor: help;
+			text-align: right;
+			border-radius: 0.25rem;
+		}
+
+		.preview-row :global(.preview-dd-trigger:hover) {
+			color: #fff;
+		}
+
+		.preview-row :global(.preview-dd-trigger:focus-visible) {
+			outline: 2px solid oklch(var(--primary) / 0.6);
+			outline-offset: 2px;
 		}
 
 		/* Advanced Options disclosure */
