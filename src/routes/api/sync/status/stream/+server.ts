@@ -27,11 +27,12 @@ import type { RequestHandler } from './$types';
  *
  * Rate-limited by the `api` bucket in `rateLimitHandle`.
  *
- * In-flight transition (G2): an anonymous stream opened during onboarding that
- * is still open when onboarding completes is left to drain naturally. The
- * onboarding wizard navigates away on completion, which drops the client
- * connection and triggers the `request.signal` abort handler. No additional
- * close-on-completion logic is needed.
+ * In-flight transition (G2): the connection-open gate is re-validated on every
+ * poll tick. An anonymous stream that was opened during onboarding is closed as
+ * soon as onboarding completes, so an adversarial client that does NOT navigate
+ * away (e.g. a raw `EventSource`/`curl` left open) cannot keep receiving frames
+ * past the auth gate. Authenticated streams and still-onboarding anonymous
+ * streams are unaffected.
  */
 
 const POLL_INTERVAL_ACTIVE_MS = 500;
@@ -47,6 +48,11 @@ export const GET: RequestHandler = async ({ request, locals }) => {
 			headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }
 		});
 	}
+	// Capture the auth state at connection open. The poll loop re-validates
+	// against this on every tick so an anonymous stream opened during onboarding
+	// is terminated the moment onboarding completes (see the G2 note above).
+	const capturedUser = locals.user ?? null;
+
 	const stream = new ReadableStream({
 		async start(controller) {
 			const initialProgress = getSyncProgress();
@@ -63,9 +69,33 @@ export const GET: RequestHandler = async ({ request, locals }) => {
 			let currentInterval =
 				initialProgress?.status === 'running' ? POLL_INTERVAL_ACTIVE_MS : POLL_INTERVAL_IDLE_MS;
 			let intervalId: ReturnType<typeof setInterval>;
+			let closed = false;
+			// Guards against overlapping ticks: the auth re-check awaits a DB read,
+			// so a slow read must not let the next interval fire reentrantly.
+			let polling = false;
 
-			const poll = () => {
+			const stop = () => {
+				if (closed) return;
+				closed = true;
+				clearInterval(intervalId);
+				controller.close();
+			};
+
+			const poll = async () => {
+				if (closed || polling) return;
+				polling = true;
 				try {
+					// Re-validate the connection-open gate: once onboarding is
+					// complete, an anonymous (unauthenticated) stream is no longer
+					// permitted and must be closed.
+					if (!capturedUser) {
+						const onboardingStillPending = await requiresOnboarding();
+						if (!onboardingStillPending) {
+							stop();
+							return;
+						}
+					}
+
 					const currentProgress = getSyncProgress();
 					const isActive = currentProgress?.status === 'running';
 					const newInterval = isActive ? POLL_INTERVAL_ACTIVE_MS : POLL_INTERVAL_IDLE_MS;
@@ -123,15 +153,14 @@ export const GET: RequestHandler = async ({ request, locals }) => {
 					}
 				} catch {
 					// Silently ignore errors
+				} finally {
+					polling = false;
 				}
 			};
 
 			intervalId = setInterval(poll, currentInterval);
 
-			request.signal.addEventListener('abort', () => {
-				clearInterval(intervalId);
-				controller.close();
-			});
+			request.signal.addEventListener('abort', stop);
 		}
 	});
 

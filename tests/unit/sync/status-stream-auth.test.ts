@@ -76,4 +76,74 @@ describe('GET /api/sync/status/stream — auth gate (ISSUE-017)', () => {
 
 		response.body?.cancel();
 	});
+
+	it('(d) closes an anonymous stream once onboarding completes mid-stream', async () => {
+		// Open an anonymous stream while onboarding is still pending — allowed.
+		const response = await runGet(anonLocals);
+		expect(response.status).toBe(200);
+
+		const reader = response.body?.getReader();
+		expect(reader).toBeDefined();
+		if (!reader) return;
+
+		// SSE frames are enqueued as strings by formatSSE; decode defensively in
+		// case the runtime delivers them as bytes.
+		const asText = (value: unknown): string =>
+			typeof value === 'string' ? value : new TextDecoder().decode(value as Uint8Array);
+
+		// First read drains the initial `connected` frame enqueued synchronously
+		// in start(). The stream is still open at this point.
+		const first = await reader.read();
+		expect(first.done).toBe(false);
+		expect(asText(first.value)).toContain('"type":"connected"');
+
+		// Onboarding completes — the anonymous connection is no longer permitted.
+		await setAppSetting(AppSettingsKey.ONBOARDING_COMPLETED, 'true');
+
+		// The next poll tick re-checks the gate and closes the stream. The poll
+		// interval is the idle interval (no sync running), so read with a bounded
+		// timeout and assert the reader reports the stream as done.
+		const closed = await Promise.race([
+			(async () => {
+				// Keep reading until the controller closes; any further frames before
+				// closure are tolerated, but closure must occur.
+				while (true) {
+					const { done } = await reader.read();
+					if (done) return true;
+				}
+			})(),
+			new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 5000))
+		]);
+
+		expect(closed).toBe(true);
+	});
+
+	it('(e) keeps an authenticated stream open after onboarding completes', async () => {
+		// Authenticated client opened during onboarding must NOT be closed by the
+		// mid-stream gate when onboarding completes.
+		const response = await runGet(authedLocals);
+		expect(response.status).toBe(200);
+
+		const reader = response.body?.getReader();
+		expect(reader).toBeDefined();
+		if (!reader) return;
+
+		const first = await reader.read();
+		expect(first.done).toBe(false);
+
+		await setAppSetting(AppSettingsKey.ONBOARDING_COMPLETED, 'true');
+
+		// Wait beyond a poll tick; the stream must remain open (no `done`).
+		const stayedOpen = await Promise.race([
+			(async () => {
+				const { done } = await reader.read();
+				return !done;
+			})(),
+			new Promise<boolean>((resolve) => setTimeout(() => resolve(true), 3000))
+		]);
+
+		expect(stayedOpen).toBe(true);
+
+		await reader.cancel();
+	});
 });

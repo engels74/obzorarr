@@ -1,6 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import { zod4 } from 'sveltekit-superforms/adapters';
-import { superValidate } from 'sveltekit-superforms/server';
+import { setMessage, superValidate } from 'sveltekit-superforms/server';
 import { z } from 'zod';
 import {
 	inlineOccCheck,
@@ -126,6 +126,11 @@ export const actions: Actions = requireAdminActions({
 		const formData = await request.formData();
 		if (!formData.has('uiTheme')) {
 			const form = await superValidate(formData, zod4(UIThemeSchema), { id: 'uiTheme' });
+			// superValidate coerces the absent required enum to its first member, so
+			// `form.valid` is still true here. setMessage(..., { status: 400 }) flips
+			// form.valid=false and sets form.message so the client toast reports the
+			// failure (it branches on form.valid / form.message) instead of a false save.
+			setMessage(form, 'Invalid theme selection', { status: 400 });
 			return fail(400, { form, error: 'Invalid theme selection' });
 		}
 		const form = await superValidate(formData, zod4(UIThemeSchema), { id: 'uiTheme' });
@@ -167,6 +172,9 @@ export const actions: Actions = requireAdminActions({
 		const formData = await request.formData();
 		if (!formData.has('wrappedTheme')) {
 			const form = await superValidate(formData, zod4(WrappedThemeSchema), { id: 'wrappedTheme' });
+			// See updateUITheme: setMessage flips form.valid=false + sets the message
+			// so the client toast reports the failure, not a false save.
+			setMessage(form, 'Invalid theme selection', { status: 400 });
 			return fail(400, { form, error: 'Invalid theme selection' });
 		}
 		const form = await superValidate(formData, zod4(WrappedThemeSchema), { id: 'wrappedTheme' });
@@ -208,6 +216,9 @@ export const actions: Actions = requireAdminActions({
 			const form = await superValidate(formData, zod4(WrappedLogoModeSchema), {
 				id: 'wrappedLogoMode'
 			});
+			// See updateUITheme: setMessage flips form.valid=false + sets the message
+			// so the client toast reports the failure, not a false save.
+			setMessage(form, 'Invalid logo mode', { status: 400 });
 			return fail(400, { form, error: 'Invalid logo mode' });
 		}
 		const form = await superValidate(formData, zod4(WrappedLogoModeSchema), {
