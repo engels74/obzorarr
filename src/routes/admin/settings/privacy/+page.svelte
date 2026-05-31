@@ -257,9 +257,11 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 				<dd class="text-right font-medium">{model.landingLookupForm === 'visible' ? 'Shown' : 'Hidden'}</dd>
 			</div>
 		</dl>
-		{#each model.warnings as warning}
-			<p class="text-xs text-amber-500">{warning}</p>
-		{/each}
+		<!-- The only preview warning is the landing-lookup contradiction, which the
+		     inline Alert in the "Public landing lookup" card already surfaces (with
+		     icon, where the admin edits). Rendering it here too duplicated the same
+		     sentence across both preview panels + the Alert, so the warnings line is
+		     intentionally not shown in the preview. -->
 	{/snippet}
 
 	<Card>

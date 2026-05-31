@@ -226,7 +226,7 @@ export const PRIVACY_PRESETS: PrivacyPreset[] = [
 		id: 'balanced',
 		label: 'Balanced',
 		description: 'Recommended default. Members see their own name; nothing is public by default.',
-		exposureSummary: 'Hybrid names, members-only default, users opt in to public sharing.',
+		exposureSummary: 'Hybrid names, members-only recap, users control their own sharing.',
 		values: {
 			anonymizationMode: 'hybrid',
 			defaultShareMode: ShareMode.PRIVATE_OAUTH,
