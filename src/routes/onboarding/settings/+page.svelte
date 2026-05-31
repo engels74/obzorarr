@@ -1,13 +1,34 @@
 <script lang="ts">
 import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
+import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+import GlobeIcon from '@lucide/svelte/icons/globe';
+import ScaleIcon from '@lucide/svelte/icons/scale';
+import ShieldCheckIcon from '@lucide/svelte/icons/shield-check';
+import UsersRoundIcon from '@lucide/svelte/icons/users-round';
+import VenetianMaskIcon from '@lucide/svelte/icons/venetian-mask';
 import { animate } from 'motion';
+import type { Component } from 'svelte';
 import { tick, untrack } from 'svelte';
 import { enhance } from '$app/forms';
 import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
 import { Button } from '$lib/components/ui/button';
-import { publicLandingLookupCopy } from '$lib/sharing/options';
+import {
+	PRIVACY_PRESETS,
+	type PrivacyPreset,
+	type PrivacyPresetId,
+	publicLandingLookupCopy,
+	type ServerWrappedShareModeValue
+} from '$lib/sharing/options';
+import {
+	derivePreview,
+	matchPresetFull,
+	PREVIEW_LOGO_VISIBILITY_LABELS,
+	PREVIEW_NAME_DISPLAY_LABELS,
+	PREVIEW_PER_USER_DEFAULT_LABELS,
+	PREVIEW_RECAP_VISIBILITY_LABELS
+} from '$lib/sharing/preset-logic';
 import { handleFormToast } from '$lib/utils/form-toast';
 import { submitAction } from '$lib/utils/submit-action';
 import { loadThemeFonts } from '$lib/utils/theme-fonts';
@@ -28,14 +49,104 @@ let anonymizationMode = $state(untrack(() => data.settings.anonymizationMode));
 let wrappedLogoMode = $state(untrack(() => data.settings.wrappedLogoMode));
 let defaultShareMode = $state(untrack(() => data.settings.defaultShareMode));
 let allowUserControl = $state(untrack(() => data.settings.allowUserControl));
-let serverWrappedShareMode = $state(untrack(() => data.settings.serverWrappedShareMode));
+// Narrow to the server-wide union ('public' | 'private-oauth') the preset
+// helpers expect; the load already maps any wider value down to these two.
+let serverWrappedShareMode = $state<ServerWrappedShareModeValue>(
+	untrack(() => (data.settings.serverWrappedShareMode === 'public' ? 'public' : 'private-oauth'))
+);
 let publicLandingLookup = $state(untrack(() => data.settings.publicLandingLookup));
 let enableFunFacts = $state(false);
 
-// Live contradiction warning (parity with the settings Privacy page): the landing
-// toggle is the sole gate, so a non-public default means the form shows but every
-// lookup 404s. Surface it to the admin instead of silently hiding the form.
-let showLandingContradiction = $derived(publicLandingLookup && defaultShareMode !== 'public');
+// Privacy presets: a card selects a recommended combination of the six privacy
+// fields below. The active preset is recomputed from the live runes (so manual
+// edits in Advanced Options flip it to "Custom"), never persisted as a field.
+let advancedPrivacyOpen = $state(false);
+
+let selectedPreset = $derived(
+	matchPresetFull({
+		anonymizationMode,
+		defaultShareMode,
+		serverWrappedShareMode,
+		publicLandingLookup,
+		allowUserControl,
+		logoMode: wrappedLogoMode
+	})
+);
+
+// Single live preview (onboarding owns logoMode, so the logo line is included).
+// Its `warnings` is the sole source of the landing-lookup contradiction notice.
+let privacyPreview = $derived(
+	derivePreview({
+		anonymizationMode,
+		defaultShareMode,
+		serverWrappedShareMode,
+		publicLandingLookup,
+		allowUserControl,
+		logoMode: wrappedLogoMode
+	})
+);
+
+function applyPrivacyPreset(preset: PrivacyPreset) {
+	anonymizationMode = preset.values.anonymizationMode;
+	defaultShareMode = preset.values.defaultShareMode;
+	serverWrappedShareMode = preset.values.serverWrappedShareMode;
+	publicLandingLookup = preset.values.publicLandingLookup;
+	allowUserControl = preset.values.allowUserControl;
+	wrappedLogoMode = preset.values.logoMode;
+}
+
+// WAI-ARIA radiogroup keyboard support for the preset selector. The cards are
+// native <button role="radio"> (Space/Enter already activate them); this adds
+// roving tabindex + arrow/Home/End navigation so the group behaves like a real
+// radio group for assistive tech. `presetButtons` is populated by bind:this on
+// each card, indexed by position in PRIVACY_PRESETS.
+let presetButtons = $state<(HTMLButtonElement | undefined)[]>([]);
+
+// Index of the card that holds tabindex=0. When a preset is selected, that card
+// is the tab stop; when the config matches no preset ('custom'), the first card
+// keeps the group reachable.
+let presetTabIndex = $derived.by(() => {
+	const i = PRIVACY_PRESETS.findIndex((p) => p.id === selectedPreset);
+	return i === -1 ? 0 : i;
+});
+
+function handlePresetKeydown(event: KeyboardEvent, index: number) {
+	const last = PRIVACY_PRESETS.length - 1;
+	let target: number;
+	switch (event.key) {
+		case 'ArrowRight':
+		case 'ArrowDown':
+			target = index === last ? 0 : index + 1;
+			break;
+		case 'ArrowLeft':
+		case 'ArrowUp':
+			target = index === 0 ? last : index - 1;
+			break;
+		case 'Home':
+			target = 0;
+			break;
+		case 'End':
+			target = last;
+			break;
+		default:
+			return;
+	}
+	event.preventDefault();
+	const preset = PRIVACY_PRESETS[target];
+	if (!preset) return;
+	// APG: moving within a radio group selects the focused radio.
+	applyPrivacyPreset(preset);
+	presetButtons[target]?.focus();
+}
+
+const presetIcons: Record<PrivacyPresetId, Component> = {
+	'maximum-privacy': ShieldCheckIcon,
+	'internal-community': UsersRoundIcon,
+	balanced: ScaleIcon,
+	'public-showcase': GlobeIcon,
+	'anonymous-public': VenetianMaskIcon
+};
+
 let funFactFrequency = $state(untrack(() => data.funFactConfig.mode || 'normal'));
 let openaiApiKey = $state('');
 let openaiBaseUrl = $state(
@@ -438,6 +549,90 @@ function getThemeColors(themeValue: string) {
 						</div>
 
 						<div class="step-fields">
+							<!-- Preset selector: one card sets all six privacy fields below -->
+							<div class="setting-group preset-section">
+								<span class="setting-label">Privacy Preset</span>
+								<p class="setting-description">
+									Pick a starting point — then fine-tune anything in Advanced Options.
+								</p>
+								<div class="preset-grid" role="radiogroup" aria-label="Privacy preset">
+									{#each PRIVACY_PRESETS as preset, i (preset.id)}
+										{@const PresetIcon = presetIcons[preset.id]}
+										<button
+											type="button"
+											class="preset-card"
+											class:selected={selectedPreset === preset.id}
+											role="radio"
+											aria-checked={selectedPreset === preset.id}
+											tabindex={i === presetTabIndex ? 0 : -1}
+											bind:this={presetButtons[i]}
+											onclick={() => applyPrivacyPreset(preset)}
+											onkeydown={(e) => handlePresetKeydown(e, i)}
+										>
+											<span class="preset-card-icon">
+												<PresetIcon />
+											</span>
+											<span class="preset-card-body">
+												<span class="preset-card-label">{preset.label}</span>
+												<span class="preset-card-desc">{preset.description}</span>
+												<span class="preset-card-summary">{preset.exposureSummary}</span>
+											</span>
+										</button>
+									{/each}
+								</div>
+								{#if selectedPreset === 'custom'}
+									<p class="preset-custom-note" role="status">
+										Custom configuration — your choices don’t match a preset.
+									</p>
+								{/if}
+							</div>
+
+							<!-- Live preview of what this configuration exposes -->
+							<div class="privacy-preview" aria-live="polite">
+								<span class="preview-title">What this exposes</span>
+								<dl class="preview-rows">
+									<div class="preview-row">
+										<dt>Names in stats</dt>
+										<dd>{PREVIEW_NAME_DISPLAY_LABELS[privacyPreview.nameDisplay]}</dd>
+									</div>
+									<div class="preview-row">
+										<dt>New-user default</dt>
+										<dd>{PREVIEW_PER_USER_DEFAULT_LABELS[privacyPreview.perUserDefaultForNewUsers]}</dd>
+									</div>
+									<div class="preview-row">
+										<dt>Server-wide recap</dt>
+										<dd>{PREVIEW_RECAP_VISIBILITY_LABELS[privacyPreview.serverRecapVisibility]}</dd>
+									</div>
+									<div class="preview-row">
+										<dt>Landing lookup form</dt>
+										<dd>{privacyPreview.landingLookupForm === 'visible' ? 'Shown' : 'Hidden'}</dd>
+									</div>
+									{#if privacyPreview.logoVisibility}
+										<div class="preview-row">
+											<dt>Wrapped logo</dt>
+											<dd>{PREVIEW_LOGO_VISIBILITY_LABELS[privacyPreview.logoVisibility]}</dd>
+										</div>
+									{/if}
+								</dl>
+								{#each privacyPreview.warnings as warning}
+									<p class="landing-warning" role="status">{warning}</p>
+								{/each}
+							</div>
+
+							<!-- Advanced Options: the six granular controls, collapsed by default -->
+							<div class="advanced-options">
+								<button
+									type="button"
+									class="advanced-toggle"
+									class:open={advancedPrivacyOpen}
+									aria-expanded={advancedPrivacyOpen}
+									onclick={() => (advancedPrivacyOpen = !advancedPrivacyOpen)}
+								>
+									<span>Advanced Options</span>
+									<ChevronDownIcon class="advanced-chevron" />
+								</button>
+								{#if advancedPrivacyOpen}
+									<div class="advanced-content">
 							<div class="setting-group">
 								<span class="setting-label">User Identity in Stats</span>
 								<p class="setting-description">How usernames appear in server-wide statistics</p>
@@ -587,10 +782,8 @@ function getThemeColors(themeValue: string) {
 										<span class="toggle-knob"></span>
 									</button>
 								</label>
-								{#if showLandingContradiction}
-									<p class="landing-warning" role="status">
-										{publicLandingLookupCopy.contradictionWarning}
-									</p>
+							</div>
+									</div>
 								{/if}
 							</div>
 						</div>
@@ -1269,6 +1462,196 @@ function getThemeColors(themeValue: string) {
 			background: rgba(245, 158, 11, 0.12);
 			border: 1px solid rgba(245, 158, 11, 0.35);
 			border-radius: 0.625rem;
+		}
+
+		/* ==========================================================================
+		   Privacy Presets
+		   ========================================================================== */
+		.preset-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+			gap: 0.625rem;
+		}
+
+		.preset-card {
+			display: flex;
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 0.625rem;
+			padding: 0.875rem;
+			text-align: left;
+			background: rgba(0, 0, 0, 0.2);
+			border: 1.5px solid rgba(255, 255, 255, 0.08);
+			border-radius: 0.875rem;
+			cursor: pointer;
+			transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+		}
+
+		.preset-card:hover {
+			background: rgba(0, 0, 0, 0.3);
+			border-color: rgba(255, 255, 255, 0.16);
+			transform: translateY(-2px);
+		}
+
+		.preset-card.selected {
+			border-color: oklch(var(--primary));
+			background: oklch(var(--primary) / 0.1);
+			box-shadow: 0 0 18px oklch(var(--primary) / 0.25);
+		}
+
+		.preset-card-icon {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			width: 2.25rem;
+			height: 2.25rem;
+			border-radius: 0.625rem;
+			background: oklch(var(--primary) / 0.12);
+			color: oklch(var(--primary));
+			transition: all 0.25s ease;
+		}
+
+		.preset-card-icon :global(svg) {
+			width: 1.25rem;
+			height: 1.25rem;
+		}
+
+		.preset-card.selected .preset-card-icon {
+			background: linear-gradient(135deg, oklch(var(--primary)), oklch(var(--accent)));
+			color: oklch(var(--primary-foreground));
+		}
+
+		.preset-card-body {
+			display: flex;
+			flex-direction: column;
+			gap: 0.25rem;
+		}
+
+		.preset-card-label {
+			font-size: 0.875rem;
+			font-weight: 600;
+			color: rgba(255, 255, 255, 0.92);
+		}
+
+		.preset-card-desc {
+			font-size: 0.75rem;
+			line-height: 1.4;
+			color: rgba(255, 255, 255, 0.5);
+		}
+
+		.preset-card-summary {
+			font-size: 0.7rem;
+			line-height: 1.35;
+			color: oklch(var(--primary) / 0.85);
+			font-variant: small-caps;
+			letter-spacing: 0.02em;
+		}
+
+		.preset-custom-note {
+			margin: 0.75rem 0 0;
+			font-size: 0.78rem;
+			color: rgba(255, 255, 255, 0.6);
+			font-style: italic;
+		}
+
+		/* Live preview panel */
+		.privacy-preview {
+			margin-top: 1.25rem;
+			padding: 1rem;
+			background: rgba(0, 0, 0, 0.22);
+			border: 1px solid oklch(var(--primary) / 0.18);
+			border-radius: 0.875rem;
+		}
+
+		.preview-title {
+			display: block;
+			font-size: 0.7rem;
+			font-weight: 600;
+			text-transform: uppercase;
+			letter-spacing: 0.08em;
+			color: oklch(var(--primary) / 0.9);
+			margin-bottom: 0.75rem;
+		}
+
+		.preview-rows {
+			display: flex;
+			flex-direction: column;
+			gap: 0.5rem;
+			margin: 0;
+		}
+
+		.preview-row {
+			display: flex;
+			align-items: baseline;
+			justify-content: space-between;
+			gap: 1rem;
+			padding-bottom: 0.5rem;
+			border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+		}
+
+		.preview-row:last-child {
+			padding-bottom: 0;
+			border-bottom: none;
+		}
+
+		.preview-row dt {
+			font-size: 0.78rem;
+			color: rgba(255, 255, 255, 0.5);
+		}
+
+		.preview-row dd {
+			margin: 0;
+			font-size: 0.8rem;
+			font-weight: 500;
+			color: rgba(255, 255, 255, 0.9);
+			text-align: right;
+		}
+
+		/* Advanced Options disclosure */
+		.advanced-options {
+			margin-top: 1.25rem;
+			border-top: 1px solid rgba(255, 255, 255, 0.08);
+			padding-top: 1rem;
+		}
+
+		.advanced-toggle {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 0.5rem;
+			width: 100%;
+			padding: 0.625rem 0.875rem;
+			background: rgba(0, 0, 0, 0.18);
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			border-radius: 0.75rem;
+			color: rgba(255, 255, 255, 0.78);
+			font-size: 0.82rem;
+			font-weight: 500;
+			cursor: pointer;
+			transition: all 0.2s ease;
+		}
+
+		.advanced-toggle:hover {
+			background: rgba(0, 0, 0, 0.28);
+			color: rgba(255, 255, 255, 0.95);
+		}
+
+		.advanced-toggle :global(.advanced-chevron) {
+			width: 1rem;
+			height: 1rem;
+			transition: transform 0.25s ease;
+		}
+
+		.advanced-toggle.open :global(.advanced-chevron) {
+			transform: rotate(180deg);
+		}
+
+		.advanced-content {
+			display: flex;
+			flex-direction: column;
+			gap: 1.25rem;
+			margin-top: 1rem;
+			animation: fadeSlide 0.25s ease;
 		}
 
 		/* Theme Swatches */

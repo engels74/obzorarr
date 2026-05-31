@@ -14,6 +14,7 @@ import { appSettings } from '$lib/server/db/schema';
 import {
 	anonymizationOptions,
 	type OptionCopy,
+	PRIVACY_PRESETS,
 	serverWrappedShareModeOptions,
 	shareModeOptions,
 	wrappedLogoOptions
@@ -122,5 +123,69 @@ describe('shared sharing-option copy module', () => {
 			'private-oauth',
 			'public'
 		]);
+	});
+
+	describe('privacy presets', () => {
+		const anonymizationValues = new Set(anonymizationOptions.map((o) => o.value));
+		const shareModeValues = new Set(shareModeOptions.map((o) => o.value));
+		const serverWrappedValues = new Set(serverWrappedShareModeOptions.map((o) => o.value));
+		const logoValues = new Set(wrappedLogoOptions.map((o) => o.value));
+		const serverAnonymization = new Set(Object.values(AnonymizationMode));
+		const serverShareModes = new Set(Object.values(ShareMode));
+		const serverLogoModes = new Set(Object.values(WrappedLogoMode));
+
+		const expectedKeys = [
+			'anonymizationMode',
+			'defaultShareMode',
+			'serverWrappedShareMode',
+			'publicLandingLookup',
+			'allowUserControl',
+			'logoMode'
+		].sort();
+
+		it('every preset has a unique id', () => {
+			const ids = PRIVACY_PRESETS.map((p) => p.id);
+			expect(new Set(ids).size).toBe(ids.length);
+		});
+
+		it('every preset has non-empty label, description and exposureSummary', () => {
+			for (const preset of PRIVACY_PRESETS) {
+				expect(preset.label.trim().length).toBeGreaterThan(0);
+				expect(preset.description.trim().length).toBeGreaterThan(0);
+				expect(preset.exposureSummary.trim().length).toBeGreaterThan(0);
+			}
+		});
+
+		it('every preset has exactly the six value keys', () => {
+			for (const preset of PRIVACY_PRESETS) {
+				expect(Object.keys(preset.values).sort()).toEqual(expectedKeys);
+			}
+		});
+
+		it('every preset value is a member of its option value-set AND the server enum', () => {
+			for (const preset of PRIVACY_PRESETS) {
+				const v = preset.values;
+
+				// anonymizationMode
+				expect(anonymizationValues.has(v.anonymizationMode)).toBe(true);
+				expect(serverAnonymization.has(v.anonymizationMode)).toBe(true);
+
+				// defaultShareMode (per-user, all three modes)
+				expect(shareModeValues.has(v.defaultShareMode)).toBe(true);
+				expect(serverShareModes.has(v.defaultShareMode)).toBe(true);
+
+				// serverWrappedShareMode (public | private-oauth only)
+				expect(serverWrappedValues.has(v.serverWrappedShareMode)).toBe(true);
+				expect(serverShareModes.has(v.serverWrappedShareMode)).toBe(true);
+
+				// logoMode
+				expect(logoValues.has(v.logoMode)).toBe(true);
+				expect(serverLogoModes.has(v.logoMode)).toBe(true);
+
+				// booleans
+				expect(typeof v.publicLandingLookup).toBe('boolean');
+				expect(typeof v.allowUserControl).toBe('boolean');
+			}
+		});
 	});
 });
