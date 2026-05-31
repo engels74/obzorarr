@@ -1,12 +1,20 @@
 <script lang="ts">
+import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
 import EyeOffIcon from '@lucide/svelte/icons/eye-off';
 import GlobeIcon from '@lucide/svelte/icons/globe';
+import ImageIcon from '@lucide/svelte/icons/image';
 import LinkIcon from '@lucide/svelte/icons/link';
 import LockIcon from '@lucide/svelte/icons/lock';
+import ScaleIcon from '@lucide/svelte/icons/scale';
+import ShieldCheckIcon from '@lucide/svelte/icons/shield-check';
 import ShieldUserIcon from '@lucide/svelte/icons/shield-user';
 import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 import UserCogIcon from '@lucide/svelte/icons/user-cog';
 import UsersIcon from '@lucide/svelte/icons/users';
+import UsersRoundIcon from '@lucide/svelte/icons/users-round';
+import VenetianMaskIcon from '@lucide/svelte/icons/venetian-mask';
+import type { Component } from 'svelte';
 import { superForm } from 'sveltekit-superforms';
 import { enhance } from '$app/forms';
 import { invalidateAll } from '$app/navigation';
@@ -25,9 +33,23 @@ import {
 	CardHeader,
 	CardTitle
 } from '$lib/components/ui/card/index.js';
+import * as Collapsible from '$lib/components/ui/collapsible/index.js';
 import * as Form from '$lib/components/ui/form/index.js';
 import { RadioGroup, RadioGroupItem } from '$lib/components/ui/radio-group/index.js';
-import { publicLandingLookupCopy } from '$lib/sharing/options';
+import {
+	PRIVACY_PRESETS,
+	type PrivacyPreset,
+	type PrivacyPresetId,
+	publicLandingLookupCopy
+} from '$lib/sharing/options';
+import {
+	derivePreview,
+	matchPresetPrivacy,
+	PREVIEW_NAME_DISPLAY_LABELS,
+	PREVIEW_PER_USER_DEFAULT_LABELS,
+	PREVIEW_RECAP_VISIBILITY_LABELS,
+	type PrivacyPreviewModel
+} from '$lib/sharing/preset-logic';
 import { handleFormToast } from '$lib/utils/form-toast';
 import { surfaceOccConflict } from '$lib/utils/occ-form';
 import type { PageData } from './$types';
@@ -38,12 +60,36 @@ interface Props {
 
 let { data }: Props = $props();
 
+// Per-section "last saved" baselines. Each advances ONLY after its own section
+// saves successfully (in that form's onUpdated). The unsaved-sections banner and
+// the "Current (saved)" preview read these — never the original load snapshot —
+// so a save in one OCC group correctly clears just that section's pending state.
+// svelte-ignore state_referenced_locally
+let savedServerWrapped = $state({
+	anonymizationMode: data.serverWrappedForm.data.anonymizationMode,
+	serverWrappedShareMode: data.serverWrappedForm.data.serverWrappedShareMode
+});
+// svelte-ignore state_referenced_locally
+let savedUserDefaults = $state({
+	defaultShareMode: data.userDefaultsForm.data.defaultShareMode,
+	allowUserControl: data.userDefaultsForm.data.allowUserControl
+});
+// svelte-ignore state_referenced_locally
+let savedPublicLandingLookup = $state({
+	publicLandingLookup: data.publicLandingLookupForm.data.publicLandingLookup
+});
+
 // svelte-ignore state_referenced_locally
 const serverWrappedForm = superForm(data.serverWrappedForm, {
 	resetForm: false,
 	onUpdate: surfaceOccConflict,
 	onUpdated({ form: updated }) {
 		if (updated.valid) {
+			// Advance this section's saved baseline to what was just persisted.
+			savedServerWrapped = {
+				anonymizationMode: updated.data.anonymizationMode,
+				serverWrappedShareMode: updated.data.serverWrappedShareMode
+			};
 			handleFormToast({ success: true, message: updated.message ?? 'Saved' });
 		} else {
 			handleFormToast({ error: updated.message ?? 'Validation failed' });
@@ -62,6 +108,10 @@ const userDefaultsForm = superForm(data.userDefaultsForm, {
 	onUpdate: surfaceOccConflict,
 	onUpdated({ form: updated }) {
 		if (updated.valid) {
+			savedUserDefaults = {
+				defaultShareMode: updated.data.defaultShareMode,
+				allowUserControl: updated.data.allowUserControl
+			};
 			handleFormToast({ success: true, message: updated.message ?? 'Saved' });
 		} else {
 			handleFormToast({ error: updated.message ?? 'Validation failed' });
@@ -80,6 +130,9 @@ const publicLandingLookupForm = superForm(data.publicLandingLookupForm, {
 	onUpdate: surfaceOccConflict,
 	onUpdated({ form: updated }) {
 		if (updated.valid) {
+			savedPublicLandingLookup = {
+				publicLandingLookup: updated.data.publicLandingLookup
+			};
 			handleFormToast({ success: true, message: updated.message ?? 'Saved' });
 		} else {
 			handleFormToast({ error: updated.message ?? 'Validation failed' });
@@ -102,6 +155,82 @@ let isBulkApplying = $state(false);
 let showContradictionWarning = $derived(
 	$publicLandingLookupData.publicLandingLookup && $userDefaultsData.defaultShareMode !== 'public'
 );
+
+// ---------------------------------------------------------------------------
+// Privacy presets (client-only control surface)
+// ---------------------------------------------------------------------------
+let advancedOpen = $state(false);
+
+// The active preset is matched over the FIVE admin-owned fields only — logoMode
+// is excluded (it lives on the Appearance route), so a perfect five-field match
+// never reads "Custom" because of a differing persisted logoMode.
+let selectedPreset = $derived(
+	matchPresetPrivacy({
+		anonymizationMode: $serverWrappedData.anonymizationMode,
+		defaultShareMode: $userDefaultsData.defaultShareMode,
+		serverWrappedShareMode: $serverWrappedData.serverWrappedShareMode,
+		publicLandingLookup: $publicLandingLookupData.publicLandingLookup,
+		allowUserControl: $userDefaultsData.allowUserControl
+	})
+);
+
+// Dual preview, both WITHOUT logoMode (so neither renders a logo line — admin
+// does not manage logoMode here). "After you save" reflects the staged store
+// values; "Current (saved)" reflects each section's last-saved baseline.
+let stagedPreview: PrivacyPreviewModel = $derived(
+	derivePreview({
+		anonymizationMode: $serverWrappedData.anonymizationMode,
+		defaultShareMode: $userDefaultsData.defaultShareMode,
+		serverWrappedShareMode: $serverWrappedData.serverWrappedShareMode,
+		publicLandingLookup: $publicLandingLookupData.publicLandingLookup,
+		allowUserControl: $userDefaultsData.allowUserControl
+	})
+);
+let savedPreview: PrivacyPreviewModel = $derived(
+	derivePreview({
+		anonymizationMode: savedServerWrapped.anonymizationMode,
+		defaultShareMode: savedUserDefaults.defaultShareMode,
+		serverWrappedShareMode: savedServerWrapped.serverWrappedShareMode,
+		publicLandingLookup: savedPublicLandingLookup.publicLandingLookup,
+		allowUserControl: savedUserDefaults.allowUserControl
+	})
+);
+
+// Per-section divergence: staged store value vs. that section's own last-saved
+// baseline. The banner counts how many sections still need their Save button.
+let serverWrappedUnsaved = $derived(
+	$serverWrappedData.anonymizationMode !== savedServerWrapped.anonymizationMode ||
+		$serverWrappedData.serverWrappedShareMode !== savedServerWrapped.serverWrappedShareMode
+);
+let userDefaultsUnsaved = $derived(
+	$userDefaultsData.defaultShareMode !== savedUserDefaults.defaultShareMode ||
+		$userDefaultsData.allowUserControl !== savedUserDefaults.allowUserControl
+);
+let publicLandingUnsaved = $derived(
+	$publicLandingLookupData.publicLandingLookup !== savedPublicLandingLookup.publicLandingLookup
+);
+let unsavedSectionCount = $derived(
+	(serverWrappedUnsaved ? 1 : 0) + (userDefaultsUnsaved ? 1 : 0) + (publicLandingUnsaved ? 1 : 0)
+);
+
+// Applying a preset is pure client-side state mutation across the three stores.
+// It writes the FIVE admin-owned fields and NEVER touches logoMode. Persistence
+// still flows through each section's existing Save button + OCC group.
+function applyPrivacyPreset(preset: PrivacyPreset) {
+	$serverWrappedData.anonymizationMode = preset.values.anonymizationMode;
+	$serverWrappedData.serverWrappedShareMode = preset.values.serverWrappedShareMode;
+	$userDefaultsData.defaultShareMode = preset.values.defaultShareMode;
+	$userDefaultsData.allowUserControl = preset.values.allowUserControl;
+	$publicLandingLookupData.publicLandingLookup = preset.values.publicLandingLookup;
+}
+
+const presetIcons: Record<PrivacyPresetId, Component> = {
+	'maximum-privacy': ShieldCheckIcon,
+	'internal-community': UsersRoundIcon,
+	balanced: ScaleIcon,
+	'public-showcase': GlobeIcon,
+	'anonymous-public': VenetianMaskIcon
+};
 </script>
 
 <svelte:head>
@@ -109,6 +238,127 @@ let showContradictionWarning = $derived(
 </svelte:head>
 
 <div class="space-y-6 p-6 max-w-4xl">
+	{#snippet previewRows(model: PrivacyPreviewModel)}
+		<dl class="space-y-1.5 text-sm">
+			<div class="flex justify-between gap-3">
+				<dt class="text-muted-foreground">Names in stats</dt>
+				<dd class="text-right font-medium">{PREVIEW_NAME_DISPLAY_LABELS[model.nameDisplay]}</dd>
+			</div>
+			<div class="flex justify-between gap-3">
+				<dt class="text-muted-foreground">New-user default</dt>
+				<dd class="text-right font-medium">{PREVIEW_PER_USER_DEFAULT_LABELS[model.perUserDefaultForNewUsers]}</dd>
+			</div>
+			<div class="flex justify-between gap-3">
+				<dt class="text-muted-foreground">Server-wide recap</dt>
+				<dd class="text-right font-medium">{PREVIEW_RECAP_VISIBILITY_LABELS[model.serverRecapVisibility]}</dd>
+			</div>
+			<div class="flex justify-between gap-3">
+				<dt class="text-muted-foreground">Landing lookup form</dt>
+				<dd class="text-right font-medium">{model.landingLookupForm === 'visible' ? 'Shown' : 'Hidden'}</dd>
+			</div>
+		</dl>
+		{#each model.warnings as warning}
+			<p class="text-xs text-amber-500">{warning}</p>
+		{/each}
+	{/snippet}
+
+	<Card>
+		<CardHeader>
+			<CardTitle>Privacy presets</CardTitle>
+			<CardDescription>
+				Pick a preset to set anonymization, sharing and landing-lookup in one step — then save each
+				section below. Logo behavior is configured separately on Appearance.
+			</CardDescription>
+		</CardHeader>
+		<CardContent class="space-y-4">
+			<div
+				class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+				role="radiogroup"
+				aria-label="Privacy preset"
+			>
+				{#each PRIVACY_PRESETS as preset (preset.id)}
+					{@const PresetIcon = presetIcons[preset.id]}
+					<button
+						type="button"
+						role="radio"
+						aria-checked={selectedPreset === preset.id}
+						onclick={() => applyPrivacyPreset(preset)}
+						class={selectedPreset === preset.id
+							? 'flex flex-col items-start gap-2 rounded-lg border border-primary bg-primary/5 p-4 text-left ring-1 ring-primary transition-colors'
+							: 'flex flex-col items-start gap-2 rounded-lg border border-border p-4 text-left transition-colors hover:bg-muted/50'}
+					>
+						<span class="flex items-center gap-2 text-sm font-medium">
+							<PresetIcon class="size-4 text-primary" />
+							{preset.label}
+						</span>
+						<span class="text-xs text-muted-foreground">{preset.description}</span>
+						<span class="text-xs font-medium text-primary/80">{preset.exposureSummary}</span>
+					</button>
+				{/each}
+			</div>
+			{#if selectedPreset === 'custom'}
+				<p class="text-sm italic text-muted-foreground">
+					Custom configuration — your settings don’t match a preset.
+				</p>
+			{/if}
+			<div class="flex items-start gap-2 rounded-lg border border-border bg-muted/30 p-3 text-sm">
+				<ImageIcon class="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+				<div class="space-y-1">
+					<p class="font-medium">Wrapped logo</p>
+					<p class="text-muted-foreground">
+						Logo behavior is configured on
+						<a
+							href="/admin/settings/appearance"
+							class="inline-flex items-center gap-1 underline"
+						>Appearance<ExternalLinkIcon class="size-3" /></a>. Presets don’t change it.
+					</p>
+				</div>
+			</div>
+		</CardContent>
+	</Card>
+
+	<Card>
+		<CardHeader>
+			<CardTitle>Preview</CardTitle>
+			<CardDescription>
+				What your saved and staged settings expose. Logo is managed on Appearance and is not shown here.
+			</CardDescription>
+		</CardHeader>
+		<CardContent class="space-y-4">
+			{#if unsavedSectionCount > 0}
+				<Alert>
+					<TriangleAlertIcon />
+					<AlertDescription>
+						{unsavedSectionCount} unsaved section{unsavedSectionCount === 1 ? '' : 's'} — staged changes
+						aren't live until you save each section below.
+					</AlertDescription>
+				</Alert>
+			{/if}
+			<div class="grid gap-4 sm:grid-cols-2">
+				<div class="space-y-2 rounded-lg border border-border p-4">
+					<p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Current (saved)</p>
+					{@render previewRows(savedPreview)}
+				</div>
+				<div
+					class={unsavedSectionCount > 0
+						? 'space-y-2 rounded-lg border border-primary bg-primary/5 p-4'
+						: 'space-y-2 rounded-lg border border-border p-4'}
+				>
+					<p class="text-xs font-semibold uppercase tracking-wide text-primary/80">After you save</p>
+					{@render previewRows(stagedPreview)}
+				</div>
+			</div>
+		</CardContent>
+	</Card>
+
+	<Collapsible.Root bind:open={advancedOpen} class="space-y-6">
+		<Collapsible.Trigger
+			class="flex w-full items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm font-medium transition-colors hover:bg-muted/50"
+		>
+			Advanced options
+			<ChevronDownIcon class={advancedOpen ? 'size-4 rotate-180 transition-transform' : 'size-4 transition-transform'} />
+		</Collapsible.Trigger>
+		<Collapsible.Content class="space-y-6 pt-6">
 	<Card>
 		<CardHeader>
 			<CardTitle>Server-wide wrapped sharing</CardTitle>
@@ -336,6 +586,8 @@ let showContradictionWarning = $derived(
 			</form>
 		</CardContent>
 	</Card>
+		</Collapsible.Content>
+	</Collapsible.Root>
 
 	<Card>
 		<CardHeader>
