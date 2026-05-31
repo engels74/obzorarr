@@ -1,4 +1,5 @@
 <script lang="ts">
+import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 import CheckIcon from '@lucide/svelte/icons/check';
 import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
@@ -491,6 +492,12 @@ function toggleDetails() {
 	</div>
 
 	{#snippet footer()}
+		<form method="POST" action="?/goBack" class="mr-auto">
+			<Button type="submit" variant="outline" class="tap-target">
+				<ArrowLeftIcon class="size-[18px]" />
+				Previous
+			</Button>
+		</form>
 		<form method="POST" action="?/continue" class="continue-form">
 			<SubmitButton class="continue-btn tap-target">
 				{#snippet children()}

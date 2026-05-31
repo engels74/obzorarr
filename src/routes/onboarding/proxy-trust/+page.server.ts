@@ -128,6 +128,18 @@ export const actions: Actions = {
 		redirect(303, '/onboarding/plex');
 	},
 
+	// Rewind to the previous step so the user can review the security settings.
+	// Both steps are pure configuration with no destructive side effects, so the
+	// only state changed is the onboarding cursor; forward navigation re-runs the
+	// normal `continue` action and its validation.
+	goBack: async ({ cookies, url }) => {
+		const guardResult = await requireOnboardingProxyTrustAction(cookies, url, 'error');
+		if (guardResult) return guardResult;
+
+		await setOnboardingStep(OnboardingSteps.CSRF);
+		redirect(303, '/onboarding/csrf');
+	},
+
 	diagnoseReverseProxy: async ({ request, cookies, url, getClientAddress }) => {
 		const guardResult = await requireOnboardingProxyTrustAction(cookies, url, 'diagnosticError');
 		if (guardResult) return guardResult;

@@ -27,6 +27,13 @@ const COOKIE_OPTIONS = {
 const ONBOARDING_OWNER_REQUIRED_MESSAGE =
 	'Only the server owner can configure Obzorarr. Please sign in with the server owner account.';
 
+// SvelteKit throws a bare `Error` (no subclass/`.code`) when `cookies.set(...)` runs
+// after the response is generated, so this trailing substring of its message is the
+// only available discriminator. It is stable across SvelteKit 2.x but is an undocumented
+// internal — if a future version reworks the wording, the guard below logs `err.message`
+// so the mismatch is diagnosable.
+const RESPONSE_ALREADY_GENERATED_MESSAGE = 'after the response has been generated';
+
 export interface CompletedLoginUser {
 	username: string;
 	isAdmin: boolean;
@@ -136,7 +143,25 @@ export async function createSessionFromPlexToken(
 	// does not alter the ownership/isAdmin decision made above.
 	markSessionRevalidated(sessionId, { isMember: true, isOwner: isAdmin });
 
-	cookies.set('session', sessionId, COOKIE_OPTIONS);
+	// The session row is already persisted above; this cookie write is what
+	// actually logs the browser in. In a race the underlying request can be
+	// aborted before this runs (e.g. an overlapping `/auth/plex` poll whose
+	// client already navigated after a sibling poll won the login). SvelteKit
+	// then throws "Cannot use cookies.set(...) after the response has been
+	// generated". That request's response is discarded anyway, so swallow only
+	// that specific error instead of surfacing a spurious 500; re-throw the rest.
+	try {
+		cookies.set('session', sessionId, COOKIE_OPTIONS);
+	} catch (err) {
+		if (!(err instanceof Error) || !err.message.includes(RESPONSE_ALREADY_GENERATED_MESSAGE)) {
+			throw err;
+		}
+		logger.warn(
+			'Skipped session cookie write on an already-generated response (aborted login race)',
+			'Auth',
+			{ errorType: err.name, errorMessage: err.message }
+		);
+	}
 
 	return {
 		user: {

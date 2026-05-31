@@ -1,13 +1,15 @@
 <script lang="ts">
+import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
-import SquareIcon from '@lucide/svelte/icons/square';
+import XIcon from '@lucide/svelte/icons/x';
 import { animate, stagger } from 'motion';
 import { untrack } from 'svelte';
 import { browser } from '$app/environment';
 import { enhance } from '$app/forms';
 import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
+import { Button } from '$lib/components/ui/button';
 import type { ActionData, PageData } from './$types';
 
 /**
@@ -37,6 +39,12 @@ let error = $state<string | null>(null);
 
 // SSE connection
 let eventSource: EventSource | null = null;
+// Pending auto-reconnect timer + a teardown flag. Without these, the 2s
+// reconnect scheduled in `onerror` outlives component unmount (the user
+// advancing to the next step), spawning an orphaned EventSource that keeps
+// polling `/api/sync/status/stream` in the background.
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let sseDisconnected = false;
 
 // Animation refs
 let contentRef: HTMLElement | undefined = $state();
@@ -139,14 +147,21 @@ function setupEventSource(es: EventSource) {
 	};
 
 	es.onerror = () => {
+		// Bail if the component was torn down: a closed ES can still deliver a
+		// pending `onerror`, which would otherwise schedule an orphaned timer.
+		if (sseDisconnected) return;
 		// Connection lost - attempt reconnection after delay
 		console.warn('SSE connection lost, attempting reconnect...');
 		es.close();
 		eventSource = null;
 
-		// Attempt to reconnect after 2 seconds if sync should still be running
-		setTimeout(() => {
-			if (browser && (syncStatus === 'running' || data.syncRunning)) {
+		// Attempt to reconnect after 2 seconds if sync should still be running.
+		// Track the timer so the effect cleanup can cancel a pending reconnect,
+		// and bail if the component was torn down in the meantime.
+		if (reconnectTimer) clearTimeout(reconnectTimer);
+		reconnectTimer = setTimeout(() => {
+			reconnectTimer = null;
+			if (!sseDisconnected && browser && (syncStatus === 'running' || data.syncRunning)) {
 				eventSource = new EventSource('/api/sync/status/stream');
 				setupEventSource(eventSource);
 			}
@@ -160,10 +175,16 @@ $effect(() => {
 	if (!isRunning && !data.syncRunning) return;
 
 	// Connect to public SSE endpoint (doesn't require admin auth)
+	sseDisconnected = false;
 	eventSource = new EventSource('/api/sync/status/stream');
 	setupEventSource(eventSource);
 
 	return () => {
+		sseDisconnected = true;
+		if (reconnectTimer) {
+			clearTimeout(reconnectTimer);
+			reconnectTimer = null;
+		}
 		eventSource?.close();
 		eventSource = null;
 	};
@@ -382,6 +403,12 @@ function formatNumber(n: number): string {
 
 	{#snippet footer()}
 		<div class="footer-actions">
+			<form method="POST" action="?/goBack" use:enhance class="mr-auto">
+				<Button type="submit" variant="outline" class="tap-target">
+					<ArrowLeftIcon class="size-[18px]" />
+					Previous
+				</Button>
+			</form>
 			{#if isRunning}
 				<form
 					method="POST"
@@ -399,7 +426,7 @@ function formatNumber(n: number): string {
 				>
 					<SubmitButton class="cancel-button tap-target" submitting={isCancelling}>
 						{#snippet children()}
-							<SquareIcon class="size-[18px]" />
+							<XIcon class="size-[18px]" />
 							<span>Cancel</span>
 						{/snippet}
 						{#snippet submittingLabel()}
@@ -866,7 +893,7 @@ function formatNumber(n: number): string {
 		/* Cancel button — destructive variant. Hoisted to :global so
 		   SubmitButton's child-rendered <button> inherits the red palette
 		   + hover-darken effect. The `.cancel-button svg` descendant rule
-		   is dropped; the lucide SquareIcon is sized inline via
+		   is dropped; the lucide XIcon is sized inline via
 		   `class="size-[18px]"`. */
 		:global(.cancel-button) {
 			display: inline-flex;
