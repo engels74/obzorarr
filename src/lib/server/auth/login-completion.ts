@@ -27,6 +27,13 @@ const COOKIE_OPTIONS = {
 const ONBOARDING_OWNER_REQUIRED_MESSAGE =
 	'Only the server owner can configure Obzorarr. Please sign in with the server owner account.';
 
+// SvelteKit throws a bare `Error` (no subclass/`.code`) when `cookies.set(...)` runs
+// after the response is generated, so this trailing substring of its message is the
+// only available discriminator. It is stable across SvelteKit 2.x but is an undocumented
+// internal — if a future version reworks the wording, the guard below logs `err.message`
+// so the mismatch is diagnosable.
+const RESPONSE_ALREADY_GENERATED_MESSAGE = 'after the response has been generated';
+
 export interface CompletedLoginUser {
 	username: string;
 	isAdmin: boolean;
@@ -146,13 +153,13 @@ export async function createSessionFromPlexToken(
 	try {
 		cookies.set('session', sessionId, COOKIE_OPTIONS);
 	} catch (err) {
-		if (!(err instanceof Error) || !err.message.includes('after the response has been generated')) {
+		if (!(err instanceof Error) || !err.message.includes(RESPONSE_ALREADY_GENERATED_MESSAGE)) {
 			throw err;
 		}
 		logger.warn(
 			'Skipped session cookie write on an already-generated response (aborted login race)',
 			'Auth',
-			{ errorType: err.name }
+			{ errorType: err.name, errorMessage: err.message }
 		);
 	}
 

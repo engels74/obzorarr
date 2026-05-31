@@ -147,6 +147,9 @@ function setupEventSource(es: EventSource) {
 	};
 
 	es.onerror = () => {
+		// Bail if the component was torn down: a closed ES can still deliver a
+		// pending `onerror`, which would otherwise schedule an orphaned timer.
+		if (sseDisconnected) return;
 		// Connection lost - attempt reconnection after delay
 		console.warn('SSE connection lost, attempting reconnect...');
 		es.close();
