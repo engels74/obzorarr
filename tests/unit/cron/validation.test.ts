@@ -113,5 +113,22 @@ describe('validateCronExpression', () => {
 		it('rejects out-of-range upper bound in a range: 0-60 * * * *', () => {
 			expect(validateCronExpression('0-60 * * * *')).toBe(CRON_RANGE_MESSAGE);
 		});
+
+		// Malformed step/range tokens — empty segments must not coerce to 0
+		it('rejects step with empty base: /5 * * * *', () => {
+			expect(validateCronExpression('/5 * * * *')).toBe(CRON_RANGE_MESSAGE);
+		});
+
+		it('rejects range with empty lower bound: -1 * * * *', () => {
+			expect(validateCronExpression('-1 * * * *')).toBe(CRON_RANGE_MESSAGE);
+		});
+
+		it('rejects range with empty upper bound: 1- * * * *', () => {
+			expect(validateCronExpression('1- * * * *')).toBe(CRON_RANGE_MESSAGE);
+		});
+
+		it('rejects range with extra segments: 1-5-2 * * * *', () => {
+			expect(validateCronExpression('1-5-2 * * * *')).toBe(CRON_RANGE_MESSAGE);
+		});
 	});
 });

@@ -118,7 +118,17 @@ export const load: PageServerLoad = async () => {
 
 export const actions: Actions = requireAdminActions({
 	updateUITheme: async ({ request }) => {
-		const form = await superValidate(request, zod4(UIThemeSchema), { id: 'uiTheme' });
+		// Read FormData once (consumes the body) so we can detect an absent
+		// `uiTheme` field before handing the parsed object to superValidate.
+		// Without this guard a request that omits `uiTheme` (e.g. a stale client)
+		// would have the required z.enum silently filled with its first member
+		// ('modern-minimal') and persisted as if intentionally selected.
+		const formData = await request.formData();
+		if (!formData.has('uiTheme')) {
+			const form = await superValidate(formData, zod4(UIThemeSchema), { id: 'uiTheme' });
+			return fail(400, { form, error: 'Invalid theme selection' });
+		}
+		const form = await superValidate(formData, zod4(UIThemeSchema), { id: 'uiTheme' });
 		if (!form.valid) {
 			if (form.errors.settingsVersion?.length) {
 				return fail(409, { form, conflict: true, error: OCC_CONFLICT_MESSAGE });

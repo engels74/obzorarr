@@ -132,6 +132,17 @@ describe('appearance nested route — updateUITheme', () => {
 		);
 		expect(result).toMatchObject({ status: 400, data: { error: 'Invalid theme selection' } });
 	});
+
+	it('rejects an absent uiTheme field as 400 instead of silently persisting the enum default', async () => {
+		// A request that omits uiTheme entirely (e.g. a stale client) must not
+		// have the required z.enum silently filled with its first member
+		// ('modern-minimal') and persisted. Expect a 400, no write.
+		const result = await run(
+			makeRequest('updateUITheme', { settingsVersion: new Date(0).toISOString() })
+		);
+		expect(result).toMatchObject({ status: 400, data: { error: 'Invalid theme selection' } });
+		expect(await getUITheme()).toBe('modern-minimal'); // unchanged DB default, not a persisted write
+	});
 });
 
 describe('appearance nested route — updateWrappedTheme', () => {

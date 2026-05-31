@@ -22,12 +22,15 @@ function isFieldInRange(token: string, min: number, max: number): boolean {
 
 	// Step — e.g. "*/5" or "1-5/2" or "0/15"
 	if (token.includes('/')) {
-		const [base, step] = token.split('/');
+		const parts = token.split('/');
+		// Exactly one "/" — reject tokens like "*/5/2"
+		if (parts.length !== 2) return false;
+		const [base, step] = parts;
 		// Step value must be a positive integer
 		const stepNum = Number(step);
 		if (!step || !Number.isInteger(stepNum) || stepNum < 1) return false;
-		if (base === undefined) return false;
-		// Base can be "*", a plain number, or a range
+		// Base must be present (reject "/5") — can be "*", a plain number, or a range
+		if (!base) return false;
 		if (base !== '*' && !isFieldInRange(base, min, max)) return false;
 		return true;
 	}
@@ -39,7 +42,10 @@ function isFieldInRange(token: string, min: number, max: number): boolean {
 
 	// Range — e.g. "1-5"
 	if (token.includes('-')) {
-		const [lo, hi] = token.split('-').map(Number);
+		const parts = token.split('-');
+		// Exactly two non-empty segments — reject "-1", "1-", "1-5-2"
+		if (parts.length !== 2 || !parts[0] || !parts[1]) return false;
+		const [lo, hi] = parts.map(Number);
 		return (
 			lo !== undefined &&
 			hi !== undefined &&
