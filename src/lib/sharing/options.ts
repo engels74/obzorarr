@@ -187,13 +187,13 @@ export const PRIVACY_PREVIEW_ROW_TOOLTIPS: Record<
 		admin:
 			'Sets the share mode applied to each newly-created user. Existing users keep their current setting until you apply defaults to all users.',
 		visitor:
-			"A visitor can only open a user's Wrapped when this default is Public. Members-only and private-link pages stay unreachable without signing in.",
+			"A visitor can open a user's Wrapped without signing in when this default is Public, or Private Link if they have the share link. Server-members-only pages require signing in.",
 		member:
 			'Signed-in members can open members-only Wrapped pages. If user control is allowed, each member can still override their own share mode.'
 	},
 	serverWideRecap: {
 		admin:
-			"Controls who can open the server-wide /wrapped recap that aggregates every user's stats.",
+			"Controls who can open the server-wide Wrapped recap that aggregates every user's stats.",
 		visitor:
 			'A visitor sees the server-wide recap only when it is set to Public; otherwise they are prompted to sign in.',
 		member:
