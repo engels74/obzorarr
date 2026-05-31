@@ -4,6 +4,7 @@ import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
 import EyeOffIcon from '@lucide/svelte/icons/eye-off';
 import GlobeIcon from '@lucide/svelte/icons/globe';
 import ImageIcon from '@lucide/svelte/icons/image';
+import InfoIcon from '@lucide/svelte/icons/info';
 import LinkIcon from '@lucide/svelte/icons/link';
 import LockIcon from '@lucide/svelte/icons/lock';
 import ScaleIcon from '@lucide/svelte/icons/scale';
@@ -37,10 +38,13 @@ import {
 import * as Collapsible from '$lib/components/ui/collapsible/index.js';
 import * as Form from '$lib/components/ui/form/index.js';
 import { RadioGroup, RadioGroupItem } from '$lib/components/ui/radio-group/index.js';
+import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 import {
 	PRIVACY_PRESETS,
+	PRIVACY_PREVIEW_ROW_TOOLTIPS,
 	type PrivacyPreset,
 	type PrivacyPresetId,
+	type PrivacyPreviewRowKey,
 	publicLandingLookupCopy
 } from '$lib/sharing/options';
 import {
@@ -309,22 +313,48 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 </svelte:head>
 
 <div class="space-y-6 p-6 max-w-4xl">
+	{#snippet tipDt(key: PrivacyPreviewRowKey, label: string)}
+		{@const tip = PRIVACY_PREVIEW_ROW_TOOLTIPS[key]}
+		<dt class="text-muted-foreground">
+			<Tooltip.Root>
+				<Tooltip.Trigger
+					class="inline-flex items-center gap-1 rounded text-left underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+				>
+					{label}
+					<InfoIcon class="size-3 shrink-0 opacity-70" aria-hidden="true" />
+				</Tooltip.Trigger>
+				<Tooltip.Content
+					side="top"
+					sideOffset={6}
+					collisionPadding={16}
+					portalProps={{ to: 'body' }}
+				>
+					<div class="flex flex-col gap-1.5 text-left">
+						<p><span class="font-semibold">Admin:</span> {tip.admin}</p>
+						<p><span class="font-semibold">Visitor:</span> {tip.visitor}</p>
+						<p><span class="font-semibold">Member:</span> {tip.member}</p>
+					</div>
+				</Tooltip.Content>
+			</Tooltip.Root>
+		</dt>
+	{/snippet}
+
 	{#snippet previewRows(model: PrivacyPreviewModel)}
 		<dl class="space-y-1.5 text-sm">
 			<div class="flex justify-between gap-3">
-				<dt class="text-muted-foreground">Names in stats</dt>
+				{@render tipDt('namesInStats', 'Names in stats')}
 				<dd class="text-right font-medium">{PREVIEW_NAME_DISPLAY_LABELS[model.nameDisplay]}</dd>
 			</div>
 			<div class="flex justify-between gap-3">
-				<dt class="text-muted-foreground">New-user default</dt>
+				{@render tipDt('newUserDefault', 'New-user default')}
 				<dd class="text-right font-medium">{PREVIEW_PER_USER_DEFAULT_LABELS[model.perUserDefaultForNewUsers]}</dd>
 			</div>
 			<div class="flex justify-between gap-3">
-				<dt class="text-muted-foreground">Server-wide recap</dt>
+				{@render tipDt('serverWideRecap', 'Server-wide recap')}
 				<dd class="text-right font-medium">{PREVIEW_RECAP_VISIBILITY_LABELS[model.serverRecapVisibility]}</dd>
 			</div>
 			<div class="flex justify-between gap-3">
-				<dt class="text-muted-foreground">Landing lookup form</dt>
+				{@render tipDt('landingLookupForm', 'Landing lookup form')}
 				<dd class="text-right font-medium">{model.landingLookupForm === 'visible' ? 'Shown' : 'Hidden'}</dd>
 			</div>
 		</dl>
@@ -412,20 +442,22 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 					</AlertDescription>
 				</Alert>
 			{/if}
-			<div class="grid gap-4 sm:grid-cols-2">
-				<div class="space-y-2 rounded-lg border border-border p-4">
-					<p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Current (saved)</p>
-					{@render previewRows(savedPreview)}
+			<Tooltip.Provider delayDuration={150}>
+				<div class="grid gap-4 sm:grid-cols-2">
+					<div class="space-y-2 rounded-lg border border-border p-4">
+						<p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Current (saved)</p>
+						{@render previewRows(savedPreview)}
+					</div>
+					<div
+						class={unsavedSectionCount > 0
+							? 'space-y-2 rounded-lg border border-primary bg-primary/5 p-4'
+							: 'space-y-2 rounded-lg border border-border p-4'}
+					>
+						<p class="text-xs font-semibold uppercase tracking-wide text-primary/80">After you save</p>
+						{@render previewRows(stagedPreview)}
+					</div>
 				</div>
-				<div
-					class={unsavedSectionCount > 0
-						? 'space-y-2 rounded-lg border border-primary bg-primary/5 p-4'
-						: 'space-y-2 rounded-lg border border-border p-4'}
-				>
-					<p class="text-xs font-semibold uppercase tracking-wide text-primary/80">After you save</p>
-					{@render previewRows(stagedPreview)}
-				</div>
-			</div>
+			</Tooltip.Provider>
 		</CardContent>
 	</Card>
 

@@ -3,6 +3,7 @@ import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 import GlobeIcon from '@lucide/svelte/icons/globe';
+import InfoIcon from '@lucide/svelte/icons/info';
 import ScaleIcon from '@lucide/svelte/icons/scale';
 import ShieldCheckIcon from '@lucide/svelte/icons/shield-check';
 import UsersRoundIcon from '@lucide/svelte/icons/users-round';
@@ -14,10 +15,13 @@ import { enhance } from '$app/forms';
 import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
 import { Button } from '$lib/components/ui/button';
+import * as Tooltip from '$lib/components/ui/tooltip';
 import {
 	PRIVACY_PRESETS,
+	PRIVACY_PREVIEW_ROW_TOOLTIPS,
 	type PrivacyPreset,
 	type PrivacyPresetId,
+	type PrivacyPreviewRowKey,
 	publicLandingLookupCopy,
 	type ServerWrappedShareModeValue
 } from '$lib/sharing/options';
@@ -588,32 +592,57 @@ function getThemeColors(themeValue: string) {
 							</div>
 
 							<!-- Live preview of what this configuration exposes -->
+							{#snippet previewDt(key: PrivacyPreviewRowKey, label: string)}
+								{@const tip = PRIVACY_PREVIEW_ROW_TOOLTIPS[key]}
+								<dt>
+									<Tooltip.Root>
+										<Tooltip.Trigger class="preview-dt-trigger">
+											{label}
+											<InfoIcon class="preview-info-icon" aria-hidden="true" />
+										</Tooltip.Trigger>
+										<Tooltip.Content
+											side="top"
+											sideOffset={6}
+											collisionPadding={16}
+											portalProps={{ to: 'body' }}
+										>
+											<div class="flex flex-col gap-1.5 text-left">
+												<p><span class="font-semibold">Admin:</span> {tip.admin}</p>
+												<p><span class="font-semibold">Visitor:</span> {tip.visitor}</p>
+												<p><span class="font-semibold">Member:</span> {tip.member}</p>
+											</div>
+										</Tooltip.Content>
+									</Tooltip.Root>
+								</dt>
+							{/snippet}
 							<div class="privacy-preview" aria-live="polite">
 								<span class="preview-title">What this exposes</span>
-								<dl class="preview-rows">
-									<div class="preview-row">
-										<dt>Names in stats</dt>
-										<dd>{PREVIEW_NAME_DISPLAY_LABELS[privacyPreview.nameDisplay]}</dd>
-									</div>
-									<div class="preview-row">
-										<dt>New-user default</dt>
-										<dd>{PREVIEW_PER_USER_DEFAULT_LABELS[privacyPreview.perUserDefaultForNewUsers]}</dd>
-									</div>
-									<div class="preview-row">
-										<dt>Server-wide recap</dt>
-										<dd>{PREVIEW_RECAP_VISIBILITY_LABELS[privacyPreview.serverRecapVisibility]}</dd>
-									</div>
-									<div class="preview-row">
-										<dt>Landing lookup form</dt>
-										<dd>{privacyPreview.landingLookupForm === 'visible' ? 'Shown' : 'Hidden'}</dd>
-									</div>
-									{#if privacyPreview.logoVisibility}
+								<Tooltip.Provider delayDuration={150}>
+									<dl class="preview-rows">
 										<div class="preview-row">
-											<dt>Wrapped logo</dt>
-											<dd>{PREVIEW_LOGO_VISIBILITY_LABELS[privacyPreview.logoVisibility]}</dd>
+											{@render previewDt('namesInStats', 'Names in stats')}
+											<dd>{PREVIEW_NAME_DISPLAY_LABELS[privacyPreview.nameDisplay]}</dd>
 										</div>
-									{/if}
-								</dl>
+										<div class="preview-row">
+											{@render previewDt('newUserDefault', 'New-user default')}
+											<dd>{PREVIEW_PER_USER_DEFAULT_LABELS[privacyPreview.perUserDefaultForNewUsers]}</dd>
+										</div>
+										<div class="preview-row">
+											{@render previewDt('serverWideRecap', 'Server-wide recap')}
+											<dd>{PREVIEW_RECAP_VISIBILITY_LABELS[privacyPreview.serverRecapVisibility]}</dd>
+										</div>
+										<div class="preview-row">
+											{@render previewDt('landingLookupForm', 'Landing lookup form')}
+											<dd>{privacyPreview.landingLookupForm === 'visible' ? 'Shown' : 'Hidden'}</dd>
+										</div>
+										{#if privacyPreview.logoVisibility}
+											<div class="preview-row">
+												<dt>Wrapped logo</dt>
+												<dd>{PREVIEW_LOGO_VISIBILITY_LABELS[privacyPreview.logoVisibility]}</dd>
+											</div>
+										{/if}
+									</dl>
+								</Tooltip.Provider>
 								{#each privacyPreview.warnings as warning}
 									<p class="landing-warning" role="status">{warning}</p>
 								{/each}
@@ -1597,6 +1626,40 @@ function getThemeColors(themeValue: string) {
 		.preview-row dt {
 			font-size: 0.78rem;
 			color: rgba(255, 255, 255, 0.5);
+		}
+
+		/* Tooltip trigger on each preview label: a borderless inline button so the
+		   label + info icon read as one help target (hover or keyboard focus). The
+		   class lands on the bits-ui Trigger's rendered <button>, so it must be
+		   :global — scoped under .preview-row to stay effectively local. */
+		.preview-row :global(.preview-dt-trigger) {
+			display: inline-flex;
+			align-items: center;
+			gap: 0.3rem;
+			padding: 0;
+			background: none;
+			border: none;
+			font: inherit;
+			color: inherit;
+			cursor: help;
+			text-align: left;
+			border-radius: 0.25rem;
+		}
+
+		.preview-row :global(.preview-dt-trigger:hover) {
+			color: rgba(255, 255, 255, 0.8);
+		}
+
+		.preview-row :global(.preview-dt-trigger:focus-visible) {
+			outline: 2px solid oklch(var(--primary) / 0.6);
+			outline-offset: 2px;
+		}
+
+		.preview-row :global(.preview-info-icon) {
+			width: 0.85rem;
+			height: 0.85rem;
+			flex-shrink: 0;
+			opacity: 0.65;
 		}
 
 		.preview-row dd {
