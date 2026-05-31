@@ -540,12 +540,16 @@ describe('admin updateWrappedLogoMode action', () => {
 		expect(await getWrappedLogoMode()).toBe(WrappedLogoMode.ALWAYS_HIDE);
 	});
 
-	it('rejects missing logo mode without persisting a change', async () => {
+	it('rejects an unknown logo mode value without persisting a change', async () => {
+		// Post-ISSUE-015 the route uses Superforms: a *present-but-invalid* enum
+		// value fails validation → 400 'Invalid logo mode'. (A wholly *missing*
+		// field would instead default to the first enum value per Superforms
+		// semantics, so this test asserts the invalid-value branch explicitly.)
 		await setAppSetting(AppSettingsKey.WRAPPED_LOGO_MODE, WrappedLogoMode.ALWAYS_HIDE);
 
 		const futureVersion = new Date(Date.now() + 60_000).toISOString();
 		const result = await runUpdateWrappedLogoMode(
-			createWrappedLogoModeRequest(undefined, futureVersion)
+			createWrappedLogoModeRequest('not-a-mode', futureVersion)
 		);
 
 		expect(result).toMatchObject({
@@ -557,9 +561,11 @@ describe('admin updateWrappedLogoMode action', () => {
 		expect(await getWrappedLogoMode()).toBe(WrappedLogoMode.ALWAYS_HIDE);
 	});
 
-	it('rejects updateWrappedLogoMode with blank settingsVersion as 409 (__OCC_CONFLICT__)', async () => {
+	it('rejects updateWrappedLogoMode with blank settingsVersion as 409 conflict', async () => {
 		// Pre-seed to ALWAYS_HIDE so the assertion below distinguishes "OCC blocked
-		// the write" from "default value happens to match".
+		// the write" from "default value happens to match". Post-migration the
+		// conflict shape is the inline-OCC `{ conflict: true, error }` that
+		// `surfaceOccConflict` keys on (was external-OCC `code: __OCC_CONFLICT__`).
 		await setAppSetting(AppSettingsKey.WRAPPED_LOGO_MODE, WrappedLogoMode.ALWAYS_HIDE);
 
 		const result = await runUpdateWrappedLogoMode(
@@ -568,14 +574,10 @@ describe('admin updateWrappedLogoMode action', () => {
 		expect(result).toMatchObject({
 			status: 409,
 			data: {
-				error: 'Settings changed in another tab. Please reload.',
-				code: '__OCC_CONFLICT__'
+				conflict: true,
+				error: 'Settings changed in another tab. Please reload.'
 			}
 		});
-		// Conflict response includes the current version so the client can refresh.
-		expect(typeof (result as { data: { settingsVersion: unknown } }).data.settingsVersion).toBe(
-			'string'
-		);
 		// Row left intact — OCC blocked the write before any service call.
 		expect(await getWrappedLogoMode()).toBe(WrappedLogoMode.ALWAYS_HIDE);
 	});
@@ -591,7 +593,7 @@ describe('admin updateWrappedLogoMode action', () => {
 		);
 		expect(result).toMatchObject({
 			status: 409,
-			data: { error: 'Settings changed in another tab. Please reload.', code: '__OCC_CONFLICT__' }
+			data: { conflict: true, error: 'Settings changed in another tab. Please reload.' }
 		});
 		// First write's value still in place.
 		expect(await getWrappedLogoMode()).toBe(WrappedLogoMode.ALWAYS_SHOW);

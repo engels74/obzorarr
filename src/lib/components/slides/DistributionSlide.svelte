@@ -11,7 +11,12 @@ import {
 } from '$lib/utils/animation-presets';
 import BaseSlide from './BaseSlide.svelte';
 import type { SlideMessagingContext } from './messaging-context';
-import { createPersonalContext, getPossessive, getSubject } from './messaging-context';
+import {
+	createPersonalContext,
+	getPossessive,
+	getSubject,
+	getWatchVerb
+} from './messaging-context';
 import type { DistributionSlideProps } from './types';
 
 interface Props extends DistributionSlideProps {
@@ -63,6 +68,7 @@ const showDualView = $derived(
 // Get messaging helpers
 const subject = $derived(getSubject(messagingContext));
 const possessive = $derived(getPossessive(messagingContext));
+const watchVerb = $derived(getWatchVerb(messagingContext));
 
 // Month labels
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -319,7 +325,7 @@ function formatPlays(plays: number): string {
 
 					<!-- Hourly Chart -->
 					<div class="chart-section">
-						<h3 class="section-title">When {subject} Watch</h3>
+						<h3 class="section-title">When {subject} {watchVerb}</h3>
 						<div class="chart-container hourly">
 							{#each hourlyData as item, i}
 								<div class="bar-wrapper" class:peak={i === hourlyPeakIndex}>

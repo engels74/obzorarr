@@ -1,6 +1,5 @@
 <script lang="ts">
-import { enhance } from '$app/forms';
-import { invalidateAll } from '$app/navigation';
+import { superForm } from 'sveltekit-superforms';
 import { SettingsActionBar, SettingsOptionCard } from '$lib/components/settings/index.js';
 import { Button } from '$lib/components/ui/button/index.js';
 import {
@@ -12,6 +11,7 @@ import {
 } from '$lib/components/ui/card/index.js';
 import { RadioGroup, RadioGroupItem } from '$lib/components/ui/radio-group/index.js';
 import { handleFormToast } from '$lib/utils/form-toast';
+import { surfaceOccConflict } from '$lib/utils/occ-form';
 import type { PageData } from './$types';
 
 interface Props {
@@ -20,18 +20,55 @@ interface Props {
 
 let { data }: Props = $props();
 
-// Initial-value capture is intentional — the radio bindings own UI state
-// from first paint and the server load reseeds via invalidateAll on save.
-/* svelte-ignore state_referenced_locally */
-let selectedUITheme = $state(data.uiTheme);
-/* svelte-ignore state_referenced_locally */
-let selectedWrappedTheme = $state(data.wrappedTheme);
-/* svelte-ignore state_referenced_locally */
-let selectedWrappedLogoMode = $state(data.wrappedLogoMode);
+// svelte-ignore state_referenced_locally
+const uiThemeForm = superForm(data.uiThemeForm, {
+	resetForm: false,
+	onUpdate: surfaceOccConflict,
+	onUpdated({ form: updated }) {
+		if (updated.valid) {
+			handleFormToast({ success: true, message: updated.message ?? 'Saved' });
+		} else {
+			handleFormToast({ error: updated.message ?? 'Validation failed' });
+		}
+	}
+});
+const { form: uiThemeData, enhance: uiThemeEnhance, submitting: uiThemeSubmitting } = uiThemeForm;
 
-let isSavingUITheme = $state(false);
-let isSavingWrappedTheme = $state(false);
-let isSavingWrappedLogoMode = $state(false);
+// svelte-ignore state_referenced_locally
+const wrappedThemeForm = superForm(data.wrappedThemeForm, {
+	resetForm: false,
+	onUpdate: surfaceOccConflict,
+	onUpdated({ form: updated }) {
+		if (updated.valid) {
+			handleFormToast({ success: true, message: updated.message ?? 'Saved' });
+		} else {
+			handleFormToast({ error: updated.message ?? 'Validation failed' });
+		}
+	}
+});
+const {
+	form: wrappedThemeData,
+	enhance: wrappedThemeEnhance,
+	submitting: wrappedThemeSubmitting
+} = wrappedThemeForm;
+
+// svelte-ignore state_referenced_locally
+const wrappedLogoModeForm = superForm(data.wrappedLogoModeForm, {
+	resetForm: false,
+	onUpdate: surfaceOccConflict,
+	onUpdated({ form: updated }) {
+		if (updated.valid) {
+			handleFormToast({ success: true, message: updated.message ?? 'Saved' });
+		} else {
+			handleFormToast({ error: updated.message ?? 'Validation failed' });
+		}
+	}
+});
+const {
+	form: wrappedLogoModeData,
+	enhance: wrappedLogoModeEnhance,
+	submitting: wrappedLogoModeSubmitting
+} = wrappedLogoModeForm;
 
 const themeSwatches: Record<string, string[]> = {
 	'modern-minimal': ['oklch(0.6261 0.1859 259.6)', 'oklch(0.2267 0 0)', 'oklch(0.9389 0 0)'],
@@ -89,34 +126,12 @@ function getThemeDescription(theme: string): string {
 			</CardDescription>
 		</CardHeader>
 		<CardContent>
-			<form
-				method="POST"
-				action="?/updateUITheme"
-				use:enhance={({ cancel }) => {
-					if (isSavingUITheme) {
-						cancel();
-						return;
-					}
-					isSavingUITheme = true;
-					return async ({ result, update }) => {
-						try {
-							if (result.type === 'success' || result.type === 'failure') {
-								handleFormToast(
-									result.data as { success?: boolean; message?: string; error?: string }
-								);
-							}
-							await update({ reset: false });
-							if (result.type === 'success') {
-								await invalidateAll();
-							}
-						} finally {
-							isSavingUITheme = false;
-						}
-					};
-				}}
-				class="space-y-4"
-			>
-				<RadioGroup bind:value={selectedUITheme} name="theme" class="grid sm:grid-cols-2 gap-2">
+			<form method="POST" action="?/updateUITheme" use:uiThemeEnhance class="space-y-4">
+				<RadioGroup
+					bind:value={$uiThemeData.uiTheme}
+					name="uiTheme"
+					class="grid sm:grid-cols-2 gap-2"
+				>
 					{#each data.themeOptions as theme (theme.value)}
 						<SettingsOptionCard
 							title={theme.label}
@@ -130,11 +145,11 @@ function getThemeDescription(theme: string): string {
 					{/each}
 				</RadioGroup>
 
-				<input type="hidden" name="settingsVersion" value={data.uiThemeVersion} />
+				<input type="hidden" name="settingsVersion" bind:value={$uiThemeData.settingsVersion} />
 
 				<SettingsActionBar>
-					<Button type="submit" class="tap-target" disabled={isSavingUITheme}>
-						{isSavingUITheme ? 'Saving…' : 'Save UI theme'}
+					<Button type="submit" class="tap-target" disabled={$uiThemeSubmitting}>
+						{$uiThemeSubmitting ? 'Saving…' : 'Save UI theme'}
 					</Button>
 				</SettingsActionBar>
 			</form>
@@ -149,35 +164,9 @@ function getThemeDescription(theme: string): string {
 			</CardDescription>
 		</CardHeader>
 		<CardContent>
-			<form
-				method="POST"
-				action="?/updateWrappedTheme"
-				use:enhance={({ cancel }) => {
-					if (isSavingWrappedTheme) {
-						cancel();
-						return;
-					}
-					isSavingWrappedTheme = true;
-					return async ({ result, update }) => {
-						try {
-							if (result.type === 'success' || result.type === 'failure') {
-								handleFormToast(
-									result.data as { success?: boolean; message?: string; error?: string }
-								);
-							}
-							await update({ reset: false });
-							if (result.type === 'success') {
-								await invalidateAll();
-							}
-						} finally {
-							isSavingWrappedTheme = false;
-						}
-					};
-				}}
-				class="space-y-4"
-			>
+			<form method="POST" action="?/updateWrappedTheme" use:wrappedThemeEnhance class="space-y-4">
 				<RadioGroup
-					bind:value={selectedWrappedTheme}
+					bind:value={$wrappedThemeData.wrappedTheme}
 					name="wrappedTheme"
 					class="grid sm:grid-cols-2 gap-2"
 				>
@@ -194,11 +183,15 @@ function getThemeDescription(theme: string): string {
 					{/each}
 				</RadioGroup>
 
-				<input type="hidden" name="settingsVersion" value={data.wrappedThemeVersion} />
+				<input
+					type="hidden"
+					name="settingsVersion"
+					bind:value={$wrappedThemeData.settingsVersion}
+				/>
 
 				<SettingsActionBar>
-					<Button type="submit" class="tap-target" disabled={isSavingWrappedTheme}>
-						{isSavingWrappedTheme ? 'Saving…' : 'Save wrapped theme'}
+					<Button type="submit" class="tap-target" disabled={$wrappedThemeSubmitting}>
+						{$wrappedThemeSubmitting ? 'Saving…' : 'Save wrapped theme'}
 					</Button>
 				</SettingsActionBar>
 			</form>
@@ -214,35 +207,10 @@ function getThemeDescription(theme: string): string {
 			<form
 				method="POST"
 				action="?/updateWrappedLogoMode"
-				use:enhance={({ cancel }) => {
-					if (isSavingWrappedLogoMode) {
-						cancel();
-						return;
-					}
-					isSavingWrappedLogoMode = true;
-					return async ({ result, update }) => {
-						try {
-							if (result.type === 'success' || result.type === 'failure') {
-								handleFormToast(
-									result.data as { success?: boolean; message?: string; error?: string }
-								);
-							}
-							await update({ reset: false });
-							if (result.type === 'success') {
-								await invalidateAll();
-							}
-						} finally {
-							isSavingWrappedLogoMode = false;
-						}
-					};
-				}}
+				use:wrappedLogoModeEnhance
 				class="space-y-4"
 			>
-				<RadioGroup
-					bind:value={selectedWrappedLogoMode}
-					name="logoMode"
-					class="grid gap-2"
-				>
+				<RadioGroup bind:value={$wrappedLogoModeData.logoMode} name="logoMode" class="grid gap-2">
 					{#each data.wrappedLogoOptions as option (option.value)}
 						<SettingsOptionCard title={option.label} description={option.description} meta="Logo">
 							{#snippet control()}
@@ -252,11 +220,15 @@ function getThemeDescription(theme: string): string {
 					{/each}
 				</RadioGroup>
 
-				<input type="hidden" name="settingsVersion" value={data.wrappedLogoModeVersion} />
+				<input
+					type="hidden"
+					name="settingsVersion"
+					bind:value={$wrappedLogoModeData.settingsVersion}
+				/>
 
 				<SettingsActionBar>
-					<Button type="submit" class="tap-target" disabled={isSavingWrappedLogoMode}>
-						{isSavingWrappedLogoMode ? 'Saving…' : 'Save logo mode'}
+					<Button type="submit" class="tap-target" disabled={$wrappedLogoModeSubmitting}>
+						{$wrappedLogoModeSubmitting ? 'Saving…' : 'Save logo mode'}
 					</Button>
 				</SettingsActionBar>
 			</form>

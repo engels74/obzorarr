@@ -34,6 +34,13 @@ export function getAreVerb(ctx: SlideMessagingContext): string {
 	return ctx.serverName ? 'is' : 'are';
 }
 
+export function getWatchVerb(ctx: SlideMessagingContext): string {
+	if (!ctx.isServerWrapped) {
+		return 'watch';
+	}
+	return ctx.serverName ? 'watches' : 'watch';
+}
+
 export function createPersonalContext(): SlideMessagingContext {
 	return {
 		isServerWrapped: false,

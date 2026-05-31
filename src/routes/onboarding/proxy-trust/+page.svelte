@@ -416,7 +416,9 @@ function toggleDetails() {
 
 			<button type="button" class="details-toggle" onclick={toggleDetails} aria-expanded={showDetails}>
 				<span>{showDetails ? 'Hide technical details' : 'Show technical details'}</span>
-				<ChevronDownIcon class="size-4 chevron" data-open={showDetails} aria-hidden="true" />
+				<span class="chevron-wrap" class:open={showDetails} aria-hidden="true">
+					<ChevronDownIcon class="size-4" />
+				</span>
 			</button>
 
 			{#if showDetails}
@@ -740,11 +742,13 @@ function toggleDetails() {
 		outline-offset: 2px;
 	}
 
-	.details-toggle :global(.chevron) {
+	.chevron-wrap {
+		display: inline-flex;
+		align-items: center;
 		transition: transform 0.2s ease;
 	}
 
-	.details-toggle :global(.chevron[data-open='true']) {
+	.chevron-wrap.open {
 		transform: rotate(180deg);
 	}
 

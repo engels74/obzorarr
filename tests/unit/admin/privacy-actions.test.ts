@@ -246,6 +246,40 @@ describe('privacy nested route — updateUserDefaults', () => {
 		expect(result).toMatchObject({ status: 400, data: { error: 'Invalid input' } });
 	});
 
+	it('ISSUE-016 regression: stale save 409s with the surfaceOccConflict marker, fresh save advances version', async () => {
+		// Locks in the #125 fix: updateUserDefaults must return the exact conflict
+		// shape `surfaceOccConflict` keys on (`conflict: true` + OCC message) for a
+		// stale settingsVersion, AND a fresh successful save must advance the
+		// returned settingsVersion. Together these prevent the false-success /
+		// sequential-save staleness class of bug on the privacy tab.
+		const fresh = (await run(
+			makeRequest('updateUserDefaults', {
+				defaultShareMode: 'public',
+				allowUserControl: 'true',
+				settingsVersion: new Date(0).toISOString()
+			})
+		)) as { form: { data: { settingsVersion: string } }; success?: boolean };
+		expect(fresh).toMatchObject({ success: true });
+		const advanced = fresh.form.data.settingsVersion;
+		expect(advanced).not.toBe(new Date(0).toISOString());
+
+		// A subsequent submission with the now-stale epoch must 409 with the
+		// marker, not false-succeed.
+		const stale = await run(
+			makeRequest('updateUserDefaults', {
+				defaultShareMode: 'private-oauth',
+				allowUserControl: 'false',
+				settingsVersion: new Date(0).toISOString()
+			})
+		);
+		expect(stale).toMatchObject({
+			status: 409,
+			data: { conflict: true, error: 'Settings changed in another tab. Please reload.' }
+		});
+		// Stale save did not overwrite the fresh value.
+		expect(await getGlobalDefaultShareMode()).toBe('public');
+	});
+
 	it('rejects unknown defaultShareMode as 400', async () => {
 		const result = await run(
 			makeRequest('updateUserDefaults', {

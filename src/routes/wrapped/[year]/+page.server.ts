@@ -19,12 +19,18 @@ import { getServerStatsWithAnonymization } from '$lib/server/stats/engine';
 import { triggerLiveSyncIfNeeded } from '$lib/server/sync/live-sync';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params, locals, setHeaders }) => {
+export const load: PageServerLoad = async ({ params, locals, parent, setHeaders }) => {
 	setHeaders({ 'cache-control': 'no-store' });
 
 	const year = parseInt(params.year, 10);
 	if (Number.isNaN(year) || year < 2000 || year > 2100) {
 		error(404, 'Invalid year');
+	}
+
+	const currentYear = new Date().getFullYear();
+	const { availableYears } = await parent();
+	if (!availableYears.includes(year) && year !== currentYear) {
+		error(404, 'No data found for this year');
 	}
 
 	try {

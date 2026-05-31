@@ -1,3 +1,4 @@
+import { requiresOnboarding } from '$lib/server/onboarding';
 import { getSyncProgress, type LiveSyncProgress } from '$lib/server/sync/progress';
 import type { SyncStatusStreamEvent, SyncStatusStreamProgress } from '$lib/sync/types';
 import type { RequestHandler } from './$types';
@@ -5,10 +6,15 @@ import type { RequestHandler } from './$types';
 /**
  * SSE stream of sync status.
  *
- * INTENTIONALLY PUBLIC: polled by the onboarding wizard before any user account
- * exists. `onboardingHandle` in `src/hooks.server.ts` explicitly skips `/api/sync`,
- * and `authorizationHandle` gates `/admin/*` only — this endpoint is reachable
- * pre-login by design.
+ * CONDITIONALLY PUBLIC: anonymous access is allowed only while onboarding is
+ * incomplete (i.e. before any user account exists), so the onboarding wizard
+ * can poll sync progress. Once onboarding is complete, a valid authenticated
+ * session is required; anonymous requests receive 401.
+ *
+ * `onboardingHandle` in `src/hooks.server.ts` skips `/api/sync` from its
+ * onboarding-redirect guard so this endpoint remains reachable during setup.
+ * `authHandle` still runs for every request, so `event.locals.user` is
+ * populated whenever a valid session cookie is present.
  *
  * Exposed fields per frame: event `type` ∈ {'connected','update','completed',
  * 'failed','cancelled','idle'}, boolean `inProgress`, and (for connected/update)
@@ -20,12 +26,27 @@ import type { RequestHandler } from './$types';
  * re-evaluating PII exposure.
  *
  * Rate-limited by the `api` bucket in `rateLimitHandle`.
+ *
+ * In-flight transition (G2): an anonymous stream opened during onboarding that
+ * is still open when onboarding completes is left to drain naturally. The
+ * onboarding wizard navigates away on completion, which drops the client
+ * connection and triggers the `request.signal` abort handler. No additional
+ * close-on-completion logic is needed.
  */
 
 const POLL_INTERVAL_ACTIVE_MS = 500;
 const POLL_INTERVAL_IDLE_MS = 2000;
 
-export const GET: RequestHandler = async ({ request }) => {
+export const GET: RequestHandler = async ({ request, locals }) => {
+	// Gate: allow anonymous access only while onboarding is incomplete.
+	// Once onboarding is done, a valid session is required.
+	const onboardingPending = await requiresOnboarding();
+	if (!onboardingPending && !locals.user) {
+		return new Response(JSON.stringify({ message: 'Unauthorized' }), {
+			status: 401,
+			headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }
+		});
+	}
 	const stream = new ReadableStream({
 		async start(controller) {
 			const initialProgress = getSyncProgress();

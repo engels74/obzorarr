@@ -1,6 +1,10 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
-import { getApiConfigWithSources, hasPlexEnvConfig } from '$lib/server/admin/settings.service';
+import {
+	getApiConfigWithSources,
+	hasPlexEnvConfig,
+	toSafeConfigValue
+} from '$lib/server/admin/settings.service';
 import { messageForMembershipFailure, verifyServerMembership } from '$lib/server/auth/membership';
 import { getSessionPlexToken } from '$lib/server/auth/session';
 import type { MembershipResult } from '$lib/server/auth/types';
@@ -30,6 +34,12 @@ export const load: PageServerLoad = async ({ parent }) => {
 	let configuredUrlReachable = true;
 	let configuredUrlErrorReason: string | null = null;
 
+	// Per-field ENV lock info — mirrors how connections/+page.server.ts builds it
+	// so the onboarding Plex step can show ENV badges on locked fields.
+	const apiConfig = await getApiConfigWithSources();
+	const plexServerUrlLocked = apiConfig.plex.serverUrl.isLocked;
+	const plexTokenSafe = toSafeConfigValue(apiConfig.plex.token);
+
 	if (parentData.hasEnvConfig) {
 		// Force a live /identity probe on load so the reachability banner reflects
 		// the current server state, not a possibly-stale cached machineId that
@@ -46,7 +56,10 @@ export const load: PageServerLoad = async ({ parent }) => {
 		isNonAdminUser: parentData.isAuthenticated && !parentData.isAdmin,
 		configuredMachineId,
 		configuredUrlReachable,
-		configuredUrlErrorReason
+		configuredUrlErrorReason,
+		plexServerUrlLocked,
+		plexTokenLocked: plexTokenSafe.isLocked,
+		plexTokenHasValue: plexTokenSafe.hasValue
 	};
 };
 

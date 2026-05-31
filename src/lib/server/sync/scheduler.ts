@@ -230,12 +230,27 @@ export async function startBackgroundSync(
 	return { started: true };
 }
 
-export function updateSchedulerCron(cronExpression: string, timezone?: string): Cron {
+export function updateSchedulerCron(cronExpression: string, timezone?: string): Cron | null {
+	// Preserve the prior run-state when only the cron changes (ISSUE-012):
+	// - INACTIVE (no instance): stay inactive — do NOT create or start an
+	//   instance. The new expression is persisted to app_settings
+	//   (SYNC_CRON_EXPRESSION) by the caller and is picked up the next time the
+	//   scheduler is initialised, so the runtime state stays "Inactive" instead
+	//   of silently flipping to active/paused (the original ISSUE-012 defect).
+	// - PAUSED: re-setup in paused mode so the new expression is applied but the
+	//   scheduler keeps its paused state.
+	// - ACTIVE (running, not paused): re-setup running so it keeps firing on the
+	//   new expression.
+	if (schedulerInstance === null) {
+		return null;
+	}
+	const prior = getSchedulerStatus();
+	const wasActive = prior.isRunning && !prior.isPaused;
 	return setupSyncScheduler({
 		cronExpression,
 		timezone: timezone ?? DEFAULT_TIMEZONE,
 		protect: true,
-		startImmediately: true
+		startImmediately: wasActive
 	});
 }
 

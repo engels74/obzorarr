@@ -1,8 +1,9 @@
 import { fail } from '@sveltejs/kit';
+import { zod4 } from 'sveltekit-superforms/adapters';
+import { superValidate } from 'sveltekit-superforms/server';
 import { z } from 'zod';
 import {
-	externalOccCheck,
-	OCC_CONFLICT_CODE,
+	inlineOccCheck,
 	OCC_CONFLICT_MESSAGE,
 	settingsVersionISO
 } from '$lib/server/admin/occ-helpers';
@@ -26,25 +27,43 @@ import { wrappedLogoOptions } from '$lib/sharing/options';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
- * OCC strategy: EXTERNAL for both theme schemas + the logo-mode schema.
- * Top-level `z.enum` schemas; the action validates `settingsVersion` from
- * formData against the current row BEFORE `safeParse`. Mirrors the
- * monolith's three z.enum actions verbatim — see v3 plan §A5 Table D2.
+ * OCC strategy: INLINE `settingsVersion` (Superforms). Migrated from the
+ * top-level `z.enum` + `externalOccCheck` shape to match privacy's canonical
+ * pattern (ISSUE-015): each form carries an inline `settingsVersion`, the
+ * action advances it from the freshly-written row on success, and the client
+ * binds it back so a second consecutive save in the same page load isn't
+ * false-409'd. The shared enum stays co-located with its consuming schema.
  */
-const ThemeSchema = z.enum([
-	'modern-minimal',
-	'supabase',
-	'doom-64',
-	'amber-minimal',
-	'soviet-red'
-]);
+const ThemeEnum = z.enum(['modern-minimal', 'supabase', 'doom-64', 'amber-minimal', 'soviet-red']);
+const WrappedLogoModeEnum = z.enum(['always_show', 'always_hide', 'user_choice']);
+
 /**
- * OCC strategy: EXTERNAL. Same shape as `ThemeSchema` — top-level z.enum,
- * validated via `externalOccCheck` against `WRAPPED_LOGO_MODE_SETTINGS_KEYS`
- * before `safeParse` so the conflict response carries the magic
- * `OCC_CONFLICT_CODE` sentinel + the current settingsVersion.
+ * OCC strategy: INLINE `settingsVersion`. Parent schema for the UI theme form.
+ * Same two-stage OCC as privacy (Zod min(1) rejects blank, then `inlineOccCheck`
+ * catches stale submissions against `UI_THEME_SETTINGS_KEYS`).
  */
-const WrappedLogoModeSchema = z.enum(['always_show', 'always_hide', 'user_choice']);
+const UIThemeSchema = z.object({
+	uiTheme: ThemeEnum,
+	settingsVersion: z.string().min(1, 'Missing settings version (reload the page)')
+});
+
+/**
+ * OCC strategy: INLINE `settingsVersion`. Parent schema for the Wrapped theme
+ * form (OCC against `WRAPPED_THEME_SETTINGS_KEYS`).
+ */
+const WrappedThemeSchema = z.object({
+	wrappedTheme: ThemeEnum,
+	settingsVersion: z.string().min(1, 'Missing settings version (reload the page)')
+});
+
+/**
+ * OCC strategy: INLINE `settingsVersion`. Parent schema for the Wrapped logo
+ * visibility form (OCC against `WRAPPED_LOGO_MODE_SETTINGS_KEYS`).
+ */
+const WrappedLogoModeSchema = z.object({
+	logoMode: WrappedLogoModeEnum,
+	settingsVersion: z.string().min(1, 'Missing settings version (reload the page)')
+});
 
 export const load: PageServerLoad = async () => {
 	const [
@@ -63,13 +82,28 @@ export const load: PageServerLoad = async () => {
 		getAppSettingsUpdatedAt(WRAPPED_LOGO_MODE_SETTINGS_KEYS)
 	]);
 
+	const uiThemeForm = await superValidate(
+		{ uiTheme, settingsVersion: settingsVersionISO(uiThemeUpdatedAt) },
+		zod4(UIThemeSchema),
+		{ id: 'uiTheme' }
+	);
+
+	const wrappedThemeForm = await superValidate(
+		{ wrappedTheme, settingsVersion: settingsVersionISO(wrappedThemeUpdatedAt) },
+		zod4(WrappedThemeSchema),
+		{ id: 'wrappedTheme' }
+	);
+
+	const wrappedLogoModeForm = await superValidate(
+		{ logoMode: wrappedLogoMode, settingsVersion: settingsVersionISO(wrappedLogoModeUpdatedAt) },
+		zod4(WrappedLogoModeSchema),
+		{ id: 'wrappedLogoMode' }
+	);
+
 	return {
-		uiTheme,
-		wrappedTheme,
-		wrappedLogoMode,
-		uiThemeVersion: settingsVersionISO(uiThemeUpdatedAt),
-		wrappedThemeVersion: settingsVersionISO(wrappedThemeUpdatedAt),
-		wrappedLogoModeVersion: settingsVersionISO(wrappedLogoModeUpdatedAt),
+		uiThemeForm,
+		wrappedThemeForm,
+		wrappedLogoModeForm,
 		themeOptions: Object.entries(ThemePresets).map(([key, value]) => ({
 			value,
 			label: key
@@ -84,83 +118,93 @@ export const load: PageServerLoad = async () => {
 
 export const actions: Actions = requireAdminActions({
 	updateUITheme: async ({ request }) => {
-		const formData = await request.formData();
-
-		const occ = await externalOccCheck(
-			formData.get('settingsVersion')?.toString() ?? '',
-			UI_THEME_SETTINGS_KEYS
-		);
-		if (occ.status === 'conflict') {
-			return fail(409, {
-				error: OCC_CONFLICT_MESSAGE,
-				code: OCC_CONFLICT_CODE,
-				settingsVersion: occ.current
-			});
+		const form = await superValidate(request, zod4(UIThemeSchema), { id: 'uiTheme' });
+		if (!form.valid) {
+			if (form.errors.settingsVersion?.length) {
+				return fail(409, { form, conflict: true, error: OCC_CONFLICT_MESSAGE });
+			}
+			return fail(400, { form, error: 'Invalid theme selection' });
 		}
 
-		const parsed = ThemeSchema.safeParse(formData.get('theme'));
-		if (!parsed.success) return fail(400, { error: 'Invalid theme selection' });
+		if (
+			(await inlineOccCheck(form.data.settingsVersion, UI_THEME_SETTINGS_KEYS)).status ===
+			'conflict'
+		) {
+			return fail(409, { form, conflict: true, error: OCC_CONFLICT_MESSAGE });
+		}
 
 		try {
-			await setUITheme(parsed.data as ThemePresetType);
-			return { success: true, message: 'UI theme updated' };
+			await setUITheme(form.data.uiTheme as ThemePresetType);
+			// ISSUE-015: advance the returned settingsVersion so a second consecutive
+			// save in the same page load isn't false-409'd. Single-writer admin
+			// setting, so reading the row back post-write is safe.
+			form.data.settingsVersion = settingsVersionISO(
+				await getAppSettingsUpdatedAt(UI_THEME_SETTINGS_KEYS)
+			);
+			return { form, success: true, message: 'UI theme updated' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to update UI theme';
-			return fail(500, { error: message });
+			return fail(500, { form, error: message });
 		}
 	},
 
 	updateWrappedTheme: async ({ request }) => {
-		const formData = await request.formData();
-
-		const occ = await externalOccCheck(
-			formData.get('settingsVersion')?.toString() ?? '',
-			WRAPPED_THEME_SETTINGS_KEYS
-		);
-		if (occ.status === 'conflict') {
-			return fail(409, {
-				error: OCC_CONFLICT_MESSAGE,
-				code: OCC_CONFLICT_CODE,
-				settingsVersion: occ.current
-			});
+		const form = await superValidate(request, zod4(WrappedThemeSchema), { id: 'wrappedTheme' });
+		if (!form.valid) {
+			if (form.errors.settingsVersion?.length) {
+				return fail(409, { form, conflict: true, error: OCC_CONFLICT_MESSAGE });
+			}
+			return fail(400, { form, error: 'Invalid theme selection' });
 		}
 
-		const parsed = ThemeSchema.safeParse(formData.get('wrappedTheme') ?? formData.get('theme'));
-		if (!parsed.success) return fail(400, { error: 'Invalid theme selection' });
+		if (
+			(await inlineOccCheck(form.data.settingsVersion, WRAPPED_THEME_SETTINGS_KEYS)).status ===
+			'conflict'
+		) {
+			return fail(409, { form, conflict: true, error: OCC_CONFLICT_MESSAGE });
+		}
 
 		try {
-			await setWrappedTheme(parsed.data as ThemePresetType);
-			return { success: true, message: 'Wrapped theme updated' };
+			await setWrappedTheme(form.data.wrappedTheme as ThemePresetType);
+			// ISSUE-015: advance the returned settingsVersion (see updateUITheme).
+			form.data.settingsVersion = settingsVersionISO(
+				await getAppSettingsUpdatedAt(WRAPPED_THEME_SETTINGS_KEYS)
+			);
+			return { form, success: true, message: 'Wrapped theme updated' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to update wrapped theme';
-			return fail(500, { error: message });
+			return fail(500, { form, error: message });
 		}
 	},
 
 	updateWrappedLogoMode: async ({ request }) => {
-		const formData = await request.formData();
-
-		const occ = await externalOccCheck(
-			formData.get('settingsVersion')?.toString() ?? '',
-			WRAPPED_LOGO_MODE_SETTINGS_KEYS
-		);
-		if (occ.status === 'conflict') {
-			return fail(409, {
-				error: OCC_CONFLICT_MESSAGE,
-				code: OCC_CONFLICT_CODE,
-				settingsVersion: occ.current
-			});
+		const form = await superValidate(request, zod4(WrappedLogoModeSchema), {
+			id: 'wrappedLogoMode'
+		});
+		if (!form.valid) {
+			if (form.errors.settingsVersion?.length) {
+				return fail(409, { form, conflict: true, error: OCC_CONFLICT_MESSAGE });
+			}
+			return fail(400, { form, error: 'Invalid logo mode' });
 		}
 
-		const parsed = WrappedLogoModeSchema.safeParse(formData.get('logoMode'));
-		if (!parsed.success) return fail(400, { error: 'Invalid logo mode' });
+		if (
+			(await inlineOccCheck(form.data.settingsVersion, WRAPPED_LOGO_MODE_SETTINGS_KEYS)).status ===
+			'conflict'
+		) {
+			return fail(409, { form, conflict: true, error: OCC_CONFLICT_MESSAGE });
+		}
 
 		try {
-			await setWrappedLogoMode(parsed.data as WrappedLogoModeType);
-			return { success: true, message: 'Logo visibility mode updated' };
+			await setWrappedLogoMode(form.data.logoMode as WrappedLogoModeType);
+			// ISSUE-015: advance the returned settingsVersion (see updateUITheme).
+			form.data.settingsVersion = settingsVersionISO(
+				await getAppSettingsUpdatedAt(WRAPPED_LOGO_MODE_SETTINGS_KEYS)
+			);
+			return { form, success: true, message: 'Logo visibility mode updated' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to update mode';
-			return fail(500, { error: message });
+			return fail(500, { form, error: message });
 		}
 	}
 });

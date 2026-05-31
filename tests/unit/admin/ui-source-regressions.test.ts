@@ -355,17 +355,20 @@ describe('admin UI source regressions', () => {
 	});
 
 	// US-022 / monolith deletion — wrapped logo mode is now an Appearance tab
-	// RadioGroup driven by use:enhance (commit a46279c). The monolith's
-	// selectedWrappedLogoMode + syncedWrappedLogoMode state machine doesn't
-	// exist anymore; the equivalent UX is handled by the RadioGroup
-	// primitive's controlled value. Source assertion re-points to the nested
-	// Appearance route:
+	// RadioGroup. Post-ISSUE-015 the Appearance route was migrated from raw
+	// use:enhance to Superforms (parity with Privacy): the RadioGroup binds to
+	// the Superform store field and the hidden settingsVersion input binds
+	// two-way so a fresh version round-trips without invalidateAll. The
+	// monolith's selectedWrappedLogoMode + syncedWrappedLogoMode state machine
+	// doesn't exist anymore.
 	it('binds the wrapped logo mode RadioGroup in the Appearance route', async () => {
 		const source = await readSource('src/routes/admin/settings/appearance/+page.svelte');
 
 		expect(source).toContain('action="?/updateWrappedLogoMode"');
-		expect(source).toContain('bind:value={selectedWrappedLogoMode}');
+		expect(source).toContain('bind:value={$wrappedLogoModeData.logoMode}');
 		expect(source).toContain('name="logoMode"');
+		// Two-way settingsVersion binding is the core of the ISSUE-015 fix.
+		expect(source).toContain('bind:value={$wrappedLogoModeData.settingsVersion}');
 	});
 
 	it('uses real onboarding privacy field names for submitted controls', async () => {
@@ -376,6 +379,57 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain('name="allowUserControl"');
 		expect(source).not.toContain('name="wrappedLogoModeRadio"');
 		expect(source).not.toContain('name="shareModeRadio"');
+	});
+
+	// ISSUE-005/006: button-driven onboarding selections (UI/Wrapped theme, User
+	// Control, Public Landing Lookup) were lost on Save & Continue. Their values
+	// rode on always-rendered hidden <input value={…}> mirrors, but FormData reads
+	// the DOM .value *property* while value={…} only updates the *attribute*; when
+	// the interactive control lives in a destroyed/recreated {#if} carousel branch
+	// the property kept its default. Fix authoritatively writes live runes state
+	// onto the submitted FormData inside use:enhance, bypassing DOM divergence.
+	it('serializes onboarding settings from live state in the enhance submit callback', async () => {
+		const source = await readSource('src/routes/onboarding/settings/+page.svelte');
+
+		// enhance destructures formData so it can overwrite the submitted values.
+		expect(source).toContain('use:enhance={({ formData }) => {');
+		// Every server-consumed field is written from live runes state.
+		expect(source).toContain("formData.set('uiTheme', uiTheme);");
+		expect(source).toContain("formData.set('wrappedTheme', wrappedTheme);");
+		expect(source).toContain("formData.set('anonymizationMode', anonymizationMode);");
+		expect(source).toContain("formData.set('logoMode', wrappedLogoMode);");
+		expect(source).toContain("formData.set('defaultShareMode', defaultShareMode);");
+		expect(source).toContain(
+			"formData.set('allowUserControl', allowUserControl ? 'true' : 'false');"
+		);
+		expect(source).toContain("formData.set('serverWrappedShareMode', serverWrappedShareMode);");
+		expect(source).toContain(
+			"formData.set('publicLandingLookup', publicLandingLookup ? 'true' : 'false');"
+		);
+		expect(source).toContain("formData.set('enabledSlides', enabledSlidesString);");
+		expect(source).toContain("formData.set('enableFunFacts', enableFunFacts ? 'true' : 'false');");
+
+		// Duplicate submitting-name collisions are removed: the in-branch radios use
+		// the non-submitting …Radio convention, and the redundant sr-only
+		// allowUserControl checkbox is gone (the hidden input is the sole submitter).
+		expect(source).toContain('name="logoModeRadio"');
+		expect(source).toContain('name="defaultShareModeRadio"');
+		expect(source).not.toContain('bind:checked={allowUserControl}');
+		// Exactly one submitting allowUserControl input (the always-rendered hidden one).
+		expect(source.match(/name="allowUserControl"/g)).toHaveLength(1);
+	});
+
+	// ISSUE-004: AI enabled + no effective OpenAI key (typed, env, or DB) shows a
+	// non-blocking inline warning that the built-in template generator is used.
+	it('warns when onboarding AI fun facts are enabled without an OpenAI key', async () => {
+		const source = await readSource('src/routes/onboarding/settings/+page.svelte');
+
+		expect(source).toContain(
+			'let showAiKeyWarning = $derived(enableFunFacts && !openaiApiKey.trim() && !data.hasOpenAI);'
+		);
+		expect(source).toContain('{#if showAiKeyWarning}');
+		expect(source).toContain('class="ai-key-warning"');
+		expect(source).toContain('built-in template generator is used');
 	});
 
 	it('keeps share modal radios checked from local state while updating', async () => {

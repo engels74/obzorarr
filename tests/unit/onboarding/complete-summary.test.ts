@@ -141,9 +141,10 @@ describe('onboarding completion summary', () => {
 		expect(result.notice).toBeNull();
 	});
 
-	it('shows the configured fun fact frequency when OpenAI key is missing', async () => {
+	it('shows Disabled for fun facts when no OpenAI key is configured', async () => {
 		await setFunFactFrequency(FunFactFrequency.MANY);
 		await setAppSetting(AppSettingsKey.OPENAI_BASE_URL, 'https://api.example.com/v1');
+		// No OPENAI_API_KEY set — fun facts should display as Disabled
 
 		const result = (await load({
 			parent: async () => ({}),
@@ -152,8 +153,28 @@ describe('onboarding completion summary', () => {
 			cookies: await createClaimedCookies()
 		} as Parameters<typeof load>[0])) as {
 			configSummary: Record<string, string>;
+			enableFunFacts: boolean;
 		};
 
+		expect(result.enableFunFacts).toBe(false);
+		expect(result.configSummary.funFacts).toBe('Disabled');
+	});
+
+	it('shows the configured fun fact frequency when OpenAI key is present', async () => {
+		await setFunFactFrequency(FunFactFrequency.MANY);
+		await setAppSetting(AppSettingsKey.OPENAI_API_KEY, 'sk-test-key');
+
+		const result = (await load({
+			parent: async () => ({}),
+			locals: adminLocals,
+			url: new URL('http://localhost/onboarding/complete'),
+			cookies: await createClaimedCookies()
+		} as Parameters<typeof load>[0])) as {
+			configSummary: Record<string, string>;
+			enableFunFacts: boolean;
+		};
+
+		expect(result.enableFunFacts).toBe(true);
 		expect(result.configSummary.funFacts).toBe('Many (8)');
 	});
 });

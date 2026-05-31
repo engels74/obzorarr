@@ -17,6 +17,7 @@ import {
 import { optionalTrimmed } from '$lib/server/admin/zod-helpers';
 import { requireAdminActions } from '$lib/server/auth/guards';
 import { testOpenAIConnection } from '$lib/server/funfacts/test-connection';
+import { logger } from '$lib/server/logging';
 import {
 	CredentialedUrlError,
 	envAllowsInsecureLocalPlexHttp,
@@ -176,21 +177,42 @@ export const actions: Actions = requireAdminActions({
 				try {
 					values.openaiBaseUrl = normalizeOpenAIBaseUrl(values.openaiBaseUrl);
 				} catch (err) {
-					return fail(400, {
-						error: err instanceof CredentialedUrlError ? err.message : 'Invalid OpenAI base URL'
-					});
+					const message =
+						err instanceof CredentialedUrlError ? err.message : 'Invalid OpenAI base URL';
+					// Mirror the Zod-level fieldErrors shape (H5) so the normalize-stage
+					// failure (e.g. a credentialed URL) also renders the inline field error,
+					// not just a toast.
+					return fail(400, { error: message, fieldErrors: { openaiBaseUrl: [message] } });
 				}
 			}
 
+			// C2: detect submitted-but-locked fields so we can surface a note.
+			// Only the five lockable fields are checked; plexAllowInsecureLocalHttp
+			// is not ENV-lockable and is excluded from both the locks object and the
+			// submitted-locked scan.
+			const locks = {
+				plexServerUrl: apiConfig.plex.serverUrl.isLocked,
+				plexToken: apiConfig.plex.token.isLocked,
+				openaiApiKey: apiConfig.openai.apiKey.isLocked,
+				openaiBaseUrl: apiConfig.openai.baseUrl.isLocked,
+				openaiModel: apiConfig.openai.model.isLocked
+			};
+			type LockKey = keyof typeof locks;
+			const lockableKeys: LockKey[] = [
+				'plexServerUrl',
+				'plexToken',
+				'openaiApiKey',
+				'openaiBaseUrl',
+				'openaiModel'
+			];
+			// A field counts as "submitted AND locked" when the FormData contained
+			// the key (values[k] !== undefined) AND the field is ENV-locked.
+			const submittedLockedFields = lockableKeys.filter((k) => values[k] !== undefined && locks[k]);
+			const hasLockedFieldSubmission = submittedLockedFields.length > 0;
+
 			const result = await setApiConfigAtomic({
 				values,
-				locks: {
-					plexServerUrl: apiConfig.plex.serverUrl.isLocked,
-					plexToken: apiConfig.plex.token.isLocked,
-					openaiApiKey: apiConfig.openai.apiKey.isLocked,
-					openaiBaseUrl: apiConfig.openai.baseUrl.isLocked,
-					openaiModel: apiConfig.openai.model.isLocked
-				},
+				locks,
 				submittedVersion: parsed.data.apiConfigVersion
 			});
 
@@ -205,7 +227,23 @@ export const actions: Actions = requireAdminActions({
 				await clearCachedServerMachineId();
 			}
 
-			return { success: true, message: 'API configuration updated' };
+			// A2: read the new version immediately after the atomic write so the
+			// client can bind both panels to the fresh token without waiting for
+			// invalidateAll to complete.
+			const newUpdatedAt = await getAppSettingsUpdatedAt(API_CONFIG_KEYS);
+			const newApiConfigVersion = settingsVersionISO(newUpdatedAt);
+
+			// C2: include informational note when a locked field was submitted.
+			let message = 'API configuration updated';
+			if (hasLockedFieldSubmission) {
+				message =
+					'API configuration updated. Some fields are controlled by environment variables and were not changed.';
+				logger.info(
+					`updateApiConfig: submitted values for ENV-locked fields were ignored (${submittedLockedFields.join(', ')})`
+				);
+			}
+
+			return { success: true, message, apiConfigVersion: newApiConfigVersion };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to update settings';
 			return fail(500, { error: message });

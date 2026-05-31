@@ -44,6 +44,15 @@ let openaiBaseUrl = $state(settings.openaiBaseUrl.value);
 // svelte-ignore state_referenced_locally
 let openaiModel = $state(settings.openaiModel.value);
 
+// A2: track the current OCC version in $state so both panels immediately use
+// the fresh version returned by a successful save, without waiting for
+// invalidateAll to complete.
+// svelte-ignore state_referenced_locally
+let apiConfigVersion = $state(data.apiConfigVersion);
+
+// H5: inline field-level error for the OpenAI base URL field.
+let openaiBaseUrlError = $state<string | undefined>(undefined);
+
 let isSavingPlex = $state(false);
 let isTestingPlex = $state(false);
 let isSavingOpenai = $state(false);
@@ -94,6 +103,11 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 							}
 							await update({ reset: false });
 							if (result.type === 'success') {
+								// A2: advance local version so the OpenAI panel's next save
+								// uses the fresh token without waiting for invalidateAll.
+								const freshVersion = (result.data as { apiConfigVersion?: string })
+									?.apiConfigVersion;
+								if (freshVersion) apiConfigVersion = freshVersion;
 								plexTokenInput = '';
 								await invalidateAll();
 							}
@@ -168,7 +182,7 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 					value={plexAllowInsecureLocalHttp ? 'true' : 'false'}
 				/>
 
-				<input type="hidden" name="apiConfigVersion" value={data.apiConfigVersion} />
+				<input type="hidden" name="apiConfigVersion" value={apiConfigVersion} />
 			</form>
 
 			<SettingsActionBar>
@@ -241,12 +255,28 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 					return async ({ result, update }) => {
 						try {
 							if (result.type === 'success' || result.type === 'failure') {
-								handleFormToast(
-									result.data as { success?: boolean; message?: string; error?: string }
-								);
+								const data = result.data as {
+									success?: boolean;
+									message?: string;
+									error?: string;
+									fieldErrors?: Record<string, string[] | undefined>;
+									apiConfigVersion?: string;
+								};
+								// H5: capture inline field error for openaiBaseUrl.
+								if (result.type === 'failure') {
+									openaiBaseUrlError = data?.fieldErrors?.openaiBaseUrl?.[0];
+								} else {
+									openaiBaseUrlError = undefined;
+								}
+								handleFormToast(data);
 							}
 							await update({ reset: false });
 							if (result.type === 'success') {
+								// A2: advance local version immediately.
+								const freshVersion = (
+									result.data as { apiConfigVersion?: string }
+								)?.apiConfigVersion;
+								if (freshVersion) apiConfigVersion = freshVersion;
 								openaiApiKeyInput = '';
 								await invalidateAll();
 							}
@@ -295,6 +325,9 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 						bind:value={openaiBaseUrl}
 						disabled={openaiBaseUrlLocked}
 					/>
+					{#if openaiBaseUrlError}
+						<p class="text-xs text-destructive">{openaiBaseUrlError}</p>
+					{/if}
 				</div>
 
 				<div class="space-y-2">
@@ -314,7 +347,7 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 					/>
 				</div>
 
-				<input type="hidden" name="apiConfigVersion" value={data.apiConfigVersion} />
+				<input type="hidden" name="apiConfigVersion" value={apiConfigVersion} />
 			</form>
 
 			<SettingsActionBar>
