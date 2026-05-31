@@ -221,6 +221,113 @@ describe('createSessionFromPlexToken', () => {
 		expect(await db.select().from(sessions)).toHaveLength(1);
 	});
 
+	// ISSUE-010 regression lock — account-identity mapping.
+	//
+	// `play_history.accountId` is stamped by the Plex Media Server's
+	// `/status/sessions/history/all` endpoint with the *local* SystemAccount ID,
+	// where the server owner/admin is always `1` (verified against Plex docs and
+	// python-plexapi: history `accountID` == SystemAccount ID, owner == 1). This
+	// is a DIFFERENT id space from the plex.tv global id returned by
+	// `getPlexUserInfo()` (`plexUser.id`, e.g. 677042263).
+	//
+	// Personal-Wrapped resolution is `statsAccountId = user.accountId ?? user.plexId`,
+	// which filters `play_history.accountId == statsAccountId`. Therefore the OWNER
+	// must store `accountId = 1` (matches their own history rows); a NON-OWNER member
+	// must store their real plex.tv id (their history rows carry that id). Storing the
+	// owner's real plex.tv id would make their Wrapped permanently empty — do NOT swap.
+	it('stores accountId = 1 (local owner id) for the server owner during normal login, not the plex.tv id', async () => {
+		spies.push(
+			spyOn(membership, 'requireServerMembership').mockResolvedValue({
+				isMember: true,
+				isOwner: true,
+				serverName: 'Test Plex'
+			})
+		);
+
+		const { createSessionFromPlexToken } = await import('$lib/server/auth/login-completion');
+		await createSessionFromPlexToken('secret-auth-token', createCookies());
+
+		const stored = await db.select().from(users);
+		expect(stored).toHaveLength(1);
+		// Owner is the local SystemAccount 1 in play_history, NOT plexUser.id (12345).
+		expect(stored[0]?.accountId).toBe(1);
+		expect(stored[0]?.plexId).toBe(12345);
+		expect(stored[0]?.isAdmin).toBe(true);
+	});
+
+	it('stores the real plex.tv id as accountId for a non-owner member during normal login', async () => {
+		// Default beforeEach mock has requireServerMembership -> isOwner: false.
+		const { createSessionFromPlexToken } = await import('$lib/server/auth/login-completion');
+		await createSessionFromPlexToken('secret-auth-token', createCookies());
+
+		const stored = await db.select().from(users);
+		expect(stored).toHaveLength(1);
+		// Members' history rows carry their real account id, so account_id == plexId.
+		expect(stored[0]?.accountId).toBe(12345);
+		expect(stored[0]?.plexId).toBe(12345);
+		expect(stored[0]?.isAdmin).toBe(false);
+	});
+
+	it('stores accountId = 1 for the owner via the bootstrap-claim onboarding path (configured Plex)', async () => {
+		spies.push(
+			spyOn(onboarding, 'requiresOnboarding').mockResolvedValue(true),
+			spyOn(membership, 'requireServerMembership').mockResolvedValue({
+				isMember: true,
+				isOwner: true,
+				serverName: 'Test Plex'
+			})
+		);
+
+		const cookies = createCookies();
+		const token = createBootstrapToken();
+		expect(await claimOnboardingInstance(cookies, token)).toBe('claimed');
+
+		const { createSessionFromPlexToken } = await import('$lib/server/auth/login-completion');
+		await createSessionFromPlexToken('secret-auth-token', cookies);
+
+		const stored = await db.select().from(users);
+		expect(stored).toHaveLength(1);
+		// Bootstrap-claim owner must use the SAME convention as the OAuth owner branch:
+		// local SystemAccount id 1, never the plex.tv id 12345 (ISSUE-010 trap).
+		expect(stored[0]?.accountId).toBe(1);
+		expect(stored[0]?.plexId).toBe(12345);
+		expect(stored[0]?.isAdmin).toBe(true);
+	});
+
+	it('stores accountId = 1 for the owner via the bootstrap-claim onboarding path (fresh, unconfigured Plex)', async () => {
+		spies.push(
+			spyOn(onboarding, 'requiresOnboarding').mockResolvedValue(true),
+			spyOn(settingsService, 'getApiConfigWithSources').mockResolvedValue({
+				plex: {
+					serverUrl: { value: '', source: 'default', isLocked: false },
+					token: { value: '', source: 'default', isLocked: false }
+				},
+				openai: {
+					apiKey: { value: '', source: 'default', isLocked: false },
+					baseUrl: { value: 'https://api.openai.com/v1', source: 'default', isLocked: false },
+					model: { value: 'gpt-5-mini', source: 'default', isLocked: false }
+				}
+			}),
+			spyOn(membership, 'verifyServerOwnership').mockResolvedValue({
+				isOwner: true,
+				serverName: 'Owned Plex'
+			})
+		);
+
+		const cookies = createCookies();
+		const token = createBootstrapToken();
+		expect(await claimOnboardingInstance(cookies, token)).toBe('claimed');
+
+		const { createSessionFromPlexToken } = await import('$lib/server/auth/login-completion');
+		await createSessionFromPlexToken('secret-auth-token', cookies);
+
+		const stored = await db.select().from(users);
+		expect(stored).toHaveLength(1);
+		expect(stored[0]?.accountId).toBe(1);
+		expect(stored[0]?.plexId).toBe(12345);
+		expect(stored[0]?.isAdmin).toBe(true);
+	});
+
 	it('propagates unexpected setup claim renewal errors during fresh onboarding', async () => {
 		const unexpectedError = new Error('claim storage failed');
 

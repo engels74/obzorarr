@@ -169,8 +169,12 @@ export const load: PageServerLoad = async ({ parent }) => {
 		getAppSetting(AppSettingsKey.FUN_FACTS_AI_PERSONA)
 	]);
 
-	// Check if OpenAI is configured (for AI features section)
-	const hasOpenAI = hasOpenAIEnvConfig();
+	// Check if OpenAI is configured (for AI features section). Reflect both an
+	// env-provided key AND a stored DB key: the AI-key-missing warning must not
+	// nag when AI is already operative from a previously saved DB credential
+	// (env still takes precedence, but a DB key alone is enough to drive AI).
+	const apiConfig = await getApiConfigWithSources();
+	const hasOpenAI = hasOpenAIEnvConfig() || Boolean(apiConfig.openai.apiKey.value.trim());
 
 	// Build theme options
 	const themeOptions = Object.entries(ThemePresets).map(([key, value]) => ({

@@ -227,7 +227,12 @@ export async function syncPlexAccounts(): Promise<number> {
 	try {
 		const ownerData = await getPlexUserInfo(config.token);
 
-		// Server owner has accountId = 1 in play history
+		// Server owner is local SystemAccount id 1 in play_history. The Plex Media
+		// Server stamps `/status/sessions/history/all` rows with the *local*
+		// SystemAccount id (owner == 1), a different id space from the plex.tv
+		// global id in `ownerData.id`. Do not "fix" this to the plex.tv id — the
+		// owner's own watches never carry it, so their personal Wrapped would be
+		// permanently empty (see ISSUE-010).
 		accounts.push({
 			accountId: 1,
 			plexId: ownerData.id,

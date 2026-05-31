@@ -208,6 +208,26 @@ describe('onboarding settings actions', () => {
 		expect(await getAppSetting(AppSettingsKey.PUBLIC_LANDING_LOOKUP)).toBe('true');
 	});
 
+	it('persists the full dogfood combo (themes + user control + landing lookup all non-default)', async () => {
+		// Locks in the server contract for ISSUE-005/006: the exact field set that
+		// was lost in the wizard (button-driven UI/Wrapped theme + User Control ON +
+		// Public Landing Lookup ON) persists when correct FormData reaches the action.
+		// The defect was purely client-side serialization; this guards the server.
+		const request = createSettingsRequest({
+			uiTheme: ThemePresets.SUPABASE,
+			wrappedTheme: ThemePresets.DOOM_64,
+			allowUserControl: 'true',
+			publicLandingLookup: 'true'
+		});
+
+		await expectRedirect(() => runSaveSettings(request), '/onboarding/complete');
+
+		expect(await getUITheme()).toBe(ThemePresets.SUPABASE);
+		expect(await getWrappedTheme()).toBe(ThemePresets.DOOM_64);
+		expect(await getGlobalAllowUserControl()).toBe(true);
+		expect(await getPublicLandingLookupEnabled()).toBe(true);
+	});
+
 	it('persists enabled fun fact frequency when AI credentials are supplied', async () => {
 		const request = createSettingsRequest({
 			enableFunFacts: 'true',

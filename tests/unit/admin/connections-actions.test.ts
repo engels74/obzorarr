@@ -234,6 +234,66 @@ describe('connections nested route — updateApiConfig (OCC + schema)', () => {
 		);
 		expect(result).toMatchObject({ status: 400, data: { error: 'Invalid input' } });
 	});
+
+	// H5: bad openaiBaseUrl returns fieldErrors.openaiBaseUrl (not just a generic error)
+	it('returns fieldErrors.openaiBaseUrl for an invalid base URL (H5)', async () => {
+		const result = await run(
+			makeRequest('updateApiConfig', {
+				openaiBaseUrl: 'not-a-url',
+				apiConfigVersion: new Date(Date.now() + 60_000).toISOString()
+			})
+		);
+		expect(result).toMatchObject({
+			status: 400,
+			data: {
+				error: 'Invalid input',
+				fieldErrors: { openaiBaseUrl: ['Invalid URL format'] }
+			}
+		});
+	});
+
+	// A2: successful save returns a fresh apiConfigVersion
+	it('returns a fresh apiConfigVersion on success (A2)', async () => {
+		await withUnlockedPlex(async () => {
+			// Seed a valid Plex URL so the save can succeed.
+			await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, 'https://plex.local:32400');
+
+			const formData = new FormData();
+			formData.set('openaiModel', 'gpt-4o-mini');
+			formData.set('apiConfigVersion', new Date(Date.now() + 60_000).toISOString());
+			const request = new Request('http://localhost/admin/settings/connections?/updateApiConfig', {
+				method: 'POST',
+				body: formData
+			});
+
+			const result = await run(request);
+			// The result must be a success object (not a failure ActionResult).
+			expect(result).toMatchObject({ success: true });
+			// It must carry a fresh apiConfigVersion string.
+			const version = (result as { apiConfigVersion?: string }).apiConfigVersion;
+			expect(typeof version).toBe('string');
+			expect(version!.length).toBeGreaterThan(0);
+			// The returned version must be parseable as an ISO date.
+			expect(Number.isNaN(Date.parse(version!))).toBe(false);
+		});
+	});
+
+	// C2: submitting a value for a locked field yields the informational note
+	it('includes locked-field note in success message when a locked field is submitted (C2)', async () => {
+		// The test harness has PLEX_SERVER_URL locked via the mock env.
+		// Submit plexServerUrl (the locked field) alongside a valid apiConfigVersion.
+		// The action should succeed (setApiConfigAtomic ignores locked fields) and
+		// include the informational note in the message.
+		const result = await run(
+			makeRequest('updateApiConfig', {
+				plexServerUrl: 'https://plex.local:32400',
+				apiConfigVersion: new Date(Date.now() + 60_000).toISOString()
+			})
+		);
+		expect(result).toMatchObject({ success: true });
+		const message = (result as { message?: string }).message ?? '';
+		expect(message).toContain('Some fields are controlled by environment variables');
+	});
 });
 
 describe('connections nested route — clearOpenaiKey', () => {

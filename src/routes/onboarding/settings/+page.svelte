@@ -55,6 +55,11 @@ let apiKeyError = $state<string | null>(null);
 let baseUrlError = $state<string | null>(null);
 let visibleError = $derived(submitError ?? form?.error ?? null);
 
+// ISSUE-004: warn when AI fun facts are enabled but no OpenAI key will be in
+// effect — neither typed here nor already configured via env/DB (data.hasOpenAI).
+// Non-blocking: onboarding still proceeds and the built-in template generator runs.
+let showAiKeyWarning = $derived(enableFunFacts && !openaiApiKey.trim() && !data.hasOpenAI);
+
 const aiPersonaOptions = [
 	{ value: 'witty', label: 'Witty', description: 'Clever and humorous' },
 	{ value: 'wholesome', label: 'Wholesome', description: 'Warm and kind' },
@@ -248,11 +253,34 @@ function getThemeColors(themeValue: string) {
 				id="onboarding-settings-form"
 				method="POST"
 				action="?/saveSettings"
-				use:enhance={() => {
+				use:enhance={({ formData }) => {
 					isSubmitting = true;
 					submitError = null;
 					apiKeyError = null;
 					baseUrlError = null;
+					// Authoritatively serialize the live runes state into the submitted
+					// FormData. The hidden <input value={…}> mirrors update the value
+					// *attribute*, but FormData reads the *property*; for fields toggled by
+					// <button type="button" onclick> inside a destroyed/recreated {#if}
+					// carousel branch the property can keep its initial (default) value, so
+					// button-driven selections (UI/Wrapped theme, User Control, Public
+					// Landing Lookup) were silently lost. Overwriting formData here makes the
+					// submission reflect the runes state regardless of DOM divergence.
+					formData.set('uiTheme', uiTheme);
+					formData.set('wrappedTheme', wrappedTheme);
+					formData.set('anonymizationMode', anonymizationMode);
+					formData.set('logoMode', wrappedLogoMode);
+					formData.set('defaultShareMode', defaultShareMode);
+					formData.set('allowUserControl', allowUserControl ? 'true' : 'false');
+					formData.set('serverWrappedShareMode', serverWrappedShareMode);
+					formData.set('publicLandingLookup', publicLandingLookup ? 'true' : 'false');
+					formData.set('enabledSlides', enabledSlidesString);
+					formData.set('enableFunFacts', enableFunFacts ? 'true' : 'false');
+					formData.set('funFactFrequency', enableFunFacts ? funFactFrequency : '');
+					formData.set('openaiApiKey', enableFunFacts ? openaiApiKey : '');
+					formData.set('openaiBaseUrl', enableFunFacts ? openaiBaseUrl : '');
+					formData.set('openaiModel', enableFunFacts ? openaiModel : '');
+					formData.set('aiPersona', enableFunFacts ? aiPersona : '');
 					return async ({ result, update }) => {
 						try {
 							if (result.type === 'failure') {
@@ -444,7 +472,7 @@ function getThemeColors(themeValue: string) {
 										<label class="radio-card" class:selected={wrappedLogoMode === option.value}>
 											<input
 												type="radio"
-												name="logoMode"
+												name="logoModeRadio"
 												value={option.value}
 												bind:group={wrappedLogoMode}
 											/>
@@ -470,7 +498,7 @@ function getThemeColors(themeValue: string) {
 										<label class="radio-card" class:selected={defaultShareMode === option.value}>
 											<input
 												type="radio"
-												name="defaultShareMode"
+												name="defaultShareModeRadio"
 												value={option.value}
 												checked={defaultShareMode === option.value}
 												onchange={() => (defaultShareMode = option.value)}
@@ -539,15 +567,6 @@ function getThemeColors(themeValue: string) {
 									>
 										<span class="toggle-knob"></span>
 									</button>
-									<input
-										type="checkbox"
-										name="allowUserControl"
-										value="true"
-										bind:checked={allowUserControl}
-										class="sr-only"
-										tabindex="-1"
-										aria-hidden="true"
-									/>
 								</label>
 							</div>
 
@@ -697,6 +716,12 @@ function getThemeColors(themeValue: string) {
 									{#if apiKeyError}
 										<p id="onboarding-openai-api-key-error" class="field-error" role="alert">
 											{apiKeyError}
+										</p>
+									{/if}
+									{#if showAiKeyWarning}
+										<p class="ai-key-warning" role="status">
+											Enter an OpenAI API key for AI fun facts to work — without it, the
+											built-in template generator is used.
 										</p>
 									{/if}
 								</div>
@@ -1220,6 +1245,18 @@ function getThemeColors(themeValue: string) {
 			font-size: 0.8rem;
 			color: rgba(255, 255, 255, 0.45);
 			margin-bottom: 0.75rem;
+		}
+
+		/* AI-key-missing notice (ISSUE-004): AI enabled but no effective key. */
+		.ai-key-warning {
+			margin: 0.625rem 0 0;
+			padding: 0.625rem 0.75rem;
+			font-size: 0.78rem;
+			line-height: 1.4;
+			color: #fcd34d;
+			background: rgba(245, 158, 11, 0.12);
+			border: 1px solid rgba(245, 158, 11, 0.35);
+			border-radius: 0.625rem;
 		}
 
 		/* Admin contradiction notice: landing lookup on + non-public default. */

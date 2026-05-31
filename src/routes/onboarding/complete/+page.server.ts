@@ -8,6 +8,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import {
 	getAnonymizationMode,
+	getApiConfigWithSources,
 	getCachedServerName,
 	getFunFactFrequency,
 	getUITheme,
@@ -59,7 +60,8 @@ export const load: PageServerLoad = async ({ parent, locals, url, cookies }) => 
 		logoMode,
 		shareMode,
 		allowUserControl,
-		funFactFrequency
+		funFactFrequency,
+		apiConfig
 	] = await Promise.all([
 		getCachedServerName(),
 		getUITheme(),
@@ -68,8 +70,14 @@ export const load: PageServerLoad = async ({ parent, locals, url, cookies }) => 
 		getWrappedLogoMode(),
 		getGlobalDefaultShareMode(),
 		getGlobalAllowUserControl(),
-		getFunFactFrequency()
+		getFunFactFrequency(),
+		getApiConfigWithSources()
 	]);
+
+	// Fun facts are only active when an effective OpenAI API key is present.
+	// Without a key the engine falls back to built-in templates only, but the
+	// onboarding "Configure" step treats that as AI fun facts being off.
+	const enableFunFacts = Boolean(apiConfig.openai.apiKey.value.trim());
 
 	return {
 		...parentData,
@@ -79,6 +87,7 @@ export const load: PageServerLoad = async ({ parent, locals, url, cookies }) => 
 			progress: syncProgress,
 			historyCount
 		},
+		enableFunFacts,
 		configSummary: {
 			serverName: serverName || 'Plex Server',
 			uiTheme: formatThemeName(uiTheme),
@@ -87,7 +96,7 @@ export const load: PageServerLoad = async ({ parent, locals, url, cookies }) => 
 			logoMode: formatLogoMode(logoMode),
 			shareMode: formatShareMode(shareMode),
 			allowUserControl: allowUserControl ? 'Allowed' : 'Locked by admin',
-			funFacts: formatFunFactFrequency(funFactFrequency)
+			funFacts: enableFunFacts ? formatFunFactFrequency(funFactFrequency) : 'Disabled'
 		}
 	};
 };

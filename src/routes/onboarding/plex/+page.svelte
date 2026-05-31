@@ -544,25 +544,53 @@ function formatServerUrl(url: string | null): string {
 				<div class="preconfigured-info">
 					<div class="preconfigured-header">
 						<span class="preconfigured-title">Plex Media Server</span>
-						<span class="preconfigured-badge">
-							<svg
-								class="lock-icon"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
-							>
-								<rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-								<path d="M7 11V7a5 5 0 0 1 10 0v4" />
-							</svg>
-							ENV
-						</span>
 					</div>
 					{#if data.plexServerName}
 						<span class="preconfigured-server-name">{data.plexServerName}</span>
 					{/if}
 					{#if data.plexServerUrl}
-						<span class="preconfigured-url">{formatServerUrl(data.plexServerUrl)}</span>
+						<div class="preconfigured-field-row">
+							<span class="preconfigured-field-label">Server URL</span>
+							<span class="preconfigured-url">{formatServerUrl(data.plexServerUrl)}</span>
+							{#if data.plexServerUrlLocked}
+								<span class="preconfigured-badge" aria-label="Set by environment variable">
+									<svg
+										class="lock-icon"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										aria-hidden="true"
+									>
+										<rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+										<path d="M7 11V7a5 5 0 0 1 10 0v4" />
+									</svg>
+									ENV
+								</span>
+							{/if}
+						</div>
+					{/if}
+					{#if data.plexTokenHasValue || data.plexTokenLocked}
+						<div class="preconfigured-field-row">
+							<span class="preconfigured-field-label">Token</span>
+							<span class="preconfigured-url">{data.plexTokenHasValue ? '••••••••' : '(not set)'}</span>
+							{#if data.plexTokenLocked}
+								<span class="preconfigured-badge" aria-label="Set by environment variable">
+									<svg
+										class="lock-icon"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										aria-hidden="true"
+									>
+										<rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+										<path d="M7 11V7a5 5 0 0 1 10 0v4" />
+									</svg>
+									ENV
+								</span>
+							{/if}
+						</div>
 					{/if}
 				</div>
 				<div class="preconfigured-check">
@@ -1250,6 +1278,22 @@ function formatServerUrl(url: string | null): string {
 			font-size: 0.875rem;
 			font-weight: 500;
 			color: rgba(255, 255, 255, 0.7);
+		}
+
+		.preconfigured-field-row {
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+			flex-wrap: wrap;
+		}
+
+		.preconfigured-field-label {
+			font-size: 0.75rem;
+			font-weight: 500;
+			color: rgba(255, 255, 255, 0.45);
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+			flex-shrink: 0;
 		}
 
 		.preconfigured-badge {
