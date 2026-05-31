@@ -210,6 +210,70 @@ export const PRIVACY_PREVIEW_ROW_TOOLTIPS: Record<
 };
 
 // ============================================================================
+// "What this exposes" preview-VALUE tooltips
+// ============================================================================
+
+/**
+ * Value literals each preview row can display, mirroring the matching
+ * `PrivacyPreviewModel` field unions in `src/lib/sharing/preset-logic.ts`. They
+ * are redeclared here (rather than imported) on purpose: `preset-logic.ts`
+ * imports from this module, so importing its types back would create a circular
+ * dependency. Keeping them local follows the same pattern as the anonymization /
+ * logo value literals above, which mirror the server enums without importing
+ * them. `wrappedLogo` covers the onboarding-only logo row (admin omits it).
+ */
+export interface PrivacyPreviewValueTooltips {
+	namesInStats: Record<'real' | 'anonymous' | 'hybrid-self-sees-own', string>;
+	newUserDefault: Record<'public' | 'members-only' | 'private-link', string>;
+	serverWideRecap: Record<'public' | 'members-only', string>;
+	landingLookupForm: Record<'visible' | 'hidden', string>;
+	wrappedLogo: Record<'always-show' | 'always-hide' | 'user-choice', string>;
+}
+
+/**
+ * Tooltip copy explaining the *specific effect* of the currently-selected value
+ * in each "What this exposes" preview row — the complement to
+ * {@link PRIVACY_PREVIEW_ROW_TOOLTIPS}, which describes the setting in general.
+ * Where the row tooltip answers "what is this control?", these answer "what does
+ * *this* choice actually do?". Centralized next to the row copy so the onboarding
+ * and admin previews stay in lockstep. Each string is a single, plain-language
+ * sentence rendered under a small info trigger on the `<dd>` value.
+ */
+export const PRIVACY_PREVIEW_VALUE_TOOLTIPS: PrivacyPreviewValueTooltips = {
+	namesInStats: {
+		real: "Public, server-wide stats and leaderboards show each person's actual Plex username.",
+		anonymous:
+			'Usernames are replaced with neutral placeholders like “User #1” everywhere except the admin dashboard — no one is identifiable in public stats.',
+		'hybrid-self-sees-own':
+			'A signed-in member sees their own real name, while everyone else stays anonymized as “User #1”.'
+	},
+	newUserDefault: {
+		public: "New users' Wrapped pages are reachable by anyone with the link — no sign-in required.",
+		'members-only':
+			"New users' Wrapped pages require signing in with a Plex account on this server.",
+		'private-link':
+			"New users' Wrapped pages are reachable only through a unique, unguessable share link."
+	},
+	serverWideRecap: {
+		public:
+			"The server-wide /wrapped recap is open to anyone, including anonymous visitors who aren't signed in.",
+		'members-only':
+			'The server-wide /wrapped recap requires signing in with a Plex account on this server.'
+	},
+	landingLookupForm: {
+		visible:
+			'The landing page shows a username lookup field so visitors can open any Public Wrapped without signing in.',
+		hidden:
+			'The landing page hides the lookup field and shows a “Sign in with Plex” button instead.'
+	},
+	wrappedLogo: {
+		'always-show': "The Obzorarr logo is shown on every Wrapped page and users can't hide it.",
+		'always-hide': "The Obzorarr logo is hidden on every Wrapped page and users can't reveal it.",
+		'user-choice': 'Each user decides whether the Obzorarr logo appears on their own Wrapped pages.'
+	}
+};
+
+// ============================================================================
 // Privacy presets (client-only control surface)
 // ============================================================================
 
