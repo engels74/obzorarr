@@ -214,7 +214,7 @@ export const PRIVACY_PRESETS: PrivacyPreset[] = [
 		id: 'internal-community',
 		label: 'Internal Community',
 		description: 'Real names for your members, but nothing exposed to the public web.',
-		exposureSummary: 'Real names, server-members-only, users control their own sharing.',
+		exposureSummary: 'Real names, server-members-only access, nothing public.',
 		values: {
 			anonymizationMode: 'real',
 			defaultShareMode: ShareMode.PRIVATE_OAUTH,
@@ -228,7 +228,7 @@ export const PRIVACY_PRESETS: PrivacyPreset[] = [
 		id: 'balanced',
 		label: 'Balanced',
 		description: 'Recommended default. Members see their own name; nothing is public by default.',
-		exposureSummary: 'Hybrid names, members-only recap, users control their own sharing.',
+		exposureSummary: 'Hybrid names, members-only recap, nothing public.',
 		values: {
 			anonymizationMode: 'hybrid',
 			defaultShareMode: ShareMode.PRIVATE_OAUTH,

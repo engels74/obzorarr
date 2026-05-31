@@ -165,7 +165,16 @@ let showContradictionWarning = $derived(
 // ---------------------------------------------------------------------------
 // Privacy presets (client-only control surface)
 // ---------------------------------------------------------------------------
-let advancedOpen = $state(false);
+// Auto-open Advanced options at mount ONLY when the saved config is already
+// contradictory (public landing lookup on, but the per-user default isn't
+// public), so the contradiction Alert inside Collapsible.Content isn't hidden
+// on page load. This is a one-time init snapshot of showContradictionWarning,
+// not a $effect — the project rule forbids state updates in effects, and an
+// effect would intrusively re-open the section while the admin is editing.
+// After mount the admin can freely collapse/expand. The suppressor matches the
+// other one-time $state-from-reactive declarations above.
+// svelte-ignore state_referenced_locally
+let advancedOpen = $state(showContradictionWarning);
 
 // The active preset is matched over the FIVE admin-owned fields only — logoMode
 // is excluded (it lives on the Appearance route), so a perfect five-field match
@@ -363,7 +372,15 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 		<Collapsible.Trigger
 			class="flex w-full items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm font-medium transition-colors hover:bg-muted/50"
 		>
-			Advanced options
+			<span class="flex items-center gap-2">
+				Advanced options
+				{#if showContradictionWarning}
+					<!-- At-a-glance flag for the collapsed case: if the admin closes Advanced
+					     while the saved config is still contradictory, this keeps the broken
+					     public-lookup state visible without duplicating the Alert's full text. -->
+					<TriangleAlertIcon class="size-4 text-destructive" />
+				{/if}
+			</span>
 			<ChevronDownIcon class={advancedOpen ? 'size-4 rotate-180 transition-transform' : 'size-4 transition-transform'} />
 		</Collapsible.Trigger>
 		<Collapsible.Content class="space-y-6 pt-6">
