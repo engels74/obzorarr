@@ -120,19 +120,19 @@ function handleRetry(): void {
 	<Card.Root class="redirect-card">
 		<Card.Header class="items-center text-center">
 			{#if status === 'loading'}
-				<LoaderCircleIcon class="size-12 text-primary animate-spin" />
+				<LoaderCircleIcon class="size-12 text-primary animate-spin mx-auto" />
 				<Card.Title>Completing Authentication</Card.Title>
 				<Card.Description>Please wait while we verify your Plex account...</Card.Description>
 			{:else if status === 'success'}
-				<CheckIcon class="size-12 text-success" />
+				<CheckIcon class="size-12 text-success mx-auto" />
 				<Card.Title>Authentication Successful</Card.Title>
 				<Card.Description>Redirecting you now...</Card.Description>
 			{:else if status === 'cancelled'}
-				<CircleXIcon class="size-12 text-muted-foreground" />
+				<CircleXIcon class="size-12 text-muted-foreground mx-auto" />
 				<Card.Title>Authentication Cancelled</Card.Title>
 				<Card.Description>You cancelled the Plex authentication.</Card.Description>
 			{:else if status === 'error'}
-				<CircleAlertIcon class="size-12 text-destructive" />
+				<CircleAlertIcon class="size-12 text-destructive mx-auto" />
 				<Card.Title>Authentication Error</Card.Title>
 				<Card.Description>{errorMessage}</Card.Description>
 			{/if}

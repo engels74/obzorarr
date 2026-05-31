@@ -110,5 +110,16 @@ export const actions: Actions = {
 
 		await setOnboardingStep(OnboardingSteps.SETTINGS);
 		redirect(303, '/onboarding/settings');
+	},
+
+	// Rewind to the Plex connection step. A running sync is decoupled from the
+	// request lifecycle (see startBackgroundSync), so it keeps running in the
+	// background; stepping back only moves the onboarding cursor.
+	goBack: async ({ cookies, url }) => {
+		const guardResult = await requireOnboardingSyncClaim(cookies, url);
+		if (guardResult) return guardResult;
+
+		await setOnboardingStep(OnboardingSteps.PLEX);
+		redirect(303, '/onboarding/plex');
 	}
 };

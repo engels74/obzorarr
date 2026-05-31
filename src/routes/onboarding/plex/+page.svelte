@@ -1,4 +1,5 @@
 <script lang="ts">
+import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 import CircleCheckIcon from '@lucide/svelte/icons/circle-check';
 import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
@@ -7,6 +8,7 @@ import { animate, stagger } from 'motion';
 import { browser } from '$app/environment';
 import { enhance } from '$app/forms';
 import { invalidateAll } from '$app/navigation';
+import { page } from '$app/state';
 import { shouldUseRedirectAuth } from '$lib/client/auth-mode';
 import {
 	commitRedirectFromPopupBlocked,
@@ -452,6 +454,11 @@ const effectiveIsAuthenticated = $derived(localAuthState?.isAuthenticated ?? dat
 const effectiveIsAdmin = $derived(localAuthState?.isAdmin ?? data.isAdmin);
 const effectiveUsername = $derived(localAuthState?.username ?? data.username);
 
+// Reflects the explicit `?auth=redirect` opt-in so the UI can show that the
+// login mode changed (Safari/iOS popup blockers, AI agents). Reactive to the
+// query string so toggling the link updates the badge/button without a reload.
+const redirectModeActive = $derived(page.url.searchParams.get('auth') === 'redirect');
+
 const showLoginButton = $derived(!effectiveIsAuthenticated);
 const showVerifyButton = $derived(data.hasEnvConfig && effectiveIsAuthenticated);
 const showServerSelector = $derived(
@@ -687,13 +694,24 @@ function formatServerUrl(url: string | null): string {
 							<span>Connecting to Plex...</span>
 						{:else}
 							<PlayIcon class="size-[18px]" fill="currentColor" />
-							<span>Sign in with Plex</span>
+							<span>{redirectModeActive ? 'Sign in with Plex (redirect)' : 'Sign in with Plex'}</span>
 						{/if}
 					</Button>
-					<a class="redirect-fallback" href="?auth=redirect">
-						<span class="redirect-fallback-label">Use redirect instead</span>
-						<span class="redirect-fallback-hint">If sign-in doesn't return, use this.</span>
-					</a>
+					{#if redirectModeActive}
+						<div class="redirect-mode-badge" role="status" aria-live="polite">
+							<CircleCheckIcon class="size-[14px]" aria-hidden="true" />
+							<span>Redirect mode active</span>
+						</div>
+						<a class="redirect-fallback" href="?auth=popup">
+							<span class="redirect-fallback-label">Use popup instead</span>
+							<span class="redirect-fallback-hint">Opens Plex sign-in in a new window.</span>
+						</a>
+					{:else}
+						<a class="redirect-fallback" href="?auth=redirect">
+							<span class="redirect-fallback-label">Use redirect instead</span>
+							<span class="redirect-fallback-hint">If sign-in doesn't return, use this.</span>
+						</a>
+					{/if}
 				</div>
 			{:else if isNonAdminUser}
 				<div class="error-card animate-item">
@@ -745,13 +763,24 @@ function formatServerUrl(url: string | null): string {
 							<span>Connecting to Plex...</span>
 						{:else}
 							<PlayIcon class="size-[18px]" fill="currentColor" />
-							<span>Sign in with Plex</span>
+							<span>{redirectModeActive ? 'Sign in with Plex (redirect)' : 'Sign in with Plex'}</span>
 						{/if}
 					</Button>
-					<a class="redirect-fallback" href="?auth=redirect">
-						<span class="redirect-fallback-label">Use redirect instead</span>
-						<span class="redirect-fallback-hint">If sign-in doesn't return, use this.</span>
-					</a>
+					{#if redirectModeActive}
+						<div class="redirect-mode-badge" role="status" aria-live="polite">
+							<CircleCheckIcon class="size-[14px]" aria-hidden="true" />
+							<span>Redirect mode active</span>
+						</div>
+						<a class="redirect-fallback" href="?auth=popup">
+							<span class="redirect-fallback-label">Use popup instead</span>
+							<span class="redirect-fallback-hint">Opens Plex sign-in in a new window.</span>
+						</a>
+					{:else}
+						<a class="redirect-fallback" href="?auth=redirect">
+							<span class="redirect-fallback-label">Use redirect instead</span>
+							<span class="redirect-fallback-hint">If sign-in doesn't return, use this.</span>
+						</a>
+					{/if}
 				</div>
 			{:else if isNonAdminUser}
 				<div class="error-card animate-item">
@@ -1111,6 +1140,12 @@ function formatServerUrl(url: string | null): string {
 	</div>
 
 	{#snippet footer()}
+		<form method="POST" action="?/goBack" use:enhance class="mr-auto">
+			<Button type="submit" variant="outline" class="tap-target">
+				<ArrowLeftIcon class="size-[18px]" />
+				Previous
+			</Button>
+		</form>
 		{#if data.hasEnvConfig && data.canProceed}
 			<form method="POST" action="?/verifyAdmin" use:enhance>
 				<SubmitButton class="continue-button tap-target">
@@ -1410,6 +1445,20 @@ function formatServerUrl(url: string | null): string {
 			border-top-color: rgba(0, 0, 0, 0.7);
 			border-radius: 50%;
 			animation: spin 0.8s linear infinite;
+		}
+
+		.redirect-mode-badge {
+			display: inline-flex;
+			align-items: center;
+			gap: 0.4rem;
+			margin-top: 0.5rem;
+			padding: 0.3rem 0.7rem;
+			font-size: 0.78rem;
+			font-weight: 600;
+			color: oklch(0.8116 0.1789 152.1);
+			background: rgba(34, 197, 94, 0.12);
+			border: 1px solid rgba(34, 197, 94, 0.3);
+			border-radius: 999px;
 		}
 
 		.redirect-fallback {

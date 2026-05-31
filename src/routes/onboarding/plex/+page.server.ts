@@ -140,6 +140,24 @@ export const actions: Actions = {
 		}
 	},
 
+	// Rewind to the reverse-proxy step. Going back does not sign the user out
+	// (the session cookie persists) and the configured server is untouched, so
+	// returning forward simply re-shows the connected state. Only the onboarding
+	// cursor moves; no auth is required to step backwards, just an active claim.
+	goBack: async ({ cookies, url }) => {
+		try {
+			await requireActiveOnboardingClaim(cookies, { requestUrl: url });
+		} catch (err) {
+			if (err instanceof OnboardingClaimRequiredError) {
+				return fail(403, { error: err.message });
+			}
+			throw err;
+		}
+
+		await setOnboardingStep(OnboardingSteps.PROXY_TRUST);
+		redirect(303, '/onboarding/proxy-trust');
+	},
+
 	continueAfterServerSelection: async ({ locals, cookies, url }) => {
 		if (!locals.user) {
 			return fail(401, { error: 'Please sign in with Plex first' });
