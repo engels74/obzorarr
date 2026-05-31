@@ -95,6 +95,50 @@ function applyPrivacyPreset(preset: PrivacyPreset) {
 	wrappedLogoMode = preset.values.logoMode;
 }
 
+// WAI-ARIA radiogroup keyboard support for the preset selector. The cards are
+// native <button role="radio"> (Space/Enter already activate them); this adds
+// roving tabindex + arrow/Home/End navigation so the group behaves like a real
+// radio group for assistive tech. `presetButtons` is populated by bind:this on
+// each card, indexed by position in PRIVACY_PRESETS.
+let presetButtons = $state<(HTMLButtonElement | undefined)[]>([]);
+
+// Index of the card that holds tabindex=0. When a preset is selected, that card
+// is the tab stop; when the config matches no preset ('custom'), the first card
+// keeps the group reachable.
+let presetTabIndex = $derived.by(() => {
+	const i = PRIVACY_PRESETS.findIndex((p) => p.id === selectedPreset);
+	return i === -1 ? 0 : i;
+});
+
+function handlePresetKeydown(event: KeyboardEvent, index: number) {
+	const last = PRIVACY_PRESETS.length - 1;
+	let target: number;
+	switch (event.key) {
+		case 'ArrowRight':
+		case 'ArrowDown':
+			target = index === last ? 0 : index + 1;
+			break;
+		case 'ArrowLeft':
+		case 'ArrowUp':
+			target = index === 0 ? last : index - 1;
+			break;
+		case 'Home':
+			target = 0;
+			break;
+		case 'End':
+			target = last;
+			break;
+		default:
+			return;
+	}
+	event.preventDefault();
+	const preset = PRIVACY_PRESETS[target];
+	if (!preset) return;
+	// APG: moving within a radio group selects the focused radio.
+	applyPrivacyPreset(preset);
+	presetButtons[target]?.focus();
+}
+
 const presetIcons: Record<PrivacyPresetId, Component> = {
 	'maximum-privacy': ShieldCheckIcon,
 	'internal-community': UsersRoundIcon,
@@ -512,7 +556,7 @@ function getThemeColors(themeValue: string) {
 									Pick a starting point — then fine-tune anything in Advanced Options.
 								</p>
 								<div class="preset-grid" role="radiogroup" aria-label="Privacy preset">
-									{#each PRIVACY_PRESETS as preset (preset.id)}
+									{#each PRIVACY_PRESETS as preset, i (preset.id)}
 										{@const PresetIcon = presetIcons[preset.id]}
 										<button
 											type="button"
@@ -520,7 +564,10 @@ function getThemeColors(themeValue: string) {
 											class:selected={selectedPreset === preset.id}
 											role="radio"
 											aria-checked={selectedPreset === preset.id}
+											tabindex={i === presetTabIndex ? 0 : -1}
+											bind:this={presetButtons[i]}
 											onclick={() => applyPrivacyPreset(preset)}
+											onkeydown={(e) => handlePresetKeydown(e, i)}
 										>
 											<span class="preset-card-icon">
 												<PresetIcon />

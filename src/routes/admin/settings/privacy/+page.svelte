@@ -14,6 +14,7 @@ import UserCogIcon from '@lucide/svelte/icons/user-cog';
 import UsersIcon from '@lucide/svelte/icons/users';
 import UsersRoundIcon from '@lucide/svelte/icons/users-round';
 import VenetianMaskIcon from '@lucide/svelte/icons/venetian-mask';
+import type { ActionResult } from '@sveltejs/kit';
 import type { Component } from 'svelte';
 import { superForm } from 'sveltekit-superforms';
 import { enhance } from '$app/forms';
@@ -60,6 +61,26 @@ interface Props {
 
 let { data }: Props = $props();
 
+// superForm `onUpdate` guard for the three settings forms. Runs the shared OCC
+// stale-write guard first (cancels on fail(409,{conflict:true}) — ISSUE-006),
+// then also cancels on a *server-side* failure whose form is still schema-valid:
+// the actions return `fail(500, { form, error })` from their catch blocks AFTER
+// validation, so `onUpdated`'s `form.valid` stays true and would otherwise fire a
+// false "Saved" toast + advance the saved baseline even though nothing persisted.
+// fail(400) validation failures have `form.valid === false` and are left alone so
+// they still reach `onUpdated`'s else branch to render field errors. (Locally
+// scoped — the shared occ-form helper is intentionally not generalised here.)
+function guardSettingsUpdate(event: { result: ActionResult; cancel: () => void }): void {
+	surfaceOccConflict(event);
+	const { result } = event;
+	if (result.type === 'failure' && result.status >= 500) {
+		const message =
+			(result.data as { error?: string } | undefined)?.error ?? 'Failed to save. Please try again.';
+		handleFormToast({ error: message });
+		event.cancel();
+	}
+}
+
 // Per-section "last saved" baselines. Each advances ONLY after its own section
 // saves successfully (in that form's onUpdated). The unsaved-sections banner and
 // the "Current (saved)" preview read these — never the original load snapshot —
@@ -88,7 +109,7 @@ let savedPublicLandingLookup = $state({
 // svelte-ignore state_referenced_locally
 const serverWrappedForm = superForm(data.serverWrappedForm, {
 	resetForm: false,
-	onUpdate: surfaceOccConflict,
+	onUpdate: guardSettingsUpdate,
 	onUpdated({ form: updated }) {
 		if (updated.valid) {
 			// Advance this section's saved baseline to what was just persisted.
@@ -111,7 +132,7 @@ const {
 // svelte-ignore state_referenced_locally
 const userDefaultsForm = superForm(data.userDefaultsForm, {
 	resetForm: false,
-	onUpdate: surfaceOccConflict,
+	onUpdate: guardSettingsUpdate,
 	onUpdated({ form: updated }) {
 		if (updated.valid) {
 			savedUserDefaults = {
@@ -133,7 +154,7 @@ const {
 // svelte-ignore state_referenced_locally
 const publicLandingLookupForm = superForm(data.publicLandingLookupForm, {
 	resetForm: false,
-	onUpdate: surfaceOccConflict,
+	onUpdate: guardSettingsUpdate,
 	onUpdated({ form: updated }) {
 		if (updated.valid) {
 			savedPublicLandingLookup = {
@@ -239,6 +260,41 @@ function applyPrivacyPreset(preset: PrivacyPreset) {
 	$publicLandingLookupData.publicLandingLookup = preset.values.publicLandingLookup;
 }
 
+// WAI-ARIA APG radio-group keyboard support for the preset selector. Each preset
+// button is a `role="radio"` in a `role="radiogroup"`; native buttons already
+// handle Space/Enter, so we add roving tabindex (one tab stop) + arrow/Home/End
+// navigation here. Refs are indexed by preset position so a keyboard move can both
+// select (APG: moving in a radio group selects) and shift DOM focus.
+let presetButtons = $state<(HTMLButtonElement | null)[]>([]);
+
+function handlePresetKeydown(event: KeyboardEvent, index: number) {
+	const last = PRIVACY_PRESETS.length - 1;
+	let target: number;
+	switch (event.key) {
+		case 'ArrowRight':
+		case 'ArrowDown':
+			target = index === last ? 0 : index + 1;
+			break;
+		case 'ArrowLeft':
+		case 'ArrowUp':
+			target = index === 0 ? last : index - 1;
+			break;
+		case 'Home':
+			target = 0;
+			break;
+		case 'End':
+			target = last;
+			break;
+		default:
+			return;
+	}
+	const targetPreset = PRIVACY_PRESETS[target];
+	if (!targetPreset) return;
+	event.preventDefault();
+	applyPrivacyPreset(targetPreset);
+	presetButtons[target]?.focus();
+}
+
 const presetIcons: Record<PrivacyPresetId, Component> = {
 	'maximum-privacy': ShieldCheckIcon,
 	'internal-community': UsersRoundIcon,
@@ -293,13 +349,18 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 				role="radiogroup"
 				aria-label="Privacy preset"
 			>
-				{#each PRIVACY_PRESETS as preset (preset.id)}
+				{#each PRIVACY_PRESETS as preset, i (preset.id)}
 					{@const PresetIcon = presetIcons[preset.id]}
 					<button
+						bind:this={presetButtons[i]}
 						type="button"
 						role="radio"
 						aria-checked={selectedPreset === preset.id}
+						tabindex={selectedPreset === preset.id || (selectedPreset === 'custom' && i === 0)
+							? 0
+							: -1}
 						onclick={() => applyPrivacyPreset(preset)}
+						onkeydown={(event) => handlePresetKeydown(event, i)}
 						class={selectedPreset === preset.id
 							? 'flex flex-col items-start gap-2 rounded-lg border border-primary bg-primary/5 p-4 text-left ring-1 ring-primary transition-colors'
 							: 'flex flex-col items-start gap-2 rounded-lg border border-border p-4 text-left transition-colors hover:bg-muted/50'}
