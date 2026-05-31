@@ -136,6 +136,80 @@ export const publicLandingLookupCopy = {
 } as const;
 
 // ============================================================================
+// "What this exposes" preview-row tooltips
+// ============================================================================
+
+/**
+ * Stable identifiers for the four shared "What this exposes" preview rows. They
+ * map onto the corresponding {@link PrivacyPreviewModel} fields but are keyed by
+ * the row concept (not the model union) because the tooltip copy describes the
+ * *setting*, not its current value.
+ */
+export type PrivacyPreviewRowKey =
+	| 'namesInStats'
+	| 'newUserDefault'
+	| 'serverWideRecap'
+	| 'landingLookupForm';
+
+/**
+ * Real-world implications of a privacy preview row from the three viewpoints the
+ * app distinguishes: the admin managing the server, an anonymous visitor on the
+ * public landing page / shared links, and a signed-in server member.
+ */
+export interface PrivacyPreviewPerspectives {
+	/** How the setting affects server-wide data and management. */
+	admin: string;
+	/** What an anonymous (non-member) visitor sees on public surfaces. */
+	visitor: string;
+	/** What a signed-in server member sees vs. their own and others' data. */
+	member: string;
+}
+
+/**
+ * Tooltip copy for each "What this exposes" preview row. Centralized here — next
+ * to the option copy that drives the same controls — so the onboarding and admin
+ * privacy previews can never drift apart. Both flows render these strings under a
+ * small info trigger on each `<dt>` label.
+ */
+export const PRIVACY_PREVIEW_ROW_TOOLTIPS: Record<
+	PrivacyPreviewRowKey,
+	PrivacyPreviewPerspectives
+> = {
+	namesInStats: {
+		admin:
+			'Admins always see real usernames in the dashboard and Users page. This setting only changes how names appear in public-facing, server-wide stats and leaderboards.',
+		visitor:
+			'Anonymous visitors see real names, an anonymous placeholder, or no name at all — whichever anonymization mode you choose here.',
+		member:
+			'With Hybrid, a signed-in member sees their own real name while everyone else stays anonymized. Real shows all names; Anonymous hides them for everyone.'
+	},
+	newUserDefault: {
+		admin:
+			'Sets the share mode applied to each newly-created user. Existing users keep their current setting until you apply defaults to all users.',
+		visitor:
+			"A visitor can open a user's Wrapped without signing in when this default is Public, or Private Link if they have the share link. Server-members-only pages require signing in.",
+		member:
+			'Signed-in members can open members-only Wrapped pages. If user control is allowed, each member can still override their own share mode.'
+	},
+	serverWideRecap: {
+		admin:
+			"Controls who can open the server-wide Wrapped recap that aggregates every user's stats.",
+		visitor:
+			'A visitor sees the server-wide recap only when it is set to Public; otherwise they are prompted to sign in.',
+		member:
+			'Signed-in server members can open the server-wide recap whether it is set to members-only or public.'
+	},
+	landingLookupForm: {
+		admin:
+			'Shows or hides the username lookup field on the public landing page. Only Wrapped pages set to Public are reachable through it.',
+		visitor:
+			"When shown, a visitor can type a username to find that person's public Wrapped without signing in.",
+		member:
+			'Members normally reach Wrapped pages from the dashboard, so this form mainly affects anonymous visitors on the landing page.'
+	}
+};
+
+// ============================================================================
 // Privacy presets (client-only control surface)
 // ============================================================================
 
