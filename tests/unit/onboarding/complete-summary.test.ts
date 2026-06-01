@@ -160,6 +160,27 @@ describe('onboarding completion summary', () => {
 		expect(result.configSummary.funFacts).toBe('Disabled');
 	});
 
+	it('distinguishes template mode (AI enabled, no key) from Disabled (ISSUE-004)', async () => {
+		await setFunFactFrequency(FunFactFrequency.MANY);
+		await setAppSetting(AppSettingsKey.OPENAI_BASE_URL, 'https://api.example.com/v1');
+		// No OPENAI_API_KEY, but the user enabled AI fun facts during Configure —
+		// signalled by the ai-key-missing notice. Built-in templates are used, so
+		// the summary must read "template mode", NOT the same "Disabled" as opt-out.
+
+		const result = (await load({
+			parent: async () => ({}),
+			locals: adminLocals,
+			url: new URL('http://localhost/onboarding/complete?notice=ai-key-missing'),
+			cookies: await createClaimedCookies()
+		} as Parameters<typeof load>[0])) as {
+			configSummary: Record<string, string>;
+			enableFunFacts: boolean;
+		};
+
+		expect(result.enableFunFacts).toBe(false);
+		expect(result.configSummary.funFacts).toBe('Template mode — add an OpenAI key to enable AI');
+	});
+
 	it('shows the configured fun fact frequency when OpenAI key is present', async () => {
 		await setFunFactFrequency(FunFactFrequency.MANY);
 		await setAppSetting(AppSettingsKey.OPENAI_API_KEY, 'sk-test-key');

@@ -39,6 +39,13 @@ import { triggerLiveSyncIfNeeded } from '$lib/server/sync/live-sync';
 import { hasWatchHistory } from '$lib/stats/types';
 import type { Actions, PageServerLoad } from './$types';
 
+// Single source of truth for the anti-enumeration 404 body on the numeric
+// identifier path. Every anonymous "cannot view" outcome (non-existent id,
+// existing-but-private-oauth, existing-but-private-link-without-token) returns
+// this exact status+body so an anonymous caller can't tell them apart (F-015 /
+// ISSUE-001 uniform-404 contract).
+const WRAPPED_NOT_FOUND_MESSAGE = "We couldn't find a Wrapped page for that link.";
+
 async function resolveUserIdFromIdentifier(
 	identifier: string,
 	year: number,
@@ -116,11 +123,11 @@ export const load: PageServerLoad = async ({ params, locals, parent, setHeaders 
 		}
 	} else {
 		if (!isPureNumericId(identifier)) {
-			error(404, "We couldn't find a Wrapped page for that link.");
+			error(404, WRAPPED_NOT_FOUND_MESSAGE);
 		}
 		const parsedId = Number(identifier);
 		if (!Number.isSafeInteger(parsedId) || parsedId <= 0) {
-			error(404, "We couldn't find a Wrapped page for that link.");
+			error(404, WRAPPED_NOT_FOUND_MESSAGE);
 		}
 		userId = parsedId;
 
@@ -128,14 +135,15 @@ export const load: PageServerLoad = async ({ params, locals, parent, setHeaders 
 		// share_settings rows for them (checkWrappedAccess -> getOrCreateShareSettings).
 		// Preserves the F-015 anti-enumeration story (unknown id -> 404) and blocks
 		// the route by which a stray numeric id (e.g. a Plex id) became a
-		// share_settings.user_id orphan.
+		// share_settings.user_id orphan. This is a read-only existence check, so no
+		// orphan share_settings row is created for a non-existent id.
 		const userExists = await db
 			.select({ id: users.id })
 			.from(users)
 			.where(eq(users.id, userId))
 			.limit(1);
 		if (!userExists[0]) {
-			error(404, "We couldn't find a Wrapped page for that link.");
+			error(404, WRAPPED_NOT_FOUND_MESSAGE);
 		}
 
 		try {
@@ -145,11 +153,28 @@ export const load: PageServerLoad = async ({ params, locals, parent, setHeaders 
 				currentUser: locals.user
 			});
 		} catch (err) {
+			// F-015 / ISSUE-001 uniform-404 anti-enumeration contract: an anonymous
+			// caller on a numeric id must not be able to tell "exists but private"
+			// from "does not exist". For anonymous callers every "cannot view"
+			// outcome collapses to one byte-identical 404 + body (matching the
+			// non-existent-id 404 above and the canonical landing `lookupUser`
+			// pattern). Authenticated callers keep the existing 403/404 split — a
+			// signed-in viewer already proves server membership, so existence is
+			// not a secret we are protecting from them.
+			const isAnonymous = !locals.user;
 			if (err instanceof ShareAccessDeniedError) {
+				if (isAnonymous) {
+					error(404, WRAPPED_NOT_FOUND_MESSAGE);
+				}
 				error(403, err.message);
 			}
 			if (err instanceof InvalidShareTokenError) {
-				error(404, 'This share link is invalid, expired, or has been revoked.');
+				error(
+					404,
+					isAnonymous
+						? WRAPPED_NOT_FOUND_MESSAGE
+						: 'This share link is invalid, expired, or has been revoked.'
+				);
 			}
 			throw err;
 		}

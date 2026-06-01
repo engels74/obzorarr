@@ -326,6 +326,22 @@ async function goToPage(page: number) {
 			{#if syncActive || progress}
 				<!-- Active Sync Display -->
 				<div class="sync-active-display">
+					{#if syncActive}
+						<!-- ISSUE-009: persistent, AT-announced affordance that a sync is
+						     already in progress, so an attempt to start another is not met
+						     with silence (the start action only surfaced a transient toast). -->
+						<div class="sync-running-banner" role="status" aria-live="polite">
+							<svg viewBox="0 0 24 24" fill="currentColor" class="banner-icon" aria-hidden="true">
+								<path
+									d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-1-7v2h2v-2h-2zm0-8v6h2V7h-2z"
+								/>
+							</svg>
+							<span
+								>A sync is already running. Watch its progress below, or cancel it to start a new
+								one.</span
+							>
+						</div>
+					{/if}
 					<div class="sync-status-ring" class:running={progress?.status === 'running'}>
 						<div class="ring-outer">
 							<div class="ring-inner">
@@ -1219,6 +1235,26 @@ async function goToPage(page: number) {
 			width: 18px;
 			height: 18px;
 			flex-shrink: 0;
+		}
+
+		.sync-running-banner {
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+			padding: 0.75rem 1rem;
+			background: oklch(var(--primary) / 0.12);
+			border: 1px solid oklch(var(--primary) / 0.3);
+			border-radius: 8px;
+			font-size: 0.8125rem;
+			color: oklch(var(--foreground));
+			width: 100%;
+		}
+
+		.banner-icon {
+			width: 18px;
+			height: 18px;
+			flex-shrink: 0;
+			color: oklch(var(--primary));
 		}
 
 		/* `.cancel-btn` is the cancel-sync CTA. Hoisted to :global so

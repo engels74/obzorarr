@@ -1,4 +1,4 @@
-import { error, json } from '@sveltejs/kit';
+import { error, isRedirect, json, redirect } from '@sveltejs/kit';
 import { z } from 'zod';
 import { completePlexPinLogin } from '$lib/server/auth/login-completion';
 import {
@@ -16,7 +16,23 @@ const PollRequestSchema = z.object({
 	pinId: z.number().int().positive()
 });
 
-export const GET: RequestHandler = async ({ cookies, url }) => {
+export const GET: RequestHandler = async ({ cookies, url, request }) => {
+	// Fetch-metadata content negotiation (ISSUE-002). The homepage keeps a no-JS
+	// `<a href="/auth/plex">` sign-in fallback. A real top-level navigation must
+	// NOT dump the raw PIN JSON to the page — it should start the OAuth flow and
+	// redirect to Plex. A `fetch()`/XHR caller (the JS sign-in button) still gets
+	// the JSON PIN payload unchanged. Detection is via Sec-Fetch-Dest, which is
+	// browser-set and cannot be spoofed by the client.
+	const fetchDest = request.headers.get('sec-fetch-dest');
+	const isDocumentNavigation = fetchDest === 'document';
+	const isPrefetch = (request.headers.get('sec-purpose') ?? '').toLowerCase().includes('prefetch');
+
+	// Link prefetch of the no-JS sign-in anchor must not burn a PIN: short-circuit
+	// before any stateful work. The real navigation (non-prefetch) mints normally.
+	if (isPrefetch) {
+		return new Response(null, { status: 204 });
+	}
+
 	try {
 		const redirectUrl = url.searchParams.get('redirectUrl') ?? `${url.origin}/auth/plex/redirect`;
 		parsePinForwardUrl(redirectUrl, url);
@@ -31,8 +47,20 @@ export const GET: RequestHandler = async ({ cookies, url }) => {
 			expiresAt: pin.expiresAt ?? new Date(Date.now() + 15 * 60 * 1000).toISOString()
 		};
 
+		// Document navigation (no-JS / hard link click): the PIN + cookie are now
+		// minted, so send the browser straight to the Plex OAuth URL instead of
+		// rendering JSON. SvelteKit's redirect() throws; it is rethrown past the
+		// catch below via isRedirect() so it is not mistaken for a 500.
+		if (isDocumentNavigation) {
+			redirect(303, pinInfo.authUrl);
+		}
+
 		return json(pinInfo);
 	} catch (err) {
+		if (isRedirect(err)) {
+			throw err;
+		}
+
 		if (
 			err instanceof TypeError ||
 			(err instanceof Error && err.message.includes('redirect URL'))

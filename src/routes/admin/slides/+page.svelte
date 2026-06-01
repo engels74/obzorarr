@@ -255,32 +255,46 @@ function handleDragEnd() {
 	dragOverIndex = null;
 }
 
+type SlideOrderEntry = { type: 'builtin'; id: string } | { type: 'custom'; id: number };
+
+// Submit a reordered list through the existing hidden reorder form.
+function submitReorder(newOrder: SlideOrderEntry[]) {
+	const form = document.getElementById('reorder-form') as HTMLFormElement | null;
+	const orderInput = form?.querySelector('input[name="order"]') as HTMLInputElement | null;
+	if (!form || !orderInput) return;
+	orderInput.value = JSON.stringify(newOrder);
+	form.requestSubmit();
+}
+
+// Move a slide from one index to another. Shared by drag-and-drop and the
+// keyboard move-up/down buttons (ISSUE-010 a11y: drag-and-drop alone is not
+// keyboard operable).
+function moveSlide(fromIndex: number, toIndex: number) {
+	if (toIndex < 0 || toIndex >= unifiedSlides.length || fromIndex === toIndex) return;
+	const newOrder: SlideOrderEntry[] = unifiedSlides.map((item) =>
+		item.kind === 'builtin'
+			? { type: 'builtin' as const, id: item.slideType }
+			: { type: 'custom' as const, id: item.id }
+	);
+	const [moved] = newOrder.splice(fromIndex, 1);
+	if (!moved) return;
+	newOrder.splice(toIndex, 0, moved);
+	submitReorder(newOrder);
+}
+
+// Accessible name for the per-slide reorder controls.
+function reorderItemLabel(item: UnifiedSlideItem): string {
+	if (item.kind === 'builtin') {
+		return SLIDE_NAMES[item.slideType as SlideType] ?? item.slideType;
+	}
+	return item.title.trim().length > 0 ? item.title : 'Untitled custom slide';
+}
+
 // Handle drop - reorder unified slides
 function handleDrop(event: DragEvent, dropIndex: number) {
 	event.preventDefault();
 	if (draggedIndex === null || draggedIndex === dropIndex) return;
-
-	// Create new order from unified slides
-	const newOrder = unifiedSlides.map((item) => {
-		if (item.kind === 'builtin') {
-			return { type: 'builtin' as const, id: item.slideType };
-		} else {
-			return { type: 'custom' as const, id: item.id };
-		}
-	});
-
-	// Move the dragged item to the new position
-	const [moved] = newOrder.splice(draggedIndex, 1);
-	if (moved) {
-		newOrder.splice(dropIndex, 0, moved);
-	}
-
-	// Submit the reorder form
-	const form = document.getElementById('reorder-form') as HTMLFormElement;
-	const orderInput = form.querySelector('input[name="order"]') as HTMLInputElement;
-	orderInput.value = JSON.stringify(newOrder);
-	form.requestSubmit();
-
+	moveSlide(draggedIndex, dropIndex);
 	handleDragEnd();
 }
 
@@ -308,7 +322,8 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			<div class="section-title-content">
 				<h2>Slide Order</h2>
 				<p class="section-description">
-					Drag and drop to reorder. Toggle to enable or disable slides.
+					Drag and drop, or use the move up/down buttons, to reorder. Toggle to enable or
+					disable slides.
 				</p>
 			</div>
 			<Button type="button" class="add-button tap-target" onclick={openNewEditor}>
@@ -336,7 +351,27 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 					ondrop={(e) => handleDrop(e, index)}
 					role="listitem"
 				>
-					<span class="drag-handle" aria-hidden="true">⋮⋮</span>
+					<div class="reorder-controls">
+						<button
+							type="button"
+							class="move-button tap-target"
+							onclick={() => moveSlide(index, index - 1)}
+							disabled={index === 0}
+							aria-label={`Move ${reorderItemLabel(item)} up`}
+						>
+							<span aria-hidden="true">▲</span>
+						</button>
+						<span class="drag-handle" aria-hidden="true">⋮⋮</span>
+						<button
+							type="button"
+							class="move-button tap-target"
+							onclick={() => moveSlide(index, index + 1)}
+							disabled={index === unifiedSlides.length - 1}
+							aria-label={`Move ${reorderItemLabel(item)} down`}
+						>
+							<span aria-hidden="true">▼</span>
+						</button>
+					</div>
 
 					{#if item.kind === 'builtin'}
 						<span class="slide-name">
@@ -857,6 +892,51 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			cursor: grab;
 			user-select: none;
 			flex-shrink: 0;
+		}
+
+		.reorder-controls {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 0.125rem;
+			flex-shrink: 0;
+		}
+
+		.move-button {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 1.5rem;
+			height: 1.25rem;
+			padding: 0;
+			background: transparent;
+			border: 1px solid transparent;
+			border-radius: 6px;
+			color: oklch(var(--muted-foreground));
+			font-size: 0.625rem;
+			line-height: 1;
+			cursor: pointer;
+			transition:
+				color 0.15s ease,
+				background 0.15s ease,
+				border-color 0.15s ease;
+		}
+
+		.move-button:hover:not(:disabled) {
+			color: oklch(var(--foreground));
+			background: oklch(var(--muted));
+			border-color: oklch(var(--border));
+		}
+
+		.move-button:focus-visible {
+			outline: none;
+			border-color: oklch(var(--ring));
+			box-shadow: 0 0 0 2px oklch(var(--ring) / 0.4);
+		}
+
+		.move-button:disabled {
+			opacity: 0.35;
+			cursor: not-allowed;
 		}
 
 		.slide-name {

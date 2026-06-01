@@ -696,4 +696,60 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain('token === transitionToken');
 		expect(source).toContain('function startNavigation');
 	});
+
+	it('disables the log-settings submit during submit and clamps retention server-side (ISSUE-006 double-click)', async () => {
+		// ISSUE-006 (double-click corrupted retention 8 -> 78). The double-submit
+		// vector is closed by disabling the submit button while a request is in
+		// flight AND when the form is out of range; the server schema independently
+		// clamps retentionDays to [1, 365]. Lock both so the fix can't regress.
+		const clientSource = await readSource('src/routes/admin/settings/system/+page.svelte');
+		expect(clientSource).toContain('disabled={$submitting || isLoggingFormInvalid}');
+
+		const serverSource = await readSource('src/routes/admin/settings/system/+page.server.ts');
+		expect(serverSource).toContain('.min(1');
+		expect(serverSource).toContain('.max(365');
+	});
+
+	it('keeps the admin slide reorder keyboard-operable with labeled move controls (ISSUE-010 a11y)', async () => {
+		// ISSUE-010: drag-and-drop is not keyboard operable. Lock the move up/down
+		// buttons + their accessible labels so the keyboard path can't regress.
+		const source = await readSource('src/routes/admin/slides/+page.svelte');
+
+		expect(source).toContain('function moveSlide(fromIndex: number, toIndex: number)');
+		expect(source).toContain('onclick={() => moveSlide(index, index - 1)}');
+		expect(source).toContain('onclick={() => moveSlide(index, index + 1)}');
+		// Asserted in fragments to avoid embedding a literal template placeholder
+		// in this plain test string (biome noTemplateCurlyInString).
+		expect(source).toContain('aria-label={`Move ');
+		expect(source).toContain('reorderItemLabel(item)} up`}');
+		expect(source).toContain('reorderItemLabel(item)} down`}');
+		expect(source).toContain('disabled={index === 0}');
+		expect(source).toContain('disabled={index === unifiedSlides.length - 1}');
+	});
+
+	it('shows a persistent AT-announced banner while a sync is already running (ISSUE-009)', async () => {
+		// ISSUE-009: starting a sync while one runs only surfaced a transient toast.
+		// Lock the persistent, polite-live status banner in the active-sync block.
+		const source = await readSource('src/routes/admin/sync/+page.svelte');
+
+		expect(source).toContain('class="sync-running-banner" role="status" aria-live="polite"');
+		expect(source).toContain('A sync is already running.');
+	});
+
+	it('pluralizes the admin users count (ISSUE-007: "1 user" not "1 users")', async () => {
+		const source = await readSource('src/routes/admin/users/+page.svelte');
+
+		expect(source).toContain("{data.users.length === 1 ? 'user' : 'users'}");
+		expect(source).not.toContain('{data.users.length} users</span>');
+	});
+
+	it('uses the actual default model as the admin OpenAI placeholder (ISSUE-005 consistency)', async () => {
+		// ISSUE-005: the admin connections placeholder said gpt-4o-mini while the
+		// real default (settings.service + funfacts) and the onboarding placeholder
+		// are gpt-5-mini. Align the lone inconsistent placeholder.
+		const source = await readSource('src/routes/admin/settings/connections/+page.svelte');
+
+		expect(source).toContain('placeholder="gpt-5-mini"');
+		expect(source).not.toContain('placeholder="gpt-4o-mini"');
+	});
 });

@@ -341,7 +341,7 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 						id="openaiModel"
 						name="openaiModel"
 						type="text"
-						placeholder="gpt-4o-mini"
+						placeholder="gpt-5-mini"
 						bind:value={openaiModel}
 						disabled={openaiModelLocked}
 					/>
