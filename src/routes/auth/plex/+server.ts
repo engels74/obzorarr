@@ -16,13 +16,21 @@ const PollRequestSchema = z.object({
 	pinId: z.number().int().positive()
 });
 
-export const GET: RequestHandler = async ({ cookies, url, request }) => {
+// The PIN JSON / OAuth URL carry short-lived credentials; keep them out of any
+// browser or proxy cache. Mirrors the NO_STORE_HEADERS pattern used by other
+// sensitive endpoints (see api/security/reverse-proxy-diagnostic/+server.ts).
+const NO_STORE_HEADERS = { 'Cache-Control': 'no-store' };
+
+export const GET: RequestHandler = async ({ cookies, url, request, setHeaders }) => {
 	// Fetch-metadata content negotiation (ISSUE-002). The homepage keeps a no-JS
 	// `<a href="/auth/plex">` sign-in fallback. A real top-level navigation must
 	// NOT dump the raw PIN JSON to the page — it should start the OAuth flow and
 	// redirect to Plex. A `fetch()`/XHR caller (the JS sign-in button) still gets
-	// the JSON PIN payload unchanged. Detection is via Sec-Fetch-Dest, which is
-	// browser-set and cannot be spoofed by the client.
+	// the JSON PIN payload unchanged. Detection is via Sec-Fetch-Dest, a
+	// browser-set fetch-metadata hint. This is a UX convenience, not a security
+	// boundary: a non-browser client can set the header freely, but both branches
+	// mint the same PIN/cookie and the redirect only targets the (non-sensitive)
+	// Plex OAuth URL, so spoofing it grants no elevated access.
 	const fetchDest = request.headers.get('sec-fetch-dest');
 	const isDocumentNavigation = fetchDest === 'document';
 	const isPrefetch = (request.headers.get('sec-purpose') ?? '').toLowerCase().includes('prefetch');
@@ -30,8 +38,12 @@ export const GET: RequestHandler = async ({ cookies, url, request }) => {
 	// Link prefetch of the no-JS sign-in anchor must not burn a PIN: short-circuit
 	// before any stateful work. The real navigation (non-prefetch) mints normally.
 	if (isPrefetch) {
-		return new Response(null, { status: 204 });
+		return new Response(null, { status: 204, headers: NO_STORE_HEADERS });
 	}
+
+	// Applies to the eventual response regardless of whether this handler returns
+	// JSON or throws the redirect() below, keeping minted PIN credentials uncached.
+	setHeaders(NO_STORE_HEADERS);
 
 	try {
 		const redirectUrl = url.searchParams.get('redirectUrl') ?? `${url.origin}/auth/plex/redirect`;

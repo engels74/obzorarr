@@ -29,13 +29,19 @@ function cookieStub() {
 	} as unknown as Parameters<typeof GET>[0]['cookies'];
 }
 
-function invokeGet(headers: Record<string, string>) {
+function invokeGet(headers: Record<string, string>, recordedHeaders?: Record<string, string>) {
 	const url = new URL('http://localhost/auth/plex');
 	const request = new Request(url, { headers });
 	return GET({
 		cookies: cookieStub(),
 		url,
-		request
+		request,
+		// Real SvelteKit RequestEvent always supplies setHeaders; the handler calls
+		// it to set Cache-Control: no-store on the minted-PIN responses. Record into
+		// the caller-supplied object when provided so tests can assert on it.
+		setHeaders: (newHeaders: Record<string, string>) => {
+			if (recordedHeaders) Object.assign(recordedHeaders, newHeaders);
+		}
 	} as unknown as Parameters<typeof GET>[0]);
 }
 
@@ -91,7 +97,8 @@ describe('GET /auth/plex: Sec-Fetch-Dest content negotiation (ISSUE-002)', () =>
 	});
 
 	it('returns the JSON PIN payload for a fetch/XHR caller (Sec-Fetch-Dest: empty)', async () => {
-		const response = (await invokeGet({ 'sec-fetch-dest': 'empty' })) as Response;
+		const recordedHeaders: Record<string, string> = {};
+		const response = (await invokeGet({ 'sec-fetch-dest': 'empty' }, recordedHeaders)) as Response;
 
 		expect(response.status).toBe(200);
 		const body = (await response.json()) as { pinId: number; code: string; authUrl: string };
@@ -99,6 +106,8 @@ describe('GET /auth/plex: Sec-Fetch-Dest content negotiation (ISSUE-002)', () =>
 		expect(body.code).toBe(FAKE_PIN.code);
 		expect(body.authUrl).toBe(FAKE_OAUTH_URL);
 		expect(requestPinSpy).toHaveBeenCalledTimes(1);
+		// Minted PIN credentials must not be cached by browsers/proxies.
+		expect(recordedHeaders['Cache-Control']).toBe('no-store');
 	});
 
 	it('falls back to JSON when Sec-Fetch-Dest is absent (very old browsers)', async () => {
