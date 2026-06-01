@@ -309,18 +309,20 @@ describe('wrapped/[year]/u/[identifier] loader: identifier validation (F-303)', 
 		await expectStatus('550e8400-e29b-41d4-a716-446655449999', 404);
 	});
 
-	it('returns 403 for an anonymous viewer on a valid numeric id in private-oauth mode (ISSUE-002)', async () => {
-		// F-015/ISSUE-002 regression: a logged-out viewer hitting a valid user's
-		// numeric wrapped URL while the effective mode is private-oauth must get
-		// ShareAccessDeniedError -> error(403) ("sign in"), NOT a 404. The 404
-		// anti-enumeration path is reserved for stale/unknown tokens (covered
-		// above); a known user in an auth-gated mode is correctly a 403.
+	it('returns 404 for an anonymous viewer on a valid numeric id in private-oauth mode (ISSUE-001 uniform-404)', async () => {
+		// F-015/ISSUE-001 uniform-404 contract: a logged-out viewer hitting a valid
+		// user's numeric wrapped URL while the effective mode is private-oauth must
+		// get a 404 that is byte-identical to the non-existent-id 404, so existence
+		// cannot be enumerated. (Reversed from the previous 403 "sign in" contract,
+		// which leaked existence: private-oauth -> 403 but non-existent -> 404 told
+		// an attacker which numeric ids were real.) Authenticated callers keep the
+		// 403/404 split — see the contract block below.
 		await setGlobalShareDefaults({
 			defaultShareMode: ShareMode.PRIVATE_OAUTH,
 			allowUserControl: false
 		});
 
-		await expectStatus(String(USER_ID), 403);
+		await expectStatus(String(USER_ID), 404);
 	});
 
 	it('resolves a valid numeric identifier to the matching user', async () => {
@@ -872,5 +874,125 @@ describe('wrapped/[year]/u/[identifier] loader: ISSUE-004 private-oauth contract
 			.where(and(eq(shareSettings.userId, OWNER_ID), eq(shareSettings.year, YEAR)));
 		const linkHref = await getOwnerWrappedHref(OWNER_ID, YEAR);
 		expect(linkHref).toBe(`/wrapped/${YEAR}/u/${LINK_TOKEN}`);
+	});
+});
+
+/**
+ * ISSUE-001 uniform-404 anti-enumeration contract.
+ *
+ * For an ANONYMOUS caller on the numeric identifier path, all three "cannot
+ * view" outcomes — existing-private-oauth, existing-private-link-without-token,
+ * and non-existent id — must be byte-identical (same status AND body) so the
+ * numeric id space cannot be enumerated. A PUBLIC personal wrapped still loads
+ * for anon, and a valid share-link token still resolves. See the F-015 note in
+ * wrapped/[year]/u/[identifier]/+page.server.ts.
+ */
+describe('wrapped/[year]/u/[identifier] loader: ISSUE-001 uniform-404 anti-enumeration contract', () => {
+	const EXISTING_ID = 2;
+	const NON_EXISTENT_ID = 4242;
+	const YEAR = 2024;
+	// Reuse the module-level fixture UUIDs rather than minting new literals.
+	const PRIVATE_LINK_TOKEN = CURRENT_YEAR_TOKEN;
+	const VALID_LINK_TOKEN = OTHER_YEAR_TOKEN_FOR_PRESEED;
+
+	beforeEach(async () => {
+		await db.delete(shareSettings);
+		await db.delete(appSettings);
+		await db.delete(users);
+		await db.delete(cachedStats);
+		await db.delete(playHistory);
+		await db.delete(slideConfig);
+		await seedUser(EXISTING_ID, 100002, 200002);
+	});
+
+	async function captureAnonFailure(
+		identifier: string
+	): Promise<{ status?: number; message?: string }> {
+		try {
+			await invokeLoad({ year: YEAR, identifier, availableYears: [YEAR] });
+			expect.unreachable(`Expected anon load to fail for "${identifier}"`);
+			return {};
+		} catch (err) {
+			const e = err as { status?: number; body?: { message?: string } };
+			return { status: e.status, message: e.body?.message };
+		}
+	}
+
+	it('returns a byte-identical 404 for anon private-oauth, anon private-link-no-token, and non-existent id', async () => {
+		// Case A: existing user, private-oauth (was 403 before the uniform-404 fix).
+		await setGlobalShareDefaults({
+			defaultShareMode: ShareMode.PRIVATE_OAUTH,
+			allowUserControl: false
+		});
+		const privateOauth = await captureAnonFailure(String(EXISTING_ID));
+
+		// Case B: existing user, private-link without a token in the URL.
+		await setGlobalShareDefaults({
+			defaultShareMode: ShareMode.PRIVATE_LINK,
+			allowUserControl: false
+		});
+		await seedShareSettings({
+			userId: EXISTING_ID,
+			year: YEAR,
+			mode: ShareMode.PRIVATE_LINK,
+			token: PRIVATE_LINK_TOKEN
+		});
+		const privateLinkNoToken = await captureAnonFailure(String(EXISTING_ID));
+
+		// Case C: non-existent numeric id.
+		const nonExistent = await captureAnonFailure(String(NON_EXISTENT_ID));
+
+		expect(privateOauth.status).toBe(404);
+		expect(privateLinkNoToken.status).toBe(404);
+		expect(nonExistent.status).toBe(404);
+		// Byte-identical body across all three so existence cannot be inferred.
+		expect(privateOauth.message).toBe(nonExistent.message);
+		expect(privateLinkNoToken.message).toBe(nonExistent.message);
+		expect(nonExistent.message).toBe("We couldn't find a Wrapped page for that link.");
+	});
+
+	it('does NOT create a share_settings row for a non-existent id (no orphan)', async () => {
+		await setGlobalShareDefaults({
+			defaultShareMode: ShareMode.PRIVATE_OAUTH,
+			allowUserControl: false
+		});
+		await captureAnonFailure(String(NON_EXISTENT_ID));
+		const rows = await db
+			.select()
+			.from(shareSettings)
+			.where(eq(shareSettings.userId, NON_EXISTENT_ID));
+		expect(rows.length).toBe(0);
+	});
+
+	it('still loads a PUBLIC personal wrapped for an anonymous viewer (200)', async () => {
+		await setGlobalShareDefaults({
+			defaultShareMode: ShareMode.PUBLIC,
+			allowUserControl: false
+		});
+		const data = await invokeLoad({
+			year: YEAR,
+			identifier: String(EXISTING_ID),
+			availableYears: [YEAR]
+		});
+		expect(data.userId).toBe(EXISTING_ID);
+	});
+
+	it('still resolves a valid share-link token for an anonymous viewer (200)', async () => {
+		await setGlobalShareDefaults({
+			defaultShareMode: ShareMode.PRIVATE_LINK,
+			allowUserControl: false
+		});
+		await seedShareSettings({
+			userId: EXISTING_ID,
+			year: YEAR,
+			mode: ShareMode.PRIVATE_LINK,
+			token: VALID_LINK_TOKEN
+		});
+		const data = await invokeLoad({
+			year: YEAR,
+			identifier: VALID_LINK_TOKEN,
+			availableYears: [YEAR]
+		});
+		expect(data.userId).toBe(EXISTING_ID);
 	});
 });

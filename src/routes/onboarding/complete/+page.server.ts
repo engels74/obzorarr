@@ -96,7 +96,7 @@ export const load: PageServerLoad = async ({ parent, locals, url, cookies }) => 
 			logoMode: formatLogoMode(logoMode),
 			shareMode: formatShareMode(shareMode),
 			allowUserControl: allowUserControl ? 'Allowed' : 'Locked by admin',
-			funFacts: enableFunFacts ? formatFunFactFrequency(funFactFrequency) : 'Disabled'
+			funFacts: deriveFunFactsSummary(enableFunFacts, notice === 'ai-key-missing', funFactFrequency)
 		}
 	};
 };
@@ -147,6 +147,31 @@ function formatLogoMode(mode: string): string {
 function formatFunFactFrequency(config: { mode: string; count: number }): string {
 	if (config.mode === 'custom') return `Custom (${config.count})`;
 	return `${formatThemeName(config.mode)} (${config.count})`;
+}
+
+/**
+ * Derive the "Fun Facts" summary label for the onboarding Done step.
+ *
+ * The summary must distinguish three states the old `enableFunFacts ? ... :
+ * 'Disabled'` copy collapsed into two:
+ *  - an effective OpenAI key is present  -> AI fun facts on, show the frequency;
+ *  - no key but the user enabled AI fun facts during Configure (signalled by the
+ *    `ai-key-missing` notice) -> built-in templates are used, so it is "template
+ *    mode", not disabled;
+ *  - no key and fun facts were left off  -> genuinely "Disabled".
+ */
+function deriveFunFactsSummary(
+	hasOpenAiKey: boolean,
+	aiKeyMissing: boolean,
+	frequency: { mode: string; count: number }
+): string {
+	if (hasOpenAiKey) {
+		return formatFunFactFrequency(frequency);
+	}
+	if (aiKeyMissing) {
+		return 'Template mode — add an OpenAI key to enable AI';
+	}
+	return 'Disabled';
 }
 
 async function requireOnboardingCompleteClaim(

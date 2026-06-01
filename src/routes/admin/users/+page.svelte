@@ -96,7 +96,7 @@ function markAvatarFailed(userId: number): void {
 	<section class="section">
 		<div class="section-header">
 			<h2>Server Users</h2>
-			<span class="user-count">{data.users.length} users</span>
+			<span class="user-count">{data.users.length} {data.users.length === 1 ? 'user' : 'users'}</span>
 		</div>
 
 		{#if data.users.length === 0}
