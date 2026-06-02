@@ -55,7 +55,10 @@ const comparisonText = $derived.by(() => {
 	if (days >= 1) {
 		return `That's ${days} days of content!`;
 	}
-	return `That's ${hours} hours of entertainment!`;
+	if (totalWatchTimeMinutes < 60) {
+		return `That's ${minutes} ${minutes === 1 ? 'minute' : 'minutes'} of entertainment!`;
+	}
+	return `That's ${hours} ${hours === 1 ? 'hour' : 'hours'} of entertainment!`;
 });
 
 // Element references for animation
