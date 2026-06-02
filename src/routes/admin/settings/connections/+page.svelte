@@ -68,10 +68,16 @@ const openaiModelLocked = $derived(settings.openaiModel.isLocked);
 
 const plexAnyLocked = $derived(plexServerUrlLocked || plexTokenLocked);
 const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || openaiModelLocked);
+
+// ISSUE-016: AI fun facts run only with an effective OpenAI key. `hasEffectiveOpenAIKey`
+// (server load) reflects an authoritative env var OR a stored DB row. Surface a visible,
+// non-blocking warning when no key is in effect AND none is being entered now — the
+// generator silently falls back to templates otherwise, which the subtle card copy hides.
+const showOpenaiKeyWarning = $derived(!data.hasEffectiveOpenAIKey && !openaiApiKeyInput.trim());
 </script>
 
 <svelte:head>
-	<title>Connections — Settings</title>
+	<title>Connections — Settings — Obzorarr</title>
 </svelte:head>
 
 <div class="space-y-6 p-6 max-w-4xl">
@@ -79,8 +85,12 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 		<CardHeader>
 			<CardTitle>Plex server</CardTitle>
 			<CardDescription>
-				URL + auth token for the Plex Media Server obzorarr syncs from. Locked fields are set
-				via environment variables.
+				URL + auth token for the Plex Media Server obzorarr syncs from.
+				{#if plexAnyLocked}
+					Locked fields are set via environment variables and can only be changed there.
+					Placeholder env values (e.g. the shipped <code>.env.example</code> defaults) are
+					ignored and leave the field editable here.
+				{/if}
 			</CardDescription>
 		</CardHeader>
 		<CardContent class="space-y-4">
@@ -308,6 +318,13 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 						bind:value={openaiApiKeyInput}
 						disabled={openaiApiKeyLocked}
 					/>
+					{#if showOpenaiKeyWarning}
+						<p class="ai-key-warning" role="status">
+							No OpenAI API key is in effect, so AI fun facts will not run — the built-in
+							template generator is used instead. Enter a key above (or set
+							<code>OPENAI_API_KEY</code>) to enable AI-generated fun facts.
+						</p>
+					{/if}
 				</div>
 
 				<div class="space-y-2">
@@ -462,3 +479,23 @@ const openaiAnyLocked = $derived(openaiApiKeyLocked || openaiBaseUrlLocked || op
 		</CardContent>
 	</Card>
 </div>
+
+<style>
+	/* ISSUE-016: visible AI-key-missing notice. Uses the same warning palette as
+	   the security tab's `.status-card.warning` (theme OKLCH tokens) so it reads
+	   as a real alert rather than muted helper copy. */
+	.ai-key-warning {
+		margin: 0.5rem 0 0;
+		padding: 0.625rem 0.75rem;
+		font-size: 0.8rem;
+		line-height: 1.5;
+		border-radius: 8px;
+		color: oklch(var(--foreground));
+		background: oklch(0.79 0.1606 79.6 / 0.1);
+		border: 1px solid oklch(0.79 0.1606 79.6 / 0.3);
+	}
+
+	.ai-key-warning code {
+		font-size: 0.75rem;
+	}
+</style>

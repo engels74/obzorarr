@@ -96,11 +96,16 @@ export function calculateTopGenres(
 	const genreCounts = new Map<string, number>();
 
 	for (const record of records) {
-		if (!record.genres) continue;
+		// Only attempt to parse non-empty JSON strings. Plex enrichment can
+		// persist the literal strings "undefined"/"null" (or an empty value)
+		// into the nullable `genres` column; feeding those to JSON.parse is the
+		// source of the "Unable to parse JSON: undefined" warning (ISSUE-010).
+		const raw = typeof record.genres === 'string' ? record.genres.trim() : '';
+		if (raw.length === 0 || raw === 'undefined' || raw === 'null') continue;
 
 		let genres: unknown;
 		try {
-			genres = JSON.parse(record.genres);
+			genres = JSON.parse(raw);
 			if (!Array.isArray(genres)) continue;
 		} catch {
 			continue;

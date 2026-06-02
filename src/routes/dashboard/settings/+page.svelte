@@ -1,4 +1,5 @@
 <script lang="ts">
+import LogOut from '@lucide/svelte/icons/log-out';
 import { enhance } from '$app/forms';
 import { invalidateAll } from '$app/navigation';
 import { page } from '$app/stores';
@@ -454,17 +455,22 @@ function getLogoModeDescription(): string {
 						}}
 						class="logo-form"
 					>
-						<div class="privacy-card-grid two-col">
+						<div
+							class="privacy-card-grid two-col"
+							role="radiogroup"
+							aria-label="Logo visibility on your wrapped page"
+						>
 							<label class="privacy-card" class:selected={selectedLogoPreference === 'show'}>
 								<input
 									type="radio"
 									name="logoPreference"
 									value="show"
+									aria-label="Show logo"
 									bind:group={selectedLogoPreference}
 									disabled={isUpdating}
 								/>
-								<span class="card-icon">✅</span>
-								<span class="card-title">Show Logo</span>
+								<span class="card-icon" aria-hidden="true">✅</span>
+								<span class="card-title">Show logo</span>
 								<span class="card-desc">Display the Obzorarr logo on your wrapped page</span>
 							</label>
 
@@ -473,11 +479,12 @@ function getLogoModeDescription(): string {
 									type="radio"
 									name="logoPreference"
 									value="hide"
+									aria-label="Hide logo"
 									bind:group={selectedLogoPreference}
 									disabled={isUpdating}
 								/>
-								<span class="card-icon">🚫</span>
-								<span class="card-title">Hide Logo</span>
+								<span class="card-icon" aria-hidden="true">🚫</span>
+								<span class="card-title">Hide logo</span>
 								<span class="card-desc">Hide the logo for a cleaner presentation</span>
 							</label>
 						</div>
@@ -558,6 +565,17 @@ function getLogoModeDescription(): string {
 						View My {data.currentYear} Wrapped →
 					</a>
 				</div>
+			</section>
+
+			<section class="section">
+				<h2>Sign Out</h2>
+				<p class="section-description">End your session on this device.</p>
+				<form method="POST" action="/auth/logout" use:enhance class="logout-form">
+					<button type="submit" class="logout-button">
+						<LogOut class="logout-icon" aria-hidden="true" />
+						<span>Log out</span>
+					</button>
+				</form>
 			</section>
 		</Tabs.Content>
 	</Tabs.Root>
@@ -1074,6 +1092,34 @@ function getLogoModeDescription(): string {
 
 		.view-wrapped-link:hover {
 			opacity: 0.9;
+		}
+
+		.logout-form {
+			margin: 0;
+		}
+
+		.logout-button {
+			display: inline-flex;
+			align-items: center;
+			gap: 0.5rem;
+			padding: 0.75rem 1.25rem;
+			background: oklch(var(--destructive) / 0.1);
+			color: oklch(var(--destructive));
+			border: 1px solid oklch(var(--destructive) / 0.3);
+			border-radius: var(--radius);
+			font-weight: 500;
+			font-size: 0.875rem;
+			cursor: pointer;
+			transition: background 0.15s ease;
+		}
+
+		.logout-button:hover {
+			background: oklch(var(--destructive) / 0.18);
+		}
+
+		.logout-button :global(.logout-icon) {
+			width: 1rem;
+			height: 1rem;
 		}
 
 		/* Responsive */

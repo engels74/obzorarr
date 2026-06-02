@@ -310,7 +310,7 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 </script>
 
 <svelte:head>
-	<title>Privacy — Settings</title>
+	<title>Privacy — Settings — Obzorarr</title>
 </svelte:head>
 
 <div class="space-y-6 p-6 max-w-4xl">

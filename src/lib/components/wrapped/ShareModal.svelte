@@ -88,6 +88,13 @@ const canRegenerateToken = $derived(
 	canControlShare && displayMode === 'private-link' && !isBelowFloor(displayMode)
 );
 
+// ISSUE-019: an owner whose `canUserControl` is off (and who isn't an admin)
+// gets no visibility controls at all. Surface why, plus a path to their own
+// settings, instead of silently hiding the section.
+const showNoControlNotice = $derived(
+	isOwner && !isAdmin && !isServerWrapped && !(shareSettings?.canUserControl ?? false)
+);
+
 // Available modes based on permissions
 const availableModes = $derived.by(() => {
 	if (isAdmin) return ['public', 'private-link', 'private-oauth'] as const;
@@ -438,8 +445,12 @@ $effect(() => {
 									<span class="mode-desc">{modeLabels[mode as ShareModeType].description}</span>
 									{#if globalFloor && isBelowFloor(mode as ShareModeType)}
 										<span class="floor-note">
-											Global floor is <strong>{modeLabels[globalFloor].label}</strong>. Effective
-											mode at access time will be <strong>{modeLabels[globalFloor].label}</strong>.
+											Disabled by server policy: visibility can't be more public than
+											<strong>{modeLabels[globalFloor].label}</strong>. Effective mode at access
+											time will be <strong>{modeLabels[globalFloor].label}</strong>.
+											{#if !isAdmin}
+												Contact your admin to change the server floor.
+											{/if}
 										</span>
 									{/if}
 								</div>
@@ -509,10 +520,24 @@ $effect(() => {
 			</div>
 		{/if}
 
-		<!-- Advanced Options Link (admin only) -->
-		{#if isAdmin}
-			<div class="advanced-section">
-				<a href="/admin/settings?tab=privacy" class="advanced-link">
+		<!-- ISSUE-019: explain why visibility controls are unavailable + a path to act -->
+		{#if showNoControlNotice}
+			<div class="control-notice">
+				<p class="control-notice-text">
+					Your admin hasn't enabled per-user visibility control, so this Wrapped uses the
+					server default. Manage your account from
+					<a href="/dashboard/settings" class="control-notice-link">your settings</a>, or contact
+					your admin to request control.
+				</p>
+			</div>
+		{/if}
+
+		<!-- Advanced Options Link: admin-scoped vs user-scoped (ISSUE-020) -->
+		<div class="advanced-section">
+			<a
+				href={isAdmin ? '/admin/settings?tab=privacy' : '/dashboard/settings'}
+				class="advanced-link"
+			>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
 						width="14"
@@ -532,7 +557,6 @@ $effect(() => {
 					Advanced sharing options
 				</a>
 			</div>
-		{/if}
 
 		<AlertDialog.Footer>
 			<AlertDialog.Cancel>Close</AlertDialog.Cancel>
@@ -762,6 +786,30 @@ $effect(() => {
 		.btn-link:disabled {
 			opacity: 0.5;
 			cursor: not-allowed;
+		}
+
+		.control-notice {
+			padding: 0.75rem 0.875rem;
+			margin-bottom: 1.25rem;
+			border: 1px solid oklch(var(--border));
+			border-radius: 8px;
+			background-color: oklch(var(--muted) / 0.4);
+		}
+
+		.control-notice-text {
+			margin: 0;
+			font-size: 0.8125rem;
+			line-height: 1.45;
+			color: oklch(var(--muted-foreground));
+		}
+
+		.control-notice-link {
+			color: oklch(var(--primary));
+			text-decoration: none;
+		}
+
+		.control-notice-link:hover {
+			text-decoration: underline;
 		}
 
 		.advanced-section {

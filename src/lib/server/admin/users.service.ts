@@ -3,6 +3,7 @@ import { db } from '$lib/server/db/client';
 import { playHistory, shareSettings, users } from '$lib/server/db/schema';
 import { generateShareToken, getGlobalDefaultShareMode } from '$lib/server/sharing/service';
 import {
+	getMoreRestrictiveMode,
 	ShareMode,
 	ShareModeSource,
 	type ShareModeSourceType,
@@ -23,6 +24,52 @@ export interface UserWithStats {
 	shareMode: ShareModeType | null;
 	shareModeSource: ShareModeSourceType | null;
 	canUserControl: boolean;
+	/**
+	 * Effective access mode after clamping the stored mode by the global floor
+	 * (ISSUE-007). Never more permissive than what a viewer actually gets, so the
+	 * admin Users badge can't read "Public"/"Link" while access is private-oauth.
+	 */
+	effectiveShareMode: ShareModeType;
+	/** Badge label derived from {@link effectiveShareMode} (or "Default" for default-sourced rows). */
+	effectiveLabel: string;
+	/** Badge CSS class derived from {@link effectiveShareMode} ('' for default-sourced rows). */
+	effectiveClass: '' | 'public' | 'oauth' | 'link';
+}
+
+/**
+ * Derive the badge label + CSS class for a user's share mode, clamped by the
+ * global floor. Pure so it can be unit-tested without a DB or DOM. The badge
+ * LABEL and CSS class both come from `effective` so they can never desync, and
+ * a "Default" tag is shown ONLY for rows with no explicit per-user override.
+ */
+export function deriveEffectiveShareBadge(
+	storedMode: ShareModeType | null,
+	source: ShareModeSourceType | null,
+	globalFloor: ShareModeType
+): {
+	effectiveShareMode: ShareModeType;
+	effectiveLabel: string;
+	effectiveClass: '' | 'public' | 'oauth' | 'link';
+} {
+	const baseMode = storedMode ?? globalFloor;
+	const effectiveShareMode = getMoreRestrictiveMode(baseMode, globalFloor);
+
+	// A default-sourced row (no explicit override) is shown as "Default" with no
+	// color class — it tracks whatever the global default is.
+	if (source === ShareModeSource.DEFAULT || source === null) {
+		return { effectiveShareMode, effectiveLabel: 'Default', effectiveClass: '' };
+	}
+
+	switch (effectiveShareMode) {
+		case ShareMode.PUBLIC:
+			return { effectiveShareMode, effectiveLabel: 'Public', effectiveClass: 'public' };
+		case ShareMode.PRIVATE_OAUTH:
+			return { effectiveShareMode, effectiveLabel: 'OAuth', effectiveClass: 'oauth' };
+		case ShareMode.PRIVATE_LINK:
+			return { effectiveShareMode, effectiveLabel: 'Link', effectiveClass: 'link' };
+		default:
+			return { effectiveShareMode, effectiveLabel: 'Default', effectiveClass: '' };
+	}
 }
 
 export interface UserBasicInfo {
@@ -66,6 +113,7 @@ export async function getAllUsersWithStats(year: number): Promise<UserWithStats[
 	const yearEnd = Math.floor(new Date(Date.UTC(year, 11, 31, 23, 59, 59)).getTime() / 1000);
 
 	const allUsers = await db.select().from(users);
+	const globalFloor = await getGlobalDefaultShareMode();
 
 	const watchTimeByUser = await db
 		.select({
@@ -108,6 +156,9 @@ export async function getAllUsersWithStats(year: number): Promise<UserWithStats[
 		const stats = (user.accountId !== null ? watchTimeMap.get(user.accountId) : undefined) ??
 			watchTimeMap.get(user.plexId) ?? { totalDuration: 0, totalPlays: 0 };
 		const settings = shareSettingsMap.get(user.id);
+		const shareMode = settings?.mode ?? null;
+		const shareModeSource = settings?.modeSource ?? null;
+		const badge = deriveEffectiveShareBadge(shareMode, shareModeSource, globalFloor);
 
 		return {
 			id: user.id,
@@ -120,9 +171,12 @@ export async function getAllUsersWithStats(year: number): Promise<UserWithStats[
 			totalWatchTimeMinutes: Math.round(stats.totalDuration / 60),
 			totalPlays: stats.totalPlays,
 			hasWatchHistory: stats.totalPlays > 0,
-			shareMode: settings?.mode ?? null,
-			shareModeSource: settings?.modeSource ?? null,
-			canUserControl: settings?.canUserControl ?? false
+			shareMode,
+			shareModeSource,
+			canUserControl: settings?.canUserControl ?? false,
+			effectiveShareMode: badge.effectiveShareMode,
+			effectiveLabel: badge.effectiveLabel,
+			effectiveClass: badge.effectiveClass
 		};
 	});
 }

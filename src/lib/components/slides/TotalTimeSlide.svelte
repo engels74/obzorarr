@@ -1,6 +1,7 @@
 <script lang="ts">
 import { animate } from 'motion';
 import { prefersReducedMotion } from 'svelte/motion';
+import { formatWatchHours } from '$lib/stats/format';
 import {
 	animateNumber,
 	DELAY_PRESETS,
@@ -29,7 +30,7 @@ let {
 const subject = $derived(getSubject(messagingContext));
 
 // Derived computed values
-const hours = $derived(Math.floor(totalWatchTimeMinutes / 60));
+const hours = $derived(formatWatchHours(totalWatchTimeMinutes));
 const minutes = $derived(Math.round(totalWatchTimeMinutes % 60));
 const days = $derived(Number((totalWatchTimeMinutes / 60 / 24).toFixed(1)));
 const weeks = $derived(Number((totalWatchTimeMinutes / 60 / 24 / 7).toFixed(1)));

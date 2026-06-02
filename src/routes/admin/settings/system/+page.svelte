@@ -56,12 +56,26 @@ const { form: formData, enhance, submitting } = form;
 // Block submit when the visible inputs are out of the server-validated range.
 // The HTML5 min/max attributes only clamp some browsers' UI, so a user can
 // still paste -1 / 999999 and trigger a silent no-op save without this check.
-const isLoggingFormInvalid = $derived(
-	$formData.retentionDays < 1 ||
-		$formData.retentionDays > 365 ||
-		$formData.maxCount < 1000 ||
-		$formData.maxCount > 1_000_000
+//
+// ISSUE-017: the disabled-submit guard alone left users with no feedback — the
+// server-side `Form.FieldErrors` never render because the disabled button stops
+// the submit that would populate them. Surface the range violation inline as the
+// user types, mirroring the zod schema's range + messages.
+const retentionDaysError = $derived(
+	$formData.retentionDays < 1
+		? 'Retention days must be at least 1'
+		: $formData.retentionDays > 365
+			? 'Retention days cannot exceed 365'
+			: undefined
 );
+const maxCountError = $derived(
+	$formData.maxCount < 1000
+		? 'Max log count must be at least 1000'
+		: $formData.maxCount > 1_000_000
+			? 'Max log count cannot exceed 1,000,000'
+			: undefined
+);
+const isLoggingFormInvalid = $derived(Boolean(retentionDaysError) || Boolean(maxCountError));
 
 function formatUptime(seconds: number): string {
 	const days = Math.floor(seconds / 86400);
@@ -76,7 +90,7 @@ function formatUptime(seconds: number): string {
 </script>
 
 <svelte:head>
-	<title>System — Settings</title>
+	<title>System — Settings — Obzorarr</title>
 </svelte:head>
 
 <div class="space-y-6 p-6 max-w-4xl">
@@ -104,6 +118,9 @@ function formatUptime(seconds: number): string {
 					</Form.Control>
 					<Form.Description>Auto-delete logs older than this. Range 1–365.</Form.Description>
 					<Form.FieldErrors />
+					{#if retentionDaysError}
+						<p class="text-sm text-destructive">{retentionDaysError}</p>
+					{/if}
 				</Form.Field>
 
 				<Form.Field {form} name="maxCount">
@@ -122,6 +139,9 @@ function formatUptime(seconds: number): string {
 					</Form.Control>
 					<Form.Description>Older entries dropped once this ceiling is reached.</Form.Description>
 					<Form.FieldErrors />
+					{#if maxCountError}
+						<p class="text-sm text-destructive">{maxCountError}</p>
+					{/if}
 				</Form.Field>
 
 				<Form.Field {form} name="debugEnabled">

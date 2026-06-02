@@ -184,4 +184,85 @@ describe('csrfHandle (production mode)', () => {
 			expect(metadata).toContain('<unmatched>');
 		});
 	});
+
+	describe('CSRF self-lockout recovery carve-out (ISSUE-002)', () => {
+		it('lets the security-route updateCsrfOrigin repair POST reach its action despite a mismatched stored origin', async () => {
+			// A bad origin is stored — every normal POST would 403.
+			await setAppSetting(AppSettingsKey.CSRF_ORIGIN, 'https://wrong.example');
+
+			const event = makeEvent({
+				method: 'POST',
+				// Admin is loaded on the real origin and repairs the setting.
+				url: 'https://example.com/admin/settings/security?/updateCsrfOrigin',
+				origin: 'https://example.com',
+				route: { id: '/admin/settings/security' }
+			});
+
+			const response = await invoke(event);
+			// Reaches the action (200 sentinel) — the action's confirm-mismatch
+			// gate governs the actual write, not the hook.
+			expect(response.status).toBe(200);
+			expect(await response.text()).toBe('resolved');
+
+			await flushLogs();
+			const rows = await getCsrfLogByMessage('CSRF self-repair');
+			expect(rows.length).toBeGreaterThan(0);
+		});
+
+		it('does NOT extend the carve-out to a different action on the same route', async () => {
+			await setAppSetting(AppSettingsKey.CSRF_ORIGIN, 'https://example.com');
+
+			const event = makeEvent({
+				method: 'POST',
+				url: 'https://example.com/admin/settings/security?/toggleCsrfSkip',
+				origin: 'https://attacker.example',
+				route: { id: '/admin/settings/security' }
+			});
+
+			const response = await invoke(event);
+			expect(response.status).toBe(403);
+		});
+
+		it('does NOT extend the carve-out to the updateCsrfOrigin action on a different route', async () => {
+			await setAppSetting(AppSettingsKey.CSRF_ORIGIN, 'https://example.com');
+
+			const event = makeEvent({
+				method: 'POST',
+				url: 'https://example.com/admin/settings/connections?/updateCsrfOrigin',
+				origin: 'https://attacker.example',
+				route: { id: '/admin/settings/connections' }
+			});
+
+			const response = await invoke(event);
+			expect(response.status).toBe(403);
+		});
+
+		it('keys on route+action regardless of origin header (forged x-forwarded cannot widen it)', async () => {
+			// Under TRUST_PROXY, proxyHandle rewrites event.url.origin from
+			// x-forwarded-* before csrfHandle runs. The carve-out decision must be
+			// independent of that origin: the repair POST resolves whether or not
+			// the (spoofable) request origin matches, AND a non-repair route still
+			// 403s — so a forged forwarded header cannot exempt anything else.
+			await setAppSetting(AppSettingsKey.CSRF_ORIGIN, 'https://wrong.example');
+
+			const repairWithForgedOrigin = makeEvent({
+				method: 'POST',
+				url: 'https://example.com/admin/settings/security?/updateCsrfOrigin',
+				origin: 'https://attacker.example',
+				route: { id: '/admin/settings/security' }
+			});
+			const repairResponse = await invoke(repairWithForgedOrigin);
+			expect(repairResponse.status).toBe(200);
+
+			// A different state-changing route gets no exemption.
+			const otherRoute = makeEvent({
+				method: 'POST',
+				url: 'https://example.com/admin/users?/deleteUser',
+				origin: 'https://attacker.example',
+				route: { id: '/admin/users' }
+			});
+			const otherResponse = await invoke(otherRoute);
+			expect(otherResponse.status).toBe(403);
+		});
+	});
 });

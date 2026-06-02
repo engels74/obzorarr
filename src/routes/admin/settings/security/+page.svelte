@@ -200,7 +200,7 @@ function getForwardedPairLabel(status: string): string {
 </script>
 
 <svelte:head>
-	<title>Security — Settings</title>
+	<title>Security — Settings — Obzorarr</title>
 </svelte:head>
 
 <div class="space-y-6 p-6 max-w-4xl">
