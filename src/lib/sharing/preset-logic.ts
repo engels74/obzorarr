@@ -26,6 +26,25 @@ import {
 export type PrivacyPresetMatch = PrivacyPresetId | 'custom';
 
 /**
+ * Whether the onboarding privacy step should show the "Custom configuration —
+ * your choices don't match a preset" note.
+ *
+ * On a fresh install the seeded values can incidentally resolve to `'custom'`
+ * (the raw defaults match no shipped preset) before the admin touches anything.
+ * Showing the "your choices don't match a preset" note in that untouched state
+ * is misleading — the admin hasn't made any choices yet (ISSUE-001). The note is
+ * therefore gated on interaction: it appears only once the admin has picked a
+ * preset card or edited an Advanced Option AND the live values still match no
+ * preset.
+ */
+export function shouldShowCustomPresetNote(
+	selectedPreset: PrivacyPresetMatch,
+	hasInteracted: boolean
+): boolean {
+	return selectedPreset === 'custom' && hasInteracted;
+}
+
+/**
  * Match the full six-field value set against the shipped presets. Used by
  * ONBOARDING, which owns all six fields (including `logoMode`) in one atomic
  * form. Returns the matching preset id, or `'custom'` if no preset matches.

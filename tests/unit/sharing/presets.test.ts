@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'bun:test';
 import { PRIVACY_PRESETS, type PrivacyPresetValues } from '$lib/sharing/options';
-import { derivePreview, matchPresetFull, matchPresetPrivacy } from '$lib/sharing/preset-logic';
+import {
+	derivePreview,
+	matchPresetFull,
+	matchPresetPrivacy,
+	shouldShowCustomPresetNote
+} from '$lib/sharing/preset-logic';
 
 const byId = (id: string) => {
 	const preset = PRIVACY_PRESETS.find((p) => p.id === id);
@@ -123,6 +128,26 @@ describe('derivePreview', () => {
 	it('no shipped preset trips the contradiction warning', () => {
 		for (const preset of PRIVACY_PRESETS) {
 			expect(derivePreview(preset.values).warnings).toHaveLength(0);
+		}
+	});
+});
+
+describe('shouldShowCustomPresetNote (ISSUE-001: gate the "Custom configuration" note on interaction)', () => {
+	it('does NOT show the note for a fresh-install custom state before any interaction', () => {
+		// The defect: seeded values resolve to 'custom' on first load. With no
+		// interaction the misleading "your choices don't match a preset" note must
+		// stay hidden.
+		expect(shouldShowCustomPresetNote('custom', false)).toBe(false);
+	});
+
+	it('shows the note once the user has interacted and the values still match no preset', () => {
+		expect(shouldShowCustomPresetNote('custom', true)).toBe(true);
+	});
+
+	it('never shows the note when a named preset is selected, regardless of interaction', () => {
+		for (const preset of PRIVACY_PRESETS) {
+			expect(shouldShowCustomPresetNote(preset.id, false)).toBe(false);
+			expect(shouldShowCustomPresetNote(preset.id, true)).toBe(false);
 		}
 	});
 });

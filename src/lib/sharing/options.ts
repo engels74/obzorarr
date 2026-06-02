@@ -53,7 +53,8 @@ export const shareModeOptions: OptionCopy<ShareModeType>[] = [
 	{
 		value: ShareMode.PRIVATE_OAUTH,
 		label: 'Server Members Only',
-		description: 'Only authenticated Plex server members can view'
+		description:
+			'Any signed-in Plex server member can view — including this person’s real name and full viewing history'
 	},
 	{
 		value: ShareMode.PRIVATE_LINK,

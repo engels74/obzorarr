@@ -47,6 +47,20 @@ export async function getUserCount(): Promise<number> {
 	return result[0]?.count ?? 0;
 }
 
+/**
+ * Count distinct synced viewers — the Plex accounts that appear in play history.
+ * This is distinct from {@link getUserCount} (login/app accounts in `users`): a
+ * fresh server commonly has one login user but many synced viewers, so the
+ * dashboard surfaces both to reconcile "1 user / N plays". Single cheap
+ * COUNT(DISTINCT) query, no per-row work.
+ */
+export async function getSyncedViewerCount(): Promise<number> {
+	const result = await db
+		.select({ count: sql<number>`count(distinct ${playHistory.accountId})` })
+		.from(playHistory);
+	return result[0]?.count ?? 0;
+}
+
 export async function getAllUsersWithStats(year: number): Promise<UserWithStats[]> {
 	const yearStart = Math.floor(new Date(Date.UTC(year, 0, 1, 0, 0, 0)).getTime() / 1000);
 	const yearEnd = Math.floor(new Date(Date.UTC(year, 11, 31, 23, 59, 59)).getTime() / 1000);

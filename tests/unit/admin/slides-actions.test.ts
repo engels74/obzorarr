@@ -183,6 +183,54 @@ describe('admin slides actions', () => {
 		});
 	}
 
+	describe('createCustom success contract (FIX-5 / ISSUE-007)', () => {
+		it('returns { success: true, slide } on a valid create so the modal can close only on success', async () => {
+			const result = await runCreateCustom(
+				buildCreateCustomRequest({
+					title: 'My recap slide',
+					content: 'Some safe **markdown** content',
+					enabled: 'true'
+				})
+			);
+
+			// The enhance callback closes the editor ONLY when result.type === 'success';
+			// the persisted slide must come back so the refreshed list shows it immediately.
+			expect(result).toMatchObject({ success: true, slide: { title: 'My recap slide' } });
+
+			const rows = await db.select().from(customSlides);
+			expect(rows).toHaveLength(1);
+			expect(rows[0]?.content).toBe('Some safe **markdown** content');
+		});
+	});
+
+	describe('createCustom enhance ordering (FIX-5 / ISSUE-007 source guard)', () => {
+		const readSource = async () => await Bun.file('src/routes/admin/slides/+page.svelte').text();
+
+		it('awaits update() before closing the editor and only closes on success', async () => {
+			const src = await readSource();
+			const updateIdx = src.indexOf('await update(');
+			const closeIdx = src.indexOf('closeEditor();', updateIdx);
+			expect(updateIdx).toBeGreaterThan(-1);
+			expect(closeIdx).toBeGreaterThan(updateIdx);
+			// closeEditor in the enhance flow is guarded by a success check.
+			expect(/result\.type === 'success'\)\s*\{\s*closeEditor\(\);/s.test(src)).toBe(true);
+		});
+
+		it('no longer blanks editorTitle/editorContent inside the enhance callback (content preserved on failure)', async () => {
+			const src = await readSource();
+			// Scope the assertion to the create/update editor form so we don't trip
+			// over openCreate()'s legitimate field reset elsewhere. Anchor on the
+			// editor form's action attribute, then take its enhance callback body.
+			const formStart = src.indexOf("'?/updateCustom' : '?/createCustom'");
+			expect(formStart).toBeGreaterThan(-1);
+			const region = src.slice(formStart, src.indexOf('</form>', formStart));
+			// FIX-5: the old unsafe-html branch that blanked the fields on failure is gone…
+			expect(region.includes('editorContent = ')).toBe(false);
+			// …and the list is refreshed without resetting the still-open form.
+			expect(region.includes('update({ reset: false })')).toBe(true);
+		});
+	});
+
 	describe('createCustom error mapping', () => {
 		it('returns 400 with fieldErrors.content when content has unsafe HTML', async () => {
 			const result = await runCreateCustom(

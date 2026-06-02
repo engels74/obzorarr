@@ -602,17 +602,13 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 					action={editingSlide ? '?/updateCustom' : '?/createCustom'}
 					use:enhance={() => {
 						return async ({ result, update }) => {
+							// Refresh the list first so a newly created/updated slide appears
+							// immediately; keep the user's entered content on failure
+							// (reset: false) so a validation error never blanks the open modal.
+							await update({ reset: false });
 							if (result.type === 'success') {
 								closeEditor();
-							} else if (
-								result.type === 'failure' &&
-								typeof result.data?.error === 'string' &&
-								result.data.error.toLowerCase().includes('unsafe html')
-							) {
-								editorTitle = '';
-								editorContent = '';
 							}
-							await update();
 						};
 					}}
 				>
@@ -649,7 +645,14 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 							required
 							rows="10"
 							placeholder="Write your slide content in Markdown..."
+							aria-invalid={slideFieldErrors?.content?.[0] ? 'true' : undefined}
+							aria-describedby={slideFieldErrors?.content?.[0] ? 'content-error' : undefined}
 						></textarea>
+						{#if slideFieldErrors?.content?.[0]}
+							<span id="content-error" class="field-error" role="alert">
+								{slideFieldErrors.content[0]}
+							</span>
+						{/if}
 					</div>
 
 					<div class="form-row form-row-aligned">

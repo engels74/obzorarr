@@ -149,6 +149,29 @@ describe('server wrapped route year guard (ISSUE-009, ISSUE-018)', () => {
 		}
 	});
 
+	it('throws the exact "No data found for this year" 404 message (FIX-2 +error.svelte contract)', async () => {
+		// The route-scoped wrapped/[year]/+error.svelte detects this exact message
+		// to render its friendly empty-state. Lock the string so the boundary copy
+		// and the thrown error can never silently drift apart.
+		const currentYear = new Date().getFullYear();
+		const emptyPastYear = currentYear - 1;
+		try {
+			await load({
+				params: { year: String(emptyPastYear) },
+				locals: {},
+				parent: makeParent([currentYear]),
+				url: new URL(`http://localhost/wrapped/${emptyPastYear}`),
+				setHeaders: () => {}
+			} as unknown as Parameters<ServerWrappedLoad>[0]);
+			expect.unreachable('Expected 404 for empty past year');
+		} catch (err) {
+			expect(isHttpError(err)).toBe(true);
+			if (!isHttpError(err)) throw err;
+			expect(err.status).toBe(404);
+			expect(err.body.message).toBe('No data found for this year');
+		}
+	});
+
 	it('does not 404 for the current year even when not yet in availableYears (pre-first-sync)', async () => {
 		// Current year with no data yet should reach the access-control check,
 		// not be blocked by the year guard. Since no access restriction is set,
