@@ -32,7 +32,8 @@ import {
 	PREVIEW_LOGO_VISIBILITY_LABELS,
 	PREVIEW_NAME_DISPLAY_LABELS,
 	PREVIEW_PER_USER_DEFAULT_LABELS,
-	PREVIEW_RECAP_VISIBILITY_LABELS
+	PREVIEW_RECAP_VISIBILITY_LABELS,
+	shouldShowCustomPresetNote
 } from '$lib/sharing/preset-logic';
 import { handleFormToast } from '$lib/utils/form-toast';
 import { submitAction } from '$lib/utils/submit-action';
@@ -67,6 +68,13 @@ let enableFunFacts = $state(false);
 // edits in Advanced Options flip it to "Custom"), never persisted as a field.
 let advancedPrivacyOpen = $state(false);
 
+// Tracks whether the admin has actively touched the privacy controls (picked a
+// preset card or edited an Advanced Option). On a fresh install the seeded
+// values can resolve to 'custom' before any interaction; the "Custom
+// configuration" note is gated on this flag so it never accuses the admin of
+// off-preset choices they haven't made yet (ISSUE-001).
+let privacyTouched = $state(false);
+
 let selectedPreset = $derived(
 	matchPresetFull({
 		anonymizationMode,
@@ -92,6 +100,7 @@ let privacyPreview = $derived(
 );
 
 function applyPrivacyPreset(preset: PrivacyPreset) {
+	privacyTouched = true;
 	anonymizationMode = preset.values.anonymizationMode;
 	defaultShareMode = preset.values.defaultShareMode;
 	serverWrappedShareMode = preset.values.serverWrappedShareMode;
@@ -585,9 +594,13 @@ function getThemeColors(themeValue: string) {
 										</button>
 									{/each}
 								</div>
-								{#if selectedPreset === 'custom'}
+								{#if shouldShowCustomPresetNote(selectedPreset, privacyTouched)}
 									<p class="preset-custom-note" role="status">
 										Custom configuration — your choices don’t match a preset.
+									</p>
+								{:else if selectedPreset === 'custom'}
+									<p class="preset-custom-note preset-custom-note-neutral" role="status">
+										No preset selected yet — pick one above to get started.
 									</p>
 								{/if}
 							</div>
@@ -702,7 +715,9 @@ function getThemeColors(themeValue: string) {
 									<ChevronDownIcon class="advanced-chevron" />
 								</button>
 								{#if advancedPrivacyOpen}
-									<div class="advanced-content">
+									<!-- change events from the descendant radios bubble here, so editing
+									     any granular control counts as interaction (see privacyTouched). -->
+									<div class="advanced-content" onchange={() => (privacyTouched = true)}>
 							<div class="setting-group">
 								<span class="setting-label">User Identity in Stats</span>
 								<p class="setting-description">How usernames appear in server-wide statistics</p>
@@ -826,7 +841,10 @@ function getThemeColors(themeValue: string) {
 										type="button"
 										class="toggle-switch"
 										class:active={allowUserControl}
-										onclick={() => (allowUserControl = !allowUserControl)}
+										onclick={() => {
+											privacyTouched = true;
+											allowUserControl = !allowUserControl;
+										}}
 										aria-pressed={allowUserControl}
 										aria-label="Allow User Control"
 									>
@@ -845,7 +863,10 @@ function getThemeColors(themeValue: string) {
 										type="button"
 										class="toggle-switch"
 										class:active={publicLandingLookup}
-										onclick={() => (publicLandingLookup = !publicLandingLookup)}
+										onclick={() => {
+											privacyTouched = true;
+											publicLandingLookup = !publicLandingLookup;
+										}}
 										aria-pressed={publicLandingLookup}
 										aria-label={publicLandingLookupCopy.label}
 									>
@@ -1622,6 +1643,11 @@ function getThemeColors(themeValue: string) {
 			font-size: 0.78rem;
 			color: rgba(255, 255, 255, 0.6);
 			font-style: italic;
+		}
+
+		.preset-custom-note-neutral {
+			font-style: normal;
+			color: rgba(255, 255, 255, 0.45);
 		}
 
 		/* Live preview panel */

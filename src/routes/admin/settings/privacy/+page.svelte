@@ -517,7 +517,9 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 		<CardHeader>
 			<CardTitle>Server-wide wrapped sharing</CardTitle>
 			<CardDescription>
-				Controls anonymization and the share mode used by the server-wide /wrapped pages.
+				Controls anonymization and the share mode for the aggregate server-wide /wrapped recap
+				only. It does NOT change who can view individual users' personal Wrapped pages — that
+				is governed by the per-user default share mode below.
 			</CardDescription>
 		</CardHeader>
 		<CardContent>
@@ -656,7 +658,9 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 			<CardTitle>User sharing defaults</CardTitle>
 			<CardDescription>
 				Default share mode for newly-created users, and whether users can change their own
-				share settings.
+				share settings. This default is also the privacy floor for every user's personal
+				Wrapped page — raise or lower it here (not via the server-wide recap control above) to
+				change who can view personal Wrapped pages.
 			</CardDescription>
 		</CardHeader>
 		<CardContent>

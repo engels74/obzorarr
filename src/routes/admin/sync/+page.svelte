@@ -552,7 +552,11 @@ async function goToPage(page: number) {
 						{#if data.schedulerStatus.nextRun}
 							<div class="time-row">
 								<span class="time-label">Next sync</span>
-								<span class="time-value">{formatDate(data.schedulerStatus.nextRun)}</span>
+								<span class="time-value"
+										>{formatDate(data.schedulerStatus.nextRun)}{#if data.schedulerStatus.cronExpression}
+											<span class="time-cron">(cron {data.schedulerStatus.cronExpression} UTC)</span>
+										{/if}</span
+									>
 							</div>
 						{/if}
 						{#if data.schedulerStatus.previousRun}
@@ -1468,6 +1472,12 @@ async function goToPage(page: number) {
 			font-size: 0.8125rem;
 			font-weight: 500;
 			color: oklch(var(--foreground));
+		}
+
+		.time-cron {
+			font-weight: 400;
+			color: oklch(var(--muted-foreground));
+			font-variant-numeric: tabular-nums;
 		}
 
 		.scheduler-controls {

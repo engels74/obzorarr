@@ -92,6 +92,7 @@ const statsConfig = $derived([
 	{
 		value: data.userCount,
 		label: 'Total Users',
+		sub: `${data.syncedViewerCount.toLocaleString()} synced viewers`,
 		icon: Users,
 		color: 'blue',
 		gradient: 'from-blue-500/20 to-blue-600/5'
@@ -264,7 +265,12 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 				{#if data.schedulerStatus?.nextRun}
 					<div class="sync-row">
 						<span class="sync-label">Next Sync</span>
-						<span class="sync-value">{formatDate(data.schedulerStatus.nextRun)}</span>
+						<span class="sync-value">
+							{formatDate(data.schedulerStatus.nextRun)}
+							{#if data.schedulerStatus.cronExpression}
+								<span class="sync-cron">(cron {data.schedulerStatus.cronExpression} UTC)</span>
+							{/if}
+						</span>
 					</div>
 				{/if}
 			</div>
@@ -655,6 +661,12 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 		.sync-value.highlight {
 			color: oklch(var(--primary));
 			font-weight: 600;
+		}
+
+		.sync-cron {
+			font-weight: 400;
+			color: oklch(var(--muted-foreground));
+			font-variant-numeric: tabular-nums;
 		}
 
 		.status-badge {

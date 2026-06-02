@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import { getAllUsersWithStats } from '$lib/server/admin/users.service';
+import { getAllUsersWithStats, getSyncedViewerCount } from '$lib/server/admin/users.service';
 import { db } from '$lib/server/db/client';
 import { playHistory, shareSettings, users } from '$lib/server/db/schema';
 import { createTimestamp } from '../../helpers/factories';
@@ -73,6 +73,51 @@ describe('admin users service', () => {
 			totalWatchTimeMinutes: 0,
 			totalPlays: 0,
 			hasWatchHistory: false
+		});
+	});
+
+	describe('getSyncedViewerCount (FIX-3 / ISSUE-004)', () => {
+		it('returns 0 when there is no play history', async () => {
+			expect(await getSyncedViewerCount()).toBe(0);
+		});
+
+		it('counts distinct play-history accounts, not raw rows', async () => {
+			// Three rows across two distinct accountIds (2001 appears twice) → 2 viewers,
+			// reconciling the "1 login user / many synced viewers" dashboard gap.
+			await db.insert(playHistory).values([
+				{
+					historyKey: 'h-1',
+					ratingKey: 'r-1',
+					title: 'Movie 1',
+					type: 'movie',
+					viewedAt: createTimestamp(2025, 1, 15),
+					accountId: 2001,
+					librarySectionId: 1,
+					duration: 1800
+				},
+				{
+					historyKey: 'h-2',
+					ratingKey: 'r-2',
+					title: 'Movie 2',
+					type: 'movie',
+					viewedAt: createTimestamp(2025, 2, 15),
+					accountId: 2001,
+					librarySectionId: 1,
+					duration: 1800
+				},
+				{
+					historyKey: 'h-3',
+					ratingKey: 'r-3',
+					title: 'Movie 3',
+					type: 'movie',
+					viewedAt: createTimestamp(2025, 3, 15),
+					accountId: 2002,
+					librarySectionId: 1,
+					duration: 1800
+				}
+			]);
+
+			expect(await getSyncedViewerCount()).toBe(2);
 		});
 	});
 });
