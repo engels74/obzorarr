@@ -85,6 +85,15 @@ export const load: PageServerLoad = async () => {
 		getAppSettingsUpdatedAt(API_CONFIG_KEYS)
 	]);
 
+	// ISSUE-016: whether an OpenAI key is in effect from EITHER an authoritative
+	// env var OR a stored DB row. `apiConfig.openai.apiKey.value` already merges
+	// both sources (env-over-DB via resolveConfigValue), so a non-empty trimmed
+	// value means AI fun facts will actually run; an empty one means the OpenAI
+	// card is configured (base URL / model) but will silently fall back to the
+	// template generator. The connections page surfaces a visible warning in the
+	// latter case instead of only the subtle "falls back" copy.
+	const hasEffectiveOpenAIKey = Boolean(apiConfig.openai.apiKey.value.trim());
+
 	return {
 		settings: {
 			plexServerUrl: apiConfig.plex.serverUrl as SettingValue,
@@ -94,6 +103,7 @@ export const load: PageServerLoad = async () => {
 			openaiBaseUrl: apiConfig.openai.baseUrl as SettingValue,
 			openaiModel: apiConfig.openai.model as SettingValue
 		},
+		hasEffectiveOpenAIKey,
 		apiConfigVersion: settingsVersionISO(apiConfigUpdatedAt)
 	};
 };

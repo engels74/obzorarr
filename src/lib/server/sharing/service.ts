@@ -1,4 +1,4 @@
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, ne } from 'drizzle-orm';
 import { db } from '$lib/server/db/client';
 import { appSettings, shareSettings } from '$lib/server/db/schema';
 import {
@@ -134,7 +134,21 @@ export async function setGlobalShareDefaults(defaults: GlobalShareDefaults): Pro
 	});
 }
 
-export async function bulkApplyShareDefaults(): Promise<number> {
+export interface BulkApplyShareDefaultsResult {
+	/** Rows whose mode was (re)set to the current default. */
+	updated: number;
+	/** Rows left untouched because they carry an explicit per-user override. */
+	skipped: number;
+}
+
+/**
+ * Apply the current global defaults to existing share rows WITHOUT clobbering
+ * explicit per-user overrides (ISSUE-006). Only rows whose `modeSource` is NOT
+ * `explicit` (i.e. default-sourced rows) are rewritten; rows a user/admin
+ * explicitly set are skipped and counted separately. Token rotation for a
+ * PRIVATE_LINK default only touches the updated (default-sourced) rows.
+ */
+export async function bulkApplyShareDefaults(): Promise<BulkApplyShareDefaultsResult> {
 	return db.transaction(async (tx) => {
 		const defaultsResult = await tx
 			.select({ key: appSettings.key, value: appSettings.value })
@@ -154,6 +168,14 @@ export async function bulkApplyShareDefaults(): Promise<number> {
 			: ShareMode.PUBLIC;
 		const allowUserControl = allowResult[0]?.value === 'true';
 
+		// Count explicit rows up front so the caller can report how many were
+		// deliberately left untouched.
+		const explicitRows = await tx
+			.select({ id: shareSettings.id })
+			.from(shareSettings)
+			.where(eq(shareSettings.modeSource, ShareModeSource.EXPLICIT));
+		const skipped = explicitRows.length;
+
 		const baseUpdate: Record<string, unknown> = {
 			mode: defaultMode,
 			modeSource: ShareModeSource.DEFAULT,
@@ -164,12 +186,18 @@ export async function bulkApplyShareDefaults(): Promise<number> {
 			baseUpdate.shareToken = null;
 		}
 
-		const updated = await tx.update(shareSettings).set(baseUpdate).returning({
-			id: shareSettings.id,
-			userId: shareSettings.userId,
-			year: shareSettings.year,
-			shareToken: shareSettings.shareToken
-		});
+		// Scope the bulk update to default-sourced rows ONLY. Explicit overrides
+		// (modeSource = 'explicit') are preserved verbatim.
+		const updated = await tx
+			.update(shareSettings)
+			.set(baseUpdate)
+			.where(ne(shareSettings.modeSource, ShareModeSource.EXPLICIT))
+			.returning({
+				id: shareSettings.id,
+				userId: shareSettings.userId,
+				year: shareSettings.year,
+				shareToken: shareSettings.shareToken
+			});
 
 		if (defaultMode === ShareMode.PRIVATE_LINK) {
 			for (const row of updated) {
@@ -188,7 +216,7 @@ export async function bulkApplyShareDefaults(): Promise<number> {
 			}
 		}
 
-		return updated.length;
+		return { updated: updated.length, skipped };
 	});
 }
 

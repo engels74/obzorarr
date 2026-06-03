@@ -193,7 +193,7 @@ export const actions: Actions = requireAdminActions({
 					requireConfirmation: true,
 					attemptedOrigin: normalizedOrigin,
 					requestOrigin,
-					csrfMismatchMessage: `Saving "${normalizedOrigin}" while loaded from "${requestOrigin}" will lock this browser out of all admin POST operations. Recovery would require restarting the server with ORIGIN=<correct> env or editing the app_settings table directly. Confirm to proceed anyway.`
+					csrfMismatchMessage: `Saving "${normalizedOrigin}" while loaded from "${requestOrigin}" will lock THIS browser out of admin POST operations until you reload the admin from "${normalizedOrigin}". To recover, open the admin at "${normalizedOrigin}" and update the CSRF origin again from this same page — no server restart or database edit is required. Confirm to proceed anyway.`
 				});
 			}
 

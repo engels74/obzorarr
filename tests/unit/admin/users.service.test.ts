@@ -1,7 +1,18 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import { getAllUsersWithStats, getSyncedViewerCount } from '$lib/server/admin/users.service';
+import {
+	deriveEffectiveShareBadge,
+	getAllUsersWithStats,
+	getSyncedViewerCount
+} from '$lib/server/admin/users.service';
 import { db } from '$lib/server/db/client';
-import { playHistory, shareSettings, users } from '$lib/server/db/schema';
+import { appSettings, playHistory, shareSettings, users } from '$lib/server/db/schema';
+import {
+	ShareMode,
+	ShareModePrivacyLevel,
+	ShareModeSource,
+	type ShareModeType,
+	ShareSettingsKey
+} from '$lib/server/sharing/types';
 import { createTimestamp } from '../../helpers/factories';
 
 describe('admin users service', () => {
@@ -9,6 +20,7 @@ describe('admin users service', () => {
 		await db.delete(shareSettings);
 		await db.delete(playHistory);
 		await db.delete(users);
+		await db.delete(appSettings);
 	});
 
 	it('returns play counts and watch-history state for the selected year', async () => {
@@ -118,6 +130,104 @@ describe('admin users service', () => {
 			]);
 
 			expect(await getSyncedViewerCount()).toBe(2);
+		});
+	});
+
+	// ISSUE-007: the Users badge must reflect EFFECTIVE access (stored mode clamped
+	// by the global floor) so it never reads more permissive than what a viewer
+	// actually gets.
+	describe('deriveEffectiveShareBadge (ISSUE-007)', () => {
+		const allModes: ShareModeType[] = [
+			ShareMode.PUBLIC,
+			ShareMode.PRIVATE_LINK,
+			ShareMode.PRIVATE_OAUTH
+		];
+		const classToMode: Record<'public' | 'oauth' | 'link', ShareModeType> = {
+			public: ShareMode.PUBLIC,
+			oauth: ShareMode.PRIVATE_OAUTH,
+			link: ShareMode.PRIVATE_LINK
+		};
+
+		it('clamps an explicit stored mode by the floor (Public stored, OAuth floor → OAuth)', () => {
+			const badge = deriveEffectiveShareBadge(
+				ShareMode.PUBLIC,
+				ShareModeSource.EXPLICIT,
+				ShareMode.PRIVATE_OAUTH
+			);
+			expect(badge.effectiveShareMode).toBe(ShareMode.PRIVATE_OAUTH);
+			expect(badge.effectiveLabel).toBe('OAuth');
+			expect(badge.effectiveClass).toBe('oauth');
+		});
+
+		it('shows "Default" with no class for default-sourced rows', () => {
+			const badge = deriveEffectiveShareBadge(
+				ShareMode.PUBLIC,
+				ShareModeSource.DEFAULT,
+				ShareMode.PUBLIC
+			);
+			expect(badge.effectiveLabel).toBe('Default');
+			expect(badge.effectiveClass).toBe('');
+		});
+
+		it('shows "Default" when there is no stored row at all', () => {
+			const badge = deriveEffectiveShareBadge(null, null, ShareMode.PRIVATE_OAUTH);
+			expect(badge.effectiveLabel).toBe('Default');
+			expect(badge.effectiveClass).toBe('');
+			expect(badge.effectiveShareMode).toBe(ShareMode.PRIVATE_OAUTH);
+		});
+
+		it('keeps label and CSS class in lockstep with the effective mode', () => {
+			for (const stored of allModes) {
+				for (const floor of allModes) {
+					const badge = deriveEffectiveShareBadge(stored, ShareModeSource.EXPLICIT, floor);
+					if (badge.effectiveClass !== '') {
+						expect(classToMode[badge.effectiveClass]).toBe(badge.effectiveShareMode);
+					}
+				}
+			}
+		});
+
+		it('badge mode is NEVER more permissive than effective access (the floor)', () => {
+			for (const stored of [...allModes, null]) {
+				for (const source of [ShareModeSource.EXPLICIT, ShareModeSource.DEFAULT, null]) {
+					for (const floor of allModes) {
+						const badge = deriveEffectiveShareBadge(stored, source, floor);
+						// Higher privacy level = less permissive. Effective must be at least
+						// as private as the floor.
+						expect(ShareModePrivacyLevel[badge.effectiveShareMode]).toBeGreaterThanOrEqual(
+							ShareModePrivacyLevel[floor]
+						);
+					}
+				}
+			}
+		});
+	});
+
+	describe('getAllUsersWithStats badge clamping (ISSUE-007)', () => {
+		it('reports effective (clamped) badge fields, not the raw stored mode', async () => {
+			// Floor is OAuth (most restrictive); a row explicitly set to Public must
+			// surface an OAuth badge, never "Public".
+			await db.insert(appSettings).values({
+				key: ShareSettingsKey.DEFAULT_SHARE_MODE,
+				value: ShareMode.PRIVATE_OAUTH,
+				updatedAt: new Date()
+			});
+
+			await db.insert(users).values({ id: 1, plexId: 1001, accountId: 2001, username: 'viewer' });
+			await db.insert(shareSettings).values({
+				userId: 1,
+				year: 2025,
+				mode: ShareMode.PUBLIC,
+				modeSource: ShareModeSource.EXPLICIT,
+				shareToken: null,
+				canUserControl: false
+			});
+
+			const [row] = await getAllUsersWithStats(2025);
+			expect(row?.shareMode).toBe(ShareMode.PUBLIC); // raw stored value preserved
+			expect(row?.effectiveShareMode).toBe(ShareMode.PRIVATE_OAUTH);
+			expect(row?.effectiveLabel).toBe('OAuth');
+			expect(row?.effectiveClass).toBe('oauth');
 		});
 	});
 });

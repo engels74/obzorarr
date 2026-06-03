@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
+import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db/client';
 import { appSettings, shareSettings } from '$lib/server/db/schema';
 import {
@@ -310,44 +311,55 @@ describe('Sharing Service', () => {
 		});
 
 		describe('bulkApplyShareDefaults', () => {
-			it('resets every existing row to the current defaults (PUBLIC + allow=true)', async () => {
+			it('rewrites default-sourced rows but leaves explicit overrides untouched (ISSUE-006)', async () => {
 				await setGlobalShareDefaults({
 					defaultShareMode: ShareMode.PUBLIC,
 					allowUserControl: true
 				});
 
+				const explicitToken = generateShareToken();
 				await db.insert(shareSettings).values([
+					// Default-sourced row: should adopt the new default.
 					{
 						userId: 1,
 						year: 2024,
-						mode: ShareMode.PRIVATE_LINK,
-						modeSource: ShareModeSource.EXPLICIT,
-						shareToken: generateShareToken(),
+						mode: ShareMode.PRIVATE_OAUTH,
+						modeSource: ShareModeSource.DEFAULT,
+						shareToken: null,
 						canUserControl: false
 					},
+					// Explicit override: must be preserved verbatim.
 					{
 						userId: 2,
 						year: 2024,
-						mode: ShareMode.PRIVATE_OAUTH,
+						mode: ShareMode.PRIVATE_LINK,
 						modeSource: ShareModeSource.EXPLICIT,
-						shareToken: null,
+						shareToken: explicitToken,
 						canUserControl: false
 					}
 				]);
 
-				const count = await bulkApplyShareDefaults();
-				expect(count).toBe(2);
+				const result = await bulkApplyShareDefaults();
+				expect(result).toEqual({ updated: 1, skipped: 1 });
 
-				const rows = await db.select().from(shareSettings);
-				for (const row of rows) {
-					expect(row.mode).toBe(ShareMode.PUBLIC);
-					expect(row.modeSource).toBe(ShareModeSource.DEFAULT);
-					expect(row.canUserControl).toBe(true);
-					expect(row.shareToken).toBeNull();
-				}
+				const defaultRow = (
+					await db.select().from(shareSettings).where(eq(shareSettings.userId, 1)).limit(1)
+				)[0];
+				expect(defaultRow?.mode).toBe(ShareMode.PUBLIC);
+				expect(defaultRow?.modeSource).toBe(ShareModeSource.DEFAULT);
+				expect(defaultRow?.canUserControl).toBe(true);
+
+				// Explicit row is fully unchanged: mode, source, token, and canUserControl.
+				const explicitRow = (
+					await db.select().from(shareSettings).where(eq(shareSettings.userId, 2)).limit(1)
+				)[0];
+				expect(explicitRow?.mode).toBe(ShareMode.PRIVATE_LINK);
+				expect(explicitRow?.modeSource).toBe(ShareModeSource.EXPLICIT);
+				expect(explicitRow?.shareToken).toBe(explicitToken);
+				expect(explicitRow?.canUserControl).toBe(false);
 			});
 
-			it('mints a token for every row when default is PRIVATE_LINK', async () => {
+			it('mints tokens for default-sourced rows only when default is PRIVATE_LINK', async () => {
 				await setGlobalShareDefaults({
 					defaultShareMode: ShareMode.PRIVATE_LINK,
 					allowUserControl: false
@@ -358,34 +370,41 @@ describe('Sharing Service', () => {
 						userId: 1,
 						year: 2024,
 						mode: ShareMode.PUBLIC,
-						modeSource: ShareModeSource.EXPLICIT,
+						modeSource: ShareModeSource.DEFAULT,
 						shareToken: null,
 						canUserControl: true
 					},
+					// Explicit PUBLIC override: must NOT be rotated or given a token.
 					{
 						userId: 2,
 						year: 2024,
-						mode: ShareMode.PRIVATE_OAUTH,
+						mode: ShareMode.PUBLIC,
 						modeSource: ShareModeSource.EXPLICIT,
 						shareToken: null,
 						canUserControl: true
 					}
 				]);
 
-				const count = await bulkApplyShareDefaults();
-				expect(count).toBe(2);
+				const result = await bulkApplyShareDefaults();
+				expect(result).toEqual({ updated: 1, skipped: 1 });
 
-				const rows = await db.select().from(shareSettings);
-				for (const row of rows) {
-					expect(row.mode).toBe(ShareMode.PRIVATE_LINK);
-					expect(row.modeSource).toBe(ShareModeSource.DEFAULT);
-					expect(row.canUserControl).toBe(false);
-					expect(row.shareToken).not.toBeNull();
-					expect(isValidTokenFormat(row.shareToken!)).toBe(true);
-				}
+				const defaultRow = (
+					await db.select().from(shareSettings).where(eq(shareSettings.userId, 1)).limit(1)
+				)[0];
+				expect(defaultRow?.mode).toBe(ShareMode.PRIVATE_LINK);
+				expect(defaultRow?.modeSource).toBe(ShareModeSource.DEFAULT);
+				expect(defaultRow?.shareToken).not.toBeNull();
+				expect(isValidTokenFormat(defaultRow!.shareToken!)).toBe(true);
+
+				const explicitRow = (
+					await db.select().from(shareSettings).where(eq(shareSettings.userId, 2)).limit(1)
+				)[0];
+				expect(explicitRow?.mode).toBe(ShareMode.PUBLIC);
+				expect(explicitRow?.modeSource).toBe(ShareModeSource.EXPLICIT);
+				expect(explicitRow?.shareToken).toBeNull();
 			});
 
-			it('preserves existing tokens when default is PRIVATE_LINK and the row already has one', async () => {
+			it('preserves existing tokens on default-sourced rows when default is PRIVATE_LINK', async () => {
 				await setGlobalShareDefaults({
 					defaultShareMode: ShareMode.PRIVATE_LINK,
 					allowUserControl: false
@@ -396,7 +415,7 @@ describe('Sharing Service', () => {
 					userId: 1,
 					year: 2024,
 					mode: ShareMode.PRIVATE_LINK,
-					modeSource: ShareModeSource.EXPLICIT,
+					modeSource: ShareModeSource.DEFAULT,
 					shareToken: stashedToken,
 					canUserControl: true
 				});
@@ -407,14 +426,48 @@ describe('Sharing Service', () => {
 				expect(row[0]?.shareToken).toBe(stashedToken);
 			});
 
-			it('returns 0 when there are no share rows', async () => {
+			it('returns 0/0 when there are no share rows', async () => {
 				await setGlobalShareDefaults({
 					defaultShareMode: ShareMode.PUBLIC,
 					allowUserControl: true
 				});
 
-				const count = await bulkApplyShareDefaults();
-				expect(count).toBe(0);
+				const result = await bulkApplyShareDefaults();
+				expect(result).toEqual({ updated: 0, skipped: 0 });
+			});
+
+			it('reports updated=0 with skipped>0 when every row is an explicit override', async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PUBLIC,
+					allowUserControl: true
+				});
+
+				await db.insert(shareSettings).values([
+					{
+						userId: 1,
+						year: 2024,
+						mode: ShareMode.PRIVATE_OAUTH,
+						modeSource: ShareModeSource.EXPLICIT,
+						shareToken: null,
+						canUserControl: false
+					},
+					{
+						userId: 2,
+						year: 2024,
+						mode: ShareMode.PRIVATE_LINK,
+						modeSource: ShareModeSource.EXPLICIT,
+						shareToken: generateShareToken(),
+						canUserControl: false
+					}
+				]);
+
+				const result = await bulkApplyShareDefaults();
+				expect(result).toEqual({ updated: 0, skipped: 2 });
+
+				const rows = await db.select().from(shareSettings);
+				for (const row of rows) {
+					expect(row.modeSource).toBe(ShareModeSource.EXPLICIT);
+				}
 			});
 		});
 	});

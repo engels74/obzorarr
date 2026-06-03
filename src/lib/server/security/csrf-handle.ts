@@ -11,7 +11,36 @@ import { applySecurityHeaders } from './security-headers';
 
 const STATE_CHANGING_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
 
+// CSRF self-lockout recovery carve-out (ISSUE-002). The ONLY in-app path to
+// repair a misconfigured CSRF origin is POSTing the `updateCsrfOrigin` action on
+// the security settings page. Once a bad origin is stored, csrfHandle would 403
+// that very repair POST, wedging the admin out with no in-app recovery.
+const CSRF_REPAIR_ROUTE_ID = '/admin/settings/security';
+const CSRF_REPAIR_ACTION = 'updateCsrfOrigin';
+
 let startupLogged = false;
+
+/**
+ * Returns true iff this request is the CSRF-origin repair POST on the security
+ * settings page. Keyed PURELY on `event.route.id` + the resolved SvelteKit form
+ * action — NO same-origin derivation. `event.url.origin` is rewritten from
+ * `x-forwarded-*` by proxyHandle (ordered before csrfHandle) under TRUST_PROXY
+ * and is spoofable, so a forged forwarded header must not be able to widen this
+ * carve-out. The form action is encoded by SvelteKit as a search-param key
+ * beginning with `/` (e.g. `?/updateCsrfOrigin` → key `/updateCsrfOrigin`),
+ * which is independent of the proxy-influenced origin.
+ */
+function isCsrfOriginRepairRequest(event: Parameters<Handle>[0]['event']): boolean {
+	if (event.route.id !== CSRF_REPAIR_ROUTE_ID) return false;
+
+	for (const key of event.url.searchParams.keys()) {
+		if (key.startsWith('/')) {
+			return key.slice(1) === CSRF_REPAIR_ACTION;
+		}
+	}
+
+	return false;
+}
 
 // Exported so admin actions (e.g. updateCsrfOrigin) can predict the same
 // origin csrfHandle compares against, rather than rederiving from
@@ -37,6 +66,19 @@ export const csrfHandle: Handle = async ({ event, resolve }) => {
 
 	// Skip non-state-changing methods
 	if (!STATE_CHANGING_METHODS.includes(method)) {
+		return resolve(event);
+	}
+
+	// CSRF self-lockout recovery (ISSUE-002): exempt EXACTLY the security-route
+	// `updateCsrfOrigin` repair POST from the hook-level origin check and let the
+	// action's own confirm-mismatch gate govern the write. This is the one
+	// setting whose misconfiguration this check exists to repair; every other
+	// state-changing route keeps strict origin matching below. No same-origin
+	// derivation happens here, so a forged `x-forwarded-*` cannot widen it.
+	if (isCsrfOriginRepairRequest(event)) {
+		logger.warn('CSRF self-repair: allowing updateCsrfOrigin POST to reach its action', 'CSRF', {
+			route: event.route.id ?? '<unmatched>'
+		});
 		return resolve(event);
 	}
 

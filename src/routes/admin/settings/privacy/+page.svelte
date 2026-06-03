@@ -310,7 +310,7 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 </script>
 
 <svelte:head>
-	<title>Privacy — Settings</title>
+	<title>Privacy — Settings — Obzorarr</title>
 </svelte:head>
 
 <div class="space-y-6 p-6 max-w-4xl">
@@ -752,7 +752,7 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 			<CardTitle>Apply defaults to existing users</CardTitle>
 			<CardDescription>
 				Reset every existing user's share mode + "can control" flag to match the current
-				defaults above. Per-user customizations will be lost.
+				defaults above. Users with an explicit per-user override are skipped, not reset.
 			</CardDescription>
 		</CardHeader>
 		<CardContent>
@@ -777,7 +777,7 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 			<AlertDialog.Title>Apply current defaults to all users?</AlertDialog.Title>
 			<AlertDialog.Description>
 				This resets every existing user's share mode and "can control" setting back to the
-				current server defaults. Per-user customizations will be lost. Future users continue to
+				current server defaults. Users with an explicit per-user override are skipped, not reset. Future users continue to
 				receive the current defaults.
 			</AlertDialog.Description>
 		</AlertDialog.Header>

@@ -752,4 +752,72 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain('placeholder="gpt-5-mini"');
 		expect(source).not.toContain('placeholder="gpt-4o-mini"');
 	});
+
+	it('normalizes every settings tab <title> to "<Tab> — Settings — Obzorarr" (ISSUE-013)', async () => {
+		const tabs: Array<[string, string]> = [
+			['appearance', 'Appearance'],
+			['connections', 'Connections'],
+			['data', 'Data'],
+			['privacy', 'Privacy'],
+			['security', 'Security'],
+			['system', 'System']
+		];
+		for (const [slug, label] of tabs) {
+			const source = await readSource(`src/routes/admin/settings/${slug}/+page.svelte`);
+			expect(source).toContain(`<title>${label} — Settings — Obzorarr</title>`);
+			// No leftover un-suffixed title.
+			expect(source).not.toContain(`<title>${label} — Settings</title>`);
+		}
+	});
+
+	it('surfaces a visible warning when no effective OpenAI key is in effect (ISSUE-016)', async () => {
+		const client = await readSource('src/routes/admin/settings/connections/+page.svelte');
+		const server = await readSource('src/routes/admin/settings/connections/+page.server.ts');
+
+		// Server load derives effective-key presence from the merged env-over-DB value.
+		expect(server).toContain(
+			'const hasEffectiveOpenAIKey = Boolean(apiConfig.openai.apiKey.value.trim());'
+		);
+		expect(server).toContain('hasEffectiveOpenAIKey,');
+
+		// Client gates a visible, non-blocking warning on the absence of an effective key.
+		expect(client).toContain(
+			'const showOpenaiKeyWarning = $derived(!data.hasEffectiveOpenAIKey && !openaiApiKeyInput.trim());'
+		);
+		expect(client).toContain('{#if showOpenaiKeyWarning}');
+		expect(client).toContain('class="ai-key-warning"');
+		expect(client).toContain('AI fun facts will not run');
+	});
+
+	it('shows inline range messages for out-of-range log settings (ISSUE-017)', async () => {
+		// The disabled-submit guard alone gave no feedback because Form.FieldErrors
+		// only render after a submit the disabled button prevents. Assert the
+		// client-derived inline messages exist and drive the submit guard.
+		const source = await readSource('src/routes/admin/settings/system/+page.svelte');
+
+		expect(source).toContain('const retentionDaysError = $derived(');
+		expect(source).toContain("'Retention days must be at least 1'");
+		expect(source).toContain("'Retention days cannot exceed 365'");
+		expect(source).toContain('const maxCountError = $derived(');
+		expect(source).toContain("'Max log count must be at least 1000'");
+		expect(source).toContain("'Max log count cannot exceed 1,000,000'");
+		expect(source).toContain(
+			'const isLoggingFormInvalid = $derived(Boolean(retentionDaysError) || Boolean(maxCountError));'
+		);
+		expect(source).toContain('{#if retentionDaysError}');
+		expect(source).toContain('{#if maxCountError}');
+		expect(source).toContain('<p class="text-sm text-destructive">{retentionDaysError}</p>');
+		expect(source).toContain('<p class="text-sm text-destructive">{maxCountError}</p>');
+	});
+
+	it('only shows the ENV-locked Plex helper copy when a Plex field is locked (ISSUE-004)', async () => {
+		const source = await readSource('src/routes/admin/settings/connections/+page.svelte');
+
+		// The "set via environment variables" clarification is gated on plexAnyLocked
+		// so it does not appear when nothing is actually locked.
+		expect(source).toContain('{#if plexAnyLocked}');
+		expect(source).toContain('Locked fields are set via environment variables');
+		// Clarifies that placeholder env values are ignored (not authoritative).
+		expect(source).toContain('Placeholder env values');
+	});
 });

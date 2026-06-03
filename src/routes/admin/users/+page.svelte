@@ -35,22 +35,6 @@ function formatWatchTime(minutes: number): string {
 	return `${hours}h`;
 }
 
-// Get share mode display label
-function getShareModeLabel(mode: string | null, source: string | null): string {
-	if (source === 'default') return 'Default';
-
-	switch (mode) {
-		case 'public':
-			return 'Public';
-		case 'private-oauth':
-			return 'OAuth';
-		case 'private-link':
-			return 'Link';
-		default:
-			return 'Default';
-	}
-}
-
 function hasVisibleAvatar(user: (typeof data.users)[number]): boolean {
 	return !!user.thumb && !failedAvatarUserIds.has(user.id);
 }
@@ -155,18 +139,22 @@ function markAvatarFailed(userId: number): void {
 									</div>
 								</td>
 								<td>
-									<span class="watch-time">{formatWatchTime(user.totalWatchTimeMinutes)}</span>
+										{#if user.hasWatchHistory}
+											<span class="watch-time">{formatWatchTime(user.totalWatchTimeMinutes)}</span>
+										{:else}
+											<span class="watch-time watch-time-empty" title="This user has no personal play history yet">
+												0h <span class="watch-time-note">(no personal plays)</span>
+											</span>
+										{/if}
 								</td>
 								<td>
 									<span
 										class="share-mode"
-										class:public={user.shareModeSource !== 'default' && user.shareMode === 'public'}
-										class:oauth={user.shareModeSource !== 'default' &&
-											user.shareMode === 'private-oauth'}
-										class:link={user.shareModeSource !== 'default' &&
-											user.shareMode === 'private-link'}
+										class:public={user.effectiveClass === 'public'}
+										class:oauth={user.effectiveClass === 'oauth'}
+										class:link={user.effectiveClass === 'link'}
 									>
-										{getShareModeLabel(user.shareMode, user.shareModeSource)}
+										{user.effectiveLabel}
 									</span>
 								</td>
 								<td>
@@ -255,19 +243,23 @@ function markAvatarFailed(userId: number): void {
 						<div class="mobile-user-meta">
 							<div class="mobile-meta-item">
 								<span class="mobile-meta-label">Watch Time</span>
-								<span class="watch-time">{formatWatchTime(user.totalWatchTimeMinutes)}</span>
+								{#if user.hasWatchHistory}
+									<span class="watch-time">{formatWatchTime(user.totalWatchTimeMinutes)}</span>
+								{:else}
+									<span class="watch-time watch-time-empty" title="This user has no personal play history yet">
+										0h <span class="watch-time-note">(no personal plays)</span>
+									</span>
+								{/if}
 							</div>
 							<div class="mobile-meta-item">
 								<span class="mobile-meta-label">Share Mode</span>
 								<span
 									class="share-mode"
-									class:public={user.shareModeSource !== 'default' && user.shareMode === 'public'}
-									class:oauth={user.shareModeSource !== 'default' &&
-										user.shareMode === 'private-oauth'}
-									class:link={user.shareModeSource !== 'default' &&
-										user.shareMode === 'private-link'}
+									class:public={user.effectiveClass === 'public'}
+									class:oauth={user.effectiveClass === 'oauth'}
+									class:link={user.effectiveClass === 'link'}
 								>
-									{getShareModeLabel(user.shareMode, user.shareModeSource)}
+									{user.effectiveLabel}
 								</span>
 							</div>
 							<div class="mobile-meta-item">
@@ -544,6 +536,17 @@ function markAvatarFailed(userId: number): void {
 		.watch-time {
 			font-weight: 600;
 			color: oklch(var(--foreground));
+		}
+
+		.watch-time-empty {
+			color: oklch(var(--muted-foreground));
+			font-weight: 500;
+		}
+
+		.watch-time-note {
+			font-weight: 400;
+			font-size: 0.75rem;
+			color: oklch(var(--muted-foreground) / 0.8);
 		}
 
 		.share-mode {

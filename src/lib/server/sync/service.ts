@@ -1,4 +1,4 @@
-import { count, desc, eq, inArray, isNull, or } from 'drizzle-orm';
+import { count, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { db } from '$lib/server/db/client';
 import { metadataCache, playHistory, syncStatus } from '$lib/server/db/schema';
 import { logger } from '$lib/server/logging';
@@ -101,22 +101,39 @@ export async function isSyncRunning(): Promise<boolean> {
 	return running !== null;
 }
 
-async function createSyncRecord(): Promise<number> {
-	const result = await db
-		.insert(syncStatus)
-		.values({
-			startedAt: new Date(),
-			status: 'running',
-			recordsProcessed: 0
-		})
-		.returning({ id: syncStatus.id });
+/**
+ * Atomically claim the single "running" sync slot.
+ *
+ * This is the ONLY correctness boundary for sync single-flight (ISSUE-001).
+ * Every entry path (manual startBackgroundSync, triggerImmediateSync, the Cron
+ * callback, live-sync) funnels through here, so the claim must be race-free.
+ *
+ * `INSERT ... SELECT ... WHERE NOT EXISTS (running) RETURNING id` is atomic
+ * under SQLite WAL (single writer), so two concurrent callers can never both
+ * insert a `running` row. The Drizzle query builder cannot express
+ * `INSERT ... WHERE NOT EXISTS`, so a raw `sql` statement is required (M-1).
+ *
+ * Returns the new sync id, or `null` when a sync is already running (zero rows
+ * inserted) — callers treat `null` as "already in progress".
+ */
+async function createSyncRecord(): Promise<number | null> {
+	// `started_at` is a Drizzle `timestamp` column → stored as Unix seconds.
+	const nowSeconds = Math.floor(Date.now() / 1000);
 
-	const record = result[0];
-	if (!record) {
-		throw new SyncError('Failed to create sync status record');
-	}
-	return record.id;
+	const rows = db.all<{ id: number }>(sql`
+		INSERT INTO sync_status (started_at, status, records_processed)
+		SELECT ${nowSeconds}, 'running', 0
+		WHERE NOT EXISTS (SELECT 1 FROM sync_status WHERE status = 'running')
+		RETURNING id
+	`);
+
+	const record = rows[0];
+	return record ? record.id : null;
 }
+
+// Re-exported from the lightweight `reconcile` module so it can also be invoked
+// at boot from `db/client.ts` without pulling this module's Plex/`$env` graph.
+export { reconcileInterruptedSyncs } from './reconcile';
 
 async function completeSyncRecord(
 	syncId: number,
@@ -189,11 +206,14 @@ export async function startSync(options: StartSyncOptions = {}): Promise<SyncRes
 	const { backfillYear, signal, onProgress } = options;
 	const startTime = Date.now();
 
-	if (await isSyncRunning()) {
+	// Atomically claim the single running slot. This is the authoritative
+	// single-flight boundary (ISSUE-001): a zero-row result means another sync
+	// already holds the slot, so we reject without arming any progress state.
+	const syncId = await createSyncRecord();
+	if (syncId === null) {
+		logger.info('Rejected duplicate sync start: a sync is already in progress', 'Sync');
 		throw new SyncError('A sync operation is already in progress');
 	}
-
-	const syncId = await createSyncRecord();
 
 	let recordsProcessed = 0;
 	let recordsInserted = 0;

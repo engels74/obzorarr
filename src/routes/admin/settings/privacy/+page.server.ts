@@ -354,11 +354,14 @@ export const actions: Actions = requireAdminActions({
 
 	bulkApplyShareDefaults: async () => {
 		try {
-			const count = await bulkApplyShareDefaults();
+			const { updated, skipped } = await bulkApplyShareDefaults();
+			const updatedPart = `Updated ${updated} user share record${updated === 1 ? '' : 's'}`;
+			const skippedPart =
+				skipped > 0 ? `; skipped ${skipped} with an explicit per-user override` : '';
 			const message =
-				count === 0
+				updated === 0 && skipped === 0
 					? 'No users needed to be updated'
-					: `Updated ${count} user share record${count === 1 ? '' : 's'}`;
+					: `${updatedPart}${skippedPart}`;
 			return { form: null, success: true, message };
 		} catch (error) {
 			const message =

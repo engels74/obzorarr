@@ -35,6 +35,7 @@ let isClaiming = $state(false);
 			<Input
 				id="bootstrap-token"
 				name="token"
+				type="password"
 				bind:value={token}
 				class="bootstrap-token-input"
 				autocomplete="one-time-code"

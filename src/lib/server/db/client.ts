@@ -44,6 +44,15 @@ export const db = drizzle(sqlite, { schema });
 
 if (databasePath !== ':memory:') {
 	migrate(db, { migrationsFolder: './drizzle' });
+
+	// Reconcile sync rows orphaned in the `running` state by a crash/restart,
+	// exactly once at process start — before any request can begin a sync
+	// (ISSUE-001 restart deadlock). Dynamic import of the LIGHT reconcile module
+	// (no Plex/`$env` graph) avoids a static import cycle — `sync/reconcile.ts`
+	// imports `db` from this module, which is already assigned above — and is
+	// skipped entirely for in-memory test databases.
+	const { reconcileInterruptedSyncs } = await import('$lib/server/sync/reconcile');
+	await reconcileInterruptedSyncs();
 }
 
 export { sqlite };

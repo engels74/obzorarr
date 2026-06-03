@@ -16,6 +16,7 @@ import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
 import Star from '@lucide/svelte/icons/star';
 import Users from '@lucide/svelte/icons/users';
 import { goto } from '$app/navigation';
+import { formatWatchHours } from '$lib/stats/format';
 import { formatDuration } from '$lib/utils/format';
 import type { PageData } from './$types';
 
@@ -33,7 +34,7 @@ let { data }: { data: PageData } = $props();
 // Format watch time as human-readable
 const formatWatchTime = $derived.by(() => {
 	if (!data.stats) return { hours: 0, days: '0' };
-	const hours = Math.round(data.stats.totalWatchTimeMinutes / 60);
+	const hours = formatWatchHours(data.stats.totalWatchTimeMinutes);
 	const days = (data.stats.totalWatchTimeMinutes / 60 / 24).toFixed(1);
 	return { hours, days };
 });
@@ -261,6 +262,18 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 						</span>
 					</div>
 				</div>
+
+				{#if syncStatus === 'inactive'}
+					<div class="scheduler-cta">
+						<p class="scheduler-cta-text">
+							No automatic sync is scheduled. Set one up so your viewing history stays up to date.
+						</p>
+						<a href="/admin/sync" class="scheduler-cta-link" onclick={handleAdminNavigation}>
+							<span>Configure schedule</span>
+							<ArrowRight class="h-4 w-4" />
+						</a>
+					</div>
+				{/if}
 
 				{#if data.schedulerStatus?.nextRun}
 					<div class="sync-row">
@@ -661,6 +674,39 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 		.sync-value.highlight {
 			color: oklch(var(--primary));
 			font-weight: 600;
+		}
+
+		.scheduler-cta {
+			display: flex;
+			flex-direction: column;
+			gap: 0.5rem;
+			margin-top: 0.75rem;
+			padding: 0.75rem;
+			background: oklch(var(--primary) / 0.06);
+			border: 1px solid oklch(var(--primary) / 0.2);
+			border-radius: 0.5rem;
+		}
+
+		.scheduler-cta-text {
+			margin: 0;
+			font-size: 0.75rem;
+			color: oklch(var(--muted-foreground));
+		}
+
+		.scheduler-cta-link {
+			display: inline-flex;
+			align-items: center;
+			gap: 0.25rem;
+			align-self: flex-start;
+			font-size: 0.8125rem;
+			font-weight: 600;
+			color: oklch(var(--primary));
+			text-decoration: none;
+			transition: gap 0.2s ease;
+		}
+
+		.scheduler-cta-link:hover {
+			gap: 0.5rem;
 		}
 
 		.sync-cron {

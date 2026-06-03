@@ -42,6 +42,8 @@ export const load: PageServerLoad = async ({ url }) => {
 			shareMode: u.shareMode,
 			shareModeSource: u.shareModeSource,
 			canUserControl: u.canUserControl,
+			effectiveLabel: u.effectiveLabel,
+			effectiveClass: u.effectiveClass,
 			wrappedHref: await getOwnerWrappedHref(u.id, year)
 		}))
 	);

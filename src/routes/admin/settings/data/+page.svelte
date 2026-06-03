@@ -58,7 +58,7 @@ const historyYearLabel = $derived(
 </script>
 
 <svelte:head>
-	<title>Data — Settings</title>
+	<title>Data — Settings — Obzorarr</title>
 </svelte:head>
 
 <div class="space-y-6 p-6 max-w-4xl">

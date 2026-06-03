@@ -324,6 +324,23 @@ describe('Ranking Calculator', () => {
 			const result = calculateTopGenres([]);
 			expect(result).toEqual([]);
 		});
+
+		// ISSUE-010 — Plex enrichment can persist the literal strings
+		// "undefined"/"null" (or whitespace) into the nullable genres column.
+		// Those must be skipped without throwing or logging a parse warning.
+		it('skips literal "undefined"/"null"/whitespace genre values', () => {
+			const records = [
+				createRecord({ genres: 'undefined' }),
+				createRecord({ id: 2, historyKey: 'key-2', genres: 'null' }),
+				createRecord({ id: 3, historyKey: 'key-3', genres: '   ' }),
+				createRecord({ id: 4, historyKey: 'key-4', genres: '["Action"]' })
+			];
+
+			const result = calculateTopGenres(records);
+
+			expect(result.length).toBe(1);
+			expect(result[0]?.title).toBe('Action');
+		});
 	});
 });
 
