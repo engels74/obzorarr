@@ -72,6 +72,13 @@ interface RedirectStorage {
 export interface PlexLoginRedirectOptions {
 	context: PlexLoginContext;
 	onError: (message: string) => void;
+	/**
+	 * Validated same-origin path to land on after a successful login (ISSUE-002).
+	 * Rides as a query param on the same-origin `/auth/plex/redirect` callback URL;
+	 * re-validated server-side (redirect load) and client-side (landing page) before
+	 * use, so a non-path value here is harmless.
+	 */
+	returnTo?: string;
 	location?: RedirectLocation;
 	storage?: RedirectStorage;
 }
@@ -95,6 +102,35 @@ export interface ServerPinFallback {
 	pinId: number;
 	expiresAt: string;
 	context: PlexLoginContext;
+}
+
+/**
+ * Open-redirect guard for the post-login target path (ISSUE-002). A safe return
+ * path is a same-origin, absolute path: it starts with a single "/" (NOT "//" or
+ * "/\\", which browsers treat as protocol-relative // → external host), contains
+ * no backslash escape tricks, and no control characters. Anything else
+ * (`https://evil.com`, `javascript:…`, `\evil`) is rejected. This is the single
+ * source of truth shared by the server hook (returnTo carrier), the redirect
+ * load (server-side re-validation), and the client landing page (the actual
+ * `window.location.href` open-redirect surface).
+ */
+export function isSafeReturnPath(path: unknown): path is string {
+	if (typeof path !== 'string' || path.length === 0) return false;
+	if (!path.startsWith('/')) return false;
+	if (path.startsWith('//') || path.startsWith('/\\')) return false;
+	if (path.includes('\\')) return false;
+	// biome-ignore lint/suspicious/noControlCharactersInRegex: intentionally rejecting control chars in redirect targets
+	if (/[\u0000-\u001f\u007f]/.test(path)) return false;
+	return true;
+}
+
+/**
+ * Returns `candidate` when it passes {@link isSafeReturnPath}, otherwise the
+ * role-default `fallback`. Used to compute the post-login `targetUrl` so a forged
+ * external value can never reach `window.location.href`.
+ */
+export function resolveSafeReturnPath(candidate: unknown, fallback: string): string {
+	return isSafeReturnPath(candidate) ? candidate : fallback;
 }
 
 async function fetchPin(redirectUrl?: string): Promise<PinResponse> {
@@ -342,7 +378,14 @@ export async function startPlexLoginRedirect(opts: PlexLoginRedirectOptions): Pr
 	try {
 		const location = opts.location ?? window.location;
 		const storage = opts.storage ?? sessionStorage;
-		const redirectUrl = `${location.origin}/auth/plex/redirect`;
+		// Carry the post-login target as a query param on the same-origin callback
+		// URL. parsePinForwardUrl (server) enforces same-origin on the whole URL, and
+		// both the redirect load and the landing page re-validate returnTo before use.
+		const callbackBase = `${location.origin}/auth/plex/redirect`;
+		const redirectUrl =
+			opts.returnTo && isSafeReturnPath(opts.returnTo)
+				? `${callbackBase}?returnTo=${encodeURIComponent(opts.returnTo)}`
+				: callbackBase;
 		const { pinId, authUrl } = await fetchPin(redirectUrl);
 		storePinForRedirect(pinId, opts.context, storage);
 		location.href = authUrl;

@@ -241,11 +241,14 @@ describe('admin slides actions', () => {
 				})
 			);
 
+			// ISSUE-006: the rejection is now branch-specific (the <script> branch),
+			// still routed to fieldErrors.content via slideErrorToFail.
+			const scriptReason = "Remove <script> tags — inline scripts aren't allowed in slide content.";
 			expect(result).toMatchObject({
 				status: 400,
 				data: {
-					error: 'Content contains potentially unsafe HTML patterns',
-					fieldErrors: { content: ['Content contains potentially unsafe HTML patterns'] }
+					error: scriptReason,
+					fieldErrors: { content: [scriptReason] }
 				}
 			});
 		});

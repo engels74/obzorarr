@@ -99,24 +99,44 @@ export function markdownToPlainText(content: string, maxLength: number = 200): s
 	return `${truncated}...`;
 }
 
-export function containsUnsafeHtml(content: string): boolean {
+export type UnsafeHtmlDetection = { unsafe: true; reason: string } | { unsafe: false };
+
+/**
+ * Classifies why slide content is rejected as unsafe HTML, so each detection
+ * branch surfaces an actionable, non-leaky hint inline under the content field
+ * (ISSUE-006) instead of one generic message. The four regexes and their order
+ * are unchanged from the prior boolean `containsUnsafeHtml` — detection strength
+ * is identical; only the returned reason is branch-specific. Messages stay
+ * generic enough not to echo the user's exact payload verbatim.
+ */
+export function detectUnsafeHtml(content: string): UnsafeHtmlDetection {
 	if (/<script[^>]*>/i.test(content)) {
-		return true;
+		return {
+			unsafe: true,
+			reason: "Remove <script> tags — inline scripts aren't allowed in slide content."
+		};
 	}
 
 	if (/\son\w+\s*=/i.test(content)) {
-		return true;
+		return {
+			unsafe: true,
+			reason: 'Remove inline event handlers (e.g. onclick, onerror) from your HTML.'
+		};
 	}
 
 	if (/javascript:/i.test(content)) {
-		return true;
+		return { unsafe: true, reason: 'Remove javascript: URLs from links or images.' };
 	}
 
 	if (/data:[^;]*;base64.*<script/i.test(content)) {
-		return true;
+		return { unsafe: true, reason: 'Remove embedded base64 scripts from your content.' };
 	}
 
-	return false;
+	return { unsafe: false };
+}
+
+export function containsUnsafeHtml(content: string): boolean {
+	return detectUnsafeHtml(content).unsafe;
 }
 
 export function getWordCount(content: string): number {

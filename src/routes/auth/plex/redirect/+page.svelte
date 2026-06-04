@@ -11,6 +11,7 @@ import {
 	PIN_STORAGE_KEY,
 	POLL_INTERVAL_MS,
 	resolveRedirectPinData,
+	resolveSafeReturnPath,
 	sanitizeCompletedLoginResponse
 } from '$lib/client/plex-login';
 import { Button } from '$lib/components/ui/button';
@@ -56,10 +57,16 @@ onMount(async () => {
 
 		status = 'success';
 
+		// Onboarding always wins and is untouched. Otherwise honor a validated
+		// returnTo (ISSUE-002) — resolveSafeReturnPath rejects any external/forged
+		// value and falls back to the role default, so this client navigation can
+		// never become an open redirect.
+		const roleFallback =
+			loginResult.redirectTo ?? (loginResult.user.isAdmin ? '/admin' : '/dashboard');
 		const targetUrl =
 			pinData.context === 'onboarding'
 				? '/onboarding/plex'
-				: (loginResult.redirectTo ?? (loginResult.user.isAdmin ? '/admin' : '/dashboard'));
+				: resolveSafeReturnPath(data.returnTo, roleFallback);
 
 		window.location.href = targetUrl;
 	} catch (err) {

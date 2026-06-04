@@ -27,7 +27,13 @@ describe('admin auth guards', () => {
 	it('keeps logged-in non-admin admin-route probes redirected to dashboard', async () => {
 		const source = await readSource('src/hooks.server.ts');
 
-		expect(source).toContain("const fallback = event.locals.user ? '/dashboard' : '/';");
-		expect(source).toContain('return redirectResponse(event, fallback);');
+		// Authenticated non-admins are sent to their own dashboard (no returnTo).
+		expect(source).toContain('if (event.locals.user) {');
+		expect(source).toContain("return redirectResponse(event, '/dashboard');");
+		// Anonymous admin-route hits preserve the requested path as a validated
+		// returnTo so login can land them back where they were headed (ISSUE-002).
+		expect(source).toContain('const requestedPath = event.url.pathname + event.url.search;');
+		expect(source).toContain('/?returnTo=');
+		expect(source).toContain('encodeURIComponent(requestedPath)');
 	});
 });

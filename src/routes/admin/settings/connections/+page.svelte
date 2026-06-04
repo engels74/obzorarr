@@ -359,6 +359,7 @@ const showOpenaiKeyWarning = $derived(!data.hasEffectiveOpenAIKey && !openaiApiK
 						name="openaiModel"
 						type="text"
 						placeholder="gpt-5-mini"
+						maxlength={100}
 						bind:value={openaiModel}
 						disabled={openaiModelLocked}
 					/>

@@ -7,7 +7,9 @@ import { enhance } from '$app/forms';
 import { shouldUseRedirectAuth } from '$lib/client/auth-mode';
 import {
 	commitRedirectFromPopupBlocked,
+	isSafeReturnPath,
 	type PlexLoginController,
+	resolveSafeReturnPath,
 	startPlexLoginPopup,
 	startPlexLoginRedirect
 } from '$lib/client/plex-login';
@@ -82,7 +84,14 @@ async function handlePlexLogin() {
 
 	oauthError = null;
 
-	const useRedirect = shouldUseRedirectAuth(new URL(window.location.href).searchParams);
+	const params = new URL(window.location.href).searchParams;
+	const useRedirect = shouldUseRedirectAuth(params);
+
+	// Post-login target preserved by the anon→admin hook redirect (ISSUE-002).
+	// Validated here and re-validated downstream before any navigation, so a
+	// forged ?returnTo= can never drive an external redirect.
+	const rawReturnTo = params.get('returnTo');
+	const returnTo = isSafeReturnPath(rawReturnTo) ? rawReturnTo : undefined;
 
 	if (useRedirect) {
 		loginController?.cancel();
@@ -90,6 +99,7 @@ async function handlePlexLogin() {
 		isRedirecting = true;
 		await startPlexLoginRedirect({
 			context: 'landing',
+			returnTo,
 			onError: (message) => {
 				isRedirecting = false;
 				oauthError = message;
@@ -103,7 +113,10 @@ async function handlePlexLogin() {
 	loginController = startPlexLoginPopup({
 		context: 'landing',
 		onSuccess: (user) => {
-			window.location.href = user.isAdmin ? '/admin' : '/dashboard';
+			window.location.href = resolveSafeReturnPath(
+				returnTo,
+				user.isAdmin ? '/admin' : '/dashboard'
+			);
 		},
 		onError: (message) => {
 			isOAuthLoading = false;

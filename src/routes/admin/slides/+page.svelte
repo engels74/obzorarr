@@ -625,6 +625,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 							bind:this={editorTitleInputRef}
 							bind:value={editorTitle}
 							required
+							maxlength="200"
 							placeholder="Enter slide title"
 							aria-invalid={slideFieldErrors?.title?.[0] ? 'true' : undefined}
 							aria-describedby={slideFieldErrors?.title?.[0] ? 'title-error' : undefined}
