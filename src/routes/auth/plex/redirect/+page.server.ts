@@ -1,4 +1,5 @@
 import { redirect } from '@sveltejs/kit';
+import { isSafeReturnPath } from '$lib/client/plex-login';
 import { verifyPinCallback } from '$lib/server/auth/pin-transactions';
 import { requiresOnboarding } from '$lib/server/onboarding';
 import type { PageServerLoad } from './$types';
@@ -27,9 +28,16 @@ export const load: PageServerLoad = async ({ cookies, locals, request, url }) =>
 
 	const verifiedPin = await verifyPinCallback(cookies, url.searchParams.get('state'));
 
+	// Post-login target carried from the anon→admin hook redirect (ISSUE-002).
+	// Validate same-origin/path-only here so PageData never carries an external
+	// value; the landing page re-validates before window.location.href as well.
+	const rawReturnTo = url.searchParams.get('returnTo');
+	const returnTo = isSafeReturnPath(rawReturnTo) ? rawReturnTo : null;
+
 	return {
 		flow: url.searchParams.get('flow') === 'popup' ? 'popup' : 'redirect',
 		stateVerified: verifiedPin !== null,
+		returnTo,
 		serverPinFallback: verifiedPin
 			? {
 					pinId: verifiedPin.pinId,

@@ -21,6 +21,7 @@ export {
 } from './custom.service';
 export {
 	containsUnsafeHtml,
+	detectUnsafeHtml,
 	getReadingTime,
 	getWordCount,
 	markdownToPlainText,

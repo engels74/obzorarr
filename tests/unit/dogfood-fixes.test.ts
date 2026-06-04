@@ -202,3 +202,45 @@ describe('dogfood 2026-05-29 F3 — long username lookup returns fail(400)', () 
 		});
 	});
 });
+
+// dogfood 2026-06-04 ISSUE-005 — client inputs gained inline `maxlength` hints
+// mirroring the server Zod caps (openaiModel.max(100), slide title.max(200)) so
+// over-length values are impossible to type rather than silently rejected later.
+describe('dogfood 2026-06-04 ISSUE-005 — maxlength mirrors server Zod caps', () => {
+	it('OpenAI Model input caps at 100 chars', async () => {
+		const source = await readSource('src/routes/admin/settings/connections/+page.svelte');
+		const idx = source.indexOf('name="openaiModel"');
+		expect(idx).toBeGreaterThan(-1);
+		// The attribute sits within the same <Input> element as name="openaiModel".
+		const slice = source.slice(idx - 80, idx + 200);
+		expect(slice).toContain('maxlength={100}');
+	});
+
+	it('Custom slide Title input caps at 200 chars', async () => {
+		const source = await readSource('src/routes/admin/slides/+page.svelte');
+		const idx = source.indexOf('name="title"');
+		expect(idx).toBeGreaterThan(-1);
+		const slice = source.slice(idx - 120, idx + 200);
+		expect(slice).toContain('maxlength="200"');
+	});
+});
+
+// dogfood 2026-06-04 ISSUE-007 — expanding "Advanced options" on the privacy tab
+// could push each section's Save button below the fold. On expand only, the
+// freshly-revealed section is scrolled into view so its content + actions stay
+// reachable (onOpenChange -> tick() -> scrollIntoView on a bound section ref).
+describe('dogfood 2026-06-04 ISSUE-007 — Advanced options stays reachable on expand', () => {
+	it('scrolls the expanded Advanced section into view', async () => {
+		const source = await readSource('src/routes/admin/settings/privacy/+page.svelte');
+		expect(source).toContain('onOpenChange={handleAdvancedToggle}');
+		expect(source).toContain('bind:this={advancedSectionRef}');
+
+		const handlerStart = source.indexOf('async function handleAdvancedToggle(');
+		expect(handlerStart).toBeGreaterThan(-1);
+		const handlerSlice = source.slice(handlerStart, handlerStart + 320);
+		// Expand-only guard, DOM settle, then scroll the section into view.
+		expect(handlerSlice).toContain('if (!open) return;');
+		expect(handlerSlice).toContain('await tick();');
+		expect(handlerSlice).toContain('advancedSectionRef?.scrollIntoView(');
+	});
+});

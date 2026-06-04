@@ -3,6 +3,7 @@ import { isHttpError, isRedirect } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
+import { isSafeReturnPath } from '$lib/client/plex-login';
 import {
 	clearConflictingDbSettings,
 	ensurePublicLandingLookupDefault
@@ -243,8 +244,28 @@ const onboardingHandle: Handle = async ({ event, resolve }) => {
 const authorizationHandle: Handle = async ({ event, resolve }) => {
 	if (isAdminRouteId(event.route.id)) {
 		if (!event.locals.user || !event.locals.user.isAdmin) {
-			const fallback = event.locals.user ? '/dashboard' : '/';
-			return redirectResponse(event, fallback);
+			// Authenticated non-admins go to their own dashboard; carrying a returnTo
+			// would be pointless (they can never reach the admin route).
+			if (event.locals.user) {
+				return redirectResponse(event, '/dashboard');
+			}
+
+			// Anonymous: preserve the requested admin path so the sign-in flow can
+			// land the user back where they were headed (ISSUE-002). The path is
+			// built from the request URL (always same-origin) but is validated with
+			// the shared open-redirect guard as defense-in-depth before it is encoded
+			// into the returnTo carrier. The real open-redirect surface — the client
+			// `window.location.href` on the landing page — re-validates it again.
+			// Use pathname only (drop event.url.search): the returnTo value travels
+			// through the Plex OAuth forwardUrl, so any admin query string (e.g.
+			// /admin/logs?search=…) would otherwise leak via plex.tv logs, browser
+			// history and Referer headers. Landing back on the bare admin path is
+			// sufficient post-login; filter/tab params are not worth that exposure.
+			const requestedPath = event.url.pathname;
+			const location = isSafeReturnPath(requestedPath)
+				? `/?returnTo=${encodeURIComponent(requestedPath)}`
+				: '/';
+			return redirectResponse(event, location);
 		}
 	}
 

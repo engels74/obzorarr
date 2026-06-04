@@ -17,6 +17,7 @@ import UsersRoundIcon from '@lucide/svelte/icons/users-round';
 import VenetianMaskIcon from '@lucide/svelte/icons/venetian-mask';
 import type { ActionResult } from '@sveltejs/kit';
 import type { Component } from 'svelte';
+import { tick } from 'svelte';
 import { superForm } from 'sveltekit-superforms';
 import { enhance } from '$app/forms';
 import { invalidateAll } from '$app/navigation';
@@ -201,6 +202,17 @@ let showContradictionWarning = $derived(
 // other one-time $state-from-reactive declarations above.
 // svelte-ignore state_referenced_locally
 let advancedOpen = $state(showContradictionWarning);
+
+// ISSUE-007: expanding "Advanced options" can push each section's Save button
+// below the fold. On expand only, scroll the freshly-revealed section to the top
+// of the viewport (after the DOM settles) so its content + actions stay reachable.
+// Collapsing leaves the scroll position alone. Reuses the tick()-then-scroll idiom.
+let advancedSectionRef = $state<HTMLDivElement | null>(null);
+async function handleAdvancedToggle(open: boolean): Promise<void> {
+	if (!open) return;
+	await tick();
+	advancedSectionRef?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 
 // The active preset is matched over the FIVE admin-owned fields only — logoMode
 // is excluded (it lives on the Appearance route), so a perfect five-field match
@@ -497,7 +509,8 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 		</CardContent>
 	</Card>
 
-	<Collapsible.Root bind:open={advancedOpen} class="space-y-6">
+	<div bind:this={advancedSectionRef}>
+	<Collapsible.Root bind:open={advancedOpen} onOpenChange={handleAdvancedToggle} class="space-y-6">
 		<Collapsible.Trigger
 			class="flex w-full items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm font-medium transition-colors hover:bg-muted/50"
 		>
@@ -746,6 +759,7 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 	</Card>
 		</Collapsible.Content>
 	</Collapsible.Root>
+	</div>
 
 	<Card>
 		<CardHeader>

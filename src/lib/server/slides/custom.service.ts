@@ -1,7 +1,7 @@
 import { and, asc, eq, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db/client';
 import { customSlides } from '$lib/server/db/schema';
-import { containsUnsafeHtml, validateMarkdownSyntax } from './renderer';
+import { detectUnsafeHtml, validateMarkdownSyntax } from './renderer';
 import {
 	type CreateCustomSlide,
 	CreateCustomSlideSchema,
@@ -21,8 +21,9 @@ export async function createCustomSlide(data: CreateCustomSlide): Promise<Custom
 
 	const validData = parsed.data;
 
-	if (containsUnsafeHtml(validData.content)) {
-		throw new SlideError('Content contains potentially unsafe HTML patterns', 'UNSAFE_CONTENT');
+	const createUnsafe = detectUnsafeHtml(validData.content);
+	if (createUnsafe.unsafe) {
+		throw new SlideError(createUnsafe.reason, 'UNSAFE_CONTENT');
 	}
 
 	const markdownValidation = validateMarkdownSyntax(validData.content);
@@ -145,8 +146,9 @@ export async function updateCustomSlide(
 	}
 
 	if (validUpdates.content !== undefined) {
-		if (containsUnsafeHtml(validUpdates.content)) {
-			throw new SlideError('Content contains potentially unsafe HTML patterns', 'UNSAFE_CONTENT');
+		const updateUnsafe = detectUnsafeHtml(validUpdates.content);
+		if (updateUnsafe.unsafe) {
+			throw new SlideError(updateUnsafe.reason, 'UNSAFE_CONTENT');
 		}
 
 		const markdownValidation = validateMarkdownSyntax(validUpdates.content);
