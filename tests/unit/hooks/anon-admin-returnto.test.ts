@@ -15,7 +15,7 @@ describe('hooks authorizationHandle — anon admin returnTo carrier', () => {
 		const source = await Bun.file('src/hooks.server.ts').text();
 
 		expect(source).toContain("import { isSafeReturnPath } from '$lib/client/plex-login';");
-		expect(source).toContain('const requestedPath = event.url.pathname + event.url.search;');
+		expect(source).toContain('const requestedPath = event.url.pathname;');
 		expect(source).toContain('isSafeReturnPath(requestedPath)');
 		expect(source).toContain('/?returnTo=');
 		expect(source).toContain('encodeURIComponent(requestedPath)');

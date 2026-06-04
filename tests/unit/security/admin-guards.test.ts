@@ -32,7 +32,7 @@ describe('admin auth guards', () => {
 		expect(source).toContain("return redirectResponse(event, '/dashboard');");
 		// Anonymous admin-route hits preserve the requested path as a validated
 		// returnTo so login can land them back where they were headed (ISSUE-002).
-		expect(source).toContain('const requestedPath = event.url.pathname + event.url.search;');
+		expect(source).toContain('const requestedPath = event.url.pathname;');
 		expect(source).toContain('/?returnTo=');
 		expect(source).toContain('encodeURIComponent(requestedPath)');
 	});
