@@ -113,9 +113,16 @@ export interface ServerPinFallback {
  * source of truth shared by the server hook (returnTo carrier), the redirect
  * load (server-side re-validation), and the client landing page (the actual
  * `window.location.href` open-redirect surface).
+ *
+ * A length cap (`MAX_RETURN_PATH_LENGTH`) rejects oversized, attacker-controlled
+ * paths before they reach a redirect `Location` header — legitimate internal
+ * paths are well under it.
  */
+const MAX_RETURN_PATH_LENGTH = 2048;
+
 export function isSafeReturnPath(path: unknown): path is string {
 	if (typeof path !== 'string' || path.length === 0) return false;
+	if (path.length > MAX_RETURN_PATH_LENGTH) return false;
 	if (!path.startsWith('/')) return false;
 	if (path.startsWith('//') || path.startsWith('/\\')) return false;
 	if (path.includes('\\')) return false;
@@ -127,10 +134,13 @@ export function isSafeReturnPath(path: unknown): path is string {
 /**
  * Returns `candidate` when it passes {@link isSafeReturnPath}, otherwise the
  * role-default `fallback`. Used to compute the post-login `targetUrl` so a forged
- * external value can never reach `window.location.href`.
+ * external value can never reach `window.location.href`. The `fallback` is itself
+ * re-validated so a future caller cannot pass an unsafe value (e.g. an external
+ * URL) straight through; when it fails, we degrade to the same-origin root `/`.
  */
 export function resolveSafeReturnPath(candidate: unknown, fallback: string): string {
-	return isSafeReturnPath(candidate) ? candidate : fallback;
+	if (isSafeReturnPath(candidate)) return candidate;
+	return isSafeReturnPath(fallback) ? fallback : '/';
 }
 
 async function fetchPin(redirectUrl?: string): Promise<PinResponse> {

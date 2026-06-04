@@ -256,7 +256,12 @@ const authorizationHandle: Handle = async ({ event, resolve }) => {
 			// the shared open-redirect guard as defense-in-depth before it is encoded
 			// into the returnTo carrier. The real open-redirect surface — the client
 			// `window.location.href` on the landing page — re-validates it again.
-			const requestedPath = event.url.pathname + event.url.search;
+			// Use pathname only (drop event.url.search): the returnTo value travels
+			// through the Plex OAuth forwardUrl, so any admin query string (e.g.
+			// /admin/logs?search=…) would otherwise leak via plex.tv logs, browser
+			// history and Referer headers. Landing back on the bare admin path is
+			// sufficient post-login; filter/tab params are not worth that exposure.
+			const requestedPath = event.url.pathname;
 			const location = isSafeReturnPath(requestedPath)
 				? `/?returnTo=${encodeURIComponent(requestedPath)}`
 				: '/';
