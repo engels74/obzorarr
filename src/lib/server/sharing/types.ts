@@ -73,6 +73,7 @@ export const ShareModeSchema = z.enum(['public', 'private-oauth', 'private-link'
 // (token-gated single-user sharing) has no meaning server-wide. See DF-004 and
 // getServerWrappedShareMode() in sharing/service.ts.
 export const ServerWrappedShareModeSchema = z.enum([ShareMode.PUBLIC, ShareMode.PRIVATE_OAUTH]);
+export type ServerWrappedShareModeType = z.infer<typeof ServerWrappedShareModeSchema>;
 export const ShareModeSourceSchema = z.enum(['default', 'explicit']);
 
 export const ShareSettingsSchema = z.object({

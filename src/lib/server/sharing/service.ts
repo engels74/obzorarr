@@ -8,6 +8,7 @@ import {
 	meetsPrivacyFloor,
 	PermissionExceededError,
 	ServerWrappedShareModeSchema,
+	type ServerWrappedShareModeType,
 	ShareError,
 	ShareMode,
 	ShareModeSchema,
@@ -248,7 +249,7 @@ export async function getServerWrappedShareMode(): Promise<ShareModeType> {
 	return parsed.success ? parsed.data : ShareMode.PRIVATE_OAUTH;
 }
 
-export async function setServerWrappedShareMode(mode: ShareModeType): Promise<void> {
+export async function setServerWrappedShareMode(mode: ServerWrappedShareModeType): Promise<void> {
 	const now = new Date();
 	await db
 		.insert(appSettings)
