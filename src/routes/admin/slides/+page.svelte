@@ -972,6 +972,8 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 		.custom-badge {
 			display: inline-flex;
 			align-items: center;
+			/* DF-022: keep badge at intrinsic width so only .slide-name truncates */
+			flex-shrink: 0;
 			padding: 0.125rem 0.5rem;
 			background: oklch(0.6192 0.2037 312.73 / 0.2);
 			color: oklch(0.7546 0.1294 313.96);
@@ -985,6 +987,8 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 		.year-badge {
 			display: inline-flex;
 			align-items: center;
+			/* DF-022: keep badge at intrinsic width so only .slide-name truncates */
+			flex-shrink: 0;
 			padding: 0.125rem 0.375rem;
 			background: oklch(var(--muted));
 			color: oklch(var(--muted-foreground));

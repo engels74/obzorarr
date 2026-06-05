@@ -255,8 +255,10 @@ describe('dogfood DF-020 — /dashboard anonymous redirect carries returnTo', ()
 		const source = await readSource('src/routes/dashboard/+layout.server.ts');
 		// Guard import must be present.
 		expect(source).toContain("import { isSafeReturnPath } from '$lib/client/plex-login'");
-		// The load function must accept url from the event.
-		expect(source).toContain('url');
+		// The load function must destructure url from the event (the redirect
+		// needs url.pathname). Assert the exact signature so a refactor that drops
+		// url from the destructure can't pass on an incidental `url.` reference.
+		expect(source).toContain('async ({ locals, url }) => {');
 		// The safe-path guard must wrap the returnTo value.
 		expect(source).toContain('isSafeReturnPath(');
 		expect(source).toContain('returnTo=');
