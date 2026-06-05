@@ -14,465 +14,228 @@ import {
 	PLEX_VERSION,
 	PlexAuthApiError
 } from '$lib/server/auth/types';
+import { createMockJsonResponse } from '../../helpers/requests';
 
-/**
- * Unit tests for Plex OAuth Module
- *
- * Tests the Plex PIN-based OAuth authentication flow.
- * Uses fetch mocking to simulate Plex.tv API responses.
- */
+const PIN = {
+	id: 12345,
+	code: 'ABCD',
+	product: PLEX_PRODUCT,
+	trusted: false,
+	qr: 'https://plex.tv/api/v2/pins/12345/qr',
+	clientIdentifier: PLEX_CLIENT_ID,
+	expiresIn: 900,
+	createdAt: new Date().toISOString(),
+	expiresAt: new Date(Date.now() + 900000).toISOString(),
+	authToken: null as string | null
+};
+const USER = {
+	id: 67890,
+	uuid: 'abc-123-def-456',
+	username: 'testuser',
+	email: 'test@example.com',
+	title: 'Test User',
+	thumb: 'https://plex.tv/users/67890/avatar'
+};
 
-// Helper to create mock fetch response
-function createMockResponse(data: unknown, ok = true, status = 200): Response {
-	return {
-		ok,
-		status,
-		statusText: ok ? 'OK' : 'Error',
-		json: () => Promise.resolve(data),
-		headers: new Headers(),
-		redirected: false,
-		type: 'basic',
-		url: '',
-		clone: () => createMockResponse(data, ok, status),
-		body: null,
-		bodyUsed: false,
-		arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
-		blob: () => Promise.resolve(new Blob()),
-		formData: () => Promise.resolve(new FormData()),
-		text: () => Promise.resolve(JSON.stringify(data))
-	} as Response;
-}
+const pin = (authToken: string | null = null) => ({ ...PIN, authToken });
+const ok = (data: unknown) => Promise.resolve(createMockJsonResponse(data));
+const httpError = (status: number) => Promise.resolve(createMockJsonResponse({}, false, status));
 
-// Valid mock PIN response
-function createMockPinResponse(authToken: string | null = null) {
-	return {
-		id: 12345,
-		code: 'ABCD',
-		product: PLEX_PRODUCT,
-		trusted: false,
-		qr: 'https://plex.tv/api/v2/pins/12345/qr',
-		clientIdentifier: PLEX_CLIENT_ID,
-		expiresIn: 900,
-		createdAt: new Date().toISOString(),
-		expiresAt: new Date(Date.now() + 900000).toISOString(),
-		authToken
-	};
-}
-
-// Valid mock user response
-function createMockUserResponse() {
-	return {
-		id: 67890,
-		uuid: 'abc-123-def-456',
-		username: 'testuser',
-		email: 'test@example.com',
-		title: 'Test User',
-		thumb: 'https://plex.tv/users/67890/avatar'
-	};
-}
-
-describe('Plex OAuth Module', () => {
+describe('Plex OAuth module', () => {
 	let fetchMock: ReturnType<typeof spyOn>;
 
 	beforeEach(() => {
-		// Default mock that rejects (tests should set up their own)
-		fetchMock = spyOn(globalThis, 'fetch').mockImplementation((() =>
-			Promise.reject(new Error('Fetch not mocked for this test'))) as unknown as typeof fetch);
+		fetchMock = spyOn(globalThis, 'fetch').mockRejectedValue(
+			new Error('Fetch not mocked for this test')
+		);
 	});
 
 	afterEach(() => {
 		fetchMock.mockRestore();
 	});
 
-	// =========================================================================
-	// buildPlexOAuthUrl (Pure function - no mocking needed)
-	// =========================================================================
-
 	describe('buildPlexOAuthUrl', () => {
-		it('builds correct URL with required parameters', () => {
-			const url = buildPlexOAuthUrl('TESTCODE');
+		it('builds Plex auth URLs with device context and optional forwardUrl', () => {
+			const url = buildPlexOAuthUrl('TESTCODE', 'https://myapp.com/callback');
+			const withoutForward = buildPlexOAuthUrl('TESTCODE');
 
 			expect(url).toContain('https://app.plex.tv/auth#?');
 			expect(url).toContain(`clientID=${PLEX_CLIENT_ID}`);
 			expect(url).toContain('code=TESTCODE');
 			expect(url).toContain(`context%5Bdevice%5D%5Bproduct%5D=${PLEX_PRODUCT}`);
 			expect(url).toContain(`context%5Bdevice%5D%5Bversion%5D=${PLEX_VERSION}`);
-		});
-
-		it('includes forwardUrl when provided', () => {
-			const forwardUrl = 'https://myapp.com/callback';
-			const url = buildPlexOAuthUrl('TESTCODE', forwardUrl);
-
-			expect(url).toContain('forwardUrl=');
-			expect(url).toContain(encodeURIComponent(forwardUrl));
-		});
-
-		it('excludes forwardUrl when not provided', () => {
-			const url = buildPlexOAuthUrl('TESTCODE');
-
-			expect(url).not.toContain('forwardUrl');
+			expect(url).toContain(`forwardUrl=${encodeURIComponent('https://myapp.com/callback')}`);
+			expect(withoutForward).not.toContain('forwardUrl');
 		});
 	});
 
-	// =========================================================================
-	// requestPin
-	// =========================================================================
-
 	describe('requestPin', () => {
-		it('returns parsed PIN response on success', async () => {
-			const mockPin = createMockPinResponse();
-			fetchMock.mockImplementation(() => Promise.resolve(createMockResponse(mockPin)));
+		it('returns parsed PIN responses', async () => {
+			fetchMock.mockImplementation(() => ok(pin()));
 
-			const result = await requestPin();
-
-			expect(result.id).toBe(12345);
-			expect(result.code).toBe('ABCD');
-			expect(result.authToken).toBeNull();
+			expect(await requestPin()).toMatchObject({ id: 12345, code: 'ABCD', authToken: null });
 		});
 
-		it('throws PlexAuthApiError on non-OK response', async () => {
-			fetchMock.mockImplementation(() => Promise.resolve(createMockResponse({}, false, 500)));
+		it.each([
+			['non-OK response', () => httpError(500)],
+			['invalid schema', () => ok({ invalid: 'response' })],
+			['network error', () => Promise.reject(new Error('Network error'))]
+		] as const)('throws PlexAuthApiError on %s', async (_name, response) => {
+			fetchMock.mockImplementation(response);
 
 			await expect(requestPin()).rejects.toBeInstanceOf(PlexAuthApiError);
 		});
 
-		it('throws PlexAuthApiError on invalid response schema', async () => {
-			fetchMock.mockImplementation(() =>
-				Promise.resolve(createMockResponse({ invalid: 'response' }))
-			);
-
-			await expect(requestPin()).rejects.toBeInstanceOf(PlexAuthApiError);
-		});
-
-		it('throws PlexAuthApiError on network error', async () => {
-			fetchMock.mockImplementation(() => Promise.reject(new Error('Network error')));
-
-			await expect(requestPin()).rejects.toBeInstanceOf(PlexAuthApiError);
-		});
-
-		it('includes endpoint in error', async () => {
-			fetchMock.mockImplementation(() => Promise.resolve(createMockResponse({}, false, 500)));
+		it.each([
+			['status code', () => httpError(429), 'statusCode', 429],
+			['endpoint', () => httpError(500), 'endpoint', '/api/v2/pins'],
+			[
+				'wrapped message',
+				() => Promise.reject(new Error('Connection refused')),
+				'message',
+				'Connection refused'
+			]
+		] as const)('preserves %s in errors', async (_name, response, property, expected) => {
+			fetchMock.mockImplementation(response);
 
 			try {
 				await requestPin();
-				expect(true).toBe(false); // Should not reach here
+				expect.unreachable('Expected requestPin to reject');
 			} catch (error) {
 				expect(error).toBeInstanceOf(PlexAuthApiError);
-				expect((error as PlexAuthApiError).endpoint).toContain('/api/v2/pins');
+				expect(String((error as unknown as Record<string, unknown>)[property])).toContain(
+					String(expected)
+				);
 			}
 		});
 	});
 
-	// =========================================================================
-	// checkPinStatus
-	// =========================================================================
-
 	describe('checkPinStatus', () => {
-		it('returns parsed PIN response on success', async () => {
-			const mockPin = createMockPinResponse();
-			fetchMock.mockImplementation(() => Promise.resolve(createMockResponse(mockPin)));
+		it('returns parsed PIN responses including authToken', async () => {
+			fetchMock.mockImplementation(() => ok(pin('valid-auth-token')));
 
-			const result = await checkPinStatus(12345);
-
-			expect(result.id).toBe(12345);
-			expect(result.code).toBe('ABCD');
+			expect(await checkPinStatus(12345)).toMatchObject({
+				id: 12345,
+				code: 'ABCD',
+				authToken: 'valid-auth-token'
+			});
 		});
 
-		it('returns authToken when PIN is authorized', async () => {
-			const mockPin = createMockPinResponse('valid-auth-token');
-			fetchMock.mockImplementation(() => Promise.resolve(createMockResponse(mockPin)));
+		it.each([
+			['404', () => httpError(404), PinExpiredError],
+			['500', () => httpError(500), PlexAuthApiError],
+			['invalid schema', () => ok({ missing: 'fields' }), PlexAuthApiError],
+			['network error', () => Promise.reject(new Error('Network failure')), PlexAuthApiError],
+			['non-Error rejection', () => Promise.reject('string error'), PlexAuthApiError]
+		] as const)('throws %s error', async (_name, response, ErrorClass) => {
+			fetchMock.mockImplementation(response);
 
-			const result = await checkPinStatus(12345);
-
-			expect(result.authToken).toBe('valid-auth-token');
-		});
-
-		it('throws PinExpiredError on 404', async () => {
-			fetchMock.mockImplementation(() => Promise.resolve(createMockResponse({}, false, 404)));
-
-			await expect(checkPinStatus(12345)).rejects.toBeInstanceOf(PinExpiredError);
-		});
-
-		it('throws PlexAuthApiError on other errors', async () => {
-			fetchMock.mockImplementation(() => Promise.resolve(createMockResponse({}, false, 500)));
-
-			await expect(checkPinStatus(12345)).rejects.toBeInstanceOf(PlexAuthApiError);
-		});
-
-		it('throws PlexAuthApiError on invalid response schema', async () => {
-			fetchMock.mockImplementation(() =>
-				Promise.resolve(createMockResponse({ missing: 'fields' }))
-			);
-
-			await expect(checkPinStatus(12345)).rejects.toBeInstanceOf(PlexAuthApiError);
+			await expect(checkPinStatus(12345)).rejects.toBeInstanceOf(ErrorClass);
 		});
 	});
 
-	// =========================================================================
-	// pollPinForToken
-	// =========================================================================
-
 	describe('pollPinForToken', () => {
-		it('returns auth token when PIN is authorized', async () => {
-			const mockPin = createMockPinResponse('my-auth-token');
-			fetchMock.mockImplementation(() => Promise.resolve(createMockResponse(mockPin)));
-
-			const token = await pollPinForToken(12345);
-
-			expect(token).toBe('my-auth-token');
-		});
-
-		it('polls until token is available', async () => {
+		it.each([
+			['immediately', ['my-auth-token'], 'my-auth-token', 1],
+			['after polling', [null, null, 'delayed-token'], 'delayed-token', 3]
+		] as const)('returns token %s', async (_name, tokens, expected, calls) => {
 			let callCount = 0;
-			fetchMock.mockImplementation(() => {
-				callCount++;
-				// Return authorized on third call
-				const authToken = callCount >= 3 ? 'delayed-token' : null;
-				return Promise.resolve(createMockResponse(createMockPinResponse(authToken)));
-			});
+			fetchMock.mockImplementation(() => ok(pin(tokens[callCount++] ?? null)));
 
-			const token = await pollPinForToken(12345, { intervalMs: 10 });
-
-			expect(token).toBe('delayed-token');
-			expect(callCount).toBe(3);
+			expect(await pollPinForToken(12345, { intervalMs: 10 })).toBe(expected);
+			expect(callCount).toBe(calls);
 		});
 
-		it('throws PinExpiredError after max attempts', async () => {
-			const mockPin = createMockPinResponse(null);
-			fetchMock.mockImplementation(() => Promise.resolve(createMockResponse(mockPin)));
+		it.each([
+			['max attempts expire', () => ok(pin(null)), { maxAttempts: 2, intervalMs: 10 }],
+			[
+				'PIN expires mid-poll',
+				(() => {
+					let calls = 0;
+					return () => (++calls >= 2 ? httpError(404) : ok(pin(null)));
+				})(),
+				{ maxAttempts: 5, intervalMs: 10 }
+			]
+		] as const)('throws PinExpiredError when %s', async (_name, response, options) => {
+			fetchMock.mockImplementation(response);
 
-			await expect(
-				pollPinForToken(12345, { maxAttempts: 2, intervalMs: 10 })
-			).rejects.toBeInstanceOf(PinExpiredError);
-		});
-
-		it('throws PinExpiredError when PIN expires mid-polling', async () => {
-			let callCount = 0;
-			fetchMock.mockImplementation(() => {
-				callCount++;
-				if (callCount >= 2) {
-					return Promise.resolve(createMockResponse({}, false, 404));
-				}
-				return Promise.resolve(createMockResponse(createMockPinResponse(null)));
-			});
-
-			await expect(
-				pollPinForToken(12345, { maxAttempts: 5, intervalMs: 10 })
-			).rejects.toBeInstanceOf(PinExpiredError);
+			await expect(pollPinForToken(12345, options)).rejects.toBeInstanceOf(PinExpiredError);
 		});
 
 		it('uses default polling options', async () => {
-			const mockPin = createMockPinResponse('token');
-			fetchMock.mockImplementation(() => Promise.resolve(createMockResponse(mockPin)));
+			fetchMock.mockImplementation(() => ok(pin('token')));
 
-			// Just verify it works with defaults (doesn't throw)
-			const token = await pollPinForToken(12345);
-			expect(token).toBe('token');
+			expect(await pollPinForToken(12345)).toBe('token');
 		});
 	});
-
-	// =========================================================================
-	// getPlexUserInfo
-	// =========================================================================
 
 	describe('getPlexUserInfo', () => {
-		it('returns parsed user info on success', async () => {
-			const mockUser = createMockUserResponse();
-			fetchMock.mockImplementation(() => Promise.resolve(createMockResponse(mockUser)));
+		it('returns parsed user info including thumb', async () => {
+			fetchMock.mockImplementation(() => ok(USER));
 
-			const result = await getPlexUserInfo('valid-token');
-
-			expect(result.id).toBe(67890);
-			expect(result.username).toBe('testuser');
-			expect(result.email).toBe('test@example.com');
+			expect(await getPlexUserInfo('valid-token')).toMatchObject({
+				id: 67890,
+				username: 'testuser',
+				email: 'test@example.com',
+				thumb: USER.thumb
+			});
 		});
 
-		it('throws PlexAuthApiError on non-OK response', async () => {
-			fetchMock.mockImplementation(() => Promise.resolve(createMockResponse({}, false, 401)));
-
-			await expect(getPlexUserInfo('invalid-token')).rejects.toBeInstanceOf(PlexAuthApiError);
-		});
-
-		it('throws PlexAuthApiError on invalid response schema', async () => {
-			fetchMock.mockImplementation(
-				() => Promise.resolve(createMockResponse({ id: 123 })) // Missing required fields
-			);
+		it.each([
+			['non-OK response', () => httpError(401)],
+			['invalid schema', () => ok({ id: 123 })],
+			['network error', () => Promise.reject(new Error('Connection timeout'))],
+			['non-Error rejection', () => Promise.reject({ code: 'TIMEOUT' })]
+		] as const)('throws PlexAuthApiError on %s', async (_name, response) => {
+			fetchMock.mockImplementation(response);
 
 			await expect(getPlexUserInfo('valid-token')).rejects.toBeInstanceOf(PlexAuthApiError);
-		});
-
-		it('throws PlexAuthApiError on network error', async () => {
-			fetchMock.mockImplementation(() => Promise.reject(new Error('Network error')));
-
-			await expect(getPlexUserInfo('valid-token')).rejects.toBeInstanceOf(PlexAuthApiError);
-		});
-
-		it('includes user thumb when present', async () => {
-			const mockUser = createMockUserResponse();
-			fetchMock.mockImplementation(() => Promise.resolve(createMockResponse(mockUser)));
-
-			const result = await getPlexUserInfo('valid-token');
-
-			expect(result.thumb).toBe('https://plex.tv/users/67890/avatar');
 		});
 	});
 
-	// =========================================================================
-	// getPinInfo
-	// =========================================================================
-
 	describe('getPinInfo', () => {
-		it('returns complete PIN info with auth URL', async () => {
-			const mockPin = createMockPinResponse();
-			fetchMock.mockImplementation(() => Promise.resolve(createMockResponse(mockPin)));
-
-			const result = await getPinInfo();
-
-			expect(result.pinId).toBe(12345);
-			expect(result.code).toBe('ABCD');
-			expect(result.authUrl).toContain('https://app.plex.tv/auth#?');
-			expect(result.authUrl).toContain('code=ABCD');
-			expect(result.expiresAt).toBeDefined();
-		});
-
-		it('uses expiresAt from response when available', async () => {
+		it('returns complete PIN info with auth URL and response expiry', async () => {
 			const expiresAt = '2024-12-21T12:00:00.000Z';
-			const mockPin = { ...createMockPinResponse(), expiresAt };
-			fetchMock.mockImplementation(() => Promise.resolve(createMockResponse(mockPin)));
+			fetchMock.mockImplementation(() => ok({ ...pin(), expiresAt }));
 
-			const result = await getPinInfo();
-
-			expect(result.expiresAt).toBe(expiresAt);
+			expect(await getPinInfo()).toMatchObject({
+				pinId: 12345,
+				code: 'ABCD',
+				expiresAt
+			});
 		});
 
-		it('generates fallback expiresAt when not in response', async () => {
-			const mockPin = createMockPinResponse();
-			// Ensure expiresAt is undefined so we use fallback
-			const pinWithoutExpiry = { ...mockPin, expiresAt: undefined };
-			fetchMock.mockImplementation(() => Promise.resolve(createMockResponse(pinWithoutExpiry)));
-
+		it('generates fallback expiresAt when the response omits it', async () => {
+			fetchMock.mockImplementation(() => ok({ ...pin(), expiresAt: undefined }));
 			const before = Date.now();
 			const result = await getPinInfo();
-			const after = Date.now();
-
-			// Fallback should be ~15 minutes from now
 			const expiresTime = new Date(result.expiresAt).getTime();
-			const expectedMin = before + 15 * 60 * 1000 - 1000; // Allow 1s tolerance
-			const expectedMax = after + 15 * 60 * 1000 + 1000;
 
-			expect(expiresTime).toBeGreaterThanOrEqual(expectedMin);
-			expect(expiresTime).toBeLessThanOrEqual(expectedMax);
+			expect(result.authUrl).toContain('https://app.plex.tv/auth#?');
+			expect(result.authUrl).toContain('code=ABCD');
+			expect(expiresTime).toBeGreaterThanOrEqual(before + 15 * 60 * 1000 - 1000);
+			expect(expiresTime).toBeLessThanOrEqual(Date.now() + 15 * 60 * 1000 + 1000);
 		});
 
-		it('propagates errors from requestPin', async () => {
-			fetchMock.mockImplementation(() => Promise.resolve(createMockResponse({}, false, 500)));
+		it('propagates requestPin errors', async () => {
+			fetchMock.mockImplementation(() => httpError(500));
 
 			await expect(getPinInfo()).rejects.toBeInstanceOf(PlexAuthApiError);
 		});
 	});
 
-	// =========================================================================
-	// Error Handling Edge Cases
-	// =========================================================================
-
-	describe('Error Handling', () => {
-		it('PlexAuthApiError includes status code', async () => {
-			fetchMock.mockImplementation(() => Promise.resolve(createMockResponse({}, false, 429)));
-
-			try {
-				await requestPin();
-				expect(true).toBe(false);
-			} catch (error) {
-				expect(error).toBeInstanceOf(PlexAuthApiError);
-				expect((error as PlexAuthApiError).statusCode).toBe(429);
-			}
-		});
-
-		it('PlexAuthApiError wraps underlying error', async () => {
-			const underlyingError = new Error('Connection refused');
-			fetchMock.mockImplementation(() => Promise.reject(underlyingError));
-
-			try {
-				await requestPin();
-				expect(true).toBe(false);
-			} catch (error) {
-				expect(error).toBeInstanceOf(PlexAuthApiError);
-				expect((error as PlexAuthApiError).message).toContain('Connection refused');
-			}
-		});
-
-		it('re-throws PlexAuthApiError without wrapping', async () => {
-			const originalError = new PlexAuthApiError('Original error', 400, '/test');
+	describe('error passthrough', () => {
+		it.each([
+			['PlexAuthApiError', requestPin, new PlexAuthApiError('Original error', 400, '/test')],
+			['PinExpiredError', () => checkPinStatus(12345), new PinExpiredError()]
+		] as const)('re-throws %s without wrapping', async (_name, action, originalError) => {
 			fetchMock.mockImplementation(() => Promise.reject(originalError));
 
 			try {
-				await requestPin();
-				expect(true).toBe(false);
+				await action();
+				expect.unreachable('Expected passthrough error');
 			} catch (error) {
 				expect(error).toBe(originalError);
-			}
-		});
-
-		it('re-throws PinExpiredError without wrapping', async () => {
-			const originalError = new PinExpiredError();
-			fetchMock.mockImplementation(() => Promise.reject(originalError));
-
-			try {
-				await checkPinStatus(12345);
-				expect(true).toBe(false);
-			} catch (error) {
-				expect(error).toBe(originalError);
-			}
-		});
-
-		it('checkPinStatus wraps network errors', async () => {
-			const networkError = new Error('Network failure');
-			fetchMock.mockImplementation(() => Promise.reject(networkError));
-
-			try {
-				await checkPinStatus(12345);
-				expect(true).toBe(false);
-			} catch (error) {
-				expect(error).toBeInstanceOf(PlexAuthApiError);
-				expect((error as PlexAuthApiError).message).toContain('Network failure');
-			}
-		});
-
-		it('checkPinStatus handles non-Error thrown values', async () => {
-			// Some libraries throw strings or other non-Error values
-			fetchMock.mockImplementation(() => Promise.reject('string error'));
-
-			try {
-				await checkPinStatus(12345);
-				expect(true).toBe(false);
-			} catch (error) {
-				expect(error).toBeInstanceOf(PlexAuthApiError);
-				expect((error as PlexAuthApiError).message).toContain('Unknown error');
-			}
-		});
-
-		it('getPlexUserInfo wraps network errors', async () => {
-			const networkError = new Error('Connection timeout');
-			fetchMock.mockImplementation(() => Promise.reject(networkError));
-
-			try {
-				await getPlexUserInfo('test-token');
-				expect(true).toBe(false);
-			} catch (error) {
-				expect(error).toBeInstanceOf(PlexAuthApiError);
-				expect((error as PlexAuthApiError).message).toContain('Connection timeout');
-			}
-		});
-
-		it('getPlexUserInfo handles non-Error thrown values', async () => {
-			fetchMock.mockImplementation(() => Promise.reject({ code: 'TIMEOUT' }));
-
-			try {
-				await getPlexUserInfo('test-token');
-				expect(true).toBe(false);
-			} catch (error) {
-				expect(error).toBeInstanceOf(PlexAuthApiError);
-				expect((error as PlexAuthApiError).message).toContain('Unknown error');
 			}
 		});
 	});

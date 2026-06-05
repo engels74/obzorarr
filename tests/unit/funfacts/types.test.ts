@@ -5,121 +5,57 @@ import {
 	InsufficientStatsError
 } from '$lib/server/funfacts/types';
 
-describe('FunFacts Error Classes', () => {
-	describe('FunFactsError', () => {
-		it('sets message, code and statusCode correctly', () => {
-			const error = new FunFactsError('Test error', 'TEST_CODE', 400);
+describe('fun facts errors', () => {
+	it('preserves base error message, code, status, name, and Error inheritance', () => {
+		const error = new FunFactsError('Test error', 'TEST_CODE', 400);
+		const defaultStatus = new FunFactsError('Test error', 'TEST_CODE');
 
-			expect(error.message).toBe('Test error');
-			expect(error.code).toBe('TEST_CODE');
-			expect(error.statusCode).toBe(400);
-			expect(error.name).toBe('FunFactsError');
+		expect(error).toBeInstanceOf(Error);
+		expect(error).toMatchObject({
+			message: 'Test error',
+			code: 'TEST_CODE',
+			statusCode: 400,
+			name: 'FunFactsError'
 		});
-
-		it('defaults statusCode to 500', () => {
-			const error = new FunFactsError('Test error', 'TEST_CODE');
-			expect(error.statusCode).toBe(500);
-		});
-
-		it('is an instance of Error', () => {
-			const error = new FunFactsError('Test', 'CODE');
-			expect(error).toBeInstanceOf(Error);
-		});
+		expect(defaultStatus.statusCode).toBe(500);
 	});
 
-	describe('AIGenerationError', () => {
-		it('uses default message when not provided', () => {
-			const error = new AIGenerationError();
-			expect(error.message).toBe('AI generation failed');
-		});
+	it.each([
+		[
+			'AIGenerationError',
+			AIGenerationError,
+			'AI generation failed',
+			'Custom AI error',
+			'AI_GENERATION_FAILED',
+			500
+		],
+		[
+			'InsufficientStatsError',
+			InsufficientStatsError,
+			'Insufficient statistics for fun fact generation',
+			'Not enough data',
+			'INSUFFICIENT_STATS',
+			400
+		]
+	] as const)('%s preserves defaults, overrides, status, and inheritance', (name, ErrorClass, defaultMessage, customMessage, code, statusCode) => {
+		const defaultError = new ErrorClass();
+		const customError = new ErrorClass(customMessage);
 
-		it('uses custom message when provided', () => {
-			const error = new AIGenerationError('Custom AI error');
-			expect(error.message).toBe('Custom AI error');
-		});
-
-		it('has code AI_GENERATION_FAILED', () => {
-			const error = new AIGenerationError();
-			expect(error.code).toBe('AI_GENERATION_FAILED');
-		});
-
-		it('has statusCode 500', () => {
-			const error = new AIGenerationError();
-			expect(error.statusCode).toBe(500);
-		});
-
-		it('stores cause when provided', () => {
-			const originalError = new Error('Original error');
-			const error = new AIGenerationError('Wrapped error', originalError);
-			expect(error.cause).toBe(originalError);
-		});
-
-		it('is an instance of FunFactsError', () => {
-			const error = new AIGenerationError();
-			expect(error).toBeInstanceOf(FunFactsError);
-		});
+		expect(defaultError).toBeInstanceOf(FunFactsError);
+		expect(defaultError).toBeInstanceOf(Error);
+		expect(defaultError).toMatchObject({ message: defaultMessage, code, statusCode, name });
+		expect(customError.message).toBe(customMessage);
 	});
 
-	describe('InsufficientStatsError', () => {
-		it('uses default message when not provided', () => {
-			const error = new InsufficientStatsError();
-			expect(error.message).toBe('Insufficient statistics for fun fact generation');
-		});
+	it('stores AI generation causes and keeps subclasses distinguishable', () => {
+		const cause = new Error('Original error');
+		const aiError = new AIGenerationError('Wrapped error', cause);
+		const insufficientError = new InsufficientStatsError();
 
-		it('uses custom message when provided', () => {
-			const error = new InsufficientStatsError('Not enough data');
-			expect(error.message).toBe('Not enough data');
-		});
-
-		it('has code INSUFFICIENT_STATS', () => {
-			const error = new InsufficientStatsError();
-			expect(error.code).toBe('INSUFFICIENT_STATS');
-		});
-
-		it('has statusCode 400', () => {
-			const error = new InsufficientStatsError();
-			expect(error.statusCode).toBe(400);
-		});
-
-		it('has name InsufficientStatsError', () => {
-			const error = new InsufficientStatsError();
-			expect(error.name).toBe('InsufficientStatsError');
-		});
-
-		it('is an instance of FunFactsError', () => {
-			const error = new InsufficientStatsError();
-			expect(error).toBeInstanceOf(FunFactsError);
-		});
-
-		it('is an instance of Error', () => {
-			const error = new InsufficientStatsError();
-			expect(error).toBeInstanceOf(Error);
-		});
-
-		it('can be thrown and caught', () => {
-			let caughtError: InsufficientStatsError | null = null;
-
-			try {
-				throw new InsufficientStatsError();
-			} catch (error) {
-				if (error instanceof InsufficientStatsError) {
-					caughtError = error;
-				}
-			}
-
-			expect(caughtError).not.toBeNull();
-			expect(caughtError?.code).toBe('INSUFFICIENT_STATS');
-		});
-
-		it('can be distinguished from AIGenerationError', () => {
-			const insufficientError = new InsufficientStatsError();
-			const aiError = new AIGenerationError();
-
-			expect(insufficientError instanceof InsufficientStatsError).toBe(true);
-			expect(insufficientError instanceof AIGenerationError).toBe(false);
-
-			expect(aiError instanceof AIGenerationError).toBe(true);
-			expect(aiError instanceof InsufficientStatsError).toBe(false);
-		});
+		expect(aiError.cause).toBe(cause);
+		expect(aiError).toBeInstanceOf(AIGenerationError);
+		expect(aiError).not.toBeInstanceOf(InsufficientStatsError);
+		expect(insufficientError).toBeInstanceOf(InsufficientStatsError);
+		expect(insufficientError).not.toBeInstanceOf(AIGenerationError);
 	});
 });

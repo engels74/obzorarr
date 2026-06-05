@@ -8,26 +8,7 @@ import {
 	verifyServerMembership
 } from '$lib/server/auth/membership';
 import * as serverIdentityService from '$lib/server/plex/server-identity.service';
-
-function createMockResponse(data: unknown, ok = true, status = 200): Response {
-	return {
-		ok,
-		status,
-		statusText: ok ? 'OK' : 'Error',
-		json: () => Promise.resolve(data),
-		headers: new Headers(),
-		redirected: false,
-		type: 'basic',
-		url: '',
-		clone: () => createMockResponse(data, ok, status),
-		body: null,
-		bodyUsed: false,
-		arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
-		blob: () => Promise.resolve(new Blob()),
-		formData: () => Promise.resolve(new FormData()),
-		text: () => Promise.resolve(JSON.stringify(data))
-	} as Response;
-}
+import { createMockJsonResponse } from '../../helpers/requests';
 
 const MOCK_MACHINE_ID = 'a'.repeat(32);
 
@@ -87,7 +68,7 @@ describe('verifyServerMembership', () => {
 			errorReason: null
 		});
 		fetchSpy = spyOn(global, 'fetch').mockResolvedValue(
-			createMockResponse([
+			createMockJsonResponse([
 				{
 					name: 'Some Other Server',
 					product: 'Plex Media Server',
@@ -131,7 +112,7 @@ describe('verifyServerMembership', () => {
 			errorReason: null
 		});
 		fetchSpy = spyOn(global, 'fetch').mockResolvedValue(
-			createMockResponse([
+			createMockJsonResponse([
 				{
 					name: 'Home Server',
 					product: 'Plex Media Server',
@@ -183,7 +164,7 @@ describe('verifyServerMembership', () => {
 			errorReason: null
 		});
 		fetchSpy = spyOn(global, 'fetch').mockResolvedValue(
-			createMockResponse([
+			createMockJsonResponse([
 				{
 					name: 'X.A.N.A.',
 					product: 'Plex Media Server',
@@ -223,7 +204,7 @@ describe('verifyServerMembership', () => {
 			errorReason: 'Connection timed out - the server may be unreachable'
 		});
 		fetchSpy = spyOn(global, 'fetch').mockResolvedValue(
-			createMockResponse([
+			createMockJsonResponse([
 				{
 					name: 'Some Server',
 					product: 'Plex Media Server',
@@ -262,7 +243,7 @@ describe('verifyServerMembership', () => {
 			errorReason: null
 		});
 		fetchSpy = spyOn(global, 'fetch').mockResolvedValue(
-			createMockResponse([
+			createMockJsonResponse([
 				{
 					name: 'Unrelated Server',
 					product: 'Plex Media Server',
@@ -292,7 +273,7 @@ describe('verifyServerMembership', () => {
 			errorReason: null
 		});
 		fetchSpy = spyOn(global, 'fetch').mockResolvedValue(
-			createMockResponse([
+			createMockJsonResponse([
 				{
 					name: "Friend's Server",
 					product: 'Plex Media Server',
@@ -326,7 +307,7 @@ describe('verifyServerMembership', () => {
 				errorReason: null
 			});
 		fetchSpy = spyOn(global, 'fetch').mockResolvedValue(
-			createMockResponse([
+			createMockJsonResponse([
 				{
 					name: 'X.A.N.A.',
 					product: 'Plex Media Server',
@@ -366,7 +347,7 @@ describe('verifyServerMembership', () => {
 			errorReason:
 				'Authentication failed - the PLEX_TOKEN may be invalid or no longer authorized for this server'
 		});
-		fetchSpy = spyOn(global, 'fetch').mockResolvedValue(createMockResponse([]));
+		fetchSpy = spyOn(global, 'fetch').mockResolvedValue(createMockJsonResponse([]));
 
 		const result = await verifyServerMembership('user-token');
 
@@ -393,7 +374,7 @@ describe('verifyServerMembership', () => {
 			source: 'unavailable',
 			errorReason: 'Connection timed out - the server may be unreachable'
 		});
-		fetchSpy = spyOn(global, 'fetch').mockResolvedValue(createMockResponse([]));
+		fetchSpy = spyOn(global, 'fetch').mockResolvedValue(createMockJsonResponse([]));
 
 		const result = await verifyServerMembership('user-token');
 

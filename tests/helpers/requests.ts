@@ -60,3 +60,23 @@ export function createFormRequest(
 		body: formData
 	});
 }
+
+export function createMockJsonResponse(data: unknown, ok = true, status = 200): Response {
+	return {
+		ok,
+		status,
+		statusText: ok ? 'OK' : 'Error',
+		json: () => Promise.resolve(data),
+		headers: new Headers(),
+		redirected: false,
+		type: 'basic',
+		url: '',
+		clone: () => createMockJsonResponse(data, ok, status),
+		body: null,
+		bodyUsed: false,
+		arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+		blob: () => Promise.resolve(new Blob()),
+		formData: () => Promise.resolve(new FormData()),
+		text: () => Promise.resolve(JSON.stringify(data))
+	} as Response;
+}

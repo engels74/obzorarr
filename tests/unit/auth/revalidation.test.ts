@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 
+import * as settingsService from '$lib/server/admin/settings.service';
 import * as membership from '$lib/server/auth/membership';
+import * as plexOauth from '$lib/server/auth/plex-oauth';
 import {
 	clearRevalidationEntry,
 	needsRevalidation,
@@ -10,6 +12,19 @@ import {
 } from '$lib/server/auth/revalidation';
 import { PlexAuthApiError } from '$lib/server/auth/types';
 import * as onboarding from '$lib/server/onboarding';
+import {
+	claimOnboardingInstance,
+	clearBootstrapToken,
+	createBootstrapToken
+} from '$lib/server/onboarding/bootstrap';
+import {
+	createTestApiConfig,
+	createTestPlexUser,
+	type RestorableSpy,
+	restoreSpies
+} from '../../helpers/auth';
+import { resetSharedTestDb } from '../../helpers/db';
+import { createTestCookies } from '../../helpers/requests';
 
 const SESSION_ID = 'test-session';
 const PLEX_TOKEN = 'test-token';
@@ -310,5 +325,95 @@ describe('revalidation module', () => {
 			expect(result.status).toBe('valid');
 			expect(mockVerifyServerMembership).toHaveBeenCalledTimes(2);
 		});
+	});
+});
+
+describe('revalidation login-session survival regressions', () => {
+	let spies: RestorableSpy[] = [];
+
+	beforeEach(async () => {
+		await resetSharedTestDb();
+		clearBootstrapToken();
+		spies = [];
+	});
+
+	afterEach(() => {
+		restoreSpies(spies);
+	});
+
+	it('seeds the revalidation cache at session creation so the next request skips revalidation', async () => {
+		spies.push(
+			spyOn(settingsService, 'getApiConfigWithSources').mockResolvedValue(createTestApiConfig()),
+			spyOn(onboarding, 'requiresOnboarding').mockResolvedValue(true),
+			spyOn(membership, 'requireServerMembership').mockResolvedValue({
+				isMember: true,
+				isOwner: true,
+				serverName: 'Test Plex'
+			}),
+			spyOn(plexOauth, 'getPlexUserInfo').mockResolvedValue(
+				createTestPlexUser({
+					username: 'owner',
+					email: 'owner@example.com',
+					thumb: undefined,
+					authToken: 'plex-user-token',
+					services: []
+				})
+			)
+		);
+
+		const cookies = createTestCookies();
+		expect(await claimOnboardingInstance(cookies, createBootstrapToken())).toBe('claimed');
+
+		const { createSessionFromPlexToken } = await import('$lib/server/auth/login-completion');
+		const result = await createSessionFromPlexToken('owner-auth-token', cookies);
+		const sessionId = cookies.get('session') as string;
+
+		expect(result.user.isAdmin).toBe(true);
+		expect(sessionId).toBeTruthy();
+		expect(needsRevalidation(sessionId)).toBe(false);
+
+		clearRevalidationEntry(sessionId);
+	});
+
+	it.each([
+		[
+			'transient identity reachability blip',
+			'sess-grace-transient',
+			() =>
+				Promise.resolve({
+					isMember: false,
+					isOwner: false,
+					reason: 'not_reachable' as const,
+					identityErrorReason: 'Connection timed out'
+				}),
+			'error_within_grace'
+		],
+		[
+			'genuine non-membership',
+			'sess-not-in-resources',
+			() =>
+				Promise.resolve({
+					isMember: false,
+					isOwner: false,
+					reason: 'not_in_resources' as const
+				}),
+			'revoked'
+		],
+		[
+			'invalid Plex token',
+			'sess-401',
+			() => Promise.reject(new PlexAuthApiError('Unauthorized', 401, '/identity')),
+			'revoked'
+		]
+	] as const)('%s yields %s', async (_name, sessionId, membershipResult, expectedStatus) => {
+		clearRevalidationEntry(sessionId);
+		spies.push(spyOn(membership, 'verifyServerMembership').mockImplementation(membershipResult));
+
+		const result = await revalidateMembership(sessionId, 'plex-token');
+
+		expect(result.status).toBe(expectedStatus);
+		if (_name === 'transient identity reachability blip') expect(result.status).not.toBe('revoked');
+
+		clearRevalidationEntry(sessionId);
 	});
 });

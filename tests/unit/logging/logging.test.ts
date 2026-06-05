@@ -1,7 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import { db } from '$lib/server/db/client';
 import { appSettings, logs } from '$lib/server/db/schema';
-import { Logger } from '$lib/server/logging/logger';
+import { Logger, logger as realLogger } from '$lib/server/logging/logger';
+import * as serviceModule from '$lib/server/logging/service';
 import {
 	deleteAllLogs,
 	deleteLogsOlderThan,
@@ -38,6 +39,7 @@ const QUERY_FIXTURE = [
 ] as const;
 
 type ConsoleMethod = 'debug' | 'error' | 'log' | 'warn';
+type LoggerSpyCall = [string, ...unknown[]];
 type LogMethod = 'error' | 'info' | 'warn';
 
 async function seedQueryLogs() {
@@ -61,6 +63,77 @@ async function logRows() {
 function messagesFrom(rows: Awaited<ReturnType<typeof logRows>>) {
 	return rows.map((row) => row.message);
 }
+
+let mockCronInstances: MockCron[] = [];
+
+class MockCron {
+	public name: string;
+	public expression: string;
+	public timezone: string;
+	public callback: () => Promise<void>;
+	public catchHandler: ((error: unknown, job: MockCron) => void) | undefined;
+	private running = true;
+	private stopped = false;
+	private next: Date | null = new Date(Date.now() + DAY_MS);
+	private previous: Date | null = null;
+
+	constructor(
+		expression: string,
+		options: Record<string, unknown>,
+		callback?: () => Promise<void>
+	) {
+		this.expression = expression;
+		this.name = (options.name as string) ?? 'unnamed';
+		this.timezone = (options.timezone as string) ?? 'UTC';
+		this.catchHandler = options.catch as ((error: unknown, job: MockCron) => void) | undefined;
+		this.callback = callback ?? (async () => {});
+		mockCronInstances.push(this);
+	}
+
+	stop(): void {
+		this.stopped = true;
+		this.running = false;
+	}
+
+	isRunning(): boolean {
+		return this.running && !this.stopped;
+	}
+
+	nextRun(): Date | null {
+		return this.next;
+	}
+
+	previousRun(): Date | null {
+		return this.previous;
+	}
+
+	_setIsRunning(value: boolean): void {
+		this.running = value;
+	}
+
+	_setPreviousRun(date: Date | null): void {
+		this.previous = date;
+	}
+
+	_setNextRun(date: Date | null): void {
+		this.next = date ?? null;
+	}
+
+	_isStopped(): boolean {
+		return this.stopped;
+	}
+
+	async _triggerCallback(): Promise<void> {
+		await this.callback();
+	}
+
+	_triggerCatchHandler(error: unknown): void {
+		this.catchHandler?.(error, this);
+	}
+}
+
+mock.module('croner', () => ({ Cron: MockCron }));
+const retention = await import('$lib/server/logging/retention');
 
 describe('logging service and logger', () => {
 	let logger: InstanceType<typeof Logger>;
@@ -350,5 +423,142 @@ describe('logging service and logger', () => {
 			expect(debugLog?.metadata).not.toContain('provider-');
 			expect(debugLog?.metadata).not.toContain('token=secret');
 		});
+	});
+});
+
+describe('logging retention scheduler', () => {
+	let cleanupSpy: ReturnType<typeof spyOn>;
+	let infoSpy: ReturnType<typeof spyOn>;
+	let errorSpy: ReturnType<typeof spyOn>;
+
+	beforeEach(() => {
+		mockCronInstances = [];
+		infoSpy = spyOn(realLogger, 'info');
+		errorSpy = spyOn(realLogger, 'error');
+		cleanupSpy = spyOn(serviceModule, 'runRetentionCleanup').mockResolvedValue({
+			byAge: 5,
+			byCount: 3
+		});
+		retention.stopLogRetentionScheduler();
+	});
+
+	afterEach(() => {
+		cleanupSpy.mockRestore();
+		infoSpy.mockRestore();
+		errorSpy.mockRestore();
+		retention.stopLogRetentionScheduler();
+	});
+
+	it.each([
+		['defaults', undefined, undefined, '0 3 * * *', 'UTC'],
+		['custom cron', '0 6 * * *', undefined, '0 6 * * *', 'UTC'],
+		['custom timezone', '0 3 * * *', 'America/New_York', '0 3 * * *', 'America/New_York']
+	] as const)('creates scheduler with %s', (_name, cronExpression, timezone, expectedExpression, expectedTimezone) => {
+		retention.setupLogRetentionScheduler(cronExpression, timezone);
+
+		expect(mockCronInstances).toHaveLength(1);
+		expect(mockCronInstances[0]).toMatchObject({
+			expression: expectedExpression,
+			timezone: expectedTimezone,
+			name: 'log-retention'
+		});
+	});
+
+	it('replaces existing schedulers and logs configuration', () => {
+		retention.setupLogRetentionScheduler();
+		const firstScheduler = mockCronInstances[0];
+		retention.setupLogRetentionScheduler('0 6 * * *');
+
+		expect(mockCronInstances).toHaveLength(2);
+		expect(firstScheduler?._isStopped()).toBe(true);
+		expect(
+			infoSpy.mock.calls.some((call: LoggerSpyCall) =>
+				call[0].includes('Log retention scheduler configured')
+			)
+		).toBe(true);
+	});
+
+	it('callback logs cleanup success and failure', async () => {
+		retention.setupLogRetentionScheduler();
+		await mockCronInstances[0]?._triggerCallback();
+		expect(cleanupSpy).toHaveBeenCalled();
+		expect(
+			infoSpy.mock.calls.some((call: LoggerSpyCall) =>
+				call[0].includes('Retention cleanup completed')
+			)
+		).toBe(true);
+
+		cleanupSpy.mockImplementation(async () => {
+			throw new Error('Database error');
+		});
+		await mockCronInstances[0]?._triggerCallback();
+		expect(
+			errorSpy.mock.calls.some((call: LoggerSpyCall) =>
+				call[0].includes('Retention cleanup failed')
+			)
+		).toBe(true);
+	});
+
+	it('catch handler and manual trigger log the expected scheduler events', async () => {
+		retention.setupLogRetentionScheduler();
+		mockCronInstances[0]?._triggerCatchHandler(new Error('Cron error'));
+		expect(
+			errorSpy.mock.calls.some((call: LoggerSpyCall) => call[0].includes('Log retention job'))
+		).toBe(true);
+
+		infoSpy.mockClear();
+		expect(await retention.triggerRetentionCleanup()).toEqual({ byAge: 5, byCount: 3 });
+		expect(infoSpy.mock.calls[0]?.[0]).toContain('Manual log retention cleanup triggered');
+	});
+
+	it.each([
+		['running scheduler', true, true],
+		['no scheduler', false, false]
+	] as const)('stops idempotently with %s', (_name, configured, shouldLog) => {
+		if (configured) retention.setupLogRetentionScheduler();
+		const scheduler = mockCronInstances[0];
+		infoSpy.mockClear();
+
+		expect(() => retention.stopLogRetentionScheduler()).not.toThrow();
+		if (configured) expect(scheduler?._isStopped()).toBe(true);
+		expect(
+			infoSpy.mock.calls.some((call: LoggerSpyCall) =>
+				call[0].includes('Log retention scheduler stopped')
+			)
+		).toBe(shouldLog);
+	});
+
+	it('reports scheduler status, running state, previous run, and nullable next run', () => {
+		expect(retention.getRetentionSchedulerStatus()).toEqual({
+			isConfigured: false,
+			isRunning: false,
+			nextRun: null,
+			previousRun: null
+		});
+
+		retention.setupLogRetentionScheduler();
+		const cronInstance = mockCronInstances[0];
+		const previousDate = new Date(Date.now() - DAY_MS);
+		cronInstance?._setPreviousRun(previousDate);
+		cronInstance?._setNextRun(null);
+		cronInstance?._setIsRunning(false);
+
+		expect(retention.getRetentionSchedulerStatus()).toMatchObject({
+			isConfigured: true,
+			isRunning: false,
+			nextRun: null,
+			previousRun: previousDate
+		});
+	});
+
+	it.each([
+		['no scheduler', false, false],
+		['scheduler exists', true, true],
+		['scheduler stopped', true, false]
+	] as const)('isRetentionSchedulerConfigured returns %s state', (_name, createScheduler, expected) => {
+		if (createScheduler) retention.setupLogRetentionScheduler();
+		if (!expected && createScheduler) retention.stopLogRetentionScheduler();
+
+		expect(retention.isRetentionSchedulerConfigured()).toBe(expected);
 	});
 });
