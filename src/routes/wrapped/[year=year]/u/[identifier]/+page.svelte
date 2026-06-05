@@ -20,7 +20,7 @@ import type { PageProps } from './$types';
  * Displays the user-specific Year in Review statistics.
  * Supports both Story Mode (full-screen slides) and Scroll Mode.
  *
- * @module routes/wrapped/[year]/u/[identifier]
+ * @module routes/wrapped/[year=year]/u/[identifier]
  */
 
 let { data }: PageProps = $props();

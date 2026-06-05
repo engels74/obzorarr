@@ -128,7 +128,7 @@ async function expectServerWrappedStatus(year: string, expectedStatus: number): 
 	}
 }
 
-describe('wrapped/[year] loader: year bounds', () => {
+describe('wrapped/[year=year] loader: year bounds', () => {
 	it('returns 404 for years outside the supported range', async () => {
 		await expectServerWrappedStatus('1999', 404);
 		await expectServerWrappedStatus('2101', 404);
@@ -153,7 +153,7 @@ describe('wrapped/[year] loader: year bounds', () => {
 	});
 });
 
-describe('wrapped/[year]/u/[identifier] loader: cross-year token isolation', () => {
+describe('wrapped/[year=year]/u/[identifier] loader: cross-year token isolation', () => {
 	const USER_ID = 42;
 
 	beforeEach(async () => {
@@ -232,7 +232,7 @@ describe('wrapped/[year]/u/[identifier] loader: cross-year token isolation', () 
  * Anonymous viewers, authenticated non-owners, and even owners viewing in a
  * widened mode must receive shareToken: null in the payload.
  */
-describe('wrapped/[year]/u/[identifier] loader: identifier validation (F-303)', () => {
+describe('wrapped/[year=year]/u/[identifier] loader: identifier validation (F-303)', () => {
 	const USER_ID = 2;
 
 	beforeEach(async () => {
@@ -356,7 +356,7 @@ describe('wrapped/[year]/u/[identifier] loader: identifier validation (F-303)', 
 	});
 });
 
-describe('wrapped/[year]/u/[identifier] loader: shareToken payload gating', () => {
+describe('wrapped/[year=year]/u/[identifier] loader: shareToken payload gating', () => {
 	const USER_ID = 42;
 	const ADMIN_ID = 7;
 	const OTHER_USER_ID = 99;
@@ -588,7 +588,7 @@ describe('wrapped/[year]/u/[identifier] loader: shareToken payload gating', () =
  * triggered the floor branch's `if (!currentUser)` guard, causing the action
  * to fail with "Invalid user identifier". The fix forwards locals.user.
  */
-describe('wrapped/[year]/u/[identifier] actions: token URL + floor-elevated mode', () => {
+describe('wrapped/[year=year]/u/[identifier] actions: token URL + floor-elevated mode', () => {
 	const USER_ID = 42;
 	const TOKEN = '880e8400-e29b-41d4-a716-446655440333';
 	const YEAR = 2024;
@@ -708,7 +708,7 @@ describe('wrapped/[year]/u/[identifier] actions: token URL + floor-elevated mode
 	});
 });
 
-describe('wrapped/[year]/u/[identifier] actions: token regeneration', () => {
+describe('wrapped/[year=year]/u/[identifier] actions: token regeneration', () => {
 	const USER_ID = 77;
 	const YEAR = 2024;
 	const OLD_TOKEN = '990e8400-e29b-41d4-a716-446655440444';
@@ -780,7 +780,7 @@ describe('wrapped/[year]/u/[identifier] actions: token regeneration', () => {
  * enumerable integer id and the intentional 403-vs-404 split are by-design (F-015).
  * See .omc/research/dogfood-d-threatmodel-2026-05-30.md.
  */
-describe('wrapped/[year]/u/[identifier] loader: ISSUE-004 private-oauth contract-lock', () => {
+describe('wrapped/[year=year]/u/[identifier] loader: ISSUE-004 private-oauth contract-lock', () => {
 	const MEMBER_ID = 2;
 	const UNKNOWN_ID = 999;
 	const YEAR = 2024;
@@ -885,9 +885,9 @@ describe('wrapped/[year]/u/[identifier] loader: ISSUE-004 private-oauth contract
  * and non-existent id — must be byte-identical (same status AND body) so the
  * numeric id space cannot be enumerated. A PUBLIC personal wrapped still loads
  * for anon, and a valid share-link token still resolves. See the F-015 note in
- * wrapped/[year]/u/[identifier]/+page.server.ts.
+ * wrapped/[year=year]/u/[identifier]/+page.server.ts.
  */
-describe('wrapped/[year]/u/[identifier] loader: ISSUE-001 uniform-404 anti-enumeration contract', () => {
+describe('wrapped/[year=year]/u/[identifier] loader: ISSUE-001 uniform-404 anti-enumeration contract', () => {
 	const EXISTING_ID = 2;
 	const NON_EXISTENT_ID = 4242;
 	const YEAR = 2024;

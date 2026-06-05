@@ -150,7 +150,7 @@ describe('server wrapped route year guard (ISSUE-009, ISSUE-018)', () => {
 	});
 
 	it('throws the exact "No data found for this year" 404 message (FIX-2 +error.svelte contract)', async () => {
-		// The route-scoped wrapped/[year]/+error.svelte detects this exact message
+		// The route-scoped wrapped/[year=year]/+error.svelte detects this exact message
 		// to render its friendly empty-state. Lock the string so the boundary copy
 		// and the thrown error can never silently drift apart.
 		const currentYear = new Date().getFullYear();
