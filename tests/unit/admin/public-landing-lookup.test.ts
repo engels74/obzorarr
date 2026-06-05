@@ -20,10 +20,11 @@ import {
 	wrappedLogoOptions
 } from '$lib/sharing/options';
 import { ShareMode } from '$lib/sharing/types';
+import { resetSharedTestDb } from '../../helpers/db';
 
 describe('PUBLIC_LANDING_LOOKUP setting', () => {
 	beforeEach(async () => {
-		await db.delete(appSettings);
+		await resetSharedTestDb();
 	});
 
 	it('getPublicLandingLookupEnabled defaults to false with no row', async () => {

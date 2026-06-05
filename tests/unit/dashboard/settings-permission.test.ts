@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { and, eq } from 'drizzle-orm';
 import { db } from '$lib/server/db/client';
-import { appSettings, shareSettings, users } from '$lib/server/db/schema';
+import { shareSettings, users } from '$lib/server/db/schema';
 import { getShareSettingsByToken, setGlobalShareDefaults } from '$lib/server/sharing/service';
 import { ShareMode, ShareModeSource } from '$lib/server/sharing/types';
 import { actions, load } from '../../../src/routes/dashboard/settings/+page.server';
+import { resetSharedTestDb } from '../../helpers/db';
 
 type LoadArgs = Parameters<typeof load>[0];
 type UpdateShareModeAction = NonNullable<typeof actions.updateShareMode>;
@@ -43,9 +44,7 @@ async function invokeRegenerateToken() {
 
 describe('dashboard settings per-user share control', () => {
 	beforeEach(async () => {
-		await db.delete(shareSettings);
-		await db.delete(appSettings);
-		await db.delete(users);
+		await resetSharedTestDb();
 		await seedUser();
 		await setGlobalShareDefaults({
 			defaultShareMode: ShareMode.PUBLIC,

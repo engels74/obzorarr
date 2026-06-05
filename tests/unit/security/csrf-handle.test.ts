@@ -2,9 +2,10 @@ import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import { and, desc, eq, like } from 'drizzle-orm';
 import { AppSettingsKey, setAppSetting } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
-import { appSettings, logs } from '$lib/server/db/schema';
+import { logs } from '$lib/server/db/schema';
 import { logger } from '$lib/server/logging';
 import { csrfHandle } from '$lib/server/security/csrf-handle';
+import { resetSharedTestDb } from '../../helpers/db';
 
 async function flushLogs(): Promise<void> {
 	// Flush twice: the first call drains the buffer into the DB, and the second
@@ -61,8 +62,7 @@ async function invoke(event: ReturnType<typeof makeEvent>): Promise<Response> {
 
 describe('csrfHandle (production mode)', () => {
 	beforeEach(async () => {
-		await db.delete(appSettings);
-		await db.delete(logs);
+		await resetSharedTestDb();
 	});
 
 	describe('no origin configured', () => {

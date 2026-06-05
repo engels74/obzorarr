@@ -6,6 +6,7 @@
  */
 
 import { mock } from 'bun:test';
+import { testToast } from './helpers/toast';
 
 // Ensure tests run in a clean environment
 process.env.NODE_ENV = 'test';
@@ -39,6 +40,11 @@ mock.module('$app/environment', () => ({
 	browser: false,
 	building: false,
 	version: 'test'
+}));
+
+// Mock app toasts globally so client utility tests don't pull the Svelte/Sonner runtime.
+mock.module('$lib/services/toast', () => ({
+	toast: testToast
 }));
 
 // Import database client DYNAMICALLY after setting environment variables

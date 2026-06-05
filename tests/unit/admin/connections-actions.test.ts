@@ -3,11 +3,11 @@ import { env } from '$env/dynamic/private';
 import {
 	AppSettingsKey,
 	getApiConfigWithSources,
+	getAppSetting,
 	setAppSetting
 } from '$lib/server/admin/settings.service';
-import { db } from '$lib/server/db/client';
-import { appSettings } from '$lib/server/db/schema';
 import { actions } from '../../../src/routes/admin/settings/connections/+page.server';
+import { resetSharedTestDb } from '../../helpers/db';
 
 type UpdateApiConfigAction = NonNullable<typeof actions.updateApiConfig>;
 type ClearOpenaiKeyAction = NonNullable<typeof actions.clearOpenaiKey>;
@@ -34,7 +34,7 @@ function makeRequest(action: string, fields: Record<string, string>): Request {
 
 describe('connections nested route — updateApiConfig (OCC + schema)', () => {
 	beforeEach(async () => {
-		await db.delete(appSettings);
+		await resetSharedTestDb();
 	});
 
 	async function run(request: Request) {
@@ -235,6 +235,34 @@ describe('connections nested route — updateApiConfig (OCC + schema)', () => {
 		expect(result).toMatchObject({ status: 400, data: { error: 'Invalid input' } });
 	});
 
+	it('rejects unchecked local HTTP Plex URL instead of relying on stored opt-in', async () => {
+		const previousAllowInsecure = dynamicEnv.PLEX_ALLOW_INSECURE_LOCAL_HTTP;
+		dynamicEnv.PLEX_ALLOW_INSECURE_LOCAL_HTTP = undefined;
+		try {
+			await withUnlockedPlex(async () => {
+				await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, 'http://192.168.1.10:32400');
+				await setAppSetting(AppSettingsKey.PLEX_ALLOW_INSECURE_LOCAL_HTTP, 'true');
+
+				const result = await run(
+					makeRequest('updateApiConfig', {
+						plexServerUrl: 'http://192.168.1.10:32400',
+						apiConfigVersion: new Date(Date.now() + 60_000).toISOString()
+					})
+				);
+
+				expect(result).toMatchObject({
+					status: 400,
+					data: {
+						error: 'HTTP Plex URLs require a local/private host and explicit local HTTP opt-in.'
+					}
+				});
+				expect(await getAppSetting(AppSettingsKey.PLEX_ALLOW_INSECURE_LOCAL_HTTP)).toBe('true');
+			});
+		} finally {
+			dynamicEnv.PLEX_ALLOW_INSECURE_LOCAL_HTTP = previousAllowInsecure;
+		}
+	});
+
 	// H5: bad openaiBaseUrl returns fieldErrors.openaiBaseUrl (not just a generic error)
 	it('returns fieldErrors.openaiBaseUrl for an invalid base URL (H5)', async () => {
 		const result = await run(
@@ -250,6 +278,32 @@ describe('connections nested route — updateApiConfig (OCC + schema)', () => {
 				fieldErrors: { openaiBaseUrl: ['Invalid URL format'] }
 			}
 		});
+	});
+
+	it.each([
+		['http://api.openai.example/v1', 'OpenAI base URL must use HTTPS.'],
+		[
+			'https://user:pass@api.openai.example/v1',
+			'Configured base URLs must not include credentials.'
+		],
+		[
+			'https://api.openai.example/v1?token=abc',
+			'Configured base URLs must not include query strings or fragments.'
+		],
+		[
+			'https://api.openai.example/v1#models',
+			'Configured base URLs must not include query strings or fragments.'
+		]
+	])('rejects unsafe OpenAI base URL %s with no API key submitted', async (openaiBaseUrl, error) => {
+		const result = await run(
+			makeRequest('updateApiConfig', {
+				openaiBaseUrl,
+				apiConfigVersion: new Date(0).toISOString()
+			})
+		);
+
+		expect(result).toMatchObject({ status: 400, data: { error } });
+		expect(await getAppSetting(AppSettingsKey.OPENAI_BASE_URL)).toBeNull();
 	});
 
 	// A2: successful save returns a fresh apiConfigVersion
@@ -298,7 +352,7 @@ describe('connections nested route — updateApiConfig (OCC + schema)', () => {
 
 describe('connections nested route — clearOpenaiKey', () => {
 	beforeEach(async () => {
-		await db.delete(appSettings);
+		await resetSharedTestDb();
 	});
 
 	async function run() {
@@ -329,7 +383,7 @@ describe('connections nested route — clearOpenaiKey', () => {
 
 describe('connections nested route — clearOpenaiModel', () => {
 	beforeEach(async () => {
-		await db.delete(appSettings);
+		await resetSharedTestDb();
 	});
 
 	async function run() {
@@ -365,5 +419,23 @@ describe('connections nested route — clearOpenaiModel', () => {
 		expect(after).not.toBe('gpt-4o');
 		expect(after.length).toBeGreaterThan(0);
 		expect(after).toMatch(/^gpt-/);
+	});
+
+	it('returns 400 when the model is locked via env', async () => {
+		const dynamicEnv = env as Record<string, string | undefined>;
+		const previous = dynamicEnv.OPENAI_MODEL;
+		dynamicEnv.OPENAI_MODEL = 'env-locked-model';
+		try {
+			const result = await run();
+			expect(result).toMatchObject({
+				status: 400,
+				data: {
+					error: 'OpenAI model is set via environment variable and cannot be cleared here'
+				}
+			});
+		} finally {
+			if (previous === undefined) delete dynamicEnv.OPENAI_MODEL;
+			else dynamicEnv.OPENAI_MODEL = previous;
+		}
 	});
 });

@@ -1,15 +1,13 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { db } from '$lib/server/db/client';
-import { cachedStats, playHistory, plexAccounts, users } from '$lib/server/db/schema';
+import { cachedStats, playHistory, users } from '$lib/server/db/schema';
 import { calculateUserStats } from '$lib/server/stats/engine';
+import { resetSharedTestDb } from '../../helpers/db';
 import { createPlayHistoryRecord, createTimestamp } from '../../helpers/factories';
 
 describe('stats engine cache keys', () => {
 	beforeEach(async () => {
-		await db.delete(cachedStats);
-		await db.delete(playHistory);
-		await db.delete(plexAccounts);
-		await db.delete(users);
+		await resetSharedTestDb();
 	});
 
 	it('caches user stats by Plex account id instead of local user id', async () => {

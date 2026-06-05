@@ -1,13 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
 import { env } from '$env/dynamic/private';
 import { AppSettingsKey, setAppSetting } from '$lib/server/admin/settings.service';
-import { db } from '$lib/server/db/client';
-import { appSettings } from '$lib/server/db/schema';
 import {
 	_resetProxyStartupLogged,
 	_resetTrustProxyCache,
 	proxyHandle
 } from '$lib/server/security/proxy-handle';
+import { resetSharedTestDb } from '../../helpers/db';
 
 interface InvokeOptions {
 	url: string;
@@ -75,7 +74,7 @@ async function invokeWithRawHeaders(options: {
 
 describe('proxyHandle', () => {
 	beforeEach(async () => {
-		await db.delete(appSettings);
+		await resetSharedTestDb();
 		// The env mock from tests/setup.ts is a shared mutable object; clean any
 		// per-test mutations between runs.
 		delete (env as Record<string, string | undefined>).TRUST_PROXY;

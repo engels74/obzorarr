@@ -20,13 +20,10 @@ import {
 	updateSlideConfig
 } from '$lib/server/slides/config.service';
 import { SlideError } from '$lib/server/slides/types';
+import { resetSharedTestDb } from '../../helpers/db';
 
 describe('Slide Config Service', () => {
-	beforeEach(async () => {
-		// Clean up tables before each test
-		await db.delete(slideConfig);
-		await db.delete(appSettings);
-	});
+	beforeEach(resetSharedTestDb);
 
 	describe('initializeDefaultSlideConfig', () => {
 		it('creates default slide configs when none exist', async () => {

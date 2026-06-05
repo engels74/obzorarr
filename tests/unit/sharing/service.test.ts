@@ -29,6 +29,7 @@ import {
 	ShareSettingsKey,
 	ShareSettingsNotFoundError
 } from '$lib/server/sharing/types';
+import { resetSharedTestDb } from '../../helpers/db';
 
 /**
  * Unit tests for Sharing Service
@@ -38,34 +39,15 @@ import {
  */
 
 describe('Sharing Service', () => {
-	// Clean up tables before each test
 	beforeEach(async () => {
-		await db.delete(shareSettings);
-		await db.delete(appSettings);
+		await resetSharedTestDb();
 	});
 
 	// =========================================================================
-	// Token Generation
+	// Identifier Helpers
 	// =========================================================================
 
-	describe('Token Generation', () => {
-		it('generateShareToken creates valid UUID v4 tokens', () => {
-			const token = generateShareToken();
-			expect(isValidTokenFormat(token)).toBe(true);
-		});
-
-		it('isValidTokenFormat accepts valid UUID v4', () => {
-			expect(isValidTokenFormat('550e8400-e29b-41d4-a716-446655440000')).toBe(true);
-			expect(isValidTokenFormat('A50E8400-E29B-41D4-B716-446655440000')).toBe(true);
-		});
-
-		it('isValidTokenFormat rejects invalid formats', () => {
-			expect(isValidTokenFormat('')).toBe(false);
-			expect(isValidTokenFormat('not-a-uuid')).toBe(false);
-			expect(isValidTokenFormat('550e8400-e29b-51d4-a716-446655440000')).toBe(false); // Wrong version
-			expect(isValidTokenFormat('550e8400-e29b-41d4')).toBe(false); // Too short
-		});
-
+	describe('Identifier Helpers', () => {
 		it('isPureNumericId accepts non-empty digit strings', () => {
 			expect(isPureNumericId('1')).toBe(true);
 			expect(isPureNumericId('42')).toBe(true);

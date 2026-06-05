@@ -12,6 +12,7 @@ import {
 } from '$lib/server/plex/thumbnail-auth';
 import { setGlobalShareDefaults } from '$lib/server/sharing/service';
 import { ShareMode, ShareModeSource } from '$lib/server/sharing/types';
+import { resetSharedTestDb } from '../../helpers/db';
 
 const USER_ID = 42;
 const YEAR = 2026;
@@ -41,8 +42,7 @@ function createTestToken(payloadJson: string): string {
 
 describe('thumbnail auth tokens', () => {
 	beforeEach(async () => {
-		await db.delete(shareSettings);
-		await db.delete(appSettings);
+		await resetSharedTestDb();
 		await setAppSetting(AppSettingsKey.THUMBNAIL_SIGNING_SECRET, 'test-thumbnail-secret');
 	});
 

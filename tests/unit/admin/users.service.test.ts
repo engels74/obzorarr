@@ -13,14 +13,12 @@ import {
 	type ShareModeType,
 	ShareSettingsKey
 } from '$lib/server/sharing/types';
+import { resetSharedTestDb } from '../../helpers/db';
 import { createTimestamp } from '../../helpers/factories';
 
 describe('admin users service', () => {
 	beforeEach(async () => {
-		await db.delete(shareSettings);
-		await db.delete(playHistory);
-		await db.delete(users);
-		await db.delete(appSettings);
+		await resetSharedTestDb();
 	});
 
 	it('returns play counts and watch-history state for the selected year', async () => {
