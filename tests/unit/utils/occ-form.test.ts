@@ -1,17 +1,4 @@
-import { describe, expect, it, mock } from 'bun:test';
-
-// occ-form.ts statically imports handleFormToast -> $lib/services/toast ->
-// svelte-sonner. Mock the toast service BEFORE importing occ-form so the test
-// resolves without pulling the Svelte/sonner runtime (mirrors
-// tests/unit/lib/utils/form-toast-parity.test.ts).
-mock.module('$lib/services/toast', () => ({
-	toast: {
-		success: () => {},
-		error: () => {},
-		warning: () => {},
-		info: () => {}
-	}
-}));
+import { describe, expect, it } from 'bun:test';
 
 const { isOccConflict } = await import('$lib/utils/occ-form');
 

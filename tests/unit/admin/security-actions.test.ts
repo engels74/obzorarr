@@ -283,6 +283,25 @@ describe('security nested route — updateTrustProxy (confirmRisk + OCC)', () =>
 		);
 	});
 
+	it('rejects malformed risk confirmation with a specific validation message', async () => {
+		const result = await run(
+			trustProxyRequest({
+				enabled: 'true',
+				confirmRisk: 'false',
+				settingsVersion: new Date(0).toISOString()
+			})
+		);
+
+		expect(result).toMatchObject({
+			status: 400,
+			data: {
+				error:
+					'Invalid input: enabled must be "true" or "false"; confirmRisk must be "true" when provided'
+			}
+		});
+		expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBeNull();
+	});
+
 	it('persists TRUST_PROXY=true with confirmRisk=true', async () => {
 		const result = await run(
 			trustProxyRequest({

@@ -228,6 +228,16 @@ describe('landing username lookup', () => {
 		expect(createdUsers).toHaveLength(0);
 	});
 
+	it('rejects over-length usernames before lookup side effects', async () => {
+		const result = await invokeLookup('a'.repeat(1001), '198.51.100.9');
+
+		expect(result).toMatchObject({
+			status: 400,
+			data: { error: 'Username is too long', requiresAuth: false }
+		});
+		expect(liveSyncCalls).toEqual([]);
+	});
+
 	describe('public landing lookup gate', () => {
 		it('rejects the lookup with 403 (no redirect) when the toggle is off', async () => {
 			// Toggle off even though the user would otherwise be publicly reachable —
