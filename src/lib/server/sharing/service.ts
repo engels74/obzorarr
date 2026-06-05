@@ -7,6 +7,7 @@ import {
 	getMoreRestrictiveMode,
 	meetsPrivacyFloor,
 	PermissionExceededError,
+	ServerWrappedShareModeSchema,
 	ShareError,
 	ShareMode,
 	ShareModeSchema,
@@ -239,7 +240,11 @@ export async function getServerWrappedShareMode(): Promise<ShareModeType> {
 		return ShareMode.PRIVATE_OAUTH;
 	}
 
-	const parsed = ShareModeSchema.safeParse(setting.value);
+	// Parse against the server-wide subset (public | private-oauth) so a corrupt or
+	// unsupported stored value (e.g. 'private-link', which is meaningless server-wide
+	// and would lock out every non-admin member via checkAccess) degrades gracefully
+	// to PRIVATE_OAUTH, matching the no-row and parse-failure branches above.
+	const parsed = ServerWrappedShareModeSchema.safeParse(setting.value);
 	return parsed.success ? parsed.data : ShareMode.PRIVATE_OAUTH;
 }
 
