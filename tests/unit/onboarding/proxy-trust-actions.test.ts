@@ -3,8 +3,6 @@ import type { Cookies } from '@sveltejs/kit';
 import { isRedirect } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { AppSettingsKey, getAppSetting, setAppSetting } from '$lib/server/admin/settings.service';
-import { db } from '$lib/server/db/client';
-import { appSettings } from '$lib/server/db/schema';
 import {
 	getOnboardingStep,
 	ONBOARDING_CLAIM_REQUIRED_MESSAGE,
@@ -17,6 +15,7 @@ import {
 	createBootstrapToken
 } from '$lib/server/onboarding/bootstrap';
 import { actions } from '../../../src/routes/onboarding/proxy-trust/+page.server';
+import { resetSharedTestDb } from '../../helpers/db';
 
 const OVERSIZED_BROWSER_ORIGIN = `https://wrapped.example.com/${'a'.repeat(2049)}`;
 type ContinueAction = NonNullable<typeof actions.continue>;
@@ -137,7 +136,7 @@ describe('onboarding proxy-trust actions', () => {
 	beforeEach(async () => {
 		previousTrustProxyEnv = envRecord().TRUST_PROXY;
 		delete envRecord().TRUST_PROXY;
-		await db.delete(appSettings);
+		await resetSharedTestDb();
 		clearBootstrapToken();
 		cookies = createCookies();
 		const token = createBootstrapToken();

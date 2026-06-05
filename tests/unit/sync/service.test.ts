@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import { desc, eq } from 'drizzle-orm';
+import * as fc from 'fast-check';
 import { db } from '$lib/server/db/client';
 import { metadataCache, playHistory, syncStatus } from '$lib/server/db/schema';
 import type { FetchHistoryOptions, ValidPlexHistoryMetadata } from '$lib/server/plex/types';
@@ -56,18 +57,22 @@ mock.module('$lib/server/sync/plex-accounts.service', () => ({
 	}
 }));
 
-const { getYearStartTimestamp, startSync } = await import('$lib/server/sync/service');
+const { getYearStartTimestamp, reconcileInterruptedSyncs, startSync } = await import(
+	'$lib/server/sync/service'
+);
+
+async function resetSyncHarness(): Promise<void> {
+	await resetSharedTestDb();
+	historyPages = [];
+	historyError = null;
+	historyOptions = [];
+	metadataByRatingKey = new Map();
+	metadataBatchRequests = [];
+	plexAccountsError = null;
+}
 
 describe('startSync service behavior', () => {
-	beforeEach(async () => {
-		await resetSharedTestDb();
-		historyPages = [];
-		historyError = null;
-		historyOptions = [];
-		metadataByRatingKey = new Map();
-		metadataBatchRequests = [];
-		plexAccountsError = null;
-	});
+	beforeEach(resetSyncHarness);
 
 	it('persists cancelled status with completedAt when the signal aborts', async () => {
 		const controller = new AbortController();
@@ -224,5 +229,112 @@ describe('startSync service behavior', () => {
 		expect(result.status).toBe('completed');
 		expect(result.recordsInserted).toBe(1);
 		expect(await db.select().from(playHistory)).toHaveLength(1);
+	});
+});
+
+async function countSyncRows(): Promise<number> {
+	const rows = await db.select({ id: syncStatus.id }).from(syncStatus);
+	return rows.length;
+}
+
+async function countRunningRows(): Promise<number> {
+	const rows = await db
+		.select({ id: syncStatus.id })
+		.from(syncStatus)
+		.where(eq(syncStatus.status, 'running'));
+	return rows.length;
+}
+
+function isAlreadyRunningError(reason: unknown): boolean {
+	return reason instanceof Error && /already in progress/i.test(reason.message);
+}
+
+describe('sync single-flight via atomic DB claim (ISSUE-001)', () => {
+	beforeEach(resetSyncHarness);
+
+	it('lets exactly one of N concurrent startSync calls claim the running slot', async () => {
+		const N = 6;
+		const results = await Promise.allSettled(Array.from({ length: N }, () => startSync()));
+
+		const fulfilled = results.filter((result) => result.status === 'fulfilled');
+		const rejected = results.filter(
+			(result): result is PromiseRejectedResult => result.status === 'rejected'
+		);
+
+		expect(fulfilled).toHaveLength(1);
+		expect(rejected).toHaveLength(N - 1);
+		expect(rejected.every((result) => isAlreadyRunningError(result.reason))).toBe(true);
+		expect(await countSyncRows()).toBe(1);
+		expect(await countRunningRows()).toBe(0);
+	});
+
+	it('keeps single-flight when triggerImmediateSync races a manual startSync', async () => {
+		const { triggerImmediateSync } = await import('$lib/server/sync/scheduler');
+
+		const results = await Promise.allSettled([
+			startSync(),
+			triggerImmediateSync(),
+			startSync(),
+			triggerImmediateSync()
+		]);
+
+		expect(results.filter((result) => result.status === 'fulfilled').length).toBeGreaterThanOrEqual(
+			1
+		);
+		expect(await countSyncRows()).toBe(1);
+		expect(await countRunningRows()).toBe(0);
+	});
+});
+
+describe('reconcileInterruptedSyncs startup sweep (ISSUE-001)', () => {
+	beforeEach(resetSyncHarness);
+
+	it('marks a stale running row as failed and unblocks a fresh sync', async () => {
+		await db
+			.insert(syncStatus)
+			.values({ startedAt: new Date(Date.now() - 60_000), status: 'running', recordsProcessed: 0 });
+
+		expect(await reconcileInterruptedSyncs()).toBe(1);
+
+		const swept = await db.select().from(syncStatus).where(eq(syncStatus.status, 'failed'));
+		expect(swept).toHaveLength(1);
+		expect(swept[0]?.error).toBe('Interrupted by restart');
+		expect(swept[0]?.completedAt).not.toBeNull();
+		expect(await countRunningRows()).toBe(0);
+		expect((await startSync()).status).toBe('completed');
+	});
+
+	it('returns 0 when there is no orphaned row and never sweeps post-boot rows', async () => {
+		expect(await reconcileInterruptedSyncs()).toBe(0);
+		expect(await countSyncRows()).toBe(0);
+
+		await db
+			.insert(syncStatus)
+			.values({ startedAt: new Date(), status: 'running', recordsProcessed: 0 });
+
+		expect(await countRunningRows()).toBe(1);
+	});
+});
+
+describe('sync single-flight property (ISSUE-001)', () => {
+	it('for any K concurrent startSync, exactly one running row is ever claimed', async () => {
+		await fc.assert(
+			fc.asyncProperty(fc.integer({ min: 2, max: 8 }), async (k) => {
+				await resetSyncHarness();
+
+				const results = await Promise.allSettled(Array.from({ length: k }, () => startSync()));
+
+				expect(await countSyncRows()).toBe(1);
+				expect(await countRunningRows()).toBe(0);
+				expect(
+					results.filter(
+						(result) =>
+							result.status === 'fulfilled' ||
+							!isAlreadyRunningError((result as PromiseRejectedResult).reason)
+					)
+				).toHaveLength(1);
+			}),
+			{ numRuns: 25 }
+		);
 	});
 });

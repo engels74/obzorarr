@@ -15,6 +15,7 @@ import {
 	printOnboardingBootstrapBanner,
 	validateBootstrapToken
 } from '$lib/server/onboarding/bootstrap';
+import { resetSharedTestDb } from '../../helpers/db';
 
 function createCookies() {
 	const values = new Map<string, string>();
@@ -52,7 +53,7 @@ describe('onboarding bootstrap token and claim', () => {
 	let consoleInfoSpy: ReturnType<typeof spyOn>;
 
 	beforeEach(async () => {
-		await db.delete(appSettings);
+		await resetSharedTestDb();
 		clearBootstrapToken();
 		consoleInfoSpy = spyOn(console, 'info').mockImplementation(() => {});
 	});

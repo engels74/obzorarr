@@ -1,7 +1,5 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import { getAnonymizationMode, setAppSetting } from '$lib/server/admin/settings.service';
-import { db } from '$lib/server/db/client';
-import { appSettings } from '$lib/server/db/schema';
+import { getAnonymizationMode } from '$lib/server/admin/settings.service';
 import {
 	getGlobalAllowUserControl,
 	getGlobalDefaultShareMode,
@@ -329,12 +327,7 @@ describe('privacy nested route — bulkApplyShareDefaults', () => {
 	it('survives when global defaults have not been initialised yet', async () => {
 		// Belt-and-suspenders: even with empty appSettings, the bulk action
 		// shouldn't throw — it falls back to schema defaults.
-		await db.delete(appSettings);
 		const result = await run();
 		expect(result).toMatchObject({ success: true });
 	});
 });
-
-// Touch setAppSetting so the import isn't dropped if a future refactor
-// inlines the priming logic above into a helper.
-void setAppSetting;

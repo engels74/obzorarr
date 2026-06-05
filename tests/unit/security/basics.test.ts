@@ -1,10 +1,32 @@
-import { describe, expect, it } from 'bun:test';
+import { beforeEach, describe, expect, it } from 'bun:test';
+import { AppSettingsKey, setAppSetting } from '$lib/server/admin/settings.service';
 import { isAdminRouteId, requireAdminAction } from '$lib/server/auth/guards';
+import { csrfHandle } from '$lib/server/security/csrf-handle';
 import { isBlockedPath, isBlockedUserAgent } from '$lib/server/security/request-filter-patterns';
 import { applySecurityHeaders } from '$lib/server/security/security-headers';
 import config from '../../../svelte.config.js';
+import { resetSharedTestDb } from '../../helpers/db';
 
 const readSource = (path: string) => Bun.file(path).text();
+
+function makeCsrfEvent(options: { method: string; url: string; origin?: string }) {
+	const headers = new Headers();
+	if (options.origin !== undefined) headers.set('origin', options.origin);
+	const request = new Request(options.url, { method: options.method, headers });
+	return {
+		request,
+		url: new URL(options.url),
+		route: { id: null }
+	} as unknown as Parameters<typeof csrfHandle>[0]['event'];
+}
+
+async function invokeCsrf(event: ReturnType<typeof makeCsrfEvent>): Promise<Response> {
+	const result = await csrfHandle({
+		event,
+		resolve: async () => new Response('resolved', { status: 200 })
+	} as unknown as Parameters<typeof csrfHandle>[0]);
+	return result as Response;
+}
 
 describe('security configuration and guard basics', () => {
 	describe('CSP configuration', () => {
@@ -108,6 +130,42 @@ describe('security configuration and guard basics', () => {
 
 			expect(source).toContain('await printOnboardingBootstrapBanner();');
 			expect(source).not.toContain('printOnboardingBootstrapBanner(event.url.origin');
+		});
+	});
+
+	describe('dogfood CSRF and auth source guards', () => {
+		beforeEach(resetSharedTestDb);
+
+		it.each([
+			['missing origin', undefined, ['missing origin', 'CSRF check']],
+			['origin mismatch', 'https://attacker.example', ['mismatch', 'CSRF check']]
+		] as const)('keeps the CSRF 403 body generic for %s', async (_name, origin, forbidden) => {
+			await setAppSetting(AppSettingsKey.CSRF_ORIGIN, 'https://example.com');
+
+			const response = await invokeCsrf(
+				makeCsrfEvent({
+					method: 'POST',
+					url: 'https://example.com/admin/settings',
+					origin
+				})
+			);
+
+			expect(response.status).toBe(403);
+			const body = await response.json();
+			expect(body).toEqual({ error: 'Forbidden' });
+			for (const text of forbidden) expect(JSON.stringify(body)).not.toContain(text);
+		});
+
+		it('keeps the Plex popup path free of token-bearing postMessage/logging patterns', async () => {
+			const [plexLogin, authMode] = await Promise.all([
+				readSource('src/lib/client/plex-login.ts'),
+				readSource('src/lib/client/auth-mode.ts')
+			]);
+
+			expect(plexLogin).not.toContain('AUTH_COMPLETE');
+			expect(plexLogin).not.toMatch(/console\.(log|warn|error|info)\s*\(/);
+			expect(authMode).not.toContain('AUTH_COMPLETE');
+			expect(authMode).not.toContain('postMessage');
 		});
 	});
 });

@@ -1,7 +1,5 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { isHttpError } from '@sveltejs/kit';
-import { db } from '$lib/server/db/client';
-import { appSettings } from '$lib/server/db/schema';
 import { setServerWrappedShareMode } from '$lib/server/sharing/service';
 import { ShareMode } from '$lib/server/sharing/types';
 // Post-US-022: re-pointed to the nested Privacy route. The
@@ -9,6 +7,7 @@ import { ShareMode } from '$lib/server/sharing/types';
 // monolith and the privacy/+page.server.ts copy (commit 853561f).
 import { actions as adminSettingsActions } from '../../../src/routes/admin/settings/privacy/+page.server';
 import { load } from '../../../src/routes/wrapped/[year=year]/+page.server';
+import { resetSharedTestDb } from '../../helpers/db';
 
 type ServerWrappedLoad = typeof load;
 type UpdateServerWrappedSettingsAction = NonNullable<
@@ -26,9 +25,7 @@ function makeParent(availableYears: number[]) {
 }
 
 describe('server wrapped route access', () => {
-	beforeEach(async () => {
-		await db.delete(appSettings);
-	});
+	beforeEach(resetSharedTestDb);
 
 	it('denies anonymous route loads when server wrapped mode is private-oauth', async () => {
 		await setServerWrappedShareMode(ShareMode.PRIVATE_OAUTH);
@@ -108,9 +105,7 @@ describe('server wrapped route access', () => {
 });
 
 describe('server wrapped route year guard (ISSUE-009, ISSUE-018)', () => {
-	beforeEach(async () => {
-		await db.delete(appSettings);
-	});
+	beforeEach(resetSharedTestDb);
 
 	it('returns 404 for a future year not in availableYears (ISSUE-018)', async () => {
 		try {

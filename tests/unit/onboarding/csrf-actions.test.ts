@@ -8,8 +8,6 @@ import {
 	getAppSetting,
 	setAppSetting
 } from '$lib/server/admin/settings.service';
-import { db } from '$lib/server/db/client';
-import { appSettings } from '$lib/server/db/schema';
 import {
 	getOnboardingStep,
 	ONBOARDING_CLAIM_REQUIRED_MESSAGE,
@@ -22,6 +20,7 @@ import {
 	createBootstrapToken
 } from '$lib/server/onboarding/bootstrap';
 import { actions } from '../../../src/routes/onboarding/csrf/+page.server';
+import { resetSharedTestDb } from '../../helpers/db';
 
 const ORIGIN = 'http://localhost:5173';
 type SaveOriginAction = NonNullable<typeof actions.saveOrigin>;
@@ -128,7 +127,7 @@ describe('onboarding CSRF actions', () => {
 	beforeEach(async () => {
 		previousTrustProxyEnv = envRecord().TRUST_PROXY;
 		delete envRecord().TRUST_PROXY;
-		await db.delete(appSettings);
+		await resetSharedTestDb();
 		clearBootstrapToken();
 		cookies = createCookies();
 		const token = createBootstrapToken();

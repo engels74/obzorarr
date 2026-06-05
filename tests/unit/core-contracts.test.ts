@@ -15,6 +15,7 @@ import { cachedStats, shareSettings } from '$lib/server/db/schema';
 import { getAppVersion } from '$lib/server/version';
 import { formatWatchHours } from '$lib/stats/format';
 import { formatDuration, maskEmail } from '$lib/utils/format';
+import { getThumbUrl } from '$lib/utils/plex-thumb';
 import pkg from '../../package.json';
 import { match as matchYear } from '../../src/params/year';
 import { sharedTestDbTables } from '../helpers/db';
@@ -212,6 +213,41 @@ describe('core client/server utility contracts', () => {
 			['user@localhost', 'u***@***']
 		] as const)('maskEmail(%p) -> %p', (email, expected) => {
 			expect(maskEmail(email)).toBe(expected);
+		});
+
+		it.each([
+			[null, null],
+			[undefined, null],
+			['', null],
+			[
+				'/library/metadata/70612/thumb/1765677730',
+				'/plex/thumb/library/metadata/70612/thumb/1765677730'
+			],
+			[
+				'/library/metadata/12345/thumb/9876543210',
+				'/plex/thumb/library/metadata/12345/thumb/9876543210'
+			],
+			[
+				'/library/metadata/999999999/thumb/1234567890123',
+				'/plex/thumb/library/metadata/999999999/thumb/1234567890123'
+			],
+			['/some/other/path', '/plex/thumb/some/other/path'],
+			[
+				'/plex/thumb/library/metadata/70612/thumb/1765677730',
+				'/plex/thumb/library/metadata/70612/thumb/1765677730'
+			],
+			['https://image.tmdb.org/t/p/w500/poster.jpg', 'https://image.tmdb.org/t/p/w500/poster.jpg'],
+			['http://example.com/image.jpg', 'http://example.com/image.jpg'],
+			['https://example.com:8080/image.jpg', 'https://example.com:8080/image.jpg'],
+			[
+				'https://example.com/image.jpg?size=large&format=webp',
+				'https://example.com/image.jpg?size=large&format=webp'
+			],
+			['/', '/plex/thumb/'],
+			['library/metadata/123/thumb/456', 'library/metadata/123/thumb/456'],
+			['   ', '   ']
+		] as const)('getThumbUrl(%p) -> %p', (input, expected) => {
+			expect(getThumbUrl(input)).toBe(expected);
 		});
 
 		it.each([
