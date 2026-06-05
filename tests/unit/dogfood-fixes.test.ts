@@ -33,7 +33,7 @@ describe('dogfood ISSUE-003 — admin log settings persistence', () => {
 
 describe('dogfood ISSUE-005 — Watch Again must return to slide 0', () => {
 	it('server-wide wrapped clears the URL hash before remounting StoryMode', async () => {
-		const source = await readSource('src/routes/wrapped/[year]/+page.svelte');
+		const source = await readSource('src/routes/wrapped/[year=year]/+page.svelte');
 
 		const restartStart = source.indexOf('function handleRestart(): void {');
 		expect(restartStart).toBeGreaterThan(-1);
@@ -48,7 +48,7 @@ describe('dogfood ISSUE-005 — Watch Again must return to slide 0', () => {
 	});
 
 	it('per-user wrapped clears the URL hash before remounting StoryMode', async () => {
-		const source = await readSource('src/routes/wrapped/[year]/u/[identifier]/+page.svelte');
+		const source = await readSource('src/routes/wrapped/[year=year]/u/[identifier]/+page.svelte');
 
 		const restartStart = source.indexOf('function handleRestart(): void {');
 		expect(restartStart).toBeGreaterThan(-1);
@@ -242,5 +242,32 @@ describe('dogfood 2026-06-04 ISSUE-007 — Advanced options stays reachable on e
 		expect(handlerSlice).toContain('if (!open) return;');
 		expect(handlerSlice).toContain('await tick();');
 		expect(handlerSlice).toContain('advancedSectionRef?.scrollIntoView(');
+	});
+});
+
+// dogfood 2026-06-05 DF-020 — anonymous hit on /dashboard redirected to /
+// without preserving the intended destination, so the user had to navigate
+// back manually after login. The fix carries a validated returnTo parameter
+// (guarded by isSafeReturnPath to prevent open-redirect abuse) so the login
+// page can send the user to the right place.
+describe('dogfood DF-020 — /dashboard anonymous redirect carries returnTo', () => {
+	it('imports isSafeReturnPath and uses it in the redirect', async () => {
+		const source = await readSource('src/routes/dashboard/+layout.server.ts');
+		// Guard import must be present.
+		expect(source).toContain("import { isSafeReturnPath } from '$lib/client/plex-login'");
+		// The load function must destructure url from the event (the redirect
+		// needs url.pathname). Assert the exact signature so a refactor that drops
+		// url from the destructure can't pass on an incidental `url.` reference.
+		expect(source).toContain('async ({ locals, url }) => {');
+		// The safe-path guard must wrap the returnTo value.
+		expect(source).toContain('isSafeReturnPath(');
+		expect(source).toContain('returnTo=');
+		// Fallback must still be '/'.
+		expect(source).toContain(": '/';");
+	});
+
+	it('encodes the pathname into the returnTo query param', async () => {
+		const source = await readSource('src/routes/dashboard/+layout.server.ts');
+		expect(source).toContain('encodeURIComponent(requestedPath)');
 	});
 });

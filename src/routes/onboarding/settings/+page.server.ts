@@ -363,7 +363,7 @@ export const actions: Actions = {
 				// Server-wide share mode via the plain non-OCC setter: onboarding is a
 				// linear single-admin wizard with no OCC version in flight, and the keys
 				// may not exist yet on a fresh install (the atomic setter would 409).
-				setServerWrappedShareMode(data.serverWrappedShareMode as ShareModeType),
+				setServerWrappedShareMode(data.serverWrappedShareMode),
 				setPublicLandingLookupEnabled(data.publicLandingLookup),
 
 				// AI Features (only if enabled)

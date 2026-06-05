@@ -7,7 +7,7 @@ const message = $derived($page.error?.message ?? '');
 const year = $derived($page.params.year ?? '');
 
 // The recap loader throws this exact 404 message when a year has no synced data
-// yet (src/routes/wrapped/[year]/+page.server.ts). Detect that one case so we can
+// yet (src/routes/wrapped/[year=year]/+page.server.ts). Detect that one case so we can
 // show a friendly, role-agnostic empty-state instead of the bare "not found"
 // card. Every other error (403 access denied, generic 404, 5xx) falls through to
 // the generic copy below — no internal paths or admin-only affordances leaked.

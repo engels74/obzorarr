@@ -137,7 +137,7 @@ export const csrfHandle: Handle = async ({ event, resolve }) => {
 			route: event.route.id ?? '<unmatched>'
 		});
 		return applySecurityHeaders(
-			new Response(JSON.stringify({ error: 'CSRF check failed: missing origin header' }), {
+			new Response(JSON.stringify({ error: 'Forbidden' }), {
 				status: 403,
 				headers: { 'Content-Type': 'application/json' }
 			}),
@@ -154,7 +154,7 @@ export const csrfHandle: Handle = async ({ event, resolve }) => {
 			received: requestOrigin
 		});
 		return applySecurityHeaders(
-			new Response(JSON.stringify({ error: 'CSRF check failed: origin mismatch' }), {
+			new Response(JSON.stringify({ error: 'Forbidden' }), {
 				status: 403,
 				headers: { 'Content-Type': 'application/json' }
 			}),

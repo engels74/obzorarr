@@ -8,7 +8,7 @@ import { ShareMode } from '$lib/server/sharing/types';
 // updateServerWrappedSettings handler is byte-identical between the deleted
 // monolith and the privacy/+page.server.ts copy (commit 853561f).
 import { actions as adminSettingsActions } from '../../../src/routes/admin/settings/privacy/+page.server';
-import { load } from '../../../src/routes/wrapped/[year]/+page.server';
+import { load } from '../../../src/routes/wrapped/[year=year]/+page.server';
 
 type ServerWrappedLoad = typeof load;
 type UpdateServerWrappedSettingsAction = NonNullable<
@@ -150,7 +150,7 @@ describe('server wrapped route year guard (ISSUE-009, ISSUE-018)', () => {
 	});
 
 	it('throws the exact "No data found for this year" 404 message (FIX-2 +error.svelte contract)', async () => {
-		// The route-scoped wrapped/[year]/+error.svelte detects this exact message
+		// The route-scoped wrapped/[year=year]/+error.svelte detects this exact message
 		// to render its friendly empty-state. Lock the string so the boundary copy
 		// and the thrown error can never silently drift apart.
 		const currentYear = new Date().getFullYear();

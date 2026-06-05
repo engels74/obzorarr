@@ -14,7 +14,7 @@ shadcn-svelte · GSAP/Motion · Biome (lint/format) · `prek` git hooks.
 Where things live:
 - `src/routes/` — pages & API. `+page.server.ts` holds `load`/`actions`; `api/**/+server.ts`
   holds JSON endpoints. Major route groups: `admin/`, `onboarding/`, `dashboard/`,
-  `wrapped/[year]/u/[identifier]/`, `auth/`, `api/`.
+  `wrapped/[year=year]/u/[identifier]/`, `auth/`, `api/`.
 - `src/lib/server/<domain>/` — all server-side business logic, one folder per domain:
   `sync`, `stats`, `sharing`, `auth`, `plex`, `funfacts`, `onboarding`, `slides`, `admin`
   (settings), `logging`, `security`, `ratelimit`, `anonymization`, `logo`, `db`.

@@ -53,11 +53,21 @@ export async function getGlobalAnonymizationMode(): Promise<AnonymizationModeTyp
 
 	const setting = result[0];
 	if (!setting) {
-		return AnonymizationMode.REAL;
+		// DF-004 (privacy-by-default): no stored row -> HYBRID, not REAL. Mirrors
+		// getAnonymizationMode() in admin/settings.service.ts (same `anonymization_mode`
+		// key). Fresh-install default only; a stored row wins via the parse below, so
+		// existing installs keep their saved mode. See docs/decisions/0002-anonymized-by-default.md.
+		return AnonymizationMode.HYBRID;
 	}
 
 	const parsed = AnonymizationModeSchema.safeParse(setting.value);
-	return parsed.success ? parsed.data : AnonymizationMode.REAL;
+	// DF-004 (privacy-by-default): a corrupt/unparseable stored value falls back to
+	// HYBRID, not REAL. REAL is the WIDEST exposure, so the previous REAL fallback
+	// silently de-anonymized on a malformed row. HYBRID matches the sibling getter
+	// getAnonymizationMode() in admin/settings.service.ts (same `anonymization_mode`
+	// key) and ADR docs/decisions/0002-anonymized-by-default.md, so both reads of a
+	// malformed row agree on the safe default.
+	return parsed.success ? parsed.data : AnonymizationMode.HYBRID;
 }
 
 export async function setGlobalAnonymizationMode(mode: AnonymizationModeType): Promise<void> {

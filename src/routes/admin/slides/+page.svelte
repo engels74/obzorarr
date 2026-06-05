@@ -392,7 +392,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 					{:else}
 						<div class="slide-name-group">
 							{#if item.title.trim().length > 0}
-								<span class="slide-name">{item.title}</span>
+								<span class="slide-name" title={item.title}>{item.title}</span>
 							{:else}
 								<span class="slide-name slide-name-untitled">Untitled custom slide</span>
 							{/if}
@@ -946,6 +946,11 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 		.slide-name {
 			flex: 1;
 			font-weight: 500;
+			/* DF-022: truncate long custom-slide titles with ellipsis */
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+			min-width: 0;
 		}
 
 		.slide-name-untitled {
@@ -958,12 +963,17 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			display: flex;
 			align-items: center;
 			gap: 0.5rem;
-			flex-wrap: wrap;
+			/* DF-022: constrain width so the truncating .slide-name child has a
+			   finite container to truncate within */
+			min-width: 0;
+			overflow: hidden;
 		}
 
 		.custom-badge {
 			display: inline-flex;
 			align-items: center;
+			/* DF-022: keep badge at intrinsic width so only .slide-name truncates */
+			flex-shrink: 0;
 			padding: 0.125rem 0.5rem;
 			background: oklch(0.6192 0.2037 312.73 / 0.2);
 			color: oklch(0.7546 0.1294 313.96);
@@ -977,6 +987,8 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 		.year-badge {
 			display: inline-flex;
 			align-items: center;
+			/* DF-022: keep badge at intrinsic width so only .slide-name truncates */
+			flex-shrink: 0;
 			padding: 0.125rem 0.375rem;
 			background: oklch(var(--muted));
 			color: oklch(var(--muted-foreground));

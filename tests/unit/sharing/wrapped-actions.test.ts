@@ -3,7 +3,7 @@ import { AppSettingsKey, setAppSetting, WrappedLogoMode } from '$lib/server/admi
 import { db } from '$lib/server/db/client';
 import { appSettings, shareSettings } from '$lib/server/db/schema';
 import { getUserLogoPreference } from '$lib/server/sharing/service';
-import { actions } from '../../../src/routes/wrapped/[year]/u/[identifier]/+page.server';
+import { actions } from '../../../src/routes/wrapped/[year=year]/u/[identifier]/+page.server';
 
 type ToggleLogoAction = NonNullable<typeof actions.toggleLogo>;
 

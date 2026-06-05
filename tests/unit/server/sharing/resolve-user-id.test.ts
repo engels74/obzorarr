@@ -11,7 +11,10 @@ import {
 } from '$lib/server/db/schema';
 import { setGlobalShareDefaults } from '$lib/server/sharing/service';
 import { ShareMode } from '$lib/server/sharing/types';
-import { actions, load } from '../../../../src/routes/wrapped/[year]/u/[identifier]/+page.server';
+import {
+	actions,
+	load
+} from '../../../../src/routes/wrapped/[year=year]/u/[identifier]/+page.server';
 
 type LoadArgs = Parameters<typeof load>[0];
 type UpdateShareModeAction = NonNullable<typeof actions.updateShareMode>;

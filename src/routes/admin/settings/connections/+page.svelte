@@ -249,6 +249,12 @@ const showOpenaiKeyWarning = $derived(!data.hasEffectiveOpenAIKey && !openaiApiK
 			<CardDescription>
 				API credentials for the optional OpenAI-driven fun-fact generator. Falls back to the
 				template generator when unset.
+				<!-- DF-017: the AI persona (fun_facts_ai_persona) and per-slide config are
+				     DB-only by design — set once in the onboarding wizard. A post-install
+				     selector UI is a tracked follow-up; edit these directly in app_settings /
+				     slide_config until then. -->
+				The AI persona and per-slide configuration are set during onboarding and are
+				database-only for now (no post-install selector yet).
 			</CardDescription>
 		</CardHeader>
 		<CardContent class="space-y-4">

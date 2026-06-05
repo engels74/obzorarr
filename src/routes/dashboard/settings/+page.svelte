@@ -58,9 +58,24 @@ let copyTimeout: ReturnType<typeof setTimeout> | null = null;
 // Regenerate token dialog
 let regenerateDialogOpen = $state(false);
 
+// DF-019: track the last server-confirmed share mode so we only overwrite the
+// local selection when the server actually sends a new value — not on every
+// reactive re-run.  Without this key the $effect below fired during the
+// submit round-trip and briefly reset all radios to unchecked before the
+// server response arrived.
+// svelte-ignore state_referenced_locally
+let syncedShareMode = $state(data.shareSettings.mode);
+
 // Initialize and sync state with data (runs on mount and when data changes)
 $effect(() => {
-	selectedShareMode = data.shareSettings.mode;
+	// Only snap the radio selection back when the server-side mode has changed,
+	// not on every reactive pass.  This prevents the transient "all unchecked"
+	// state that occurred while isUpdating=true kept the inputs disabled and the
+	// $effect simultaneously reset selectedShareMode to the (stale) server value.
+	if (data.shareSettings.mode !== syncedShareMode) {
+		syncedShareMode = data.shareSettings.mode;
+		selectedShareMode = data.shareSettings.mode;
+	}
 	selectedLogoPreference = data.userLogoPreference === false ? 'hide' : 'show';
 	if (data.wrappedHref !== syncedWrappedHref) {
 		syncedWrappedHref = data.wrappedHref;
@@ -380,6 +395,15 @@ function getLogoModeDescription(): string {
 											? 'Private Link'
 											: 'Public'}</span
 								>
+							</p>
+							<!-- DF-007: explain WHY this control is locked — the admin's global
+							     "allow users to change their share settings" flag must be on AND
+							     the admin must grant control to your account before this becomes
+							     editable. Copy/discoverability only; no gate-logic change. -->
+							<p class="locked-reason">
+								This control is locked because your server administrator hasn't granted you
+								permission to change it. Ask them to enable per-user share control for your
+								account.
 							</p>
 						</div>
 					</div>
@@ -959,6 +983,13 @@ function getLogoModeDescription(): string {
 			font-size: 0.8rem;
 			color: oklch(var(--muted-foreground));
 			margin: 0;
+		}
+
+		/* DF-007: secondary explanatory line under the locked-mode badge. */
+		.info-content .locked-reason {
+			margin-top: 0.5rem;
+			font-size: 0.75rem;
+			line-height: 1.5;
 		}
 
 		.mode-badge {
