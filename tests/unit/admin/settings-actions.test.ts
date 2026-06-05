@@ -663,7 +663,9 @@ describe('admin updateServerWrappedSettings action — round-trip', () => {
 	it('rejects private-link for serverWrappedShareMode and surfaces fieldErrors', async () => {
 		const result = await run(createRequest({ serverWrappedShareMode: 'private-link' }));
 		expect(result).toMatchObject({ status: 400, data: { error: 'Invalid input' } });
-		expect(await getServerWrappedShareMode()).toBe('public');
+		// Validation rejected the write, so the getter returns the fresh-install
+		// default — which is PRIVATE_OAUTH post-DF-004 (privacy-by-default), not PUBLIC.
+		expect(await getServerWrappedShareMode()).toBe('private-oauth');
 	});
 });
 

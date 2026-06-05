@@ -23,11 +23,23 @@ const tabs = [
 	{ name: 'Privacy', href: '/admin/settings/privacy', icon: LockKeyholeIcon }
 ];
 
+// DF-009: give the settings area a single page-level <h1> for orientation +
+// a11y (the index is a pure redirect and the tab pages only carry per-card
+// CardTitles). The heading reflects the active tab.
+const activeTab = $derived(
+	tabs.find((tab) => page.url.pathname.startsWith(tab.href))?.name ?? 'Settings'
+);
+
 // US-022: the bare /admin/settings load always 303s to /admin/settings/connections,
 // so this layout only renders for the six nested-route paths below.
 // (The `isMonolith` suppression that lived here pre-US-022 is gone — see
 // commit cf958fa.)
 </script>
+
+<header class="settings-heading">
+	<h1>{activeTab}</h1>
+	<p>Manage your Obzorarr server configuration.</p>
+</header>
 
 <nav class="settings-tabs" aria-label="Settings sections">
 	<ul>
@@ -47,6 +59,20 @@ const tabs = [
 {@render children()}
 
 <style>
+	.settings-heading {
+		padding: 1.25rem 1.5rem 0.5rem;
+	}
+	.settings-heading h1 {
+		margin: 0;
+		font-size: 1.5rem;
+		font-weight: 700;
+		color: oklch(var(--foreground));
+	}
+	.settings-heading p {
+		margin: 0.25rem 0 0;
+		font-size: 0.875rem;
+		color: oklch(var(--muted-foreground));
+	}
 	.settings-tabs {
 		border-bottom: 1px solid oklch(var(--border));
 		background:

@@ -537,7 +537,7 @@ describe('admin UI source regressions', () => {
 		// non-admins → /dashboard, anonymous → /. Anything else strands an
 		// admin viewer on the landing page they were redirected away from on
 		// login (root redirects logged-in users back to /admin).
-		const source = await readSource('src/routes/wrapped/[year]/+page.svelte');
+		const source = await readSource('src/routes/wrapped/[year=year]/+page.svelte');
 		const handleHome = source.match(/function handleHome\(\): void \{[\s\S]*?\n\}/)?.[0];
 
 		expect(handleHome).toBeDefined();
@@ -639,7 +639,7 @@ describe('admin UI source regressions', () => {
 	});
 
 	it('wires server wrapped SummaryPage sharing into ShareModal', async () => {
-		const source = await readSource('src/routes/wrapped/[year]/+page.svelte');
+		const source = await readSource('src/routes/wrapped/[year=year]/+page.svelte');
 
 		expect(source).toContain('let showShareModal = $state(false);');
 		expect(source).toContain('function handleShare(): void');
@@ -819,5 +819,80 @@ describe('admin UI source regressions', () => {
 		expect(source).toContain('Locked fields are set via environment variables');
 		// Clarifies that placeholder env values are ignored (not authoritative).
 		expect(source).toContain('Placeholder env values');
+	});
+
+	// DF-006: the Test Plex connection form must surface BOTH success and failure
+	// feedback via handleFormToast — same wiring as testAIConnection — so the
+	// silent-result regression can't return.
+	it('surfaces success + failure toasts for the Test Plex connection action (DF-006)', async () => {
+		const source = await readSource('src/routes/admin/settings/connections/+page.svelte');
+		const testPlexForm = source.match(/action="\?\/testPlexConnection"[\s\S]*?<\/form>/)?.[0];
+
+		expect(testPlexForm).toBeDefined();
+		// Both success and failure results are toasted (handleFormToast branches on each).
+		expect(testPlexForm).toContain("result.type === 'success' || result.type === 'failure'");
+		expect(testPlexForm).toContain('handleFormToast(');
+		// Mirrors the AI form's wiring so the two stay symmetric.
+		const testAIForm = source.match(/action="\?\/testAIConnection"[\s\S]*?<\/form>/)?.[0];
+		expect(testAIForm).toBeDefined();
+		expect(testAIForm).toContain('handleFormToast(');
+	});
+
+	// DF-015: an invalid OpenAI base URL must render an inline field error (not only
+	// a toast). The client captures fieldErrors.openaiBaseUrl on failure and renders
+	// it under the input.
+	it('renders an inline error for an invalid OpenAI base URL (DF-015)', async () => {
+		const source = await readSource('src/routes/admin/settings/connections/+page.svelte');
+
+		expect(source).toContain('let openaiBaseUrlError = $state<string | undefined>(undefined);');
+		expect(source).toContain('openaiBaseUrlError = data?.fieldErrors?.openaiBaseUrl?.[0];');
+		expect(source).toContain('{#if openaiBaseUrlError}');
+		expect(source).toContain('{openaiBaseUrlError}');
+	});
+
+	// DF-016: an invalid CSRF origin must surface an error toast via handleFormToast
+	// on the failure branch (the server returns fail(400, { error: 'Invalid origin URL' })).
+	it('surfaces an error toast for an invalid CSRF origin (DF-016)', async () => {
+		const source = await readSource('src/routes/admin/settings/security/+page.svelte');
+		const csrfForm = source.match(/action="\?\/updateCsrfOrigin"[\s\S]*?<\/form>/)?.[0];
+
+		expect(csrfForm).toBeDefined();
+		expect(csrfForm).toContain("result.type === 'success' || result.type === 'failure'");
+		expect(csrfForm).toContain('handleFormToast(');
+	});
+
+	// DF-005: the admin Users page surfaces the synced-viewer count plus copy that
+	// non-registered viewers are governed by the global anonymization setting, with
+	// a link to that control.
+	it('surfaces synced-viewer count + anonymization link on the admin Users page (DF-005)', async () => {
+		const [clientSource, serverSource] = await Promise.all([
+			readSource('src/routes/admin/users/+page.svelte'),
+			readSource('src/routes/admin/users/+page.server.ts')
+		]);
+
+		expect(serverSource).toContain('getSyncedViewerCount');
+		expect(serverSource).toContain('syncedViewerCount');
+		expect(clientSource).toContain('{data.syncedViewerCount}');
+		expect(clientSource).toContain('class="synced-viewers-note"');
+		expect(clientSource).toContain('href="/admin/settings/privacy"');
+		expect(clientSource).toContain('anonymization setting');
+	});
+
+	// DF-007: discoverability copy explaining WHY the dashboard share control is
+	// locked (admin must grant per-user control). Copy-only; no gate-logic change.
+	it('explains why the dashboard share control is locked (DF-007)', async () => {
+		const source = await readSource('src/routes/dashboard/settings/+page.svelte');
+
+		expect(source).toContain('class="locked-reason"');
+		expect(source).toContain("hasn't granted you");
+	});
+
+	// DF-017: note that the AI persona + per-slide config are DB-only (set at
+	// onboarding, no post-install selector yet).
+	it('notes that the AI persona / per-slide config are database-only (DF-017)', async () => {
+		const source = await readSource('src/routes/admin/settings/connections/+page.svelte');
+
+		expect(source).toContain('AI persona');
+		expect(source).toContain('database-only');
 	});
 });

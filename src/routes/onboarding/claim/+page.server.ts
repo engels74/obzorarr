@@ -11,6 +11,11 @@ export const load: PageServerLoad = async ({ parent }) => {
 };
 
 export const actions: Actions = {
+	// DF-012 (wontfix): the `?/claimInstance` action name appears in the form POST
+	// URL. This is standard SvelteKit named-form-action behavior — the action name
+	// is a routing selector, not a secret, and exposing it is not an auth bypass or
+	// enumeration risk (the actual claim is gated by the bootstrap token validated
+	// inside claimOnboardingInstance). No change needed.
 	claimInstance: async ({ request, cookies, url }) => {
 		const formData = await request.formData();
 		const token = formData.get('token')?.toString().trim() ?? '';

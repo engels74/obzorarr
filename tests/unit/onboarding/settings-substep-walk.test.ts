@@ -76,3 +76,42 @@ describe('onboarding settings substep walk (ISSUE-003)', () => {
 		expect(src).not.toMatch(/requestSubmit\s*\(/);
 	});
 });
+
+/**
+ * DF-002 (2026-06-05 dogfood — verified STALE via real-browser e2e):
+ * The Configure wizard's `use:enhance` handler must AUTHORITATIVELY serialize the
+ * live runes state into the submitted FormData. Button-driven selections (UI/Wrapped
+ * theme swatches) and `checked`/`onchange` share-mode radios mutate runes, not the
+ * hidden <input> *property* FormData reads; without the force-serialization a
+ * non-default selection silently persists as the default. The real-browser repro
+ * (.omc/plans/df-2026-06-05-step0-triage.md) confirmed ui_theme=doom-64 /
+ * wrapped_theme=supabase persist through linear Next, because of these formData.set
+ * calls. This guard pins them so a refactor can't reopen DF-001/DF-002.
+ */
+describe('onboarding settings force-serialization (DF-002)', () => {
+	it('the use:enhance handler force-serializes every selection rune into FormData', async () => {
+		const src = await readPageSource();
+		const enhanceStart = src.indexOf('use:enhance={({ formData }) => {');
+		expect(enhanceStart).toBeGreaterThan(-1);
+		const enhanceSlice = src.slice(enhanceStart, enhanceStart + 1500);
+		for (const key of [
+			'uiTheme',
+			'wrappedTheme',
+			'anonymizationMode',
+			'logoMode',
+			'defaultShareMode',
+			'serverWrappedShareMode'
+		]) {
+			expect(enhanceSlice).toContain(`formData.set('${key}'`);
+		}
+	});
+
+	it('declares subSteps as a static four-element array (cannot reset currentSubStep)', async () => {
+		const src = await readPageSource();
+		// Static list -> totalSubSteps is constant, so nav can never silently snap
+		// currentSubStep back to Appearance (the reported DF-001 symptom).
+		const ids = [...src.matchAll(/id:\s*'(appearance|privacy|slides|ai)'/g)].map((m) => m[1]);
+		expect(ids).toEqual(['appearance', 'privacy', 'slides', 'ai']);
+		expect(src).toContain('let currentSubStep = $state(0);');
+	});
+});

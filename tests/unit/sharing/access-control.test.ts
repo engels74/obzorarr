@@ -1021,12 +1021,25 @@ describe('Sharing Access Control', () => {
 			});
 		});
 
-		describe('defaults to public when not set', () => {
-			it('allows unauthenticated access by default', async () => {
-				// Don't set any mode - should default to public
-				const result = await checkServerWrappedAccess({ year });
-				expect(result.accessReason).toBe('public');
-				expect(result.shareMode).toBe(ShareMode.PUBLIC);
+		describe('defaults to private-oauth when not set (DF-004 privacy-by-default)', () => {
+			it('denies unauthenticated access on a fresh install (no mode row)', async () => {
+				// No mode set -> getServerWrappedShareMode() returns the fresh-install
+				// PRIVATE_OAUTH default, so an anonymous visitor is denied (server-
+				// members-only) rather than seeing the aggregate recap publicly.
+				try {
+					await checkServerWrappedAccess({ year });
+					expect.unreachable('Should have thrown for anonymous access on private-oauth default');
+				} catch (error) {
+					expect(error).toBeInstanceOf(ShareAccessDeniedError);
+					expect((error as ShareAccessDeniedError).message).toContain('Sign in');
+				}
+			});
+
+			it('allows authenticated server members on a fresh install (no mode row)', async () => {
+				const currentUser = { id: 1, plexId: 100, isAdmin: false };
+				const result = await checkServerWrappedAccess({ year, currentUser });
+				expect(result.accessReason).toBe('authenticated');
+				expect(result.shareMode).toBe(ShareMode.PRIVATE_OAUTH);
 			});
 		});
 	});

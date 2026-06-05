@@ -123,7 +123,7 @@ describe('csrfHandle (production mode)', () => {
 				method: 'POST',
 				url: `https://example.com/wrapped/2024/u/${tokenUUID}?/updateShareMode`,
 				// No origin header → missing-origin branch.
-				route: { id: '/wrapped/[year]/u/[identifier]' }
+				route: { id: '/wrapped/[year=year]/u/[identifier]' }
 			});
 
 			const response = await invoke(event);
@@ -134,7 +134,7 @@ describe('csrfHandle (production mode)', () => {
 			expect(rows.length).toBeGreaterThan(0);
 
 			const metadata = rows[0]?.metadata ?? '';
-			expect(metadata).toContain('/wrapped/[year]/u/[identifier]');
+			expect(metadata).toContain('/wrapped/[year=year]/u/[identifier]');
 			// The raw UUID must NOT appear anywhere in the log metadata.
 			expect(metadata).not.toContain(tokenUUID);
 			expect(metadata).not.toContain('"path"');
@@ -148,7 +148,7 @@ describe('csrfHandle (production mode)', () => {
 				method: 'POST',
 				url: `https://example.com/wrapped/2024/u/${tokenUUID}?/updateShareMode`,
 				origin: 'https://attacker.example',
-				route: { id: '/wrapped/[year]/u/[identifier]' }
+				route: { id: '/wrapped/[year=year]/u/[identifier]' }
 			});
 
 			const response = await invoke(event);
@@ -159,7 +159,7 @@ describe('csrfHandle (production mode)', () => {
 			expect(rows.length).toBeGreaterThan(0);
 
 			const metadata = rows[0]?.metadata ?? '';
-			expect(metadata).toContain('/wrapped/[year]/u/[identifier]');
+			expect(metadata).toContain('/wrapped/[year=year]/u/[identifier]');
 			expect(metadata).not.toContain(tokenUUID);
 		});
 

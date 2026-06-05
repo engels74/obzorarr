@@ -8,7 +8,7 @@ import { ShareMode } from '$lib/server/sharing/types';
 // updateServerWrappedSettings handler is byte-identical between the deleted
 // monolith and the privacy/+page.server.ts copy (commit 853561f).
 import { actions as adminSettingsActions } from '../../../src/routes/admin/settings/privacy/+page.server';
-import { load } from '../../../src/routes/wrapped/[year]/+page.server';
+import { load } from '../../../src/routes/wrapped/[year=year]/+page.server';
 
 type ServerWrappedLoad = typeof load;
 type UpdateServerWrappedSettingsAction = NonNullable<

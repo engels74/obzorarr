@@ -229,11 +229,18 @@ export async function getServerWrappedShareMode(): Promise<ShareModeType> {
 
 	const setting = result[0];
 	if (!setting) {
-		return ShareMode.PUBLIC;
+		// DF-004 (privacy-by-default): a fresh install with no stored row defaults
+		// the server-wide /wrapped recap to PRIVATE_OAUTH (server-members-only),
+		// not PUBLIC, so an anonymous visitor cannot see the aggregate recap before
+		// an admin opts in. PRIVATE_OAUTH is the most-private value supported for
+		// this surface (private-link is not supported server-wide). Fresh-install
+		// default only — a stored row wins via the parse below, so existing installs
+		// keep their saved mode. See docs/decisions/0002-anonymized-by-default.md.
+		return ShareMode.PRIVATE_OAUTH;
 	}
 
 	const parsed = ShareModeSchema.safeParse(setting.value);
-	return parsed.success ? parsed.data : ShareMode.PUBLIC;
+	return parsed.success ? parsed.data : ShareMode.PRIVATE_OAUTH;
 }
 
 export async function setServerWrappedShareMode(mode: ShareModeType): Promise<void> {

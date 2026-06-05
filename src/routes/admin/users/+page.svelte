@@ -83,6 +83,25 @@ function markAvatarFailed(userId: number): void {
 			<span class="user-count">{data.users.length} {data.users.length === 1 ? 'user' : 'users'}</span>
 		</div>
 
+		<!-- DF-005 / DF-007: the rows below are login/app users. Many more *synced
+		     viewers* (distinct Plex accounts in play history) appear in server-wide
+		     stats but are never registered here individually. Their names there are
+		     governed by the GLOBAL anonymization setting, not a per-row control —
+		     and the per-user "Can Control" toggle only takes effect once the admin
+		     also grants that user control. Surface both facts with a link to the
+		     setting so the locked controls below are explained, not mysterious. -->
+		<div class="synced-viewers-note" role="note">
+			<p>
+				<strong>{data.syncedViewerCount}</strong>
+				synced {data.syncedViewerCount === 1 ? 'viewer' : 'viewers'}
+				(distinct Plex accounts seen in play history) appear in server-wide stats. Non-registered
+				viewers aren't listed individually here — their names on the server-wide Wrapped are
+				controlled by the global
+				<a href="/admin/settings/privacy" class="synced-viewers-link">anonymization setting</a>,
+				not per-user. Per-user share controls below apply only once you grant a user control.
+			</p>
+		</div>
+
 		{#if data.users.length === 0}
 			<p class="empty-message">No users found. Users will appear after authenticating via Plex.</p>
 		{:else}
@@ -430,6 +449,34 @@ function markAvatarFailed(userId: number): void {
 		.user-count {
 			font-size: 0.75rem;
 			color: oklch(var(--muted-foreground));
+		}
+
+		/* DF-005 / DF-007 synced-viewer + privacy-discoverability note. Uses the
+		   info palette (primary-tinted, left-accent) so it reads as guidance, not
+		   an error. */
+		.synced-viewers-note {
+			margin-bottom: 1rem;
+			padding: 0.75rem 1rem;
+			background: oklch(var(--primary) / 0.1);
+			border: 1px solid oklch(var(--primary) / 0.25);
+			border-left: 3px solid oklch(var(--primary));
+			border-radius: var(--radius);
+		}
+
+		.synced-viewers-note p {
+			margin: 0;
+			font-size: 0.8rem;
+			line-height: 1.5;
+			color: oklch(var(--muted-foreground));
+		}
+
+		.synced-viewers-link {
+			color: oklch(var(--primary));
+			text-decoration: underline;
+		}
+
+		.synced-viewers-link:hover {
+			opacity: 0.85;
 		}
 
 		/* Users Table */

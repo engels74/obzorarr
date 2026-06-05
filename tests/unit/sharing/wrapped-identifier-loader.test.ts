@@ -11,8 +11,8 @@ import {
 } from '$lib/server/db/schema';
 import { getOwnerWrappedHref, setGlobalShareDefaults } from '$lib/server/sharing/service';
 import { ShareMode, ShareModeSource } from '$lib/server/sharing/types';
-import { load as loadServerWrapped } from '../../../src/routes/wrapped/[year]/+page.server';
-import { actions, load } from '../../../src/routes/wrapped/[year]/u/[identifier]/+page.server';
+import { load as loadServerWrapped } from '../../../src/routes/wrapped/[year=year]/+page.server';
+import { actions, load } from '../../../src/routes/wrapped/[year=year]/u/[identifier]/+page.server';
 
 type LoadArgs = Parameters<typeof load>[0];
 type ServerLoadArgs = Parameters<typeof loadServerWrapped>[0];
@@ -994,5 +994,30 @@ describe('wrapped/[year]/u/[identifier] loader: ISSUE-001 uniform-404 anti-enume
 			availableYears: [YEAR]
 		});
 		expect(data.userId).toBe(EXISTING_ID);
+	});
+
+	// DF-018: a real-but-private (members-only / private-oauth) identifier and a
+	// non-numeric garbage identifier must return byte-identical status + body for
+	// an anonymous caller. Complements the numeric-garbage parity test above by
+	// covering the malformed-identifier path (isPureNumericId === false), so the
+	// uniform-404 contract holds whether the probe is a plausible numeric id or
+	// junk. Do NOT add a members-only "sign in" prompt that fires only for real
+	// member ids — that would reintroduce the enumeration oracle this guards.
+	it('returns byte-identical 404 for a real members-only id vs a garbage identifier (DF-018)', async () => {
+		await setGlobalShareDefaults({
+			defaultShareMode: ShareMode.PRIVATE_OAUTH,
+			allowUserControl: false
+		});
+
+		// Real, existing user whose personal wrapped is members-only (private-oauth).
+		const realMembersOnly = await captureAnonFailure(String(EXISTING_ID));
+		// Garbage, non-numeric identifier that is neither a valid token nor an id.
+		const garbage = await captureAnonFailure('definitely-not-a-real-identifier');
+
+		expect(realMembersOnly.status).toBe(404);
+		expect(garbage.status).toBe(404);
+		// Body PARITY: no existence signal distinguishes a real private id from junk.
+		expect(realMembersOnly.message).toBe(garbage.message);
+		expect(garbage.message).toBe("We couldn't find a Wrapped page for that link.");
 	});
 });

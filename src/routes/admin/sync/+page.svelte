@@ -605,7 +605,22 @@ async function goToPage(page: number) {
 						</form>
 					{/if}
 					{#if data.schedulerStatus.isRunning || data.schedulerStatus.isPaused}
-						<form method="POST" action="?/stopScheduler" use:enhance>
+						<form
+							method="POST"
+							action="?/stopScheduler"
+							use:enhance={() => {
+								// DF-013: preserve the current cron expression before stop
+								// clears schedulerStatus.cronExpression on the server, which
+								// would reset serverCronExpression to the default and blank
+								// the input field.
+								const preserved = cronExpression;
+								return async ({ update }) => {
+									await update();
+									localCronExpression =
+										preserved !== DEFAULT_CRON_EXPRESSION ? preserved : null;
+								};
+							}}
+						>
 							<SubmitButton class="control-btn stop tap-target">
 								{#snippet children()}
 									<SquareIcon class="size-4" fill="currentColor" />

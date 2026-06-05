@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
 	getAllUsersWithStats,
 	getAvailableYears,
+	getSyncedViewerCount,
 	updateUserSharePermission
 } from '$lib/server/admin/users.service';
 import { requireAdminActions } from '$lib/server/auth/guards';
@@ -23,9 +24,14 @@ export const load: PageServerLoad = async ({ url }) => {
 			? parsedYear
 			: new Date().getFullYear();
 
-	const [users, availableYears] = await Promise.all([
+	const [users, availableYears, syncedViewerCount] = await Promise.all([
 		getAllUsersWithStats(year),
-		getAvailableYears()
+		getAvailableYears(),
+		// DF-005: synced viewers = distinct Plex accounts in play history, which is
+		// typically far larger than the number of login/app users. These viewers are
+		// never registered here individually; their names on server-wide stats are
+		// governed by the GLOBAL anonymization setting (Privacy page), not per-row.
+		getSyncedViewerCount()
 	]);
 
 	const usersWithHref = await Promise.all(
@@ -51,7 +57,8 @@ export const load: PageServerLoad = async ({ url }) => {
 	return {
 		users: usersWithHref,
 		year,
-		availableYears
+		availableYears,
+		syncedViewerCount
 	};
 };
 

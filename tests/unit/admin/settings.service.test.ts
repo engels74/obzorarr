@@ -263,9 +263,9 @@ describe('Admin Settings Service', () => {
 
 	describe('Anonymization Settings', () => {
 		describe('getAnonymizationMode', () => {
-			it('returns default mode when no setting exists', async () => {
+			it('returns HYBRID default when no setting exists (DF-004 privacy-by-default)', async () => {
 				const mode = await getAnonymizationMode();
-				expect(mode).toBe(AnonymizationMode.REAL);
+				expect(mode).toBe(AnonymizationMode.HYBRID);
 			});
 
 			it('returns stored mode when valid', async () => {
@@ -275,11 +275,11 @@ describe('Admin Settings Service', () => {
 				expect(mode).toBe(AnonymizationMode.ANONYMOUS);
 			});
 
-			it('returns default for invalid stored value', async () => {
+			it('returns HYBRID default for invalid stored value (DF-004 privacy-by-default)', async () => {
 				await setAppSetting(AppSettingsKey.ANONYMIZATION_MODE, 'invalid-mode');
 
 				const mode = await getAnonymizationMode();
-				expect(mode).toBe(AnonymizationMode.REAL);
+				expect(mode).toBe(AnonymizationMode.HYBRID);
 			});
 		});
 

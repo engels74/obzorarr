@@ -720,7 +720,14 @@ export async function getAnonymizationMode(): Promise<AnonymizationModeType> {
 	if (mode && Object.values(AnonymizationMode).includes(mode as AnonymizationModeType)) {
 		return mode as AnonymizationModeType;
 	}
-	return AnonymizationMode.REAL;
+	// DF-004 (privacy-by-default): a fresh install with no stored row and no ENV
+	// override defaults to HYBRID, not REAL. Hybrid shows a viewer their own name
+	// on the server-wide recap while anonymizing everyone else, so a new install
+	// never exposes real names to anonymous visitors before an admin opts in.
+	// This is a FRESH-INSTALL default only — an existing DB row (any of the three
+	// modes) is returned by the branch above and wins, so existing installs are
+	// untouched. See docs/decisions/0002-anonymized-by-default.md.
+	return AnonymizationMode.HYBRID;
 }
 
 export async function setAnonymizationMode(mode: AnonymizationModeType): Promise<void> {
