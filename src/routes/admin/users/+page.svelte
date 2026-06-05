@@ -94,7 +94,8 @@ function markAvatarFailed(userId: number): void {
 			<p>
 				<strong>{data.syncedViewerCount}</strong>
 				synced {data.syncedViewerCount === 1 ? 'viewer' : 'viewers'}
-				(distinct Plex accounts seen in play history) appear in server-wide stats. Non-registered
+				(distinct Plex accounts seen in play history across all years) appear in server-wide stats.
+				Non-registered
 				viewers aren't listed individually here — their names on the server-wide Wrapped are
 				controlled by the global
 				<a href="/admin/settings/privacy" class="synced-viewers-link">anonymization setting</a>,
