@@ -159,32 +159,20 @@ describe('Log Retention Scheduler', () => {
 	});
 
 	describe('setupLogRetentionScheduler', () => {
-		it('creates scheduler with default cron expression and timezone', () => {
-			const scheduler = setupLogRetentionScheduler();
+		it.each([
+			['defaults', undefined, undefined, '0 3 * * *', 'UTC'],
+			['custom cron', '0 6 * * *', undefined, '0 6 * * *', 'UTC'],
+			['custom timezone', '0 3 * * *', 'America/New_York', '0 3 * * *', 'America/New_York']
+		] as const)('creates scheduler with %s', (_name, cronExpression, timezone, expectedExpression, expectedTimezone) => {
+			const scheduler = setupLogRetentionScheduler(cronExpression, timezone);
 
 			expect(scheduler).toBeDefined();
-			expect(mockCronInstances.length).toBe(1);
-
-			const cronInstance = mockCronInstances[0];
-			expect(cronInstance?.expression).toBe('0 3 * * *'); // Default: 3 AM daily
-			expect(cronInstance?.timezone).toBe('UTC');
-			expect(cronInstance?.name).toBe('log-retention');
-		});
-
-		it('creates scheduler with custom cron expression', () => {
-			const customCron = '0 6 * * *'; // 6 AM
-			setupLogRetentionScheduler(customCron);
-
-			expect(mockCronInstances.length).toBe(1);
-			expect(mockCronInstances[0]?.expression).toBe(customCron);
-		});
-
-		it('creates scheduler with custom timezone', () => {
-			const customTimezone = 'America/New_York';
-			setupLogRetentionScheduler('0 3 * * *', customTimezone);
-
-			expect(mockCronInstances.length).toBe(1);
-			expect(mockCronInstances[0]?.timezone).toBe(customTimezone);
+			expect(mockCronInstances).toHaveLength(1);
+			expect(mockCronInstances[0]).toMatchObject({
+				expression: expectedExpression,
+				timezone: expectedTimezone,
+				name: 'log-retention'
+			});
 		});
 
 		it('stops existing scheduler when setting up new one', () => {
@@ -267,41 +255,21 @@ describe('Log Retention Scheduler', () => {
 	});
 
 	describe('stopLogRetentionScheduler', () => {
-		it('stops a running scheduler', () => {
-			setupLogRetentionScheduler();
+		it.each([
+			['running scheduler', true, true],
+			['no scheduler', false, false]
+		] as const)('stops idempotently with %s', (_name, configured, shouldLog) => {
+			if (configured) setupLogRetentionScheduler();
 			const scheduler = mockCronInstances[0];
+			mockLoggerInfo.mockClear();
 
-			stopLogRetentionScheduler();
-
-			expect(scheduler?._isStopped()).toBe(true);
-		});
-
-		it('is idempotent when no scheduler exists', () => {
-			// Should not throw
 			expect(() => stopLogRetentionScheduler()).not.toThrow();
-		});
 
-		it('logs stop message when scheduler exists', () => {
-			setupLogRetentionScheduler();
-			mockLoggerInfo.mockClear();
-
-			stopLogRetentionScheduler();
-
-			expect(mockLoggerInfo).toHaveBeenCalled();
-			const callArgs = mockLoggerInfo.mock.calls[0];
-			expect(callArgs?.[0]).toContain('Log retention scheduler stopped');
-		});
-
-		it('does not log when no scheduler exists', () => {
-			mockLoggerInfo.mockClear();
-
-			stopLogRetentionScheduler();
-
-			// No stop log should be emitted since there's no scheduler
+			if (configured) expect(scheduler?._isStopped()).toBe(true);
 			const stopLogCalls = mockLoggerInfo.mock.calls.filter((call: [string, ...unknown[]]) =>
-				call[0].includes('stopped')
+				call[0].includes('Log retention scheduler stopped')
 			);
-			expect(stopLogCalls.length).toBe(0);
+			expect(stopLogCalls.length > 0).toBe(shouldLog);
 		});
 	});
 
@@ -381,19 +349,15 @@ describe('Log Retention Scheduler', () => {
 	});
 
 	describe('isRetentionSchedulerConfigured', () => {
-		it('returns false when no scheduler exists', () => {
-			expect(isRetentionSchedulerConfigured()).toBe(false);
-		});
+		it.each([
+			['no scheduler', false, false],
+			['scheduler exists', true, true],
+			['scheduler stopped', true, false]
+		] as const)('returns %s state', (_name, createScheduler, expected) => {
+			if (createScheduler) setupLogRetentionScheduler();
+			if (!expected && createScheduler) stopLogRetentionScheduler();
 
-		it('returns true when scheduler exists', () => {
-			setupLogRetentionScheduler();
-			expect(isRetentionSchedulerConfigured()).toBe(true);
-		});
-
-		it('returns false after scheduler is stopped', () => {
-			setupLogRetentionScheduler();
-			stopLogRetentionScheduler();
-			expect(isRetentionSchedulerConfigured()).toBe(false);
+			expect(isRetentionSchedulerConfigured()).toBe(expected);
 		});
 	});
 });

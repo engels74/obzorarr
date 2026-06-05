@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
 import { db } from '$lib/server/db/client';
 import { appSettings, logs } from '$lib/server/db/schema';
+import { Logger } from '$lib/server/logging/logger';
 import {
 	deleteAllLogs,
 	deleteLogsOlderThan,
@@ -20,561 +21,334 @@ import {
 	setLogRetentionDays,
 	trimLogsToCount
 } from '$lib/server/logging/service';
-import { LogLevel, LogSettingsDefaults, LogSettingsKey } from '$lib/server/logging/types';
+import {
+	LogLevel,
+	type LogQueryOptions,
+	LogSettingsDefaults,
+	LogSettingsKey
+} from '$lib/server/logging/types';
+import { resetSharedTestDb } from '../../helpers/db';
 
-/**
- * Unit tests for Logging Service
- *
- * Tests database operations for log management.
- * Uses in-memory SQLite from test setup.
- */
+const DAY_MS = 24 * 60 * 60 * 1000;
+const QUERY_FIXTURE = [
+	{ level: LogLevel.DEBUG, message: 'Debug message', source: 'ComponentA' },
+	{ level: LogLevel.INFO, message: 'Info message', source: 'ComponentA' },
+	{ level: LogLevel.WARN, message: 'Warning message', source: 'ComponentB' },
+	{ level: LogLevel.ERROR, message: 'Error message', source: 'ComponentB' }
+] as const;
 
-describe('Logging Service', () => {
-	// Clean up tables before each test
+type ConsoleMethod = 'debug' | 'error' | 'log' | 'warn';
+type LogMethod = 'error' | 'info' | 'warn';
+
+async function seedQueryLogs() {
+	await insertLogsBatch([...QUERY_FIXTURE]);
+}
+
+async function seedAgedLogs() {
+	const now = Date.now();
+	await db.insert(logs).values([
+		{ level: LogLevel.INFO, message: 'Old log 1', timestamp: now - 10 * DAY_MS },
+		{ level: LogLevel.INFO, message: 'Old log 2', timestamp: now - 5 * DAY_MS },
+		{ level: LogLevel.INFO, message: 'Recent log 1', timestamp: now - DAY_MS },
+		{ level: LogLevel.INFO, message: 'Recent log 2', timestamp: now }
+	]);
+}
+
+async function logRows() {
+	return db.select().from(logs);
+}
+
+function messagesFrom(rows: Awaited<ReturnType<typeof logRows>>) {
+	return rows.map((row) => row.message);
+}
+
+describe('logging service and logger', () => {
+	let logger: InstanceType<typeof Logger>;
+	let originalConsole: Pick<Console, ConsoleMethod>;
+	let debugCalls: string[];
+
 	beforeEach(async () => {
-		await db.delete(logs);
-		await db.delete(appSettings);
+		await resetSharedTestDb();
+		logger = new Logger();
+		debugCalls = [];
+		originalConsole = {
+			debug: console.debug,
+			error: console.error,
+			log: console.log,
+			warn: console.warn
+		};
+		console.debug = mock((message: string) => debugCalls.push(message)) as typeof console.debug;
+		console.error = mock(() => {}) as typeof console.error;
+		console.log = mock(() => {}) as typeof console.log;
+		console.warn = mock(() => {}) as typeof console.warn;
 	});
 
-	// =========================================================================
-	// Log Insertion
-	// =========================================================================
-
-	describe('Log Insertion', () => {
-		describe('insertLog', () => {
-			it('inserts a single log entry', async () => {
-				await insertLog({
-					level: LogLevel.INFO,
-					message: 'Test message'
-				});
-
-				const result = await queryLogs();
-				expect(result.logs).toHaveLength(1);
-				expect(result.logs[0]?.message).toBe('Test message');
-				expect(result.logs[0]?.level).toBe(LogLevel.INFO);
-			});
-
-			it('includes optional source', async () => {
-				await insertLog({
-					level: LogLevel.INFO,
-					message: 'Test',
-					source: 'TestComponent'
-				});
-
-				const result = await queryLogs();
-				expect(result.logs[0]?.source).toBe('TestComponent');
-			});
-
-			it('serializes metadata as JSON', async () => {
-				await insertLog({
-					level: LogLevel.ERROR,
-					message: 'Error occurred',
-					metadata: { errorCode: 500, details: 'Connection failed' }
-				});
-
-				const result = await queryLogs();
-				expect(result.logs[0]?.metadata).toBe('{"errorCode":500,"details":"Connection failed"}');
-			});
-
-			it('sets timestamp to current time', async () => {
-				const before = Date.now();
-				await insertLog({ level: LogLevel.INFO, message: 'Test' });
-				const after = Date.now();
-
-				const result = await queryLogs();
-				const timestamp = result.logs[0]?.timestamp ?? 0;
-				expect(timestamp).toBeGreaterThanOrEqual(before);
-				expect(timestamp).toBeLessThanOrEqual(after);
-			});
-		});
-
-		describe('insertLogsBatch', () => {
-			it('inserts multiple log entries', async () => {
-				await insertLogsBatch([
-					{ level: LogLevel.INFO, message: 'First' },
-					{ level: LogLevel.WARN, message: 'Second' },
-					{ level: LogLevel.ERROR, message: 'Third' }
-				]);
-
-				const result = await queryLogs();
-				expect(result.logs).toHaveLength(3);
-			});
-
-			it('does nothing for empty array', async () => {
-				await insertLogsBatch([]);
-
-				const result = await queryLogs();
-				expect(result.logs).toHaveLength(0);
-			});
-
-			it('preserves insertion order via timestamp offsets', async () => {
-				await insertLogsBatch([
-					{ level: LogLevel.INFO, message: 'First' },
-					{ level: LogLevel.INFO, message: 'Second' },
-					{ level: LogLevel.INFO, message: 'Third' }
-				]);
-
-				const result = await queryLogs();
-				// Ordered by id descending by default
-				expect(result.logs[0]?.message).toBe('Third');
-				expect(result.logs[1]?.message).toBe('Second');
-				expect(result.logs[2]?.message).toBe('First');
-			});
-		});
+	afterEach(async () => {
+		await logger.forceFlush();
+		console.debug = originalConsole.debug;
+		console.error = originalConsole.error;
+		console.log = originalConsole.log;
+		console.warn = originalConsole.warn;
 	});
 
-	// =========================================================================
-	// Log Querying
-	// =========================================================================
-
-	describe('Log Querying', () => {
-		beforeEach(async () => {
-			// Insert test data
+	describe('service persistence and querying', () => {
+		it('inserts single and batch entries with source, metadata, timestamp, and newest-first order', async () => {
+			const before = Date.now();
+			await insertLog({
+				level: LogLevel.ERROR,
+				message: 'Single entry',
+				source: 'ServiceTest',
+				metadata: { errorCode: 500 }
+			});
 			await insertLogsBatch([
-				{ level: LogLevel.DEBUG, message: 'Debug message', source: 'ComponentA' },
-				{ level: LogLevel.INFO, message: 'Info message', source: 'ComponentA' },
-				{ level: LogLevel.WARN, message: 'Warning message', source: 'ComponentB' },
-				{ level: LogLevel.ERROR, message: 'Error message', source: 'ComponentB' }
+				{ level: LogLevel.INFO, message: 'First' },
+				{ level: LogLevel.WARN, message: 'Second' }
 			]);
+			await insertLogsBatch([]);
+
+			const result = await queryLogs();
+			expect(result.totalCount).toBe(3);
+			expect(messagesFrom(result.logs)).toEqual(['Second', 'First', 'Single entry']);
+			expect(result.logs.at(-1)).toMatchObject({
+				level: LogLevel.ERROR,
+				message: 'Single entry',
+				source: 'ServiceTest',
+				metadata: '{"errorCode":500}'
+			});
+			expect(result.logs.at(-1)?.timestamp).toBeGreaterThanOrEqual(before);
 		});
 
-		describe('queryLogs', () => {
-			it('returns all logs when no filters', async () => {
-				const result = await queryLogs();
+		describe('queryLogs filters', () => {
+			const queryCases: Array<[string, LogQueryOptions | undefined, number, string[]]> = [
+				[
+					'no filters',
+					undefined,
+					4,
+					['Error message', 'Warning message', 'Info message', 'Debug message']
+				],
+				['level', { levels: [LogLevel.ERROR] }, 1, ['Error message']],
+				[
+					'multiple levels',
+					{ levels: [LogLevel.WARN, LogLevel.ERROR] },
+					2,
+					['Error message', 'Warning message']
+				],
+				['source', { source: 'ComponentA' }, 2, ['Info message', 'Debug message']],
+				['trimmed search', { search: ' Warning ' }, 1, ['Warning message']],
+				[
+					'blank search',
+					{ search: '   ' },
+					4,
+					['Error message', 'Warning message', 'Info message', 'Debug message']
+				]
+			];
 
-				expect(result.logs).toHaveLength(4);
-				expect(result.totalCount).toBe(4);
+			beforeEach(seedQueryLogs);
+
+			it.each(queryCases)('applies %s', async (_name, options, expectedCount, expectedMessages) => {
+				const result = await queryLogs(options);
+
+				expect(result.totalCount).toBe(expectedCount);
+				expect(messagesFrom(result.logs)).toEqual(expectedMessages);
 				expect(result.hasMore).toBe(false);
 			});
 
-			it('filters by level', async () => {
-				const result = await queryLogs({ levels: [LogLevel.ERROR] });
-
-				expect(result.logs).toHaveLength(1);
-				expect(result.logs[0]?.level).toBe(LogLevel.ERROR);
-			});
-
-			it('filters by multiple levels', async () => {
-				const result = await queryLogs({ levels: [LogLevel.WARN, LogLevel.ERROR] });
-
-				expect(result.logs).toHaveLength(2);
-			});
-
-			it('filters by source', async () => {
-				const result = await queryLogs({ source: 'ComponentA' });
-
-				expect(result.logs).toHaveLength(2);
-				expect(result.logs.every((l) => l.source === 'ComponentA')).toBe(true);
-			});
-
-			it('filters by search text', async () => {
-				const result = await queryLogs({ search: 'Warning' });
-
-				expect(result.logs).toHaveLength(1);
-				expect(result.logs[0]?.message).toContain('Warning');
-			});
-
-			it('treats whitespace-only search like no search', async () => {
-				const unfiltered = await queryLogs();
-				const result = await queryLogs({ search: '   ' });
-
-				expect(result.totalCount).toBe(unfiltered.totalCount);
-				expect(result.logs.map((log) => log.id)).toEqual(unfiltered.logs.map((log) => log.id));
-			});
-
-			it('trims search text before filtering', async () => {
-				const result = await queryLogs({ search: ' Warning ' });
-
-				expect(result.logs).toHaveLength(1);
-				expect(result.logs[0]?.message).toContain('Warning');
-			});
-
-			it('filters by time range', async () => {
-				const now = Date.now();
-				const before = now - 1000;
-
-				const result = await queryLogs({
-					fromTimestamp: before,
-					toTimestamp: now + 1000
+			it('filters by time and supports cursor pagination', async () => {
+				const ranged = await queryLogs({
+					fromTimestamp: Date.now() - 1000,
+					toTimestamp: Date.now() + 1000
 				});
+				const firstPage = await queryLogs({ limit: 2 });
+				const cursor = firstPage.logs.at(-1)?.id;
+				const secondPage = await queryLogs({ cursor, limit: 2 });
 
-				// All logs should be in this range
-				expect(result.logs).toHaveLength(4);
+				expect(ranged.logs).toHaveLength(4);
+				expect(firstPage).toMatchObject({ hasMore: true, totalCount: 4 });
+				expect(secondPage.logs).toHaveLength(2);
+				expect(secondPage.logs.every((log) => log.id < cursor!)).toBe(true);
 			});
 
-			it('respects limit', async () => {
-				const result = await queryLogs({ limit: 2 });
-
-				expect(result.logs).toHaveLength(2);
-				expect(result.hasMore).toBe(true);
-			});
-
-			it('supports cursor-based pagination', async () => {
-				const first = await queryLogs({ limit: 2 });
-				const cursor = first.logs[first.logs.length - 1]?.id;
-
-				const second = await queryLogs({ cursor, limit: 2 });
-
-				expect(second.logs).toHaveLength(2);
-				// All IDs in second page should be less than cursor
-				expect(second.logs.every((l) => l.id < cursor!)).toBe(true);
-			});
-
-			it('returns correct totalCount with filters', async () => {
-				const result = await queryLogs({ levels: [LogLevel.ERROR] });
-
-				expect(result.totalCount).toBe(1);
-			});
-		});
-
-		describe('getLogsAfterId', () => {
-			it('returns logs after specified ID', async () => {
+			it('returns incremental IDs, latest ID, distinct sources, and level counts', async () => {
 				const all = await queryLogs();
-				const minId = Math.min(...all.logs.map((l) => l.id));
+				const minId = Math.min(...all.logs.map((log) => log.id));
+				const maxId = Math.max(...all.logs.map((log) => log.id));
 
-				const newer = await getLogsAfterId(minId);
+				expect(await getLogsAfterId(minId)).toHaveLength(3);
+				expect(await getLogsAfterId(0, 2)).toHaveLength(2);
+				expect(await getLogsAfterId(maxId)).toHaveLength(0);
+				expect(await getLatestLogId()).toBe(maxId);
+				expect(await getDistinctSources()).toEqual(['ComponentA', 'ComponentB']);
+				expect(await getLogCountsByLevel()).toEqual({ DEBUG: 1, INFO: 1, WARN: 1, ERROR: 1 });
 
-				// Should return all except the one with minId
-				expect(newer).toHaveLength(3);
-				expect(newer.every((l) => l.id > minId)).toBe(true);
-			});
-
-			it('returns empty array when no newer logs', async () => {
-				const all = await queryLogs();
-				const maxId = Math.max(...all.logs.map((l) => l.id));
-
-				const newer = await getLogsAfterId(maxId);
-
-				expect(newer).toHaveLength(0);
-			});
-
-			it('respects limit', async () => {
-				const newer = await getLogsAfterId(0, 2);
-
-				expect(newer).toHaveLength(2);
-			});
-		});
-
-		describe('getLatestLogId', () => {
-			it('returns highest log ID', async () => {
-				const latestId = await getLatestLogId();
-				const all = await queryLogs();
-				const maxId = Math.max(...all.logs.map((l) => l.id));
-
-				expect(latestId).toBe(maxId);
-			});
-
-			it('returns 0 when no logs', async () => {
-				await db.delete(logs);
-
-				const latestId = await getLatestLogId();
-
-				expect(latestId).toBe(0);
-			});
-		});
-
-		describe('getDistinctSources', () => {
-			it('returns unique sources', async () => {
-				const sources = await getDistinctSources();
-
-				expect(sources).toContain('ComponentA');
-				expect(sources).toContain('ComponentB');
-				expect(sources).toHaveLength(2);
-			});
-
-			it('excludes null sources', async () => {
+				await resetSharedTestDb();
 				await insertLog({ level: LogLevel.INFO, message: 'No source' });
-
-				const sources = await getDistinctSources();
-
-				expect(sources).not.toContain(null);
-			});
-
-			it('returns empty array when no sources', async () => {
-				await db.delete(logs);
-				await insertLog({ level: LogLevel.INFO, message: 'No source' });
-
-				const sources = await getDistinctSources();
-
-				expect(sources).toHaveLength(0);
-			});
-		});
-
-		describe('getLogCountsByLevel', () => {
-			it('returns counts for each level', async () => {
-				const counts = await getLogCountsByLevel();
-
-				expect(counts.DEBUG).toBe(1);
-				expect(counts.INFO).toBe(1);
-				expect(counts.WARN).toBe(1);
-				expect(counts.ERROR).toBe(1);
-			});
-
-			it('returns 0 for levels with no logs', async () => {
-				await db.delete(logs);
-				await insertLog({ level: LogLevel.INFO, message: 'Only info' });
-
-				const counts = await getLogCountsByLevel();
-
-				expect(counts.DEBUG).toBe(0);
-				expect(counts.INFO).toBe(1);
-				expect(counts.WARN).toBe(0);
-				expect(counts.ERROR).toBe(0);
+				expect(await getLatestLogId()).toBeGreaterThan(0);
+				expect(await getDistinctSources()).toEqual([]);
+				expect(await getLogCountsByLevel()).toEqual({ DEBUG: 0, INFO: 1, WARN: 0, ERROR: 0 });
 			});
 		});
 	});
 
-	// =========================================================================
-	// Log Cleanup
-	// =========================================================================
+	describe('cleanup and settings helpers', () => {
+		beforeEach(seedAgedLogs);
 
-	describe('Log Cleanup', () => {
-		beforeEach(async () => {
-			// Insert test data with varying timestamps
-			const now = Date.now();
-			await db.insert(logs).values([
-				{ level: 'INFO', message: 'Old log 1', timestamp: now - 10 * 24 * 60 * 60 * 1000 },
-				{ level: 'INFO', message: 'Old log 2', timestamp: now - 5 * 24 * 60 * 60 * 1000 },
-				{ level: 'INFO', message: 'Recent log 1', timestamp: now - 1 * 24 * 60 * 60 * 1000 },
-				{ level: 'INFO', message: 'Recent log 2', timestamp: now }
-			]);
+		it.each([
+			['deleteAllLogs', async () => deleteAllLogs(), 4, 0],
+			['deleteLogsOlderThan', async () => deleteLogsOlderThan(Date.now() - 3 * DAY_MS), 2, 2],
+			['trimLogsToCount', async () => trimLogsToCount(2), 1, 3],
+			['trimLogsToCount above total', async () => trimLogsToCount(10), 0, 4]
+		] as const)('%s returns deleted count and leaves expected rows', async (_name, cleanup, deleted, remaining) => {
+			expect(await cleanup()).toBe(deleted);
+			expect((await queryLogs()).logs).toHaveLength(remaining);
 		});
 
-		describe('deleteAllLogs', () => {
-			it('deletes all logs and returns count', async () => {
-				const deleted = await deleteAllLogs();
+		it('runs retention cleanup with configured and default settings', async () => {
+			await setLogRetentionDays(3);
+			await setLogMaxCount(2);
+			expect(await runRetentionCleanup()).toEqual({ byAge: 2, byCount: 0 });
 
-				expect(deleted).toBe(4);
-
-				const result = await queryLogs();
-				expect(result.logs).toHaveLength(0);
-			});
-
-			it('returns 0 when no logs', async () => {
-				await db.delete(logs);
-
-				const deleted = await deleteAllLogs();
-
-				expect(deleted).toBe(0);
-			});
+			await resetSharedTestDb();
+			await insertLogsBatch(
+				Array.from({ length: 10 }, (_, i) => ({ level: LogLevel.INFO, message: `Log ${i}` }))
+			);
+			expect(await runRetentionCleanup()).toEqual({ byAge: 0, byCount: 0 });
 		});
 
-		describe('deleteLogsOlderThan', () => {
-			it('deletes logs older than threshold', async () => {
-				const now = Date.now();
-				const threshold = now - 3 * 24 * 60 * 60 * 1000; // 3 days ago
+		it.each([
+			[
+				'retention days default',
+				getLogRetentionDays,
+				undefined,
+				LogSettingsDefaults.RETENTION_DAYS
+			],
+			['retention days stored', getLogRetentionDays, ['14'], 14],
+			[
+				'retention days invalid',
+				getLogRetentionDays,
+				['not-a-number'],
+				LogSettingsDefaults.RETENTION_DAYS
+			],
+			[
+				'retention days non-positive',
+				getLogRetentionDays,
+				['0'],
+				LogSettingsDefaults.RETENTION_DAYS
+			],
+			['max count default', getLogMaxCount, undefined, LogSettingsDefaults.MAX_COUNT],
+			['max count stored', getLogMaxCount, ['10000'], 10000],
+			['max count invalid', getLogMaxCount, ['nope'], LogSettingsDefaults.MAX_COUNT],
+			['debug missing', isDebugEnabled, undefined, false],
+			['debug true', isDebugEnabled, ['true'], true],
+			['debug false', isDebugEnabled, ['false'], false]
+		] as const)('%s', async (name, getter, value, expected) => {
+			await resetSharedTestDb();
+			const key = name.startsWith('retention')
+				? LogSettingsKey.RETENTION_DAYS
+				: name.startsWith('max count')
+					? LogSettingsKey.MAX_COUNT
+					: LogSettingsKey.DEBUG_ENABLED;
+			if (value) await db.insert(appSettings).values({ key, value: value[0] });
 
-				const deleted = await deleteLogsOlderThan(threshold);
-
-				expect(deleted).toBe(2); // Old log 1 and Old log 2
-
-				const result = await queryLogs();
-				expect(result.logs).toHaveLength(2);
-			});
-
-			it('returns 0 when no logs match', async () => {
-				const deleted = await deleteLogsOlderThan(0);
-
-				expect(deleted).toBe(0);
-			});
+			expect(await getter()).toBe(expected);
 		});
 
-		describe('trimLogsToCount', () => {
-			it('deletes logs when count exceeds keepCount', async () => {
-				// With 4 logs, keeping 2 should delete at least 1
-				// (implementation uses offset-based cutoff with lt comparison)
-				const deleted = await trimLogsToCount(2);
+		it('upserts writable settings', async () => {
+			await setLogRetentionDays(7);
+			await setLogRetentionDays(14);
+			await setLogMaxCount(100_000);
+			await setDebugEnabled(true);
+			await setDebugEnabled(false);
 
-				expect(deleted).toBeGreaterThanOrEqual(1);
-
-				const result = await queryLogs();
-				// Should have fewer logs than before
-				expect(result.logs.length).toBeLessThan(4);
-			});
-
-			it('returns 0 when count exceeds total', async () => {
-				const deleted = await trimLogsToCount(10);
-
-				expect(deleted).toBe(0);
-
-				const result = await queryLogs();
-				expect(result.logs).toHaveLength(4);
-			});
-
-			it('handles edge case of keeping exactly total', async () => {
-				const deleted = await trimLogsToCount(4);
-
-				expect(deleted).toBe(0);
-			});
-		});
-
-		describe('runRetentionCleanup', () => {
-			it('runs both age and count cleanup', async () => {
-				// Set retention settings
-				await setLogRetentionDays(3);
-				await setLogMaxCount(2);
-
-				const { byAge, byCount } = await runRetentionCleanup();
-
-				// byAge should delete logs older than 3 days (10-day and 5-day old logs)
-				expect(byAge).toBe(2);
-
-				// byCount should delete remaining logs to keep only 2
-				// But since we already deleted 2 by age, we have 2 left
-				expect(byCount).toBe(0);
-
-				const result = await queryLogs();
-				expect(result.logs.length).toBeLessThanOrEqual(2);
-			});
-
-			it('uses default settings when none configured', async () => {
-				// Clear existing logs first
-				await db.delete(logs);
-
-				// Insert only recent logs (within 7 days)
-				const entries = Array.from({ length: 10 }, (_, i) => ({
-					level: LogLevel.INFO,
-					message: `Log ${i}`
-				}));
-				await insertLogsBatch(entries);
-
-				const { byAge, byCount } = await runRetentionCleanup();
-
-				// With defaults, 7 days retention and 50000 max count
-				// None should be deleted by age (all recent) or count (under limit)
-				expect(byAge).toBe(0);
-				expect(byCount).toBe(0);
-			});
+			expect(await getLogRetentionDays()).toBe(14);
+			expect(await getLogMaxCount()).toBe(100_000);
+			expect(await isDebugEnabled()).toBe(false);
 		});
 	});
 
-	// =========================================================================
-	// Settings Helpers
-	// =========================================================================
+	describe('Logger facade', () => {
+		it.each([
+			['info', LogLevel.INFO],
+			['warn', LogLevel.WARN],
+			['error', LogLevel.ERROR]
+		] as const)('buffers and flushes %s entries', async (method: LogMethod, level) => {
+			logger[method](`${method} message`, 'Facade', { key: 'value' });
+			await logger.forceFlush();
 
-	describe('Settings Helpers', () => {
-		describe('getLogRetentionDays', () => {
-			it('returns default when no setting exists', async () => {
-				const days = await getLogRetentionDays();
-				expect(days).toBe(LogSettingsDefaults.RETENTION_DAYS);
-			});
-
-			it('returns stored value when setting exists', async () => {
-				await db.insert(appSettings).values({
-					key: LogSettingsKey.RETENTION_DAYS,
-					value: '14'
-				});
-
-				const days = await getLogRetentionDays();
-				expect(days).toBe(14);
-			});
-
-			it('returns default for invalid value', async () => {
-				await db.insert(appSettings).values({
-					key: LogSettingsKey.RETENTION_DAYS,
-					value: 'not-a-number'
-				});
-
-				const days = await getLogRetentionDays();
-				expect(days).toBe(LogSettingsDefaults.RETENTION_DAYS);
-			});
-
-			it('returns default for zero or negative', async () => {
-				await db.insert(appSettings).values({
-					key: LogSettingsKey.RETENTION_DAYS,
-					value: '0'
-				});
-
-				const days = await getLogRetentionDays();
-				expect(days).toBe(LogSettingsDefaults.RETENTION_DAYS);
-			});
+			const row = (await logRows()).find((log) => log.message === `${method} message`);
+			expect(row).toMatchObject({ level, source: 'Facade', metadata: '{"key":"value"}' });
 		});
 
-		describe('getLogMaxCount', () => {
-			it('returns default when no setting exists', async () => {
-				const count = await getLogMaxCount();
-				expect(count).toBe(LogSettingsDefaults.MAX_COUNT);
-			});
+		it('uses a nullable source by default and forceFlush is idempotent', async () => {
+			logger.info('Single log');
+			await logger.forceFlush();
+			await logger.forceFlush();
 
-			it('returns stored value when setting exists', async () => {
-				await db.insert(appSettings).values({
-					key: LogSettingsKey.MAX_COUNT,
-					value: '10000'
-				});
-
-				const count = await getLogMaxCount();
-				expect(count).toBe(10000);
-			});
+			const rows = await logRows();
+			expect(rows.filter((row) => row.message === 'Single log')).toHaveLength(1);
+			expect(rows[0]?.source).toBeNull();
 		});
 
-		describe('isDebugEnabled', () => {
-			it('returns false when no setting exists', async () => {
-				const enabled = await isDebugEnabled();
-				expect(enabled).toBe(false);
-			});
+		it('auto-flushes at the batch size', async () => {
+			for (let i = 0; i < 50; i++) logger.info(`Batch message ${i}`);
+			await new Promise((resolve) => setTimeout(resolve, 200));
 
-			it('returns true when setting is "true"', async () => {
-				await db.insert(appSettings).values({
-					key: LogSettingsKey.DEBUG_ENABLED,
-					value: 'true'
-				});
-
-				const enabled = await isDebugEnabled();
-				expect(enabled).toBe(true);
-			});
-
-			it('returns false for any other value', async () => {
-				await db.insert(appSettings).values({
-					key: LogSettingsKey.DEBUG_ENABLED,
-					value: 'false'
-				});
-
-				const enabled = await isDebugEnabled();
-				expect(enabled).toBe(false);
-			});
+			expect((await logRows()).length).toBeGreaterThanOrEqual(50);
 		});
 
-		describe('setLogRetentionDays', () => {
-			it('inserts new setting', async () => {
-				await setLogRetentionDays(30);
+		it('only persists and prints debug entries when enabled, with cache reset support', async () => {
+			await logger.debug('disabled debug', 'Debug');
+			expect(debugCalls).toEqual([]);
 
-				const days = await getLogRetentionDays();
-				expect(days).toBe(30);
-			});
+			await setDebugEnabled(true);
+			logger.clearDebugCache();
+			await logger.debug('enabled debug', 'Debug');
+			await resetSharedTestDb();
+			await logger.debug('cached debug', 'Debug');
+			logger.clearDebugCache();
+			await logger.debug('disabled after clear', 'Debug');
+			await logger.forceFlush();
 
-			it('updates existing setting', async () => {
-				await setLogRetentionDays(7);
-				await setLogRetentionDays(14);
-
-				const days = await getLogRetentionDays();
-				expect(days).toBe(14);
-			});
+			const messages = messagesFrom(await logRows());
+			expect(messages).toContain('enabled debug');
+			expect(messages).toContain('cached debug');
+			expect(messages).not.toContain('disabled debug');
+			expect(messages).not.toContain('disabled after clear');
+			expect(debugCalls).toHaveLength(2);
 		});
 
-		describe('setLogMaxCount', () => {
-			it('inserts new setting', async () => {
-				await setLogMaxCount(100000);
+		it('redacts secrets before printing and persisting debug logs', async () => {
+			await setDebugEnabled(true);
+			logger.clearDebugCache();
 
-				const count = await getLogMaxCount();
-				expect(count).toBe(100000);
-			});
-		});
+			await logger.debug(
+				'GET https://user:pass@example.com/?X-Plex-Token=secret Authorization: Bearer secret Cookie: session=secret',
+				'Debug',
+				{
+					url: 'https://example.com/?token=secret',
+					authToken: 'provider-auth-token',
+					access_token: 'provider-access-token',
+					authorization: 'Bearer provider-authorization-token',
+					'X-Plex-Token': 'provider-plex-token',
+					apiKey: 'provider-api-key',
+					password: 'provider-password',
+					nested: { auth_token: 'nested-provider-token' }
+				}
+			);
+			await logger.forceFlush();
 
-		describe('setDebugEnabled', () => {
-			it('sets to true', async () => {
-				await setDebugEnabled(true);
-
-				const enabled = await isDebugEnabled();
-				expect(enabled).toBe(true);
-			});
-
-			it('sets to false', async () => {
-				await setDebugEnabled(true);
-				await setDebugEnabled(false);
-
-				const enabled = await isDebugEnabled();
-				expect(enabled).toBe(false);
-			});
+			const debugLog = (await logRows()).find((row) => row.level === LogLevel.DEBUG);
+			expect(debugLog?.message).toContain('<redacted>');
+			expect(debugLog?.message).not.toContain('secret');
+			expect(debugLog?.message).not.toContain('user:pass');
+			expect(debugCalls[0]).toBe(`[Debug] ${debugLog?.message}`);
+			const metadata = JSON.parse(debugLog?.metadata ?? '{}') as Record<string, unknown>;
+			expect(metadata.access_token).toBe('<redacted>');
+			expect(metadata.authorization).toBe('<redacted>');
+			expect(metadata['X-Plex-Token']).toBe('<redacted>');
+			expect(metadata.apiKey).toBe('<redacted>');
+			expect((metadata.nested as Record<string, unknown>).auth_token).toBe('<redacted>');
+			expect(debugLog?.metadata).not.toContain('provider-');
+			expect(debugLog?.metadata).not.toContain('token=secret');
 		});
 	});
 });

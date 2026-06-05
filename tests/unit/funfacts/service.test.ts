@@ -5,7 +5,7 @@
  * and random selection functions.
  */
 
-import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
+import { afterAll, afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import { AppSettingsKey } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
 import { appSettings } from '$lib/server/db/schema';
@@ -13,21 +13,30 @@ import type { FactGenerationContext, FactTemplate } from '$lib/server/funfacts';
 import {
 	AIGenerationError,
 	ALL_TEMPLATES,
+	BEHAVIORAL_TEMPLATES,
 	buildGenerationContext,
+	clearRegistry,
 	EQUIVALENCY_FACTORS,
 	generateFromTemplate,
 	generateFromTemplates,
 	generateFunFacts,
 	generateWithAI,
+	getAllTemplates,
 	getFunFactsConfig,
+	initializeTemplates,
 	interpolateTemplate,
 	isAIAvailable,
+	isRegistryInitialized,
 	isTemplateApplicable,
 	MONTH_NAMES,
+	resetTemplates,
 	selectRandomTemplates,
+	TEMPLATES_BY_CATEGORY,
 	TIME_EQUIVALENCY_TEMPLATES
 } from '$lib/server/funfacts';
+import { getALL_TEMPLATES, getTemplatesForCategory } from '$lib/server/funfacts/templates';
 import type { ServerStats, UserStats } from '$lib/server/stats/types';
+import { resetSharedTestDb } from '../../helpers/db';
 
 // =============================================================================
 // Test Helpers
@@ -553,24 +562,34 @@ describe('generateFromTemplates', () => {
 // Template Constants Tests
 // =============================================================================
 
-describe('Template Constants', () => {
-	it('ALL_TEMPLATES contains templates from all categories', () => {
-		const categories = new Set(ALL_TEMPLATES.map((t) => t.category));
+describe('Template constants and registry index', () => {
+	const expectedCategories = [
+		'time-equivalency',
+		'content-comparison',
+		'behavioral-insight',
+		'binge-related',
+		'temporal-pattern',
+		'achievement',
+		'social-comparison',
+		'entertainment-trivia'
+	] as const;
 
-		expect(categories.has('time-equivalency')).toBe(true);
-		expect(categories.has('content-comparison')).toBe(true);
-		expect(categories.has('behavioral-insight')).toBe(true);
-		expect(categories.has('binge-related')).toBe(true);
-		expect(categories.has('temporal-pattern')).toBe(true);
-	});
+	afterAll(resetTemplates);
 
-	it('all templates have unique IDs', () => {
-		const ids = ALL_TEMPLATES.map((t) => t.id);
-		const uniqueIds = new Set(ids);
-		expect(uniqueIds.size).toBe(ids.length);
-	});
+	it('keeps template categories, IDs, required fields, and count map coherent', () => {
+		const categories = new Set(ALL_TEMPLATES.map((template) => template.category));
+		const ids = new Set(ALL_TEMPLATES.map((template) => template.id));
+		const totalFromCategories = Object.values(TEMPLATES_BY_CATEGORY).reduce(
+			(total, categoryTemplates) => total + categoryTemplates.length,
+			0
+		);
 
-	it('all templates have required fields', () => {
+		expect([...categories].sort()).toEqual([...expectedCategories].sort());
+		expect(ids.size).toBe(ALL_TEMPLATES.length);
+		expect(ALL_TEMPLATES.length).toBe(totalFromCategories);
+		for (const category of expectedCategories) {
+			expect(TEMPLATES_BY_CATEGORY[category]).toBeDefined();
+		}
 		for (const template of ALL_TEMPLATES) {
 			expect(template.id).toBeTruthy();
 			expect(template.category).toBeTruthy();
@@ -579,14 +598,44 @@ describe('Template Constants', () => {
 		}
 	});
 
-	it('EQUIVALENCY_FACTORS contains expected values', () => {
-		expect(EQUIVALENCY_FACTORS.FLIGHT_NYC_TOKYO_HOURS).toBe(14);
-		expect(EQUIVALENCY_FACTORS.LOTR_EXTENDED_TOTAL_HOURS).toBe(11.4);
-		expect(EQUIVALENCY_FACTORS.AVERAGE_BOOK_HOURS).toBe(6);
+	it.each([
+		['initializeTemplates', () => initializeTemplates(), () => getAllTemplates().length],
+		['getALL_TEMPLATES', () => getALL_TEMPLATES(), (templates: FactTemplate[]) => templates.length],
+		[
+			'getTemplatesForCategory',
+			() => getTemplatesForCategory('time-equivalency'),
+			(templates: FactTemplate[]) => templates.length
+		],
+		['resetTemplates', () => resetTemplates(), () => getAllTemplates().length]
+	] as const)('%s initializes or restores the registry without duplicates', (_name, action, lengthOf) => {
+		clearRegistry();
+		expect(isRegistryInitialized()).toBe(false);
+
+		const firstLength = lengthOf(action() as FactTemplate[]);
+		const secondLength = lengthOf(action() as FactTemplate[]);
+
+		expect(isRegistryInitialized()).toBe(true);
+		expect(firstLength).toBeGreaterThan(0);
+		expect(secondLength).toBe(firstLength);
 	});
 
-	it('MONTH_NAMES has 12 entries', () => {
-		expect(MONTH_NAMES.length).toBe(12);
+	it.each([
+		['time-equivalency', TIME_EQUIVALENCY_TEMPLATES.length],
+		['behavioral-insight', BEHAVIORAL_TEMPLATES.length],
+		['achievement', TEMPLATES_BY_CATEGORY.achievement.length]
+	] as const)('returns %s templates after lazy re-initialization', (category, expectedCount) => {
+		clearRegistry();
+
+		expect(getTemplatesForCategory(category)).toHaveLength(expectedCount);
+	});
+
+	it('exposes stable constants used by interpolation', () => {
+		expect(EQUIVALENCY_FACTORS).toMatchObject({
+			FLIGHT_NYC_TOKYO_HOURS: 14,
+			LOTR_EXTENDED_TOTAL_HOURS: 11.4,
+			AVERAGE_BOOK_HOURS: 6
+		});
+		expect(MONTH_NAMES).toHaveLength(12);
 		expect(MONTH_NAMES[0]).toBe('January');
 		expect(MONTH_NAMES[11]).toBe('December');
 	});
@@ -598,7 +647,7 @@ describe('Template Constants', () => {
 
 describe('getFunFactsConfig', () => {
 	beforeEach(async () => {
-		await db.delete(appSettings);
+		await resetSharedTestDb();
 	});
 
 	it('returns config with defaults when no settings configured', async () => {
@@ -653,7 +702,7 @@ describe('getFunFactsConfig', () => {
 
 describe('isAIAvailable', () => {
 	beforeEach(async () => {
-		await db.delete(appSettings);
+		await resetSharedTestDb();
 	});
 
 	it('returns false when API key is not configured', async () => {
@@ -681,7 +730,7 @@ describe('generateWithAI', () => {
 	const mockStats = createMockUserStats();
 
 	beforeEach(async () => {
-		await db.delete(appSettings);
+		await resetSharedTestDb();
 	});
 
 	afterEach(() => {
@@ -855,7 +904,7 @@ describe('generateFunFacts', () => {
 	let fetchMock: ReturnType<typeof spyOn>;
 
 	beforeEach(async () => {
-		await db.delete(appSettings);
+		await resetSharedTestDb();
 	});
 
 	afterEach(() => {

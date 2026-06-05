@@ -1,4 +1,5 @@
-import { describe, expect, it, mock } from 'bun:test';
+import { describe, expect, it } from 'bun:test';
+import { createTestCookies } from '../../helpers/requests';
 
 // NOTE: deliberately does NOT mock `$lib/server/auth/session`. bun's
 // `mock.module` is process-global and leaks across test files, so replacing the
@@ -8,18 +9,6 @@ import { describe, expect, it, mock } from 'bun:test';
 // sessions table (a harmless no-op for an unknown id).
 const { load, actions } = await import('../../../src/routes/auth/logout/+page.server');
 
-interface FakeCookies {
-	get: (name: string) => string | undefined;
-	delete: ReturnType<typeof mock>;
-}
-
-function makeCookies(sessionId: string | undefined): FakeCookies {
-	return {
-		get: () => sessionId,
-		delete: mock(() => {})
-	};
-}
-
 function isRedirect(thrown: unknown): thrown is { status: number; location: string } {
 	return (
 		typeof thrown === 'object' && thrown !== null && 'status' in thrown && 'location' in thrown
@@ -28,7 +17,7 @@ function isRedirect(thrown: unknown): thrown is { status: number; location: stri
 
 describe('logout route — POST-only (ISSUE-024)', () => {
 	it('GET load redirects to / WITHOUT clearing the session cookie', async () => {
-		const cookies = makeCookies('session-abc');
+		const cookies = createTestCookies({ session: 'session-abc' });
 
 		let thrown: unknown;
 		try {
@@ -44,11 +33,11 @@ describe('logout route — POST-only (ISSUE-024)', () => {
 		}
 
 		// The GET path must not mutate — no session cookie cleared.
-		expect(cookies.delete).not.toHaveBeenCalled();
+		expect(cookies.deletes).toHaveLength(0);
 	});
 
 	it('POST action clears the session cookie and redirects to /', async () => {
-		const cookies = makeCookies('session-abc');
+		const cookies = createTestCookies({ session: 'session-abc' });
 
 		let thrown: unknown;
 		try {
@@ -64,6 +53,6 @@ describe('logout route — POST-only (ISSUE-024)', () => {
 		}
 
 		// The POST path is the sole session-clearing path.
-		expect(cookies.delete).toHaveBeenCalledWith('session', { path: '/' });
+		expect(cookies.deletes).toEqual([{ name: 'session', options: { path: '/' } }]);
 	});
 });
