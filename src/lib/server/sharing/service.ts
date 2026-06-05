@@ -222,7 +222,7 @@ export async function bulkApplyShareDefaults(): Promise<BulkApplyShareDefaultsRe
 	});
 }
 
-export async function getServerWrappedShareMode(): Promise<ShareModeType> {
+export async function getServerWrappedShareMode(): Promise<ServerWrappedShareModeType> {
 	const result = await db
 		.select()
 		.from(appSettings)
