@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import { db } from '$lib/server/db/client';
-import { appSettings, cachedStats, playHistory } from '$lib/server/db/schema';
 import { actions } from '../../../src/routes/admin/settings/data/+page.server';
+import { resetSharedTestDb } from '../../helpers/db';
 
 type GetCacheCountAction = NonNullable<typeof actions.getCacheCount>;
 type ClearCacheAction = NonNullable<typeof actions.clearCache>;
@@ -11,6 +10,10 @@ type ClearPlayHistoryAction = NonNullable<typeof actions.clearPlayHistory>;
 const adminLocals = {
 	user: { id: 1, plexId: 1, username: 'admin', isAdmin: true }
 } as unknown as App.Locals;
+
+beforeEach(async () => {
+	await resetSharedTestDb();
+});
 
 function makeRequest(action: string, fields: Record<string, string> = {}): Request {
 	const formData = new FormData();
@@ -22,11 +25,6 @@ function makeRequest(action: string, fields: Record<string, string> = {}): Reque
 }
 
 describe('data nested route — getCacheCount', () => {
-	beforeEach(async () => {
-		await db.delete(appSettings);
-		await db.delete(cachedStats);
-	});
-
 	async function run(request: Request) {
 		const handler = actions.getCacheCount as GetCacheCountAction;
 		return handler({ request, locals: adminLocals } as Parameters<GetCacheCountAction>[0]);
@@ -70,11 +68,6 @@ describe('data nested route — getCacheCount', () => {
 });
 
 describe('data nested route — clearCache', () => {
-	beforeEach(async () => {
-		await db.delete(appSettings);
-		await db.delete(cachedStats);
-	});
-
 	async function run(request: Request) {
 		const handler = actions.clearCache as ClearCacheAction;
 		return handler({ request, locals: adminLocals } as Parameters<ClearCacheAction>[0]);
@@ -100,11 +93,6 @@ describe('data nested route — clearCache', () => {
 });
 
 describe('data nested route — getPlayHistoryCount', () => {
-	beforeEach(async () => {
-		await db.delete(appSettings);
-		await db.delete(playHistory);
-	});
-
 	async function run(request: Request) {
 		const handler = actions.getPlayHistoryCount as GetPlayHistoryCountAction;
 		return handler({
@@ -130,11 +118,6 @@ describe('data nested route — getPlayHistoryCount', () => {
 });
 
 describe('data nested route — clearPlayHistory', () => {
-	beforeEach(async () => {
-		await db.delete(appSettings);
-		await db.delete(playHistory);
-	});
-
 	async function run(request: Request) {
 		const handler = actions.clearPlayHistory as ClearPlayHistoryAction;
 		return handler({

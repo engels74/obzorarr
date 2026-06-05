@@ -179,83 +179,38 @@ describe('dev-users module', () => {
 		});
 	});
 
-	describe('getServerOwner', () => {
+	describe('lookup helpers', () => {
 		it('returns only the server owner', async () => {
 			setupFetchMock();
 
 			const owner = await getServerOwner();
 
-			expect(owner.plexId).toBe(12345);
-			expect(owner.username).toBe('ServerOwner');
-			expect(owner.isOwner).toBe(true);
-		});
-	});
-
-	describe('getUserById', () => {
-		it('returns owner when owner plexId is provided', async () => {
-			setupFetchMock();
-
-			const user = await getUserById(12345);
-
-			expect(user).not.toBeNull();
-			expect(user?.username).toBe('ServerOwner');
-			expect(user?.isOwner).toBe(true);
+			expect(owner).toMatchObject({ plexId: 12345, username: 'ServerOwner', isOwner: true });
 		});
 
-		it('returns shared user when their plexId is provided', async () => {
+		it.each([
+			['owner by plexId', () => getUserById(12345), { username: 'ServerOwner', isOwner: true }],
+			[
+				'shared user by plexId',
+				() => getUserById(1002),
+				{ username: 'SharedUser2', isOwner: false }
+			],
+			['missing plexId', () => getUserById(99999), null],
+			[
+				'owner by username',
+				() => getUserByUsername('serverowner'),
+				{ plexId: 12345, isOwner: true }
+			],
+			['shared user by username', () => getUserByUsername('SharedUser1'), { plexId: 1001 }],
+			['case-insensitive username', () => getUserByUsername('SHAREDUSER2'), { plexId: 1002 }],
+			['missing username', () => getUserByUsername('NonExistentUser'), null]
+		] as const)('resolves %s', async (_name, lookup, expected) => {
 			setupFetchMock();
 
-			const user = await getUserById(1002);
+			const user = await lookup();
 
-			expect(user).not.toBeNull();
-			expect(user?.username).toBe('SharedUser2');
-			expect(user?.isOwner).toBe(false);
-		});
-
-		it('returns null for non-existent plexId', async () => {
-			setupFetchMock();
-
-			const user = await getUserById(99999);
-
-			expect(user).toBeNull();
-		});
-	});
-
-	describe('getUserByUsername', () => {
-		it('returns owner when owner username is provided (case-insensitive)', async () => {
-			setupFetchMock();
-
-			const user = await getUserByUsername('serverowner');
-
-			expect(user).not.toBeNull();
-			expect(user?.plexId).toBe(12345);
-			expect(user?.isOwner).toBe(true);
-		});
-
-		it('returns shared user when their username is provided', async () => {
-			setupFetchMock();
-
-			const user = await getUserByUsername('SharedUser1');
-
-			expect(user).not.toBeNull();
-			expect(user?.plexId).toBe(1001);
-		});
-
-		it('is case-insensitive for shared users', async () => {
-			setupFetchMock();
-
-			const user = await getUserByUsername('SHAREDUSER2');
-
-			expect(user).not.toBeNull();
-			expect(user?.plexId).toBe(1002);
-		});
-
-		it('returns null for non-existent username', async () => {
-			setupFetchMock();
-
-			const user = await getUserByUsername('NonExistentUser');
-
-			expect(user).toBeNull();
+			if (expected === null) expect(user).toBeNull();
+			else expect(user).toMatchObject(expected);
 		});
 	});
 
@@ -282,49 +237,19 @@ describe('dev-users module', () => {
 	});
 
 	describe('resolveUserIdentifier', () => {
-		it('resolves numeric string as plexId', async () => {
+		it.each([
+			['1001', { plexId: 1001, username: 'SharedUser1' }],
+			['SharedUser2', { plexId: 1002 }],
+			['nonexistent', null],
+			['-123', null],
+			['0', null]
+		] as const)('resolves %p', async (identifier, expected) => {
 			setupFetchMock();
 
-			const user = await resolveUserIdentifier('1001');
+			const user = await resolveUserIdentifier(identifier);
 
-			expect(user).not.toBeNull();
-			expect(user?.plexId).toBe(1001);
-			expect(user?.username).toBe('SharedUser1');
-		});
-
-		it('resolves non-numeric string as username', async () => {
-			setupFetchMock();
-
-			const user = await resolveUserIdentifier('SharedUser2');
-
-			expect(user).not.toBeNull();
-			expect(user?.plexId).toBe(1002);
-		});
-
-		it('returns null for non-existent identifier', async () => {
-			setupFetchMock();
-
-			const user = await resolveUserIdentifier('nonexistent');
-
-			expect(user).toBeNull();
-		});
-
-		it('treats negative numbers as usernames', async () => {
-			setupFetchMock();
-
-			// Negative numbers are not valid plexIds
-			const user = await resolveUserIdentifier('-123');
-
-			expect(user).toBeNull();
-		});
-
-		it('treats zero as username', async () => {
-			setupFetchMock();
-
-			// Zero is not a valid plexId (must be > 0)
-			const user = await resolveUserIdentifier('0');
-
-			expect(user).toBeNull();
+			if (expected === null) expect(user).toBeNull();
+			else expect(user).toMatchObject(expected);
 		});
 	});
 

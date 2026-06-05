@@ -19,52 +19,27 @@ function createNavigator(overrides: TestNavigator = {}): TestNavigator {
 }
 
 describe('shouldUseRedirectAuth', () => {
-	it('returns true when ?auth=redirect is present', () => {
-		const params = new URLSearchParams('auth=redirect');
-		expect(shouldUseRedirectAuth(params, createNavigator())).toBe(true);
+	it.each([
+		['auth=redirect', createNavigator(), true],
+		['auth=popup', createNavigator({ webdriver: true, userAgent: HEADLESS_CHROME_UA }), false],
+		['', createNavigator({ webdriver: true }), true],
+		['', createNavigator({ userAgent: HEADLESS_CHROME_UA }), true],
+		['', createNavigator(), false],
+		['', null, false]
+	] as const)('returns %s for params=%p navigator=%p', (params, navigator, expected) => {
+		expect(shouldUseRedirectAuth(new URLSearchParams(params), navigator)).toBe(expected);
 	});
 
-	it('returns false when ?auth=popup is present even on headless browsers', () => {
-		const params = new URLSearchParams('auth=popup');
-		expect(
-			shouldUseRedirectAuth(
-				params,
-				createNavigator({ webdriver: true, userAgent: HEADLESS_CHROME_UA })
-			)
-		).toBe(false);
-	});
-
-	it('returns true when navigator.webdriver is true', () => {
-		expect(shouldUseRedirectAuth(new URLSearchParams(), createNavigator({ webdriver: true }))).toBe(
-			true
-		);
-	});
-
-	it('returns true when user agent contains HeadlessChrome', () => {
+	it.each([
+		'Playwright/1.44',
+		'Puppeteer/22.0',
+		'Selenium/4.0'
+	] as const)('redirects for automation user agent %s', (tool) => {
 		expect(
 			shouldUseRedirectAuth(
 				new URLSearchParams(),
-				createNavigator({ userAgent: HEADLESS_CHROME_UA })
+				createNavigator({ userAgent: `Mozilla/5.0 ${tool}` })
 			)
 		).toBe(true);
-	});
-
-	it('returns true when user agent contains Playwright/Puppeteer/Selenium', () => {
-		for (const tool of ['Playwright/1.44', 'Puppeteer/22.0', 'Selenium/4.0']) {
-			expect(
-				shouldUseRedirectAuth(
-					new URLSearchParams(),
-					createNavigator({ userAgent: `Mozilla/5.0 ${tool}` })
-				)
-			).toBe(true);
-		}
-	});
-
-	it('returns false for default Chrome UA without webdriver flag', () => {
-		expect(shouldUseRedirectAuth(new URLSearchParams(), createNavigator())).toBe(false);
-	});
-
-	it('returns false when navigator is undefined (SSR)', () => {
-		expect(shouldUseRedirectAuth(new URLSearchParams(), null)).toBe(false);
 	});
 });

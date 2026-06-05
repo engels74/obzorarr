@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import { setAppSetting } from '$lib/server/admin/settings.service';
-import { db } from '$lib/server/db/client';
-import { appSettings } from '$lib/server/db/schema';
+import {
+	getAppSettingsUpdatedAt,
+	LOG_SETTINGS_KEYS,
+	setAppSetting
+} from '$lib/server/admin/settings.service';
 import { getLogMaxCount, getLogRetentionDays, isDebugEnabled } from '$lib/server/logging';
 import { actions } from '../../../src/routes/admin/settings/system/+page.server';
+import { resetSharedTestDb } from '../../helpers/db';
 
 type UpdateLogSettingsAction = NonNullable<typeof actions.updateLogSettings>;
 
@@ -22,7 +25,7 @@ function makeRequest(fields: Record<string, string>): Request {
 
 describe('system nested route — updateLogSettings (Superforms + inline OCC)', () => {
 	beforeEach(async () => {
-		await db.delete(appSettings);
+		await resetSharedTestDb();
 	});
 
 	async function run(request: Request) {
@@ -177,5 +180,77 @@ describe('system nested route — updateLogSettings (Superforms + inline OCC)', 
 		);
 		expect(falseResult).toMatchObject({ success: true });
 		expect(await isDebugEnabled()).toBe(false);
+	});
+
+	it('rejects stale settingsVersion after an UPDATE (not just after INSERT)', async () => {
+		await run(
+			makeRequest({
+				retentionDays: '14',
+				maxCount: '2000',
+				debugEnabled: 'true',
+				settingsVersion: new Date(0).toISOString()
+			})
+		);
+
+		const afterInsert = await getAppSettingsUpdatedAt(LOG_SETTINGS_KEYS);
+		expect(afterInsert).not.toBeNull();
+		const preUpdateVersion = afterInsert!.toISOString();
+
+		await new Promise<void>((resolve) => setTimeout(resolve, 10));
+
+		const updateResult = await run(
+			makeRequest({
+				retentionDays: '21',
+				maxCount: '3000',
+				debugEnabled: 'false',
+				settingsVersion: preUpdateVersion
+			})
+		);
+		expect(updateResult).toMatchObject({ success: true });
+
+		const staleResult = await run(
+			makeRequest({
+				retentionDays: '90',
+				maxCount: '9000',
+				debugEnabled: 'true',
+				settingsVersion: preUpdateVersion
+			})
+		);
+
+		expect(staleResult).toMatchObject({
+			status: 409,
+			data: {
+				conflict: true,
+				error: 'Settings changed in another tab. Please reload.'
+			}
+		});
+	});
+
+	it('advances the returned settingsVersion so two consecutive saves both succeed', async () => {
+		const first = (await run(
+			makeRequest({
+				retentionDays: '14',
+				maxCount: '2000',
+				debugEnabled: 'false',
+				settingsVersion: new Date(0).toISOString()
+			})
+		)) as { form: { data: { settingsVersion: string } }; success?: boolean };
+
+		expect(first).toMatchObject({ success: true });
+		const returnedVersion = first.form.data.settingsVersion;
+		expect(returnedVersion).not.toBe(new Date(0).toISOString());
+		expect(returnedVersion).toBe((await getAppSettingsUpdatedAt(LOG_SETTINGS_KEYS))!.toISOString());
+
+		await new Promise<void>((resolve) => setTimeout(resolve, 10));
+
+		const second = await run(
+			makeRequest({
+				retentionDays: '30',
+				maxCount: '5000',
+				debugEnabled: 'true',
+				settingsVersion: returnedVersion
+			})
+		);
+		expect(second).toMatchObject({ success: true });
 	});
 });

@@ -7,9 +7,8 @@ import {
 	setAppSetting,
 	WrappedLogoMode
 } from '$lib/server/admin/settings.service';
-import { db } from '$lib/server/db/client';
-import { appSettings } from '$lib/server/db/schema';
 import { actions } from '../../../src/routes/admin/settings/appearance/+page.server';
+import { resetSharedTestDb } from '../../helpers/db';
 
 // The actions handler signatures take `{ request, locals }`. requireAdminActions
 // wraps each handler so the test exercises both the admin guard and the action
@@ -27,6 +26,10 @@ const adminLocals = {
 
 const OCC_MESSAGE = 'Settings changed in another tab. Please reload.';
 
+beforeEach(async () => {
+	await resetSharedTestDb();
+});
+
 function makeRequest(action: string, fields: Record<string, string>): Request {
 	const formData = new FormData();
 	for (const [k, v] of Object.entries(fields)) formData.set(k, v);
@@ -37,10 +40,6 @@ function makeRequest(action: string, fields: Record<string, string>): Request {
 }
 
 describe('appearance nested route — updateUITheme', () => {
-	beforeEach(async () => {
-		await db.delete(appSettings);
-	});
-
 	async function run(request: Request) {
 		const handler = actions.updateUITheme as UpdateUIThemeAction;
 		return handler({ request, locals: adminLocals } as Parameters<UpdateUIThemeAction>[0]);
@@ -151,10 +150,6 @@ describe('appearance nested route — updateUITheme', () => {
 });
 
 describe('appearance nested route — updateWrappedTheme', () => {
-	beforeEach(async () => {
-		await db.delete(appSettings);
-	});
-
 	async function run(request: Request) {
 		const handler = actions.updateWrappedTheme as UpdateWrappedThemeAction;
 		return handler({ request, locals: adminLocals } as Parameters<UpdateWrappedThemeAction>[0]);
@@ -236,10 +231,6 @@ describe('appearance nested route — updateWrappedTheme', () => {
 });
 
 describe('appearance nested route — updateWrappedLogoMode', () => {
-	beforeEach(async () => {
-		await db.delete(appSettings);
-	});
-
 	async function run(request: Request) {
 		const handler = actions.updateWrappedLogoMode as UpdateWrappedLogoModeAction;
 		return handler({
@@ -326,7 +317,3 @@ describe('appearance nested route — updateWrappedLogoMode', () => {
 		expect(await getWrappedLogoMode()).toBe(WrappedLogoMode.ALWAYS_SHOW); // unchanged DB default
 	});
 });
-
-// Touch setAppSetting so the import isn't dropped if a future refactor inlines
-// the priming logic above into a helper.
-void setAppSetting;

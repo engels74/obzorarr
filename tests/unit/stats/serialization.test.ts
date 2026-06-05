@@ -7,7 +7,13 @@ import {
 	StatsParseError,
 	serializeStats
 } from '$lib/server/stats/serialization';
-import type { ServerStats, UserStats } from '$lib/server/stats/types';
+import {
+	hasWatchHistory,
+	isServerStats,
+	isUserStats,
+	type ServerStats,
+	type UserStats
+} from '$lib/server/stats/types';
 
 /**
  * Unit tests for Stats Serialization
@@ -19,7 +25,7 @@ import type { ServerStats, UserStats } from '$lib/server/stats/types';
 // Test Helpers
 // =============================================================================
 
-function createValidUserStats(): UserStats {
+function createValidUserStats(overrides: Partial<UserStats> = {}): UserStats {
 	return {
 		userId: 1,
 		year: 2024,
@@ -48,11 +54,12 @@ function createValidUserStats(): UserStats {
 		percentileRank: 85,
 		longestBinge: null,
 		firstWatch: null,
-		lastWatch: null
+		lastWatch: null,
+		...overrides
 	};
 }
 
-function createValidServerStats(): ServerStats {
+function createValidServerStats(overrides: Partial<ServerStats> = {}): ServerStats {
 	return {
 		year: 2024,
 		totalUsers: 10,
@@ -78,9 +85,35 @@ function createValidServerStats(): ServerStats {
 		topViewers: [{ rank: 1, userId: 1, username: 'TopUser', totalMinutes: 10000 }],
 		longestBinge: null,
 		firstWatch: null,
-		lastWatch: null
+		lastWatch: null,
+		...overrides
 	};
 }
+
+describe('stats type guards', () => {
+	it.each([
+		['user stats', isUserStats, createValidUserStats(), true],
+		[
+			'user-shaped stats with custom identity',
+			isUserStats,
+			createValidUserStats({ userId: 42 }),
+			true
+		],
+		['server stats as user stats', isUserStats, createValidServerStats(), false],
+		['server stats', isServerStats, createValidServerStats({ totalUsers: 25 }), true],
+		['user stats as server stats', isServerStats, createValidUserStats(), false]
+	] as const)('%s -> %s', (_name, guard, stats, expected) => {
+		expect(guard(stats)).toBe(expected);
+	});
+
+	it.each([
+		[createValidUserStats({ totalPlays: 1, totalWatchTimeMinutes: 0 }), true],
+		[createValidServerStats({ totalPlays: 0, totalWatchTimeMinutes: 30 }), true],
+		[createValidUserStats({ totalPlays: 0, totalWatchTimeMinutes: 0 }), false]
+	] as const)('hasWatchHistory(%p) -> %s', (stats, expected) => {
+		expect(hasWatchHistory(stats)).toBe(expected);
+	});
+});
 
 describe('Stats Serialization', () => {
 	// =========================================================================

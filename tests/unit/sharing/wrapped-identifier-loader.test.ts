@@ -1,18 +1,12 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { and, eq } from 'drizzle-orm';
 import { db } from '$lib/server/db/client';
-import {
-	appSettings,
-	cachedStats,
-	playHistory,
-	shareSettings,
-	slideConfig,
-	users
-} from '$lib/server/db/schema';
+import { shareSettings, users } from '$lib/server/db/schema';
 import { getOwnerWrappedHref, setGlobalShareDefaults } from '$lib/server/sharing/service';
 import { ShareMode, ShareModeSource } from '$lib/server/sharing/types';
 import { load as loadServerWrapped } from '../../../src/routes/wrapped/[year=year]/+page.server';
 import { actions, load } from '../../../src/routes/wrapped/[year=year]/u/[identifier]/+page.server';
+import { resetSharedTestDb } from '../../helpers/db';
 
 type LoadArgs = Parameters<typeof load>[0];
 type ServerLoadArgs = Parameters<typeof loadServerWrapped>[0];
@@ -157,12 +151,7 @@ describe('wrapped/[year=year]/u/[identifier] loader: cross-year token isolation'
 	const USER_ID = 42;
 
 	beforeEach(async () => {
-		await db.delete(shareSettings);
-		await db.delete(appSettings);
-		await db.delete(users);
-		await db.delete(cachedStats);
-		await db.delete(playHistory);
-		await db.delete(slideConfig);
+		await resetSharedTestDb();
 
 		await seedUser(USER_ID, 100042, 200042);
 		await setGlobalShareDefaults({
@@ -236,12 +225,7 @@ describe('wrapped/[year=year]/u/[identifier] loader: identifier validation (F-30
 	const USER_ID = 2;
 
 	beforeEach(async () => {
-		await db.delete(shareSettings);
-		await db.delete(appSettings);
-		await db.delete(users);
-		await db.delete(cachedStats);
-		await db.delete(playHistory);
-		await db.delete(slideConfig);
+		await resetSharedTestDb();
 
 		await seedUser(USER_ID, 100002, 200002);
 		await setGlobalShareDefaults({
@@ -364,12 +348,7 @@ describe('wrapped/[year=year]/u/[identifier] loader: shareToken payload gating',
 	const YEAR = 2024;
 
 	beforeEach(async () => {
-		await db.delete(shareSettings);
-		await db.delete(appSettings);
-		await db.delete(users);
-		await db.delete(cachedStats);
-		await db.delete(playHistory);
-		await db.delete(slideConfig);
+		await resetSharedTestDb();
 
 		await seedUser(USER_ID, 100042, 200042);
 	});
@@ -596,12 +575,7 @@ describe('wrapped/[year=year]/u/[identifier] actions: token URL + floor-elevated
 	type UpdateShareModeAction = NonNullable<typeof actions.updateShareMode>;
 
 	beforeEach(async () => {
-		await db.delete(shareSettings);
-		await db.delete(appSettings);
-		await db.delete(users);
-		await db.delete(cachedStats);
-		await db.delete(playHistory);
-		await db.delete(slideConfig);
+		await resetSharedTestDb();
 
 		await seedUser(USER_ID, 100042, 200042);
 		await seedShareSettings({
@@ -715,12 +689,7 @@ describe('wrapped/[year=year]/u/[identifier] actions: token regeneration', () =>
 	type RegenerateTokenAction = NonNullable<typeof actions.regenerateToken>;
 
 	beforeEach(async () => {
-		await db.delete(shareSettings);
-		await db.delete(appSettings);
-		await db.delete(users);
-		await db.delete(cachedStats);
-		await db.delete(playHistory);
-		await db.delete(slideConfig);
+		await resetSharedTestDb();
 
 		await seedUser(USER_ID, 100077, 200077);
 		await seedShareSettings({
@@ -786,12 +755,7 @@ describe('wrapped/[year=year]/u/[identifier] loader: ISSUE-004 private-oauth con
 	const YEAR = 2024;
 
 	beforeEach(async () => {
-		await db.delete(shareSettings);
-		await db.delete(appSettings);
-		await db.delete(users);
-		await db.delete(cachedStats);
-		await db.delete(playHistory);
-		await db.delete(slideConfig);
+		await resetSharedTestDb();
 
 		await setGlobalShareDefaults({
 			defaultShareMode: ShareMode.PRIVATE_OAUTH,
@@ -896,12 +860,7 @@ describe('wrapped/[year=year]/u/[identifier] loader: ISSUE-001 uniform-404 anti-
 	const VALID_LINK_TOKEN = OTHER_YEAR_TOKEN_FOR_PRESEED;
 
 	beforeEach(async () => {
-		await db.delete(shareSettings);
-		await db.delete(appSettings);
-		await db.delete(users);
-		await db.delete(cachedStats);
-		await db.delete(playHistory);
-		await db.delete(slideConfig);
+		await resetSharedTestDb();
 		await seedUser(EXISTING_ID, 100002, 200002);
 	});
 

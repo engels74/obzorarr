@@ -6,9 +6,8 @@ import {
 	getAppSetting,
 	setAppSetting
 } from '$lib/server/admin/settings.service';
-import { db } from '$lib/server/db/client';
-import { appSettings } from '$lib/server/db/schema';
 import { actions } from '../../../src/routes/admin/settings/connections/+page.server';
+import { resetSharedTestDb } from '../../helpers/db';
 
 type UpdateApiConfigAction = NonNullable<typeof actions.updateApiConfig>;
 type ClearOpenaiKeyAction = NonNullable<typeof actions.clearOpenaiKey>;
@@ -35,7 +34,7 @@ function makeRequest(action: string, fields: Record<string, string>): Request {
 
 describe('connections nested route — updateApiConfig (OCC + schema)', () => {
 	beforeEach(async () => {
-		await db.delete(appSettings);
+		await resetSharedTestDb();
 	});
 
 	async function run(request: Request) {
@@ -353,7 +352,7 @@ describe('connections nested route — updateApiConfig (OCC + schema)', () => {
 
 describe('connections nested route — clearOpenaiKey', () => {
 	beforeEach(async () => {
-		await db.delete(appSettings);
+		await resetSharedTestDb();
 	});
 
 	async function run() {
@@ -384,7 +383,7 @@ describe('connections nested route — clearOpenaiKey', () => {
 
 describe('connections nested route — clearOpenaiModel', () => {
 	beforeEach(async () => {
-		await db.delete(appSettings);
+		await resetSharedTestDb();
 	});
 
 	async function run() {

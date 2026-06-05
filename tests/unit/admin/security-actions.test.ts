@@ -6,9 +6,8 @@ import {
 	getAppSetting,
 	setAppSetting
 } from '$lib/server/admin/settings.service';
-import { db } from '$lib/server/db/client';
-import { appSettings } from '$lib/server/db/schema';
 import { actions } from '../../../src/routes/admin/settings/security/+page.server';
+import { resetSharedTestDb } from '../../helpers/db';
 
 type TestCsrfAction = NonNullable<typeof actions.testCsrfProtection>;
 type UpdateCsrfOriginAction = NonNullable<typeof actions.updateCsrfOrigin>;
@@ -43,7 +42,7 @@ function csrfRequest(opts: {
 
 describe('security nested route — testCsrfProtection', () => {
 	beforeEach(async () => {
-		await db.delete(appSettings);
+		await resetSharedTestDb();
 		const dyn = env as Record<string, string | undefined>;
 		delete dyn.ORIGIN;
 	});
@@ -78,7 +77,7 @@ describe('security nested route — testCsrfProtection', () => {
 
 describe('security nested route — updateCsrfOrigin (OCC + set + clear)', () => {
 	beforeEach(async () => {
-		await db.delete(appSettings);
+		await resetSharedTestDb();
 		const dyn = env as Record<string, string | undefined>;
 		delete dyn.ORIGIN;
 	});
@@ -158,7 +157,7 @@ describe('security nested route — updateCsrfOrigin (OCC + set + clear)', () =>
 
 describe('security nested route — toggleCsrfSkip', () => {
 	beforeEach(async () => {
-		await db.delete(appSettings);
+		await resetSharedTestDb();
 	});
 
 	async function run(enabled: boolean) {
@@ -197,7 +196,7 @@ describe('security nested route — toggleCsrfSkip', () => {
 
 describe('security nested route — resetCsrfWarning', () => {
 	beforeEach(async () => {
-		await db.delete(appSettings);
+		await resetSharedTestDb();
 	});
 
 	it('returns success and reports the warning re-enabled', async () => {
@@ -216,7 +215,7 @@ describe('security nested route — resetCsrfWarning', () => {
 
 describe('security nested route — updateTrustProxy (confirmRisk + OCC)', () => {
 	beforeEach(async () => {
-		await db.delete(appSettings);
+		await resetSharedTestDb();
 	});
 
 	// Match the diagnostic's "enable" recommendation shape (cf. settings-actions

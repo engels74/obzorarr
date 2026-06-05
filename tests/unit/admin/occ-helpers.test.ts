@@ -8,10 +8,11 @@ import {
 } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
 import { appSettings } from '$lib/server/db/schema';
+import { resetSharedTestDb } from '../../helpers/db';
 
 describe('externalOccCheck', () => {
 	beforeEach(async () => {
-		await db.delete(appSettings);
+		await resetSharedTestDb();
 	});
 
 	it('returns conflict for blank submittedVersion (defends fresh-install loophole)', async () => {
@@ -90,7 +91,7 @@ describe('externalOccCheck', () => {
 
 describe('inlineOccCheck', () => {
 	beforeEach(async () => {
-		await db.delete(appSettings);
+		await resetSharedTestDb();
 	});
 
 	it('returns conflict for blank submittedVersion', async () => {
