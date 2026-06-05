@@ -29,6 +29,7 @@ import {
 	ShareSettingsKey,
 	ShareSettingsNotFoundError
 } from '$lib/server/sharing/types';
+import { resetSharedTestDb } from '../../helpers/db';
 
 /**
  * Unit tests for Sharing Service
@@ -38,10 +39,8 @@ import {
  */
 
 describe('Sharing Service', () => {
-	// Clean up tables before each test
 	beforeEach(async () => {
-		await db.delete(shareSettings);
-		await db.delete(appSettings);
+		await resetSharedTestDb();
 	});
 
 	// =========================================================================

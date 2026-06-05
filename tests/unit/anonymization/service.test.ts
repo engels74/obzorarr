@@ -6,486 +6,208 @@ import {
 	setGlobalAnonymizationMode,
 	setPerStatAnonymization
 } from '$lib/server/anonymization/service';
-import {
-	AnonymizationMode,
-	type AnonymizationModeType,
-	AnonymizationSettingsKey
-} from '$lib/server/anonymization/types';
+import { AnonymizationMode, AnonymizationSettingsKey } from '$lib/server/anonymization/types';
 import { db } from '$lib/server/db/client';
 import { appSettings } from '$lib/server/db/schema';
+import { resetSharedTestDb } from '../../helpers/db';
 
-/**
- * Unit tests for Anonymization Service Database Functions
- *
- * Tests the database persistence layer for anonymization settings.
- * Covers CRUD operations, validation, error handling, and edge cases.
- *
- * Uses in-memory SQLite from test setup.
- */
+type PerStatSettings = Parameters<typeof setPerStatAnonymization>[0];
+
+const MODE_CASES = [
+	[AnonymizationMode.REAL],
+	[AnonymizationMode.ANONYMOUS],
+	[AnonymizationMode.HYBRID]
+] as const;
+
+async function seedSetting(key: string, value: string) {
+	await db.insert(appSettings).values({ key, value });
+}
+
+const seedDefault = (value: string) => seedSetting(AnonymizationSettingsKey.DEFAULT_MODE, value);
+const seedPerStat = (value: string) =>
+	seedSetting(AnonymizationSettingsKey.PER_STAT_SETTINGS, value);
 
 describe('Anonymization Service', () => {
-	// Clean up app settings before each test
-	beforeEach(async () => {
-		await db.delete(appSettings);
-	});
+	beforeEach(resetSharedTestDb);
 
-	// =========================================================================
-	// Global Anonymization Mode
-	// =========================================================================
+	describe('global anonymization mode', () => {
+		it.each([
+			['missing row defaults safely', null, AnonymizationMode.HYBRID],
+			['stored real', AnonymizationMode.REAL, AnonymizationMode.REAL],
+			['stored anonymous', AnonymizationMode.ANONYMOUS, AnonymizationMode.ANONYMOUS],
+			['stored hybrid', AnonymizationMode.HYBRID, AnonymizationMode.HYBRID],
+			['invalid value', 'invalid-mode', AnonymizationMode.HYBRID],
+			['empty string', '', AnonymizationMode.HYBRID],
+			['numeric string', '123', AnonymizationMode.HYBRID],
+			['JSON object', '{"mode":"anonymous"}', AnonymizationMode.HYBRID]
+		] as const)('returns %s', async (_name, storedValue, expected) => {
+			if (storedValue !== null) await seedDefault(storedValue);
 
-	describe('getGlobalAnonymizationMode', () => {
-		it('returns HYBRID as default when no setting exists (DF-004 privacy-by-default)', async () => {
-			const mode = await getGlobalAnonymizationMode();
-			expect(mode).toBe(AnonymizationMode.HYBRID);
+			expect(await getGlobalAnonymizationMode()).toBe(expected);
 		});
 
-		it('returns stored mode when valid - real', async () => {
-			await db.insert(appSettings).values({
-				key: AnonymizationSettingsKey.DEFAULT_MODE,
-				value: AnonymizationMode.REAL
-			});
+		it.each(MODE_CASES)('round-trips %s', async (mode) => {
+			await setGlobalAnonymizationMode(mode);
 
-			const mode = await getGlobalAnonymizationMode();
-			expect(mode).toBe(AnonymizationMode.REAL);
+			expect(await getGlobalAnonymizationMode()).toBe(mode);
 		});
 
-		it('returns stored mode when valid - anonymous', async () => {
-			await db.insert(appSettings).values({
-				key: AnonymizationSettingsKey.DEFAULT_MODE,
-				value: AnonymizationMode.ANONYMOUS
-			});
-
-			const mode = await getGlobalAnonymizationMode();
-			expect(mode).toBe(AnonymizationMode.ANONYMOUS);
-		});
-
-		it('returns stored mode when valid - hybrid', async () => {
-			await db.insert(appSettings).values({
-				key: AnonymizationSettingsKey.DEFAULT_MODE,
-				value: AnonymizationMode.HYBRID
-			});
-
-			const mode = await getGlobalAnonymizationMode();
-			expect(mode).toBe(AnonymizationMode.HYBRID);
-		});
-
-		it('returns HYBRID as fallback for invalid stored value (DF-004: corrupt row must not de-anonymize)', async () => {
-			await db.insert(appSettings).values({
-				key: AnonymizationSettingsKey.DEFAULT_MODE,
-				value: 'invalid-mode'
-			});
-
-			const mode = await getGlobalAnonymizationMode();
-			expect(mode).toBe(AnonymizationMode.HYBRID);
-		});
-
-		it('returns HYBRID for empty string value (DF-004: corrupt row must not de-anonymize)', async () => {
-			await db.insert(appSettings).values({
-				key: AnonymizationSettingsKey.DEFAULT_MODE,
-				value: ''
-			});
-
-			const mode = await getGlobalAnonymizationMode();
-			expect(mode).toBe(AnonymizationMode.HYBRID);
-		});
-
-		it('returns HYBRID for numeric value (DF-004: corrupt row must not de-anonymize)', async () => {
-			await db.insert(appSettings).values({
-				key: AnonymizationSettingsKey.DEFAULT_MODE,
-				value: '123'
-			});
-
-			const mode = await getGlobalAnonymizationMode();
-			expect(mode).toBe(AnonymizationMode.HYBRID);
-		});
-
-		it('returns HYBRID for JSON object value (DF-004: corrupt row must not de-anonymize)', async () => {
-			await db.insert(appSettings).values({
-				key: AnonymizationSettingsKey.DEFAULT_MODE,
-				value: '{"mode": "anonymous"}'
-			});
-
-			const mode = await getGlobalAnonymizationMode();
-			expect(mode).toBe(AnonymizationMode.HYBRID);
-		});
-	});
-
-	describe('setGlobalAnonymizationMode', () => {
-		it('inserts new setting for REAL mode', async () => {
-			await setGlobalAnonymizationMode(AnonymizationMode.REAL);
-
-			const mode = await getGlobalAnonymizationMode();
-			expect(mode).toBe(AnonymizationMode.REAL);
-		});
-
-		it('inserts new setting for ANONYMOUS mode', async () => {
-			await setGlobalAnonymizationMode(AnonymizationMode.ANONYMOUS);
-
-			const mode = await getGlobalAnonymizationMode();
-			expect(mode).toBe(AnonymizationMode.ANONYMOUS);
-		});
-
-		it('inserts new setting for HYBRID mode', async () => {
-			await setGlobalAnonymizationMode(AnonymizationMode.HYBRID);
-
-			const mode = await getGlobalAnonymizationMode();
-			expect(mode).toBe(AnonymizationMode.HYBRID);
-		});
-
-		it('updates existing setting via upsert', async () => {
-			await setGlobalAnonymizationMode(AnonymizationMode.REAL);
-			await setGlobalAnonymizationMode(AnonymizationMode.ANONYMOUS);
-			await setGlobalAnonymizationMode(AnonymizationMode.HYBRID);
-
-			const mode = await getGlobalAnonymizationMode();
-			expect(mode).toBe(AnonymizationMode.HYBRID);
-		});
-
-		it('round-trip: set and get returns same value', async () => {
-			const modes: AnonymizationModeType[] = [
+		it('upserts and overwrites corrupt data', async () => {
+			await seedDefault('corrupted-data');
+			for (const mode of [
 				AnonymizationMode.REAL,
 				AnonymizationMode.ANONYMOUS,
 				AnonymizationMode.HYBRID
-			];
-
-			for (const expectedMode of modes) {
-				await setGlobalAnonymizationMode(expectedMode);
-				const actualMode = await getGlobalAnonymizationMode();
-				expect(actualMode).toBe(expectedMode);
+			]) {
+				await setGlobalAnonymizationMode(mode);
 			}
-		});
 
-		it('overwrites invalid stored value', async () => {
-			// First, insert an invalid value directly
-			await db.insert(appSettings).values({
-				key: AnonymizationSettingsKey.DEFAULT_MODE,
-				value: 'corrupted-data'
-			});
-
-			// Now set a valid mode - should overwrite
-			await setGlobalAnonymizationMode(AnonymizationMode.ANONYMOUS);
-
-			const mode = await getGlobalAnonymizationMode();
-			expect(mode).toBe(AnonymizationMode.ANONYMOUS);
+			expect(await getGlobalAnonymizationMode()).toBe(AnonymizationMode.HYBRID);
 		});
 	});
 
-	// =========================================================================
-	// Per-Stat Anonymization Settings
-	// =========================================================================
+	describe('per-stat anonymization settings', () => {
+		it.each([
+			['missing row', null, {}],
+			[
+				'valid topViewers',
+				JSON.stringify({ topViewers: AnonymizationMode.ANONYMOUS }),
+				{ topViewers: AnonymizationMode.ANONYMOUS }
+			],
+			['invalid JSON', 'not-valid-json{', {}],
+			['empty string', '', {}],
+			['invalid mode', JSON.stringify({ topViewers: 'invalid-mode' }), {}],
+			['unknown key', JSON.stringify({ unknownKey: AnonymizationMode.ANONYMOUS }), {}],
+			['JSON array', JSON.stringify([AnonymizationMode.ANONYMOUS]), {}],
+			['JSON null', 'null', {}],
+			['empty object', JSON.stringify({}), {}],
+			[
+				'hybrid topViewers',
+				JSON.stringify({ topViewers: AnonymizationMode.HYBRID }),
+				{ topViewers: AnonymizationMode.HYBRID }
+			]
+		] as const)('parses %s', async (_name, storedValue, expected) => {
+			if (storedValue !== null) await seedPerStat(storedValue);
 
-	describe('getPerStatAnonymization', () => {
-		it('returns empty object when no setting exists', async () => {
-			const settings = await getPerStatAnonymization();
-			expect(settings).toEqual({});
+			expect(await getPerStatAnonymization()).toEqual(expected);
 		});
 
-		it('returns parsed settings when valid JSON with topViewers', async () => {
-			await db.insert(appSettings).values({
-				key: AnonymizationSettingsKey.PER_STAT_SETTINGS,
-				value: JSON.stringify({ topViewers: AnonymizationMode.ANONYMOUS })
-			});
+		it.each([
+			['empty object', {}, {}],
+			[
+				'anonymous topViewers',
+				{ topViewers: AnonymizationMode.ANONYMOUS },
+				{ topViewers: AnonymizationMode.ANONYMOUS }
+			]
+		] as const)('inserts %s', async (_name, input, expected) => {
+			await setPerStatAnonymization(input as PerStatSettings);
 
-			const settings = await getPerStatAnonymization();
-			expect(settings).toEqual({ topViewers: AnonymizationMode.ANONYMOUS });
+			expect(await getPerStatAnonymization()).toEqual(expected);
 		});
 
-		it('returns empty object for invalid JSON', async () => {
-			await db.insert(appSettings).values({
-				key: AnonymizationSettingsKey.PER_STAT_SETTINGS,
-				value: 'not-valid-json{'
-			});
+		it.each(MODE_CASES)('round-trips topViewers=%s', async (mode) => {
+			await setPerStatAnonymization({ topViewers: mode });
 
-			const settings = await getPerStatAnonymization();
-			expect(settings).toEqual({});
+			expect((await getPerStatAnonymization()).topViewers).toBe(mode);
 		});
 
-		it('returns empty object for empty string', async () => {
-			await db.insert(appSettings).values({
-				key: AnonymizationSettingsKey.PER_STAT_SETTINGS,
-				value: ''
-			});
-
-			const settings = await getPerStatAnonymization();
-			expect(settings).toEqual({});
-		});
-
-		it('returns empty object for invalid schema (wrong mode value)', async () => {
-			await db.insert(appSettings).values({
-				key: AnonymizationSettingsKey.PER_STAT_SETTINGS,
-				value: JSON.stringify({ topViewers: 'invalid-mode' })
-			});
-
-			const settings = await getPerStatAnonymization();
-			expect(settings).toEqual({});
-		});
-
-		it('returns empty object for invalid schema (wrong structure)', async () => {
-			await db.insert(appSettings).values({
-				key: AnonymizationSettingsKey.PER_STAT_SETTINGS,
-				value: JSON.stringify({ unknownKey: AnonymizationMode.ANONYMOUS })
-			});
-
-			// Schema validation will fail due to unrecognized key (strict mode)
-			// Actually, Zod by default allows extra keys - let's check actual behavior
-			const settings = await getPerStatAnonymization();
-			// Zod will strip unknown keys and return valid part or fail
-			expect(settings).toBeDefined();
-		});
-
-		it('returns empty object for JSON array', async () => {
-			await db.insert(appSettings).values({
-				key: AnonymizationSettingsKey.PER_STAT_SETTINGS,
-				value: JSON.stringify([AnonymizationMode.ANONYMOUS])
-			});
-
-			const settings = await getPerStatAnonymization();
-			expect(settings).toEqual({});
-		});
-
-		it('returns empty object for JSON null', async () => {
-			await db.insert(appSettings).values({
-				key: AnonymizationSettingsKey.PER_STAT_SETTINGS,
-				value: 'null'
-			});
-
-			const settings = await getPerStatAnonymization();
-			expect(settings).toEqual({});
-		});
-
-		it('returns valid partial settings (topViewers only)', async () => {
-			await db.insert(appSettings).values({
-				key: AnonymizationSettingsKey.PER_STAT_SETTINGS,
-				value: JSON.stringify({ topViewers: AnonymizationMode.HYBRID })
-			});
-
-			const settings = await getPerStatAnonymization();
-			expect(settings.topViewers).toBe(AnonymizationMode.HYBRID);
-		});
-
-		it('handles empty JSON object', async () => {
-			await db.insert(appSettings).values({
-				key: AnonymizationSettingsKey.PER_STAT_SETTINGS,
-				value: JSON.stringify({})
-			});
-
-			const settings = await getPerStatAnonymization();
-			expect(settings).toEqual({});
-		});
-	});
-
-	describe('setPerStatAnonymization', () => {
-		it('inserts new setting with empty object', async () => {
-			await setPerStatAnonymization({});
-
-			const settings = await getPerStatAnonymization();
-			expect(settings).toEqual({});
-		});
-
-		it('inserts new setting with topViewers', async () => {
-			await setPerStatAnonymization({ topViewers: AnonymizationMode.ANONYMOUS });
-
-			const settings = await getPerStatAnonymization();
-			expect(settings).toEqual({ topViewers: AnonymizationMode.ANONYMOUS });
-		});
-
-		it('updates existing setting via upsert', async () => {
+		it('upserts, clears, and overwrites corrupt rows', async () => {
 			await setPerStatAnonymization({ topViewers: AnonymizationMode.REAL });
 			await setPerStatAnonymization({ topViewers: AnonymizationMode.HYBRID });
+			expect(await getPerStatAnonymization()).toEqual({ topViewers: AnonymizationMode.HYBRID });
 
-			const settings = await getPerStatAnonymization();
-			expect(settings).toEqual({ topViewers: AnonymizationMode.HYBRID });
-		});
-
-		it('overwrites with empty object clears previous settings', async () => {
-			await setPerStatAnonymization({ topViewers: AnonymizationMode.ANONYMOUS });
 			await setPerStatAnonymization({});
+			expect(await getPerStatAnonymization()).toEqual({});
 
-			const settings = await getPerStatAnonymization();
-			expect(settings).toEqual({});
-		});
-
-		it('round-trip: set and get returns same value', async () => {
-			const testSettings = { topViewers: AnonymizationMode.HYBRID };
-
-			await setPerStatAnonymization(testSettings);
-			const actual = await getPerStatAnonymization();
-
-			expect(actual).toEqual(testSettings);
-		});
-
-		it('handles all valid mode values for topViewers', async () => {
-			const modes: AnonymizationModeType[] = [
-				AnonymizationMode.REAL,
-				AnonymizationMode.ANONYMOUS,
-				AnonymizationMode.HYBRID
-			];
-
-			for (const mode of modes) {
-				await setPerStatAnonymization({ topViewers: mode });
-				const settings = await getPerStatAnonymization();
-				expect(settings.topViewers).toBe(mode);
-			}
-		});
-
-		it('overwrites corrupted data', async () => {
-			// Insert corrupted data directly
-			await db.insert(appSettings).values({
-				key: AnonymizationSettingsKey.PER_STAT_SETTINGS,
-				value: 'corrupted-json-data'
-			});
-
-			// Set valid data should overwrite
+			await resetSharedTestDb();
+			await seedPerStat('corrupted-json-data');
 			await setPerStatAnonymization({ topViewers: AnonymizationMode.ANONYMOUS });
-
-			const settings = await getPerStatAnonymization();
-			expect(settings).toEqual({ topViewers: AnonymizationMode.ANONYMOUS });
+			expect(await getPerStatAnonymization()).toEqual({ topViewers: AnonymizationMode.ANONYMOUS });
 		});
 	});
-
-	// =========================================================================
-	// getAnonymizationModeForStat - Orchestration with Fallback
-	// =========================================================================
 
 	describe('getAnonymizationModeForStat', () => {
-		it('returns global default when no per-stat override exists', async () => {
-			// Set global to anonymous, no per-stat settings
-			await setGlobalAnonymizationMode(AnonymizationMode.ANONYMOUS);
+		it.each([
+			['missing config defaults safely', async () => {}, AnonymizationMode.HYBRID],
+			[
+				'global fallback',
+				async () => setGlobalAnonymizationMode(AnonymizationMode.ANONYMOUS),
+				AnonymizationMode.ANONYMOUS
+			],
+			[
+				'per-stat override',
+				async () => {
+					await setGlobalAnonymizationMode(AnonymizationMode.REAL);
+					await setPerStatAnonymization({ topViewers: AnonymizationMode.ANONYMOUS });
+				},
+				AnonymizationMode.ANONYMOUS
+			],
+			[
+				'per-stat precedence over global',
+				async () => {
+					await setGlobalAnonymizationMode(AnonymizationMode.HYBRID);
+					await setPerStatAnonymization({ topViewers: AnonymizationMode.REAL });
+				},
+				AnonymizationMode.REAL
+			],
+			[
+				'empty per-stat settings fall back',
+				async () => {
+					await setGlobalAnonymizationMode(AnonymizationMode.HYBRID);
+					await setPerStatAnonymization({});
+				},
+				AnonymizationMode.HYBRID
+			],
+			[
+				'corrupt per-stat settings fall back',
+				async () => {
+					await setGlobalAnonymizationMode(AnonymizationMode.ANONYMOUS);
+					await seedPerStat('corrupted-json');
+				},
+				AnonymizationMode.ANONYMOUS
+			],
+			[
+				'corrupt global setting defaults safely',
+				async () => seedDefault('corrupted'),
+				AnonymizationMode.HYBRID
+			],
+			[
+				'undefined topViewers falls back',
+				async () => {
+					await setGlobalAnonymizationMode(AnonymizationMode.HYBRID);
+					await setPerStatAnonymization({ topViewers: undefined });
+				},
+				AnonymizationMode.HYBRID
+			]
+		] as const)('%s', async (_name, setup, expected) => {
+			await setup();
 
-			const mode = await getAnonymizationModeForStat('topViewers');
-			expect(mode).toBe(AnonymizationMode.ANONYMOUS);
-		});
-
-		it('returns global default (HYBRID) when nothing configured (DF-004 privacy-by-default)', async () => {
-			const mode = await getAnonymizationModeForStat('topViewers');
-			expect(mode).toBe(AnonymizationMode.HYBRID);
-		});
-
-		it('returns per-stat override when configured', async () => {
-			await setGlobalAnonymizationMode(AnonymizationMode.REAL);
-			await setPerStatAnonymization({ topViewers: AnonymizationMode.ANONYMOUS });
-
-			const mode = await getAnonymizationModeForStat('topViewers');
-			expect(mode).toBe(AnonymizationMode.ANONYMOUS);
-		});
-
-		it('per-stat override takes precedence over global', async () => {
-			await setGlobalAnonymizationMode(AnonymizationMode.HYBRID);
-			await setPerStatAnonymization({ topViewers: AnonymizationMode.REAL });
-
-			const mode = await getAnonymizationModeForStat('topViewers');
-			expect(mode).toBe(AnonymizationMode.REAL);
-		});
-
-		it('falls back to global when per-stat settings exist but not for this stat', async () => {
-			await setGlobalAnonymizationMode(AnonymizationMode.HYBRID);
-			// Set per-stat but without topViewers (empty object)
-			await setPerStatAnonymization({});
-
-			const mode = await getAnonymizationModeForStat('topViewers');
-			expect(mode).toBe(AnonymizationMode.HYBRID);
-		});
-
-		it('handles corrupted per-stat settings by falling back to global', async () => {
-			await setGlobalAnonymizationMode(AnonymizationMode.ANONYMOUS);
-
-			// Insert corrupted per-stat settings
-			await db.insert(appSettings).values({
-				key: AnonymizationSettingsKey.PER_STAT_SETTINGS,
-				value: 'corrupted-json'
-			});
-
-			const mode = await getAnonymizationModeForStat('topViewers');
-			// getPerStatAnonymization returns {} for corrupted data
-			// So it falls back to global
-			expect(mode).toBe(AnonymizationMode.ANONYMOUS);
-		});
-
-		it('handles corrupted global settings by falling back to HYBRID (DF-004: corrupt row must not de-anonymize)', async () => {
-			// Insert corrupted global setting
-			await db.insert(appSettings).values({
-				key: AnonymizationSettingsKey.DEFAULT_MODE,
-				value: 'corrupted'
-			});
-
-			const mode = await getAnonymizationModeForStat('topViewers');
-			expect(mode).toBe(AnonymizationMode.HYBRID);
-		});
-
-		it('handles undefined topViewers in per-stat settings correctly', async () => {
-			await setGlobalAnonymizationMode(AnonymizationMode.HYBRID);
-			await setPerStatAnonymization({ topViewers: undefined });
-
-			const mode = await getAnonymizationModeForStat('topViewers');
-			// undefined should fall through to global
-			expect(mode).toBe(AnonymizationMode.HYBRID);
+			expect(await getAnonymizationModeForStat('topViewers')).toBe(expected);
 		});
 	});
 
-	// =========================================================================
-	// Integration: Full Configuration Flow
-	// =========================================================================
-
-	describe('Integration: Configuration Flow', () => {
-		it('admin configures full anonymization setup', async () => {
-			// Step 1: Set global default to anonymous
+	describe('configuration flow', () => {
+		it('persists global and per-stat choices through reads', async () => {
 			await setGlobalAnonymizationMode(AnonymizationMode.ANONYMOUS);
-
-			// Step 2: Override topViewers to show real names
 			await setPerStatAnonymization({ topViewers: AnonymizationMode.REAL });
-
-			// Step 3: Verify configuration
-			const globalMode = await getGlobalAnonymizationMode();
-			expect(globalMode).toBe(AnonymizationMode.ANONYMOUS);
-
-			const topViewersMode = await getAnonymizationModeForStat('topViewers');
-			expect(topViewersMode).toBe(AnonymizationMode.REAL);
-		});
-
-		it('configuration persists across multiple operations', async () => {
-			// Set initial config
-			await setGlobalAnonymizationMode(AnonymizationMode.HYBRID);
-			await setPerStatAnonymization({ topViewers: AnonymizationMode.ANONYMOUS });
-
-			// Perform other operations (simulating app usage)
 			await getGlobalAnonymizationMode();
 			await getPerStatAnonymization();
 
-			// Verify config still correct
-			const mode = await getAnonymizationModeForStat('topViewers');
-			expect(mode).toBe(AnonymizationMode.ANONYMOUS);
+			expect(await getGlobalAnonymizationMode()).toBe(AnonymizationMode.ANONYMOUS);
+			expect(await getAnonymizationModeForStat('topViewers')).toBe(AnonymizationMode.REAL);
 		});
 
-		it('changing global default affects stats without override', async () => {
-			// Initially HYBRID (DF-004 fresh-install privacy-by-default)
-			let mode = await getAnonymizationModeForStat('topViewers');
-			expect(mode).toBe(AnonymizationMode.HYBRID);
-
-			// Change global to ANONYMOUS
+		it('global changes apply until an override exists, and clearing it reverts to global', async () => {
+			expect(await getAnonymizationModeForStat('topViewers')).toBe(AnonymizationMode.HYBRID);
 			await setGlobalAnonymizationMode(AnonymizationMode.ANONYMOUS);
-			mode = await getAnonymizationModeForStat('topViewers');
-			expect(mode).toBe(AnonymizationMode.ANONYMOUS);
+			expect(await getAnonymizationModeForStat('topViewers')).toBe(AnonymizationMode.ANONYMOUS);
 
-			// Change global to HYBRID
-			await setGlobalAnonymizationMode(AnonymizationMode.HYBRID);
-			mode = await getAnonymizationModeForStat('topViewers');
-			expect(mode).toBe(AnonymizationMode.HYBRID);
-		});
-
-		it('clearing per-stat override reverts to global', async () => {
-			await setGlobalAnonymizationMode(AnonymizationMode.HYBRID);
 			await setPerStatAnonymization({ topViewers: AnonymizationMode.REAL });
+			expect(await getAnonymizationModeForStat('topViewers')).toBe(AnonymizationMode.REAL);
 
-			// Verify override is active
-			let mode = await getAnonymizationModeForStat('topViewers');
-			expect(mode).toBe(AnonymizationMode.REAL);
-
-			// Clear per-stat settings
+			await setGlobalAnonymizationMode(AnonymizationMode.HYBRID);
 			await setPerStatAnonymization({});
-
-			// Should fall back to global
-			mode = await getAnonymizationModeForStat('topViewers');
-			expect(mode).toBe(AnonymizationMode.HYBRID);
+			expect(await getAnonymizationModeForStat('topViewers')).toBe(AnonymizationMode.HYBRID);
 		});
 	});
 });

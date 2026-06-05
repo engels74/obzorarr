@@ -1,13 +1,14 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { getAnonymizationMode, setAppSetting } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
-import { appSettings, shareSettings } from '$lib/server/db/schema';
+import { appSettings } from '$lib/server/db/schema';
 import {
 	getGlobalAllowUserControl,
 	getGlobalDefaultShareMode,
 	getServerWrappedShareMode
 } from '$lib/server/sharing/service';
 import { actions } from '../../../src/routes/admin/settings/privacy/+page.server';
+import { resetSharedTestDb } from '../../helpers/db';
 
 type UpdateServerWrappedAction = NonNullable<typeof actions.updateServerWrappedSettings>;
 type UpdateUserDefaultsAction = NonNullable<typeof actions.updateUserDefaults>;
@@ -27,10 +28,7 @@ function makeRequest(action: string, fields: Record<string, string>): Request {
 }
 
 describe('privacy nested route — updateServerWrappedSettings', () => {
-	beforeEach(async () => {
-		await db.delete(appSettings);
-		await db.delete(shareSettings);
-	});
+	beforeEach(resetSharedTestDb);
 
 	async function run(request: Request) {
 		const handler = actions.updateServerWrappedSettings as UpdateServerWrappedAction;
@@ -146,10 +144,7 @@ describe('privacy nested route — updateServerWrappedSettings', () => {
 });
 
 describe('privacy nested route — updateUserDefaults', () => {
-	beforeEach(async () => {
-		await db.delete(appSettings);
-		await db.delete(shareSettings);
-	});
+	beforeEach(resetSharedTestDb);
 
 	async function run(request: Request) {
 		const handler = actions.updateUserDefaults as UpdateUserDefaultsAction;
@@ -305,9 +300,7 @@ describe('privacy nested route — updateUserDefaults', () => {
 });
 
 describe('privacy nested route — bulkApplyShareDefaults', () => {
-	beforeEach(async () => {
-		await db.delete(shareSettings);
-	});
+	beforeEach(resetSharedTestDb);
 
 	async function run() {
 		const handler = actions.bulkApplyShareDefaults as BulkApplyAction;

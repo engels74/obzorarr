@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { and, eq } from 'drizzle-orm';
 import { db } from '$lib/server/db/client';
-import { appSettings, shareSettings } from '$lib/server/db/schema';
+import { shareSettings } from '$lib/server/db/schema';
 import {
 	checkAccess,
 	checkServerWrappedAccess,
@@ -21,6 +21,7 @@ import {
 	ShareMode,
 	ShareModePrivacyLevel
 } from '$lib/server/sharing/types';
+import { resetSharedTestDb } from '../../helpers/db';
 
 /**
  * Unit tests for Sharing Access Control
@@ -32,11 +33,7 @@ import {
  */
 
 describe('Sharing Access Control', () => {
-	// Clean up tables before each test
-	beforeEach(async () => {
-		await db.delete(shareSettings);
-		await db.delete(appSettings);
-	});
+	beforeEach(resetSharedTestDb);
 
 	// =========================================================================
 	// checkAccess - Pure Function Tests

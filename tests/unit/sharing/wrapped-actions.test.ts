@@ -1,9 +1,8 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { AppSettingsKey, setAppSetting, WrappedLogoMode } from '$lib/server/admin/settings.service';
-import { db } from '$lib/server/db/client';
-import { appSettings, shareSettings } from '$lib/server/db/schema';
 import { getUserLogoPreference } from '$lib/server/sharing/service';
 import { actions } from '../../../src/routes/wrapped/[year=year]/u/[identifier]/+page.server';
+import { resetSharedTestDb } from '../../helpers/db';
 
 type ToggleLogoAction = NonNullable<typeof actions.toggleLogo>;
 
@@ -21,10 +20,7 @@ function createToggleLogoRequest(showLogo: boolean): Request {
 }
 
 describe('wrapped actions', () => {
-	beforeEach(async () => {
-		await db.delete(shareSettings);
-		await db.delete(appSettings);
-	});
+	beforeEach(resetSharedTestDb);
 
 	it('toggleLogo returns and persists the saved showLogo value', async () => {
 		await setAppSetting(AppSettingsKey.WRAPPED_LOGO_MODE, WrappedLogoMode.USER_CHOICE);

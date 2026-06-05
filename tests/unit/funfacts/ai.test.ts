@@ -12,6 +12,7 @@ import {
 	isAIAvailable
 } from '$lib/server/funfacts';
 import type { UserStats } from '$lib/server/stats/types';
+import { resetSharedTestDb } from '../../helpers/db';
 
 /**
  * Unit tests for Fun Facts AI Generation
@@ -116,7 +117,7 @@ let originalFetch: typeof fetch;
 
 describe('Fun Facts AI', () => {
 	beforeEach(async () => {
-		await db.delete(appSettings);
+		await resetSharedTestDb();
 		originalFetch = globalThis.fetch;
 	});
 

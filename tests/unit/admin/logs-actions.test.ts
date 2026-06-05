@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import { db } from '$lib/server/db/client';
-import { appSettings, logs } from '$lib/server/db/schema';
+import { logs } from '$lib/server/db/schema';
 import { LogLevel, stopLogRetentionScheduler } from '$lib/server/logging';
 import { actions, load } from '../../../src/routes/admin/logs/+page.server';
+import { resetSharedTestDb } from '../../helpers/db';
 
 type ExportLogsAction = NonNullable<typeof actions.exportLogs>;
 type LoadArgs = Parameters<typeof load>[0];
@@ -45,8 +46,7 @@ function logMessages(data: LogsLoadData): string[] {
 
 describe('admin logs page load/actions', () => {
 	beforeEach(async () => {
-		await db.delete(logs);
-		await db.delete(appSettings);
+		await resetSharedTestDb();
 	});
 
 	afterEach(() => {

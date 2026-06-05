@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { FunFactFrequency, getFunFactFrequency } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
-import { appSettings, customSlides, slideConfig } from '$lib/server/db/schema';
+import { customSlides } from '$lib/server/db/schema';
 import {
 	getSlideConfigByType,
 	initializeDefaultSlideConfig
 } from '$lib/server/slides/config.service';
 import { actions } from '../../../src/routes/admin/slides/+page.server';
+import { resetSharedTestDb } from '../../helpers/db';
 
 type SetFunFactFrequencyAction = NonNullable<typeof actions.setFunFactFrequency>;
 type CreateCustomAction = NonNullable<typeof actions.createCustom>;
@@ -123,11 +124,7 @@ async function runReorder(request: Request) {
 }
 
 describe('admin slides actions', () => {
-	beforeEach(async () => {
-		await db.delete(appSettings);
-		await db.delete(customSlides);
-		await db.delete(slideConfig);
-	});
+	beforeEach(resetSharedTestDb);
 
 	for (const customCount of ['0', '16', '', '1abc', '1.5']) {
 		it(`rejects invalid custom fun fact count ${customCount || '<empty>'}`, async () => {

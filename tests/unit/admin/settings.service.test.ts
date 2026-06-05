@@ -49,6 +49,7 @@ import {
 import { db } from '$lib/server/db/client';
 import { appSettings, cachedStats, playHistory } from '$lib/server/db/schema';
 import { createYearFilter } from '$lib/server/stats/utils';
+import { resetSharedTestDb } from '../../helpers/db';
 
 /**
  * Unit tests for Admin Settings Service
@@ -58,11 +59,7 @@ import { createYearFilter } from '$lib/server/stats/utils';
  */
 
 describe('Admin Settings Service', () => {
-	// Clean up tables before each test
-	beforeEach(async () => {
-		await db.delete(appSettings);
-		await db.delete(cachedStats);
-	});
+	beforeEach(resetSharedTestDb);
 
 	// =========================================================================
 	// App Settings CRUD
