@@ -242,9 +242,8 @@ function submitReorder(newOrder: SlideOrderEntry[]) {
 	form.requestSubmit();
 }
 
-// Move a slide from one index to another. Shared by drag-and-drop and the
-// keyboard move-up/down buttons (ISSUE-010 a11y: drag-and-drop alone is not
-// keyboard operable).
+// Drag-and-drop alone is not keyboard-operable, so keyboard buttons share the
+// same reorder path (ISSUE-010 a11y).
 function moveSlide(fromIndex: number, toIndex: number) {
 	if (toIndex < 0 || toIndex >= unifiedSlides.length || fromIndex === toIndex) return;
 	const newOrder: SlideOrderEntry[] = unifiedSlides.map((item) =>
@@ -966,13 +965,8 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			gap: 0.375rem;
 		}
 
-		/* `.action-button` is the per-row 28px-square icon-action CTA
-		   (edit-action + delete-action variants). Hoisted to :global so
-		   shadcn Button's child-rendered <button> inherits the muted-
-		   default + primary-on-hover (edit) / destructive-on-hover
-		   (delete) palette swaps. The `.delete-action` button stays
-		   native this iteration (inside the confirm/cancel flow); the
-		   shared rules below cover both consumers. */
+		/* Hoisted to :global so shadcn Button's child-rendered <button>
+		   and the native delete-action button share the same palette rules. */
 		:global(.action-button) {
 			display: inline-flex;
 			align-items: center;
@@ -1030,10 +1024,8 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			font-weight: 600;
 		}
 
-		/* `.confirm-button` + `.cancel-delete-button` are the destructive-
-		   confirmation pair inside each slide row's delete flow. Hoisted
-		   to :global so SubmitButton (confirm) + shadcn Button (cancel)
-		   inherit their respective palettes (destructive vs muted). */
+		/* SubmitButton and shadcn Button child-render the real controls, so
+		   the delete-confirmation palettes must be hoisted. */
 		:global(.confirm-button) {
 			padding: 0.25rem 0.5rem;
 			background: oklch(var(--destructive));
@@ -1067,12 +1059,8 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			margin: 0;
 		}
 
-		/* `.toggle-button` is the per-row Enabled/Disabled toggle CTA
-		   (used by both built-in slides + custom slides). Hoisted to
-		   :global so SubmitButton's child-rendered <button> inherits
-		   the muted-default vs primary-enabled palette swap. The
-		   `.enabled` modifier toggles via template-literal class prop
-		   (same pattern as admin/users iteration 108). */
+		/* SubmitButton child-renders the real <button>, so the enabled/disabled
+		   palette swap must be hoisted out of Svelte's scoped CSS. */
 		:global(.toggle-button) {
 			padding: 0.375rem 0.75rem;
 			border: 1px solid oklch(var(--border));
@@ -1168,9 +1156,8 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			margin: 0;
 		}
 
-		/* `.close-button` is the modal-header X dismiss CTA. Hoisted to
-		   :global so shadcn Button's child-rendered <button> inherits
-		   the transparent background + large × glyph treatment. */
+		/* shadcn Button child-renders the real <button>, so the modal-close
+		   treatment must be hoisted. */
 		:global(.close-button) {
 			background: none;
 			border: none;
@@ -1372,9 +1359,8 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			z-index: 1;
 		}
 
-		/* `.cancel-button` + `.save-button` are the editor modal's footer
-		   action pair. Hoisted to :global so shadcn Button (cancel) +
-		   SubmitButton (save) inherit their secondary/primary palettes. */
+		/* Footer actions mix shadcn Button and SubmitButton, both of which
+		   child-render the real controls; hoist the shared palettes. */
 		:global(.cancel-button) {
 			padding: 0.5rem 1rem;
 			background: oklch(var(--secondary));
@@ -1543,12 +1529,8 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			color: oklch(var(--destructive));
 		}
 
-		/* `.save-frequency-button` is the Fun Fact frequency form's
-		   submit CTA. Hoisted to :global so SubmitButton's child-
-		   rendered <button> inherits the primary palette + hover-fade.
-		   The :disabled fade gates on the custom-count out-of-range
-		   condition (1-15 range enforced by the parent's disabled
-		   predicate). */
+		/* SubmitButton child-renders the real <button>, so the frequency form's
+		   primary palette and disabled state must be hoisted. */
 		:global(.save-frequency-button:disabled) {
 			opacity: 0.5;
 			cursor: not-allowed;

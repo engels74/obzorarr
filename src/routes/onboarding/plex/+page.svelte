@@ -1563,12 +1563,8 @@ function formatServerUrl(url: string | null): string {
 			margin-top: 0.75rem;
 		}
 
-		/* `.error-action-btn` is the destructive-variant CTA used in 3
-		   error-card panels (configured-url-unreachable, not-in-resources,
-		   etc.). Hoisted to :global so SubmitButton's child-rendered
-		   <button> inherits the red palette + hover-darken + optional
-		   .secondary modifier (white/transparent variant for the
-		   alternative action in the dual-button error card). */
+		/* SubmitButton child-renders the real <button>, so error-action palettes
+		   and the secondary modifier must be hoisted. */
 		:global(.error-action-btn) {
 			display: inline-flex;
 			align-items: center;
@@ -2076,12 +2072,8 @@ function formatServerUrl(url: string | null): string {
 			box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.2);
 		}
 
-		/*
-		 * Tooltip portal z-index override
-		 * bits-ui sets inline `z-index: auto` on portal elements, which can only be
-		 * overridden with !important. This ensures tooltips appear above the card
-		 * (which has z-index: 10 from .onboarding-container).
-		 */
+		/* bits-ui writes `z-index: auto` inline on tooltip portals; use
+		   !important so tooltips can rise above the onboarding card. */
 		:global([id^='bits-']:has(.connection-tooltip)) {
 			z-index: 100 !important;
 		}
@@ -2265,12 +2257,8 @@ function formatServerUrl(url: string | null): string {
 			box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
 		}
 
-		/* `.custom-url-test-btn` is the connection-test CTA in the
-		   reverse-proxy URL form. Hoisted to :global so shadcn Button
-		   inherits the primary-tinted background + hover-darken. The
-		   `.custom-url-test-btn svg` descendant rule is dropped;
-		   CircleCheckIcon + LoaderCircleIcon are sized inline via
-		   `class="size-4"`. */
+		/* shadcn Button child-renders the real control, so the connection-test
+		   palette must be hoisted. */
 		:global(.custom-url-test-btn) {
 			display: inline-flex;
 			align-items: center;

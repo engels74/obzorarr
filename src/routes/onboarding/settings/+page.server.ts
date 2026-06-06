@@ -406,8 +406,8 @@ export const actions: Actions = {
 	},
 
 	/**
-	 * Test OpenAI connection using values submitted from the form.
-	 * Does not fall back to stored values — onboarding submits fresh input.
+	 * Do not fall back to stored OpenAI values here: onboarding submits fresh
+	 * input before the settings are persisted.
 	 */
 	testAIConnection: async ({ request, locals, cookies, url }) => {
 		const guardResult = await requireOnboardingSettingsClaim(cookies, url);

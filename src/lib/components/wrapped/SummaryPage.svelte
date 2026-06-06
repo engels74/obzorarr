@@ -74,8 +74,8 @@ function handleActionClick(event: MouseEvent, action: () => void): void {
 	}
 }
 
-// Move initial focus to the heading instead of the first button so
-// stray Enter/Space presses don't trigger navigation away from the page.
+// Focus the heading first so stray Enter/Space presses cannot immediately
+// activate a navigation button.
 $effect(() => {
 	if (title) {
 		title.focus({ preventScroll: true });

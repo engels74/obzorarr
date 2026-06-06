@@ -245,7 +245,6 @@ describe('admin updateCsrfOrigin action', () => {
 	});
 
 	it('rejects updateCsrfOrigin with stale settingsVersion as 409 conflict', async () => {
-		// First write succeeds and advances the row's updatedAt.
 		await runUpdate(createRequest({ csrfOrigin: ORIGIN }));
 		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBe(ORIGIN);
 

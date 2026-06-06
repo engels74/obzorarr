@@ -31,7 +31,8 @@ export const BEHAVIORAL_TEMPLATES = defineTemplateCategory('behavioral-insight',
 		comparisonTemplate: 'Early bird catches the best shows!',
 		icon: '🐦',
 		requiredStats: ['peakHour', 'plays'],
-		// Special handling: peakHour <= 9, plus minimum plays to be meaningful
+		// The generic threshold engine only models lower bounds; the early-bird
+		// upper-bound check is handled by its selector.
 		minThresholds: { plays: 10 }
 	},
 	{
@@ -40,7 +41,8 @@ export const BEHAVIORAL_TEMPLATES = defineTemplateCategory('behavioral-insight',
 		comparisonTemplate: '{Subject} really went all-in that month!',
 		icon: '📅',
 		requiredStats: ['peakMonth', 'plays'],
-		minThresholds: { plays: 10 } // Need actual viewing data for this to be meaningful
+		// Avoid declaring a "biggest month" from a token amount of viewing data.
+		minThresholds: { plays: 10 }
 	},
 	{
 		id: 'steady-watcher',

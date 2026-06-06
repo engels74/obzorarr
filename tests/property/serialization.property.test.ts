@@ -214,15 +214,13 @@ const rewatchItemArbitrary: fc.Arbitrary<RewatchItem> = fc.record({
 	rewatchCount: fc.integer({ min: 2, max: 100 })
 });
 
-/**
- * Generate a valid MarathonDay
- * Uses integer-based date generation to avoid Invalid Date errors during shrinking
- */
+// Limit generated days to 1-28 so fast-check shrinking cannot produce an
+// invalid calendar date for shorter months.
 const marathonDayArbitrary: fc.Arbitrary<MarathonDay> = fc
 	.record({
 		year: fc.integer({ min: 2020, max: 2030 }),
 		month: fc.integer({ min: 1, max: 12 }),
-		day: fc.integer({ min: 1, max: 28 }), // Use 28 to avoid invalid dates
+		day: fc.integer({ min: 1, max: 28 }),
 		minutes: fc.float({ min: 0, max: 1440, noNaN: true }),
 		plays: fc.integer({ min: 1, max: 100 }),
 		items: fc.array(
@@ -240,16 +238,14 @@ const marathonDayArbitrary: fc.Arbitrary<MarathonDay> = fc
 		items: data.items
 	}));
 
-/**
- * Generate a valid WatchStreak
- * Uses integer-based date generation to avoid Invalid Date errors during shrinking
- */
+// Same 1-28 day bound as marathon days: these are date-shape fixtures, not
+// calendar-validity tests.
 const watchStreakArbitrary: fc.Arbitrary<WatchStreak> = fc
 	.record({
 		longestStreak: fc.integer({ min: 0, max: 365 }),
 		year: fc.integer({ min: 2020, max: 2030 }),
 		startMonth: fc.integer({ min: 1, max: 12 }),
-		startDay: fc.integer({ min: 1, max: 28 }), // Use 28 to avoid invalid dates
+		startDay: fc.integer({ min: 1, max: 28 }),
 		endMonth: fc.integer({ min: 1, max: 12 }),
 		endDay: fc.integer({ min: 1, max: 28 })
 	})
@@ -269,10 +265,8 @@ const yearComparisonArbitrary: fc.Arbitrary<YearComparison> = fc.record({
 	percentChange: fc.float({ min: -100, max: 1000, noNaN: true })
 });
 
-/**
- * Generate a valid UserStats object
- * Note: Property order must match UserStatsSchema for JSON round-trip comparison
- */
+// Property order must match UserStatsSchema so round-trip diffs identify schema
+// drift instead of fixture ordering noise.
 const userStatsArbitrary: fc.Arbitrary<UserStats> = fc.record({
 	userId: fc.integer({ min: 1, max: 1000000 }),
 	year: fc.integer({ min: 2000, max: 2100 }),
@@ -297,10 +291,8 @@ const userStatsArbitrary: fc.Arbitrary<UserStats> = fc.record({
 	lastWatch: fc.option(watchRecordArbitrary, { nil: null })
 });
 
-/**
- * Generate a valid ServerStats object
- * Note: Property order must match ServerStatsSchema for JSON round-trip comparison
- */
+// Property order must match ServerStatsSchema for the same round-trip drift check
+// as the user-stats arbitrary above.
 const serverStatsArbitrary: fc.Arbitrary<ServerStats> = fc.record({
 	year: fc.integer({ min: 2000, max: 2100 }),
 	totalUsers: fc.integer({ min: 0, max: 10000 }),
@@ -333,10 +325,6 @@ const serverStatsArbitrary: fc.Arbitrary<ServerStats> = fc.record({
 	lastWatch: fc.option(watchRecordArbitrary, { nil: null })
 });
 
-/**
- * Deep equality check for stats objects
- * Handles floating point comparison with tolerance
- */
 function statsAreEqual(a: UserStats | ServerStats, b: UserStats | ServerStats): boolean {
 	const aJson = JSON.stringify(a);
 	const bJson = JSON.stringify(b);

@@ -60,7 +60,6 @@ describe('system nested route — updateLogSettings (Superforms + inline OCC)', 
 				settingsVersion: ''
 			})
 		);
-		// Superforms wraps fail() with { form, conflict: true, error: '...' }
 		expect(result).toMatchObject({
 			status: 409,
 			data: {

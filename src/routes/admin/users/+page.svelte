@@ -612,13 +612,9 @@ function markAvatarFailed(userId: number): void {
 			margin: 0;
 		}
 
-		/* `.toggle-button` is the Yes/No permission toggle in the user
-		   table cells (desktop) + mobile list. Hoisted to :global so
-		   SubmitButton's child-rendered <button> inherits the muted-
-		   default vs green-enabled palettes + hover-fade. The `.enabled`
-		   modifier toggles via a template literal in the consuming
-		   class prop (Svelte `class:foo` syntax doesn't compose with
-		   component class props — only DOM-level). */
+		/* SubmitButton child-renders the real <button>, and component class props
+		   cannot use Svelte's DOM-only `class:foo` directive, so the enabled
+		   palette is driven by a hoisted template-literal class. */
 		:global(.toggle-button) {
 			padding: 0.25rem 0.5rem;
 			border: 1px solid oklch(var(--border));

@@ -145,7 +145,7 @@ describe('appearance nested route — updateUITheme', () => {
 		// toast — onUpdated branches on form.valid). Pin valid===false + the message.
 		expect(result.data.form.valid).toBe(false);
 		expect(result.data.form.message).toBe('Invalid theme selection');
-		expect(await getUITheme()).toBe('modern-minimal'); // unchanged DB default, not a persisted write
+		expect(await getUITheme()).toBe('modern-minimal');
 	});
 });
 
@@ -226,7 +226,7 @@ describe('appearance nested route — updateWrappedTheme', () => {
 		// failure instead of a false 'Saved'.
 		expect(result.data.form.valid).toBe(false);
 		expect(result.data.form.message).toBe('Invalid theme selection');
-		expect(await getWrappedTheme()).toBe('modern-minimal'); // unchanged DB default, not a persisted write
+		expect(await getWrappedTheme()).toBe('modern-minimal');
 	});
 });
 
@@ -314,6 +314,6 @@ describe('appearance nested route — updateWrappedLogoMode', () => {
 		// failure instead of a false 'Saved'.
 		expect(result.data.form.valid).toBe(false);
 		expect(result.data.form.message).toBe('Invalid logo mode');
-		expect(await getWrappedLogoMode()).toBe(WrappedLogoMode.ALWAYS_SHOW); // unchanged DB default
+		expect(await getWrappedLogoMode()).toBe(WrappedLogoMode.ALWAYS_SHOW);
 	});
 });

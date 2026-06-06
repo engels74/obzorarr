@@ -1,11 +1,6 @@
 /**
- * Per-theme font triples (display / body / mono). Display fonts are used for
- * headings + hero typography on /wrapped surfaces; body fonts cover the rest
- * of the UI. Mono fonts are reserved for log viewers / API config blobs.
- *
- * Each entry is a Google Fonts `family=...` spec consumed by `loadThemeFonts`
- * to inject a single `<link>` per theme. Themes whose triple includes only
- * system fonts produce no `<link>` at all.
+ * Themes deliberately carry separate display/body/mono stacks so Wrapped
+ * surfaces can use expressive headings without changing log/API monospace copy.
  */
 type FontTriple = {
 	display: string;
@@ -76,14 +71,9 @@ const THEME_FAMILIES: Record<string, FontTriple> = {
 const loadedThemes = new Set<string>();
 
 /**
- * Load the Google Fonts stylesheet(s) for a theme.
- *
- * Each theme's `<link>` is appended at most once per page lifetime; calling
- * this with the same theme name twice is a no-op. Pure-system-font themes
- * (`soviet-red`) inject nothing.
- *
- * Renamed from `loadThemeFont` (singular) in the v3 UI overhaul to reflect
- * the per-theme display/body/mono triple model.
+ * Font loading is idempotent per page lifetime so repeated theme switches do
+ * not accumulate duplicate Google Fonts links. Pure-system-font themes inject
+ * nothing.
  */
 export function loadThemeFonts(theme: string): void {
 	const specs = THEME_FONT_SPECS[theme];
@@ -106,17 +96,10 @@ export function loadThemeFonts(theme: string): void {
 	loadedThemes.add(theme);
 }
 
-/**
- * Return the CSS `font-family` stack for a theme's body text. Useful when
- * setting `font-family` outside the `--font-sans` custom property path.
- */
 export function getThemeFontFamily(theme: string): string {
 	return THEME_FAMILIES[theme]?.body ?? DEFAULT_TRIPLE.body;
 }
 
-/**
- * Return the full `{ display, body, mono }` triple for a theme.
- */
 export function getThemeFontTriple(theme: string): FontTriple {
 	return THEME_FAMILIES[theme] ?? DEFAULT_TRIPLE;
 }

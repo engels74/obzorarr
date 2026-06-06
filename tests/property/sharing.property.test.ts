@@ -118,7 +118,7 @@ describe('Property 15: Share Mode Access Control', () => {
 					shareMode: ShareMode.PRIVATE_OAUTH,
 					shareToken,
 					validToken: null,
-					isAuthenticated: false, // Not authenticated
+					isAuthenticated: false,
 					isServerMember: false,
 					isOwner: false
 				};
@@ -153,7 +153,7 @@ describe('Property 15: Share Mode Access Control', () => {
 		fc.assert(
 			fc.property(
 				fc.uuid(),
-				fc.uuid().filter((t) => t !== ''), // wrongToken
+				fc.uuid().filter((t) => t !== ''),
 				(validToken, wrongToken) => {
 					if (validToken === wrongToken) return true;
 

@@ -479,11 +479,8 @@ function handleCancelRedirect(): void {
 			margin: 0 0 0.75rem;
 		}
 
-		/* `.login-button` is the secondary Plex-OAuth CTA. Same :global hoist
-		   story as .view-button + .username-input above — prep for the
-		   future shadcn Button swap so the child component's rendered
-		   element inherits the styling across Svelte 5's component-scope
-		   boundary. Rule bodies are byte-identical. */
+		/* Keep this hoisted for parity with the shadcn-backed controls above; a
+		   future Button swap should not lose styling across the component boundary. */
 		:global(.login-button) {
 			display: inline-flex;
 			align-items: center;

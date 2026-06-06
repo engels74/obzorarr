@@ -79,8 +79,8 @@ let selectedPreset = $derived(
 	})
 );
 
-// Single live preview (onboarding owns logoMode, so the logo line is included).
-// Its `warnings` is the sole source of the landing-lookup contradiction notice.
+// Onboarding owns logoMode, so this preview is the one place that can surface
+// both logo visibility and landing-lookup contradiction warnings.
 let privacyPreview = $derived(
 	derivePreview({
 		anonymizationMode,
@@ -1376,12 +1376,8 @@ function getThemeColors(themeValue: string) {
 			cursor: not-allowed;
 		}
 
-		/* `.btn-nav` is the shared base for the footer nav trio
-		   (btn-prev + btn-next + btn-save). Hoisted to :global so the
-		   SubmitButton-rendered btn-save (this iteration) inherits the
-		   layout while btn-prev + btn-next stay scoped (still native
-		   <button>s in this file's template — they continue to match
-		   the global selector). */
+		/* The save control is SubmitButton-rendered while previous/next are native
+		   buttons, so the shared footer layout must be global. */
 		:global(.btn-nav) {
 			display: flex;
 			align-items: center;

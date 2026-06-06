@@ -119,9 +119,6 @@ async function validateTestSession(
 	};
 }
 
-/**
- * Invalidate a session (test implementation)
- */
 async function invalidateTestSession(
 	db: ReturnType<typeof createTestDatabase>,
 	sessionId: string
@@ -200,12 +197,8 @@ describe('Property 1: Role Assignment Correctness', () => {
 
 describe('Property 2: Non-Member Access Denial', () => {
 	/**
-	 * This property tests that non-members are denied access.
-	 *
-	 * In our implementation, this is handled by requireServerMembership()
-	 * which throws NotServerMemberError when isMember is false.
-	 *
-	 * We test the conceptual property here using a pure function approach.
+	 * Pure model of the membership invariant: a user outside the configured Plex
+	 * server must never be admitted, regardless of the route implementation.
 	 */
 
 	interface MembershipResult {
@@ -222,7 +215,7 @@ describe('Property 2: Non-Member Access Denial', () => {
 			fc.property(fc.boolean(), (_isOwner) => {
 				const membership: MembershipResult = {
 					isMember: false,
-					isOwner: false // Can't be owner if not a member
+					isOwner: false
 				};
 
 				return shouldGrantAccess(membership) === false;

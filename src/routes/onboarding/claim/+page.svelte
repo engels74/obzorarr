@@ -105,12 +105,8 @@ let isClaiming = $state(false);
 		color: oklch(var(--foreground));
 	}
 
-	/* `.bootstrap-token-input` is the monospace token field. Hoisted to
-	   :global so the shadcn Input primitive (renders the <input> inside
-	   a child component) inherits the monospace font + letter-spacing +
-	   focus-ring styling. The shadcn Input default `h-8` is preserved
-	   only because this rule doesn't override height — the monospace
-	   + padding 0.85rem still applies via the cascade. */
+	/* shadcn Input child-renders the real <input>, so the monospace token
+	   treatment must be hoisted. */
 	:global(.bootstrap-token-input) {
 		width: 100%;
 		border: 1px solid oklch(var(--border));
@@ -134,10 +130,8 @@ let isClaiming = $state(false);
 		font-size: 0.875rem;
 	}
 
-	/* `.claim-button` is hoisted to :global so the SubmitButton primitive
-	   (which renders its <button> inside a child component) inherits the
-	   styling — Svelte 5 component-scoped CSS doesn't cross the boundary.
-	   Same visual-coupling pattern proven on the landing page in US-024. */
+	/* SubmitButton child-renders the real <button>, so this styling must cross
+	   Svelte's component-scope boundary via :global. */
 	:global(.claim-button) {
 		border: 0;
 		border-radius: 0.5rem;

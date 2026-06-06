@@ -1255,11 +1255,8 @@ async function goToPage(page: number) {
 			color: oklch(var(--primary));
 		}
 
-		/* `.cancel-btn` is the cancel-sync CTA. Hoisted to :global so
-		   SubmitButton's child-rendered <button> inherits the muted-
-		   default vs destructive-on-hover palette swap. The custom
-		   `.btn-spinner` span is replaced by SubmitButton's built-in
-		   LoaderCircleIcon spinner. */
+		/* SubmitButton child-renders the real <button>, so the cancel palette
+		   swap must be hoisted. */
 		:global(.cancel-btn) {
 			display: flex;
 			align-items: center;
@@ -1334,11 +1331,8 @@ async function goToPage(page: number) {
 			pointer-events: none;
 		}
 
-		/* `.sync-btn` is the primary "Start Sync" CTA. Hoisted to :global
-		   so SubmitButton's child-rendered <button> inherits the
-		   gradient primary palette + hover translate-y + shadow glow.
-		   The `.sync-btn svg` descendant rule is dropped; PlayIcon is
-		   sized inline via `class="size-[18px]"`. */
+		/* SubmitButton child-renders the real <button>, so the primary gradient
+		   and hover treatment must be hoisted. */
 		:global(.sync-btn) {
 			display: flex;
 			align-items: center;
@@ -1477,13 +1471,8 @@ async function goToPage(page: number) {
 			gap: 0.5rem;
 		}
 
-		/* `.control-btn` is the scheduler control quartet (resume / pause
-		   / init / stop). 4 per-variant palettes (green / amber /
-		   primary / muted), each with a hover state. Hoisted to :global
-		   so SubmitButton's child-rendered <button> inherits each
-		   variant's color. The `.control-btn svg` descendant rule is
-		   dropped — PlayIcon / PauseIcon / ClockIcon / SquareIcon are
-		   sized inline via `class="size-4"`. */
+		/* SubmitButton child-renders the real controls, so scheduler variants
+		   need hoisted palettes. */
 		:global(.control-btn) {
 			flex: 1;
 			display: flex;
@@ -1588,11 +1577,8 @@ async function goToPage(page: number) {
 			color: oklch(var(--destructive));
 		}
 
-		/* `.cron-update-btn` is the icon-only commit-cron-expression CTA
-		   (40px wide). Hoisted to :global so SubmitButton's child-
-		   rendered <button> inherits the muted-default vs primary-on-
-		   hover palette swap. `.cron-update-btn svg` descendant rule
-		   dropped — CheckIcon sized inline via `class="size-[18px]"`. */
+		/* SubmitButton child-renders the real <button>, so the cron commit
+		   hover palette must be hoisted. */
 		:global(.cron-update-btn) {
 			display: flex;
 			align-items: center;
@@ -1840,11 +1826,8 @@ async function goToPage(page: number) {
 			gap: 0.375rem;
 		}
 
-		/* `.pagination-btn` is the 4-button nav row (first/prev/next/last).
-		   Hoisted to :global so shadcn Button's child-rendered <button>
-		   inherits the 36px-square shape + muted-default vs primary-on-
-		   hover palette. The `.pagination-btn svg` descendant rule is
-		   dropped — chevron icons sized inline via `class="size-[18px]"`. */
+		/* shadcn Button child-renders the real pagination controls, so the
+		   square shape and hover palette must be hoisted. */
 		:global(.pagination-btn) {
 			display: flex;
 			align-items: center;

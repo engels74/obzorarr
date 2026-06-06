@@ -30,9 +30,7 @@ export interface UserWithStats {
 	 * admin Users badge can't read "Public"/"Link" while access is private-oauth.
 	 */
 	effectiveShareMode: ShareModeType;
-	/** Badge label derived from {@link effectiveShareMode} (or "Default" for default-sourced rows). */
 	effectiveLabel: string;
-	/** Badge CSS class derived from {@link effectiveShareMode} ('' for default-sourced rows). */
 	effectiveClass: '' | 'public' | 'oauth' | 'link';
 }
 
@@ -54,8 +52,8 @@ export function deriveEffectiveShareBadge(
 	const baseMode = storedMode ?? globalFloor;
 	const effectiveShareMode = getMoreRestrictiveMode(baseMode, globalFloor);
 
-	// A default-sourced row (no explicit override) is shown as "Default" with no
-	// color class — it tracks whatever the global default is.
+	// Default-sourced rows track the global default, so avoid coloring them as if
+	// they were explicit per-user overrides.
 	if (source === ShareModeSource.DEFAULT || source === null) {
 		return { effectiveShareMode, effectiveLabel: 'Default', effectiveClass: '' };
 	}

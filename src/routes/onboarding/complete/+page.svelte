@@ -679,12 +679,8 @@ const summaryItems = $derived([
 			transform: translateY(0);
 		}
 
-		/* `.btn-dashboard` is hoisted to :global so SubmitButton (which
-		   renders its <button> in a child component) inherits the primary
-		   palette, hover translate-y, and dual-shadow glow. `.arrow-icon`
-		   piggy-backs the same hoist for the arrow-translate-x hover
-		   effect that pairs with the button's lift. Pattern matches
-		   landing-page US-024 (e276772 + downstream). */
+		/* SubmitButton child-renders the real <button>, so the dashboard CTA
+		   palette and paired arrow hover effect must be hoisted. */
 		:global(.btn-dashboard) {
 			display: flex;
 			align-items: center;

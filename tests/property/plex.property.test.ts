@@ -22,14 +22,8 @@ import {
  */
 
 /**
- * Calculate expected API calls for pagination
- *
- * For N > 0: exactly ceil(N/P) pages
- * For N = 0: exactly 1 page (needed to discover that totalSize is 0)
- *
- * This differs from calculateExpectedPages which returns the mathematical
- * ceil(N/P) = 0 for N=0. In real-world pagination, you need at least 1
- * request to discover the total size.
+ * Empty pagination still needs one request: the client cannot know `totalSize`
+ * is zero until Plex returns the first page.
  */
 function expectedApiCalls(totalRecords: number, pageSize: number): number {
 	if (totalRecords === 0) {

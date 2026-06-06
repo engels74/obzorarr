@@ -833,10 +833,8 @@ $effect(() => {
 			margin-bottom: 1rem;
 		}
 
-		/* `.clear-filters-button` is the muted-tertiary "Clear All" CTA
-		   in the filters header. Hoisted to :global so shadcn Button's
-		   child-rendered <button> inherits the transparent background +
-		   border + hover-darken treatment. */
+		/* shadcn Button child-renders the real <button>, so this transparent
+		   treatment must be hoisted. */
 		:global(.clear-filters-button) {
 			padding: 0.25rem 0.5rem;
 			font-size: 0.75rem;
@@ -983,11 +981,8 @@ $effect(() => {
 			display: inline;
 		}
 
-		/* `.control-button` is the log-page actions group (live-view
-		   toggle + Export/Cleanup/Clear). 4 variants (default primary +
-		   .secondary + .danger + .active) all hoisted to :global so the
-		   shadcn Button + SubmitButton consumers inherit each variant's
-		   palette. */
+		/* These actions mix shadcn Button and SubmitButton consumers; hoist the
+		   variant palettes so child-rendered controls inherit them. */
 		:global(.control-button) {
 			padding: 0.5rem 1rem;
 			font-size: 0.875rem;
@@ -1187,10 +1182,8 @@ $effect(() => {
 			overflow-x: auto;
 		}
 
-		/* `.copy-button` is the per-row copy-to-clipboard CTA in the log
-		   table. Hoisted to :global so shadcn Button's child-rendered
-		   <button> inherits the muted-default vs primary-on-hover
-		   palette swap. */
+		/* shadcn Button child-renders the real <button>, so the hover palette
+		   must be hoisted. */
 		:global(.copy-button) {
 			padding: 0.25rem 0.5rem;
 			font-size: 0.6875rem;
@@ -1218,11 +1211,8 @@ $effect(() => {
 			padding: 1rem;
 		}
 
-		/* `.load-more-button` renders as an <a> tag (pagination cursor
-		   link). shadcn Button with `href` prop renders <a> internally.
-		   Hoisted to :global so the rendered anchor inherits the
-		   secondary palette + border + hover-darken. text-decoration:none
-		   stays for the underline-removal. */
+		/* shadcn Button with `href` child-renders an <a>, so the pagination
+		   treatment must be hoisted to reach the anchor. */
 		:global(.load-more-button) {
 			display: inline-block;
 			padding: 0.5rem 1.5rem;

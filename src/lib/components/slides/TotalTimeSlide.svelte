@@ -36,7 +36,8 @@ const weeks = $derived(Number((totalWatchTimeMinutes / 60 / 24 / 7).toFixed(1)))
 
 let displayedHours = $state(0);
 
-// Separate number and unit to prevent layout jitter during animation
+// Keep the unit outside the animated number so changing digit widths do not
+// shift the label during the count-up.
 const formattedValue = $derived.by(() => {
 	if (totalWatchTimeMinutes < 60) {
 		return `${Math.round(totalWatchTimeMinutes)}`;
@@ -80,7 +81,8 @@ $effect(() => {
 		return;
 	}
 
-	// Update DOM directly to avoid triggering Svelte reactivity ~60 times/second
+	// Keep the ~60fps count-up out of Svelte's reactive graph; only publish the
+	// final value once the animation settles.
 	const stopNumberAnim =
 		hours >= 24
 			? (() => {
