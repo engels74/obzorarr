@@ -19,7 +19,6 @@ export {
 	Portal,
 	Portal as PopoverPortal,
 	Root,
-	//
 	Root as Popover,
 	Title,
 	Title as PopoverTitle,

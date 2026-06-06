@@ -40,7 +40,6 @@ function normalizeUrl(url: string): string {
 		if (parsed.port === '80' || parsed.port === '443') {
 			parsed.port = '';
 		}
-		// Return normalized form without trailing slash
 		return parsed.origin.toLowerCase();
 	} catch {
 		return url.toLowerCase().replace(/\/+$/, '');
@@ -52,21 +51,18 @@ export function extractPlexDirectMachineId(url: string): string | undefined {
 		const parsed = new URL(url);
 		const host = parsed.hostname.toLowerCase();
 
-		// Check if this is a .plex.direct domain
 		if (!host.endsWith('.plex.direct')) {
 			return undefined;
 		}
 
-		// Split by dots: [ip-part, machineId, 'plex', 'direct']
+		// Plex .plex.direct hostnames encode the server machine id as
+		// {ip}.{machineId}.plex.direct.
 		const parts = host.split('.');
 
-		// Need at least 4 parts: ip.machineId.plex.direct
 		if (parts.length < 4) {
 			return undefined;
 		}
 
-		// Machine ID is the second-to-last before 'plex.direct'
-		// Format: {ip}.{machineId}.plex.direct
 		const machineId = parts[parts.length - 3];
 
 		if (machineId && /^[a-f0-9]{32}$/i.test(machineId)) {
@@ -84,26 +80,22 @@ export function extractPlexDirectIpAndPort(url: string): { ip: string; port: str
 		const parsed = new URL(url);
 		const host = parsed.hostname.toLowerCase();
 
-		// Check if this is a .plex.direct domain
 		if (!host.endsWith('.plex.direct')) {
 			return undefined;
 		}
 
-		// Split by dots: [ip-part, machineId, 'plex', 'direct']
 		const parts = host.split('.');
 
-		// Need at least 4 parts: ip.machineId.plex.direct
 		if (parts.length < 4) {
 			return undefined;
 		}
 
-		// IP part is the first segment (everything before the machineId)
+		// Plex encodes IPv4 octets with dashes in the first .plex.direct label.
 		const ipPart = parts[0];
 		if (!ipPart) {
 			return undefined;
 		}
 
-		// Format: digits separated by exactly 3 dashes (e.g., 89-150-152-18)
 		const ipSegments = ipPart.split('-');
 
 		if (ipSegments.length !== 4) {
@@ -146,7 +138,6 @@ function matchesByIpAndPort(
 		const connectionIp = conn.address.toLowerCase();
 		const matchesIp = connectionIp === configuredIp.toLowerCase();
 
-		// Compare ports - handle default ports and string/number conversion
 		let matchesPort = false;
 		if (configuredPort === '') {
 			// .plex.direct URLs are always https:, so the implicit default port is 443.
@@ -160,11 +151,10 @@ function matchesByIpAndPort(
 }
 
 function urlsMatch(url1: string, url2: string): boolean {
-	// First, try extracting machine IDs for .plex.direct domains
+	// .plex.direct IP labels can vary, so compare stable machine ids before origins.
 	const machineId1 = extractPlexDirectMachineId(url1);
 	const machineId2 = extractPlexDirectMachineId(url2);
 
-	// If both are .plex.direct URLs with valid machine IDs, compare machine IDs and ports
 	if (machineId1 && machineId2) {
 		try {
 			const parsed1 = new URL(url1);
@@ -370,7 +360,6 @@ export async function verifyServerMembership(userToken: string): Promise<Members
 
 	const servers = filterServerResources(resources);
 
-	// Get configured server URL from merged config (database takes priority over env)
 	const apiConfig = await getApiConfigWithSources();
 	const configuredUrl = apiConfig.plex.serverUrl.value;
 
@@ -584,7 +573,7 @@ export function selectBestConnection(server: PlexResource): string | undefined {
 		return undefined;
 	}
 
-	// Priority 1: Find public .plex.direct URL (best for external access)
+	// Prefer stable Plex DNS names, then public connections, then local fallbacks.
 	const publicPlexDirect = connections.find(
 		(c) => c.uri.includes('.plex.direct') && !c.local && !c.relay
 	);
@@ -596,7 +585,6 @@ export function selectBestConnection(server: PlexResource): string | undefined {
 		return publicPlexDirect.uri;
 	}
 
-	// Priority 2: Find local .plex.direct URL (for same-network access)
 	const localPlexDirect = connections.find(
 		(c) => c.uri.includes('.plex.direct') && c.local && !c.relay
 	);
@@ -608,7 +596,6 @@ export function selectBestConnection(server: PlexResource): string | undefined {
 		return localPlexDirect.uri;
 	}
 
-	// Priority 3: Find public (non-local, non-relay) connection
 	const publicConnection = connections.find((c) => !c.local && !c.relay);
 	if (publicConnection) {
 		logger.debug(
@@ -618,7 +605,6 @@ export function selectBestConnection(server: PlexResource): string | undefined {
 		return publicConnection.uri;
 	}
 
-	// Priority 4: Find local (non-relay) connection as fallback
 	const localConnection = connections.find((c) => c.local && !c.relay);
 	if (localConnection) {
 		logger.debug(
@@ -703,10 +689,9 @@ export async function verifyServerOwnership(userToken: string): Promise<Ownershi
 		};
 	}
 
-	// Priority: .plex.direct > public IP > local IP
 	let bestConnectionUrl = selectBestConnection(ownedServer);
 
-	// If no .plex.direct URL found in connections, try to generate one
+	// Plex can omit a direct URL while still reporting publicAddress + machine id.
 	if (!bestConnectionUrl?.includes('.plex.direct')) {
 		const generatedUrl = generatePlexDirectUrl(ownedServer);
 		if (generatedUrl) {

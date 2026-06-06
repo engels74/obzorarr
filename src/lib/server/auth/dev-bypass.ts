@@ -110,7 +110,6 @@ async function resolveTargetUser(): Promise<NormalizedServerUser> {
 	const bypassUserSetting = env.DEV_BYPASS_USER?.trim() ?? '';
 	const devPlexToken = getDevPlexToken();
 
-	// Check if main Plex server is configured
 	const config = await getPlexConfig();
 	const hasConfiguredServer = Boolean(config.serverUrl && config.token);
 
@@ -149,7 +148,6 @@ async function resolveTargetUser(): Promise<NormalizedServerUser> {
 		}
 
 		if (bypassUserSetting.toLowerCase() === 'random') {
-			// Return cached random user if available
 			if (cachedRandomUser) {
 				return cachedRandomUser;
 			}
@@ -243,7 +241,6 @@ async function getOrCreateDevUser(targetUser: NormalizedServerUser): Promise<num
 	});
 
 	if (existingUser) {
-		// Update user data to match current Plex data
 		await db
 			.update(users)
 			.set({
@@ -302,7 +299,6 @@ export async function getOrCreateDevSession(): Promise<string> {
 		await db.delete(sessions).where(eq(sessions.id, DEV_SESSION_ID));
 	}
 
-	// Get the Plex token for the session
 	// Priority: DEV_PLEX_TOKEN (for onboarding testing) > configured token > fallback
 	const devPlexToken = getDevPlexToken();
 	const config = await getPlexConfig();

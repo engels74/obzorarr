@@ -531,7 +531,6 @@ describe('Fun Facts AI', () => {
 
 			expect(context.topMovie).toBe('');
 
-			// Generate facts should still work (templates requiring topMovie excluded)
 			const facts = await generateFunFacts(stats, { count: 3 });
 			expect(facts).toHaveLength(3);
 		});

@@ -9,15 +9,6 @@ import { ShareModePrivacyLevel } from '$lib/sharing/types';
 import { handleFormToast } from '$lib/utils/form-toast';
 import type { ActionData, PageData } from './$types';
 
-/**
- * User Settings Page
- *
- * Personal settings management for non-admin users:
- * - Privacy: Share mode controls (when permitted)
- * - Display: Logo visibility preferences
- * - Account: Read-only profile information
- */
-
 let { data, form }: { data: PageData; form: ActionData } = $props();
 
 type RegenerateTokenActionData = {
@@ -52,7 +43,6 @@ let syncedWrappedHref = $state(data.wrappedHref);
 let copied = $state(false);
 let copyTimeout: ReturnType<typeof setTimeout> | null = null;
 
-// Regenerate token dialog
 let regenerateDialogOpen = $state(false);
 
 // DF-019: track the last server-confirmed share mode so we only overwrite the
@@ -79,7 +69,6 @@ $effect(() => {
 	}
 });
 
-// Show toast notifications and snap radio back to server truth on rejection
 $effect(() => {
 	handleFormToast(form);
 	const payload = form as unknown as { action?: string; currentMode?: string } | null | undefined;
@@ -88,7 +77,6 @@ $effect(() => {
 	}
 });
 
-// Privacy floor check — uses shared ShareModePrivacyLevel from $lib/sharing/types
 function isBelowFloor(mode: string): boolean {
 	const floor = data.globalFloor;
 	if (!floor) return false;
@@ -122,7 +110,6 @@ const shareModeDescriptions: Record<string, string> = {
 	'private-link': 'Anyone with the special link can view'
 };
 
-// Human-readable labels used in floor-note hint text
 const shareModeLabels: Record<string, string> = {
 	public: 'Public',
 	'private-oauth': 'Server Members',

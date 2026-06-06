@@ -87,8 +87,8 @@ export const ENTERTAINMENT_TRIVIA_TEMPLATES = defineTemplateCategory('entertainm
 			"{Subject} could've had {starWarsCount} Star Wars movie nights - not bad for a scruffy-looking nerf herder!",
 		icon: '🚀',
 		requiredStats: ['hours'],
-		minThresholds: { hours: 2 }, // Very low - accessible
-		priority: 35 // Lower priority for quick comparison
+		minThresholds: { hours: 2 },
+		priority: 35
 	},
 	{
 		id: 'quick-binge-comparison',

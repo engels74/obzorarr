@@ -38,7 +38,6 @@ export {
 	RadioItem,
 	RadioItem as MenubarRadioItem,
 	Root,
-	//
 	Root as Menubar,
 	Separator,
 	Separator as MenubarSeparator,

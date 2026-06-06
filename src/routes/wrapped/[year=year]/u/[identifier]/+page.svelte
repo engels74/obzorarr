@@ -118,7 +118,7 @@ function handleRestart(): void {
 		url.hash = '#slide=0';
 		replaceState(url, {});
 	}
-	storyKey++; // Force StoryMode remount
+	storyKey++;
 }
 
 function handleHome(): void {

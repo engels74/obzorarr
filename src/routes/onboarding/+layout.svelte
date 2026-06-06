@@ -142,7 +142,7 @@ $effect(() => {
 		.onboarding-header {
 			text-align: center;
 			margin-bottom: 2.5rem;
-			opacity: 0; /* Start hidden for animation */
+			opacity: 0;
 		}
 
 		.logo-wrapper {

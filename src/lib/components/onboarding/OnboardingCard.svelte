@@ -62,7 +62,7 @@ $effect(() => {
 			width: 100%;
 			max-width: 560px;
 			margin: 0 auto;
-			opacity: 0; /* Start hidden for animation */
+			opacity: 0;
 		}
 
 		.card-glow {

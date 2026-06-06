@@ -62,7 +62,7 @@ describe('Slide Config Service', () => {
 		});
 
 		it('migrates disabled slides to enabled on first run', async () => {
-			// Insert a disabled slide manually (simulating bug where slides were created disabled)
+			// Reproduces the historical bug where newly-created rows were disabled by default.
 			await db.insert(slideConfig).values({
 				slideType: 'total-time',
 				enabled: false,

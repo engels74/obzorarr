@@ -11,7 +11,6 @@ export {
 	Description,
 	Description as AlertDescription,
 	Root,
-	//
 	Root as Alert,
 	Title,
 	Title as AlertTitle

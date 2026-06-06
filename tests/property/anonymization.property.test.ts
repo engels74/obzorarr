@@ -49,9 +49,6 @@ const uniqueUsersArbitrary: fc.Arbitrary<TestUserDisplay[]> = fc
 		}));
 	});
 
-// Property 18: Anonymization Mode Display
-
-// Feature: obzorarr, Property 18: Anonymization Mode Display
 describe('Property 18: Anonymization Mode Display', () => {
 	it('real mode displays all usernames as-is', () => {
 		fc.assert(

@@ -17,7 +17,7 @@ export const SOCIAL_COMPARISON_TEMPLATES = defineTemplateCategory('social-compar
 		icon: '👑',
 		requiredStats: ['percentile'],
 		minThresholds: { percentile: 99 }, // Essentially top 1%
-		priority: 80 // Very high priority for top viewer
+		priority: 80
 	},
 	{
 		id: 'top-five',
@@ -62,7 +62,7 @@ export const SOCIAL_COMPARISON_TEMPLATES = defineTemplateCategory('social-compar
 		icon: '🤝',
 		requiredStats: ['plays'],
 		minThresholds: { plays: 10 },
-		priority: 30 // Lower priority - fallback for lower percentiles
+		priority: 30
 	},
 	{
 		id: 'quality-over-quantity',
@@ -71,6 +71,6 @@ export const SOCIAL_COMPARISON_TEMPLATES = defineTemplateCategory('social-compar
 		icon: '💎',
 		requiredStats: ['plays'],
 		minThresholds: { plays: 1 },
-		priority: 25 // Very low priority - catch-all
+		priority: 25
 	}
 ]);

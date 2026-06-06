@@ -6,7 +6,6 @@ export {
 	Content,
 	Content as CollapsibleContent,
 	Root,
-	//
 	Root as Collapsible,
 	Trigger,
 	Trigger as CollapsibleTrigger

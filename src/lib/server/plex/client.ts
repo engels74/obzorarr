@@ -62,7 +62,6 @@ export async function plexRequest<T>(
 		const data = await response.json();
 		return data as T;
 	} catch (error) {
-		// Re-throw PlexApiError as-is
 		if (error instanceof PlexApiError) {
 			throw error;
 		}

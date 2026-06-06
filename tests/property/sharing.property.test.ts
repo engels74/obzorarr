@@ -20,16 +20,13 @@ const shareModeArbitrary: fc.Arbitrary<ShareModeType> = fc.constantFrom(
 	ShareMode.PRIVATE_LINK
 );
 
-// Property 15: Share Mode Access Control
-
-// Feature: obzorarr, Property 15: Share Mode Access Control
 describe('Property 15: Share Mode Access Control', () => {
 	it('public mode allows all requests', () => {
 		fc.assert(
 			fc.property(
-				fc.boolean(), // isAuthenticated
-				fc.boolean(), // isServerMember
-				fc.option(fc.uuid(), { nil: undefined }), // shareToken
+				fc.boolean(),
+				fc.boolean(),
+				fc.option(fc.uuid(), { nil: undefined }),
 				(isAuthenticated, isServerMember, shareToken) => {
 					const context: AccessCheckContext = {
 						shareMode: ShareMode.PUBLIC,
@@ -50,50 +47,42 @@ describe('Property 15: Share Mode Access Control', () => {
 
 	it('private-oauth mode only allows authenticated server members', () => {
 		fc.assert(
-			fc.property(
-				fc.boolean(), // isAuthenticated
-				fc.boolean(), // isServerMember
-				(isAuthenticated, isServerMember) => {
-					const context: AccessCheckContext = {
-						shareMode: ShareMode.PRIVATE_OAUTH,
-						shareToken: undefined,
-						validToken: null,
-						isAuthenticated,
-						isServerMember,
-						isOwner: false
-					};
+			fc.property(fc.boolean(), fc.boolean(), (isAuthenticated, isServerMember) => {
+				const context: AccessCheckContext = {
+					shareMode: ShareMode.PRIVATE_OAUTH,
+					shareToken: undefined,
+					validToken: null,
+					isAuthenticated,
+					isServerMember,
+					isOwner: false
+				};
 
-					const result = checkAccess(context);
-					const shouldAllow = isAuthenticated && isServerMember;
+				const result = checkAccess(context);
+				const shouldAllow = isAuthenticated && isServerMember;
 
-					return result.allowed === shouldAllow;
-				}
-			),
+				return result.allowed === shouldAllow;
+			}),
 			{ numRuns: 100 }
 		);
 	});
 
 	it('private-link mode only allows valid share tokens', () => {
 		fc.assert(
-			fc.property(
-				fc.uuid(), // validToken (stored in DB)
-				fc.option(fc.uuid(), { nil: undefined }), // shareToken (from URL)
-				(validToken, shareToken) => {
-					const context: AccessCheckContext = {
-						shareMode: ShareMode.PRIVATE_LINK,
-						shareToken,
-						validToken,
-						isAuthenticated: false, // Not required for private-link
-						isServerMember: false,
-						isOwner: false
-					};
+			fc.property(fc.uuid(), fc.option(fc.uuid(), { nil: undefined }), (validToken, shareToken) => {
+				const context: AccessCheckContext = {
+					shareMode: ShareMode.PRIVATE_LINK,
+					shareToken,
+					validToken,
+					isAuthenticated: false,
+					isServerMember: false,
+					isOwner: false
+				};
 
-					const result = checkAccess(context);
-					const shouldAllow = shareToken === validToken;
+				const result = checkAccess(context);
+				const shouldAllow = shareToken === validToken;
 
-					return result.allowed === shouldAllow;
-				}
-			),
+				return result.allowed === shouldAllow;
+			}),
 			{ numRuns: 100 }
 		);
 	});
@@ -102,8 +91,8 @@ describe('Property 15: Share Mode Access Control', () => {
 		fc.assert(
 			fc.property(
 				shareModeArbitrary,
-				fc.boolean(), // isAuthenticated
-				fc.option(fc.uuid(), { nil: undefined }), // shareToken
+				fc.boolean(),
+				fc.option(fc.uuid(), { nil: undefined }),
 				(shareMode, isAuthenticated, shareToken) => {
 					const context: AccessCheckContext = {
 						shareMode,
@@ -111,7 +100,7 @@ describe('Property 15: Share Mode Access Control', () => {
 						validToken: 'some-valid-token',
 						isAuthenticated,
 						isServerMember: isAuthenticated,
-						isOwner: true // Key: owner is always true
+						isOwner: true
 					};
 
 					const result = checkAccess(context);
@@ -146,7 +135,7 @@ describe('Property 15: Share Mode Access Control', () => {
 			fc.property(fc.uuid(), (validToken) => {
 				const context: AccessCheckContext = {
 					shareMode: ShareMode.PRIVATE_LINK,
-					shareToken: undefined, // No token provided
+					shareToken: undefined,
 					validToken,
 					isAuthenticated: true,
 					isServerMember: true,
@@ -163,7 +152,7 @@ describe('Property 15: Share Mode Access Control', () => {
 	it('wrong token is denied for private-link', () => {
 		fc.assert(
 			fc.property(
-				fc.uuid(), // validToken
+				fc.uuid(),
 				fc.uuid().filter((t) => t !== ''), // wrongToken
 				(validToken, wrongToken) => {
 					if (validToken === wrongToken) return true;
@@ -220,9 +209,6 @@ describe('Property 15: Share Mode Access Control', () => {
 	});
 });
 
-// Property 16: Share Token Uniqueness
-
-// Feature: obzorarr, Property 16: Share Token Uniqueness
 describe('Property 16: Share Token Uniqueness', () => {
 	it('generated tokens are valid UUID v4 format', () => {
 		fc.assert(
@@ -236,16 +222,13 @@ describe('Property 16: Share Token Uniqueness', () => {
 
 	it('generated tokens are unique', () => {
 		fc.assert(
-			fc.property(
-				fc.integer({ min: 10, max: 100 }), // Number of tokens to generate
-				(count) => {
-					const tokens = new Set<string>();
-					for (let i = 0; i < count; i++) {
-						tokens.add(generateShareToken());
-					}
-					return tokens.size === count;
+			fc.property(fc.integer({ min: 10, max: 100 }), (count) => {
+				const tokens = new Set<string>();
+				for (let i = 0; i < count; i++) {
+					tokens.add(generateShareToken());
 				}
-			),
+				return tokens.size === count;
+			}),
 			{ numRuns: 100 }
 		);
 	});
@@ -257,7 +240,7 @@ describe('Property 16: Share Token Uniqueness', () => {
 				const token2 = generateShareToken();
 				return token1 !== token2;
 			}),
-			{ numRuns: 1000 } // Extra iterations for uniqueness
+			{ numRuns: 1000 }
 		);
 	});
 
@@ -288,16 +271,12 @@ describe('Property 16: Share Token Uniqueness', () => {
 	});
 
 	it('token generation is idempotent format', () => {
-		// Each call produces a new unique token
 		const tokens = Array.from({ length: 100 }, () => generateShareToken());
 		const uniqueTokens = new Set(tokens);
 		expect(uniqueTokens.size).toBe(100);
 	});
 });
 
-// Property 17: Permission Enforcement
-
-// Feature: obzorarr, Property 17: Permission Enforcement
 describe('Property 17: Permission Enforcement', () => {
 	/**
 	 * Permission levels hierarchy:
@@ -336,7 +315,7 @@ describe('Property 17: Permission Enforcement', () => {
 			fc.property(shareModeArbitrary, shareModeArbitrary, (currentMode, requestedMode) => {
 				const ctx: PermissionContext = {
 					isAdmin: true,
-					canUserControl: false, // Doesn't matter for admin
+					canUserControl: false,
 					currentMode,
 					requestedMode
 				};
@@ -385,19 +364,16 @@ describe('Property 17: Permission Enforcement', () => {
 
 	it('users with canUserControl cannot enable private-link', () => {
 		fc.assert(
-			fc.property(
-				fc.constantFrom(ShareMode.PUBLIC, ShareMode.PRIVATE_OAUTH), // Current mode not private-link
-				() => {
-					const ctx: PermissionContext = {
-						isAdmin: false,
-						canUserControl: true,
-						currentMode: ShareMode.PUBLIC,
-						requestedMode: ShareMode.PRIVATE_LINK
-					};
+			fc.property(fc.constantFrom(ShareMode.PUBLIC, ShareMode.PRIVATE_OAUTH), () => {
+				const ctx: PermissionContext = {
+					isAdmin: false,
+					canUserControl: true,
+					currentMode: ShareMode.PUBLIC,
+					requestedMode: ShareMode.PRIVATE_LINK
+				};
 
-					return isPermissionAllowed(ctx) === false;
-				}
-			),
+				return isPermissionAllowed(ctx) === false;
+			}),
 			{ numRuns: 100 }
 		);
 	});
@@ -416,10 +392,10 @@ describe('Property 17: Permission Enforcement', () => {
 	it('permission enforcement is deterministic', () => {
 		fc.assert(
 			fc.property(
-				fc.boolean(), // isAdmin
-				fc.boolean(), // canUserControl
-				shareModeArbitrary, // currentMode
-				shareModeArbitrary, // requestedMode
+				fc.boolean(),
+				fc.boolean(),
+				shareModeArbitrary,
+				shareModeArbitrary,
 				(isAdmin, canUserControl, currentMode, requestedMode) => {
 					const ctx: PermissionContext = {
 						isAdmin,
@@ -441,7 +417,7 @@ describe('Property 17: Permission Enforcement', () => {
 	it('admin permissions override canUserControl', () => {
 		fc.assert(
 			fc.property(
-				fc.boolean(), // canUserControl
+				fc.boolean(),
 				shareModeArbitrary,
 				shareModeArbitrary,
 				(canUserControl, currentMode, requestedMode) => {
@@ -467,7 +443,7 @@ describe('Property 17: Permission Enforcement', () => {
 					isAdmin: false,
 					canUserControl: false,
 					currentMode,
-					requestedMode: ShareMode.PUBLIC // Any requested mode
+					requestedMode: ShareMode.PUBLIC
 				};
 
 				const denied = !isPermissionAllowed(ctxNoControl);
@@ -503,14 +479,14 @@ describe('Share Token Generation', () => {
 
 	it('validates correct UUID format', () => {
 		expect(isValidTokenFormat('550e8400-e29b-41d4-a716-446655440000')).toBe(true);
-		expect(isValidTokenFormat('550E8400-E29B-41D4-A716-446655440000')).toBe(true); // Case insensitive
+		expect(isValidTokenFormat('550E8400-E29B-41D4-A716-446655440000')).toBe(true);
 	});
 
 	it('rejects invalid UUID formats', () => {
 		expect(isValidTokenFormat('')).toBe(false);
 		expect(isValidTokenFormat('not-a-uuid')).toBe(false);
-		expect(isValidTokenFormat('550e8400-e29b-41d4-a716')).toBe(false); // Too short
-		expect(isValidTokenFormat('550e8400-e29b-51d4-a716-446655440000')).toBe(false); // Wrong version
+		expect(isValidTokenFormat('550e8400-e29b-41d4-a716')).toBe(false);
+		expect(isValidTokenFormat('550e8400-e29b-51d4-a716-446655440000')).toBe(false);
 	});
 });
 

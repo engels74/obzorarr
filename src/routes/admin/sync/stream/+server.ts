@@ -2,15 +2,6 @@ import { requireAdmin } from '$lib/server/auth/guards';
 import { getSyncProgress, type LiveSyncProgress } from '$lib/server/sync/progress';
 import type { RequestHandler } from './$types';
 
-/**
- * SSE Endpoint for Real-Time Sync Progress Streaming
- *
- * Streams sync progress to connected clients using Server-Sent Events.
- * Polls the in-memory progress store every 500ms.
- *
- * Authorization is handled by hooks.server.ts (requires admin).
- */
-
 const POLL_INTERVAL_MS = 500;
 
 export const GET: RequestHandler = async ({ locals, request }) => {
@@ -27,7 +18,7 @@ export const GET: RequestHandler = async ({ locals, request }) => {
 			);
 
 			let lastProgress: LiveSyncProgress | null = initialProgress;
-			let terminalEventSent = false; // Track if terminal event was already sent
+			let terminalEventSent = false;
 			const intervalId = setInterval(() => {
 				try {
 					const currentProgress = getSyncProgress();
@@ -68,7 +59,7 @@ export const GET: RequestHandler = async ({ locals, request }) => {
 					} else if (lastProgress !== null) {
 						controller.enqueue(formatSSE({ type: 'idle' }));
 						lastProgress = null;
-						terminalEventSent = false; // Reset for next sync
+						terminalEventSent = false;
 					}
 				} catch (_error) {
 					controller.enqueue(
@@ -100,9 +91,6 @@ function formatSSE(data: SSEEvent): string {
 	return `data: ${JSON.stringify(data)}\n\n`;
 }
 
-/**
- * SSE event types
- */
 type SSEEvent =
 	| { type: 'connected'; progress: LiveSyncProgress | null }
 	| { type: 'progress'; progress: LiveSyncProgress }

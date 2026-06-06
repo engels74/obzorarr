@@ -37,6 +37,6 @@ export const TEMPORAL_TEMPLATES = defineTemplateCategory('temporal-pattern', [
 		comparisonTemplate: "Here's to another year of great content!",
 		icon: '🎊',
 		requiredStats: [],
-		minThresholds: {} // Always applicable
+		minThresholds: {}
 	}
 ]);

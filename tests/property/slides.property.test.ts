@@ -40,7 +40,6 @@ const slideTypeArbitrary: fc.Arbitrary<SlideType> = fc.constantFrom(
 	'first-last'
 );
 
-// Generate a shuffled order of all default slides
 const slideOrderArbitrary: fc.Arbitrary<SlideType[]> = fc
 	.shuffledSubarray([...DEFAULT_SLIDE_ORDER] as SlideType[], {
 		minLength: DEFAULT_SLIDE_ORDER.length,
@@ -53,9 +52,6 @@ const slidesToDisableArbitrary: fc.Arbitrary<SlideType[]> = fc.subarray(
 	{ minLength: 1, maxLength: DEFAULT_SLIDE_ORDER.length - 1 }
 );
 
-// Property 19: Slide Order Persistence
-
-// Feature: obzorarr, Property 19: Slide Order Persistence
 describe('Property 19: Slide Order Persistence', () => {
 	beforeEach(async () => {
 		await resetToDefaultConfig();
@@ -64,17 +60,14 @@ describe('Property 19: Slide Order Persistence', () => {
 	it('after save and reload, slide order matches saved order', async () => {
 		await fc.assert(
 			fc.asyncProperty(slideOrderArbitrary, async (newOrder) => {
-				// Save the new order
 				await reorderSlides(newOrder);
 
 				const loadedConfigs = await getAllSlideConfigs();
 
-				// Extract order from loaded configs
 				const loadedOrder = loadedConfigs
 					.sort((a, b) => a.sortOrder - b.sortOrder)
 					.map((c) => c.slideType);
 
-				// Verify order matches
 				if (loadedOrder.length !== newOrder.length) return false;
 
 				for (let i = 0; i < newOrder.length; i++) {
@@ -109,7 +102,6 @@ describe('Property 19: Slide Order Persistence', () => {
 	it('order persistence is idempotent', async () => {
 		await fc.assert(
 			fc.asyncProperty(slideOrderArbitrary, async (newOrder) => {
-				// Save order twice
 				await reorderSlides(newOrder);
 				await reorderSlides(newOrder);
 
@@ -147,9 +139,6 @@ describe('Property 19: Slide Order Persistence', () => {
 	});
 });
 
-// Property 20: Disabled Slide Exclusion
-
-// Feature: obzorarr, Property 20: Disabled Slide Exclusion
 describe('Property 20: Disabled Slide Exclusion', () => {
 	beforeEach(async () => {
 		await resetToDefaultConfig();
@@ -217,7 +206,6 @@ describe('Property 20: Disabled Slide Exclusion', () => {
 	it('disabled slide maintains its sortOrder', async () => {
 		await fc.assert(
 			fc.asyncProperty(slideTypeArbitrary, async (slideType) => {
-				// Get original order
 				const originalConfigs = await getAllSlideConfigs();
 				const original = originalConfigs.find((c) => c.slideType === slideType);
 				if (!original) return false;
@@ -238,7 +226,6 @@ describe('Property 20: Disabled Slide Exclusion', () => {
 	it('enabled slides preserve relative order when some are disabled', async () => {
 		await fc.assert(
 			fc.asyncProperty(slidesToDisableArbitrary, async (slidesToDisable) => {
-				// Get original enabled order
 				const originalEnabled = await getEnabledSlides();
 				const originalOrder = originalEnabled.map((s) => s.slideType);
 
@@ -249,10 +236,8 @@ describe('Property 20: Disabled Slide Exclusion', () => {
 				const newEnabled = await getEnabledSlides();
 				const newOrder = newEnabled.map((s) => s.slideType);
 
-				// Filter original order to exclude disabled slides
 				const expectedOrder = originalOrder.filter((type) => !slidesToDisable.includes(type));
 
-				// Verify order is preserved
 				return (
 					newOrder.length === expectedOrder.length &&
 					newOrder.every((type, i) => type === expectedOrder[i])
@@ -330,7 +315,7 @@ describe('Slide Configuration Service', () => {
 	});
 
 	it('enabled slides are in sorted order', async () => {
-		// Reorder slides - must include ALL slide types to avoid sortOrder collisions
+		// Include every slide type so duplicate sortOrder values cannot mask ordering bugs.
 		const newOrder: SlideType[] = [
 			'binge',
 			'total-time',

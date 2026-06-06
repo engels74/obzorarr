@@ -11,20 +11,6 @@ import { toast } from '$lib/services/toast';
 import { handleFormToast } from '$lib/utils/form-toast';
 import type { ActionData, PageData } from './$types';
 
-/**
- * Admin Logs Page
- *
- * Real-time log viewer with filtering and SSE streaming.
- *
- * Features:
- * - Log level filtering (multi-select)
- * - Text search with debounce
- * - Source filter dropdown
- * - Date range filtering
- * - Auto-scroll with SSE streaming
- * - Export and clear functionality
- */
-
 let { data, form }: { data: PageData; form: ActionData } = $props();
 
 let selectedLevels = $derived<LogLevelType[]>(data.filters?.levels ?? []);

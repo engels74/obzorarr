@@ -3,10 +3,9 @@ import { testToast } from './helpers/toast';
 
 process.env.NODE_ENV = 'test';
 
-// Set a test database path to avoid conflicts with development database
+// Tests must never touch the development SQLite file.
 process.env.DATABASE_PATH = ':memory:';
 
-// Mock SvelteKit's $env/dynamic/private module for tests
 mock.module('$env/dynamic/private', () => ({
 	env: {
 		PLEX_SERVER_URL: 'https://test-plex-server:32400',
@@ -18,7 +17,6 @@ mock.module('$env/dynamic/private', () => ({
 	}
 }));
 
-// Mock SvelteKit's $env/static/private module for tests
 mock.module('$env/static/private', () => ({
 	PLEX_SERVER_URL: 'https://test-plex-server:32400',
 	PLEX_TOKEN: 'test-plex-token'
@@ -39,10 +37,7 @@ mock.module('$lib/services/toast', () => ({
 	toast: testToast
 }));
 
-// Import database client DYNAMICALLY after setting environment variables
-// NOTE: Static imports are hoisted and execute BEFORE the code above,
-// which would cause the db client to read DATABASE_PATH before we set it.
-// Using dynamic import ensures the environment is properly configured first.
+// Static imports would let the DB client read DATABASE_PATH before the test override.
 const { sqlite } = await import('$lib/server/db/client');
 
 sqlite.exec(`

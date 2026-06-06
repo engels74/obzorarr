@@ -343,7 +343,6 @@ function statsAreEqual(a: UserStats | ServerStats, b: UserStats | ServerStats): 
 	return aJson === bJson;
 }
 
-// Feature: obzorarr, Property 21: Statistics Serialization Round-Trip
 describe('Property 21: Statistics Serialization Round-Trip', () => {
 	describe('UserStats round-trip', () => {
 		it('serialize then deserialize produces equivalent UserStats', () => {

@@ -21,7 +21,6 @@ export {
 	Header,
 	Header as TableHeader,
 	Root,
-	//
 	Root as Table,
 	Row,
 	Row as TableRow

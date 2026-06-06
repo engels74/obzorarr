@@ -13,7 +13,6 @@ export {
 	Input,
 	Input as InputGroupInput,
 	Root,
-	//
 	Root as InputGroup,
 	Text,
 	Text as InputGroupText,

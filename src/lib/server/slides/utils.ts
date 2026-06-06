@@ -78,7 +78,7 @@ export function intersperseFunFacts(
 				result.push({
 					type: 'fun-fact',
 					enabled: true,
-					sortOrder: -1, // Will be recalculated
+					sortOrder: -1,
 					funFact: funFactData
 				});
 			}

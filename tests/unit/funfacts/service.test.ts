@@ -497,7 +497,6 @@ describe('generateFromTemplates', () => {
 
 		const timeEquivIds = TIME_EQUIVALENCY_TEMPLATES.map((t) => t.id);
 
-		// Generate without time-equivalency templates
 		const result = generateFromTemplates(context, {
 			count: 3,
 			excludeIds: timeEquivIds

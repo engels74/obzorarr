@@ -17,7 +17,7 @@ export const ACHIEVEMENT_TEMPLATES = defineTemplateCategory('achievement', [
 		icon: '💯',
 		requiredStats: ['hours'],
 		minThresholds: { hours: 100 },
-		priority: 70 // Higher priority for major milestones
+		priority: 70
 	},
 	{
 		id: 'movie-marathon-master',
@@ -35,7 +35,7 @@ export const ACHIEVEMENT_TEMPLATES = defineTemplateCategory('achievement', [
 		icon: '🏆',
 		requiredStats: ['plays'],
 		minThresholds: { plays: 1000 },
-		priority: 75 // Very high priority for rare achievement
+		priority: 75
 	},
 	{
 		id: 'five-hundred-plays',

@@ -67,11 +67,9 @@ let subtitleEl: HTMLElement | undefined = $state();
 $effect(() => {
 	if (!container || !numberEl || !valueEl || !subtitleEl || !active) return;
 
-	// Check reduced motion preference
 	const shouldAnimate = !prefersReducedMotion.current;
 
 	if (!shouldAnimate) {
-		// Instant display for reduced motion
 		container.style.opacity = '1';
 		container.style.transform = 'none';
 		numberEl.style.opacity = '1';

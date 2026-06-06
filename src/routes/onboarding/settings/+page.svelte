@@ -265,7 +265,8 @@ function goToSubStep(index: number) {
 
 $effect(() => {
 	if (!contentRef) return;
-	const step = currentSubStep; // Track dependency
+	// Intentionally read currentSubStep so this effect re-runs when the carousel advances.
+	const step = currentSubStep;
 
 	const xOffset = animationDirection === 'forward' ? 30 : -30;
 
@@ -1196,9 +1197,6 @@ function getThemeColors(themeValue: string) {
 			border: 0;
 		}
 
-		/* ==========================================================================
-		   Sub-step Progress Indicator
-		   ========================================================================== */
 		.substep-indicator {
 			display: flex;
 			align-items: center;
@@ -1271,9 +1269,6 @@ function getThemeColors(themeValue: string) {
 			color: white;
 		}
 
-		/* ==========================================================================
-		   Carousel Content
-		   ========================================================================== */
 		.carousel-content {
 			min-height: 320px;
 		}
@@ -1342,9 +1337,6 @@ function getThemeColors(themeValue: string) {
 			gap: 1.25rem;
 		}
 
-		/* ==========================================================================
-		   Navigation Buttons
-		   ========================================================================== */
 		.footer-actions {
 			display: flex;
 			align-items: center;
@@ -2234,9 +2226,6 @@ function getThemeColors(themeValue: string) {
 			}
 		}
 
-		/* ==========================================================================
-		   Mobile Responsive
-		   ========================================================================== */
 		@media (max-width: 480px) {
 			.substep-indicator {
 				flex-direction: column;

@@ -33,7 +33,7 @@ import {
  */
 function expectedApiCalls(totalRecords: number, pageSize: number): number {
 	if (totalRecords === 0) {
-		return 1; // Need 1 request to discover totalSize = 0
+		return 1;
 	}
 	return Math.ceil(totalRecords / pageSize);
 }
@@ -83,16 +83,13 @@ function createMockPageFetcher(
 	};
 }
 
-// Property 4: Pagination Completeness
-
-// Feature: obzorarr, Property 4: Pagination Completeness
 describe('Property 4: Pagination Completeness', () => {
 	describe('Page count calculation', () => {
 		it('calculateExpectedPages returns ceil(N/P) for any N and P', () => {
 			fc.assert(
 				fc.property(
-					fc.integer({ min: 0, max: 10000 }), // totalRecords N
-					fc.integer({ min: 1, max: 500 }), // pageSize P
+					fc.integer({ min: 0, max: 10000 }),
+					fc.integer({ min: 1, max: 500 }),
 					(totalRecords, pageSize) => {
 						const expected = totalRecords === 0 ? 0 : Math.ceil(totalRecords / pageSize);
 						const actual = calculateExpectedPages(totalRecords, pageSize);
@@ -108,8 +105,8 @@ describe('Property 4: Pagination Completeness', () => {
 		it('fetches expected number of pages for any N records and page size P', async () => {
 			await fc.assert(
 				fc.asyncProperty(
-					fc.integer({ min: 0, max: 1000 }), // totalRecords N (smaller for async perf)
-					fc.integer({ min: 1, max: 100 }), // pageSize P
+					fc.integer({ min: 0, max: 1000 }),
+					fc.integer({ min: 1, max: 100 }),
 					async (totalRecords, pageSize) => {
 						const allItems = generateTestItems(totalRecords);
 						const { fetcher, getPagesFetched } = createMockPageFetcher(allItems, pageSize);
@@ -134,8 +131,8 @@ describe('Property 4: Pagination Completeness', () => {
 		it('retrieves exactly N records with no loss', async () => {
 			await fc.assert(
 				fc.asyncProperty(
-					fc.integer({ min: 0, max: 1000 }), // totalRecords N
-					fc.integer({ min: 1, max: 100 }), // pageSize P
+					fc.integer({ min: 0, max: 1000 }),
+					fc.integer({ min: 1, max: 100 }),
 					async (totalRecords, pageSize) => {
 						const allItems = generateTestItems(totalRecords);
 						const { fetcher } = createMockPageFetcher(allItems, pageSize);
@@ -155,8 +152,8 @@ describe('Property 4: Pagination Completeness', () => {
 		it('retrieves items in correct order with no duplicates', async () => {
 			await fc.assert(
 				fc.asyncProperty(
-					fc.integer({ min: 1, max: 500 }), // totalRecords N (at least 1 for this test)
-					fc.integer({ min: 1, max: 50 }), // pageSize P
+					fc.integer({ min: 1, max: 500 }),
+					fc.integer({ min: 1, max: 50 }),
 					async (totalRecords, pageSize) => {
 						const allItems = generateTestItems(totalRecords);
 						const { fetcher } = createMockPageFetcher(allItems, pageSize);
@@ -166,7 +163,6 @@ describe('Property 4: Pagination Completeness', () => {
 							collectedItems.push(...items);
 						}
 
-						// Verify order is preserved
 						const idsInOrder = collectedItems.every((item, index) => item.id === index + 1);
 
 						const uniqueIds = new Set(collectedItems.map((item) => item.id));
@@ -268,7 +264,7 @@ describe('Property 4: Pagination Completeness', () => {
 
 		it('handles records exactly divisible by page size (multiple pages)', async () => {
 			const pageSize = 10;
-			const totalRecords = 30; // Exactly 3 pages
+			const totalRecords = 30;
 			const allItems = generateTestItems(totalRecords);
 			const { fetcher, getPagesFetched } = createMockPageFetcher(allItems, pageSize);
 
@@ -283,7 +279,7 @@ describe('Property 4: Pagination Completeness', () => {
 
 		it('handles records not divisible by page size (partial last page)', async () => {
 			const pageSize = 10;
-			const totalRecords = 25; // 2 full pages + 5 items
+			const totalRecords = 25;
 			const allItems = generateTestItems(totalRecords);
 			const { fetcher, getPagesFetched } = createMockPageFetcher(allItems, pageSize);
 
@@ -293,7 +289,7 @@ describe('Property 4: Pagination Completeness', () => {
 			}
 
 			expect(collectedItems.length).toBe(totalRecords);
-			expect(getPagesFetched()).toBe(3); // ceil(25/10) = 3
+			expect(getPagesFetched()).toBe(3);
 		});
 
 		it('throws error for invalid page size (zero)', () => {
@@ -315,7 +311,7 @@ describe('Property 4: Pagination Completeness', () => {
 			const result = await fetchAllPaginatedWithStats(fetcher, pageSize);
 
 			expect(result.items.length).toBe(totalRecords);
-			expect(result.pagesFetched).toBe(50); // ceil(5000/100) = 50
+			expect(result.pagesFetched).toBe(50);
 			expect(result.totalSize).toBe(totalRecords);
 		});
 	});

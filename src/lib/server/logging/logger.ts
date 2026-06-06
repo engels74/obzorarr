@@ -99,12 +99,10 @@ class Logger {
 	private async isDebugEnabled(): Promise<boolean> {
 		const now = Date.now();
 
-		// Return cached value if still valid
 		if (this.debugEnabledCache !== null && now < this.debugCacheExpiry) {
 			return this.debugEnabledCache;
 		}
 
-		// Refresh cache
 		try {
 			this.debugEnabledCache = await isDebugEnabled();
 			this.debugCacheExpiry = now + this.DEBUG_CACHE_TTL_MS;

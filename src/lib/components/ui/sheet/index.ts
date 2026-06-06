@@ -25,7 +25,6 @@ export {
 	Portal,
 	Portal as SheetPortal,
 	Root,
-	//
 	Root as Sheet,
 	Title,
 	Title as SheetTitle,

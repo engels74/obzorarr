@@ -132,11 +132,9 @@ export function isTemplateApplicable(
 		if (value === null || value === undefined) {
 			return false;
 		}
-		// For strings, check they're not empty
 		if (typeof value === 'string' && value.length === 0) {
 			return false;
 		}
-		// For numbers, check they're positive (except peakHour which can be 0)
 		if (typeof value === 'number' && value <= 0 && stat !== 'peakHour' && stat !== 'peakMonth') {
 			return false;
 		}
@@ -151,12 +149,11 @@ export function isTemplateApplicable(
 		}
 	}
 
-	// Special case: early bird requires peakHour <= 9
+	// Template thresholds express minimums only; early-bird needs the opposite bound.
 	if (template.id === 'early-bird' && context.peakHour > 9) {
 		return false;
 	}
 
-	// Special case: night owl requires peakHour >= 21
 	if (template.id === 'night-owl' && context.peakHour < 21) {
 		return false;
 	}
@@ -177,11 +174,11 @@ const PRONOUNS = {
 function getPronounReplacements(scope: 'user' | 'server'): Record<string, string> {
 	const p = PRONOUNS[scope];
 	return {
-		Subject: p.subject, // "You" / "We"
-		subject: p.subject.toLowerCase(), // "you" / "we"
-		Possessive: p.possessive, // "Your" / "Our"
-		possessive: p.possessive.toLowerCase(), // "your" / "our"
-		object: p.object // "you" / "us"
+		Subject: p.subject,
+		subject: p.subject.toLowerCase(),
+		Possessive: p.possessive,
+		possessive: p.possessive.toLowerCase(),
+		object: p.object
 	};
 }
 
@@ -217,7 +214,7 @@ export function interpolateTemplate(template: string, context: FactGenerationCon
 	const commuteTrips = Math.round(context.hours / COMMUTE_HOURS);
 	const podcastEpisodes = Math.round(context.hours / PODCAST_EPISODE_HOURS);
 	const topPercentile = 100 - Math.round(context.percentile);
-	const year = new Date().getFullYear(); // Current year for the year-participant template
+	const year = new Date().getFullYear();
 
 	const pronounReplacements = getPronounReplacements(context.scope);
 
@@ -467,7 +464,6 @@ export async function generateFunFacts(
 			if (aiFacts.length >= count) {
 				return aiFacts.slice(0, count);
 			}
-			// If AI returned fewer than requested, supplement with templates
 			const remaining = count - aiFacts.length;
 			const templateFacts = generateFromTemplates(context, {
 				count: remaining,

@@ -5,11 +5,11 @@ export const CRON_RANGE_MESSAGE = 'Cron expression contains an out-of-range valu
 
 // [min, max] for each of the 5 cron fields (minute, hour, dom, month, dow)
 const FIELD_RANGES: [number, number][] = [
-	[0, 59], // minute
-	[0, 23], // hour
-	[1, 31], // day-of-month
-	[1, 12], // month
-	[0, 7] //  day-of-week (0 and 7 both mean Sunday)
+	[0, 59],
+	[0, 23],
+	[1, 31],
+	[1, 12],
+	[0, 7]
 ];
 
 /**
@@ -17,10 +17,8 @@ const FIELD_RANGES: [number, number][] = [
  * within [min, max]. Handles *, step (/), range (-), and list (,).
  */
 function isFieldInRange(token: string, min: number, max: number): boolean {
-	// Wildcard — always valid
 	if (token === '*') return true;
 
-	// Step — e.g. "*/5" or "1-5/2" or "0/15"
 	if (token.includes('/')) {
 		const parts = token.split('/');
 		// Exactly one "/" — reject tokens like "*/5/2"
@@ -34,12 +32,10 @@ function isFieldInRange(token: string, min: number, max: number): boolean {
 		return true;
 	}
 
-	// List — e.g. "1,3,5"
 	if (token.includes(',')) {
 		return token.split(',').every((part) => isFieldInRange(part, min, max));
 	}
 
-	// Range — e.g. "1-5"
 	if (token.includes('-')) {
 		const parts = token.split('-');
 		// Exactly two non-empty segments — reject "-1", "1-", "1-5-2"

@@ -142,7 +142,6 @@ describe('Admin Settings Service', () => {
 			});
 
 			it('does nothing for non-existent setting', async () => {
-				// Should not throw
 				await deleteAppSetting(AppSettingsKey.CURRENT_THEME);
 			});
 		});
@@ -493,8 +492,6 @@ describe('Admin Settings Service', () => {
 		});
 	});
 
-	// Cache Management
-
 	describe('Cache Management', () => {
 		beforeEach(async () => {
 			await db.insert(cachedStats).values([
@@ -690,7 +687,6 @@ describe('Admin Settings Service', () => {
 			it('returns env values when env vars are configured', async () => {
 				const config = await getApiConfigWithSources();
 
-				// Plex values come from env (test setup mocks PLEX_SERVER_URL and PLEX_TOKEN)
 				expect(config.plex.serverUrl.value).toBe('https://test-plex-server:32400');
 				expect(config.plex.serverUrl.source).toBe('env');
 				expect(config.plex.serverUrl.isLocked).toBe(true);
@@ -698,7 +694,6 @@ describe('Admin Settings Service', () => {
 				expect(config.plex.token.source).toBe('env');
 				expect(config.plex.token.isLocked).toBe(true);
 
-				// OpenAI env vars are empty in test setup, so defaults are used
 				expect(config.openai.baseUrl.value).toBe('https://api.openai.com/v1');
 				expect(config.openai.baseUrl.source).toBe('default');
 				expect(config.openai.baseUrl.isLocked).toBe(false);
@@ -708,13 +703,11 @@ describe('Admin Settings Service', () => {
 			});
 
 			it('prioritizes DB values over defaults (when ENV not set)', async () => {
-				// OpenAI env vars are empty in test setup, so DB values should take priority
 				await setAppSetting(AppSettingsKey.OPENAI_MODEL, 'gpt-4');
 				await setAppSetting(AppSettingsKey.OPENAI_BASE_URL, 'http://custom-api:8080/v1');
 
 				const config = await getApiConfigWithSources();
 
-				// OpenAI settings should come from DB since ENV is not set
 				expect(config.openai.model.value).toBe('gpt-4');
 				expect(config.openai.model.source).toBe('db');
 				expect(config.openai.model.isLocked).toBe(false);
@@ -724,13 +717,11 @@ describe('Admin Settings Service', () => {
 			});
 
 			it('prioritizes ENV values over DB values', async () => {
-				// Plex env vars ARE set in test setup, so ENV should win even if DB has values
 				await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, 'http://db-plex:32400');
 				await setAppSetting(AppSettingsKey.PLEX_TOKEN, 'db-token-value');
 
 				const config = await getApiConfigWithSources();
 
-				// Plex settings should come from ENV (test setup mocks these)
 				expect(config.plex.serverUrl.value).toBe('https://test-plex-server:32400');
 				expect(config.plex.serverUrl.source).toBe('env');
 				expect(config.plex.serverUrl.isLocked).toBe(true);
@@ -742,7 +733,6 @@ describe('Admin Settings Service', () => {
 
 		describe('hasPlexEnvConfig', () => {
 			it('returns true when Plex env vars are set', () => {
-				// Test setup mocks PLEX_SERVER_URL and PLEX_TOKEN with values
 				const hasConfig = hasPlexEnvConfig();
 				expect(hasConfig).toBe(true);
 			});
@@ -801,7 +791,6 @@ describe('Admin Settings Service', () => {
 
 		describe('hasOpenAIEnvConfig', () => {
 			it('returns false when no OpenAI env vars set', () => {
-				// Test setup mocks env vars as empty strings
 				const hasConfig = hasOpenAIEnvConfig();
 				expect(hasConfig).toBe(false);
 			});
@@ -893,7 +882,6 @@ describe('Admin Settings Service', () => {
 
 		describe('clearConflictingDbSettings', () => {
 			it('clears DB settings when ENV values exist', async () => {
-				// Plex env vars ARE set in test setup, so these DB values should be cleared
 				await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, 'http://db-url:32400');
 				await setAppSetting(AppSettingsKey.PLEX_TOKEN, 'db-token');
 
@@ -909,7 +897,6 @@ describe('Admin Settings Service', () => {
 			});
 
 			it('preserves DB settings when no ENV values exist', async () => {
-				// OpenAI env vars are empty in test setup, so DB values should be preserved
 				await setAppSetting(AppSettingsKey.OPENAI_MODEL, 'custom-model');
 				await setAppSetting(AppSettingsKey.OPENAI_BASE_URL, 'http://custom-api:8080/v1');
 
@@ -925,7 +912,6 @@ describe('Admin Settings Service', () => {
 			});
 
 			it('returns correct labels for cleared settings', async () => {
-				// Set only one DB value that conflicts with ENV
 				await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, 'http://db-url:32400');
 
 				const cleared = await clearConflictingDbSettings();
@@ -992,7 +978,6 @@ describe('Admin Settings Service', () => {
 
 		describe('isPlexConfigured', () => {
 			it('returns true when both serverUrl and token are configured', async () => {
-				// Test setup mocks PLEX_SERVER_URL and PLEX_TOKEN via env
 				const configured = await isPlexConfigured();
 				expect(configured).toBe(true);
 			});
@@ -1050,7 +1035,6 @@ describe('Admin Settings Service', () => {
 	describe('CSRF Configuration', () => {
 		describe('getCsrfConfigWithSource', () => {
 			it('returns default values when no config exists', async () => {
-				// ENV ORIGIN is empty in test setup
 				const config = await getCsrfConfigWithSource();
 				expect(config.origin.value).toBe('');
 				expect(config.origin.source).toBe('default');

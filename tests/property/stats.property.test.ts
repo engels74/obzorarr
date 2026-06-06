@@ -92,8 +92,6 @@ const episodeRecordArbitrary: fc.Arbitrary<PlayHistoryRecord> = fc
 	})
 	.map((record) => record as PlayHistoryRecord);
 
-// Property 8: Year Date Range Filtering
-
 describe('Property 8: Year Date Range Filtering', () => {
 	it('year boundaries are correctly calculated', () => {
 		fc.assert(
@@ -143,8 +141,6 @@ describe('Property 8: Year Date Range Filtering', () => {
 	});
 });
 
-// Property 9: Watch Time Aggregation
-
 describe('Property 9: Watch Time Aggregation', () => {
 	it('total watch time equals sum of durations', () => {
 		fc.assert(
@@ -191,8 +187,6 @@ describe('Property 9: Watch Time Aggregation', () => {
 		);
 	});
 });
-
-// Property 10: Ranking Correctness
 
 describe('Property 10: Ranking Correctness', () => {
 	it('movie rankings are ordered by count descending', () => {
@@ -266,8 +260,6 @@ describe('Property 10: Ranking Correctness', () => {
 	});
 });
 
-// Property 11: Monthly Distribution Completeness
-
 describe('Property 11: Monthly Distribution Completeness', () => {
 	it('monthly distribution sum equals total watch time', () => {
 		fc.assert(
@@ -330,8 +322,6 @@ describe('Property 11: Monthly Distribution Completeness', () => {
 	});
 });
 
-// Property 12: Hourly Distribution Completeness
-
 describe('Property 12: Hourly Distribution Completeness', () => {
 	it('hourly distribution sum equals total watch time', () => {
 		fc.assert(
@@ -393,8 +383,6 @@ describe('Property 12: Hourly Distribution Completeness', () => {
 		);
 	});
 });
-
-// Property 13: Percentile Calculation
 
 describe('Property 13: Percentile Calculation', () => {
 	it('percentile equals (users with less watch time) / N * 100', () => {
@@ -459,8 +447,6 @@ describe('Property 13: Percentile Calculation', () => {
 		);
 	});
 });
-
-// Property 14: Binge Session Detection
 
 describe('Property 14: Binge Session Detection', () => {
 	it('longest binge has maximum totalMinutes among all sessions', () => {

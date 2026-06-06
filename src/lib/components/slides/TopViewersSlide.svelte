@@ -20,9 +20,9 @@ let {
 }: TopViewersSlideProps = $props();
 
 const medalColors = {
-	1: { bg: 'oklch(0.8153 0.1652 85.67)', glow: 'oklch(0.8153 0.1652 85.67 / 0.4)' }, // Gold
-	2: { bg: 'oklch(0.7615 0.0139 248.01)', glow: 'oklch(0.7615 0.0139 248.01 / 0.4)' }, // Silver
-	3: { bg: 'oklch(0.6165 0.1196 61.92)', glow: 'oklch(0.6165 0.1196 61.92 / 0.4)' } // Bronze
+	1: { bg: 'oklch(0.8153 0.1652 85.67)', glow: 'oklch(0.8153 0.1652 85.67 / 0.4)' },
+	2: { bg: 'oklch(0.7615 0.0139 248.01)', glow: 'oklch(0.7615 0.0139 248.01 / 0.4)' },
+	3: { bg: 'oklch(0.6165 0.1196 61.92)', glow: 'oklch(0.6165 0.1196 61.92 / 0.4)' }
 } as const;
 
 const displayedViewers = $derived(topViewers.slice(0, limit));

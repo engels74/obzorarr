@@ -154,7 +154,6 @@ export async function getServerUsers(): Promise<{
 	owner: NormalizedServerUser;
 	sharedUsers: NormalizedServerUser[];
 }> {
-	// Return cached data if still valid
 	if (usersCache && Date.now() - usersCache.fetchedAt < CACHE_DURATION_MS) {
 		return { owner: usersCache.owner, sharedUsers: usersCache.sharedUsers };
 	}
@@ -165,7 +164,6 @@ export async function getServerUsers(): Promise<{
 		throw new PlexAuthApiError('Plex token is not configured', undefined, '/dev-users');
 	}
 
-	// Fetch owner info using the admin token
 	const ownerData = await getPlexUserInfo(config.token);
 	const owner: NormalizedServerUser = {
 		plexId: ownerData.id,
@@ -178,7 +176,6 @@ export async function getServerUsers(): Promise<{
 	const machineIdentifier = await getServerMachineIdentifier(config);
 	const sharedUsersData = await fetchSharedUsers(machineIdentifier, config.token);
 
-	// Normalize shared users
 	const sharedUsers: NormalizedServerUser[] = sharedUsersData.map((user) => ({
 		plexId: user.id,
 		username: user.username,
@@ -187,7 +184,6 @@ export async function getServerUsers(): Promise<{
 		isOwner: false
 	}));
 
-	// Update cache
 	usersCache = {
 		owner,
 		sharedUsers,
@@ -239,7 +235,6 @@ export async function getRandomNonOwnerUser(): Promise<NormalizedServerUser | nu
 export async function resolveUserIdentifier(
 	identifier: string
 ): Promise<NormalizedServerUser | null> {
-	// Try parsing as numeric Plex ID first
 	const numericId = parseInt(identifier, 10);
 
 	if (!Number.isNaN(numericId) && numericId > 0) {

@@ -16,18 +16,19 @@ export interface SyncStatusStoreOptions {
 	shouldHandleTerminalEvent?: (event: SyncTerminalEventType) => boolean;
 }
 
-// Converts simplified SSE progress to LiveSyncProgress-compatible format
+// SyncIndicator still consumes the legacy LiveSyncProgress shape, so the
+// stream DTO is padded here until that UI can consume SyncStatusStreamProgress directly.
 function toCompatibleProgress(simple: SyncStatusStreamProgress | null): LiveSyncProgress | null {
 	if (!simple) return null;
 
 	return {
-		syncId: 0, // Not used by SyncIndicator
+		syncId: 0,
 		status: 'running',
 		recordsProcessed: simple.recordsProcessed,
-		recordsInserted: simple.recordsInserted ?? 0, // Not used by SyncIndicator
-		recordsSkipped: 0, // Not used by SyncIndicator
-		currentPage: 0, // Not used by SyncIndicator
-		startedAt: new Date(), // Not used by SyncIndicator
+		recordsInserted: simple.recordsInserted ?? 0,
+		recordsSkipped: 0,
+		currentPage: 0,
+		startedAt: new Date(),
 		phase: simple.phase,
 		enrichmentTotal: simple.enrichmentTotal,
 		enrichmentProcessed: simple.enrichmentProcessed

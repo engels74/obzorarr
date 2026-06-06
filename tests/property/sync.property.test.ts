@@ -179,9 +179,6 @@ async function insertRecordsAndCreateSync(
 	};
 }
 
-// Property 5: History Record Field Completeness
-
-// Feature: obzorarr, Property 5: History Record Field Completeness
 describe('Property 5: History Record Field Completeness', () => {
 	it('all stored records contain required fields: historyKey, ratingKey, title, type, viewedAt, accountId, librarySectionId', async () => {
 		await fc.assert(
@@ -274,9 +271,6 @@ describe('Property 5: History Record Field Completeness', () => {
 	});
 });
 
-// Property 6: Sync Timestamp Tracking
-
-// Feature: obzorarr, Property 6: Sync Timestamp Tracking
 describe('Property 6: Sync Timestamp Tracking', () => {
 	it('completed sync lastViewedAt equals maximum viewedAt from synced records', async () => {
 		await fc.assert(
@@ -361,9 +355,6 @@ describe('Property 6: Sync Timestamp Tracking', () => {
 	});
 });
 
-// Property 7: Incremental Sync Filtering
-
-// Feature: obzorarr, Property 7: Incremental Sync Filtering
 describe('Property 7: Incremental Sync Filtering', () => {
 	it('getLastSuccessfulSync returns the most recent completed sync', async () => {
 		await fc.assert(

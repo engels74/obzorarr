@@ -160,9 +160,6 @@ async function createTestUser(
 	return inserted.id;
 }
 
-// Property 1: Role Assignment Correctness
-
-// Feature: obzorarr, Property 1: Role Assignment Correctness
 describe('Property 1: Role Assignment Correctness', () => {
 	it('assigns admin privileges if and only if user is server owner', () => {
 		fc.assert(
@@ -177,26 +174,20 @@ describe('Property 1: Role Assignment Correctness', () => {
 
 	it('server owner always gets admin role', () => {
 		fc.assert(
-			fc.property(
-				fc.constantFrom(true), // Always owner
-				(isOwner) => {
-					const result = determineRole(isOwner);
-					return result.isAdmin === true;
-				}
-			),
+			fc.property(fc.constantFrom(true), (isOwner) => {
+				const result = determineRole(isOwner);
+				return result.isAdmin === true;
+			}),
 			{ numRuns: 100 }
 		);
 	});
 
 	it('non-owner members never get admin role', () => {
 		fc.assert(
-			fc.property(
-				fc.constantFrom(false), // Never owner
-				(isOwner) => {
-					const result = determineRole(isOwner);
-					return result.isAdmin === false;
-				}
-			),
+			fc.property(fc.constantFrom(false), (isOwner) => {
+				const result = determineRole(isOwner);
+				return result.isAdmin === false;
+			}),
 			{ numRuns: 100 }
 		);
 	});
@@ -214,9 +205,6 @@ describe('Property 1: Role Assignment Correctness', () => {
 	});
 });
 
-// Property 2: Non-Member Access Denial
-
-// Feature: obzorarr, Property 2: Non-Member Access Denial
 describe('Property 2: Non-Member Access Denial', () => {
 	/**
 	 * This property tests that non-members are denied access.
@@ -266,26 +254,19 @@ describe('Property 2: Non-Member Access Denial', () => {
 
 	it('access decision is based solely on membership status', () => {
 		fc.assert(
-			fc.property(
-				fc.boolean(), // isMember
-				fc.boolean(), // isOwner (ignored for access decision)
-				(isMember, isOwner) => {
-					const membership: MembershipResult = {
-						isMember,
-						isOwner: isMember ? isOwner : false
-					};
+			fc.property(fc.boolean(), fc.boolean(), (isMember, isOwner) => {
+				const membership: MembershipResult = {
+					isMember,
+					isOwner: isMember ? isOwner : false
+				};
 
-					return shouldGrantAccess(membership) === membership.isMember;
-				}
-			),
+				return shouldGrantAccess(membership) === membership.isMember;
+			}),
 			{ numRuns: 100 }
 		);
 	});
 });
 
-// Property 3: Session Invalidation
-
-// Feature: obzorarr, Property 3: Session Invalidation
 describe('Property 3: Session Invalidation', () => {
 	// Use a unique counter to ensure unique plexIds across property test iterations
 	let plexIdCounter = 0;
@@ -316,7 +297,7 @@ describe('Property 3: Session Invalidation', () => {
 
 					const beforeLogout = await validateTestSession(db, sessionId);
 					if (!beforeLogout) {
-						return false; // Session should be valid initially
+						return false;
 					}
 
 					await invalidateTestSession(db, sessionId);
@@ -334,7 +315,6 @@ describe('Property 3: Session Invalidation', () => {
 		const db = createTestDatabase();
 		await fc.assert(
 			fc.asyncProperty(fc.uuid(), async (sessionId) => {
-				// Should not throw even if session doesn't exist
 				await invalidateTestSession(db, sessionId);
 				return true;
 			}),
@@ -367,7 +347,7 @@ describe('Property 3: Session Invalidation', () => {
 					for (let i = 0; i < checkCount; i++) {
 						const result = await validateTestSession(db, sessionId);
 						if (result !== null) {
-							return false; // Session should never be valid after invalidation
+							return false;
 						}
 					}
 
@@ -396,10 +376,9 @@ describe('Property 3: Session Invalidation', () => {
 						userId,
 						plexToken,
 						isAdmin,
-						durationMs: -1000 // Already expired
+						durationMs: -1000
 					});
 
-					// Verify session is invalid due to expiration
 					const result = await validateTestSession(db, sessionId);
 
 					return result === null;

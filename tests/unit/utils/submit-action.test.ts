@@ -46,9 +46,7 @@ describe('submitAction', () => {
 		globalThis.fetch = originalFetch;
 	});
 
-	beforeEach(() => {
-		// reset
-	});
+	beforeEach(() => {});
 
 	it('sends POST with x-sveltekit-action header', async () => {
 		let capturedInit: RequestInit | undefined;

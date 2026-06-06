@@ -65,7 +65,7 @@ export const BEHAVIORAL_TEMPLATES = defineTemplateCategory('behavioral-insight',
 		comparisonTemplate: 'Each session a moment of entertainment!',
 		icon: '▶️',
 		requiredStats: ['plays'],
-		minThresholds: { plays: 1 } // Very low threshold
+		minThresholds: { plays: 1 }
 	},
 	{
 		id: 'any-percentile',
@@ -73,6 +73,6 @@ export const BEHAVIORAL_TEMPLATES = defineTemplateCategory('behavioral-insight',
 		comparisonTemplate: 'Keep on watching!',
 		icon: '📊',
 		requiredStats: ['percentile'],
-		minThresholds: {} // No minimum - always applicable
+		minThresholds: {}
 	}
 ]);

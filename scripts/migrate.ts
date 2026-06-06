@@ -1,9 +1,3 @@
-/**
- * Database migration script for Obzorarr
- *
- * Run with: bun run scripts/migrate.ts
- */
-
 import { Database } from 'bun:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';

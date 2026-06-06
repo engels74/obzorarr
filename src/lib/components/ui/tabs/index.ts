@@ -9,7 +9,6 @@ export {
 	List,
 	List as TabsList,
 	Root,
-	//
 	Root as Tabs,
 	type TabsListVariant,
 	Trigger,

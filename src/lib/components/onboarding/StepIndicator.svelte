@@ -89,7 +89,7 @@ $effect(() => {
 			align-items: center;
 			flex: 1;
 			max-width: 140px;
-			opacity: 0; /* Start hidden for animation */
+			opacity: 0;
 		}
 
 		.step-node {
@@ -162,7 +162,7 @@ $effect(() => {
 		.step-connector {
 			position: absolute;
 			left: calc(50% + 18px + 4px); /* Circle center + radius + gap */
-			right: calc(-50% + 18px + 4px); /* Extend to next circle edge */
+			right: calc(-50% + 18px + 4px);
 			top: 50%;
 			transform: translateY(-50%);
 			height: 2px;

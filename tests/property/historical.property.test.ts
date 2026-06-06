@@ -150,9 +150,6 @@ const userArbitrary = fc.record({
 	isAdmin: fc.boolean()
 });
 
-// Property 23: Historical Data Preservation
-
-// Feature: obzorarr, Property 23: Historical Data Preservation
 describe('Property 23: Historical Data Preservation', () => {
 	it('play history records can be inserted without corresponding users entry', async () => {
 		await fc.assert(
@@ -459,7 +456,6 @@ describe('Historical User Data Edge Cases', () => {
 			isAdmin: false
 		});
 
-		// Insert play history for accountId 1 (in users) and accountId 999 (not in users)
 		await db.insert(schema.playHistory).values([
 			{
 				historyKey: 'active-user-watch',
@@ -506,11 +502,10 @@ describe('Historical User Data Edge Cases', () => {
 
 		topViewers.sort((a, b) => b.minutes - a.minutes);
 
-		// Verify fallback username for removed user
 		expect(topViewers.length).toBe(2);
 		expect(topViewers[0]?.accountId).toBe(999);
-		expect(topViewers[0]?.username).toBe('User 999'); // Fallback for accounts not in plex_accounts or users
+		expect(topViewers[0]?.username).toBe('User 999');
 		expect(topViewers[1]?.accountId).toBe(1);
-		expect(topViewers[1]?.username).toBe('ActiveUser'); // Real name from users table
+		expect(topViewers[1]?.username).toBe('ActiveUser');
 	});
 });

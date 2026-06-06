@@ -48,7 +48,7 @@ export const CONTENT_COMPARISON_TEMPLATES = defineTemplateCategory('content-comp
 		comparisonTemplate: 'Every movie is a new adventure!',
 		icon: '🎬',
 		requiredStats: ['uniqueMovies'],
-		minThresholds: { uniqueMovies: 1 } // Very low threshold
+		minThresholds: { uniqueMovies: 1 }
 	},
 	{
 		id: 'show-sampler',
@@ -56,6 +56,6 @@ export const CONTENT_COMPARISON_TEMPLATES = defineTemplateCategory('content-comp
 		comparisonTemplate: "That's some serious channel surfing!",
 		icon: '📺',
 		requiredStats: ['uniqueShows'],
-		minThresholds: { uniqueShows: 1 } // Very low threshold
+		minThresholds: { uniqueShows: 1 }
 	}
 ]);
