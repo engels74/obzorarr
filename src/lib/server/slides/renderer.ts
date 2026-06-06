@@ -62,6 +62,8 @@ export function validateMarkdownSyntax(content: string): MarkdownValidationResul
 
 		const inlineCodeMatches = content.match(/(?<!`)`(?!`)/g) ?? [];
 		if (inlineCodeMatches.length % 2 !== 0) {
+			// CommonMark treats unmatched single backticks as literal text; only
+			// fenced code blocks are strict enough here to reject author input.
 		}
 
 		return { valid: true, errors: [] };

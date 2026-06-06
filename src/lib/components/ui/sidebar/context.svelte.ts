@@ -59,6 +59,10 @@ class SidebarState {
 
 const SYMBOL_KEY = 'scn-sidebar';
 
+/**
+ * Keeps `Sidebar.Provider` as the single writer for `bind:open` while exposing
+ * the same state object to nested sidebar primitives through Svelte context.
+ */
 export function setSidebar(props: SidebarStateProps): SidebarState {
 	return setContext(Symbol.for(SYMBOL_KEY), new SidebarState(props));
 }
