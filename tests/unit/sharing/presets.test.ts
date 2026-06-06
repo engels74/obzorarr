@@ -36,7 +36,6 @@ describe('matchPresetFull (onboarding, 6 fields)', () => {
 
 	it('returns "custom" for an off-map combination', () => {
 		const balanced = byId('balanced').values;
-		// Flip one field so no preset matches.
 		const offMap: PrivacyPresetValues = { ...balanced, logoMode: 'always_show' };
 		expect(matchPresetFull(offMap)).toBe('custom');
 	});

@@ -58,7 +58,6 @@ export async function validateSession(sessionId: string): Promise<SessionData | 
 			expiresAt: session.expiresAt
 		};
 	} catch (error) {
-		// Graceful degradation when database is not ready
 		console.error('[Session] Database error during validation:', error);
 		return null;
 	}

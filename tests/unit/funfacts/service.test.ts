@@ -38,10 +38,6 @@ import { getALL_TEMPLATES, getTemplatesForCategory } from '$lib/server/funfacts/
 import type { ServerStats, UserStats } from '$lib/server/stats/types';
 import { resetSharedTestDb } from '../../helpers/db';
 
-// =============================================================================
-// Test Helpers
-// =============================================================================
-
 function createMockUserStats(overrides: Partial<UserStats> = {}): UserStats {
 	return {
 		userId: 1,
@@ -130,10 +126,6 @@ function createMockServerStats(overrides: Partial<ServerStats> = {}): ServerStat
 	};
 }
 
-// =============================================================================
-// Context Building Tests
-// =============================================================================
-
 describe('buildGenerationContext', () => {
 	it('builds context correctly from user stats', () => {
 		const stats = createMockUserStats();
@@ -205,10 +197,6 @@ describe('buildGenerationContext', () => {
 		expect(context.peakMonth).toBe(6);
 	});
 });
-
-// =============================================================================
-// Template Applicability Tests
-// =============================================================================
 
 describe('isTemplateApplicable', () => {
 	const mockContext: FactGenerationContext = {
@@ -311,10 +299,6 @@ describe('isTemplateApplicable', () => {
 	});
 });
 
-// =============================================================================
-// Template Interpolation Tests
-// =============================================================================
-
 describe('interpolateTemplate', () => {
 	const mockContext: FactGenerationContext = {
 		hours: 100,
@@ -374,10 +358,6 @@ describe('interpolateTemplate', () => {
 	});
 });
 
-// =============================================================================
-// Template Generation Tests
-// =============================================================================
-
 describe('generateFromTemplate', () => {
 	const mockContext: FactGenerationContext = {
 		hours: 100,
@@ -432,10 +412,6 @@ describe('generateFromTemplate', () => {
 	});
 });
 
-// =============================================================================
-// Random Selection Tests
-// =============================================================================
-
 describe('selectRandomTemplates', () => {
 	const templates: FactTemplate[] = [
 		{ id: 'a', category: 'time-equivalency', factTemplate: 'A', requiredStats: [] },
@@ -481,10 +457,6 @@ describe('selectRandomTemplates', () => {
 	});
 });
 
-// =============================================================================
-// Full Generation Tests
-// =============================================================================
-
 describe('generateFromTemplates', () => {
 	it('generates requested number of facts', () => {
 		const stats = createMockUserStats();
@@ -523,7 +495,6 @@ describe('generateFromTemplates', () => {
 		const stats = createMockUserStats();
 		const context = buildGenerationContext(stats);
 
-		// Get all IDs from time-equivalency category
 		const timeEquivIds = TIME_EQUIVALENCY_TEMPLATES.map((t) => t.id);
 
 		// Generate without time-equivalency templates
@@ -557,10 +528,6 @@ describe('generateFromTemplates', () => {
 		expect(result[0]?.fact).toContain('active viewer');
 	});
 });
-
-// =============================================================================
-// Template Constants Tests
-// =============================================================================
 
 describe('Template constants and registry index', () => {
 	const expectedCategories = [
@@ -641,10 +608,6 @@ describe('Template constants and registry index', () => {
 	});
 });
 
-// =============================================================================
-// Configuration Tests
-// =============================================================================
-
 describe('getFunFactsConfig', () => {
 	beforeEach(async () => {
 		await resetSharedTestDb();
@@ -720,10 +683,6 @@ describe('isAIAvailable', () => {
 		expect(available).toBe(true);
 	});
 });
-
-// =============================================================================
-// AI Generation Tests
-// =============================================================================
 
 describe('generateWithAI', () => {
 	let fetchMock: ReturnType<typeof spyOn>;
@@ -896,10 +855,6 @@ describe('generateWithAI', () => {
 	});
 });
 
-// =============================================================================
-// Main generateFunFacts Tests
-// =============================================================================
-
 describe('generateFunFacts', () => {
 	let fetchMock: ReturnType<typeof spyOn>;
 
@@ -918,7 +873,6 @@ describe('generateFunFacts', () => {
 		const facts = await generateFunFacts(stats, { count: 3 });
 
 		expect(facts).toHaveLength(3);
-		// Template facts should have string facts
 		for (const fact of facts) {
 			expect(typeof fact.fact).toBe('string');
 			expect(fact.fact.length).toBeGreaterThan(0);
@@ -977,7 +931,6 @@ describe('generateFunFacts', () => {
 		const stats = createMockUserStats();
 		const facts = await generateFunFacts(stats, { count: 3 });
 
-		// Should have fallen back to templates
 		expect(facts).toHaveLength(3);
 	});
 
@@ -1007,7 +960,6 @@ describe('generateFunFacts', () => {
 		const stats = createMockUserStats();
 		const facts = await generateFunFacts(stats, { count: 3 });
 
-		// Should have 3 facts total (1 AI + 2 templates)
 		expect(facts).toHaveLength(3);
 		expect(facts[0]?.fact).toBe('Only one AI fact');
 	});

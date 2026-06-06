@@ -92,7 +92,6 @@ $effect(() => {
 $effect(() => {
 	if (!contentRef) return;
 
-	// Track underlying state variables that affect DOM structure
 	// When these change, new .animate-item elements may be added to the DOM
 	// eslint-disable-next-line @typescript-eslint/no-unused-expressions
 	localAuthState?.isAuthenticated;
@@ -109,12 +108,10 @@ $effect(() => {
 	const rafId = requestAnimationFrame(() => {
 		if (!contentRef) return;
 		const items = contentRef.querySelectorAll('.animate-item');
-		// Filter to only animate elements that haven't been animated yet
 		const newItems = Array.from(items).filter((item) => !animatedElements.has(item));
 
 		if (newItems.length === 0) return;
 
-		// Mark these elements as animated before starting animation
 		newItems.forEach((item) => animatedElements.add(item));
 
 		// biome-ignore lint/suspicious/noExplicitAny: Motion's animate function has complex overloads that TypeScript cannot infer correctly
@@ -254,7 +251,6 @@ function handleCancelRedirect(): void {
 function handleServerExpand(server: (typeof servers)[0]) {
 	if (!server.owned) return;
 
-	// Toggle expansion - collapse if clicking the same server
 	if (expandedServer === server.clientIdentifier) {
 		expandedServer = null;
 	} else {
@@ -538,7 +534,6 @@ function formatServerUrl(url: string | null): string {
 			</div>
 		</div>
 
-		<!-- Pre-configured flow -->
 		{#if data.hasEnvConfig}
 			<div class="preconfigured-card animate-item">
 				<div class="preconfigured-icon">
@@ -744,7 +739,6 @@ function formatServerUrl(url: string | null): string {
 				</div>
 			{/if}
 		{:else}
-			<!-- Manual configuration flow -->
 			{#if showLoginButton}
 				<div class="action-section animate-item">
 					<p class="instruction">Sign in with Plex to connect your server</p>
@@ -994,15 +988,12 @@ function formatServerUrl(url: string | null): string {
 										</div>
 									{/if}
 
-									<!-- Custom URL Section -->
 									{#if isExpanded && !serverSaved}
 										<div class="custom-url-section">
-											<!-- Divider -->
 											<div class="custom-url-divider">
 												<span>or</span>
 											</div>
 
-											<!-- Toggle Button -->
 											<button
 												type="button"
 												class="custom-url-toggle"
@@ -1023,7 +1014,6 @@ function formatServerUrl(url: string | null): string {
 												</svg>
 											</button>
 
-											<!-- Expanded Form -->
 											{#if showCustomUrl}
 												<div class="custom-url-form">
 													<p class="custom-url-help" id="custom-url-help">
@@ -1071,7 +1061,6 @@ function formatServerUrl(url: string | null): string {
 														</label>
 													{/if}
 
-													<!-- Status Display -->
 													{#if customUrlTestResult}
 														<div
 															class="custom-url-status"
@@ -1126,7 +1115,6 @@ function formatServerUrl(url: string | null): string {
 			{/if}
 		{/if}
 
-		<!-- Error display -->
 		{#if oauthError || form?.error}
 			<div class="error-banner animate-item">
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1248,7 +1236,6 @@ function formatServerUrl(url: string | null): string {
 			height: 100%;
 		}
 
-		/* Pre-configured Server Card */
 		.preconfigured-card {
 			display: flex;
 			align-items: center;
@@ -1378,7 +1365,6 @@ function formatServerUrl(url: string | null): string {
 			height: 15px;
 		}
 
-		/* Action Section */
 		.action-section {
 			display: flex;
 			flex-direction: column;
@@ -1488,7 +1474,6 @@ function formatServerUrl(url: string | null): string {
 			color: rgba(255, 255, 255, 0.85);
 		}
 
-		/* Success Card */
 		.success-card {
 			display: flex;
 			align-items: flex-start;
@@ -1529,7 +1514,6 @@ function formatServerUrl(url: string | null): string {
 			color: rgba(255, 255, 255, 0.55);
 		}
 
-		/* Error Card */
 		.error-card {
 			display: flex;
 			align-items: flex-start;
@@ -1650,7 +1634,6 @@ function formatServerUrl(url: string | null): string {
 			flex-wrap: wrap;
 		}
 
-		/* Server Section */
 		.server-section {
 			width: 100%;
 			display: flex;
@@ -1852,7 +1835,6 @@ function formatServerUrl(url: string | null): string {
 			animation: spin 0.8s linear infinite;
 		}
 
-		/* Connections Panel */
 		.connections-panel {
 			background: rgba(255, 255, 255, 0.02);
 			border: 1px solid rgba(255, 255, 255, 0.08);
@@ -2026,7 +2008,6 @@ function formatServerUrl(url: string | null): string {
 			text-align: center;
 		}
 
-		/* Error Banner */
 		.error-banner {
 			display: flex;
 			align-items: center;
@@ -2087,7 +2068,6 @@ function formatServerUrl(url: string | null): string {
 			box-shadow: none;
 		}
 
-		/* SSL Connection Card Enhancement */
 		.connection-card.ssl {
 			background: linear-gradient(135deg, rgba(34, 197, 94, 0.06) 0%, rgba(255, 255, 255, 0.03) 100%);
 			border-color: rgba(34, 197, 94, 0.15);
@@ -2168,7 +2148,6 @@ function formatServerUrl(url: string | null): string {
 			color: rgba(255, 255, 255, 0.7);
 		}
 
-		/* Custom URL Section */
 		.custom-url-section {
 			padding: 0 1rem 1rem;
 			margin-top: -0.5rem;
@@ -2381,7 +2360,6 @@ function formatServerUrl(url: string | null): string {
 			}
 		}
 
-		/* Responsive */
 		@media (max-width: 480px) {
 			.plex-button {
 				width: 100%;

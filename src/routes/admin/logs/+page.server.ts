@@ -61,7 +61,6 @@ function normalizeSearchParam(search: string | null): string | undefined {
 }
 
 export const load: PageServerLoad = async ({ url }) => {
-	// Initialize retention scheduler if not already configured
 	if (!isRetentionSchedulerConfigured()) {
 		setupLogRetentionScheduler();
 	}
@@ -170,7 +169,6 @@ export const actions: Actions = requireAdminActions({
 		const toTimestamp = TimestampSchema.parse(toParam);
 
 		try {
-			// Get all logs matching filters (no limit for export)
 			const result = await queryLogs({
 				levels,
 				search,

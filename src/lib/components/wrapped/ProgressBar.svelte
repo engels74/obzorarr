@@ -1,8 +1,6 @@
 <script lang="ts">
 interface Props {
-	/** Current slide index (0-based) */
 	current: number;
-	/** Total number of slides */
 	total: number;
 	/** Additional CSS classes */
 	class?: string;

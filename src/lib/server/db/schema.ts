@@ -157,7 +157,6 @@ export const metadataCache = sqliteTable('metadata_cache', {
 	fetchFailed: integer('fetch_failed', { mode: 'boolean' }).default(false)
 });
 
-// Export table types for type inference
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type PlayHistoryRecord = typeof playHistory.$inferSelect;

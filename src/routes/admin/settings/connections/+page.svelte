@@ -50,7 +50,6 @@ let openaiModel = $state(settings.openaiModel.value);
 // svelte-ignore state_referenced_locally
 let apiConfigVersion = $state(data.apiConfigVersion);
 
-// H5: inline field-level error for the OpenAI base URL field.
 let openaiBaseUrlError = $state<string | undefined>(undefined);
 
 let isSavingPlex = $state(false);
@@ -278,7 +277,6 @@ const showOpenaiKeyWarning = $derived(!data.hasEffectiveOpenAIKey && !openaiApiK
 									fieldErrors?: Record<string, string[] | undefined>;
 									apiConfigVersion?: string;
 								};
-								// H5: capture inline field error for openaiBaseUrl.
 								if (result.type === 'failure') {
 									openaiBaseUrlError = data?.fieldErrors?.openaiBaseUrl?.[0];
 								} else {
@@ -288,7 +286,6 @@ const showOpenaiKeyWarning = $derived(!data.hasEffectiveOpenAIKey && !openaiApiK
 							}
 							await update({ reset: false });
 							if (result.type === 'success') {
-								// A2: advance local version immediately.
 								const freshVersion = (
 									result.data as { apiConfigVersion?: string }
 								)?.apiConfigVersion;

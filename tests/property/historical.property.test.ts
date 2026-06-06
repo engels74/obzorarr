@@ -18,10 +18,6 @@ import { drizzle } from 'drizzle-orm/bun-sqlite';
 import * as fc from 'fast-check';
 import * as schema from '$lib/server/db/schema';
 
-// =============================================================================
-// Test Database Setup
-// =============================================================================
-
 /**
  * Create an in-memory test database with schema
  *
@@ -32,10 +28,8 @@ import * as schema from '$lib/server/db/schema';
 function createTestDatabase() {
 	const sqlite = new Database(':memory:', { strict: true });
 
-	// Enable WAL mode
 	sqlite.exec('PRAGMA journal_mode = WAL');
 
-	// Create users table
 	sqlite.exec(`
 		CREATE TABLE IF NOT EXISTS users (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -75,29 +69,18 @@ function createTestDatabase() {
 	return drizzle(sqlite, { schema });
 }
 
-// =============================================================================
-// Test Types
-// =============================================================================
-
 interface YearFilter {
 	year: number;
 	startTimestamp: number;
 	endTimestamp: number;
 }
 
-/**
- * Create a year filter for a given year
- */
 function createYearFilter(year: number): YearFilter {
 	const startTimestamp = Math.floor(new Date(Date.UTC(year, 0, 1, 0, 0, 0)).getTime() / 1000);
 	const endTimestamp = Math.floor(new Date(Date.UTC(year, 11, 31, 23, 59, 59)).getTime() / 1000);
 	return { year, startTimestamp, endTimestamp };
 }
 
-/**
- * Get all users' total watch times for a year from the database
- * (Simplified version for testing - mirrors the real implementation)
- */
 async function getAllUsersWatchTime(
 	db: ReturnType<typeof createTestDatabase>,
 	yearFilter: YearFilter
@@ -127,10 +110,6 @@ async function getAllUsersWatchTime(
 	return watchTimeMap;
 }
 
-// =============================================================================
-// Arbitraries
-// =============================================================================
-
 /**
  * Arbitrary for generating play history records
  */
@@ -154,7 +133,6 @@ const playHistoryArbitrary = fc.record({
 const uniquePlayHistoryArrayArbitrary = fc
 	.array(playHistoryArbitrary, { minLength: 1, maxLength: 50 })
 	.map((records) => {
-		// Ensure unique historyKeys by appending index
 		return records.map((record, index) => ({
 			...record,
 			historyKey: `${record.historyKey}-${index}`
@@ -172,9 +150,7 @@ const userArbitrary = fc.record({
 	isAdmin: fc.boolean()
 });
 
-// =============================================================================
 // Property 23: Historical Data Preservation
-// =============================================================================
 
 // Feature: obzorarr, Property 23: Historical Data Preservation
 describe('Property 23: Historical Data Preservation', () => {
@@ -183,19 +159,15 @@ describe('Property 23: Historical Data Preservation', () => {
 			fc.asyncProperty(uniquePlayHistoryArrayArbitrary, async (records) => {
 				const db = createTestDatabase();
 
-				// Insert play history records with NO corresponding users
 				await db
 					.insert(schema.playHistory)
 					.values(records)
 					.onConflictDoNothing({ target: schema.playHistory.historyKey });
 
-				// Query back the records - they should exist
 				const storedRecords = await db.select().from(schema.playHistory);
 
-				// All records should be stored successfully
 				expect(storedRecords.length).toBe(records.length);
 
-				// Verify the users table is empty (no FK constraint violation)
 				const storedUsers = await db.select().from(schema.users);
 				expect(storedUsers.length).toBe(0);
 
@@ -213,13 +185,11 @@ describe('Property 23: Historical Data Preservation', () => {
 				async (historyRecords, userRecords) => {
 					const db = createTestDatabase();
 
-					// Make user plexIds unique
 					const uniqueUsers = userRecords.map((user, index) => ({
 						...user,
 						plexId: 100000 + index // Ensure plexIds don't overlap with accountIds
 					}));
 
-					// Insert users first
 					await db.insert(schema.users).values(uniqueUsers);
 
 					// Insert play history with accountIds that DON'T match any users.plexId
@@ -229,14 +199,12 @@ describe('Property 23: Historical Data Preservation', () => {
 						.values(historyRecords)
 						.onConflictDoNothing({ target: schema.playHistory.historyKey });
 
-					// Both should exist independently
 					const storedHistory = await db.select().from(schema.playHistory);
 					const storedUsers = await db.select().from(schema.users);
 
 					expect(storedHistory.length).toBe(historyRecords.length);
 					expect(storedUsers.length).toBe(uniqueUsers.length);
 
-					// Verify no overlap between accountIds and plexIds
 					const accountIds = new Set(storedHistory.map((h) => h.accountId));
 					const plexIds = new Set(storedUsers.map((u) => u.plexId));
 
@@ -256,25 +224,20 @@ describe('Property 23: Historical Data Preservation', () => {
 			fc.asyncProperty(uniquePlayHistoryArrayArbitrary, async (records) => {
 				const db = createTestDatabase();
 
-				// Insert play history records (NO users)
 				await db
 					.insert(schema.playHistory)
 					.values(records)
 					.onConflictDoNothing({ target: schema.playHistory.historyKey });
 
-				// Get all unique accountIds from records
 				const expectedAccountIds = new Set(records.map((r) => r.accountId));
 
-				// Call getAllUsersWatchTime
 				const yearFilter = createYearFilter(2024);
 				const watchTimeMap = await getAllUsersWatchTime(db, yearFilter);
 
-				// Verify all accountIds are present in the result
 				for (const accountId of expectedAccountIds) {
 					expect(watchTimeMap.has(accountId)).toBe(true);
 				}
 
-				// Verify the map size matches unique accountIds
 				expect(watchTimeMap.size).toBe(expectedAccountIds.size);
 
 				return true;
@@ -288,21 +251,17 @@ describe('Property 23: Historical Data Preservation', () => {
 			fc.asyncProperty(uniquePlayHistoryArrayArbitrary, async (records) => {
 				const db = createTestDatabase();
 
-				// Insert records
 				await db
 					.insert(schema.playHistory)
 					.values(records)
 					.onConflictDoNothing({ target: schema.playHistory.historyKey });
 
-				// Calculate expected total watch time
 				const expectedTotalSeconds = records.reduce((sum, r) => sum + (r.duration ?? 0), 0);
 				const expectedTotalMinutes = expectedTotalSeconds / 60;
 
-				// Get watch times from database
 				const yearFilter = createYearFilter(2024);
 				const watchTimeMap = await getAllUsersWatchTime(db, yearFilter);
 
-				// Sum all watch times
 				let actualTotalMinutes = 0;
 				for (const minutes of watchTimeMap.values()) {
 					actualTotalMinutes += minutes;
@@ -330,7 +289,6 @@ describe('Property 23: Historical Data Preservation', () => {
 					const recordsWithUsers = historyRecords.slice(0, halfIndex);
 					const _recordsWithoutUsers = historyRecords.slice(halfIndex);
 
-					// Create users with specific plexIds matching some accountIds
 					const usersToInsert = recordsWithUsers
 						.slice(0, Math.min(3, recordsWithUsers.length))
 						.map((record, _index) => ({
@@ -341,7 +299,6 @@ describe('Property 23: Historical Data Preservation', () => {
 							isAdmin: false
 						}));
 
-					// Ensure unique plexIds
 					const uniqueUsers = usersToInsert.filter(
 						(user, index, self) => self.findIndex((u) => u.plexId === user.plexId) === index
 					);
@@ -350,7 +307,6 @@ describe('Property 23: Historical Data Preservation', () => {
 						await db.insert(schema.users).values(uniqueUsers);
 					}
 
-					// Insert ALL play history records
 					await db
 						.insert(schema.playHistory)
 						.values(historyRecords)
@@ -368,11 +324,9 @@ describe('Property 23: Historical Data Preservation', () => {
 							)
 						);
 
-					// Calculate total plays and watch time
 					const totalPlays = allRecords.length;
 					const totalWatchTimeSeconds = allRecords.reduce((sum, r) => sum + (r.duration ?? 0), 0);
 
-					// Expected values from input records
 					const expectedPlays = historyRecords.length;
 					const expectedWatchTimeSeconds = historyRecords.reduce(
 						(sum, r) => sum + (r.duration ?? 0),
@@ -395,7 +349,6 @@ describe('Property 23: Historical Data Preservation', () => {
 			fc.asyncProperty(uniquePlayHistoryArrayArbitrary, async (records) => {
 				const db = createTestDatabase();
 
-				// Insert play history (no users)
 				await db
 					.insert(schema.playHistory)
 					.values(records)
@@ -406,7 +359,6 @@ describe('Property 23: Historical Data Preservation', () => {
 				const watchTimeMap = await getAllUsersWatchTime(db, yearFilter);
 				const userCountFromHistory = watchTimeMap.size;
 
-				// Count users in users table
 				const usersResult = await db.select().from(schema.users);
 				const userCountFromTable = usersResult.length;
 
@@ -414,7 +366,6 @@ describe('Property 23: Historical Data Preservation', () => {
 				expect(userCountFromTable).toBe(0);
 				expect(userCountFromHistory).toBeGreaterThan(0);
 
-				// The user count from history should match unique accountIds
 				const uniqueAccountIds = new Set(records.map((r) => r.accountId));
 				expect(userCountFromHistory).toBe(uniqueAccountIds.size);
 
@@ -425,15 +376,10 @@ describe('Property 23: Historical Data Preservation', () => {
 	});
 });
 
-// =============================================================================
-// Unit Tests for Historical User Handling Edge Cases
-// =============================================================================
-
 describe('Historical User Data Edge Cases', () => {
 	it('play history persists when user entry is deleted', async () => {
 		const db = createTestDatabase();
 
-		// Create a user
 		await db.insert(schema.users).values({
 			plexId: 12345,
 			username: 'TestUser',
@@ -441,7 +387,6 @@ describe('Historical User Data Edge Cases', () => {
 			isAdmin: false
 		});
 
-		// Create play history for this user
 		await db.insert(schema.playHistory).values({
 			historyKey: 'test-history-1',
 			ratingKey: 'rating-1',
@@ -453,16 +398,13 @@ describe('Historical User Data Edge Cases', () => {
 			duration: 7200
 		});
 
-		// Verify both exist
 		let users = await db.select().from(schema.users);
 		let history = await db.select().from(schema.playHistory);
 		expect(users.length).toBe(1);
 		expect(history.length).toBe(1);
 
-		// Delete the user
 		await db.delete(schema.users).where(sql`plex_id = 12345`);
 
-		// Verify user is deleted but history remains
 		users = await db.select().from(schema.users);
 		history = await db.select().from(schema.playHistory);
 		expect(users.length).toBe(0);
@@ -475,7 +417,6 @@ describe('Historical User Data Edge Cases', () => {
 
 		const plexId = 54321;
 
-		// Create historical play history (user not in users table)
 		await db.insert(schema.playHistory).values({
 			historyKey: 'historical-watch-1',
 			ratingKey: 'rating-1',
@@ -487,7 +428,6 @@ describe('Historical User Data Edge Cases', () => {
 			duration: 7200
 		});
 
-		// Verify no user exists
 		const users = await db.select().from(schema.users);
 		expect(users.length).toBe(0);
 
@@ -513,7 +453,6 @@ describe('Historical User Data Edge Cases', () => {
 	it('topViewers fallback shows User {accountId} for accounts not in users table', async () => {
 		const db = createTestDatabase();
 
-		// Insert user for accountId 1
 		await db.insert(schema.users).values({
 			plexId: 1,
 			username: 'ActiveUser',
@@ -544,22 +483,17 @@ describe('Historical User Data Edge Cases', () => {
 			}
 		]);
 
-		// Get all users from users table
 		const usersResult = await db.select().from(schema.users);
-		// Build userMap with dual-key lookup (matching engine.ts behavior)
 		const userMap = new Map<number, string>();
 		for (const user of usersResult) {
-			// Register by accountId if set
 			if (user.accountId !== null) {
 				userMap.set(user.accountId, user.username);
 			}
-			// Also register by plexId for backward compatibility
 			if (!userMap.has(user.plexId)) {
 				userMap.set(user.plexId, user.username);
 			}
 		}
 
-		// Get watch times by accountId
 		const yearFilter = createYearFilter(2024);
 		const watchTimeMap = await getAllUsersWatchTime(db, yearFilter);
 
@@ -570,7 +504,6 @@ describe('Historical User Data Edge Cases', () => {
 			topViewers.push({ accountId, username, minutes });
 		}
 
-		// Sort by minutes descending
 		topViewers.sort((a, b) => b.minutes - a.minutes);
 
 		// Verify fallback username for removed user

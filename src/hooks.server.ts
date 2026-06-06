@@ -115,18 +115,14 @@ const initializationHandle: Handle = async ({ event, resolve }) => {
 };
 
 const authHandle: Handle = async ({ event, resolve }) => {
-	// Check for dev bypass mode (development only)
 	if (isDevBypassEnabled()) {
-		// Get or create dev session
 		const devSessionId = await getOrCreateDevSession();
 
-		// Set cookie if not already set
 		const existingSessionId = event.cookies.get('session');
 		if (existingSessionId !== devSessionId) {
 			event.cookies.set('session', devSessionId, COOKIE_OPTIONS);
 		}
 
-		// Validate the dev session
 		const session = await validateSession(devSessionId);
 
 		if (session) {
@@ -137,7 +133,6 @@ const authHandle: Handle = async ({ event, resolve }) => {
 				isAdmin: session.isAdmin
 			};
 
-			// Log dev bypass activation once per server instance
 			if (!devBypassLogged) {
 				logger.warn(
 					`🔓 DEV_BYPASS_AUTH is enabled - using simulated user (${session.username})`,
@@ -150,7 +145,6 @@ const authHandle: Handle = async ({ event, resolve }) => {
 		}
 	}
 
-	// Normal authentication flow
 	const sessionId = event.cookies.get('session');
 
 	if (sessionId) {
@@ -205,20 +199,16 @@ const authHandle: Handle = async ({ event, resolve }) => {
 };
 
 const onboardingHandle: Handle = async ({ event, resolve }) => {
-	// Skip if dev bypass is enabled for onboarding
 	if (isDevBypassEnabled() && env.DEV_BYPASS_ONBOARDING === 'true') {
 		return resolve(event);
 	}
 
-	// Paths that should skip onboarding check
 	const skipPaths = ['/_app', '/favicon', '/auth', '/api/onboarding', '/api/sync', '/onboarding'];
 
-	// Skip check for excluded paths
 	if (skipPaths.some((p) => event.url.pathname.startsWith(p))) {
 		return resolve(event);
 	}
 
-	// Check if onboarding is required
 	try {
 		const needsOnboarding = await requiresOnboarding();
 
@@ -233,7 +223,6 @@ const onboardingHandle: Handle = async ({ event, resolve }) => {
 		}
 
 		// Log actual errors but don't block the request
-		// This prevents onboarding check failures from breaking the app
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		logger.error(`Onboarding check failed: ${errorMessage}`, 'OnboardingHandle');
 	}

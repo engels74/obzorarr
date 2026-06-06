@@ -33,10 +33,8 @@ import {
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
-	// Initialize default config if needed
 	await initializeDefaultSlideConfig();
 
-	// Load all configurations
 	const [configs, customSlides, funFactFrequency, availableYears] = await Promise.all([
 		getAllSlideConfigs(),
 		getAllCustomSlides(),
@@ -44,7 +42,6 @@ export const load: PageServerLoad = async () => {
 		getAvailableYears()
 	]);
 
-	// Pre-render custom slides for preview
 	const customSlidesWithPreview = customSlides.map((slide) => ({
 		...slide,
 		renderedHtml: renderMarkdownSync(slide.content)
@@ -109,7 +106,6 @@ export const actions: Actions = requireAdminActions({
 				if (!item) continue;
 
 				if (item.type === 'builtin') {
-					// Validate the slide type
 					const parsed = SlideTypeSchema.safeParse(item.id);
 					if (!parsed.success) {
 						return fail(400, { error: `Invalid slide type: ${item.id}` });
@@ -125,12 +121,10 @@ export const actions: Actions = requireAdminActions({
 				}
 			}
 
-			// Update built-in slides with their global sort orders
 			for (const update of builtInUpdates) {
 				await updateSlideConfig(update.type, { sortOrder: update.sortOrder });
 			}
 
-			// Update custom slides with their global sort orders
 			for (const update of customSlideUpdates) {
 				await updateCustomSlide(update.id, { sortOrder: update.sortOrder });
 			}
@@ -195,9 +189,6 @@ export const actions: Actions = requireAdminActions({
 		}
 	},
 
-	/**
-	 * Create a custom slide
-	 */
 	createCustom: async ({ request }) => {
 		const formData = await request.formData();
 		const title = formData.get('title');
@@ -327,7 +318,6 @@ export const actions: Actions = requireAdminActions({
 		const mode = formData.get('mode');
 		const customCountStr = formData.get('customCount');
 
-		// Validate mode
 		const validModes = Object.values(FunFactFrequency);
 		if (typeof mode !== 'string' || !validModes.includes(mode as FunFactFrequencyType)) {
 			logger.warn('setFunFactFrequency rejected: invalid mode', 'Slides', {
@@ -336,7 +326,6 @@ export const actions: Actions = requireAdminActions({
 			return fail(400, { error: 'Invalid frequency mode' });
 		}
 
-		// Parse custom count if provided
 		let customCount: number | undefined;
 		if (mode === FunFactFrequency.CUSTOM) {
 			if (typeof customCountStr !== 'string') {

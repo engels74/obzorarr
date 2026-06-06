@@ -21,10 +21,6 @@ import {
  * all combinations of total records and page sizes, ensuring no data loss.
  */
 
-// =============================================================================
-// Test Helpers
-// =============================================================================
-
 /**
  * Calculate expected API calls for pagination
  *
@@ -50,9 +46,6 @@ interface TestItem {
 	value: string;
 }
 
-/**
- * Generate test items with unique IDs
- */
 function generateTestItems(count: number): TestItem[] {
 	return Array.from({ length: count }, (_, i) => ({
 		id: i + 1,
@@ -60,12 +53,6 @@ function generateTestItems(count: number): TestItem[] {
 	}));
 }
 
-/**
- * Create a mock page fetcher that simulates paginated API responses
- *
- * This tracks the number of page fetches and returns items based on
- * the offset and page size parameters.
- */
 function createMockPageFetcher(
 	allItems: TestItem[],
 	_pageSize: number
@@ -78,7 +65,6 @@ function createMockPageFetcher(
 	): Promise<PageResult<TestItem>> => {
 		pagesFetched++;
 
-		// Calculate items for this page
 		const startIndex = offset;
 		const endIndex = Math.min(offset + requestedPageSize, allItems.length);
 		const items = allItems.slice(startIndex, endIndex);
@@ -97,9 +83,7 @@ function createMockPageFetcher(
 	};
 }
 
-// =============================================================================
 // Property 4: Pagination Completeness
-// =============================================================================
 
 // Feature: obzorarr, Property 4: Pagination Completeness
 describe('Property 4: Pagination Completeness', () => {
@@ -130,13 +114,11 @@ describe('Property 4: Pagination Completeness', () => {
 						const allItems = generateTestItems(totalRecords);
 						const { fetcher, getPagesFetched } = createMockPageFetcher(allItems, pageSize);
 
-						// Consume all pages from the generator
 						const collectedItems: TestItem[] = [];
 						for await (const { items } of paginateAll(fetcher, pageSize)) {
 							collectedItems.push(...items);
 						}
 
-						// Verify page count
 						// For N > 0: ceil(N/P) pages
 						// For N = 0: 1 page (to discover totalSize = 0)
 						const expected = expectedApiCalls(totalRecords, pageSize);
@@ -158,13 +140,11 @@ describe('Property 4: Pagination Completeness', () => {
 						const allItems = generateTestItems(totalRecords);
 						const { fetcher } = createMockPageFetcher(allItems, pageSize);
 
-						// Collect all items from pagination
 						const collectedItems: TestItem[] = [];
 						for await (const { items } of paginateAll(fetcher, pageSize)) {
 							collectedItems.push(...items);
 						}
 
-						// Verify all items retrieved
 						return collectedItems.length === totalRecords;
 					}
 				),
@@ -181,7 +161,6 @@ describe('Property 4: Pagination Completeness', () => {
 						const allItems = generateTestItems(totalRecords);
 						const { fetcher } = createMockPageFetcher(allItems, pageSize);
 
-						// Collect all items
 						const collectedItems: TestItem[] = [];
 						for await (const { items } of paginateAll(fetcher, pageSize)) {
 							collectedItems.push(...items);
@@ -190,7 +169,6 @@ describe('Property 4: Pagination Completeness', () => {
 						// Verify order is preserved
 						const idsInOrder = collectedItems.every((item, index) => item.id === index + 1);
 
-						// Verify no duplicates (all IDs are unique)
 						const uniqueIds = new Set(collectedItems.map((item) => item.id));
 						const noDuplicates = uniqueIds.size === collectedItems.length;
 
@@ -254,9 +232,7 @@ describe('Property 4: Pagination Completeness', () => {
 			}
 
 			// With zero records, we should still make one fetch to discover totalSize=0
-			// But then exit immediately
 			expect(collectedItems.length).toBe(0);
-			// The implementation fetches once to get totalSize, then exits
 			expect(getPagesFetched()).toBe(1);
 		});
 
@@ -345,7 +321,6 @@ describe('Property 4: Pagination Completeness', () => {
 	});
 });
 
-// Additional unit tests for completeness
 describe('Pagination utility functions', () => {
 	describe('calculateExpectedPages', () => {
 		it('returns 0 for zero records', () => {

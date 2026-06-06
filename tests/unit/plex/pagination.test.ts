@@ -14,18 +14,11 @@ import {
 	paginateAll
 } from '$lib/server/plex/pagination';
 
-// =============================================================================
-// Test Helpers
-// =============================================================================
-
 interface TestItem {
 	id: number;
 	name: string;
 }
 
-/**
- * Create a mock page fetcher that returns items from a predefined dataset
- */
 function createMockFetcher(items: TestItem[]): PageFetcher<TestItem> {
 	return async (offset: number, pageSize: number): Promise<PageResult<TestItem>> => {
 		const pageItems = items.slice(offset, offset + pageSize);
@@ -38,19 +31,12 @@ function createMockFetcher(items: TestItem[]): PageFetcher<TestItem> {
 	};
 }
 
-/**
- * Generate test items
- */
 function generateItems(count: number): TestItem[] {
 	return Array.from({ length: count }, (_, i) => ({
 		id: i + 1,
 		name: `Item ${i + 1}`
 	}));
 }
-
-// =============================================================================
-// paginateAll Tests
-// =============================================================================
 
 describe('paginateAll', () => {
 	describe('input validation', () => {
@@ -60,7 +46,6 @@ describe('paginateAll', () => {
 			await expect(async () => {
 				// eslint-disable-next-line @typescript-eslint/no-unused-vars
 				for await (const _page of paginateAll(fetcher, 0)) {
-					// Should not reach here
 				}
 			}).toThrow('pageSize must be greater than 0');
 		});
@@ -71,7 +56,6 @@ describe('paginateAll', () => {
 			await expect(async () => {
 				// eslint-disable-next-line @typescript-eslint/no-unused-vars
 				for await (const _page of paginateAll(fetcher, -1)) {
-					// Should not reach here
 				}
 			}).toThrow('pageSize must be greater than 0');
 		});
@@ -155,10 +139,6 @@ describe('paginateAll', () => {
 	});
 });
 
-// =============================================================================
-// fetchAllPaginated Tests
-// =============================================================================
-
 describe('fetchAllPaginated', () => {
 	it('collects all items from multiple pages', async () => {
 		const items = generateItems(25);
@@ -210,10 +190,6 @@ describe('fetchAllPaginated', () => {
 	});
 });
 
-// =============================================================================
-// fetchAllPaginatedWithStats Tests
-// =============================================================================
-
 describe('fetchAllPaginatedWithStats', () => {
 	it('throws error when pageSize is 0', async () => {
 		const fetcher = createMockFetcher([]);
@@ -263,10 +239,6 @@ describe('fetchAllPaginatedWithStats', () => {
 		expect(result.pagesFetched).toBe(1);
 	});
 });
-
-// =============================================================================
-// calculateExpectedPages Tests
-// =============================================================================
 
 describe('calculateExpectedPages', () => {
 	it('returns 0 for zero records', () => {

@@ -32,11 +32,9 @@ const possessive = $derived(getPossessive(messagingContext));
 const displayedShows = $derived(topShows.slice(0, limit));
 const hasShows = $derived(displayedShows.length > 0);
 
-// Element references
 let container: HTMLElement | undefined = $state();
 let listItems: HTMLElement[] = $state([]);
 
-// Animation effect with cleanup
 $effect(() => {
 	if (!container || !active || !hasShows) return;
 
@@ -54,18 +52,15 @@ $effect(() => {
 		return;
 	}
 
-	// Animate container with directional entry from left
 	const containerAnim = animate(container, KEYFRAMES.slideFromLeft, {
 		type: 'spring',
 		...SPRING_PRESETS.snappy
 	});
 
-	// Animate list items with adaptive stagger
 	const validItems = listItems.filter(Boolean);
 	if (validItems.length > 0) {
 		const adaptiveStagger = getAdaptiveStagger(validItems.length);
 
-		// Animate first item with bouncy spring for emphasis
 		const firstItemAnim =
 			validItems[0] &&
 			animate(
@@ -81,7 +76,6 @@ $effect(() => {
 				}
 			);
 
-		// Animate remaining items with listItem spring
 		const remainingItems = validItems.slice(1);
 		const itemsAnim =
 			remainingItems.length > 0 &&
@@ -201,7 +195,6 @@ $effect(() => {
 				border-color 0.3s ease;
 		}
 
-		/* Top highlight line for all items */
 		.show-item::before {
 			content: '';
 			position: absolute;
@@ -225,7 +218,6 @@ $effect(() => {
 			border-color: oklch(var(--primary) / 0.4);
 		}
 
-		/* First item gets special treatment */
 		.show-item.first {
 			border-color: oklch(var(--primary) / 0.3);
 			background: linear-gradient(
@@ -312,7 +304,6 @@ $effect(() => {
 			margin-top: 1rem;
 		}
 
-		/* Mobile: compact single column */
 		@media (max-width: 767px) {
 			.content {
 				gap: 1.5rem;
@@ -347,7 +338,6 @@ $effect(() => {
 			}
 		}
 
-		/* Tablet: wider single column */
 		@media (min-width: 768px) and (max-width: 1023px) {
 			.show-item {
 				padding: 1rem 1.25rem;
@@ -360,7 +350,6 @@ $effect(() => {
 			}
 		}
 
-		/* Desktop: 2-column grid */
 		@media (min-width: 1024px) {
 			.content {
 				max-width: var(--content-max-lg, 900px);

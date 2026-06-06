@@ -35,10 +35,6 @@ import { resetSharedTestDb } from '../../helpers/db';
 describe('Sharing Access Control', () => {
 	beforeEach(resetSharedTestDb);
 
-	// =========================================================================
-	// checkAccess - Pure Function Tests
-	// =========================================================================
-
 	describe('checkAccess', () => {
 		describe('owner access', () => {
 			it('allows owner access regardless of share mode', () => {
@@ -207,10 +203,6 @@ describe('Sharing Access Control', () => {
 			});
 		});
 	});
-
-	// =========================================================================
-	// checkWrappedAccess - Integration Tests
-	// =========================================================================
 
 	describe('checkWrappedAccess', () => {
 		const userId = 1;
@@ -466,10 +458,6 @@ describe('Sharing Access Control', () => {
 		});
 	});
 
-	// =========================================================================
-	// checkTokenAccess - Token Validation Tests
-	// =========================================================================
-
 	describe('checkTokenAccess', () => {
 		const userId = 1;
 		const year = 2024;
@@ -706,10 +694,6 @@ describe('Sharing Access Control', () => {
 		});
 	});
 
-	// =========================================================================
-	// Integration: Full Access Flow
-	// =========================================================================
-
 	describe('Integration: Access Flow', () => {
 		const userId = 1;
 		const year = 2024;
@@ -751,7 +735,6 @@ describe('Sharing Access Control', () => {
 			let result = await checkWrappedAccess({ userId, year, shareToken: token });
 			expect(result.accessReason).toBe('valid_token');
 
-			// Change to public
 			await db
 				.update(shareSettings)
 				.set({ mode: ShareMode.PUBLIC })
@@ -770,10 +753,6 @@ describe('Sharing Access Control', () => {
 			}
 		});
 	});
-
-	// =========================================================================
-	// Privacy Level Helpers - Floor Enforcement
-	// =========================================================================
 
 	describe('Privacy Level Helpers', () => {
 		describe('ShareModePrivacyLevel', () => {
@@ -849,10 +828,6 @@ describe('Sharing Access Control', () => {
 		});
 	});
 
-	// =========================================================================
-	// Floor Enforcement in checkWrappedAccess
-	// =========================================================================
-
 	describe('Floor Enforcement', () => {
 		const userId = 1;
 		const year = 2024;
@@ -865,7 +840,6 @@ describe('Sharing Access Control', () => {
 					allowUserControl: true
 				});
 
-				// Create user setting as public (less restrictive than floor)
 				await db.insert(shareSettings).values({
 					userId,
 					year,
@@ -901,7 +875,6 @@ describe('Sharing Access Control', () => {
 
 		describe('when user setting is more restrictive than floor', () => {
 			beforeEach(async () => {
-				// Set global floor to public
 				await setGlobalShareDefaults({
 					defaultShareMode: ShareMode.PUBLIC,
 					allowUserControl: true
@@ -958,10 +931,6 @@ describe('Sharing Access Control', () => {
 			});
 		});
 	});
-
-	// =========================================================================
-	// Server-Wide Wrapped Access Control
-	// =========================================================================
 
 	describe('checkServerWrappedAccess', () => {
 		const year = 2024;

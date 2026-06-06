@@ -5,26 +5,15 @@ import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
 import type { PageData } from './$types';
 
-/**
- * Onboarding Step 4: Completion
- *
- * Celebratory success page with animated elements and configuration summary.
- * Shows sync status if still running in background.
- */
-
 let { data }: { data: PageData } = $props();
 
-// Animation states
 let showCheckmark = $state(false);
 let showContent = $state(false);
 let showParticles = $state(false);
 
-// Submit state for "Go to Dashboard"
 let isNavigating = $state(false);
 
-// Trigger animations on mount
 $effect(() => {
-	// Stagger the animations
 	const checkmarkTimer = setTimeout(() => {
 		showCheckmark = true;
 	}, 100);
@@ -44,7 +33,6 @@ $effect(() => {
 	};
 });
 
-// Summary items with icons
 const summaryItems = $derived([
 	{
 		icon: 'server',
@@ -92,7 +80,6 @@ const summaryItems = $derived([
 <OnboardingCard title="" subtitle="">
 	{#snippet children()}
 		<div class="completion-container">
-			<!-- Floating particles background -->
 			<div class="particles-container" class:active={showParticles}>
 				{#each Array(20) as _, i}
 					<div
@@ -109,7 +96,6 @@ const summaryItems = $derived([
 				{/each}
 			</div>
 
-			<!-- Success Icon with animated checkmark -->
 			<div class="success-icon-container" class:animate={showCheckmark}>
 				<div class="success-glow"></div>
 				<div class="success-ring"></div>
@@ -119,7 +105,6 @@ const summaryItems = $derived([
 				</svg>
 			</div>
 
-			<!-- Title -->
 			<div class="completion-header" class:visible={showContent}>
 				<h1 class="completion-title">Setup Complete!</h1>
 				<p class="completion-subtitle">Your Plex Wrapped is ready to go</p>
@@ -146,7 +131,6 @@ const summaryItems = $derived([
 				</div>
 			{/if}
 
-			<!-- Configuration Summary -->
 			<div class="summary-section" class:visible={showContent}>
 				<h2 class="summary-title">Your Configuration</h2>
 				<div class="summary-grid">
@@ -196,7 +180,6 @@ const summaryItems = $derived([
 				</div>
 			</div>
 
-			<!-- Sync Status (if running) -->
 			{#if data.syncStatus.running}
 				<div class="sync-status" class:visible={showContent}>
 					<div class="sync-indicator">
@@ -261,7 +244,6 @@ const summaryItems = $derived([
 </OnboardingCard>
 
 <style>
-	/* Container */
 		.completion-container {
 			display: flex;
 			flex-direction: column;
@@ -272,7 +254,6 @@ const summaryItems = $derived([
 			min-height: 380px;
 		}
 
-		/* Particles */
 		.particles-container {
 			position: absolute;
 			inset: 0;
@@ -316,7 +297,6 @@ const summaryItems = $derived([
 			}
 		}
 
-		/* Success Icon */
 		.success-icon-container {
 			position: relative;
 			width: 100px;
@@ -400,7 +380,6 @@ const summaryItems = $derived([
 			stroke-dashoffset: 0;
 		}
 
-		/* Header */
 		.completion-header {
 			margin-bottom: 2rem;
 			opacity: 0;
@@ -443,7 +422,6 @@ const summaryItems = $derived([
 			color: rgba(255, 255, 255, 0.6);
 		}
 
-		/* Soft notice (e.g. AI key missing) */
 		.completion-notice {
 			display: flex;
 			align-items: flex-start;
@@ -475,7 +453,6 @@ const summaryItems = $derived([
 			color: rgba(234, 179, 8, 0.85);
 		}
 
-		/* Summary Section */
 		.summary-section {
 			width: 100%;
 			opacity: 0;
@@ -589,7 +566,6 @@ const summaryItems = $derived([
 			text-overflow: ellipsis;
 		}
 
-		/* Sync Status */
 		.sync-status {
 			display: flex;
 			align-items: center;
@@ -660,7 +636,6 @@ const summaryItems = $derived([
 			color: rgba(255, 255, 255, 0.5);
 		}
 
-		/* Sync Complete */
 		.sync-complete {
 			display: flex;
 			align-items: center;
@@ -688,7 +663,6 @@ const summaryItems = $derived([
 			flex-shrink: 0;
 		}
 
-		/* Footer */
 		.footer-content {
 			display: flex;
 			flex-direction: column;

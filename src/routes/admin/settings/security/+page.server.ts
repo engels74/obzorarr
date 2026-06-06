@@ -213,7 +213,6 @@ export const actions: Actions = requireAdminActions({
 			}
 		}
 
-		// Clear branch
 		const csrfSkipFlag = await getAppSetting(AppSettingsKey.CSRF_ORIGIN_SKIPPED);
 		if (!env.ORIGIN && csrfSkipFlag !== 'true') {
 			return fail(400, {

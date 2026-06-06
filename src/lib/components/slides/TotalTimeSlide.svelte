@@ -29,13 +29,11 @@ let {
 
 const subject = $derived(getSubject(messagingContext));
 
-// Derived computed values
 const hours = $derived(formatWatchHours(totalWatchTimeMinutes));
 const minutes = $derived(Math.round(totalWatchTimeMinutes % 60));
 const days = $derived(Number((totalWatchTimeMinutes / 60 / 24).toFixed(1)));
 const weeks = $derived(Number((totalWatchTimeMinutes / 60 / 24 / 7).toFixed(1)));
 
-// State for animated number display
 let displayedHours = $state(0);
 
 // Separate number and unit to prevent layout jitter during animation
@@ -61,13 +59,11 @@ const comparisonText = $derived.by(() => {
 	return `That's ${hours} ${hours === 1 ? 'hour' : 'hours'} of entertainment!`;
 });
 
-// Element references for animation
 let container: HTMLElement | undefined = $state();
 let numberEl: HTMLElement | undefined = $state();
 let valueEl: HTMLElement | undefined = $state();
 let subtitleEl: HTMLElement | undefined = $state();
 
-// Animation effect with cleanup
 $effect(() => {
 	if (!container || !numberEl || !valueEl || !subtitleEl || !active) return;
 
@@ -86,7 +82,6 @@ $effect(() => {
 		return;
 	}
 
-	// Start number animation (odometer effect)
 	// Update DOM directly to avoid triggering Svelte reactivity ~60 times/second
 	const stopNumberAnim =
 		hours >= 24
@@ -105,7 +100,6 @@ $effect(() => {
 					return () => {};
 				})();
 
-	// Animate container with zoom-in effect
 	const containerAnim = animate(container, KEYFRAMES.zoomFadeIn, {
 		type: 'spring',
 		...SPRING_PRESETS.snappy
@@ -125,7 +119,6 @@ $effect(() => {
 		}
 	);
 
-	// Animate subtitle with gentle fade-up
 	const subtitleAnim = animate(
 		subtitleEl,
 		{ opacity: [0, 1], transform: ['translateY(15px)', 'translateY(0)'] },
@@ -136,12 +129,10 @@ $effect(() => {
 		}
 	);
 
-	// Call completion callback
 	subtitleAnim.finished.then(() => {
 		onAnimationComplete?.();
 	});
 
-	// Cleanup function
 	return () => {
 		containerAnim.stop();
 		numberAnim.stop();
@@ -242,7 +233,6 @@ $effect(() => {
 			margin-top: 2rem;
 		}
 
-		/* Mobile: compact typography */
 		@media (max-width: 767px) {
 			.content {
 				gap: 1.25rem;
@@ -269,7 +259,6 @@ $effect(() => {
 			}
 		}
 
-		/* Tablet: medium typography */
 		@media (min-width: 768px) and (max-width: 1023px) {
 			.title {
 				font-size: 1.125rem;
@@ -288,7 +277,6 @@ $effect(() => {
 			}
 		}
 
-		/* Desktop: large typography with enhanced glow */
 		@media (min-width: 1024px) {
 			.content {
 				gap: 2rem;

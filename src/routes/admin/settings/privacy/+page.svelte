@@ -189,9 +189,6 @@ let showContradictionWarning = $derived(
 	$publicLandingLookupData.publicLandingLookup && $userDefaultsData.defaultShareMode !== 'public'
 );
 
-// ---------------------------------------------------------------------------
-// Privacy presets (client-only control surface)
-// ---------------------------------------------------------------------------
 // Auto-open Advanced options at mount ONLY when the saved config is already
 // contradictory (public landing lookup on, but the per-user default isn't
 // public), so the contradiction Alert inside Collapsible.Content isn't hidden

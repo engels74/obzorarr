@@ -30,12 +30,10 @@ import type { ActionData, PageData } from './$types';
 
 let { data, form }: { data: PageData; form: ActionData } = $props();
 
-// Username lookup state
 let username = $state('');
 let usernameTouched = $state(false);
 let isLookingUp = $state(false);
 
-// Sync username from form response (preserves user input on error).
 // The 403 "public lookup disabled" failure has no `username` field, so narrow
 // the ActionData union with an `in` check before reading it.
 $effect(() => {
@@ -57,10 +55,8 @@ let showPopupBlockedModal = $state(false);
 let pendingPinId = $state<number | null>(null);
 let pendingAuthUrl = $state<string | null>(null);
 
-// Element refs for animation
 let heroContainer: HTMLElement | undefined = $state();
 
-// Entrance animation for hero
 $effect(() => {
 	if (!heroContainer || prefersReducedMotion.current) return;
 	const animation = animate(
@@ -71,7 +67,6 @@ $effect(() => {
 	return () => animation.stop();
 });
 
-// Cleanup polling on unmount
 $effect(() => {
 	return () => {
 		loginController?.cancel();
@@ -151,10 +146,8 @@ function handleCancelRedirect(): void {
 </script>
 
 <div class="landing">
-	<!-- Hero Section -->
 	<section class="hero" bind:this={heroContainer}>
 		<div class="hero-content">
-			<!-- Logo Decorative Element -->
 			<div class="logo-glow" aria-hidden="true">
 				<Logo size={120} />
 			</div>
@@ -170,7 +163,6 @@ function handleCancelRedirect(): void {
 			</p>
 
 			{#if data.publicLookupEnabled}
-				<!-- PRIMARY CTA: Username Lookup -->
 				<div class="username-section">
 					<form
 						method="POST"
@@ -273,7 +265,6 @@ function handleCancelRedirect(): void {
 		</div>
 	</section>
 
-	<!-- Footer -->
 	<footer class="footer">
 		<p>Spotify Wrapped-style summaries for your Plex Media Server</p>
 	</footer>
@@ -293,7 +284,6 @@ function handleCancelRedirect(): void {
 			background: oklch(var(--background));
 		}
 
-		/* Hero Section */
 		.hero {
 			flex: 1;
 			display: flex;
@@ -358,7 +348,6 @@ function handleCancelRedirect(): void {
 			margin: 0 0 2rem;
 		}
 
-		/* Username Section - PRIMARY CTA */
 		.username-section {
 			margin-bottom: 2rem;
 		}
@@ -501,7 +490,6 @@ function handleCancelRedirect(): void {
 			cursor: not-allowed;
 		}
 
-		/* Login Section - SECONDARY */
 		.login-section {
 			padding-top: 1.5rem;
 			border-top: 1px solid oklch(var(--border) / 0.5);
@@ -595,7 +583,6 @@ function handleCancelRedirect(): void {
 			box-shadow: 0 0 0 2px oklch(var(--ring));
 		}
 
-		/* Footer */
 		.footer {
 			padding: 1.5rem 2rem;
 			text-align: center;
@@ -609,7 +596,6 @@ function handleCancelRedirect(): void {
 			letter-spacing: 0.05em;
 		}
 
-		/* Responsive */
 		@media (max-width: 640px) {
 			.hero {
 				min-height: 70vh;

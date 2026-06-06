@@ -898,7 +898,6 @@ describe('wrapped/[year=year]/u/[identifier] loader: ISSUE-001 uniform-404 anti-
 		});
 		const privateLinkNoToken = await captureAnonFailure(String(EXISTING_ID));
 
-		// Case C: non-existent numeric id.
 		const nonExistent = await captureAnonFailure(String(NON_EXISTENT_ID));
 
 		expect(privateOauth.status).toBe(404);

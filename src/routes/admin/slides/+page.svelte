@@ -21,7 +21,6 @@ import type { ActionData, PageData } from './$types';
 
 let { data, form }: { data: PageData; form: ActionData } = $props();
 
-// Show toast notifications for form responses
 $effect(() => {
 	handleFormToast(form);
 });
@@ -35,7 +34,6 @@ const slideFieldErrors = $derived(
 		: undefined
 );
 
-// Slide display names
 const SLIDE_NAMES: Record<SlideType, string> = {
 	'total-time': 'Total Watch Time',
 	'top-movies': 'Top Movies',
@@ -75,7 +73,6 @@ $effect(() => {
 	syncedFrequencyKey = frequencyKey;
 });
 
-// State for custom slide editor
 let showEditor = $state(false);
 let editingSlide = $state<(typeof data.customSlides)[0] | null>(null);
 let editorTitle = $state('');
@@ -146,14 +143,11 @@ $effect(() => {
 	return () => document.removeEventListener('keydown', handler);
 });
 
-// Delete confirmation state
 let deletingSlideId = $state<number | null>(null);
 
-// Drag and drop state
 let draggedIndex = $state<number | null>(null);
 let dragOverIndex = $state<number | null>(null);
 
-// Unified slide item type for the combined list
 type UnifiedSlideItem =
 	| { kind: 'builtin'; slideType: string; enabled: boolean; sortOrder: number }
 	| {
@@ -171,7 +165,6 @@ type UnifiedSlideItem =
 const unifiedSlides = $derived.by(() => {
 	const items: UnifiedSlideItem[] = [];
 
-	// Add built-in slides (only those in DEFAULT_SLIDE_ORDER)
 	for (const config of data.configs) {
 		if (DEFAULT_SLIDE_ORDER.includes(config.slideType as SlideType)) {
 			items.push({
@@ -183,7 +176,6 @@ const unifiedSlides = $derived.by(() => {
 		}
 	}
 
-	// Add custom slides
 	for (const custom of data.customSlides) {
 		items.push({
 			kind: 'custom',
@@ -197,11 +189,9 @@ const unifiedSlides = $derived.by(() => {
 		});
 	}
 
-	// Sort by sortOrder
 	return items.sort((a, b) => a.sortOrder - b.sortOrder);
 });
 
-// Open editor for new slide
 function openNewEditor() {
 	editorTriggerRef = (document.activeElement as HTMLElement) ?? null;
 	editingSlide = null;
@@ -215,7 +205,6 @@ function openNewEditor() {
 	showEditor = true;
 }
 
-// Open editor for existing slide
 function openEditEditor(slide: (typeof data.customSlides)[0]) {
 	editorTriggerRef = (document.activeElement as HTMLElement) ?? null;
 	editingSlide = slide;
@@ -229,7 +218,6 @@ function openEditEditor(slide: (typeof data.customSlides)[0]) {
 	showEditor = true;
 }
 
-// Close editor
 function closeEditor() {
 	showEditor = false;
 	editingSlide = null;
@@ -238,18 +226,15 @@ function closeEditor() {
 	queueMicrotask(() => trigger?.focus());
 }
 
-// Handle drag start
 function handleDragStart(index: number) {
 	draggedIndex = index;
 }
 
-// Handle drag over
 function handleDragOver(event: DragEvent, index: number) {
 	event.preventDefault();
 	dragOverIndex = index;
 }
 
-// Handle drag end
 function handleDragEnd() {
 	draggedIndex = null;
 	dragOverIndex = null;
@@ -257,7 +242,6 @@ function handleDragEnd() {
 
 type SlideOrderEntry = { type: 'builtin'; id: string } | { type: 'custom'; id: number };
 
-// Submit a reordered list through the existing hidden reorder form.
 function submitReorder(newOrder: SlideOrderEntry[]) {
 	const form = document.getElementById('reorder-form') as HTMLFormElement | null;
 	const orderInput = form?.querySelector('input[name="order"]') as HTMLInputElement | null;
@@ -282,7 +266,6 @@ function moveSlide(fromIndex: number, toIndex: number) {
 	submitReorder(newOrder);
 }
 
-// Accessible name for the per-slide reorder controls.
 function reorderItemLabel(item: UnifiedSlideItem): string {
 	if (item.kind === 'builtin') {
 		return SLIDE_NAMES[item.slideType as SlideType] ?? item.slideType;
@@ -290,7 +273,6 @@ function reorderItemLabel(item: UnifiedSlideItem): string {
 	return item.title.trim().length > 0 ? item.title : 'Untitled custom slide';
 }
 
-// Handle drop - reorder unified slides
 function handleDrop(event: DragEvent, dropIndex: number) {
 	event.preventDefault();
 	if (draggedIndex === null || draggedIndex === dropIndex) return;
@@ -298,7 +280,6 @@ function handleDrop(event: DragEvent, dropIndex: number) {
 	handleDragEnd();
 }
 
-// Get custom slide data for editing
 function getCustomSlideForEdit(item: UnifiedSlideItem) {
 	if (item.kind !== 'custom') return null;
 	return data.customSlides.find((s) => s.id === item.id) ?? null;
@@ -332,7 +313,6 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			</Button>
 		</div>
 
-		<!-- Hidden form for reordering -->
 		<form id="reorder-form" method="POST" action="?/reorder" use:enhance>
 			<input type="hidden" name="order" value="" />
 		</form>
@@ -484,7 +464,6 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 		{/if}
 	</section>
 
-	<!-- Fun Fact Frequency Section -->
 	<section class="section">
 		<h2>Fun Fact Frequency</h2>
 		<p class="section-description">
@@ -570,7 +549,6 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 	</section>
 	</div>
 
-	<!-- Custom Slide Editor Modal -->
 	{#if showEditor}
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<div class="modal-overlay" onclick={closeEditor} role="presentation">
@@ -683,7 +661,6 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 						</div>
 					</div>
 
-					<!-- Preview Section -->
 					<div class="preview-section">
 						<h3>Preview</h3>
 						<Button
@@ -714,12 +691,9 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 									if (result.type === 'success') {
 										const html = typeof result.data.html === 'string' ? result.data.html : '';
 										previewHtml = html;
-										// Render the preview region whenever the server returned
-										// success, even if html is empty (e.g. sanitizer stripped
-										// everything). An explicit empty-state line inside the
-										// rendered region is clearer than silently reverting to
-										// the "Click 'Update Preview' …" placeholder, which made
-										// the button look broken.
+										// Mark render success even when sanitization strips everything. A visible
+										// empty-state line is clearer than reverting to the pre-render placeholder,
+										// which made the button look broken.
 										previewRendered = true;
 										previewError = '';
 									} else if (result.type === 'failure') {
@@ -880,7 +854,6 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			border-left: 3px solid oklch(var(--primary));
 		}
 
-		/* Custom slide styling with distinct visual indicator */
 		.slide-item.is-custom {
 			border-left: 3px solid oklch(0.6192 0.2037 312.73);
 			background: linear-gradient(90deg, oklch(0.6192 0.2037 312.73 / 0.08) 0%, oklch(var(--secondary)) 100%);
@@ -946,7 +919,6 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 		.slide-name {
 			flex: 1;
 			font-weight: 500;
-			/* DF-022: truncate long custom-slide titles with ellipsis */
 			overflow: hidden;
 			text-overflow: ellipsis;
 			white-space: nowrap;
@@ -1172,7 +1144,6 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			padding: 2rem;
 		}
 
-		/* Modal Styles */
 		.modal-overlay {
 			position: fixed;
 			inset: 0;
@@ -1447,7 +1418,6 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			opacity: 0.9;
 		}
 
-		/* Markdown preview styling */
 		.preview-content :global(h1),
 		.preview-content :global(h2),
 		.preview-content :global(h3) {
@@ -1499,7 +1469,6 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			font-style: italic;
 		}
 
-		/* Fun Fact Frequency Styles */
 		.frequency-options {
 			display: grid;
 			grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));

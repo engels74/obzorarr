@@ -46,7 +46,6 @@ let { active = true, class: klass = '', variant = 'default', children }: Props =
 		}
 
 		/* Variant styles - all use transparent background, effects from parent */
-		/* Variants can add additional content-level styling if needed */
 
 		/* Highlight variant - adds subtle glow overlay (content-level effect) */
 		.variant-highlight::before {
@@ -66,7 +65,6 @@ let { active = true, class: klass = '', variant = 'default', children }: Props =
 
 		/* Glass variant - no background change, relies on glass containers */
 
-		/* Glass variant applies glass effect to direct content children */
 		.variant-glass > :global(.content),
 		.variant-glass > :global(.slide-content),
 		.variant-glass > :global(.glass-container) {
@@ -83,7 +81,6 @@ let { active = true, class: klass = '', variant = 'default', children }: Props =
 			z-index: 3;
 		}
 
-		/* Glass top highlight line */
 		.variant-glass > :global(.content)::before,
 		.variant-glass > :global(.slide-content)::before,
 		.variant-glass > :global(.glass-container)::before {
@@ -97,7 +94,6 @@ let { active = true, class: klass = '', variant = 'default', children }: Props =
 			border-radius: inherit;
 		}
 
-		/* Mobile: compact padding */
 		@media (max-width: 767px) {
 			.slide {
 				padding: 1.25rem 1rem;
@@ -111,14 +107,12 @@ let { active = true, class: klass = '', variant = 'default', children }: Props =
 			}
 		}
 
-		/* Tablet: medium padding */
 		@media (min-width: 768px) {
 			.slide {
 				padding: 2rem 1.5rem;
 			}
 		}
 
-		/* Desktop: generous padding */
 		@media (min-width: 1024px) {
 			.slide {
 				padding: 2.5rem 2rem;
@@ -131,7 +125,6 @@ let { active = true, class: klass = '', variant = 'default', children }: Props =
 			}
 		}
 
-		/* Ensure content is above background layers */
 		.slide > :global(*) {
 			position: relative;
 			z-index: 3;

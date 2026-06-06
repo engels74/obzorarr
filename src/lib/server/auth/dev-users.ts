@@ -132,8 +132,8 @@ async function fetchSharedUsers(
 		);
 	}
 
-	// Filter friends to only those with a usable username and access to this specific server,
-	// then map to PlexSharedServerUser format for compatibility.
+	// Keep only friends who actually share this server; the Plex friends endpoint
+	// can include unrelated accounts from the owner account.
 	return friends
 		.filter(
 			(friend): friend is PlexFriend & { username: string } =>
@@ -159,7 +159,6 @@ export async function getServerUsers(): Promise<{
 		return { owner: usersCache.owner, sharedUsers: usersCache.sharedUsers };
 	}
 
-	// Get merged config (database takes priority over environment)
 	const config = await getPlexConfig();
 
 	if (!config.token) {
@@ -176,7 +175,6 @@ export async function getServerUsers(): Promise<{
 		isOwner: true
 	};
 
-	// Fetch server machine identifier and shared users
 	const machineIdentifier = await getServerMachineIdentifier(config);
 	const sharedUsersData = await fetchSharedUsers(machineIdentifier, config.token);
 
@@ -248,7 +246,6 @@ export async function resolveUserIdentifier(
 		return getUserById(numericId);
 	}
 
-	// Otherwise treat as username
 	return getUserByUsername(identifier);
 }
 

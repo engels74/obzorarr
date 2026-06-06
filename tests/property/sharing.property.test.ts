@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import * as fc from 'fast-check';
 
-// Import the pure functions for testing
 import { checkAccess } from '$lib/server/sharing/access-control';
 import { generateShareToken, isValidTokenFormat } from '$lib/server/sharing/service';
 import { type AccessCheckContext, ShareMode, type ShareModeType } from '$lib/server/sharing/types';
@@ -15,19 +14,13 @@ import { type AccessCheckContext, ShareMode, type ShareModeType } from '$lib/ser
  * for the sharing system.
  */
 
-// =============================================================================
-// Arbitraries
-// =============================================================================
-
 const shareModeArbitrary: fc.Arbitrary<ShareModeType> = fc.constantFrom(
 	ShareMode.PUBLIC,
 	ShareMode.PRIVATE_OAUTH,
 	ShareMode.PRIVATE_LINK
 );
 
-// =============================================================================
 // Property 15: Share Mode Access Control
-// =============================================================================
 
 // Feature: obzorarr, Property 15: Share Mode Access Control
 describe('Property 15: Share Mode Access Control', () => {
@@ -173,7 +166,6 @@ describe('Property 15: Share Mode Access Control', () => {
 				fc.uuid(), // validToken
 				fc.uuid().filter((t) => t !== ''), // wrongToken
 				(validToken, wrongToken) => {
-					// Skip if tokens happen to match
 					if (validToken === wrongToken) return true;
 
 					const context: AccessCheckContext = {
@@ -214,13 +206,10 @@ describe('Property 15: Share Mode Access Control', () => {
 
 					const result = checkAccess(context);
 
-					// Result must have allowed boolean
 					if (typeof result.allowed !== 'boolean') return false;
 
-					// If allowed, must have reason
 					if (result.allowed && !result.reason) return false;
 
-					// If denied, must have denialReason (unless edge case)
 					if (!result.allowed && !result.denialReason) return false;
 
 					return true;
@@ -231,9 +220,7 @@ describe('Property 15: Share Mode Access Control', () => {
 	});
 });
 
-// =============================================================================
 // Property 16: Share Token Uniqueness
-// =============================================================================
 
 // Feature: obzorarr, Property 16: Share Token Uniqueness
 describe('Property 16: Share Token Uniqueness', () => {
@@ -256,7 +243,6 @@ describe('Property 16: Share Token Uniqueness', () => {
 					for (let i = 0; i < count; i++) {
 						tokens.add(generateShareToken());
 					}
-					// All tokens should be unique
 					return tokens.size === count;
 				}
 			),
@@ -278,7 +264,6 @@ describe('Property 16: Share Token Uniqueness', () => {
 	it('token format validation accepts valid UUID v4 tokens', () => {
 		fc.assert(
 			fc.property(fc.constant(null), () => {
-				// Our generated tokens should always pass validation
 				const token = generateShareToken();
 				return isValidTokenFormat(token);
 			}),
@@ -310,9 +295,7 @@ describe('Property 16: Share Token Uniqueness', () => {
 	});
 });
 
-// =============================================================================
 // Property 17: Permission Enforcement
-// =============================================================================
 
 // Feature: obzorarr, Property 17: Permission Enforcement
 describe('Property 17: Permission Enforcement', () => {
@@ -331,7 +314,6 @@ describe('Property 17: Permission Enforcement', () => {
 	}
 
 	function isPermissionAllowed(ctx: PermissionContext): boolean {
-		// Admins can do anything
 		if (ctx.isAdmin) return true;
 
 		// Users without control permission cannot change anything
@@ -470,7 +452,6 @@ describe('Property 17: Permission Enforcement', () => {
 						requestedMode
 					};
 
-					// Admin should always be allowed, regardless of canUserControl
 					return isPermissionAllowed(ctx) === true;
 				}
 			),
@@ -489,7 +470,6 @@ describe('Property 17: Permission Enforcement', () => {
 					requestedMode: ShareMode.PUBLIC // Any requested mode
 				};
 
-				// User should be denied
 				const denied = !isPermissionAllowed(ctxNoControl);
 
 				// User with control cannot exceed to private-link
@@ -508,10 +488,6 @@ describe('Property 17: Permission Enforcement', () => {
 		);
 	});
 });
-
-// =============================================================================
-// Additional Unit Tests
-// =============================================================================
 
 describe('Share Token Generation', () => {
 	it('generates UUID v4 format tokens', () => {

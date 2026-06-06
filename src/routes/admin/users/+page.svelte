@@ -17,12 +17,10 @@ import type { ActionData, PageData } from './$types';
 let { data, form }: { data: PageData; form: ActionData } = $props();
 let failedAvatarUserIds = $state<Set<number>>(new Set());
 
-// Show toast notifications for form responses
 $effect(() => {
 	handleFormToast(form);
 });
 
-// Format watch time as hours
 function formatWatchTime(minutes: number): string {
 	if (minutes === 0) return '0h';
 	if (minutes > 0 && minutes < 60) return '<1h';
@@ -76,7 +74,6 @@ function markAvatarFailed(userId: number): void {
 		</div>
 	</header>
 
-	<!-- Users List Section -->
 	<section class="section">
 		<div class="section-header">
 			<h2>Server Users</h2>
@@ -327,7 +324,6 @@ function markAvatarFailed(userId: number): void {
 		{/if}
 	</section>
 
-	<!-- Legend Section -->
 	<section class="section legend-section">
 		<h3>Legend</h3>
 		<div class="legend-grid">
@@ -480,7 +476,6 @@ function markAvatarFailed(userId: number): void {
 			opacity: 0.85;
 		}
 
-		/* Users Table */
 		.users-table-wrapper {
 			overflow-x: auto;
 			width: 100%;
@@ -729,7 +724,6 @@ function markAvatarFailed(userId: number): void {
 			padding: 2rem;
 		}
 
-		/* Legend */
 		.legend-section {
 			background: oklch(var(--muted) / 0.3);
 		}
@@ -751,7 +745,6 @@ function markAvatarFailed(userId: number): void {
 			color: oklch(var(--muted-foreground));
 		}
 
-		/* Responsive */
 		@media (max-width: 768px) {
 			.users-page {
 				padding: 1rem;

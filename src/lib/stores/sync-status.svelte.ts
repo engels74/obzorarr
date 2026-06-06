@@ -98,7 +98,7 @@ export class SyncStatusStore {
 								try {
 									await callback(terminalEvent);
 								} catch {
-									// Silently ignore callback errors
+									// Terminal-event callbacks should not tear down the SSE loop.
 								}
 							}, 500);
 						}
@@ -108,7 +108,7 @@ export class SyncStatusStore {
 					this.wasSyncing = false;
 				}
 			} catch {
-				// Silently ignore parse errors
+				// Malformed SSE payloads are ignored; the next event carries fresh state.
 			}
 		};
 

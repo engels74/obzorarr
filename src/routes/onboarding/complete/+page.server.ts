@@ -1,10 +1,3 @@
-/**
- * Onboarding Step 4: Completion
- *
- * Marks onboarding as complete and shows success message.
- * Provides summary of configuration and link to dashboard.
- */
-
 import { fail, redirect } from '@sveltejs/kit';
 import {
 	getAnonymizationMode,
@@ -46,12 +39,10 @@ export const load: PageServerLoad = async ({ parent, locals, url, cookies }) => 
 	const parentData = await parent();
 	const notice = url.searchParams.get('notice');
 
-	// Get sync status (may still be running)
 	const syncRunning = await isSyncRunning();
 	const syncProgress = getSyncProgress();
 	const historyCount = await getPlayHistoryCount();
 
-	// Get configured settings for summary
 	const [
 		serverName,
 		uiTheme,
@@ -101,9 +92,6 @@ export const load: PageServerLoad = async ({ parent, locals, url, cookies }) => 
 	};
 };
 
-/**
- * Format theme name for display
- */
 function formatThemeName(theme: string): string {
 	return theme
 		.split('-')
@@ -111,9 +99,6 @@ function formatThemeName(theme: string): string {
 		.join(' ');
 }
 
-/**
- * Format anonymization mode for display
- */
 function formatAnonymizationMode(mode: string): string {
 	const modes: Record<string, string> = {
 		real: 'Real Names',
@@ -123,9 +108,6 @@ function formatAnonymizationMode(mode: string): string {
 	return modes[mode] || mode;
 }
 
-/**
- * Format share mode for display
- */
 function formatShareMode(mode: string): string {
 	const modes: Record<string, string> = {
 		public: 'Public',

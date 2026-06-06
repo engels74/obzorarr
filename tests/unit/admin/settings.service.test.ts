@@ -61,10 +61,6 @@ import { resetSharedTestDb } from '../../helpers/db';
 describe('Admin Settings Service', () => {
 	beforeEach(resetSharedTestDb);
 
-	// =========================================================================
-	// App Settings CRUD
-	// =========================================================================
-
 	describe('App Settings CRUD', () => {
 		describe('getAppSetting', () => {
 			it('returns null when setting does not exist', async () => {
@@ -167,10 +163,6 @@ describe('Admin Settings Service', () => {
 			});
 		});
 	});
-
-	// =========================================================================
-	// Specific Settings Helpers
-	// =========================================================================
 
 	describe('Theme Settings', () => {
 		describe('getCurrentTheme', () => {
@@ -501,13 +493,10 @@ describe('Admin Settings Service', () => {
 		});
 	});
 
-	// =========================================================================
 	// Cache Management
-	// =========================================================================
 
 	describe('Cache Management', () => {
 		beforeEach(async () => {
-			// Insert test cached stats
 			await db.insert(cachedStats).values([
 				{ userId: 1, year: 2023, statsType: 'user', statsJson: '{}' },
 				{ userId: 1, year: 2024, statsType: 'user', statsJson: '{}' },
@@ -695,10 +684,6 @@ describe('Admin Settings Service', () => {
 			});
 		});
 	});
-
-	// =========================================================================
-	// API Configuration
-	// =========================================================================
 
 	describe('API Configuration', () => {
 		describe('getApiConfigWithSources', () => {
@@ -917,7 +902,6 @@ describe('Admin Settings Service', () => {
 				expect(cleared).toContain('PLEX_SERVER_URL');
 				expect(cleared).toContain('PLEX_TOKEN');
 
-				// Verify DB values are actually deleted
 				const dbUrl = await getAppSetting(AppSettingsKey.PLEX_SERVER_URL);
 				const dbToken = await getAppSetting(AppSettingsKey.PLEX_TOKEN);
 				expect(dbUrl).toBeNull();
@@ -934,7 +918,6 @@ describe('Admin Settings Service', () => {
 				expect(cleared).not.toContain('OPENAI_MODEL');
 				expect(cleared).not.toContain('OPENAI_BASE_URL');
 
-				// Verify DB values are preserved
 				const model = await getAppSetting(AppSettingsKey.OPENAI_MODEL);
 				const baseUrl = await getAppSetting(AppSettingsKey.OPENAI_BASE_URL);
 				expect(model).toBe('custom-model');
@@ -951,7 +934,6 @@ describe('Admin Settings Service', () => {
 			});
 
 			it('returns empty array when no conflicts exist', async () => {
-				// No DB settings set, so nothing to clear
 				const cleared = await clearConflictingDbSettings();
 
 				expect(cleared).toEqual([]);
@@ -1363,7 +1345,6 @@ describe('Admin Settings Service', () => {
 				AppSettingsKey.API_CONFIG_VERSION
 			]);
 
-			// Allow at least 1ms for updatedAt comparison to be meaningful.
 			await new Promise((r) => setTimeout(r, 5));
 
 			// Tab A submits the version it loaded and clears OPENAI_BASE_URL only.

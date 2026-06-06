@@ -37,14 +37,12 @@ const PLEX_TV_HEADERS = {
 function normalizeUrl(url: string): string {
 	try {
 		const parsed = new URL(url);
-		// Remove default ports
 		if (parsed.port === '80' || parsed.port === '443') {
 			parsed.port = '';
 		}
 		// Return normalized form without trailing slash
 		return parsed.origin.toLowerCase();
 	} catch {
-		// If URL parsing fails, do basic normalization
 		return url.toLowerCase().replace(/\/+$/, '');
 	}
 }
@@ -71,7 +69,6 @@ export function extractPlexDirectMachineId(url: string): string | undefined {
 		// Format: {ip}.{machineId}.plex.direct
 		const machineId = parts[parts.length - 3];
 
-		// Machine ID should be a 32-character hex string
 		if (machineId && /^[a-f0-9]{32}$/i.test(machineId)) {
 			return machineId.toLowerCase();
 		}
@@ -106,16 +103,13 @@ export function extractPlexDirectIpAndPort(url: string): { ip: string; port: str
 			return undefined;
 		}
 
-		// Validate that ipPart looks like an IPv4 address with dashes
 		// Format: digits separated by exactly 3 dashes (e.g., 89-150-152-18)
 		const ipSegments = ipPart.split('-');
 
-		// IPv4 has exactly 4 octets
 		if (ipSegments.length !== 4) {
 			return undefined;
 		}
 
-		// Validate each segment is a valid octet (0-255)
 		for (const segment of ipSegments) {
 			const num = parseInt(segment, 10);
 			if (Number.isNaN(num) || num < 0 || num > 255 || segment !== num.toString()) {
@@ -123,10 +117,8 @@ export function extractPlexDirectIpAndPort(url: string): { ip: string; port: str
 			}
 		}
 
-		// Convert dashes to dots to get the actual IP
 		const ip = ipSegments.join('.');
 
-		// Get port (default to empty string if not specified)
 		const port = parsed.port || '';
 
 		return { ip, port };
@@ -151,7 +143,6 @@ function matchesByIpAndPort(
 	const { ip: configuredIp, port: configuredPort } = extracted;
 
 	return connections.some((conn) => {
-		// Compare IP addresses (case-insensitive for safety)
 		const connectionIp = conn.address.toLowerCase();
 		const matchesIp = connectionIp === configuredIp.toLowerCase();
 
@@ -184,7 +175,6 @@ function urlsMatch(url1: string, url2: string): boolean {
 		}
 	}
 
-	// Fall back to exact origin comparison
 	return normalizeUrl(url1) === normalizeUrl(url2);
 }
 
@@ -267,7 +257,6 @@ function matchesPlainHost(configuredUrl: string, server: PlexResource): boolean 
 		return connPort.toString() === configuredPort;
 	};
 
-	// Direct address/port match against advertised connections.
 	if (
 		server.connections?.some(
 			(conn) => conn.address.toLowerCase() === configuredHost && portsMatch(conn.port)
@@ -368,7 +357,6 @@ function findConfiguredServer(
 		}
 	}
 
-	// Strategy 4: Fall back to connection URI matching
 	return servers.find((server) => {
 		if (server.connections) {
 			return server.connections.some((conn) => urlsMatch(conn.uri, configuredUrl));
@@ -378,17 +366,14 @@ function findConfiguredServer(
 }
 
 export async function verifyServerMembership(userToken: string): Promise<MembershipResult> {
-	// Get all resources the user has access to
 	const resources = await getPlexResources(userToken);
 
-	// Filter to only server resources
 	const servers = filterServerResources(resources);
 
 	// Get configured server URL from merged config (database takes priority over env)
 	const apiConfig = await getApiConfigWithSources();
 	const configuredUrl = apiConfig.plex.serverUrl.value;
 
-	// Debug logging to help diagnose membership issues
 	logger.debug(
 		`Configured PLEX_SERVER_URL diagnostic=${formatPlexUrlDiagnostic(
 			configuredUrl,
@@ -457,7 +442,6 @@ export async function verifyServerMembership(userToken: string): Promise<Members
 		};
 	}
 
-	// Find the configured server
 	const configuredServer = findConfiguredServer(
 		servers,
 		configuredUrl,
@@ -644,7 +628,6 @@ export function selectBestConnection(server: PlexResource): string | undefined {
 		return localConnection.uri;
 	}
 
-	// Last resort: use any available connection
 	const anyConnection = connections[0];
 	if (anyConnection) {
 		logger.debug(
@@ -665,10 +648,10 @@ export function generatePlexDirectUrl(
 		return undefined;
 	}
 
-	// Strategy 1: Use provided machineIdentifier
 	let machineId: string | undefined = machineIdentifier;
 
-	// Strategy 2: Extract from existing plex.direct connection (fallback)
+	// Fall back to an advertised plex.direct connection when Plex did not provide
+	// a machineIdentifier separately.
 	if (!machineId && server.connections) {
 		const plexDirectConn = server.connections.find((c) => c.uri.includes('.plex.direct'));
 		if (plexDirectConn) {
@@ -701,20 +684,16 @@ export function generatePlexDirectUrl(
 }
 
 export async function verifyServerOwnership(userToken: string): Promise<OwnershipResult> {
-	// Get all resources the user has access to
 	const resources = await getPlexResources(userToken);
 
-	// Filter to only server resources
 	const servers = filterServerResources(resources);
 
-	// Debug logging
 	logger.debug(`Found ${servers.length} server(s) accessible to user`, 'Membership');
 
 	for (const [index, server] of servers.entries()) {
 		logger.debug(`Server resource: ${formatPlexResourceDiagnostic(server, index)}`, 'Membership');
 	}
 
-	// Find the first server that the user owns
 	const ownedServer = servers.find((server) => server.owned);
 
 	if (!ownedServer) {
@@ -724,7 +703,6 @@ export async function verifyServerOwnership(userToken: string): Promise<Ownershi
 		};
 	}
 
-	// Select the best connection URL
 	// Priority: .plex.direct > public IP > local IP
 	let bestConnectionUrl = selectBestConnection(ownedServer);
 

@@ -34,20 +34,17 @@ function formatDuration(totalMinutes: number): string {
 	return `${hours}h ${minutes}m`;
 }
 
-// Wall-clock session duration (endTime - startTime)
 const sessionDuration = $derived.by(() => {
 	if (!longestBinge) return '';
 	const sessionMinutes = (longestBinge.endTime - longestBinge.startTime) / 60;
 	return formatDuration(sessionMinutes);
 });
 
-// Total content runtime (sum of episode durations)
 const contentDuration = $derived.by(() => {
 	if (!longestBinge) return '';
 	return formatDuration(longestBinge.totalMinutes);
 });
 
-// Format date
 const bingeDate = $derived.by(() => {
 	if (!longestBinge) return '';
 	const date = new Date(longestBinge.startTime * 1000);
@@ -57,12 +54,10 @@ const bingeDate = $derived.by(() => {
 	});
 });
 
-// Element references
 let container: HTMLElement | undefined = $state();
 let statEl: HTMLElement | undefined = $state();
 let detailsEl: HTMLElement | undefined = $state();
 
-// Animation effect with cleanup
 $effect(() => {
 	if (!container || !active) return;
 
@@ -83,7 +78,6 @@ $effect(() => {
 		return;
 	}
 
-	// Animate container with impactful reveal
 	const containerAnim = animate(
 		container,
 		{ opacity: [0, 1], transform: ['scale(0.95) translateY(20px)', 'scale(1) translateY(0)'] },
@@ -93,7 +87,6 @@ $effect(() => {
 	const animations = [containerAnim];
 
 	if (statEl) {
-		// Stat with bouncy scale animation
 		const statAnim = animate(
 			statEl,
 			{
@@ -207,7 +200,6 @@ $effect(() => {
 			position: relative;
 		}
 
-		/* Top highlight line */
 		.stat-container::before {
 			content: '';
 			position: absolute;
@@ -223,7 +215,6 @@ $effect(() => {
 			font-size: clamp(2.5rem, 8vw, 4rem);
 			font-weight: 800;
 			letter-spacing: -0.02em;
-			/* Gradient text effect */
 			background: linear-gradient(
 				180deg,
 				oklch(var(--primary)) 0%,
@@ -303,7 +294,6 @@ $effect(() => {
 			margin-top: 1.5rem;
 		}
 
-		/* Mobile: compact container */
 		@media (max-width: 767px) {
 			.content {
 				gap: 2rem;
@@ -339,7 +329,6 @@ $effect(() => {
 			}
 		}
 
-		/* Tablet: medium container */
 		@media (min-width: 768px) and (max-width: 1023px) {
 			.title {
 				font-size: 1.75rem;
@@ -374,7 +363,6 @@ $effect(() => {
 			}
 		}
 
-		/* Desktop: large container */
 		@media (min-width: 1024px) {
 			.title {
 				font-size: 2rem;

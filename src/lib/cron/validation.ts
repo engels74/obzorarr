@@ -26,7 +26,6 @@ function isFieldInRange(token: string, min: number, max: number): boolean {
 		// Exactly one "/" — reject tokens like "*/5/2"
 		if (parts.length !== 2) return false;
 		const [base, step] = parts;
-		// Step value must be a positive integer
 		const stepNum = Number(step);
 		if (!step || !Number.isInteger(stepNum) || stepNum < 1) return false;
 		// Base must be present (reject "/5") — can be "*", a plain number, or a range

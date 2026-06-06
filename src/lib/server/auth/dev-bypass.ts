@@ -34,7 +34,6 @@ export function isDevBypassEnabled(): boolean {
 }
 
 async function getFallbackUser(): Promise<NormalizedServerUser> {
-	// Try to find an existing admin user in the database
 	const adminUser = await db.query.users.findFirst({
 		where: eq(users.isAdmin, true)
 	});
@@ -62,7 +61,6 @@ async function getFallbackUser(): Promise<NormalizedServerUser> {
 	const firstUserWithHistory = userWithHistory[0];
 	if (firstUserWithHistory) {
 		const accountId = firstUserWithHistory.accountId;
-		// Check if this accountId has a corresponding user in the database
 		const existingUser = await db.query.users.findFirst({
 			where: eq(users.plexId, accountId)
 		});
@@ -95,7 +93,6 @@ async function getFallbackUser(): Promise<NormalizedServerUser> {
 		};
 	}
 
-	// No existing users with history - fall back to mock user
 	logger.warn(
 		'Dev bypass: No existing users found in database, using mock user (stats will be empty)',
 		'DevBypass'
@@ -138,12 +135,10 @@ async function resolveTargetUser(): Promise<NormalizedServerUser> {
 				`Dev bypass: Failed to fetch user info using DEV_PLEX_TOKEN: ${error instanceof Error ? error.message : 'Unknown error'}`,
 				'DevBypass'
 			);
-			// Fall through to existing flow
 		}
 	}
 
 	try {
-		// Case 1: No setting - use server owner
 		if (!bypassUserSetting) {
 			const owner = await getServerOwner();
 			logger.info(
@@ -153,7 +148,6 @@ async function resolveTargetUser(): Promise<NormalizedServerUser> {
 			return owner;
 		}
 
-		// Case 2: Random user selection
 		if (bypassUserSetting.toLowerCase() === 'random') {
 			// Return cached random user if available
 			if (cachedRandomUser) {
@@ -171,7 +165,6 @@ async function resolveTargetUser(): Promise<NormalizedServerUser> {
 				return randomUser;
 			}
 
-			// No shared users - fall back to owner
 			logger.warn(
 				'Dev bypass: No shared users found for random selection, using server owner',
 				'DevBypass'
@@ -181,7 +174,6 @@ async function resolveTargetUser(): Promise<NormalizedServerUser> {
 			return owner;
 		}
 
-		// Case 3: Specific user by ID or username
 		const specificUser = await resolveUserIdentifier(bypassUserSetting);
 
 		if (specificUser) {
@@ -198,7 +190,6 @@ async function resolveTargetUser(): Promise<NormalizedServerUser> {
 			'DevBypass'
 		);
 
-		// Check if user exists in local database by plexId or username
 		const plexIdNum = parseInt(bypassUserSetting, 10);
 		const dbUser = await db.query.users.findFirst({
 			where: Number.isNaN(plexIdNum)
@@ -220,13 +211,11 @@ async function resolveTargetUser(): Promise<NormalizedServerUser> {
 			};
 		}
 
-		// User not found anywhere - fall back to owner
 		logger.warn(
 			`Dev bypass: User "${bypassUserSetting}" not found in Plex or database, falling back to owner`,
 			'DevBypass'
 		);
 
-		// List available users for developer convenience
 		const { owner, sharedUsers } = await getServerUsers();
 		const availableUsers = [owner, ...sharedUsers]
 			.map((u) => `${u.plexId} (${u.username})`)
@@ -245,11 +234,10 @@ async function resolveTargetUser(): Promise<NormalizedServerUser> {
 }
 
 async function getOrCreateDevUser(targetUser: NormalizedServerUser): Promise<number> {
-	// Determine accountId for matching with playHistory
-	// Server owners have local accountId = 1, shared users have accountId = plexId
+	// Plex history keys owner playback as accountId=1, while shared users use
+	// their Plex ID; matching that split keeps dev-bypass stats populated.
 	const accountId = targetUser.isOwner ? 1 : targetUser.plexId;
 
-	// Check if user already exists
 	const existingUser = await db.query.users.findFirst({
 		where: eq(users.plexId, targetUser.plexId)
 	});
@@ -270,7 +258,6 @@ async function getOrCreateDevUser(targetUser: NormalizedServerUser): Promise<num
 		return existingUser.id;
 	}
 
-	// Create new user
 	const result = await db
 		.insert(users)
 		.values({
@@ -296,13 +283,10 @@ async function getOrCreateDevUser(targetUser: NormalizedServerUser): Promise<num
 }
 
 export async function getOrCreateDevSession(): Promise<string> {
-	// Resolve which user to simulate
 	const targetUser = await resolveTargetUser();
 
-	// Get or create the user in database
 	const userId = await getOrCreateDevUser(targetUser);
 
-	// Check if dev session exists and is valid
 	const existingSession = await db.query.sessions.findFirst({
 		where: eq(sessions.id, DEV_SESSION_ID)
 	});
@@ -310,14 +294,11 @@ export async function getOrCreateDevSession(): Promise<string> {
 	const now = new Date();
 
 	if (existingSession && existingSession.expiresAt > now) {
-		// Check if session is for the same user
 		if (existingSession.userId === userId) {
 			return DEV_SESSION_ID;
 		}
-		// Different user - delete old session
 		await db.delete(sessions).where(eq(sessions.id, DEV_SESSION_ID));
 	} else if (existingSession) {
-		// Expired session - delete it
 		await db.delete(sessions).where(eq(sessions.id, DEV_SESSION_ID));
 	}
 
@@ -327,7 +308,6 @@ export async function getOrCreateDevSession(): Promise<string> {
 	const config = await getPlexConfig();
 	const plexToken = devPlexToken || config.token || 'dev-token';
 
-	// Create new dev session with long expiration
 	const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
 
 	await db.insert(sessions).values({

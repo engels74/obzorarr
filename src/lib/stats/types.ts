@@ -7,7 +7,7 @@ export const RankedItemSchema = z.object({
 	thumb: z.string().nullable()
 });
 
-// Binge session: consecutive plays within 30 minutes
+// Binge sessions use the same 30-minute gap threshold as the server-side detector.
 export const BingeSessionSchema = z.object({
 	startTime: z.number().int(), // Unix timestamp
 	endTime: z.number().int(), // Unix timestamp

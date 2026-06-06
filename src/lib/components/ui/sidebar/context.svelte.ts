@@ -34,7 +34,6 @@ class SidebarState {
 		this.props = props;
 	}
 
-	// Convenience getter for checking if the sidebar is mobile
 	// without this, we would need to use `sidebar.isMobile.current` everywhere
 	get isMobile() {
 		return this.#isMobile.current;

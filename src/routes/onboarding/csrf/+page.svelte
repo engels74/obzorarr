@@ -445,7 +445,6 @@ function useDetectedOrigin() {
 		height: 40px;
 	}
 
-	/* Detection Card */
 	.detection-card {
 		background: rgba(255, 255, 255, 0.03);
 		border: 1px solid rgba(255, 255, 255, 0.08);
@@ -522,7 +521,6 @@ function useDetectedOrigin() {
 		color: rgba(255, 255, 255, 0.7);
 	}
 
-	/* Preconfigured Card */
 	.preconfigured-card {
 		display: flex;
 		align-items: center;
@@ -648,7 +646,6 @@ function useDetectedOrigin() {
 		color: rgba(255, 255, 255, 0.7);
 	}
 
-	/* Input Section */
 	.input-section {
 		display: flex;
 		flex-direction: column;
@@ -837,7 +834,6 @@ function useDetectedOrigin() {
 		line-height: 1.5;
 	}
 
-	/* Info Callout */
 	.info-callout {
 		display: flex;
 		gap: 0.875rem;

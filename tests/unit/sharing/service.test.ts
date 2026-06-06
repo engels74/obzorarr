@@ -43,10 +43,6 @@ describe('Sharing Service', () => {
 		await resetSharedTestDb();
 	});
 
-	// =========================================================================
-	// Identifier Helpers
-	// =========================================================================
-
 	describe('Identifier Helpers', () => {
 		it('isPureNumericId accepts non-empty digit strings', () => {
 			expect(isPureNumericId('1')).toBe(true);
@@ -65,10 +61,6 @@ describe('Sharing Service', () => {
 			expect(isPureNumericId('1.0')).toBe(false);
 		});
 	});
-
-	// =========================================================================
-	// Global Defaults
-	// =========================================================================
 
 	describe('Global Defaults', () => {
 		describe('getGlobalDefaultShareMode', () => {
@@ -140,13 +132,11 @@ describe('Sharing Service', () => {
 			});
 
 			it('updates existing settings', async () => {
-				// Insert initial values
 				await setGlobalShareDefaults({
 					defaultShareMode: ShareMode.PUBLIC,
 					allowUserControl: false
 				});
 
-				// Update values
 				await setGlobalShareDefaults({
 					defaultShareMode: ShareMode.PRIVATE_OAUTH,
 					allowUserControl: true
@@ -301,7 +291,6 @@ describe('Sharing Service', () => {
 
 				const explicitToken = generateShareToken();
 				await db.insert(shareSettings).values([
-					// Default-sourced row: should adopt the new default.
 					{
 						userId: 1,
 						year: 2024,
@@ -310,7 +299,6 @@ describe('Sharing Service', () => {
 						shareToken: null,
 						canUserControl: false
 					},
-					// Explicit override: must be preserved verbatim.
 					{
 						userId: 2,
 						year: 2024,
@@ -453,10 +441,6 @@ describe('Sharing Service', () => {
 			});
 		});
 	});
-
-	// =========================================================================
-	// Share Settings CRUD
-	// =========================================================================
 
 	describe('Share Settings CRUD', () => {
 		const userId = 1;
@@ -680,13 +664,11 @@ describe('Sharing Service', () => {
 
 		describe('updateShareSettings', () => {
 			beforeEach(async () => {
-				// Set global defaults (canUserControl is now derived from global setting)
 				await setGlobalShareDefaults({
 					defaultShareMode: ShareMode.PUBLIC,
 					allowUserControl: true
 				});
 
-				// Create initial settings
 				await db.insert(shareSettings).values({
 					userId,
 					year,
@@ -735,7 +717,6 @@ describe('Sharing Service', () => {
 				// First set to private-oauth
 				await updateShareSettings(userId, year, { mode: ShareMode.PRIVATE_OAUTH }, true);
 
-				// User changes to public
 				const updated = await updateShareSettings(
 					userId,
 					year,
@@ -770,7 +751,6 @@ describe('Sharing Service', () => {
 				// Admin sets private-link
 				await updateShareSettings(userId, year, { mode: ShareMode.PRIVATE_LINK }, true);
 
-				// User updates something else (mode stays the same)
 				const updated = await updateShareSettings(
 					userId,
 					year,
@@ -803,7 +783,6 @@ describe('Sharing Service', () => {
 				// Set to private-link first
 				await updateShareSettings(userId, year, { mode: ShareMode.PRIVATE_LINK }, true);
 
-				// Switch to public
 				const updated = await updateShareSettings(userId, year, { mode: ShareMode.PUBLIC }, true);
 
 				expect(updated.shareToken).toBeNull();

@@ -1,8 +1,4 @@
-// Types
-
-// Logger instance
 export { logger } from './logger';
-// Retention scheduler
 export {
 	getRetentionSchedulerStatus,
 	isRetentionSchedulerConfigured,
@@ -10,7 +6,6 @@ export {
 	stopLogRetentionScheduler,
 	triggerRetentionCleanup
 } from './retention';
-// Service functions
 export {
 	deleteAllLogs,
 	deleteLogsOlderThan,

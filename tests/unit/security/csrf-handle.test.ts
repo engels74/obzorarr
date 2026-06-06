@@ -134,8 +134,9 @@ describe('csrfHandle (production mode)', () => {
 			expect(rows.length).toBeGreaterThan(0);
 
 			const metadata = rows[0]?.metadata ?? '';
+			// Route IDs are logged instead of raw paths so private-link UUIDs never land
+			// in CSRF diagnostics.
 			expect(metadata).toContain('/wrapped/[year=year]/u/[identifier]');
-			// The raw UUID must NOT appear anywhere in the log metadata.
 			expect(metadata).not.toContain(tokenUUID);
 			expect(metadata).not.toContain('"path"');
 		});
@@ -159,6 +160,8 @@ describe('csrfHandle (production mode)', () => {
 			expect(rows.length).toBeGreaterThan(0);
 
 			const metadata = rows[0]?.metadata ?? '';
+			// Route IDs are logged instead of raw paths so private-link UUIDs never land
+			// in CSRF diagnostics.
 			expect(metadata).toContain('/wrapped/[year=year]/u/[identifier]');
 			expect(metadata).not.toContain(tokenUUID);
 		});
@@ -192,7 +195,6 @@ describe('csrfHandle (production mode)', () => {
 
 			const event = makeEvent({
 				method: 'POST',
-				// Admin is loaded on the real origin and repairs the setting.
 				url: 'https://example.com/admin/settings/security?/updateCsrfOrigin',
 				origin: 'https://example.com',
 				route: { id: '/admin/settings/security' }
@@ -254,7 +256,6 @@ describe('csrfHandle (production mode)', () => {
 			const repairResponse = await invoke(repairWithForgedOrigin);
 			expect(repairResponse.status).toBe(200);
 
-			// A different state-changing route gets no exemption.
 			const otherRoute = makeEvent({
 				method: 'POST',
 				url: 'https://example.com/admin/users?/deleteUser',

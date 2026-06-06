@@ -80,11 +80,9 @@ export async function getAllCustomSlides(year?: number): Promise<CustomSlide[]> 
 	}));
 }
 
-// Retrieves slides that are:
-// 1. Enabled
-// 2. Either matching the specific year OR applicable to all years (year = null)
+// Include all-year slides with the selected year so admins can define evergreen
+// custom content once without copying it into every Wrapped year.
 export async function getEnabledCustomSlides(year: number): Promise<CustomSlide[]> {
-	// Get slides matching the year OR with null year (applicable to all years)
 	const yearMatches = await db
 		.select()
 		.from(customSlides)

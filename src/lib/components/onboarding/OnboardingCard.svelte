@@ -14,7 +14,6 @@ let { title, subtitle, children, footer, class: className = '' }: Props = $props
 
 let cardRef: HTMLElement | undefined = $state();
 
-// Entrance animation
 $effect(() => {
 	if (!cardRef) return;
 
@@ -66,7 +65,6 @@ $effect(() => {
 			opacity: 0; /* Start hidden for animation */
 		}
 
-		/* Ambient glow effect - uses theme primary color */
 		.card-glow {
 			position: absolute;
 			inset: -1px;
@@ -138,7 +136,6 @@ $effect(() => {
 			background: rgba(0, 0, 0, 0.15);
 		}
 
-		/* Responsive */
 		@media (max-width: 640px) {
 			.onboarding-card {
 				max-width: 100%;

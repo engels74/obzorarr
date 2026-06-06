@@ -29,7 +29,6 @@ const sidebar = setSidebar({
 		open = value;
 		onOpenChange(value);
 
-		// This sets the cookie to keep the sidebar state.
 		// biome-ignore lint/suspicious/noDocumentCookie: shadcn-svelte sidebar primitive persists open/closed state directly via document.cookie; Cookie Store API is async + not Safari-stable
 		document.cookie = `${SIDEBAR_COOKIE_NAME}=${open}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
 	}

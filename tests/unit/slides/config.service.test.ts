@@ -52,11 +52,9 @@ describe('Slide Config Service', () => {
 		});
 
 		it('does not duplicate existing slides', async () => {
-			// First initialization
 			await initializeDefaultSlideConfig();
 			const firstCount = (await getAllSlideConfigs()).length;
 
-			// Second initialization
 			await initializeDefaultSlideConfig();
 			const secondCount = (await getAllSlideConfigs()).length;
 
@@ -71,7 +69,6 @@ describe('Slide Config Service', () => {
 				sortOrder: 0
 			});
 
-			// Run initialization (should migrate)
 			await initializeDefaultSlideConfig();
 
 			const config = await getSlideConfigByType('total-time');
@@ -82,7 +79,6 @@ describe('Slide Config Service', () => {
 			// First initialization with migration
 			await initializeDefaultSlideConfig();
 
-			// Disable a slide
 			await updateSlideConfig('total-time', { enabled: false });
 
 			// Second initialization (should not override user's choice)
@@ -220,7 +216,6 @@ describe('Slide Config Service', () => {
 		});
 
 		it('throws NOT_FOUND for non-existent slide', async () => {
-			// Delete all configs first
 			await db.delete(slideConfig);
 
 			let error: SlideError | null = null;
@@ -300,7 +295,6 @@ describe('Slide Config Service', () => {
 		});
 
 		it('toggles enabled slide to disabled', async () => {
-			// Ensure it's enabled first
 			const original = await getSlideConfigByType('total-time');
 			expect(original?.enabled).toBe(true);
 
@@ -309,7 +303,6 @@ describe('Slide Config Service', () => {
 		});
 
 		it('toggles disabled slide to enabled', async () => {
-			// First disable it
 			await updateSlideConfig('total-time', { enabled: false });
 
 			const toggled = await toggleSlide('total-time');
@@ -336,11 +329,9 @@ describe('Slide Config Service', () => {
 
 	describe('resetToDefaultConfig', () => {
 		it('clears and reinitializes all configs', async () => {
-			// Initialize and modify
 			await initializeDefaultSlideConfig();
 			await updateSlideConfig('total-time', { enabled: false, sortOrder: 99 });
 
-			// Reset
 			await resetToDefaultConfig();
 
 			const config = await getSlideConfigByType('total-time');

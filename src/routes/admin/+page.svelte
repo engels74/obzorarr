@@ -20,18 +20,8 @@ import { formatWatchHours } from '$lib/stats/format';
 import { formatDuration } from '$lib/utils/format';
 import type { PageData } from './$types';
 
-/**
- * Admin Dashboard
- *
- * Displays server overview with:
- * - Total users and watch time stats
- * - Sync status and schedule
- * - Quick action links
- */
-
 let { data }: { data: PageData } = $props();
 
-// Format watch time as human-readable
 const formatWatchTime = $derived.by(() => {
 	if (!data.stats) return { hours: 0, days: '0' };
 	const hours = formatWatchHours(data.stats.totalWatchTimeMinutes);
@@ -39,7 +29,6 @@ const formatWatchTime = $derived.by(() => {
 	return { hours, days };
 });
 
-// Format relative time
 function formatRelativeTime(isoDate: string | null): string {
 	if (!isoDate) return 'Never';
 
@@ -58,7 +47,6 @@ function formatRelativeTime(isoDate: string | null): string {
 	return date.toLocaleDateString();
 }
 
-// Format date nicely
 function formatDate(isoDate: string | null): string {
 	if (!isoDate) return 'N/A';
 	return new Date(isoDate).toLocaleString();
@@ -88,7 +76,6 @@ function handleAdminNavigation(event: MouseEvent) {
 	void goto(href);
 }
 
-// Stats configuration with icons and colors
 const statsConfig = $derived([
 	{
 		value: data.userCount,
@@ -122,7 +109,6 @@ const statsConfig = $derived([
 	}
 ]);
 
-// Sync status derived state
 const syncStatus = $derived.by(() => {
 	if (!data.schedulerStatus) return 'unknown';
 	if (data.schedulerStatus.isPaused) return 'paused';
@@ -138,7 +124,6 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 </svelte:head>
 
 <div class="dashboard">
-	<!-- Header with gradient accent -->
 	<header class="dashboard-header">
 		<div class="header-content">
 			<div class="header-text">
@@ -153,7 +138,6 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 		<div class="header-glow"></div>
 	</header>
 
-	<!-- Stats Cards Grid -->
 	<div class="stats-grid">
 		{#each statsConfig as stat, i}
 			<div class="stat-card stat-{stat.color}" style="--delay: {i * 0.1}s">
@@ -173,9 +157,7 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 		{/each}
 	</div>
 
-	<!-- Main Content Grid -->
 	<div class="content-grid">
-		<!-- Sync Status Section -->
 		<section class="section sync-section">
 			<div class="section-header">
 				<div class="section-title-wrap">
@@ -289,7 +271,6 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 			</div>
 		</section>
 
-		<!-- Wrapped Section -->
 		<section class="section wrapped-section">
 			<div class="section-header">
 				<div class="section-title-wrap">
@@ -333,7 +314,6 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 		</section>
 	</div>
 
-	<!-- Quick Actions Section -->
 	<section class="section actions-section">
 		<h2 class="actions-title">Quick Actions</h2>
 
@@ -381,7 +361,6 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 			padding: 1.5rem 2rem 3rem;
 		}
 
-		/* Header */
 		.dashboard-header {
 			position: relative;
 			margin-bottom: 2rem;
@@ -440,7 +419,6 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 			pointer-events: none;
 		}
 
-		/* Stats Grid */
 		.stats-grid {
 			display: grid;
 			grid-template-columns: repeat(4, 1fr);
@@ -576,7 +554,6 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 			margin-top: 0.125rem;
 		}
 
-		/* Content Grid */
 		.content-grid {
 			display: grid;
 			grid-template-columns: 1fr 1fr;
@@ -584,7 +561,6 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 			margin-bottom: 1.5rem;
 		}
 
-		/* Sections */
 		.section {
 			background: oklch(var(--card));
 			border: 1px solid oklch(var(--border));
@@ -637,7 +613,6 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 			gap: 0.5rem;
 		}
 
-		/* Sync Info */
 		.sync-info {
 			display: flex;
 			flex-direction: column;
@@ -781,7 +756,6 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 			font-weight: 500;
 		}
 
-		/* Wrapped Grid */
 		.wrapped-grid {
 			display: grid;
 			grid-template-columns: repeat(3, 1fr);
@@ -913,7 +887,6 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 			transform: translateX(0);
 		}
 
-		/* Actions Section */
 		.actions-section {
 			animation-delay: 0.4s;
 		}
@@ -1000,7 +973,6 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 			transform: translateX(2px);
 		}
 
-		/* Animations */
 		@keyframes slideUp {
 			from {
 				opacity: 0;
@@ -1033,7 +1005,6 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 			}
 		}
 
-		/* Responsive */
 		@media (max-width: 1024px) {
 			.stats-grid {
 				grid-template-columns: repeat(2, 1fr);

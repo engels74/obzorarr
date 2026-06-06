@@ -17,7 +17,6 @@ interface Props {
 
 let { stats, year, username, onRestart, onHome, onShare, class: klass = '' }: Props = $props();
 
-// Computed stats
 const hasHistory = $derived(hasWatchHistory(stats));
 const hours = $derived(Math.floor(stats.totalWatchTimeMinutes / 60));
 const topMovie = $derived(stats.topMovies[0]?.title ?? null);
@@ -30,7 +29,6 @@ const bingeHours = $derived(
 );
 const bingeEpisodes = $derived(stats.longestBinge?.plays ?? null);
 
-// Element refs for animations
 let container: HTMLElement | undefined = $state();
 let header: HTMLElement | undefined = $state();
 let title: HTMLElement | undefined = $state();
@@ -84,7 +82,6 @@ $effect(() => {
 	}
 });
 
-// Entrance animation
 $effect(() => {
 	if (!container || !header || !statsGrid || !buttonsRow) return;
 
@@ -107,11 +104,9 @@ $effect(() => {
 
 	const animations: ReturnType<typeof animate>[] = [];
 
-	// Animate container
 	const containerAnim = animate(container, { opacity: [0, 1] }, { duration: 0.4, delay: 0.1 });
 	animations.push(containerAnim);
 
-	// Animate header
 	const headerAnim = animate(
 		header,
 		{ opacity: [0, 1], transform: ['translateY(-20px)', 'translateY(0)'] },
@@ -119,7 +114,6 @@ $effect(() => {
 	);
 	animations.push(headerAnim);
 
-	// Animate stats grid container
 	const gridAnim = animate(
 		statsGrid,
 		{ opacity: [0, 1] },
@@ -127,7 +121,6 @@ $effect(() => {
 	);
 	animations.push(gridAnim);
 
-	// Animate individual stat cards with stagger
 	const validCards = statCards.filter(Boolean);
 	if (validCards.length > 0) {
 		const cardsAnim = animate(
@@ -145,7 +138,6 @@ $effect(() => {
 		animations.push(cardsAnim);
 	}
 
-	// Animate buttons
 	const buttonsAnim = animate(
 		buttonsRow,
 		{ opacity: [0, 1], transform: ['translateY(20px)', 'translateY(0)'] },
@@ -181,14 +173,12 @@ $effect(() => {
 
 	{#if hasHistory}
 		<div bind:this={statsGrid} class="stats-grid">
-		<!-- Total Watch Time -->
 		<div bind:this={statCards[0]} class="stat-card highlight">
 			<span class="stat-icon">&#128249;</span>
 			<span class="stat-value">{hours.toLocaleString()}</span>
 			<span class="stat-label">hours watched</span>
 		</div>
 
-		<!-- Top Movie -->
 		{#if topMovie}
 			<div bind:this={statCards[1]} class="stat-card">
 				<span class="stat-icon">&#127909;</span>
@@ -197,7 +187,6 @@ $effect(() => {
 			</div>
 		{/if}
 
-		<!-- Top Show -->
 		{#if topShow}
 			<div bind:this={statCards[2]} class="stat-card">
 				<span class="stat-icon">&#128250;</span>
@@ -206,7 +195,6 @@ $effect(() => {
 			</div>
 		{/if}
 
-		<!-- Top Genre -->
 		{#if topGenre}
 			<div bind:this={statCards[3]} class="stat-card">
 				<span class="stat-icon">&#127916;</span>
@@ -215,7 +203,6 @@ $effect(() => {
 			</div>
 		{/if}
 
-		<!-- Percentile (User only) -->
 		{#if percentile !== null}
 			<div bind:this={statCards[4]} class="stat-card accent">
 				<span class="stat-icon">&#127942;</span>
@@ -224,7 +211,6 @@ $effect(() => {
 			</div>
 		{/if}
 
-		<!-- Active Viewers (Server only) -->
 		{#if totalUsers !== null}
 			<div bind:this={statCards[4]} class="stat-card accent">
 				<span class="stat-icon">&#128101;</span>
@@ -233,7 +219,6 @@ $effect(() => {
 			</div>
 		{/if}
 
-		<!-- Longest Binge -->
 		{#if bingeHours}
 			<div bind:this={statCards[5]} class="stat-card">
 				<span class="stat-icon">&#128164;</span>
@@ -354,7 +339,6 @@ $effect(() => {
 			overflow-y: auto;
 		}
 
-		/* Radial overlay for depth */
 		.summary-page::before {
 			content: '';
 			position: absolute;
@@ -363,7 +347,6 @@ $effect(() => {
 			pointer-events: none;
 		}
 
-		/* Noise texture */
 		.summary-page::after {
 			content: '';
 			position: absolute;
@@ -398,7 +381,6 @@ $effect(() => {
 			font-size: clamp(1.75rem, 5vw, 3rem);
 			font-weight: 800;
 			margin: 0 0 0.75rem;
-			/* Gradient text effect */
 			background: linear-gradient(
 				180deg,
 				oklch(var(--primary)) 0%,
@@ -460,7 +442,6 @@ $effect(() => {
 				border-color 0.3s ease;
 		}
 
-		/* Top highlight line */
 		.stat-card::before {
 			content: '';
 			position: absolute;
@@ -486,7 +467,6 @@ $effect(() => {
 			opacity: 1;
 		}
 
-		/* Highlight card (Total Watch Time) */
 		.stat-card.highlight {
 			border-color: oklch(var(--primary) / 0.4);
 			background: linear-gradient(
@@ -515,7 +495,6 @@ $effect(() => {
 			background-clip: text;
 		}
 
-		/* Accent card (Percentile/Ranking) */
 		.stat-card.accent {
 			border-color: oklch(0.8153 0.1652 85.67 / 0.4);
 			background: linear-gradient(135deg, oklch(0.8153 0.1652 85.67 / 0.15) 0%, oklch(0.8153 0.1652 85.67 / 0.05) 100%);
@@ -635,7 +614,6 @@ $effect(() => {
 				0 0 15px oklch(var(--primary) / 0.1);
 		}
 
-		/* Mobile: stack buttons vertically */
 		@media (max-width: 479px) {
 			.summary-page {
 				padding: 1.5rem 1rem;
@@ -671,14 +649,12 @@ $effect(() => {
 			}
 		}
 
-		/* Tablet */
 		@media (min-width: 480px) and (max-width: 767px) {
 			.stats-grid {
 				grid-template-columns: repeat(2, 1fr);
 			}
 		}
 
-		/* Desktop */
 		@media (min-width: 768px) {
 			.stats-grid {
 				grid-template-columns: repeat(3, 1fr);

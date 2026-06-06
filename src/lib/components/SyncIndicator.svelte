@@ -2,15 +2,12 @@
 import type { LiveSyncProgress } from '$lib/sync/types';
 
 interface Props {
-	/** Whether a sync is currently in progress */
 	inProgress: boolean;
-	/** Current sync progress data */
 	progress?: LiveSyncProgress | null;
 }
 
 let { inProgress, progress = null }: Props = $props();
 
-// Derive status text based on sync phase
 const statusText = $derived.by(() => {
 	if (!inProgress || !progress) return 'Updating data...';
 

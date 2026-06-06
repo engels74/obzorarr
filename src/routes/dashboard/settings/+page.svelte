@@ -26,7 +26,6 @@ type RegenerateTokenActionData = {
 	shareToken?: string;
 };
 
-// Tab state
 const validTabs = ['privacy', 'display', 'account'] as const;
 type TabValue = (typeof validTabs)[number];
 
@@ -41,7 +40,6 @@ function getInitialTab(): TabValue {
 
 let activeTab = $state<TabValue>(getInitialTab());
 
-// Form state
 // svelte-ignore state_referenced_locally
 let selectedShareMode = $state<string>(data.shareSettings.mode);
 let selectedLogoPreference = $state<'show' | 'hide'>('show');
@@ -51,7 +49,6 @@ let wrappedHrefOverride = $state<string | null>(null);
 // svelte-ignore state_referenced_locally
 let syncedWrappedHref = $state(data.wrappedHref);
 
-// Copy state
 let copied = $state(false);
 let copyTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -66,7 +63,6 @@ let regenerateDialogOpen = $state(false);
 // svelte-ignore state_referenced_locally
 let syncedShareMode = $state(data.shareSettings.mode);
 
-// Initialize and sync state with data (runs on mount and when data changes)
 $effect(() => {
 	// Only snap the radio selection back when the server-side mode has changed,
 	// not on every reactive pass.  This prevents the transient "all unchecked"
@@ -107,7 +103,6 @@ function isBelowFloor(mode: string): boolean {
 // radio inputs are not submitted by the browser, so `mode` arrives as null).
 let isSelectedModeBelowFloor = $derived(isBelowFloor(selectedShareMode));
 
-// Icon helpers
 function getShareIcon(mode: string): string {
 	switch (mode) {
 		case 'public':
@@ -121,7 +116,6 @@ function getShareIcon(mode: string): string {
 	}
 }
 
-// Share mode descriptions
 const shareModeDescriptions: Record<string, string> = {
 	public: 'Anyone can view your wrapped page',
 	'private-oauth': 'Only Plex server members can view',
@@ -135,13 +129,11 @@ const shareModeLabels: Record<string, string> = {
 	'private-link': 'Private Link'
 };
 
-// Generate share URL
 function getShareUrl(): string {
 	const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
 	return `${baseUrl}${wrappedHrefOverride ?? data.wrappedHref}`;
 }
 
-// Copy to clipboard
 async function copyShareUrl() {
 	try {
 		await navigator.clipboard.writeText(getShareUrl());
@@ -156,7 +148,6 @@ async function copyShareUrl() {
 	}
 }
 
-// Format date helper
 function formatDate(date: Date | null): string {
 	if (!date) return 'Unknown';
 	return new Intl.DateTimeFormat('en-US', {
@@ -165,7 +156,6 @@ function formatDate(date: Date | null): string {
 	}).format(new Date(date));
 }
 
-// Format relative date
 function formatRelativeDate(date: Date | null): string {
 	if (!date) return 'Unknown';
 	const now = new Date();
@@ -179,7 +169,6 @@ function formatRelativeDate(date: Date | null): string {
 	return formatDate(date);
 }
 
-// Logo mode display text
 function getLogoModeDescription(): string {
 	switch (data.wrappedLogoMode) {
 		case 'always_show':
@@ -209,7 +198,6 @@ function getLogoModeDescription(): string {
 			<Tabs.Trigger value="account">Account</Tabs.Trigger>
 		</Tabs.List>
 
-		<!-- Privacy Tab -->
 		<Tabs.Content value="privacy">
 			<section class="section">
 				<h2>Sharing Settings</h2>
@@ -218,7 +206,6 @@ function getLogoModeDescription(): string {
 				</p>
 
 				{#if data.shareSettings.canUserControl}
-					<!-- User has control -->
 					<form
 						method="POST"
 						action="?/updateShareMode"
@@ -323,7 +310,6 @@ function getLogoModeDescription(): string {
 						</div>
 					</form>
 
-					<!-- Share URL Section -->
 					<div class="share-url-section">
 						<h3>Your Wrapped URL</h3>
 						<div class="url-container">
@@ -408,7 +394,6 @@ function getLogoModeDescription(): string {
 						</div>
 					</div>
 
-					<!-- Still show share URL for copying -->
 					<div class="share-url-section readonly">
 						<h3>Your Wrapped URL</h3>
 						<div class="url-container">
@@ -453,7 +438,6 @@ function getLogoModeDescription(): string {
 			</section>
 		</Tabs.Content>
 
-		<!-- Display Tab -->
 		<Tabs.Content value="display">
 			<section class="section">
 				<h2>Logo Visibility</h2>
@@ -462,7 +446,6 @@ function getLogoModeDescription(): string {
 				</p>
 
 				{#if data.canControlLogo}
-					<!-- User can control logo -->
 					<form
 						method="POST"
 						action="?/updateLogoPreference"
@@ -532,7 +515,6 @@ function getLogoModeDescription(): string {
 			</section>
 		</Tabs.Content>
 
-		<!-- Account Tab -->
 		<Tabs.Content value="account">
 			<section class="section">
 				<h2>Profile Information</h2>
@@ -726,7 +708,6 @@ function getLogoModeDescription(): string {
 			border-bottom-color: oklch(var(--primary));
 		}
 
-		/* Section Styling */
 		.section {
 			background: oklch(var(--card));
 			border: 1px solid oklch(var(--border));
@@ -755,7 +736,6 @@ function getLogoModeDescription(): string {
 			margin: 0 0 1.25rem;
 		}
 
-		/* Privacy Card Grid */
 		.privacy-card-grid {
 			display: grid;
 			grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -843,7 +823,6 @@ function getLogoModeDescription(): string {
 			line-height: 1.4;
 		}
 
-		/* Form Actions */
 		.form-actions {
 			margin-top: 1.25rem;
 		}
@@ -869,7 +848,6 @@ function getLogoModeDescription(): string {
 			cursor: not-allowed;
 		}
 
-		/* Share URL Section */
 		.share-url-section {
 			margin-top: 1.5rem;
 			padding-top: 1.5rem;
@@ -950,7 +928,6 @@ function getLogoModeDescription(): string {
 			border-color: oklch(var(--destructive));
 		}
 
-		/* Info Banner */
 		.info-banner {
 			display: flex;
 			gap: 1rem;
@@ -1002,7 +979,6 @@ function getLogoModeDescription(): string {
 			font-weight: 500;
 		}
 
-		/* Profile Card */
 		.profile-card {
 			background: oklch(var(--muted));
 			border-radius: var(--radius);
@@ -1103,7 +1079,6 @@ function getLogoModeDescription(): string {
 			font-size: 0.8rem;
 		}
 
-		/* Account Actions */
 		.account-actions {
 			margin-top: 1.5rem;
 		}
@@ -1153,7 +1128,6 @@ function getLogoModeDescription(): string {
 			height: 1rem;
 		}
 
-		/* Responsive */
 		@media (max-width: 640px) {
 			.settings-page {
 				padding: 1.25rem;

@@ -166,7 +166,6 @@ export async function startBackgroundSync(
 		return { started: false, error: 'A sync is already in progress' };
 	}
 
-	// Use negative timestamp to distinguish from real DB IDs
 	const tempSyncId = -Date.now();
 
 	const signal = startSyncProgress(tempSyncId);

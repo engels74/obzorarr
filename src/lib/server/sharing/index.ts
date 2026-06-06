@@ -46,7 +46,6 @@ export {
 	ShareAccessDeniedError,
 	ShareError,
 	ShareMode,
-	// Privacy level helpers for floor enforcement
 	ShareModePrivacyLevel,
 	ShareModeSchema,
 	ShareSettingsKey,

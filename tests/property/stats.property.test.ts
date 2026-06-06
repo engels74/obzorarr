@@ -27,13 +27,6 @@ import {
 	getYearStartTimestamp
 } from '$lib/server/stats/utils';
 
-// =============================================================================
-// Arbitraries
-// =============================================================================
-
-/**
- * Generate a valid play history record for testing
- */
 const playHistoryRecordArbitrary: fc.Arbitrary<PlayHistoryRecord> = fc.record({
 	id: fc.integer({ min: 1, max: 1000000 }),
 	historyKey: fc.uuid(),
@@ -61,9 +54,6 @@ const playHistoryRecordArbitrary: fc.Arbitrary<PlayHistoryRecord> = fc.record({
 	releaseYear: fc.option(fc.integer({ min: 1900, max: new Date().getFullYear() }), { nil: null })
 });
 
-/**
- * Generate a movie record specifically
- */
 const movieRecordArbitrary: fc.Arbitrary<PlayHistoryRecord> = playHistoryRecordArbitrary.map(
 	(record) => ({
 		...record,
@@ -73,9 +63,6 @@ const movieRecordArbitrary: fc.Arbitrary<PlayHistoryRecord> = playHistoryRecordA
 	})
 );
 
-/**
- * Generate an episode record specifically
- */
 const episodeRecordArbitrary: fc.Arbitrary<PlayHistoryRecord> = fc
 	.record({
 		id: fc.integer({ min: 1, max: 1000000 }),
@@ -105,9 +92,7 @@ const episodeRecordArbitrary: fc.Arbitrary<PlayHistoryRecord> = fc
 	})
 	.map((record) => record as PlayHistoryRecord);
 
-// =============================================================================
 // Property 8: Year Date Range Filtering
-// =============================================================================
 
 describe('Property 8: Year Date Range Filtering', () => {
 	it('year boundaries are correctly calculated', () => {
@@ -119,7 +104,6 @@ describe('Property 8: Year Date Range Filtering', () => {
 				const startDate = new Date(startTimestamp * 1000);
 				const endDate = new Date(endTimestamp * 1000);
 
-				// Start should be Jan 1 00:00:00
 				const isCorrectStart =
 					startDate.getUTCFullYear() === year &&
 					startDate.getUTCMonth() === 0 &&
@@ -128,7 +112,6 @@ describe('Property 8: Year Date Range Filtering', () => {
 					startDate.getUTCMinutes() === 0 &&
 					startDate.getUTCSeconds() === 0;
 
-				// End should be Dec 31 23:59:59
 				const isCorrectEnd =
 					endDate.getUTCFullYear() === year &&
 					endDate.getUTCMonth() === 11 &&
@@ -160,9 +143,7 @@ describe('Property 8: Year Date Range Filtering', () => {
 	});
 });
 
-// =============================================================================
 // Property 9: Watch Time Aggregation
-// =============================================================================
 
 describe('Property 9: Watch Time Aggregation', () => {
 	it('total watch time equals sum of durations', () => {
@@ -175,7 +156,6 @@ describe('Property 9: Watch Time Aggregation', () => {
 
 					const result = calculateWatchTime(records);
 
-					// Allow for small floating point differences
 					return Math.abs(result.totalWatchTimeMinutes - expectedMinutes) < 0.001;
 				}
 			),
@@ -201,11 +181,9 @@ describe('Property 9: Watch Time Aggregation', () => {
 			fc.property(
 				fc.array(playHistoryRecordArbitrary, { minLength: 1, maxLength: 50 }),
 				(records) => {
-					// Force all durations to null
 					const nullDurationRecords = records.map((r) => ({ ...r, duration: null }));
 					const result = calculateWatchTime(nullDurationRecords);
 
-					// Total time should be 0, but plays should equal record count
 					return result.totalWatchTimeMinutes === 0 && result.totalPlays === records.length;
 				}
 			),
@@ -214,9 +192,7 @@ describe('Property 9: Watch Time Aggregation', () => {
 	});
 });
 
-// =============================================================================
 // Property 10: Ranking Correctness
-// =============================================================================
 
 describe('Property 10: Ranking Correctness', () => {
 	it('movie rankings are ordered by count descending', () => {
@@ -290,9 +266,7 @@ describe('Property 10: Ranking Correctness', () => {
 	});
 });
 
-// =============================================================================
 // Property 11: Monthly Distribution Completeness
-// =============================================================================
 
 describe('Property 11: Monthly Distribution Completeness', () => {
 	it('monthly distribution sum equals total watch time', () => {
@@ -356,9 +330,7 @@ describe('Property 11: Monthly Distribution Completeness', () => {
 	});
 });
 
-// =============================================================================
 // Property 12: Hourly Distribution Completeness
-// =============================================================================
 
 describe('Property 12: Hourly Distribution Completeness', () => {
 	it('hourly distribution sum equals total watch time', () => {
@@ -422,9 +394,7 @@ describe('Property 12: Hourly Distribution Completeness', () => {
 	});
 });
 
-// =============================================================================
 // Property 13: Percentile Calculation
-// =============================================================================
 
 describe('Property 13: Percentile Calculation', () => {
 	it('percentile equals (users with less watch time) / N * 100', () => {
@@ -479,7 +449,6 @@ describe('Property 13: Percentile Calculation', () => {
 					// (everyone except themselves has less)
 					const expected = ((watchTimes.length - 1) / watchTimes.length) * 100;
 
-					// Allow for ties affecting the result
 					return (
 						percentile >= expected - 0.001 ||
 						watchTimes.filter((t) => t === maxWatchTime).length > 1
@@ -491,9 +460,7 @@ describe('Property 13: Percentile Calculation', () => {
 	});
 });
 
-// =============================================================================
 // Property 14: Binge Session Detection
-// =============================================================================
 
 describe('Property 14: Binge Session Detection', () => {
 	it('longest binge has maximum totalMinutes among all sessions', () => {
@@ -510,7 +477,6 @@ describe('Property 14: Binge Session Detection', () => {
 						return longestBinge === null;
 					}
 
-					// Longest binge should have maximum totalMinutes
 					const maxMinutes = Math.max(...allBinges.map((b) => b.totalMinutes));
 					return longestBinge !== null && Math.abs(longestBinge.totalMinutes - maxMinutes) < 0.001;
 				}
@@ -562,14 +528,12 @@ describe('Property 14: Binge Session Detection', () => {
 	});
 
 	it('consecutive plays within threshold form a single session', () => {
-		// Create records with small gaps (all within threshold)
 		fc.assert(
 			fc.property(
 				fc.integer({ min: 2, max: 10 }),
 				fc.integer({ min: 1704067200, max: 1735000000 }),
 				fc.integer({ min: 60, max: 1800 }), // Duration 1-30 min
 				(numRecords, startTime, duration) => {
-					// Create records with 15 minute gaps (within 30 min threshold)
 					const records: PlayHistoryRecord[] = [];
 					for (let i = 0; i < numRecords; i++) {
 						records.push({
@@ -594,7 +558,6 @@ describe('Property 14: Binge Session Detection', () => {
 
 					const sessions = detectAllBingeSessions(records);
 
-					// Should be exactly one session containing all records
 					return sessions.length === 1 && sessions[0]?.plays === numRecords;
 				}
 			),
@@ -603,7 +566,6 @@ describe('Property 14: Binge Session Detection', () => {
 	});
 
 	it('large gaps create separate sessions', () => {
-		// Create two groups of records with a large gap between them
 		const records: PlayHistoryRecord[] = [
 			{
 				id: 1,
@@ -645,14 +607,9 @@ describe('Property 14: Binge Session Detection', () => {
 
 		const sessions = detectAllBingeSessions(records);
 
-		// Should be two separate sessions
 		expect(sessions.length).toBe(2);
 	});
 });
-
-// =============================================================================
-// Edge Cases
-// =============================================================================
 
 describe('Edge Cases', () => {
 	it('handles empty arrays for all calculators', () => {

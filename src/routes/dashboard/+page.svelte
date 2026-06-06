@@ -5,12 +5,6 @@ import Sparkles from '@lucide/svelte/icons/sparkles';
 import Star from '@lucide/svelte/icons/star';
 import type { PageData } from './$types';
 
-/**
- * User Dashboard Page
- *
- * Shows options for viewing personal and server-wide wrapped presentations.
- */
-
 interface Props {
 	data: PageData;
 }

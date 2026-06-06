@@ -33,7 +33,6 @@ const sqlite: BunDatabase = new Database(databasePath, {
 	create: true
 });
 
-// WAL mode for concurrent reads - persistent settings
 sqlite.exec('PRAGMA journal_mode = WAL');
 sqlite.exec('PRAGMA synchronous = NORMAL');
 sqlite.exec('PRAGMA foreign_keys = ON');

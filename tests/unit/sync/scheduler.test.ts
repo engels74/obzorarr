@@ -59,13 +59,11 @@ describe('updateSchedulerCron preserves run-state — ISSUE-012 regression guard
 	});
 
 	it('does NOT activate an INACTIVE scheduler when only the cron is updated', () => {
-		// Scheduler is inactive (never set up)
 		const before = getSchedulerStatus();
 		expect(before.isRunning).toBe(false);
 		expect(before.isPaused).toBe(false);
 		expect(before.cronExpression).toBeNull();
 
-		// Updating the cron must not flip it to active
 		updateSchedulerCron('0 6 * * *');
 
 		const after = getSchedulerStatus();
@@ -83,7 +81,6 @@ describe('updateSchedulerCron preserves run-state — ISSUE-012 regression guard
 		const after = getSchedulerStatus();
 		expect(after.isPaused).toBe(true);
 		expect(after.isRunning).toBe(false);
-		// The new expression should be applied
 		expect(after.cronExpression).toBe('0 3 * * *');
 	});
 

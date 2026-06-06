@@ -11,7 +11,6 @@ import type { PageServerLoad } from './$types';
 export const load: PageServerLoad = async () => {
 	const year = new Date().getFullYear();
 
-	// Load all dashboard data in parallel
 	const [
 		userCount,
 		syncedViewerCount,

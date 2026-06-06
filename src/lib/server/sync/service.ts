@@ -43,7 +43,6 @@ function mapPlexRecordToDbInsert(record: ValidPlexHistoryMetadata) {
 		accountId: record.accountID,
 		librarySectionId: parseInt(record.librarySectionID, 10),
 		thumb: record.thumb ?? null,
-		// Convert duration from milliseconds to seconds if present
 		duration: record.duration !== undefined ? Math.floor(record.duration / 1000) : null,
 		grandparentTitle: record.grandparentTitle ?? null,
 		grandparentRatingKey: extractRatingKeyFromPath(record.grandparentKey),

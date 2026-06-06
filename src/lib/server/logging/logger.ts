@@ -14,7 +14,6 @@ class Logger {
 	private readonly DEBUG_CACHE_TTL_MS = 30000;
 
 	async debug(message: string, source?: string, metadata?: Record<string, unknown>): Promise<void> {
-		// Check if debug is enabled (with caching)
 		const debugEnabled = await this.isDebugEnabled();
 		if (!debugEnabled) {
 			return;
@@ -54,13 +53,11 @@ class Logger {
 	private addToBuffer(entry: NewLogEntry): void {
 		this.buffer.push(entry);
 
-		// Flush immediately if buffer is full
 		if (this.buffer.length >= BATCH_SIZE) {
 			this.flush();
 			return;
 		}
 
-		// Schedule flush if not already scheduled
 		if (!this.flushTimer) {
 			this.flushTimer = setTimeout(() => {
 				this.flushTimer = null;
@@ -74,7 +71,6 @@ class Logger {
 			return;
 		}
 
-		// Clear any pending timer
 		if (this.flushTimer) {
 			clearTimeout(this.flushTimer);
 			this.flushTimer = null;
@@ -94,7 +90,6 @@ class Logger {
 			if (this.buffer.length + entries.length <= BATCH_SIZE * 2) {
 				this.buffer = [...entries, ...this.buffer];
 			}
-			// Log to console for visibility
 			console.error('[Logger] Failed to flush logs to database:', error);
 		} finally {
 			this.isFlushing = false;
@@ -114,7 +109,6 @@ class Logger {
 			this.debugEnabledCache = await isDebugEnabled();
 			this.debugCacheExpiry = now + this.DEBUG_CACHE_TTL_MS;
 		} catch {
-			// On error, default to false
 			this.debugEnabledCache = false;
 			this.debugCacheExpiry = now + this.DEBUG_CACHE_TTL_MS;
 		}

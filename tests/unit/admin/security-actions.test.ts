@@ -106,7 +106,6 @@ describe('security nested route — updateCsrfOrigin (OCC + set + clear)', () =>
 		expect(result.status).toBe(409);
 		expect(result.data.requireConfirmation).toBe(true);
 		expect(typeof result.data.csrfMismatchMessage).toBe('string');
-		// No write happened.
 		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBeNull();
 	});
 
@@ -138,7 +137,6 @@ describe('security nested route — updateCsrfOrigin (OCC + set + clear)', () =>
 		const result = await run(csrfRequest({ csrfOrigin: '', settingsVersion: futureVersion }));
 		expect(result).toMatchObject({ status: 400 });
 		expect((result as { data: { error: string } }).data.error).toMatch(/Cannot clear CSRF origin/);
-		// Stored origin untouched.
 		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBe(ORIGIN);
 	});
 

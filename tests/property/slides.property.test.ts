@@ -21,10 +21,6 @@ import {
  * for the slide configuration system.
  */
 
-// =============================================================================
-// Arbitraries
-// =============================================================================
-
 const slideTypeArbitrary: fc.Arbitrary<SlideType> = fc.constantFrom(
 	'total-time',
 	'top-movies',
@@ -52,15 +48,12 @@ const slideOrderArbitrary: fc.Arbitrary<SlideType[]> = fc
 	})
 	.map((arr) => arr as SlideType[]);
 
-// Generate a subset of slides to disable
 const slidesToDisableArbitrary: fc.Arbitrary<SlideType[]> = fc.subarray(
 	[...DEFAULT_SLIDE_ORDER] as SlideType[],
 	{ minLength: 1, maxLength: DEFAULT_SLIDE_ORDER.length - 1 }
 );
 
-// =============================================================================
 // Property 19: Slide Order Persistence
-// =============================================================================
 
 // Feature: obzorarr, Property 19: Slide Order Persistence
 describe('Property 19: Slide Order Persistence', () => {
@@ -74,7 +67,6 @@ describe('Property 19: Slide Order Persistence', () => {
 				// Save the new order
 				await reorderSlides(newOrder);
 
-				// Reload from database
 				const loadedConfigs = await getAllSlideConfigs();
 
 				// Extract order from loaded configs
@@ -121,7 +113,6 @@ describe('Property 19: Slide Order Persistence', () => {
 				await reorderSlides(newOrder);
 				await reorderSlides(newOrder);
 
-				// Load and verify
 				const configs = await getAllSlideConfigs();
 				const loadedOrder = [...configs]
 					.sort((a, b) => a.sortOrder - b.sortOrder)
@@ -142,13 +133,10 @@ describe('Property 19: Slide Order Persistence', () => {
 				slideOrderArbitrary,
 				slideTypeArbitrary,
 				async (newOrder, slideToDisable) => {
-					// Disable a specific slide
 					await updateSlideConfig(slideToDisable, { enabled: false });
 
-					// Reorder slides
 					await reorderSlides(newOrder);
 
-					// Verify the disabled slide is still disabled
 					const config = await getSlideConfigByType(slideToDisable);
 
 					return config !== null && config.enabled === false;
@@ -159,9 +147,7 @@ describe('Property 19: Slide Order Persistence', () => {
 	});
 });
 
-// =============================================================================
 // Property 20: Disabled Slide Exclusion
-// =============================================================================
 
 // Feature: obzorarr, Property 20: Disabled Slide Exclusion
 describe('Property 20: Disabled Slide Exclusion', () => {
@@ -172,19 +158,15 @@ describe('Property 20: Disabled Slide Exclusion', () => {
 	it('disabled slides are not included in enabled slides list', async () => {
 		await fc.assert(
 			fc.asyncProperty(slidesToDisableArbitrary, async (slidesToDisable) => {
-				// Reset before each iteration to ensure clean state
 				await resetToDefaultConfig();
 
-				// Disable selected slides
 				for (const slideType of slidesToDisable) {
 					await updateSlideConfig(slideType, { enabled: false });
 				}
 
-				// Get enabled slides
 				const enabledSlides = await getEnabledSlides();
 				const enabledTypes = enabledSlides.map((s) => s.slideType);
 
-				// Verify none of the disabled slides appear
 				for (const disabledType of slidesToDisable) {
 					if (enabledTypes.includes(disabledType)) {
 						return false;
@@ -200,10 +182,8 @@ describe('Property 20: Disabled Slide Exclusion', () => {
 	it('enabled slides count equals total minus disabled count', async () => {
 		await fc.assert(
 			fc.asyncProperty(slidesToDisableArbitrary, async (slidesToDisable) => {
-				// Reset before each iteration to ensure clean state
 				await resetToDefaultConfig();
 
-				// Disable selected slides
 				for (const slideType of slidesToDisable) {
 					await updateSlideConfig(slideType, { enabled: false });
 				}
@@ -222,7 +202,6 @@ describe('Property 20: Disabled Slide Exclusion', () => {
 	it('re-enabling a slide includes it in enabled list', async () => {
 		await fc.assert(
 			fc.asyncProperty(slideTypeArbitrary, async (slideType) => {
-				// Disable then re-enable
 				await updateSlideConfig(slideType, { enabled: false });
 				await updateSlideConfig(slideType, { enabled: true });
 
@@ -245,10 +224,8 @@ describe('Property 20: Disabled Slide Exclusion', () => {
 
 				const originalSortOrder = original.sortOrder;
 
-				// Disable
 				await updateSlideConfig(slideType, { enabled: false });
 
-				// Get updated config
 				const updatedConfigs = await getAllSlideConfigs();
 				const updated = updatedConfigs.find((c) => c.slideType === slideType);
 
@@ -265,12 +242,10 @@ describe('Property 20: Disabled Slide Exclusion', () => {
 				const originalEnabled = await getEnabledSlides();
 				const originalOrder = originalEnabled.map((s) => s.slideType);
 
-				// Disable slides
 				for (const slideType of slidesToDisable) {
 					await updateSlideConfig(slideType, { enabled: false });
 				}
 
-				// Get new enabled slides
 				const newEnabled = await getEnabledSlides();
 				const newOrder = newEnabled.map((s) => s.slideType);
 
@@ -290,24 +265,17 @@ describe('Property 20: Disabled Slide Exclusion', () => {
 	it('toggle correctly switches enabled state', async () => {
 		await fc.assert(
 			fc.asyncProperty(slideTypeArbitrary, async (slideType) => {
-				// Get initial state
 				const initial = await getSlideConfigByType(slideType);
 				if (!initial) return false;
 
-				// Toggle
 				const toggled = await toggleSlide(slideType);
 
-				// Verify state changed
 				return toggled.enabled === !initial.enabled;
 			}),
 			{ numRuns: 100 }
 		);
 	});
 });
-
-// =============================================================================
-// Additional Unit Tests
-// =============================================================================
 
 describe('Slide Configuration Service', () => {
 	beforeEach(async () => {
@@ -383,14 +351,11 @@ describe('Slide Configuration Service', () => {
 		];
 		await reorderSlides(newOrder);
 
-		// Disable some
 		await updateSlideConfig('binge', { enabled: false });
 		await updateSlideConfig('percentile', { enabled: false });
 
-		// Get enabled slides
 		const enabled = await getEnabledSlides();
 
-		// Verify they are in ascending sortOrder
 		for (let i = 1; i < enabled.length; i++) {
 			const prev = enabled[i - 1];
 			const curr = enabled[i];
@@ -415,7 +380,6 @@ describe('Slide Order Edge Cases', () => {
 
 		const afterConfigs = await getAllSlideConfigs();
 
-		// Verify nothing changed
 		for (const before of beforeConfigs) {
 			const after = afterConfigs.find((c) => c.slideType === before.slideType);
 			expect(after?.sortOrder).toBe(before.sortOrder);

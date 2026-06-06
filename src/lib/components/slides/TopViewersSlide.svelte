@@ -28,7 +28,6 @@ const medalColors = {
 const displayedViewers = $derived(topViewers.slice(0, limit));
 const hasViewers = $derived(displayedViewers.length > 0);
 
-// Element references
 let container: HTMLElement | undefined = $state();
 let listItems: HTMLElement[] = $state([]);
 
@@ -70,7 +69,6 @@ function formatWatchTimeDetailed(minutes: number): string {
 	return `${days}d ${remainingHours}h`;
 }
 
-// Animation effect with cleanup
 $effect(() => {
 	if (!container || !active || !hasViewers) return;
 
@@ -90,19 +88,16 @@ $effect(() => {
 
 	const animations: ReturnType<typeof animate>[] = [];
 
-	// Animate container with directional entry from left
 	const containerAnim = animate(container, KEYFRAMES.slideFromLeft, {
 		type: 'spring',
 		...SPRING_PRESETS.snappy
 	});
 	animations.push(containerAnim);
 
-	// Animate list items with adaptive stagger
 	const validItems = listItems.filter(Boolean);
 	if (validItems.length > 0) {
 		const adaptiveStagger = getAdaptiveStagger(validItems.length);
 
-		// Animate first item with bouncy spring for emphasis
 		const firstItemAnim =
 			validItems[0] &&
 			animate(
@@ -119,7 +114,6 @@ $effect(() => {
 			);
 		if (firstItemAnim) animations.push(firstItemAnim);
 
-		// Animate remaining items with listItem spring
 		const remainingItems = validItems.slice(1);
 		const itemsAnim =
 			remainingItems.length > 0 &&
@@ -267,7 +261,6 @@ $effect(() => {
 				border-color 0.3s ease;
 		}
 
-		/* Top highlight line */
 		.viewer-item::before {
 			content: '';
 			position: absolute;
@@ -293,7 +286,6 @@ $effect(() => {
 			opacity: 1;
 		}
 
-		/* Top 3 special styling */
 		.viewer-item.top-three {
 			background: var(--slide-glass-bg);
 			border-color: oklch(var(--primary) / 0.25);
@@ -333,7 +325,6 @@ $effect(() => {
 			text-align: center;
 		}
 
-		/* Medal badge for top 3 */
 		.medal-badge {
 			width: 40px;
 			height: 40px;
@@ -439,7 +430,6 @@ $effect(() => {
 			margin-top: 1.5rem;
 		}
 
-		/* Mobile: compact single column */
 		@media (max-width: 767px) {
 			.content {
 				gap: 1.5rem;
@@ -487,7 +477,6 @@ $effect(() => {
 			}
 		}
 
-		/* Tablet: wider single column */
 		@media (min-width: 768px) and (max-width: 1023px) {
 			.content {
 				max-width: var(--content-max-md, 750px);
@@ -522,7 +511,6 @@ $effect(() => {
 			}
 		}
 
-		/* Desktop: 2-column grid */
 		@media (min-width: 1024px) {
 			.content {
 				max-width: var(--content-max-lg, 900px);

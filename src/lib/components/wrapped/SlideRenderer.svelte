@@ -46,23 +46,19 @@ let {
 	messagingContext = createPersonalContext()
 }: Props = $props();
 
-// Type guard for user stats
 function isUserStats(s: UserStats | ServerStats): s is UserStats {
 	return 'userId' in s && 'percentileRank' in s;
 }
 
-// Get custom slide data if applicable
 const customSlideData = $derived(
 	slide.type === 'custom' && slide.customSlideId !== undefined
 		? customSlides?.get(slide.customSlideId)
 		: undefined
 );
 
-// Get percentile rank (only available in UserStats)
 const percentileRank = $derived(isUserStats(stats) ? stats.percentileRank : 50);
 const totalUsers = $derived(!isUserStats(stats) ? stats.totalUsers : undefined);
 
-// Get top viewers (only available in ServerStats)
 const topViewers = $derived(!isUserStats(stats) ? stats.topViewers : []);
 </script>
 

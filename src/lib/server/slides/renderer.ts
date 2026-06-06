@@ -62,7 +62,6 @@ export function validateMarkdownSyntax(content: string): MarkdownValidationResul
 
 		const inlineCodeMatches = content.match(/(?<!`)`(?!`)/g) ?? [];
 		if (inlineCodeMatches.length % 2 !== 0) {
-			// Warning only - Markdown can handle unclosed inline code
 		}
 
 		return { valid: true, errors: [] };
@@ -74,21 +73,17 @@ export function validateMarkdownSyntax(content: string): MarkdownValidationResul
 }
 
 export function markdownToPlainText(content: string, maxLength: number = 200): string {
-	// Parse to HTML first
 	const html = renderMarkdownSync(content);
 
-	// Remove HTML tags
 	const plainText = html
 		.replace(/<[^>]*>/g, ' ') // Replace tags with spaces
 		.replace(/\s+/g, ' ') // Collapse whitespace
 		.trim();
 
-	// Truncate if needed
 	if (plainText.length <= maxLength) {
 		return plainText;
 	}
 
-	// Truncate at word boundary
 	const truncated = plainText.slice(0, maxLength);
 	const lastSpace = truncated.lastIndexOf(' ');
 

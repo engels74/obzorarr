@@ -12,16 +12,8 @@ import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
 import { Button } from '$lib/components/ui/button';
 import type { ActionData, PageData } from './$types';
 
-/**
- * Onboarding Step 2: Initial Data Sync
- *
- * Shows sync progress with SSE updates.
- * User can continue while sync runs in background.
- */
-
 let { data, form }: { data: PageData; form: ActionData } = $props();
 
-// Sync state - initialized from server data, updated via SSE
 // Using untrack() to explicitly capture initial values (state is updated via SSE, not prop changes)
 type SyncStatus = 'idle' | 'running' | 'completed' | 'failed' | 'cancelled';
 
@@ -37,7 +29,6 @@ let isStarting = $state(false);
 let isCancelling = $state(false);
 let error = $state<string | null>(null);
 
-// SSE connection
 let eventSource: EventSource | null = null;
 // Pending auto-reconnect timer + a teardown flag. Without these, the 2s
 // reconnect scheduled in `onerror` outlives component unmount (the user
@@ -46,11 +37,9 @@ let eventSource: EventSource | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let sseDisconnected = false;
 
-// Animation refs
 let contentRef: HTMLElement | undefined = $state();
 let progressRef: HTMLElement | undefined = $state();
 
-// Computed
 const enrichmentProgress = $derived(
 	enrichmentTotal > 0 ? Math.round((enrichmentProcessed / enrichmentTotal) * 100) : 0
 );
@@ -69,7 +58,6 @@ const phaseText = $derived(() => {
 	return 'Ready to sync';
 });
 
-// Content animation
 $effect(() => {
 	if (!contentRef) return;
 	const items = contentRef.querySelectorAll('.animate-item');
@@ -84,7 +72,6 @@ $effect(() => {
 	return () => animation.stop?.();
 });
 
-// Progress ring animation on complete
 $effect(() => {
 	if (!progressRef || !isComplete) return;
 
@@ -96,7 +83,6 @@ $effect(() => {
 	);
 });
 
-// SSE connection helper with reconnection support
 function setupEventSource(es: EventSource) {
 	es.onmessage = (event) => {
 		try {
@@ -104,7 +90,6 @@ function setupEventSource(es: EventSource) {
 
 			switch (eventData.type) {
 				case 'connected':
-					// Handle initial connection with current progress state
 					if (eventData.inProgress && eventData.progress) {
 						syncStatus = 'running';
 						recordsProcessed = eventData.progress.recordsProcessed ?? 0;
@@ -135,7 +120,6 @@ function setupEventSource(es: EventSource) {
 					syncStatus = 'cancelled';
 					break;
 				case 'idle':
-					// Sync finished before we connected
 					if (syncStatus === 'running') {
 						syncStatus = 'completed';
 					}
@@ -150,7 +134,6 @@ function setupEventSource(es: EventSource) {
 		// Bail if the component was torn down: a closed ES can still deliver a
 		// pending `onerror`, which would otherwise schedule an orphaned timer.
 		if (sseDisconnected) return;
-		// Connection lost - attempt reconnection after delay
 		console.warn('SSE connection lost, attempting reconnect...');
 		es.close();
 		eventSource = null;
@@ -169,7 +152,6 @@ function setupEventSource(es: EventSource) {
 	};
 }
 
-// Connect to SSE when sync starts
 $effect(() => {
 	if (!browser) return;
 	if (!isRunning && !data.syncRunning) return;
@@ -190,7 +172,6 @@ $effect(() => {
 	};
 });
 
-// Handle form submission result
 $effect(() => {
 	if (form?.success) {
 		syncStatus = 'running';
@@ -207,7 +188,6 @@ function handleStartSync() {
 	error = null;
 }
 
-// Format number with animation-friendly display
 function formatNumber(n: number): string {
 	return n.toLocaleString();
 }
@@ -218,7 +198,6 @@ function formatNumber(n: number): string {
 	subtitle="Import your {data.currentYear} Plex viewing data to generate your personalized Wrapped"
 >
 	<div class="sync-content" bind:this={contentRef}>
-		<!-- Progress Ring -->
 		<div class="progress-wrapper animate-item" bind:this={progressRef}>
 			<div
 				class="progress-ring"
@@ -226,12 +205,10 @@ function formatNumber(n: number): string {
 				class:complete={isComplete}
 				class:failed={hasFailed}
 			>
-				<!-- Background ring -->
 				<svg class="ring-bg" viewBox="0 0 120 120">
 					<circle cx="60" cy="60" r="52" />
 				</svg>
 
-				<!-- Progress ring -->
 				<svg class="ring-progress" viewBox="0 0 120 120">
 					<circle
 						cx="60"
@@ -241,7 +218,6 @@ function formatNumber(n: number): string {
 					/>
 				</svg>
 
-				<!-- Center content -->
 				<div class="ring-center">
 					{#if !hasStarted}
 						<div class="ring-icon idle">
@@ -273,12 +249,10 @@ function formatNumber(n: number): string {
 					{/if}
 				</div>
 
-				<!-- Glow effect -->
 				<div class="ring-glow"></div>
 			</div>
 		</div>
 
-		<!-- Phase indicator -->
 		<div class="phase-section animate-item">
 			<p
 				class="phase-text"
@@ -315,7 +289,6 @@ function formatNumber(n: number): string {
 			{/if}
 		</div>
 
-		<!-- Start button (when idle) -->
 		{#if !hasStarted}
 			<form
 				method="POST"
@@ -342,7 +315,6 @@ function formatNumber(n: number): string {
 			</p>
 		{/if}
 
-		<!-- Error display -->
 		{#if error}
 			<div class="error-banner">
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -354,7 +326,6 @@ function formatNumber(n: number): string {
 			</div>
 		{/if}
 
-		<!-- Warning banner (while running) -->
 		{#if isRunning}
 			<div class="warning-banner">
 				<div class="warning-icon">
@@ -375,7 +346,6 @@ function formatNumber(n: number): string {
 			</div>
 		{/if}
 
-		<!-- Success message -->
 		{#if isComplete}
 			<div class="success-banner">
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -389,7 +359,6 @@ function formatNumber(n: number): string {
 			</div>
 		{/if}
 
-		<!-- Info about continuing -->
 		{#if hasStarted && !hasFailed}
 			<p class="continue-hint">
 				{#if isComplete}
@@ -459,7 +428,6 @@ function formatNumber(n: number): string {
 			opacity: 0;
 		}
 
-		/* Progress Ring */
 		.progress-wrapper {
 			position: relative;
 			width: 120px;
@@ -520,7 +488,6 @@ function formatNumber(n: number): string {
 			stroke: oklch(0.6356 0.2082 25.38);
 		}
 
-		/* Ring center */
 		.ring-center {
 			position: absolute;
 			inset: 0;
@@ -554,7 +521,6 @@ function formatNumber(n: number): string {
 			color: oklch(0.6356 0.2082 25.38);
 		}
 
-		/* Spinner dots */
 		.spinner-dots {
 			display: flex;
 			gap: 6px;
@@ -591,7 +557,6 @@ function formatNumber(n: number): string {
 			}
 		}
 
-		/* Ring glow */
 		.ring-glow {
 			position: absolute;
 			inset: -10px;
@@ -624,7 +589,6 @@ function formatNumber(n: number): string {
 			}
 		}
 
-		/* Phase section */
 		.phase-section {
 			text-align: center;
 			width: 100%;
@@ -656,7 +620,6 @@ function formatNumber(n: number): string {
 			color: oklch(0.6356 0.2082 25.38);
 		}
 
-		/* Stats row */
 		.stats-row {
 			display: flex;
 			justify-content: center;
@@ -710,7 +673,6 @@ function formatNumber(n: number): string {
 			background: rgba(255, 255, 255, 0.1);
 		}
 
-		/* Enrichment progress */
 		.enrichment-progress {
 			margin-top: 1rem;
 			width: 100%;
@@ -779,7 +741,6 @@ function formatNumber(n: number): string {
 		}
 
 
-		/* Warning banner */
 		.warning-banner {
 			display: flex;
 			align-items: flex-start;
@@ -822,7 +783,6 @@ function formatNumber(n: number): string {
 			line-height: 1.5;
 		}
 
-		/* Success banner */
 		.success-banner {
 			display: flex;
 			align-items: center;
@@ -843,7 +803,6 @@ function formatNumber(n: number): string {
 			height: 20px;
 		}
 
-		/* Error banner */
 		.error-banner {
 			display: flex;
 			align-items: center;
@@ -864,7 +823,6 @@ function formatNumber(n: number): string {
 			height: 18px;
 		}
 
-		/* Pre-sync hint */
 		.pre-sync-hint {
 			margin: 0.5rem 0 0;
 			font-size: 0.8rem;
@@ -872,7 +830,6 @@ function formatNumber(n: number): string {
 			text-align: center;
 		}
 
-		/* Continue hint */
 		.continue-hint {
 			margin: 0;
 			font-size: 0.85rem;
@@ -881,7 +838,6 @@ function formatNumber(n: number): string {
 			animation: fade-slide-in 0.3s ease-out;
 		}
 
-		/* Footer actions (Cancel + Continue) */
 		.footer-actions {
 			display: flex;
 			gap: 0.75rem;
@@ -959,7 +915,6 @@ function formatNumber(n: number): string {
 			box-shadow: none;
 		}
 
-		/* Responsive */
 		@media (max-width: 480px) {
 			.progress-wrapper {
 				width: 100px;

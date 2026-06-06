@@ -19,9 +19,8 @@ let proxyStartupLogged = false;
 // reference via closure. The successful .then path never writes back to the
 // slot on resolution, so it cannot pollute the cache after reset.
 //
-// Rejections are self-evicting with an identity check: if
-// getTrustProxyConfigWithSource() rejects (or the .then callback throws), the
-// chained .catch nulls the slot ONLY when its own promise is still the current
+// If getTrustProxyConfigWithSource() rejects (or the .then callback throws),
+// the chained .catch nulls the slot ONLY when its own promise is still the current
 // one. That guard prevents a late rejection from a pre-reset chain from
 // clobbering a freshly-populated post-reset chain. The current caller still
 // fails fast, and the next miss starts a fresh fetch — so a transient DB error

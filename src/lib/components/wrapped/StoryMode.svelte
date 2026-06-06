@@ -130,7 +130,6 @@ function startNavigation(direction: 'forward' | 'backward', move: () => boolean)
 
 function goToNext(): void {
 	if (isTransitioning || !navigation.canGoNext) {
-		// If on last slide and trying to go next, call onComplete
 		if (navigation.isLast && !isTransitioning) {
 			onComplete?.();
 		}
@@ -374,12 +373,9 @@ function handleSlideAnimationComplete(): void {}
 	ontouchend={handleTouchEnd}
 	tabindex="0"
 >
-	<!-- Progress indicator -->
 	<ProgressBar current={navigation.currentSlide} total={slides.length} />
 
-	<!-- Slide container -->
 	<div class="slides-container">
-		<!-- Previous slide (for exit animation) -->
 		{#if showPreviousSlide && previousSlide}
 			<div bind:this={previousSlideEl} class="slide previous-slide">
 				<SlideRenderer
@@ -392,7 +388,6 @@ function handleSlideAnimationComplete(): void {}
 			</div>
 		{/if}
 
-		<!-- Current slide -->
 		{#if currentSlide}
 			{#key navigation.currentSlide}
 				<div bind:this={currentSlideEl} class="slide current-slide">
@@ -409,14 +404,12 @@ function handleSlideAnimationComplete(): void {}
 		{/if}
 	</div>
 
-	<!-- Navigation hint (first slide only) -->
 	{#if navigation.isFirst && !isTransitioning}
 		<div class="navigation-hint">
 			<span>Tap to continue</span>
 		</div>
 	{/if}
 
-	<!-- Mobile navigation arrows -->
 	<div class="nav-arrows">
 		{#if !navigation.isFirst}
 			<button
@@ -450,7 +443,6 @@ function handleSlideAnimationComplete(): void {}
 		{/if}
 	</div>
 
-	<!-- Close button -->
 	{#if onClose}
 		<button
 			type="button"
@@ -511,7 +503,6 @@ function handleSlideAnimationComplete(): void {}
 			opacity: 1;
 		}
 
-		/* Noise texture layer - covers entire viewport */
 		.story-mode::before {
 			content: '';
 			position: absolute;
@@ -523,7 +514,6 @@ function handleSlideAnimationComplete(): void {}
 			z-index: 1;
 		}
 
-		/* Vignette overlay - covers entire viewport */
 		.story-mode::after {
 			content: '';
 			position: absolute;
@@ -627,7 +617,6 @@ function handleSlideAnimationComplete(): void {}
 			height: 1.25rem;
 		}
 
-		/* Mobile: compact layout */
 		@media (max-width: 767px) {
 			.slide {
 				padding: 2rem 1rem;
@@ -655,7 +644,6 @@ function handleSlideAnimationComplete(): void {}
 		}
 
 
-		/* Mobile nav arrows */
 		.nav-arrows {
 			display: none;
 		}
@@ -707,7 +695,6 @@ function handleSlideAnimationComplete(): void {}
 				height: 1.5rem;
 			}
 		}
-		/* Tablet: medium layout */
 		@media (min-width: 768px) {
 			.slide {
 				padding: 3rem 2rem;
@@ -715,7 +702,6 @@ function handleSlideAnimationComplete(): void {}
 			}
 		}
 
-		/* Desktop: generous layout */
 		@media (min-width: 1024px) {
 			.slide {
 				padding: 4rem 3rem;

@@ -24,7 +24,6 @@ import {
 
 import { createPlayHistoryRecord } from '../../helpers/factories';
 
-// Alias for cleaner test code
 const createRecord = createPlayHistoryRecord;
 
 describe('Utils', () => {
@@ -58,22 +57,16 @@ describe('Utils', () => {
 
 	describe('getMonthFromTimestamp', () => {
 		it('returns correct month (0-indexed)', () => {
-			// Jan 1, 2024
 			expect(getMonthFromTimestamp(1704067200)).toBe(0);
-			// July 1, 2024
 			expect(getMonthFromTimestamp(1719792000)).toBe(6);
-			// Dec 31, 2024
 			expect(getMonthFromTimestamp(1735603199)).toBe(11);
 		});
 	});
 
 	describe('getHourFromTimestamp', () => {
 		it('returns correct hour (0-23)', () => {
-			// Jan 1, 2024 00:00 UTC
 			expect(getHourFromTimestamp(1704067200)).toBe(0);
-			// Jan 1, 2024 12:00 UTC
 			expect(getHourFromTimestamp(1704110400)).toBe(12);
-			// Jan 1, 2024 23:00 UTC
 			expect(getHourFromTimestamp(1704150000)).toBe(23);
 		});
 	});
@@ -422,7 +415,6 @@ describe('Distribution Calculators', () => {
 
 describe('Percentile Calculator', () => {
 	it('calculates percentile correctly', () => {
-		// User with 100 min, others have 50, 75, 150
 		// 2 users have less than 100, so percentile = 2/4 * 100 = 50
 		const percentile = calculatePercentileRank(100, [50, 75, 100, 150]);
 		expect(percentile).toBe(50);
@@ -445,7 +437,6 @@ describe('Percentile Calculator', () => {
 	});
 
 	it('handles ties correctly', () => {
-		// Two users with same watch time
 		const percentile = calculatePercentileRank(50, [50, 50, 100]);
 		// 0 users have less than 50, so 0%
 		expect(percentile).toBe(0);
@@ -482,17 +473,13 @@ describe('Binge Detector', () => {
 
 	it('returns the session with max duration', () => {
 		const records = [
-			// First session: 2 short movies
 			createRecord({ viewedAt: 1704067200, duration: 1800 }), // 30 min
 			createRecord({ id: 2, historyKey: 'key-2', viewedAt: 1704068000, duration: 1800 }), // 30 min
-			// Gap of 2 hours
-			// Second session: 1 long movie
 			createRecord({ id: 3, historyKey: 'key-3', viewedAt: 1704074400, duration: 7200 }) // 2 hours
 		];
 
 		const longest = detectLongestBinge(records);
 
-		// Second session has more total time (2 hours vs 1 hour)
 		expect(longest?.totalMinutes).toBe(120);
 		expect(longest?.plays).toBe(1);
 	});

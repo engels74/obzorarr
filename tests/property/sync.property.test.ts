@@ -32,21 +32,15 @@ function getYearStartTimestamp(year: number): number {
  * Validates: Requirements 2.3, 2.4, 2.5
  */
 
-// =============================================================================
-// Test Database Setup
-// =============================================================================
-
 /**
  * Create an in-memory test database with schema
  */
 function createTestDatabase() {
 	const sqlite = new Database(':memory:', { strict: true });
 
-	// Enable WAL mode and foreign keys
 	sqlite.exec('PRAGMA journal_mode = WAL');
 	sqlite.exec('PRAGMA foreign_keys = ON');
 
-	// Create tables
 	sqlite.exec(`
 		CREATE TABLE IF NOT EXISTS play_history (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -83,13 +77,6 @@ function createTestDatabase() {
 	return drizzle(sqlite, { schema });
 }
 
-// =============================================================================
-// Test Types
-// =============================================================================
-
-/**
- * Test record type matching the generated arbitrary
- */
 interface TestPlexRecord {
 	historyKey: string;
 	ratingKey: string;
@@ -104,10 +91,6 @@ interface TestPlexRecord {
 	parentTitle: string | undefined;
 }
 
-// =============================================================================
-// Arbitraries
-// =============================================================================
-
 /**
  * Arbitrary for generating valid Plex history metadata
  */
@@ -118,7 +101,6 @@ const plexHistoryArbitrary: fc.Arbitrary<TestPlexRecord> = fc.record({
 	type: fc.constantFrom('movie', 'episode', 'track') as fc.Arbitrary<'movie' | 'episode' | 'track'>,
 	viewedAt: fc.integer({ min: 1577836800, max: 1893456000 }), // 2020-01-01 to 2030-01-01
 	accountID: fc.integer({ min: 1, max: 1000000 }),
-	// Generate numeric string for librarySectionID
 	librarySectionID: fc.integer({ min: 1, max: 99999 }).map((n) => String(n)),
 	thumb: fc.option(fc.webUrl(), { nil: undefined }),
 	duration: fc.option(fc.integer({ min: 0, max: 10000000 }), { nil: undefined }),
@@ -132,16 +114,11 @@ const plexHistoryArbitrary: fc.Arbitrary<TestPlexRecord> = fc.record({
 const uniquePlexHistoryArrayArbitrary = fc
 	.array(plexHistoryArbitrary, { minLength: 1, maxLength: 50 })
 	.map((records) => {
-		// Ensure unique historyKeys by appending index
 		return records.map((record, index) => ({
 			...record,
 			historyKey: `${record.historyKey}-${index}-${Date.now()}`
 		}));
 	});
-
-// =============================================================================
-// Helper Functions
-// =============================================================================
 
 /**
  * Convert Plex record to database insert format
@@ -171,17 +148,14 @@ async function insertRecordsAndCreateSync(
 ): Promise<{ syncId: number; maxViewedAt: number; insertedCount: number }> {
 	const dbRecords = records.map(mapPlexRecordToDbInsert);
 
-	// Insert all records
 	const insertResult = await db
 		.insert(schema.playHistory)
 		.values(dbRecords)
 		.onConflictDoNothing({ target: schema.playHistory.historyKey })
 		.returning({ id: schema.playHistory.id });
 
-	// Calculate max viewedAt
 	const maxViewedAt = Math.max(...records.map((r) => r.viewedAt));
 
-	// Create sync status record
 	const syncResult = await db
 		.insert(schema.syncStatus)
 		.values({
@@ -205,9 +179,7 @@ async function insertRecordsAndCreateSync(
 	};
 }
 
-// =============================================================================
 // Property 5: History Record Field Completeness
-// =============================================================================
 
 // Feature: obzorarr, Property 5: History Record Field Completeness
 describe('Property 5: History Record Field Completeness', () => {
@@ -216,19 +188,15 @@ describe('Property 5: History Record Field Completeness', () => {
 			fc.asyncProperty(uniquePlexHistoryArrayArbitrary, async (records) => {
 				const db = createTestDatabase();
 
-				// Insert records
 				const dbRecords = records.map(mapPlexRecordToDbInsert);
 				await db
 					.insert(schema.playHistory)
 					.values(dbRecords)
 					.onConflictDoNothing({ target: schema.playHistory.historyKey });
 
-				// Query back all records
 				const storedRecords = await db.select().from(schema.playHistory);
 
-				// Verify all required fields are present and non-null
 				for (const stored of storedRecords) {
-					// Required fields must be defined and non-null
 					expect(stored.historyKey).toBeDefined();
 					expect(stored.historyKey).not.toBeNull();
 					expect(stored.ratingKey).toBeDefined();
@@ -244,7 +212,6 @@ describe('Property 5: History Record Field Completeness', () => {
 					expect(stored.librarySectionId).toBeDefined();
 					expect(stored.librarySectionId).not.toBeNull();
 
-					// Type checks
 					expect(typeof stored.historyKey).toBe('string');
 					expect(typeof stored.ratingKey).toBe('string');
 					expect(typeof stored.title).toBe('string');
@@ -265,17 +232,14 @@ describe('Property 5: History Record Field Completeness', () => {
 			fc.asyncProperty(uniquePlexHistoryArrayArbitrary, async (records) => {
 				const db = createTestDatabase();
 
-				// Insert records
 				const dbRecords = records.map(mapPlexRecordToDbInsert);
 				await db
 					.insert(schema.playHistory)
 					.values(dbRecords)
 					.onConflictDoNothing({ target: schema.playHistory.historyKey });
 
-				// Query back all records
 				const storedRecords = await db.select().from(schema.playHistory);
 
-				// Check for unique historyKeys
 				const historyKeys = storedRecords.map((r) => r.historyKey);
 				const uniqueKeys = new Set(historyKeys);
 
@@ -290,17 +254,14 @@ describe('Property 5: History Record Field Completeness', () => {
 			fc.asyncProperty(uniquePlexHistoryArrayArbitrary, async (records) => {
 				const db = createTestDatabase();
 
-				// Insert records
 				const dbRecords = records.map(mapPlexRecordToDbInsert);
 				await db
 					.insert(schema.playHistory)
 					.values(dbRecords)
 					.onConflictDoNothing({ target: schema.playHistory.historyKey });
 
-				// Query back all records
 				const storedRecords = await db.select().from(schema.playHistory);
 
-				// All types should be valid
 				const validTypes = ['movie', 'episode', 'track'];
 				for (const stored of storedRecords) {
 					expect(validTypes).toContain(stored.type);
@@ -313,9 +274,7 @@ describe('Property 5: History Record Field Completeness', () => {
 	});
 });
 
-// =============================================================================
 // Property 6: Sync Timestamp Tracking
-// =============================================================================
 
 // Feature: obzorarr, Property 6: Sync Timestamp Tracking
 describe('Property 6: Sync Timestamp Tracking', () => {
@@ -324,10 +283,8 @@ describe('Property 6: Sync Timestamp Tracking', () => {
 			fc.asyncProperty(uniquePlexHistoryArrayArbitrary, async (records) => {
 				const db = createTestDatabase();
 
-				// Insert records and create sync
 				const { syncId, maxViewedAt } = await insertRecordsAndCreateSync(db, records);
 
-				// Query the sync status
 				const syncResult = await db
 					.select()
 					.from(schema.syncStatus)
@@ -338,7 +295,6 @@ describe('Property 6: Sync Timestamp Tracking', () => {
 				expect(sync).toBeDefined();
 				expect(sync?.lastViewedAt).toBe(maxViewedAt);
 
-				// Calculate expected max from records
 				const expectedMax = Math.max(...records.map((r) => r.viewedAt));
 				expect(sync?.lastViewedAt).toBe(expectedMax);
 
@@ -353,7 +309,6 @@ describe('Property 6: Sync Timestamp Tracking', () => {
 			fc.asyncProperty(uniquePlexHistoryArrayArbitrary, async (records) => {
 				const db = createTestDatabase();
 
-				// Insert records and create sync
 				const { maxViewedAt } = await insertRecordsAndCreateSync(db, records);
 
 				// Verify it's a valid Unix timestamp (2020-01-01 to 2030-01-01)
@@ -384,10 +339,8 @@ describe('Property 6: Sync Timestamp Tracking', () => {
 				async (records) => {
 					const db = createTestDatabase();
 
-					// Calculate expected max viewedAt
 					const expectedMaxViewedAt = Math.max(...records.map((r) => r.viewedAt));
 
-					// Insert sync with this max
 					const syncResult = await db
 						.insert(schema.syncStatus)
 						.values({
@@ -408,9 +361,7 @@ describe('Property 6: Sync Timestamp Tracking', () => {
 	});
 });
 
-// =============================================================================
 // Property 7: Incremental Sync Filtering
-// =============================================================================
 
 // Feature: obzorarr, Property 7: Incremental Sync Filtering
 describe('Property 7: Incremental Sync Filtering', () => {
@@ -422,7 +373,6 @@ describe('Property 7: Incremental Sync Filtering', () => {
 						fc.record({
 							recordsProcessed: fc.integer({ min: 0, max: 10000 }),
 							lastViewedAt: fc.integer({ min: 1600000000, max: 1700000000 }),
-							// Use integer seconds to ensure distinct timestamps
 							completedAtSeconds: fc.integer({
 								min: Math.floor(new Date('2020-01-01').getTime() / 1000),
 								max: Math.floor(new Date('2025-01-01').getTime() / 1000)
@@ -430,7 +380,6 @@ describe('Property 7: Incremental Sync Filtering', () => {
 						}),
 						{ minLength: 2, maxLength: 10 }
 					)
-					// Ensure unique completedAtSeconds values
 					.map((syncs) => {
 						const seen = new Set<number>();
 						return syncs.filter((s) => {
@@ -439,12 +388,10 @@ describe('Property 7: Incremental Sync Filtering', () => {
 							return true;
 						});
 					})
-					// Filter out empty arrays after deduplication
 					.filter((syncs) => syncs.length >= 2),
 				async (syncs) => {
 					const db = createTestDatabase();
 
-					// Insert multiple completed syncs
 					for (const sync of syncs) {
 						const completedAt = new Date(sync.completedAtSeconds * 1000);
 						await db.insert(schema.syncStatus).values({
@@ -456,7 +403,6 @@ describe('Property 7: Incremental Sync Filtering', () => {
 						});
 					}
 
-					// Query the most recent completed sync
 					const result = await db
 						.select()
 						.from(schema.syncStatus)
@@ -467,14 +413,12 @@ describe('Property 7: Incremental Sync Filtering', () => {
 					const mostRecent = result[0];
 					if (!mostRecent) return false;
 
-					// Find expected most recent from our data
 					const sortedSyncs = [...syncs].sort(
 						(a, b) => b.completedAtSeconds - a.completedAtSeconds
 					);
 					const expected = sortedSyncs[0];
 					if (!expected) return false;
 
-					// The most recent sync should have the expected lastViewedAt
 					return mostRecent.lastViewedAt === expected.lastViewedAt;
 				}
 			),
@@ -483,8 +427,8 @@ describe('Property 7: Incremental Sync Filtering', () => {
 	});
 
 	it('incremental sync should use lastViewedAt from previous sync as minViewedAt filter', async () => {
-		// This test verifies the logic that the sync service uses
-		// by simulating what would happen during incremental sync
+		// The sync service applies this indirectly; model the incremental filter so
+		// the stored watermark cannot regress between sync runs.
 		await fc.assert(
 			fc.asyncProperty(
 				fc.integer({ min: 1600000000, max: 1700000000 }), // firstSyncLastViewedAt
@@ -492,7 +436,6 @@ describe('Property 7: Incremental Sync Filtering', () => {
 				async (firstSyncLastViewedAt, _offset) => {
 					const db = createTestDatabase();
 
-					// Create first sync with known lastViewedAt
 					await db.insert(schema.syncStatus).values({
 						startedAt: new Date(),
 						completedAt: new Date(),
@@ -529,7 +472,6 @@ describe('Property 7: Incremental Sync Filtering', () => {
 				async (status: string) => {
 					const db = createTestDatabase();
 
-					// Create a sync with the given status
 					await db.insert(schema.syncStatus).values({
 						startedAt: new Date(),
 						completedAt: status !== 'running' ? new Date() : null,
@@ -537,7 +479,6 @@ describe('Property 7: Incremental Sync Filtering', () => {
 						status
 					});
 
-					// Check if running sync is detected
 					const runningResult = await db
 						.select()
 						.from(schema.syncStatus)
@@ -554,10 +495,6 @@ describe('Property 7: Incremental Sync Filtering', () => {
 		);
 	});
 });
-
-// =============================================================================
-// Unit Tests for Helper Functions
-// =============================================================================
 
 describe('getYearStartTimestamp', () => {
 	it('returns correct timestamp for Jan 1 00:00:00 UTC', () => {
@@ -625,7 +562,6 @@ describe('Duplicate historyKey handling', () => {
 			parentTitle: null
 		};
 
-		// Insert first time
 		const result1 = await db
 			.insert(schema.playHistory)
 			.values(record)
@@ -634,7 +570,6 @@ describe('Duplicate historyKey handling', () => {
 
 		expect(result1.length).toBe(1);
 
-		// Insert same record again - should be skipped
 		const result2 = await db
 			.insert(schema.playHistory)
 			.values(record)
@@ -643,7 +578,6 @@ describe('Duplicate historyKey handling', () => {
 
 		expect(result2.length).toBe(0);
 
-		// Verify only one record exists
 		const allRecords = await db.select().from(schema.playHistory);
 		expect(allRecords.length).toBe(1);
 	});

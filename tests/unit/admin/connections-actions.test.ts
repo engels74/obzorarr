@@ -323,11 +323,9 @@ describe('connections nested route — updateApiConfig (OCC + schema)', () => {
 			const result = await run(request);
 			// The result must be a success object (not a failure ActionResult).
 			expect(result).toMatchObject({ success: true });
-			// It must carry a fresh apiConfigVersion string.
 			const version = (result as { apiConfigVersion?: string }).apiConfigVersion;
 			expect(typeof version).toBe('string');
 			expect(version!.length).toBeGreaterThan(0);
-			// The returned version must be parseable as an ISO date.
 			expect(Number.isNaN(Date.parse(version!))).toBe(false);
 		});
 	});
@@ -335,7 +333,6 @@ describe('connections nested route — updateApiConfig (OCC + schema)', () => {
 	// C2: submitting a value for a locked field yields the informational note
 	it('includes locked-field note in success message when a locked field is submitted (C2)', async () => {
 		// The test harness has PLEX_SERVER_URL locked via the mock env.
-		// Submit plexServerUrl (the locked field) alongside a valid apiConfigVersion.
 		// The action should succeed (setApiConfigAtomic ignores locked fields) and
 		// include the informational note in the message.
 		const result = await run(

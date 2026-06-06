@@ -68,13 +68,11 @@ describe('system nested route — updateLogSettings (Superforms + inline OCC)', 
 				error: 'Settings changed in another tab. Please reload.'
 			}
 		});
-		// Defaults preserved
 		expect(await getLogRetentionDays()).toBe(7);
 		expect(await getLogMaxCount()).toBe(50000);
 	});
 
 	it('rejects stale settingsVersion as 409 conflict', async () => {
-		// Seed the row by writing once.
 		await run(
 			makeRequest({
 				retentionDays: '14',
@@ -84,7 +82,6 @@ describe('system nested route — updateLogSettings (Superforms + inline OCC)', 
 			})
 		);
 
-		// Second write uses the original (stale) epoch.
 		const result = await run(
 			makeRequest({
 				retentionDays: '21',
@@ -112,7 +109,6 @@ describe('system nested route — updateLogSettings (Superforms + inline OCC)', 
 			})
 		);
 		expect(result).toMatchObject({ status: 400, data: { error: 'Invalid input' } });
-		// Confirm no partial write.
 		expect(await getLogRetentionDays()).toBe(7);
 		expect(await getLogMaxCount()).toBe(50000);
 	});
@@ -139,7 +135,6 @@ describe('system nested route — updateLogSettings (Superforms + inline OCC)', 
 				settingsVersion: new Date(0).toISOString()
 			})
 		);
-		// Future timestamp wins OCC against any current row updatedAt.
 		const result = await run(
 			makeRequest({
 				retentionDays: '21',

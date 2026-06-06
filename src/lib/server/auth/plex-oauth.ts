@@ -144,7 +144,6 @@ export async function pollPinForToken(
 			return pin.authToken;
 		}
 
-		// Wait before next attempt
 		await new Promise((resolve) => setTimeout(resolve, intervalMs));
 	}
 
@@ -213,7 +212,6 @@ export function buildPlexOAuthUrl(pinCode: string, forwardUrl?: string): string 
 		'context[device][model]': 'hosted'
 	});
 
-	// Add forward URL if provided
 	if (forwardUrl) {
 		params.set('forwardUrl', forwardUrl);
 	}

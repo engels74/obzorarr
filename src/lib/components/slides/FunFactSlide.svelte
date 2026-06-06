@@ -22,13 +22,11 @@ let {
 	messagingContext = createPersonalContext()
 }: Props = $props();
 
-// Element references
 let container: HTMLElement | undefined = $state();
 let iconEl: HTMLElement | undefined = $state();
 let factEl: HTMLElement | undefined = $state();
 let comparisonEl: HTMLElement | undefined = $state();
 
-// Animation effect with cleanup
 $effect(() => {
 	if (!container || !factEl || !active) return;
 
@@ -53,14 +51,12 @@ $effect(() => {
 
 	const animations: ReturnType<typeof animate>[] = [];
 
-	// Animate container with playful entry
 	const containerAnim = animate(container, KEYFRAMES.playfulEntry, {
 		type: 'spring',
 		...SPRING_PRESETS.snappy
 	});
 	animations.push(containerAnim);
 
-	// Animate icon with bounce-in
 	if (iconEl) {
 		const iconAnim = animate(
 			iconEl,
@@ -77,7 +73,6 @@ $effect(() => {
 		animations.push(iconAnim);
 	}
 
-	// Animate fact text
 	const factAnim = animate(
 		factEl,
 		{ opacity: [0, 1], transform: ['translateY(25px)', 'translateY(0)'] },
@@ -85,7 +80,6 @@ $effect(() => {
 	);
 	animations.push(factAnim);
 
-	// Animate comparison if present
 	if (comparisonEl && comparison) {
 		const comparisonAnim = animate(
 			comparisonEl,
@@ -154,7 +148,6 @@ $effect(() => {
 			position: relative;
 		}
 
-		/* Top highlight line */
 		.content::before {
 			content: '';
 			position: absolute;
@@ -171,7 +164,6 @@ $effect(() => {
 			line-height: 1;
 			margin-bottom: 0.5rem;
 			filter: drop-shadow(0 0 25px var(--slide-glow-color, oklch(var(--primary) / 0.4)));
-			/* Floating animation */
 			animation: float 3s ease-in-out infinite;
 		}
 
@@ -222,7 +214,6 @@ $effect(() => {
 			margin-top: 1.5rem;
 		}
 
-		/* Mobile: compact content */
 		@media (max-width: 767px) {
 			.content {
 				max-width: 100%;
@@ -243,7 +234,6 @@ $effect(() => {
 			}
 		}
 
-		/* Tablet: medium content */
 		@media (min-width: 768px) and (max-width: 1023px) {
 			.content {
 				max-width: var(--content-max-md, 750px);
@@ -267,7 +257,6 @@ $effect(() => {
 			}
 		}
 
-		/* Desktop: large content */
 		@media (min-width: 1024px) {
 			.content {
 				max-width: var(--content-max-lg, 850px);

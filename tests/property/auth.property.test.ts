@@ -7,7 +7,6 @@ import * as schema from '$lib/server/db/schema';
 import { sessions, users } from '$lib/server/db/schema';
 
 // Note: We can't import from membership.ts directly because it uses $env/static/private
-// Instead, we test the pure function logic here
 
 /**
  * Determine the user's role based on ownership
@@ -36,21 +35,15 @@ function determineRole(isOwner: boolean): { isAdmin: boolean } {
  * Validates: Requirements 1.3, 1.4, 1.5, 1.7
  */
 
-// =============================================================================
-// Test Database Setup
-// =============================================================================
-
 /**
  * Create an in-memory test database with schema
  */
 function createTestDatabase() {
 	const sqlite = new Database(':memory:', { strict: true });
 
-	// Enable pragmas for testing
 	sqlite.exec('PRAGMA journal_mode = WAL');
 	sqlite.exec('PRAGMA foreign_keys = ON');
 
-	// Create tables directly
 	sqlite.exec(`
 		CREATE TABLE IF NOT EXISTS users (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -78,13 +71,6 @@ function createTestDatabase() {
 	return drizzle(sqlite, { schema });
 }
 
-// =============================================================================
-// Session Test Helpers
-// =============================================================================
-
-/**
- * Create a test session in the database
- */
 async function createTestSession(
 	db: ReturnType<typeof createTestDatabase>,
 	params: {
@@ -108,9 +94,6 @@ async function createTestSession(
 	return sessionId;
 }
 
-/**
- * Validate a session (test implementation)
- */
 async function validateTestSession(
 	db: ReturnType<typeof createTestDatabase>,
 	sessionId: string
@@ -153,9 +136,6 @@ async function invalidateTestSession(
 	await db.delete(sessions).where(eq(sessions.id, sessionId));
 }
 
-/**
- * Create a test user in the database
- */
 async function createTestUser(
 	db: ReturnType<typeof createTestDatabase>,
 	params: {
@@ -180,9 +160,7 @@ async function createTestUser(
 	return inserted.id;
 }
 
-// =============================================================================
 // Property 1: Role Assignment Correctness
-// =============================================================================
 
 // Feature: obzorarr, Property 1: Role Assignment Correctness
 describe('Property 1: Role Assignment Correctness', () => {
@@ -191,7 +169,6 @@ describe('Property 1: Role Assignment Correctness', () => {
 			fc.property(fc.boolean(), (isOwner) => {
 				const result = determineRole(isOwner);
 
-				// Admin should be true iff isOwner is true
 				return result.isAdmin === isOwner;
 			}),
 			{ numRuns: 100 }
@@ -230,7 +207,6 @@ describe('Property 1: Role Assignment Correctness', () => {
 				const result1 = determineRole(isOwner);
 				const result2 = determineRole(isOwner);
 
-				// Same input should always produce same output
 				return result1.isAdmin === result2.isAdmin;
 			}),
 			{ numRuns: 100 }
@@ -238,9 +214,7 @@ describe('Property 1: Role Assignment Correctness', () => {
 	});
 });
 
-// =============================================================================
 // Property 2: Non-Member Access Denial
-// =============================================================================
 
 // Feature: obzorarr, Property 2: Non-Member Access Denial
 describe('Property 2: Non-Member Access Denial', () => {
@@ -265,7 +239,6 @@ describe('Property 2: Non-Member Access Denial', () => {
 	it('non-members are always denied access', () => {
 		fc.assert(
 			fc.property(fc.boolean(), (_isOwner) => {
-				// Non-member scenario
 				const membership: MembershipResult = {
 					isMember: false,
 					isOwner: false // Can't be owner if not a member
@@ -280,7 +253,6 @@ describe('Property 2: Non-Member Access Denial', () => {
 	it('members are always granted access', () => {
 		fc.assert(
 			fc.property(fc.boolean(), (isOwner) => {
-				// Member scenario
 				const membership: MembershipResult = {
 					isMember: true,
 					isOwner
@@ -300,11 +272,9 @@ describe('Property 2: Non-Member Access Denial', () => {
 				(isMember, isOwner) => {
 					const membership: MembershipResult = {
 						isMember,
-						// Owner status is only valid if member
 						isOwner: isMember ? isOwner : false
 					};
 
-					// Access should match membership status exactly
 					return shouldGrantAccess(membership) === membership.isMember;
 				}
 			),
@@ -313,9 +283,7 @@ describe('Property 2: Non-Member Access Denial', () => {
 	});
 });
 
-// =============================================================================
 // Property 3: Session Invalidation
-// =============================================================================
 
 // Feature: obzorarr, Property 3: Session Invalidation
 describe('Property 3: Session Invalidation', () => {
@@ -335,30 +303,24 @@ describe('Property 3: Session Invalidation', () => {
 					isAdmin: fc.boolean()
 				}),
 				async ({ username, plexToken, isAdmin }) => {
-					// Create fresh database for each iteration
 					const db = createTestDatabase();
 					const plexId = getUniquePlexId();
 
-					// Create user
 					const userId = await createTestUser(db, { plexId, username, isAdmin });
 
-					// Create session
 					const sessionId = await createTestSession(db, {
 						userId,
 						plexToken,
 						isAdmin
 					});
 
-					// Verify session is valid before logout
 					const beforeLogout = await validateTestSession(db, sessionId);
 					if (!beforeLogout) {
 						return false; // Session should be valid initially
 					}
 
-					// Invalidate session (logout)
 					await invalidateTestSession(db, sessionId);
 
-					// Verify session is now invalid
 					const afterLogout = await validateTestSession(db, sessionId);
 
 					return afterLogout === null;
@@ -390,11 +352,9 @@ describe('Property 3: Session Invalidation', () => {
 					checkCount: fc.integer({ min: 1, max: 5 })
 				}),
 				async ({ username, plexToken, isAdmin, checkCount }) => {
-					// Create fresh database for each iteration
 					const db = createTestDatabase();
 					const plexId = getUniquePlexId();
 
-					// Create user and session
 					const userId = await createTestUser(db, { plexId, username, isAdmin });
 					const sessionId = await createTestSession(db, {
 						userId,
@@ -402,10 +362,8 @@ describe('Property 3: Session Invalidation', () => {
 						isAdmin
 					});
 
-					// Invalidate session
 					await invalidateTestSession(db, sessionId);
 
-					// Check multiple times - should always be invalid
 					for (let i = 0; i < checkCount; i++) {
 						const result = await validateTestSession(db, sessionId);
 						if (result !== null) {
@@ -429,14 +387,11 @@ describe('Property 3: Session Invalidation', () => {
 					isAdmin: fc.boolean()
 				}),
 				async ({ username, plexToken, isAdmin }) => {
-					// Create fresh database for each iteration
 					const db = createTestDatabase();
 					const plexId = getUniquePlexId();
 
-					// Create user
 					const userId = await createTestUser(db, { plexId, username, isAdmin });
 
-					// Create session that already expired (negative duration)
 					const sessionId = await createTestSession(db, {
 						userId,
 						plexToken,
@@ -454,10 +409,6 @@ describe('Property 3: Session Invalidation', () => {
 		);
 	});
 });
-
-// =============================================================================
-// Additional Unit Tests
-// =============================================================================
 
 describe('Session Management', () => {
 	it('creates valid sessions', async () => {

@@ -57,7 +57,6 @@ export function buildUserPrompt(context: FactGenerationContext, count: number): 
 
 	parts.push(`Generate ${count} unique, creative fun facts based on these viewing statistics:\n`);
 
-	// Basic stats
 	parts.push('## Viewing Summary');
 	parts.push(`- Total watch time: ${context.hours} hours (${context.days} days)`);
 	parts.push(`- Total plays: ${context.plays}`);
@@ -65,7 +64,6 @@ export function buildUserPrompt(context: FactGenerationContext, count: number): 
 	parts.push(`- Unique shows watched: ${context.uniqueShows}`);
 	parts.push('');
 
-	// Top content
 	parts.push('## Favorites');
 	if (context.topMovie) {
 		parts.push(`- Top movie: "${context.topMovie}" (watched ${context.topMovieCount} times)`);
@@ -75,7 +73,6 @@ export function buildUserPrompt(context: FactGenerationContext, count: number): 
 	}
 	parts.push('');
 
-	// Viewing patterns
 	parts.push('## Viewing Patterns');
 	parts.push(`- Peak viewing time: ${formatHour(context.peakHour)}`);
 	parts.push(`- Peak viewing month: ${MONTH_NAMES[context.peakMonth]}`);
@@ -87,7 +84,6 @@ export function buildUserPrompt(context: FactGenerationContext, count: number): 
 	}
 	parts.push('');
 
-	// Rankings
 	parts.push('## Rankings');
 	const topPercent = Math.round(100 - context.percentile);
 	if (topPercent <= 50) {
@@ -97,7 +93,6 @@ export function buildUserPrompt(context: FactGenerationContext, count: number): 
 	}
 	parts.push('');
 
-	// Temporal bookends
 	if (context.firstWatchTitle || context.lastWatchTitle) {
 		parts.push('## Year Bookends');
 		if (context.firstWatchTitle) {
@@ -109,7 +104,6 @@ export function buildUserPrompt(context: FactGenerationContext, count: number): 
 		parts.push('');
 	}
 
-	// Entertainment comparisons (if enriched)
 	if (context.gotCount || context.friendsCount || context.starWarsCount) {
 		parts.push('## For Reference (use creatively):');
 		if (context.gotCount && context.gotCount >= 1) {

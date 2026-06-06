@@ -66,7 +66,6 @@ describe('externalOccCheck', () => {
 	it('returns ok when submitted version is fresh (>= current row updatedAt)', async () => {
 		await setAppSetting(AppSettingsKey.UI_THEME, 'modern-minimal');
 
-		// Future timestamp wins.
 		const futureVersion = new Date(Date.now() + 60_000).toISOString();
 		const result = await externalOccCheck(futureVersion, UI_THEME_SETTINGS_KEYS);
 

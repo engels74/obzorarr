@@ -41,7 +41,6 @@ function isBelowFloor(mode: ShareModeType): boolean {
 	return ShareModePrivacyLevel[mode] < floorLevel;
 }
 
-// State
 let copied = $state(false);
 let copyTimeout: ReturnType<typeof setTimeout> | undefined;
 let isUpdating = $state(false);
@@ -53,7 +52,6 @@ const displayMode = $derived(localMode);
 const displayShareToken = $derived(localShareToken);
 const controlsDisabled = $derived(isUpdating || isRefreshing);
 
-// Computed URL based on mode
 const shareUrl = $derived.by(() => {
 	const origin = typeof window !== 'undefined' ? window.location.origin : '';
 	const baseUrl = canonicalUrl ?? currentUrl;
@@ -76,7 +74,6 @@ const shareUrl = $derived.by(() => {
 // members-only notice instead of a copyable URL. Access control is unchanged.
 const isMembersOnly = $derived(displayMode === 'private-oauth');
 
-// Can show share mode controls
 const canControlShare = $derived(
 	(isOwner || isAdmin) && (shareSettings?.canUserControl || isAdmin) && !isServerWrapped
 );
@@ -95,14 +92,12 @@ const showNoControlNotice = $derived(
 	isOwner && !isAdmin && !isServerWrapped && !(shareSettings?.canUserControl ?? false)
 );
 
-// Available modes based on permissions
 const availableModes = $derived.by(() => {
 	if (isAdmin) return ['public', 'private-link', 'private-oauth'] as const;
 	if (shareSettings?.canUserControl) return ['public', 'private-link', 'private-oauth'] as const;
 	return [] as const;
 });
 
-// Mode display labels
 const modeLabels: Record<ShareModeType, { label: string; description: string }> = {
 	public: {
 		label: 'Public',
@@ -263,15 +258,14 @@ async function navigateAfterTokenRouteUpdate(data: unknown): Promise<boolean> {
 	return false;
 }
 
-// Cleanup on unmount
 $effect(() => {
 	return () => {
 		clearTimeout(copyTimeout);
 	};
 });
 
-// Reset optimistic state when the modal transitions from closed to open
-// so a freshly-loaded shareSettings prop (e.g., token rotated elsewhere) is used.
+// Reset only when reopening so freshly-loaded shareSettings (for example, a
+// token rotated elsewhere) replaces the previous optimistic local state.
 let prevOpen = false;
 $effect(() => {
 	if (open && !prevOpen) {
@@ -302,7 +296,6 @@ $effect(() => {
 			</AlertDialog.Description>
 		</AlertDialog.Header>
 
-		<!-- Copy URL Section -->
 		{#if isMembersOnly}
 			<div class="url-section">
 				<span class="label">Share Link</span>
@@ -390,7 +383,6 @@ $effect(() => {
 		</div>
 		{/if}
 
-		<!-- Share Mode Controls (conditional) -->
 		{#if canControlShare && availableModes.length > 0}
 			<div class="share-modes">
 				<span class="label" id="visibility-label">Visibility</span>

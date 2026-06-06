@@ -42,10 +42,10 @@ export const GET: RequestHandler = async ({ cookies, locals, url }) => {
 
 		const formattedServers = await Promise.all(
 			servers.map(async (server) => {
-				// Filter connections for cleaner UX:
-				// 1. Public plex.direct URLs (recommended for external access)
-				// 2. Local HTTP URLs (for same-network users)
-				// Exclude: local plex.direct URLs (confusing Docker IPs with long hashes)
+				// Prefer connection choices that are useful to admins: public plex.direct
+				// URLs for external access, plus local HTTP URLs for same-network users.
+				// Local plex.direct URLs are skipped because they expose confusing Docker
+				// IP hashes rather than a stable local address.
 				const filteredConnections =
 					server.connections?.flatMap((conn) => {
 						const isPlexDirect = conn.uri.includes('.plex.direct');
@@ -57,8 +57,6 @@ export const GET: RequestHandler = async ({ cookies, locals, url }) => {
 							return [{ uri: conn.uri, local: false, relay: false }];
 						}
 
-						// For local connections, construct HTTP URL from address/port
-						// (skip plex.direct local URLs as they're confusing Docker IPs)
 						if (isLocal && !isRelay) {
 							const httpUri = `http://${conn.address}:${conn.port}`;
 							return [{ uri: httpUri, local: true, relay: false }];

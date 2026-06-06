@@ -2,9 +2,8 @@ import { beforeEach, describe, expect, it } from 'bun:test';
 import { isHttpError } from '@sveltejs/kit';
 import { setServerWrappedShareMode } from '$lib/server/sharing/service';
 import { ShareMode } from '$lib/server/sharing/types';
-// Post-US-022: re-pointed to the nested Privacy route. The
-// updateServerWrappedSettings handler is byte-identical between the deleted
-// monolith and the privacy/+page.server.ts copy (commit 853561f).
+// This route-level guard keeps server-wrapped settings behavior pinned after
+// the handler moved out of the deleted monolith into privacy/+page.server.ts.
 import { actions as adminSettingsActions } from '../../../src/routes/admin/settings/privacy/+page.server';
 import { load } from '../../../src/routes/wrapped/[year=year]/+page.server';
 import { resetSharedTestDb } from '../../helpers/db';
@@ -14,7 +13,6 @@ type UpdateServerWrappedSettingsAction = NonNullable<
 	typeof adminSettingsActions.updateServerWrappedSettings
 >;
 
-/** Helper: build a minimal parent() that satisfies the year guard. */
 function makeParent(availableYears: number[]) {
 	return async () => ({
 		availableYears,
@@ -204,7 +202,6 @@ describe('server wrapped route year guard (ISSUE-009, ISSUE-018)', () => {
 		} catch (err) {
 			expect(isHttpError(err)).toBe(true);
 			if (!isHttpError(err)) throw err;
-			// Must NOT be a year-guard 404
 			expect(err.body.message).not.toBe('No data found for this year');
 		}
 	});

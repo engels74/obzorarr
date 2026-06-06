@@ -40,15 +40,8 @@ import { submitAction } from '$lib/utils/submit-action';
 import { loadThemeFonts } from '$lib/utils/theme-fonts';
 import type { ActionData, PageData } from './$types';
 
-/**
- * Onboarding Step 3: Settings Configuration
- *
- * Step-by-step carousel for configuring appearance, privacy, slides, and AI features.
- */
-
 let { data, form }: { data: PageData; form: ActionData } = $props();
 
-// Form state - initialized from server data, editable locally
 let uiTheme = $state(untrack(() => data.settings.uiTheme));
 let wrappedTheme = $state(untrack(() => data.settings.wrappedTheme));
 let anonymizationMode = $state(untrack(() => data.settings.anonymizationMode));
@@ -148,7 +141,6 @@ function handlePresetKeydown(event: KeyboardEvent, index: number) {
 	event.preventDefault();
 	const preset = PRIVACY_PRESETS[target];
 	if (!preset) return;
-	// APG: moving within a radio group selects the focused radio.
 	applyPrivacyPreset(preset);
 	presetButtons[target]?.focus();
 }
@@ -192,7 +184,6 @@ const aiPersonaOptions = [
 	{ value: 'random', label: 'Random', description: 'Mix of styles' }
 ] as const;
 
-// All available theme classes for removal
 const themeClasses = [
 	'theme-modern-minimal',
 	'theme-supabase',
@@ -204,26 +195,20 @@ const themeClasses = [
 	'theme-champagne-premium'
 ];
 
-// Live theme preview: Apply theme class when uiTheme changes
 $effect(() => {
 	const themeClass = `theme-${uiTheme}`;
 
-	// Remove all existing theme classes
 	document.body.classList.remove(...themeClasses);
 
-	// Add the current theme class
 	document.body.classList.add(themeClass);
 
-	// Load theme-specific font
 	loadThemeFonts(uiTheme);
 });
 
-// Slide toggles
 let slideStates = $state<Record<string, boolean>>(
 	untrack(() => Object.fromEntries(data.slideOptions.map((s) => [s.type, s.enabled])))
 );
 
-// Compute enabled slides string
 let enabledSlidesString = $derived(
 	Object.entries(slideStates)
 		.filter(([_, enabled]) => enabled)
@@ -231,12 +216,7 @@ let enabledSlidesString = $derived(
 		.join(',')
 );
 
-// Loading state
 let isSubmitting = $state(false);
-
-// ==========================================================================
-// Carousel State
-// ==========================================================================
 
 interface SubStep {
 	id: string;
@@ -256,14 +236,12 @@ let currentSubStep = $state(0);
 let contentRef: HTMLElement | undefined = $state();
 let animationDirection = $state<'forward' | 'backward'>('forward');
 
-// Derived values
 let totalSubSteps = $derived(subSteps.length);
 let isFirstSubStep = $derived(currentSubStep === 0);
 let isLastSubStep = $derived(currentSubStep === totalSubSteps - 1);
 // subSteps always has at least 3 items, and currentSubStep is bounded by navigation
 let currentStepData = $derived(subSteps[currentSubStep]!);
 
-// Navigation
 function nextSubStep() {
 	if (currentSubStep < totalSubSteps - 1) {
 		animationDirection = 'forward';
@@ -285,7 +263,6 @@ function goToSubStep(index: number) {
 	}
 }
 
-// Animate on sub-step change
 $effect(() => {
 	if (!contentRef) return;
 	const step = currentSubStep; // Track dependency
@@ -303,7 +280,6 @@ $effect(() => {
 	);
 });
 
-// Theme color mapping for swatches
 const defaultColors = { primary: '#3b82f6', accent: '#60a5fa', bg: '#0f172a' };
 const themeColors: Record<string, { primary: string; accent: string; bg: string }> = {
 	'modern-minimal': { primary: '#3b82f6', accent: '#60a5fa', bg: '#0f172a' },
@@ -324,7 +300,6 @@ function getThemeColors(themeValue: string) {
 >
 	{#snippet children()}
 		<div class="settings-container">
-			<!-- Error display -->
 			{#if visibleError}
 				<div class="error-banner" role="alert" aria-live="polite">
 					<svg
@@ -342,7 +317,6 @@ function getThemeColors(themeValue: string) {
 				</div>
 			{/if}
 
-			<!-- Sub-step Progress Indicator -->
 			<div class="substep-indicator">
 				<div class="substep-info">
 					<span class="substep-current">{currentStepData.label}</span>
@@ -450,7 +424,6 @@ function getThemeColors(themeValue: string) {
 					};
 				}}
 			>
-				<!-- Hidden fields for form data (always rendered) -->
 				<input type="hidden" name="uiTheme" value={uiTheme} />
 				<input type="hidden" name="wrappedTheme" value={wrappedTheme} />
 				<input type="hidden" name="anonymizationMode" value={anonymizationMode} />
@@ -475,10 +448,8 @@ function getThemeColors(themeValue: string) {
 				<input type="hidden" name="openaiModel" value={enableFunFacts ? openaiModel : ''} />
 				<input type="hidden" name="aiPersona" value={enableFunFacts ? aiPersona : ''} />
 
-				<!-- Carousel Content -->
 				<div class="carousel-content" bind:this={contentRef}>
 					{#if currentStepData.id === 'appearance'}
-						<!-- Appearance Step -->
 						<div class="step-header">
 							<div class="step-icon appearance-icon">
 								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -548,7 +519,6 @@ function getThemeColors(themeValue: string) {
 							</div>
 						</div>
 					{:else if currentStepData.id === 'privacy'}
-						<!-- Privacy Step -->
 						<div class="step-header">
 							<div class="step-icon privacy-icon">
 								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -563,7 +533,6 @@ function getThemeColors(themeValue: string) {
 						</div>
 
 						<div class="step-fields">
-							<!-- Preset selector: one card sets all six privacy fields below -->
 							<div class="setting-group preset-section">
 								<span class="setting-label">Privacy Preset</span>
 								<p class="setting-description">
@@ -605,7 +574,6 @@ function getThemeColors(themeValue: string) {
 								{/if}
 							</div>
 
-							<!-- Live preview of what this configuration exposes -->
 							{#snippet previewDt(key: PrivacyPreviewRowKey, label: string)}
 								{@const tip = PRIVACY_PREVIEW_ROW_TOOLTIPS[key]}
 								<dt>
@@ -879,7 +847,6 @@ function getThemeColors(themeValue: string) {
 							</div>
 						</div>
 					{:else if currentStepData.id === 'slides'}
-						<!-- Slides Step -->
 						<div class="step-header">
 							<div class="step-icon slides-icon">
 								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -919,7 +886,6 @@ function getThemeColors(themeValue: string) {
 							</div>
 						</div>
 					{:else if currentStepData.id === 'ai'}
-						<!-- AI Features Step -->
 						<div class="step-header">
 							<div class="step-icon ai-icon">
 								<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -1130,7 +1096,6 @@ function getThemeColors(themeValue: string) {
 					{/if}
 				</div>
 
-				<!-- Submit button (hidden) -->
 				<button
 					type="submit"
 					form="onboarding-settings-form"
@@ -1145,7 +1110,6 @@ function getThemeColors(themeValue: string) {
 
 	{#snippet footer()}
 		<div class="footer-actions">
-			<!-- Previous Button -->
 			<Button
 				type="button"
 				class="btn-nav btn-prev tap-target"
@@ -1156,7 +1120,6 @@ function getThemeColors(themeValue: string) {
 				Previous
 			</Button>
 
-			<!-- Skip Link (center) -->
 			<form method="POST" action="?/skipSettings" use:enhance class="skip-form">
 				<SubmitButton class="btn-skip-link tap-target" disabled={isSubmitting}>
 					{#snippet children()}
@@ -1165,7 +1128,6 @@ function getThemeColors(themeValue: string) {
 				</SubmitButton>
 			</form>
 
-			<!-- Next / Save Button -->
 			{#if isLastSubStep}
 				<SubmitButton
 					form="onboarding-settings-form"
@@ -1196,14 +1158,12 @@ function getThemeColors(themeValue: string) {
 </OnboardingCard>
 
 <style>
-	/* Container */
 		.settings-container {
 			display: flex;
 			flex-direction: column;
 			gap: 0.5rem;
 		}
 
-		/* Error Banner */
 		.error-banner {
 			display: flex;
 			align-items: center;
@@ -1224,7 +1184,6 @@ function getThemeColors(themeValue: string) {
 			color: #f87171;
 		}
 
-		/* Hidden submit */
 		.hidden-submit {
 			position: absolute;
 			width: 1px;
@@ -1507,7 +1466,6 @@ function getThemeColors(themeValue: string) {
 		:global(.btn-prev:hover:not(:disabled) .nav-arrow) {
 			transform: translateX(-2px);
 		}
-		/* Setting Groups */
 		.setting-group {
 			margin-top: 1.25rem;
 		}
@@ -1650,7 +1608,6 @@ function getThemeColors(themeValue: string) {
 			color: rgba(255, 255, 255, 0.45);
 		}
 
-		/* Live preview panel */
 		.privacy-preview {
 			margin-top: 1.25rem;
 			padding: 1rem;
@@ -1763,7 +1720,6 @@ function getThemeColors(themeValue: string) {
 			outline-offset: 2px;
 		}
 
-		/* Advanced Options disclosure */
 		.advanced-options {
 			margin-top: 1.25rem;
 			border-top: 1px solid rgba(255, 255, 255, 0.08);
@@ -1810,7 +1766,6 @@ function getThemeColors(themeValue: string) {
 			animation: fadeSlide 0.25s ease;
 		}
 
-		/* Theme Swatches */
 		.theme-swatches {
 			display: grid;
 			grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
@@ -1880,7 +1835,6 @@ function getThemeColors(themeValue: string) {
 			line-height: 1.2;
 		}
 
-		/* Radio Cards */
 		.radio-cards {
 			display: flex;
 			flex-direction: column;
@@ -1977,7 +1931,6 @@ function getThemeColors(themeValue: string) {
 			color: rgba(255, 255, 255, 0.45);
 		}
 
-		/* Toggle Switch */
 		.toggle-row {
 			display: flex;
 			align-items: center;
@@ -2062,7 +2015,6 @@ function getThemeColors(themeValue: string) {
 			transform: translateX(1rem);
 		}
 
-		/* Slides Grid */
 		.slides-grid {
 			display: grid;
 			grid-template-columns: repeat(2, 1fr);
@@ -2114,7 +2066,6 @@ function getThemeColors(themeValue: string) {
 			color: rgba(255, 255, 255, 0.8);
 		}
 
-		/* Frequency Options */
 		.frequency-group {
 			padding-left: 1.5rem;
 			border-left: 2px solid oklch(var(--primary) / 0.2);
@@ -2179,7 +2130,6 @@ function getThemeColors(themeValue: string) {
 			color: rgba(255, 255, 255, 0.45);
 		}
 
-		/* Text inputs (API key, base URL, model) */
 		.field-label {
 			display: block;
 			font-size: 0.875rem;
@@ -2269,7 +2219,6 @@ function getThemeColors(themeValue: string) {
 			color: #fca5a5;
 		}
 
-		/* Spinner */
 		.spinner {
 			width: 1rem;
 			height: 1rem;
@@ -2289,7 +2238,6 @@ function getThemeColors(themeValue: string) {
 		   Mobile Responsive
 		   ========================================================================== */
 		@media (max-width: 480px) {
-			/* Sub-step indicator */
 			.substep-indicator {
 				flex-direction: column;
 				gap: 0.75rem;
@@ -2314,7 +2262,6 @@ function getThemeColors(themeValue: string) {
 				height: 0.75rem;
 			}
 
-			/* Carousel content */
 			.carousel-content {
 				min-height: 280px;
 			}
@@ -2339,12 +2286,10 @@ function getThemeColors(themeValue: string) {
 				font-size: 1rem;
 			}
 
-			/* Theme swatches */
 			.theme-swatches {
 				grid-template-columns: repeat(3, 1fr);
 			}
 
-			/* Footer navigation */
 			.footer-actions {
 				position: relative;
 				justify-content: space-between;

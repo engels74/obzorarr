@@ -98,7 +98,6 @@ export const actions: Actions = requireAdminActions({
 			return fail(400, { form, error: 'Invalid input' });
 		}
 
-		// Stale-version check via the shared inline OCC helper.
 		if (
 			(await inlineOccCheck(form.data.settingsVersion, LOG_SETTINGS_KEYS)).status === 'conflict'
 		) {

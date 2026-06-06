@@ -10,7 +10,6 @@ export function enrichContext(baseContext: FactGenerationContext): FactGeneratio
 
 	return {
 		...baseContext,
-		// Entertainment trivia calculations
 		gotCount: round1(hours / ENTERTAINMENT_FACTORS.GAME_OF_THRONES_HOURS),
 		friendsCount: round1(hours / ENTERTAINMENT_FACTORS.FRIENDS_HOURS),
 		theOfficeCount: round1(hours / ENTERTAINMENT_FACTORS.THE_OFFICE_HOURS),

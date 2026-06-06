@@ -74,7 +74,6 @@ describe('admin updateCsrfOrigin action', () => {
 		expect(result.data.attemptedOrigin).toBe('http://tampered.example.com:5173');
 		expect(result.data.requestOrigin).toBe(ORIGIN);
 		expect(typeof result.data.csrfMismatchMessage).toBe('string');
-		// Critically, no DB write should have happened.
 		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBeNull();
 	});
 
@@ -250,7 +249,6 @@ describe('admin updateCsrfOrigin action', () => {
 		await runUpdate(createRequest({ csrfOrigin: ORIGIN }));
 		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBe(ORIGIN);
 
-		// Stale tab tries to overwrite with the epoch timestamp.
 		const result = (await runUpdate(
 			createRequest({
 				csrfOrigin: 'http://other.example.com:5173',
@@ -276,7 +274,6 @@ describe('admin updateCsrfOrigin action', () => {
 
 		expect(result.status).toBe(409);
 		expect(result.data).toMatchObject({ conflict: true });
-		// Row left intact.
 		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBe(ORIGIN);
 	});
 });

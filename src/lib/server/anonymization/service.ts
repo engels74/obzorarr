@@ -16,7 +16,6 @@ export function applyAnonymization<T extends AnonymizableUser>(
 	mode: AnonymizationModeType,
 	viewingUserId: number | null
 ): T[] {
-	// Hybrid mode falls back to anonymous if no authenticated user
 	const effectiveMode =
 		mode === AnonymizationMode.HYBRID && viewingUserId === null
 			? AnonymizationMode.ANONYMOUS

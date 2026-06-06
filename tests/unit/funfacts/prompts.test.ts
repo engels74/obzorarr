@@ -350,7 +350,6 @@ describe('AI Prompts', () => {
 			const context = createMockContext({ topMovie: '' });
 			const prompt = buildUserPrompt(context, 3);
 
-			// Empty string is falsy, so topMovie section is excluded
 			expect(prompt).not.toContain('Top movie:');
 		});
 
@@ -398,7 +397,6 @@ describe('AI Prompts', () => {
 			const context = createMockContext();
 			const result = buildEnhancedPrompt(context, 3, 'random');
 
-			// Should contain one of the persona descriptions
 			const hasPersona =
 				result.system.includes('witty entertainment columnist') ||
 				result.system.includes('encouraging friend') ||

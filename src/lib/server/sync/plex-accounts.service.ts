@@ -211,7 +211,6 @@ export interface PlexAccountInfo {
 export async function syncPlexAccounts(): Promise<number> {
 	logger.info('Starting Plex accounts sync...', 'PlexAccountsSync');
 
-	// Get merged config (database takes priority over environment)
 	const config = await getPlexConfig();
 
 	if (!config.serverUrl || !config.token) {

@@ -27,7 +27,6 @@ import type { ActionData, PageData } from './$types';
 
 let { data, form }: { data: PageData; form: ActionData } = $props();
 
-// Filter state (reactive to URL params via data)
 let selectedLevels = $derived<LogLevelType[]>(data.filters?.levels ?? []);
 let selectedSource = $derived(data.filters?.source ?? '');
 
@@ -39,7 +38,6 @@ $effect.pre(() => {
 let normalizedSearchText = $derived(searchText.trim());
 let normalizedSearchLower = $derived(normalizedSearchText.toLowerCase());
 
-// Date range filter state
 let fromDate = $state('');
 let toDate = $state('');
 
@@ -58,24 +56,19 @@ $effect.pre(() => {
 });
 let autoScroll = $state(true);
 
-// Clear-logs confirmation dialog
 let clearLogsDialogOpen = $state(false);
 let isClearingLogs = $state(false);
 
-// Run-cleanup confirmation dialog
 let runCleanupDialogOpen = $state(false);
 let isRunningCleanup = $state(false);
 
-// SSE connection state
 let eventSource: EventSource | null = $state(null);
 let streamedLogs = $state<LogEntry[]>([]);
 let lastSeenStreamId = $state(0);
 let isConnected = $state(false);
 
-// Debounce timer for search
 let searchDebounce: ReturnType<typeof setTimeout> | null = null;
 
-// Filter streamed logs to match active filters
 const filteredStreamedLogs = $derived(
 	streamedLogs.filter((log) => {
 		if (selectedLevels.length > 0 && !selectedLevels.includes(log.level)) return false;
@@ -131,15 +124,12 @@ const visibleSources = $derived.by(() => {
 
 const visibleTotalCount = $derived(visibleLogs.length);
 
-// Available log levels
 const logLevels: LogLevelType[] = ['DEBUG', 'INFO', 'WARN', 'ERROR'];
 
-// Format timestamp
 function formatTimestamp(timestamp: number): string {
 	return new Date(timestamp).toLocaleString();
 }
 
-// Format relative time
 function formatRelativeTime(timestamp: number): string {
 	const now = Date.now();
 	const diffMs = now - timestamp;
@@ -154,7 +144,6 @@ function formatRelativeTime(timestamp: number): string {
 	return new Date(timestamp).toLocaleDateString();
 }
 
-// Get level badge class
 function getLevelClass(level: LogLevelType): string {
 	switch (level) {
 		case 'ERROR':
@@ -176,7 +165,6 @@ const exportAction = $derived.by(() => {
 	return search ? `?${search}&/exportLogs` : '?/exportLogs';
 });
 
-// Apply filters to URL (accepts overrides for derived values)
 function applyFilters(overrides?: { levels?: LogLevelType[]; search?: string; source?: string }) {
 	const params = new URLSearchParams();
 	const levels = overrides?.levels ?? selectedLevels;
@@ -209,7 +197,6 @@ function applyFilters(overrides?: { levels?: LogLevelType[]; search?: string; so
 	goto(`/admin/logs${queryString ? `?${queryString}` : ''}`, { replaceState: true });
 }
 
-// Toggle level filter
 function toggleLevel(level: LogLevelType) {
 	const newLevels = selectedLevels.includes(level)
 		? selectedLevels.filter((l) => l !== level)
@@ -217,7 +204,6 @@ function toggleLevel(level: LogLevelType) {
 	applyFilters({ levels: newLevels });
 }
 
-// Handle search input with debounce
 function handleSearchInput(event: Event) {
 	const target = event.target as HTMLInputElement;
 	searchText = target.value;
@@ -231,13 +217,11 @@ function handleSearchInput(event: Event) {
 	}, 300);
 }
 
-// Handle source change
 function handleSourceChange(event: Event) {
 	const target = event.target as HTMLSelectElement;
 	applyFilters({ source: target.value });
 }
 
-// Clear all filters
 function clearFilters() {
 	// Cancel any pending debounced search so it doesn't race the navigation
 	if (searchDebounce) {
@@ -258,7 +242,6 @@ function clearFilters() {
 	}
 }
 
-// Connect to SSE stream
 function connectSSE() {
 	if (eventSource) {
 		eventSource.close();
@@ -277,13 +260,11 @@ function connectSSE() {
 			const data = JSON.parse(event.data);
 
 			if (data.type === 'log') {
-				// Add new log to streamed logs
 				streamedLogs = [data.log, ...streamedLogs];
 				if (data.log.id > lastSeenStreamId) {
 					lastSeenStreamId = data.log.id;
 				}
 
-				// Scroll to top if auto-scroll is enabled
 				if (autoScroll) {
 					const container = document.querySelector('.logs-table-wrapper');
 					if (container) {
@@ -298,7 +279,6 @@ function connectSSE() {
 
 	eventSource.onerror = () => {
 		isConnected = false;
-		// Attempt to reconnect after 5 seconds
 		setTimeout(() => {
 			if (autoScroll) {
 				connectSSE();
@@ -307,7 +287,6 @@ function connectSSE() {
 	};
 }
 
-// Disconnect from SSE stream
 function disconnectSSE() {
 	if (eventSource) {
 		eventSource.close();
@@ -316,7 +295,6 @@ function disconnectSSE() {
 	isConnected = false;
 }
 
-// Toggle auto-scroll (and SSE connection)
 function toggleAutoScroll() {
 	autoScroll = !autoScroll;
 
@@ -340,7 +318,6 @@ async function refreshAfterLogMutation(update: () => Promise<void>): Promise<voi
 	}
 }
 
-// Copy log entry to clipboard
 async function copyLog(log: LogEntry) {
 	const text = `[${new Date(log.timestamp).toISOString()}] [${log.level}] [${log.source ?? 'App'}] ${log.message}`;
 	try {
@@ -351,7 +328,6 @@ async function copyLog(log: LogEntry) {
 	}
 }
 
-// Parse metadata JSON
 function parseMetadata(metadata: string | null): Record<string, unknown> | null {
 	if (!metadata) return null;
 	try {
@@ -361,7 +337,6 @@ function parseMetadata(metadata: string | null): Record<string, unknown> | null 
 	}
 }
 
-// Cleanup on unmount
 $effect(() => {
 	return () => {
 		disconnectSSE();
@@ -378,7 +353,6 @@ $effect(() => {
 	}
 });
 
-// Show toast notifications for form responses
 $effect(() => {
 	handleFormToast(form);
 });
@@ -394,7 +368,6 @@ $effect(() => {
 		<p class="subtitle">View and filter application log entries</p>
 	</header>
 
-	<!-- Stats Section -->
 	<section class="stats-section">
 		<div class="stat-card">
 			<span class="stat-value">{visibleTotalCount.toLocaleString()}</span>
@@ -414,7 +387,6 @@ $effect(() => {
 		</div>
 	</section>
 
-	<!-- Filters Section -->
 	<section class="section filters-section">
 		<div class="filters-header">
 			<h2>Filters</h2>
@@ -424,7 +396,6 @@ $effect(() => {
 		</div>
 
 		<div class="filters-grid">
-			<!-- Level Filters -->
 			<div class="filter-group">
 				<span class="filter-label">Log Level</span>
 				<div class="level-checkboxes">
@@ -445,7 +416,6 @@ $effect(() => {
 				</div>
 			</div>
 
-			<!-- Search -->
 			<div class="filter-group">
 				<label class="filter-label" for="search">Search</label>
 				<input
@@ -457,7 +427,6 @@ $effect(() => {
 				/>
 			</div>
 
-			<!-- Source Filter -->
 			<div class="filter-group">
 				<label class="filter-label" for="source">Source</label>
 				<select id="source" value={selectedSource} onchange={handleSourceChange}>
@@ -468,7 +437,6 @@ $effect(() => {
 				</select>
 			</div>
 
-			<!-- Date Range: After -->
 			<div class="filter-group">
 				<label class="filter-label" for="from-date">After</label>
 				<input
@@ -485,7 +453,6 @@ $effect(() => {
 				/>
 			</div>
 
-			<!-- Date Range: Before -->
 			<div class="filter-group">
 				<label class="filter-label" for="to-date">Before</label>
 				<input
@@ -504,7 +471,6 @@ $effect(() => {
 		</div>
 	</section>
 
-	<!-- Controls Section -->
 	<section class="section controls-section">
 		<div class="controls-left">
 			<button
@@ -582,7 +548,6 @@ $effect(() => {
 		</div>
 	</section>
 
-	<!-- Logs Table Section -->
 	<section class="section logs-section">
 		<div class="logs-header">
 			<h2>Log Entries</h2>
@@ -663,7 +628,6 @@ $effect(() => {
 		{/if}
 		</section>
 
-	<!-- Settings Info -->
 	<section class="section settings-info">
 		<h2>Retention Settings</h2>
 		<div class="settings-grid">
@@ -821,7 +785,6 @@ $effect(() => {
 			margin: 0;
 		}
 
-		/* Stats Section */
 		.stats-section {
 			display: grid;
 			grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -863,7 +826,6 @@ $effect(() => {
 			margin-top: 0.25rem;
 		}
 
-		/* Section */
 		.section {
 			background: oklch(var(--card));
 			border: 1px solid oklch(var(--border));
@@ -879,7 +841,6 @@ $effect(() => {
 			margin: 0;
 		}
 
-		/* Filters */
 		.filters-header {
 			display: flex;
 			justify-content: space-between;
@@ -1018,7 +979,6 @@ $effect(() => {
 			margin-left: 0.25rem;
 		}
 
-		/* Controls */
 		.controls-section {
 			display: flex;
 			justify-content: space-between;
@@ -1095,7 +1055,6 @@ $effect(() => {
 			}
 		}
 
-		/* Logs Table */
 		.logs-section {
 			padding: 1rem;
 		}
@@ -1294,7 +1253,6 @@ $effect(() => {
 			background: oklch(var(--muted));
 		}
 
-		/* Settings Info */
 		.settings-info h2 {
 			margin-bottom: 1rem;
 		}
@@ -1334,7 +1292,6 @@ $effect(() => {
 			color: oklch(var(--primary));
 		}
 
-		/* Responsive */
 		@media (max-width: 768px) {
 			.logs-page {
 				padding: 1rem;
