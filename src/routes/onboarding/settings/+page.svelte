@@ -598,7 +598,6 @@ function getThemeColors(themeValue: string) {
 									</Tooltip.Root>
 								</dt>
 							{/snippet}
-							<!-- Value tooltip: explains the specific effect of the selected value -->
 							{#snippet previewDd(tip: string, label: string)}
 								<dd>
 									<Tooltip.Root>
@@ -671,7 +670,6 @@ function getThemeColors(themeValue: string) {
 								{/each}
 							</div>
 
-							<!-- Advanced Options: the six granular controls, collapsed by default -->
 							<div class="advanced-options">
 								<button
 									type="button"

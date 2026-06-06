@@ -33,11 +33,11 @@ const playHistoryRecordArbitrary: fc.Arbitrary<PlayHistoryRecord> = fc.record({
 	ratingKey: fc.string({ minLength: 1, maxLength: 20 }),
 	title: fc.string({ minLength: 1, maxLength: 200 }),
 	type: fc.constantFrom('movie', 'episode'),
-	viewedAt: fc.integer({ min: 1704067200, max: 1735689599 }), // 2024 year range
+	viewedAt: fc.integer({ min: 1704067200, max: 1735689599 }),
 	accountId: fc.integer({ min: 1, max: 1000 }),
 	librarySectionId: fc.integer({ min: 1, max: 100 }),
 	thumb: fc.option(fc.webUrl(), { nil: null }),
-	duration: fc.option(fc.integer({ min: 0, max: 14400 }), { nil: null }), // Up to 4 hours in seconds
+	duration: fc.option(fc.integer({ min: 0, max: 14400 }), { nil: null }),
 	grandparentTitle: fc.option(fc.string({ minLength: 1, maxLength: 100 }), { nil: null }),
 	grandparentRatingKey: fc.option(fc.string({ minLength: 1, maxLength: 20 }), { nil: null }),
 	grandparentThumb: fc.option(fc.webUrl(), { nil: null }),
@@ -68,17 +68,17 @@ const episodeRecordArbitrary: fc.Arbitrary<PlayHistoryRecord> = fc
 		id: fc.integer({ min: 1, max: 1000000 }),
 		historyKey: fc.uuid(),
 		ratingKey: fc.string({ minLength: 1, maxLength: 20 }),
-		title: fc.string({ minLength: 1, maxLength: 100 }), // Episode title
+		title: fc.string({ minLength: 1, maxLength: 100 }),
 		type: fc.constant('episode' as const),
 		viewedAt: fc.integer({ min: 1704067200, max: 1735689599 }),
 		accountId: fc.integer({ min: 1, max: 1000 }),
 		librarySectionId: fc.integer({ min: 1, max: 100 }),
 		thumb: fc.option(fc.webUrl(), { nil: null }),
 		duration: fc.option(fc.integer({ min: 0, max: 14400 }), { nil: null }),
-		grandparentTitle: fc.string({ minLength: 1, maxLength: 100 }), // Show name
+		grandparentTitle: fc.string({ minLength: 1, maxLength: 100 }),
 		grandparentRatingKey: fc.option(fc.string({ minLength: 1, maxLength: 20 }), { nil: null }),
 		grandparentThumb: fc.option(fc.webUrl(), { nil: null }),
-		parentTitle: fc.option(fc.string({ minLength: 1, maxLength: 50 }), { nil: null }), // Season
+		parentTitle: fc.option(fc.string({ minLength: 1, maxLength: 50 }), { nil: null }),
 		genres: fc.option(
 			fc
 				.array(fc.constantFrom('Action', 'Comedy', 'Drama', 'Sci-Fi', 'Horror'), {
@@ -518,7 +518,7 @@ describe('Property 14: Binge Session Detection', () => {
 			fc.property(
 				fc.integer({ min: 2, max: 10 }),
 				fc.integer({ min: 1704067200, max: 1735000000 }),
-				fc.integer({ min: 60, max: 1800 }), // Duration 1-30 min
+				fc.integer({ min: 60, max: 1800 }),
 				(numRecords, startTime, duration) => {
 					const records: PlayHistoryRecord[] = [];
 					for (let i = 0; i < numRecords; i++) {
@@ -528,7 +528,7 @@ describe('Property 14: Binge Session Detection', () => {
 							ratingKey: `rating-${i}`,
 							title: `Title ${i}`,
 							type: 'movie',
-							viewedAt: startTime + i * 15 * 60, // 15 min gaps
+							viewedAt: startTime + i * 15 * 60,
 							accountId: 1,
 							librarySectionId: 1,
 							thumb: null,

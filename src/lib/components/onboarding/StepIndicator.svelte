@@ -161,7 +161,7 @@ $effect(() => {
 
 		.step-connector {
 			position: absolute;
-			left: calc(50% + 18px + 4px); /* Circle center + radius + gap */
+			left: calc(50% + 18px + 4px); /* Keep connector lines outside the badge. */
 			right: calc(-50% + 18px + 4px);
 			top: 50%;
 			transform: translateY(-50%);
@@ -223,7 +223,7 @@ $effect(() => {
 			}
 
 			.step-connector {
-				left: calc(50% + 16px + 3px); /* Smaller circle radius + smaller gap */
+				left: calc(50% + 16px + 3px);
 				right: calc(-50% + 16px + 3px);
 			}
 		}

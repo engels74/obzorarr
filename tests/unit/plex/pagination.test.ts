@@ -1,9 +1,3 @@
-/**
- * Unit tests for Plex Pagination Module
- *
- * Tests the generic pagination implementation for Plex API.
- */
-
 import { describe, expect, it } from 'bun:test';
 import {
 	calculateExpectedPages,

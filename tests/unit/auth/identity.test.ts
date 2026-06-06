@@ -80,7 +80,7 @@ describe('dev-users module', () => {
 	const mockSharedUsers = [
 		{ id: 1001, username: 'SharedUser1', email: 'user1@example.com', thumb: 'thumb1' },
 		{ id: 1002, username: 'SharedUser2', email: 'user2@example.com', thumb: 'thumb2' },
-		{ id: 1003, username: 'SharedUser3' } // No email/thumb
+		{ id: 1003, username: 'SharedUser3' }
 	];
 	function setupFetchMock(sharedUsers = mockSharedUsers) {
 		fetchMock = spyOn(globalThis, 'fetch').mockImplementation(((url: URL | RequestInfo) => {
@@ -119,7 +119,7 @@ describe('dev-users module', () => {
 			await getServerUsers();
 			expect(mockGetPlexUserInfo).toHaveBeenCalledTimes(1);
 			const result2 = await getServerUsers();
-			expect(mockGetPlexUserInfo).toHaveBeenCalledTimes(1); // Still 1
+			expect(mockGetPlexUserInfo).toHaveBeenCalledTimes(1);
 			expect(result2.owner.username).toBe('ServerOwner');
 		});
 		it('handles empty shared users list', async () => {

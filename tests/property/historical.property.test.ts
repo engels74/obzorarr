@@ -18,13 +18,6 @@ import { drizzle } from 'drizzle-orm/bun-sqlite';
 import * as fc from 'fast-check';
 import * as schema from '$lib/server/db/schema';
 
-/**
- * Create an in-memory test database with schema
- *
- * Note: We deliberately do NOT create a foreign key between
- * play_history.account_id and users.plex_id to ensure historical
- * data preservation (Requirements 13.1, 13.3).
- */
 function createTestDatabase() {
 	const sqlite = new Database(':memory:', { strict: true });
 
@@ -43,8 +36,8 @@ function createTestDatabase() {
 		)
 	`);
 
-	// Create play_history table WITHOUT foreign key to users
-	// This is intentional for historical data preservation
+	// Historical rows must survive after a Plex account disappears, so this
+	// property fixture intentionally mirrors the production table's loose link.
 	sqlite.exec(`
 		CREATE TABLE IF NOT EXISTS play_history (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -110,26 +103,20 @@ async function getAllUsersWatchTime(
 	return watchTimeMap;
 }
 
-/**
- * Arbitrary for generating play history records
- */
 const playHistoryArbitrary = fc.record({
 	historyKey: fc.uuid(),
 	ratingKey: fc.string({ minLength: 1, maxLength: 20 }),
 	title: fc.string({ minLength: 1, maxLength: 100 }),
 	type: fc.constantFrom('movie', 'episode'),
-	viewedAt: fc.integer({ min: 1704067200, max: 1735689599 }), // 2024 year range
+	viewedAt: fc.integer({ min: 1704067200, max: 1735689599 }),
 	accountId: fc.integer({ min: 1, max: 10000 }),
 	librarySectionId: fc.integer({ min: 1, max: 100 }),
 	thumb: fc.option(fc.webUrl(), { nil: null }),
-	duration: fc.integer({ min: 60, max: 14400 }), // 1 min to 4 hours in seconds
+	duration: fc.integer({ min: 60, max: 14400 }),
 	grandparentTitle: fc.option(fc.string({ minLength: 1, maxLength: 50 }), { nil: null }),
 	parentTitle: fc.option(fc.string({ minLength: 1, maxLength: 50 }), { nil: null })
 });
 
-/**
- * Arbitrary for generating unique play history records (unique historyKeys)
- */
 const uniquePlayHistoryArrayArbitrary = fc
 	.array(playHistoryArbitrary, { minLength: 1, maxLength: 50 })
 	.map((records) => {
@@ -139,9 +126,6 @@ const uniquePlayHistoryArrayArbitrary = fc
 		}));
 	});
 
-/**
- * Arbitrary for generating user records
- */
 const userArbitrary = fc.record({
 	plexId: fc.integer({ min: 1, max: 10000 }),
 	username: fc.string({ minLength: 1, maxLength: 50 }),
@@ -184,13 +168,13 @@ describe('Property 23: Historical Data Preservation', () => {
 
 					const uniqueUsers = userRecords.map((user, index) => ({
 						...user,
-						plexId: 100000 + index // Ensure plexIds don't overlap with accountIds
+						// Force a non-match so the fallback path, not the direct join path, is tested.
+						plexId: 100000 + index
 					}));
 
 					await db.insert(schema.users).values(uniqueUsers);
 
-					// Insert play history with accountIds that DON'T match any users.plexId
-					// (accountIds are in range 1-10000, plexIds are 100000+)
+					// These rows model orphaned Plex history that should still count in stats.
 					await db
 						.insert(schema.playHistory)
 						.values(historyRecords)
@@ -390,7 +374,7 @@ describe('Historical User Data Edge Cases', () => {
 			title: 'Test Movie',
 			type: 'movie',
 			viewedAt: 1704067200,
-			accountId: 12345, // Same as plexId
+			accountId: 12345,
 			librarySectionId: 1,
 			duration: 7200
 		});
@@ -493,7 +477,7 @@ describe('Historical User Data Edge Cases', () => {
 		const yearFilter = createYearFilter(2024);
 		const watchTimeMap = await getAllUsersWatchTime(db, yearFilter);
 
-		// Build top viewers with fallback (simulating engine.ts behavior)
+		// Mirror the engine fallback so orphaned account IDs still produce display names.
 		const topViewers: Array<{ accountId: number; username: string; minutes: number }> = [];
 		for (const [accountId, minutes] of watchTimeMap.entries()) {
 			const username = userMap.get(accountId) ?? `User ${accountId}`;

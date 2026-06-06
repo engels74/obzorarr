@@ -349,8 +349,6 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 		</dt>
 	{/snippet}
 
-	<!-- Value tooltip: explains the specific effect of the selected value, mirroring
-	     the tipDt label-trigger styling but right-aligned + emphasized like the value. -->
 	{#snippet previewDd(tip: string, label: string)}
 		<dd class="text-right font-medium">
 			<Tooltip.Root>

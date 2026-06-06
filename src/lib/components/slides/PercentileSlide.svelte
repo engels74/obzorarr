@@ -23,7 +23,6 @@ let {
 
 const possessive = $derived(getPossessive(messagingContext));
 
-// Compute the "top X%" value
 const topPercentage = $derived(Math.max(1, Math.round(100 - percentileRank)));
 const isTopPerformer = $derived(topPercentage <= 10);
 

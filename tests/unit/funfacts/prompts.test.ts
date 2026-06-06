@@ -9,13 +9,6 @@ import {
 } from '$lib/server/funfacts/ai/prompts';
 import type { AIPersona, FactGenerationContext } from '$lib/server/funfacts/types';
 
-/**
- * Unit tests for AI Prompts Module
- *
- * Tests the prompt building functions used for AI-generated fun facts.
- * Covers persona selection, system/user prompt construction, and edge cases.
- */
-
 function createMockContext(overrides: Partial<FactGenerationContext> = {}): FactGenerationContext {
 	return {
 		hours: 100,

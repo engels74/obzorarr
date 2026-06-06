@@ -543,7 +543,7 @@ function handleSlideAnimationComplete(): void {}
 			align-items: center;
 			justify-content: center;
 			padding: 3rem 1.5rem;
-			padding-top: 4rem; /* Space for progress bar */
+			padding-top: 4rem; /* Keep slide content below the progress bar. */
 			overflow-y: auto;
 		}
 
@@ -719,7 +719,7 @@ function handleSlideAnimationComplete(): void {}
 			}
 		}
 
-		/* Reduced motion */
+		/* Respect users who request reduced motion. */
 		@media (prefers-reduced-motion: reduce) {
 			.navigation-hint {
 				animation: none;

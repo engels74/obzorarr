@@ -32,7 +32,6 @@ let oauthError = $state<string | null>(null);
 let loginController: PlexLoginController | null = null;
 let confirmOwnershipChecked = $state(false);
 
-// Popup fallback state
 let showPopupBlockedModal = $state(false);
 let pendingPinId = $state<number | null>(null);
 let pendingAuthUrl = $state<string | null>(null);
@@ -500,7 +499,6 @@ function formatServerUrl(url: string | null): string {
 	subtitle="Link your Plex Media Server to unlock your personalized viewing journey"
 >
 	<div class="plex-content" bind:this={contentRef}>
-		<!-- Plex Icon -->
 		<div class="plex-icon-wrapper animate-item" bind:this={iconRef}>
 			<div class="plex-icon-glow"></div>
 			<div class="plex-icon">

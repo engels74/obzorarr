@@ -32,9 +32,6 @@ function getYearStartTimestamp(year: number): number {
  * Validates: Requirements 2.3, 2.4, 2.5
  */
 
-/**
- * Create an in-memory test database with schema
- */
 function createTestDatabase() {
 	const sqlite = new Database(':memory:', { strict: true });
 
@@ -91,9 +88,6 @@ interface TestPlexRecord {
 	parentTitle: string | undefined;
 }
 
-/**
- * Arbitrary for generating valid Plex history metadata
- */
 const plexHistoryArbitrary: fc.Arbitrary<TestPlexRecord> = fc.record({
 	historyKey: fc.string({ minLength: 1, maxLength: 50 }),
 	ratingKey: fc.string({ minLength: 1, maxLength: 50 }),
@@ -108,9 +102,6 @@ const plexHistoryArbitrary: fc.Arbitrary<TestPlexRecord> = fc.record({
 	parentTitle: fc.option(fc.string({ minLength: 0, maxLength: 100 }), { nil: undefined })
 });
 
-/**
- * Arbitrary for generating unique Plex history records (unique historyKeys)
- */
 const uniquePlexHistoryArrayArbitrary = fc
 	.array(plexHistoryArbitrary, { minLength: 1, maxLength: 50 })
 	.map((records) => {
@@ -120,9 +111,6 @@ const uniquePlexHistoryArrayArbitrary = fc
 		}));
 	});
 
-/**
- * Convert Plex record to database insert format
- */
 function mapPlexRecordToDbInsert(record: TestPlexRecord) {
 	return {
 		historyKey: record.historyKey,
@@ -139,9 +127,6 @@ function mapPlexRecordToDbInsert(record: TestPlexRecord) {
 	};
 }
 
-/**
- * Insert records and create sync status, returning the max viewedAt
- */
 async function insertRecordsAndCreateSync(
 	db: ReturnType<typeof createTestDatabase>,
 	records: TestPlexRecord[]

@@ -285,7 +285,7 @@ function toggleAutoScroll() {
 	autoScroll = !autoScroll;
 
 	if (autoScroll) {
-		streamedLogs = []; // Clear old streamed logs
+		streamedLogs = [];
 		lastSeenStreamId = 0;
 		connectSSE();
 	} else {

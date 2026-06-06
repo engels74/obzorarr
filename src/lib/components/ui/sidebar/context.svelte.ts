@@ -34,12 +34,11 @@ class SidebarState {
 		this.props = props;
 	}
 
-	// without this, we would need to use `sidebar.isMobile.current` everywhere
+	// Keep consumers from depending on the internal IsMobile rune wrapper.
 	get isMobile() {
 		return this.#isMobile.current;
 	}
 
-	// Event handler to apply to the `<svelte:window>`
 	handleShortcutKeydown = (e: KeyboardEvent) => {
 		if (e.key === SIDEBAR_KEYBOARD_SHORTCUT && (e.metaKey || e.ctrlKey)) {
 			e.preventDefault();

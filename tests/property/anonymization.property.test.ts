@@ -23,9 +23,6 @@ const anonymizationModeArbitrary: fc.Arbitrary<AnonymizationModeType> = fc.const
 	AnonymizationMode.HYBRID
 );
 
-/**
- * User display info for testing
- */
 interface TestUserDisplay {
 	userId: number;
 	username: string;
@@ -43,9 +40,11 @@ const userDisplayArbitrary: fc.Arbitrary<TestUserDisplay> = fc.record({
 const uniqueUsersArbitrary: fc.Arbitrary<TestUserDisplay[]> = fc
 	.array(userDisplayArbitrary, { minLength: 1, maxLength: 10 })
 	.map((users) => {
+		// Distinct IDs keep anonymization-order properties from passing only because
+		// duplicated generated users collapse into the same identity.
 		return users.map((user, index) => ({
 			...user,
-			userId: user.userId * 1000 + index // Ensure uniqueness
+			userId: user.userId * 1000 + index
 		}));
 	});
 
@@ -54,7 +53,7 @@ describe('Property 18: Anonymization Mode Display', () => {
 		fc.assert(
 			fc.property(
 				uniqueUsersArbitrary,
-				fc.option(fc.integer({ min: 1, max: 10000 }), { nil: null }), // viewingUserId
+				fc.option(fc.integer({ min: 1, max: 10000 }), { nil: null }),
 				(users, viewingUserId) => {
 					const result = applyAnonymization(users, AnonymizationMode.REAL, viewingUserId);
 
@@ -164,7 +163,7 @@ describe('Property 18: Anonymization Mode Display', () => {
 				(users, randomIndex) => {
 					const viewerIndex = randomIndex % users.length;
 					const viewingUser = users[viewerIndex];
-					if (!viewingUser) return true; // Skip if no user at index
+					if (!viewingUser) return true;
 
 					const viewingUserId = viewingUser.userId;
 					const originalUsername = viewingUser.username;
@@ -229,7 +228,7 @@ describe('Property 18: Anonymization Mode Display', () => {
 				(users, mode, viewingUserId) => {
 					const result = applyAnonymization(users, mode, viewingUserId);
 
-					// UserIds should be in same order
+					// Anonymization can change labels, but it must never reorder identities.
 					return result.every((user, index) => {
 						const original = users[index];
 						return original !== undefined && user.userId === original.userId;

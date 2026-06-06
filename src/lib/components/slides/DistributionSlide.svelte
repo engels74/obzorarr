@@ -137,7 +137,6 @@ $effect(() => {
 	const shouldAnimate = !prefersReducedMotion.current;
 	const animations: { stop: () => void; finished: Promise<void> }[] = [];
 
-	// Helper to set bars visible without animation
 	const setVisible = (bars: HTMLElement[]) => {
 		bars.forEach((el) => {
 			if (el) el.style.transform = 'scaleY(1)';

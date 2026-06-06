@@ -51,13 +51,6 @@ import { appSettings, cachedStats, playHistory } from '$lib/server/db/schema';
 import { createYearFilter } from '$lib/server/stats/utils';
 import { resetSharedTestDb } from '../../helpers/db';
 
-/**
- * Unit tests for Admin Settings Service
- *
- * Tests app settings management and cache operations.
- * Uses in-memory SQLite from test setup.
- */
-
 describe('Admin Settings Service', () => {
 	beforeEach(resetSharedTestDb);
 

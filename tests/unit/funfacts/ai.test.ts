@@ -14,18 +14,11 @@ import {
 import type { UserStats } from '$lib/server/stats/types';
 import { resetSharedTestDb } from '../../helpers/db';
 
-/**
- * Unit tests for Fun Facts AI Generation
- *
- * Tests AI configuration, API calls, response parsing, and retry logic.
- * Uses mocked fetch for API calls.
- */
-
 function createMockUserStats(overrides: Partial<UserStats> = {}): UserStats {
 	return {
 		userId: 1,
 		year: 2024,
-		totalWatchTimeMinutes: 6000, // 100 hours
+		totalWatchTimeMinutes: 6000,
 		totalPlays: 200,
 		topMovies: [
 			{ rank: 1, title: 'The Matrix', count: 5, thumb: null },
@@ -460,7 +453,7 @@ describe('Fun Facts AI', () => {
 			const facts = await generateFunFacts(stats, { count: 3, preferAI: true });
 
 			expect(facts).toHaveLength(3);
-			expect(facts[0]?.fact).toBe('You watched 100 hours'); // AI response
+			expect(facts[0]?.fact).toBe('You watched 100 hours');
 		});
 
 		it('uses templates when preferAI is false', async () => {
@@ -494,7 +487,6 @@ describe('Fun Facts AI', () => {
 				value: 'sk-test'
 			});
 
-			// AI returns only 1 fact
 			globalThis.fetch = mock(async () => {
 				return new Response(
 					JSON.stringify({
@@ -518,7 +510,7 @@ describe('Fun Facts AI', () => {
 			const facts = await generateFunFacts(stats, { count: 3 });
 
 			expect(facts).toHaveLength(3);
-			expect(facts[0]?.fact).toBe('Only one fact'); // AI fact first
+			expect(facts[0]?.fact).toBe('Only one fact');
 		});
 	});
 
@@ -659,7 +651,6 @@ describe('Fun Facts AI', () => {
 			let callCount = 0;
 			globalThis.fetch = mock(async () => {
 				callCount++;
-				// Always throw AbortError
 				const error = new Error('The operation was aborted');
 				error.name = 'AbortError';
 				throw error;

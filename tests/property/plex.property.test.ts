@@ -38,9 +38,6 @@ function expectedApiCalls(totalRecords: number, pageSize: number): number {
 	return Math.ceil(totalRecords / pageSize);
 }
 
-/**
- * Simple item type for testing
- */
 interface TestItem {
 	id: number;
 	value: string;

@@ -1,9 +1,3 @@
-/**
- * Unit tests for Slide Configuration Service
- *
- * Tests slide config initialization, updates, and error handling.
- */
-
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
 import { DEFAULT_SLIDE_ORDER } from '$lib/components/slides/types';

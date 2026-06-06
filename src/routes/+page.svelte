@@ -44,13 +44,11 @@ $effect(() => {
 	}
 });
 
-// Plex OAuth state
 let isOAuthLoading = $state(false);
 let isRedirecting = $state(false);
 let oauthError = $state<string | null>(null);
 let loginController: PlexLoginController | null = null;
 
-// Popup fallback state
 let showPopupBlockedModal = $state(false);
 let pendingPinId = $state<number | null>(null);
 let pendingAuthUrl = $state<string | null>(null);
@@ -236,7 +234,6 @@ function handleCancelRedirect(): void {
 				</div>
 			{/if}
 
-			<!-- SECONDARY: Plex OAuth Login -->
 			<div class="login-section">
 				<p class="login-prompt">Want to access your dashboard or change settings?</p>
 				<Button
@@ -631,7 +628,7 @@ function handleCancelRedirect(): void {
 			}
 		}
 
-		/* Reduced motion */
+		/* Respect users who request reduced motion. */
 		@media (prefers-reduced-motion: reduce) {
 			:global(.view-button),
 			:global(.login-button),

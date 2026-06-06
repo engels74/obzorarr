@@ -86,7 +86,6 @@ $effect(() => {
 				<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 				{@html renderedHtml}
 			{:else}
-				<!-- Fallback: display raw content if no rendered HTML provided -->
 				<p>{content}</p>
 			{/if}
 		</div>

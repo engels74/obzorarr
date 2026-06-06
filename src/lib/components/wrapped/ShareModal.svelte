@@ -467,7 +467,6 @@ $effect(() => {
 					</div>
 				</form>
 
-				<!-- Regenerate Token (admin only, private-link mode) -->
 				{#if canRegenerateToken}
 					<form
 						method="POST"
@@ -512,7 +511,7 @@ $effect(() => {
 			</div>
 		{/if}
 
-		<!-- ISSUE-019: explain why visibility controls are unavailable + a path to act -->
+			<!-- Disabled visibility controls need an in-flow explanation and a recovery path. -->
 		{#if showNoControlNotice}
 			<div class="control-notice">
 				<p class="control-notice-text">
@@ -524,7 +523,7 @@ $effect(() => {
 			</div>
 		{/if}
 
-		<!-- Advanced Options Link: admin-scoped vs user-scoped (ISSUE-020) -->
+			<!-- Non-admin users cannot access the admin privacy destination. -->
 		<div class="advanced-section">
 			<a
 				href={isAdmin ? '/admin/settings?tab=privacy' : '/dashboard/settings'}

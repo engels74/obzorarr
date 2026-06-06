@@ -197,7 +197,7 @@ function openNewEditor() {
 	editingSlide = null;
 	editorTitle = '';
 	editorContent = '';
-	editorYear = null; // Default to "All years"
+	editorYear = null;
 	editorEnabled = true;
 	previewHtml = '';
 	previewError = '';
@@ -297,7 +297,6 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 		<p class="subtitle">Manage slides for Year in Review presentations</p>
 	</header>
 
-	<!-- Slide Order Section -->
 	<section class="section">
 		<div class="section-header">
 			<div class="section-title-content">

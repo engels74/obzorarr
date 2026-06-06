@@ -1,8 +1,6 @@
 /**
- * Unit tests for Database Client Module
- *
- * Tests module-level initialization code in db/client.ts. These use subprocesses
- * because db/client executes on import and the main test process preloads it.
+ * db/client performs import-time initialization, so these cases run in
+ * subprocesses instead of re-importing it inside the preloaded Bun test process.
  */
 
 import { describe, expect, it } from 'bun:test';

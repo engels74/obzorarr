@@ -88,7 +88,6 @@ export const POST: RequestHandler = async ({ request, locals, cookies, url }) =>
 				clientIdentifier: clientIdentifier!
 			}));
 
-		// Normalize URL - remove trailing slash
 		const normalizedUrl = url.replace(/\/+$/, '');
 		const endpoint = `${normalizedUrl}/identity`;
 
@@ -206,7 +205,6 @@ export const POST: RequestHandler = async ({ request, locals, cookies, url }) =>
 			clearTimeout(timeoutId);
 		}
 	} catch (err) {
-		// Re-throw SvelteKit errors
 		if (err && typeof err === 'object' && 'status' in err) {
 			throw err;
 		}

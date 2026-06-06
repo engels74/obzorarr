@@ -354,7 +354,6 @@ function getLogoModeDescription(): string {
 						{/if}
 					</div>
 				{:else}
-					<!-- User doesn't have control -->
 					<div class="info-banner" role="status" aria-live="polite">
 						<span class="info-icon">ℹ️</span>
 						<div class="info-content">
@@ -490,7 +489,6 @@ function getLogoModeDescription(): string {
 						</div>
 					</form>
 				{:else}
-					<!-- User doesn't have control -->
 					<div class="info-banner">
 						<span class="info-icon">ℹ️</span>
 						<div class="info-content">
@@ -573,7 +571,6 @@ function getLogoModeDescription(): string {
 		</Tabs.Content>
 	</Tabs.Root>
 
-	<!-- Regenerate Token Confirmation Dialog -->
 	<AlertDialog.Root bind:open={regenerateDialogOpen}>
 		<AlertDialog.Content>
 			<AlertDialog.Header>

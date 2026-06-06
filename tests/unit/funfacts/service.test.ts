@@ -1,10 +1,3 @@
-/**
- * Unit tests for Fun Facts Service
- *
- * Tests context building, template applicability, interpolation,
- * and random selection functions.
- */
-
 import { afterAll, afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import { AppSettingsKey } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
@@ -42,7 +35,7 @@ function createMockUserStats(overrides: Partial<UserStats> = {}): UserStats {
 	return {
 		userId: 1,
 		year: 2024,
-		totalWatchTimeMinutes: 6000, // 100 hours
+		totalWatchTimeMinutes: 6000,
 		totalPlays: 200,
 		topMovies: [
 			{ rank: 1, title: 'The Matrix', count: 5, thumb: null },

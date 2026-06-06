@@ -23,15 +23,6 @@ import {
 } from '$lib/server/sharing/types';
 import { resetSharedTestDb } from '../../helpers/db';
 
-/**
- * Unit tests for Sharing Access Control
- *
- * Tests access control logic for wrapped pages.
- * Covers pure access check function and high-level route guards.
- *
- * Uses in-memory SQLite from test setup.
- */
-
 describe('Sharing Access Control', () => {
 	beforeEach(resetSharedTestDb);
 
@@ -485,11 +476,12 @@ describe('Sharing Access Control', () => {
 		it('throws InvalidShareTokenError when mode is not private-link', async () => {
 			const token = generateShareToken();
 
-			// Insert token but with PUBLIC mode (simulating mode change after token generation)
+			// Simulate a mode change after token generation; stale private-link tokens
+			// must not authorize once the share is public.
 			await db.insert(shareSettings).values({
 				userId,
 				year,
-				mode: ShareMode.PUBLIC, // Not PRIVATE_LINK
+				mode: ShareMode.PUBLIC,
 				shareToken: token,
 				canUserControl: false
 			});

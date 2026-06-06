@@ -41,7 +41,7 @@ const rankedItemArbitrary: fc.Arbitrary<RankedItem> = fc.record({
 
 const bingeSessionArbitrary: fc.Arbitrary<BingeSession> = fc
 	.record({
-		startTime: fc.integer({ min: 1577836800, max: 1893456000 }), // 2020-2030
+		startTime: fc.integer({ min: 1577836800, max: 1893456000 }),
 		endTime: fc.integer({ min: 1577836800, max: 1893456000 }),
 		plays: fc.integer({ min: 1, max: 100 }),
 		totalMinutes: fc.float({ min: 0, max: 10000, noNaN: true })
@@ -53,7 +53,7 @@ const bingeSessionArbitrary: fc.Arbitrary<BingeSession> = fc
 
 const watchRecordArbitrary: fc.Arbitrary<WatchRecord> = fc.record({
 	title: fc.string({ minLength: 1, maxLength: 200 }),
-	viewedAt: fc.integer({ min: 1577836800, max: 1893456000 }), // 2020-2030
+	viewedAt: fc.integer({ min: 1577836800, max: 1893456000 }),
 	thumb: fc.option(fc.webUrl(), { nil: null }),
 	type: fc.constantFrom('movie', 'episode', 'track') as fc.Arbitrary<'movie' | 'episode' | 'track'>
 });
@@ -429,7 +429,6 @@ describe('Property 21: Statistics Serialization Round-Trip', () => {
 			fc.assert(
 				fc.property(userStatsArbitrary, (stats) => {
 					const json = serializeStats(stats);
-					// Should not throw
 					const parsed = JSON.parse(json);
 					return typeof parsed === 'object' && parsed !== null;
 				}),
@@ -441,7 +440,6 @@ describe('Property 21: Statistics Serialization Round-Trip', () => {
 			fc.assert(
 				fc.property(serverStatsArbitrary, (stats) => {
 					const json = serializeStats(stats);
-					// Should not throw
 					const parsed = JSON.parse(json);
 					return typeof parsed === 'object' && parsed !== null;
 				}),

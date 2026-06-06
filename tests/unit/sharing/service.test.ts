@@ -31,13 +31,6 @@ import {
 } from '$lib/server/sharing/types';
 import { resetSharedTestDb } from '../../helpers/db';
 
-/**
- * Unit tests for Sharing Service
- *
- * Tests database operations for share settings management.
- * Uses in-memory SQLite from test setup.
- */
-
 describe('Sharing Service', () => {
 	beforeEach(async () => {
 		await resetSharedTestDb();
@@ -780,7 +773,6 @@ describe('Sharing Service', () => {
 			});
 
 			it('clears token when switching away from private-link', async () => {
-				// Set to private-link first
 				await updateShareSettings(userId, year, { mode: ShareMode.PRIVATE_LINK }, true);
 
 				const updated = await updateShareSettings(userId, year, { mode: ShareMode.PUBLIC }, true);

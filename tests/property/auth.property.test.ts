@@ -35,9 +35,6 @@ function determineRole(isOwner: boolean): { isAdmin: boolean } {
  * Validates: Requirements 1.3, 1.4, 1.5, 1.7
  */
 
-/**
- * Create an in-memory test database with schema
- */
 function createTestDatabase() {
 	const sqlite = new Database(':memory:', { strict: true });
 
