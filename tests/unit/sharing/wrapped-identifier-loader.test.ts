@@ -158,7 +158,6 @@ describe('wrapped/[year=year]/u/[identifier] loader: cross-year token isolation'
 			defaultShareMode: ShareMode.PRIVATE_LINK,
 			allowUserControl: false
 		});
-		// Main year must already have the token the visitor is presenting.
 		await seedShareSettings({
 			userId: USER_ID,
 			year: ORIGIN_YEAR,
@@ -184,7 +183,6 @@ describe('wrapped/[year=year]/u/[identifier] loader: cross-year token isolation'
 
 		expect(data.yearIdentifiers).toBeDefined();
 		expect(data.yearIdentifiers?.[ORIGIN_YEAR]).toBe(CURRENT_YEAR_TOKEN);
-		// Critical property: other year's identifier is the numeric userId, NOT its token.
 		expect(data.yearIdentifiers?.[OTHER_YEAR]).toBe(USER_ID);
 		expect(data.yearIdentifiers?.[OTHER_YEAR]).not.toBe(OTHER_YEAR_TOKEN_FOR_PRESEED);
 	});
@@ -201,7 +199,6 @@ describe('wrapped/[year=year]/u/[identifier] loader: cross-year token isolation'
 		});
 
 		expect(data.yearIdentifiers?.[OTHER_YEAR]).toBe(USER_ID);
-		// No share_settings row was created for OTHER_YEAR as a side effect.
 		const rows = await db
 			.select()
 			.from(shareSettings)
@@ -855,7 +852,6 @@ describe('wrapped/[year=year]/u/[identifier] loader: ISSUE-001 uniform-404 anti-
 	const EXISTING_ID = 2;
 	const NON_EXISTENT_ID = 4242;
 	const YEAR = 2024;
-	// Reuse the module-level fixture UUIDs rather than minting new literals.
 	const PRIVATE_LINK_TOKEN = CURRENT_YEAR_TOKEN;
 	const VALID_LINK_TOKEN = OTHER_YEAR_TOKEN_FOR_PRESEED;
 
@@ -878,14 +874,12 @@ describe('wrapped/[year=year]/u/[identifier] loader: ISSUE-001 uniform-404 anti-
 	}
 
 	it('returns a byte-identical 404 for anon private-oauth, anon private-link-no-token, and non-existent id', async () => {
-		// Case A: existing user, private-oauth (was 403 before the uniform-404 fix).
 		await setGlobalShareDefaults({
 			defaultShareMode: ShareMode.PRIVATE_OAUTH,
 			allowUserControl: false
 		});
 		const privateOauth = await captureAnonFailure(String(EXISTING_ID));
 
-		// Case B: existing user, private-link without a token in the URL.
 		await setGlobalShareDefaults({
 			defaultShareMode: ShareMode.PRIVATE_LINK,
 			allowUserControl: false
@@ -898,7 +892,6 @@ describe('wrapped/[year=year]/u/[identifier] loader: ISSUE-001 uniform-404 anti-
 		});
 		const privateLinkNoToken = await captureAnonFailure(String(EXISTING_ID));
 
-		// Case C: non-existent numeric id.
 		const nonExistent = await captureAnonFailure(String(NON_EXISTENT_ID));
 
 		expect(privateOauth.status).toBe(404);
@@ -968,9 +961,7 @@ describe('wrapped/[year=year]/u/[identifier] loader: ISSUE-001 uniform-404 anti-
 			allowUserControl: false
 		});
 
-		// Real, existing user whose personal wrapped is members-only (private-oauth).
 		const realMembersOnly = await captureAnonFailure(String(EXISTING_ID));
-		// Garbage, non-numeric identifier that is neither a valid token nor an id.
 		const garbage = await captureAnonFailure('definitely-not-a-real-identifier');
 
 		expect(realMembersOnly.status).toBe(404);

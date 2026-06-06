@@ -3,13 +3,9 @@ import type { Snippet } from 'svelte';
 import type { ButtonProps } from '$lib/components/ui/button/button.svelte';
 
 export type SubmitButtonProps = Omit<ButtonProps, 'type' | 'children'> & {
-	/** True while the form action is in flight. Disables clicks + flips aria-busy. */
 	submitting?: boolean;
-	/** Optional snippet for the resting button label (overrides default text). */
 	children?: Snippet;
-	/** Optional snippet for the submitting state (overrides "Saving…"). */
 	submittingLabel?: Snippet;
-	/** Plain-text label if no children snippet is supplied. */
 	label?: string;
 };
 </script>

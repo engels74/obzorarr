@@ -69,7 +69,6 @@ export const PlexGenreTagSchema = z.object({
 
 export type PlexGenreTag = z.infer<typeof PlexGenreTagSchema>;
 
-/** Metadata from library endpoint - includes duration, genres, and year not in history */
 export const PlexLibraryMetadataItemSchema = z.object({
 	ratingKey: z.string(),
 	duration: z.number().int().optional(),
@@ -110,10 +109,9 @@ export const PlexShowMetadataResponseSchema = z.object({
 export type PlexShowMetadataItem = z.infer<typeof PlexShowMetadataItemSchema>;
 export type PlexShowMetadataResponse = z.infer<typeof PlexShowMetadataResponseSchema>;
 
-/** History metadata with guaranteed ratingKey and title */
 export type ValidPlexHistoryMetadata = PlexHistoryMetadata & { ratingKey: string; title: string };
 
-/** Type guard to filter out items without ratingKey or title before database insertion */
+/** Plex can omit these fields, but play_history requires them. */
 export function hasRequiredFields(item: PlexHistoryMetadata): item is ValidPlexHistoryMetadata {
 	return (
 		typeof item.ratingKey === 'string' &&

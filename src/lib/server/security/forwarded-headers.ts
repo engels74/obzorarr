@@ -33,8 +33,8 @@ const FORWARDED_HEADER_LOOKUP: Array<[ForwardedHeaderName, string]> = [
 	['X-Real-IP', 'x-real-ip']
 ];
 
-// Take the rightmost (last-hop) value from a comma-separated forwarded header.
-// Returns null if no usable value is present.
+// Trust only the last hop: a correctly configured reverse proxy strips any
+// client-supplied forwarded values before appending its own.
 function lastHopValue(headerValue: string | null): string | null {
 	if (!headerValue) return null;
 	const parts = headerValue.split(',');

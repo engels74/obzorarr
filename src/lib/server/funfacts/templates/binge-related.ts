@@ -1,14 +1,5 @@
 import { defineTemplateCategory } from './base';
 
-/**
- * Binge-Related Templates
- *
- * Templates based on binge watching sessions
- * (marathon sessions, dedication)
- *
- * @module server/funfacts/templates/binge-related
- */
-
 export const BINGE_TEMPLATES = defineTemplateCategory('binge-related', [
 	{
 		id: 'marathon-session-epic',

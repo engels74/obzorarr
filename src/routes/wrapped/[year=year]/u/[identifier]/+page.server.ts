@@ -108,7 +108,6 @@ export const load: PageServerLoad = async ({ params, locals, parent, setHeaders 
 			});
 			userId = tokenResult.userId;
 
-			// Verify year matches the token's year
 			if (tokenResult.year !== year) {
 				error(404, 'This share link is invalid, expired, or has been revoked.');
 			}

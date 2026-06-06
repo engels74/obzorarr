@@ -546,7 +546,6 @@ function toggleDetails() {
 		text-align: center;
 	}
 
-	/* Status card */
 	.status-card {
 		display: flex;
 		align-items: flex-start;
@@ -614,7 +613,6 @@ function toggleDetails() {
 		color: rgba(255, 255, 255, 0.62);
 	}
 
-	/* Enable form */
 	.trust-proxy-enable-form {
 		display: flex;
 		flex-direction: column;
@@ -722,7 +720,6 @@ function toggleDetails() {
 		font-weight: 500;
 	}
 
-	/* Details toggle */
 	.details-toggle {
 		align-self: center;
 		display: inline-flex;
@@ -877,7 +874,6 @@ function toggleDetails() {
 		cursor: not-allowed;
 	}
 
-	/* Continue button */
 	.continue-form {
 		display: flex;
 		margin: 0;

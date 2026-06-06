@@ -1,10 +1,3 @@
-/**
- * Onboarding Step 3: Settings Configuration
- *
- * Allows admin to configure appearance, privacy, slides, and AI features.
- * Uses simplified settings focused on initial setup.
- */
-
 import { fail, redirect } from '@sveltejs/kit';
 import { z } from 'zod';
 import { DEFAULT_SLIDE_ORDER, type SlideType } from '$lib/components/slides/types';
@@ -69,11 +62,7 @@ import {
 import { ShareMode, type ShareModeType } from '$lib/sharing/types';
 import type { Actions, PageServerLoad } from './$types';
 
-/**
- * Validation schema for settings form
- */
 const SettingsSchema = z.object({
-	// Appearance
 	uiTheme: z.enum([
 		ThemePresets.MODERN_MINIMAL,
 		ThemePresets.SUPABASE,
@@ -89,7 +78,6 @@ const SettingsSchema = z.object({
 		ThemePresets.SOVIET_RED
 	]),
 
-	// Privacy
 	anonymizationMode: z.enum([
 		AnonymizationMode.REAL,
 		AnonymizationMode.ANONYMOUS,
@@ -110,10 +98,8 @@ const SettingsSchema = z.object({
 	// which returns false when no DB row exists, so it's never public before the admin opts in.
 	publicLandingLookup: z.enum(['true', 'false']).transform((v) => v === 'true'),
 
-	// Slides (comma-separated list of enabled slide types)
 	enabledSlides: z.string().optional(),
 
-	// AI Features
 	enableFunFacts: z.enum(['true', 'false']).transform((v) => v === 'true'),
 	funFactFrequency: z
 		.enum([
@@ -129,16 +115,11 @@ const SettingsSchema = z.object({
 	aiPersona: AIPersonaSchema.optional()
 });
 
-/**
- * Load function - provides current settings
- */
 export const load: PageServerLoad = async ({ parent }) => {
 	const parentData = await parent();
 
-	// Initialize slide config if not already done
 	await initializeDefaultSlideConfig();
 
-	// Load all settings in parallel
 	const [
 		uiTheme,
 		wrappedTheme,
@@ -169,14 +150,12 @@ export const load: PageServerLoad = async ({ parent }) => {
 		getAppSetting(AppSettingsKey.FUN_FACTS_AI_PERSONA)
 	]);
 
-	// Check if OpenAI is configured (for AI features section). Reflect both an
-	// env-provided key AND a stored DB key: the AI-key-missing warning must not
-	// nag when AI is already operative from a previously saved DB credential
-	// (env still takes precedence, but a DB key alone is enough to drive AI).
+	// Treat OpenAI as configured when either ENV or the DB supplies a key so the
+	// AI-key-missing warning does not nag after a previously saved credential.
+	// ENV still takes precedence, but a DB key alone is enough to drive AI.
 	const apiConfig = await getApiConfigWithSources();
 	const hasOpenAI = hasOpenAIEnvConfig() || Boolean(apiConfig.openai.apiKey.value.trim());
 
-	// Build theme options
 	const themeOptions = Object.entries(ThemePresets).map(([key, value]) => ({
 		value,
 		label: key
@@ -185,7 +164,6 @@ export const load: PageServerLoad = async ({ parent }) => {
 			.replace(/\b\w/g, (c) => c.toUpperCase())
 	}));
 
-	// Build slide options (only built-in slides)
 	const slideOptions = slideConfigs
 		.filter((config) => DEFAULT_SLIDE_ORDER.includes(config.slideType as SlideType))
 		.map((config) => ({
@@ -194,7 +172,6 @@ export const load: PageServerLoad = async ({ parent }) => {
 			enabled: config.enabled
 		}));
 
-	// Fun fact frequency options
 	const funFactOptions = [
 		{ value: FunFactFrequency.FEW, label: 'Few', description: '1-2 facts' },
 		{ value: FunFactFrequency.NORMAL, label: 'Normal', description: '3-5 facts' },
@@ -231,9 +208,6 @@ export const load: PageServerLoad = async ({ parent }) => {
 	};
 };
 
-/**
- * Format slide type to human-readable label
- */
 function formatSlideLabel(slideType: string): string {
 	const labels: Record<string, string> = {
 		'total-time': 'Total Watch Time',
@@ -271,13 +245,7 @@ async function requireOnboardingSettingsClaim(
 	return null;
 }
 
-/**
- * Form actions
- */
 export const actions: Actions = {
-	/**
-	 * Save all settings and continue to completion
-	 */
 	saveSettings: async ({ request, locals, cookies, url }) => {
 		const guardResult = await requireOnboardingSettingsClaim(cookies, url);
 		if (guardResult) return guardResult;
@@ -289,9 +257,9 @@ export const actions: Actions = {
 		try {
 			const formData = await request.formData();
 
-			// Parse form data. Hidden AI inputs are always rendered (so the form
-			// submits in one click) but emit empty strings when the toggle is off;
-			// coerce those to undefined so optional() and enum() schemas match.
+			// Hidden inputs stay mounted so each carousel step can submit in one click,
+			// but disabled toggles emit empty strings. Coerce those to undefined so
+			// optional() and enum() schemas match.
 			const optionalString = (key: string): string | undefined => {
 				const raw = formData.get(key)?.toString().trim();
 				return raw ? raw : undefined;
@@ -314,7 +282,6 @@ export const actions: Actions = {
 				aiPersona: optionalString('aiPersona')
 			};
 
-			// Validate
 			const parseResult = SettingsSchema.safeParse(rawData);
 			if (!parseResult.success) {
 				const errorMessage = parseResult.error.issues[0]?.message ?? 'Invalid settings';
@@ -347,13 +314,10 @@ export const actions: Actions = {
 			const hasEffectiveApiKey = Boolean(apiConfig.openai.apiKey.value.trim());
 			const aiKeyMissingNotice = data.enableFunFacts && !openaiApiKey && !hasEffectiveApiKey;
 
-			// Save all settings in parallel
 			await Promise.all([
-				// Appearance
 				setUITheme(data.uiTheme as ThemePresetType),
 				setWrappedTheme(data.wrappedTheme as ThemePresetType),
 
-				// Privacy
 				setAnonymizationMode(data.anonymizationMode as AnonymizationModeType),
 				setWrappedLogoMode(data.logoMode as WrappedLogoModeType),
 				setGlobalShareDefaults({
@@ -366,7 +330,6 @@ export const actions: Actions = {
 				setServerWrappedShareMode(data.serverWrappedShareMode),
 				setPublicLandingLookupEnabled(data.publicLandingLookup),
 
-				// AI Features (only if enabled)
 				data.enableFunFacts && data.funFactFrequency
 					? setFunFactFrequency(data.funFactFrequency as FunFactFrequencyType)
 					: Promise.resolve(),
@@ -384,13 +347,11 @@ export const actions: Actions = {
 					: Promise.resolve()
 			]);
 
-			// Update slide configurations
 			if (data.enabledSlides !== undefined) {
 				const enabledSlides = data.enabledSlides
 					? data.enabledSlides.split(',').filter(Boolean)
 					: [];
 
-				// Update each slide's enabled state
 				for (const slideType of DEFAULT_SLIDE_ORDER) {
 					const isEnabled = enabledSlides.includes(slideType);
 					await updateSlideConfig(slideType, { enabled: isEnabled });
@@ -399,14 +360,12 @@ export const actions: Actions = {
 
 			logger.info(`Onboarding: Settings configured by ${locals.user.username}`, 'Onboarding');
 
-			// Advance to completion step
 			await setOnboardingStep(OnboardingSteps.COMPLETE);
 			redirect(
 				303,
 				aiKeyMissingNotice ? '/onboarding/complete?notice=ai-key-missing' : '/onboarding/complete'
 			);
 		} catch (err) {
-			// Handle redirect (expected)
 			if (
 				err instanceof Response ||
 				(err &&
@@ -429,9 +388,6 @@ export const actions: Actions = {
 		}
 	},
 
-	/**
-	 * Skip settings (use defaults) and continue
-	 */
 	skipSettings: async ({ locals, cookies, url }) => {
 		const guardResult = await requireOnboardingSettingsClaim(cookies, url);
 		if (guardResult) return guardResult;
@@ -445,14 +401,13 @@ export const actions: Actions = {
 			'Onboarding'
 		);
 
-		// Advance to completion step
 		await setOnboardingStep(OnboardingSteps.COMPLETE);
 		redirect(303, '/onboarding/complete');
 	},
 
 	/**
-	 * Test OpenAI connection using values submitted from the form.
-	 * Does not fall back to stored values — onboarding submits fresh input.
+	 * Do not fall back to stored OpenAI values here: onboarding submits fresh
+	 * input before the settings are persisted.
 	 */
 	testAIConnection: async ({ request, locals, cookies, url }) => {
 		const guardResult = await requireOnboardingSettingsClaim(cookies, url);

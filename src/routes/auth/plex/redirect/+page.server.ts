@@ -29,8 +29,8 @@ export const load: PageServerLoad = async ({ cookies, locals, request, url }) =>
 	const verifiedPin = await verifyPinCallback(cookies, url.searchParams.get('state'));
 
 	// Post-login target carried from the anon→admin hook redirect (ISSUE-002).
-	// Validate same-origin/path-only here so PageData never carries an external
-	// value; the landing page re-validates before window.location.href as well.
+	// Keep only same-origin path values here; the landing page revalidates before
+	// assigning window.location.href as a second open-redirect guard.
 	const rawReturnTo = url.searchParams.get('returnTo');
 	const returnTo = isSafeReturnPath(rawReturnTo) ? rawReturnTo : null;
 

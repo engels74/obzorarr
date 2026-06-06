@@ -7,8 +7,4 @@ export {
 	toggleVariants
 } from './toggle.svelte';
 
-export {
-	Root,
-	//
-	Root as Toggle
-};
+export { Root, Root as Toggle };

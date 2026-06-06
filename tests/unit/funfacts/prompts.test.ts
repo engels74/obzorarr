@@ -9,13 +9,6 @@ import {
 } from '$lib/server/funfacts/ai/prompts';
 import type { AIPersona, FactGenerationContext } from '$lib/server/funfacts/types';
 
-/**
- * Unit tests for AI Prompts Module
- *
- * Tests the prompt building functions used for AI-generated fun facts.
- * Covers persona selection, system/user prompt construction, and edge cases.
- */
-
 function createMockContext(overrides: Partial<FactGenerationContext> = {}): FactGenerationContext {
 	return {
 		hours: 100,
@@ -162,8 +155,8 @@ describe('AI Prompts', () => {
 
 			expect(prompt).toContain('100 hours');
 			expect(prompt).toContain('200');
-			expect(prompt).toContain('50'); // uniqueMovies
-			expect(prompt).toContain('20'); // uniqueShows
+			expect(prompt).toContain('50');
+			expect(prompt).toContain('20');
 		});
 
 		it('includes count in prompt', () => {
@@ -331,9 +324,7 @@ describe('AI Prompts', () => {
 			});
 			const prompt = buildUserPrompt(context, 3);
 
-			// Header shows because counts are truthy
 			expect(prompt).toContain('For Reference');
-			// But individual items don't show because they're < 1
 			expect(prompt).not.toContain('Game of Thrones');
 			expect(prompt).not.toContain('Friends');
 			expect(prompt).not.toContain('Star Wars');
@@ -350,7 +341,6 @@ describe('AI Prompts', () => {
 			const context = createMockContext({ topMovie: '' });
 			const prompt = buildUserPrompt(context, 3);
 
-			// Empty string is falsy, so topMovie section is excluded
 			expect(prompt).not.toContain('Top movie:');
 		});
 
@@ -398,7 +388,6 @@ describe('AI Prompts', () => {
 			const context = createMockContext();
 			const result = buildEnhancedPrompt(context, 3, 'random');
 
-			// Should contain one of the persona descriptions
 			const hasPersona =
 				result.system.includes('witty entertainment columnist') ||
 				result.system.includes('encouraging friend') ||

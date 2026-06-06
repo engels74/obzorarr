@@ -64,7 +64,6 @@ export function getOriginFromRequest(request: Request): string | null {
 export const csrfHandle: Handle = async ({ event, resolve }) => {
 	const method = event.request.method;
 
-	// Skip non-state-changing methods
 	if (!STATE_CHANGING_METHODS.includes(method)) {
 		return resolve(event);
 	}
@@ -82,11 +81,9 @@ export const csrfHandle: Handle = async ({ event, resolve }) => {
 		return resolve(event);
 	}
 
-	// Get origin from database (priority) or environment
 	const config = await getCsrfConfigWithSource();
 	const expectedOrigin = config.origin.value || null;
 
-	// One-time startup status log
 	if (!startupLogged) {
 		startupLogged = true;
 		if (expectedOrigin) {
@@ -102,7 +99,6 @@ export const csrfHandle: Handle = async ({ event, resolve }) => {
 		}
 	}
 
-	// If ORIGIN not configured anywhere
 	if (!expectedOrigin) {
 		if (dev) return resolve(event);
 
@@ -130,7 +126,6 @@ export const csrfHandle: Handle = async ({ event, resolve }) => {
 
 	const requestOrigin = getOriginFromRequest(event.request);
 
-	// Missing origin header on state-changing request
 	if (!requestOrigin) {
 		logger.warn('CSRF check failed: missing origin header', 'CSRF', {
 			method,
@@ -145,7 +140,6 @@ export const csrfHandle: Handle = async ({ event, resolve }) => {
 		);
 	}
 
-	// Compare origins (case-insensitive per URL spec)
 	if (requestOrigin.toLowerCase() !== expectedOrigin.toLowerCase()) {
 		logger.warn('CSRF check failed: origin mismatch', 'CSRF', {
 			method,

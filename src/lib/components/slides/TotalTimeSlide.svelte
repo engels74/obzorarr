@@ -29,16 +29,15 @@ let {
 
 const subject = $derived(getSubject(messagingContext));
 
-// Derived computed values
 const hours = $derived(formatWatchHours(totalWatchTimeMinutes));
 const minutes = $derived(Math.round(totalWatchTimeMinutes % 60));
 const days = $derived(Number((totalWatchTimeMinutes / 60 / 24).toFixed(1)));
 const weeks = $derived(Number((totalWatchTimeMinutes / 60 / 24 / 7).toFixed(1)));
 
-// State for animated number display
 let displayedHours = $state(0);
 
-// Separate number and unit to prevent layout jitter during animation
+// Keep the unit outside the animated number so changing digit widths do not
+// shift the label during the count-up.
 const formattedValue = $derived.by(() => {
 	if (totalWatchTimeMinutes < 60) {
 		return `${Math.round(totalWatchTimeMinutes)}`;
@@ -61,21 +60,17 @@ const comparisonText = $derived.by(() => {
 	return `That's ${hours} ${hours === 1 ? 'hour' : 'hours'} of entertainment!`;
 });
 
-// Element references for animation
 let container: HTMLElement | undefined = $state();
 let numberEl: HTMLElement | undefined = $state();
 let valueEl: HTMLElement | undefined = $state();
 let subtitleEl: HTMLElement | undefined = $state();
 
-// Animation effect with cleanup
 $effect(() => {
 	if (!container || !numberEl || !valueEl || !subtitleEl || !active) return;
 
-	// Check reduced motion preference
 	const shouldAnimate = !prefersReducedMotion.current;
 
 	if (!shouldAnimate) {
-		// Instant display for reduced motion
 		container.style.opacity = '1';
 		container.style.transform = 'none';
 		numberEl.style.opacity = '1';
@@ -86,8 +81,8 @@ $effect(() => {
 		return;
 	}
 
-	// Start number animation (odometer effect)
-	// Update DOM directly to avoid triggering Svelte reactivity ~60 times/second
+	// Keep the ~60fps count-up out of Svelte's reactive graph; only publish the
+	// final value once the animation settles.
 	const stopNumberAnim =
 		hours >= 24
 			? (() => {
@@ -105,13 +100,11 @@ $effect(() => {
 					return () => {};
 				})();
 
-	// Animate container with zoom-in effect
 	const containerAnim = animate(container, KEYFRAMES.zoomFadeIn, {
 		type: 'spring',
 		...SPRING_PRESETS.snappy
 	});
 
-	// Animate number with impactful scale (more pronounced overshoot)
 	const numberAnim = animate(
 		numberEl,
 		{
@@ -125,7 +118,6 @@ $effect(() => {
 		}
 	);
 
-	// Animate subtitle with gentle fade-up
 	const subtitleAnim = animate(
 		subtitleEl,
 		{ opacity: [0, 1], transform: ['translateY(15px)', 'translateY(0)'] },
@@ -136,12 +128,10 @@ $effect(() => {
 		}
 	);
 
-	// Call completion callback
 	subtitleAnim.finished.then(() => {
 		onAnimationComplete?.();
 	});
 
-	// Cleanup function
 	return () => {
 		containerAnim.stop();
 		numberAnim.stop();
@@ -242,7 +232,6 @@ $effect(() => {
 			margin-top: 2rem;
 		}
 
-		/* Mobile: compact typography */
 		@media (max-width: 767px) {
 			.content {
 				gap: 1.25rem;
@@ -269,7 +258,6 @@ $effect(() => {
 			}
 		}
 
-		/* Tablet: medium typography */
 		@media (min-width: 768px) and (max-width: 1023px) {
 			.title {
 				font-size: 1.125rem;
@@ -288,7 +276,6 @@ $effect(() => {
 			}
 		}
 
-		/* Desktop: large typography with enhanced glow */
 		@media (min-width: 1024px) {
 			.content {
 				gap: 2rem;

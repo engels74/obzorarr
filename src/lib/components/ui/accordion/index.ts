@@ -9,7 +9,6 @@ export {
 	Item,
 	Item as AccordionItem,
 	Root,
-	//
 	Root as Accordion,
 	Trigger,
 	Trigger as AccordionTrigger

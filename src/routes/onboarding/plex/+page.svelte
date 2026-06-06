@@ -32,12 +32,11 @@ let oauthError = $state<string | null>(null);
 let loginController: PlexLoginController | null = null;
 let confirmOwnershipChecked = $state(false);
 
-// Popup fallback state
 let showPopupBlockedModal = $state(false);
 let pendingPinId = $state<number | null>(null);
 let pendingAuthUrl = $state<string | null>(null);
 
-// Bypasses SvelteKit data prop reactivity timing issues
+// Local optimistic auth state keeps the Plex step responsive while SvelteKit data invalidates.
 let localAuthState = $state<{
 	isAuthenticated: boolean;
 	isAdmin: boolean;
@@ -92,8 +91,7 @@ $effect(() => {
 $effect(() => {
 	if (!contentRef) return;
 
-	// Track underlying state variables that affect DOM structure
-	// When these change, new .animate-item elements may be added to the DOM
+	// Read these values solely to re-run the effect when auth/server UI branches add new items.
 	// eslint-disable-next-line @typescript-eslint/no-unused-expressions
 	localAuthState?.isAuthenticated;
 	// eslint-disable-next-line @typescript-eslint/no-unused-expressions
@@ -105,16 +103,14 @@ $effect(() => {
 	// eslint-disable-next-line @typescript-eslint/no-unused-expressions
 	servers.length;
 
-	// Use requestAnimationFrame to ensure DOM has updated after state change
+	// Wait one frame so branch-created `.animate-item` nodes are in the DOM before querying.
 	const rafId = requestAnimationFrame(() => {
 		if (!contentRef) return;
 		const items = contentRef.querySelectorAll('.animate-item');
-		// Filter to only animate elements that haven't been animated yet
 		const newItems = Array.from(items).filter((item) => !animatedElements.has(item));
 
 		if (newItems.length === 0) return;
 
-		// Mark these elements as animated before starting animation
 		newItems.forEach((item) => animatedElements.add(item));
 
 		// biome-ignore lint/suspicious/noExplicitAny: Motion's animate function has complex overloads that TypeScript cannot infer correctly
@@ -254,7 +250,6 @@ function handleCancelRedirect(): void {
 function handleServerExpand(server: (typeof servers)[0]) {
 	if (!server.owned) return;
 
-	// Toggle expansion - collapse if clicking the same server
 	if (expandedServer === server.clientIdentifier) {
 		expandedServer = null;
 	} else {
@@ -366,7 +361,7 @@ function sortConnections(
 			if (c.uri.includes('.plex.direct')) return 0;
 			if (!c.local && !c.relay) return 1;
 			if (c.local && !c.relay) return 2;
-			return 3; // relay
+			return 3;
 		};
 		return priority(a) - priority(b);
 	});
@@ -504,7 +499,6 @@ function formatServerUrl(url: string | null): string {
 	subtitle="Link your Plex Media Server to unlock your personalized viewing journey"
 >
 	<div class="plex-content" bind:this={contentRef}>
-		<!-- Plex Icon -->
 		<div class="plex-icon-wrapper animate-item" bind:this={iconRef}>
 			<div class="plex-icon-glow"></div>
 			<div class="plex-icon">
@@ -538,7 +532,6 @@ function formatServerUrl(url: string | null): string {
 			</div>
 		</div>
 
-		<!-- Pre-configured flow -->
 		{#if data.hasEnvConfig}
 			<div class="preconfigured-card animate-item">
 				<div class="preconfigured-icon">
@@ -744,7 +737,6 @@ function formatServerUrl(url: string | null): string {
 				</div>
 			{/if}
 		{:else}
-			<!-- Manual configuration flow -->
 			{#if showLoginButton}
 				<div class="action-section animate-item">
 					<p class="instruction">Sign in with Plex to connect your server</p>
@@ -994,15 +986,12 @@ function formatServerUrl(url: string | null): string {
 										</div>
 									{/if}
 
-									<!-- Custom URL Section -->
 									{#if isExpanded && !serverSaved}
 										<div class="custom-url-section">
-											<!-- Divider -->
 											<div class="custom-url-divider">
 												<span>or</span>
 											</div>
 
-											<!-- Toggle Button -->
 											<button
 												type="button"
 												class="custom-url-toggle"
@@ -1023,7 +1012,6 @@ function formatServerUrl(url: string | null): string {
 												</svg>
 											</button>
 
-											<!-- Expanded Form -->
 											{#if showCustomUrl}
 												<div class="custom-url-form">
 													<p class="custom-url-help" id="custom-url-help">
@@ -1071,7 +1059,6 @@ function formatServerUrl(url: string | null): string {
 														</label>
 													{/if}
 
-													<!-- Status Display -->
 													{#if customUrlTestResult}
 														<div
 															class="custom-url-status"
@@ -1126,7 +1113,6 @@ function formatServerUrl(url: string | null): string {
 			{/if}
 		{/if}
 
-		<!-- Error display -->
 		{#if oauthError || form?.error}
 			<div class="error-banner animate-item">
 				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1210,7 +1196,6 @@ function formatServerUrl(url: string | null): string {
 			opacity: 0;
 		}
 
-		/* Plex Icon */
 		.plex-icon-wrapper {
 			position: relative;
 			width: 72px;
@@ -1248,7 +1233,6 @@ function formatServerUrl(url: string | null): string {
 			height: 100%;
 		}
 
-		/* Pre-configured Server Card */
 		.preconfigured-card {
 			display: flex;
 			align-items: center;
@@ -1378,7 +1362,6 @@ function formatServerUrl(url: string | null): string {
 			height: 15px;
 		}
 
-		/* Action Section */
 		.action-section {
 			display: flex;
 			flex-direction: column;
@@ -1394,12 +1377,10 @@ function formatServerUrl(url: string | null): string {
 			text-align: center;
 		}
 
-		/* Plex Login Button — Plex-orange OAuth CTA. Hoisted to :global so
-		   shadcn Button's child-rendered <button> inherits the gradient,
-		   triple shadow (drop + accent + inset highlight), hover translate-y,
-		   and active translate-back. The `.plex-logo` descendant rule
-		   (18px width/height) is dropped; PlayIcon + LoaderCircleIcon
-		   both sized inline via `class="size-[18px]"`. */
+		/* shadcn Button child-renders the actual <button>, so the OAuth CTA
+		   selector must be global for the gradient, layered shadows, and
+		   hover/active transforms to reach it. Icons stay sized inline to avoid
+		   another descendant override across the scoped-style boundary. */
 		:global(.plex-button) {
 			display: inline-flex;
 			align-items: center;
@@ -1488,7 +1469,6 @@ function formatServerUrl(url: string | null): string {
 			color: rgba(255, 255, 255, 0.85);
 		}
 
-		/* Success Card */
 		.success-card {
 			display: flex;
 			align-items: flex-start;
@@ -1529,7 +1509,6 @@ function formatServerUrl(url: string | null): string {
 			color: rgba(255, 255, 255, 0.55);
 		}
 
-		/* Error Card */
 		.error-card {
 			display: flex;
 			align-items: flex-start;
@@ -1584,12 +1563,8 @@ function formatServerUrl(url: string | null): string {
 			margin-top: 0.75rem;
 		}
 
-		/* `.error-action-btn` is the destructive-variant CTA used in 3
-		   error-card panels (configured-url-unreachable, not-in-resources,
-		   etc.). Hoisted to :global so SubmitButton's child-rendered
-		   <button> inherits the red palette + hover-darken + optional
-		   .secondary modifier (white/transparent variant for the
-		   alternative action in the dual-button error card). */
+		/* SubmitButton child-renders the real <button>, so error-action palettes
+		   and the secondary modifier must be hoisted. */
 		:global(.error-action-btn) {
 			display: inline-flex;
 			align-items: center;
@@ -1650,7 +1625,6 @@ function formatServerUrl(url: string | null): string {
 			flex-wrap: wrap;
 		}
 
-		/* Server Section */
 		.server-section {
 			width: 100%;
 			display: flex;
@@ -1852,7 +1826,6 @@ function formatServerUrl(url: string | null): string {
 			animation: spin 0.8s linear infinite;
 		}
 
-		/* Connections Panel */
 		.connections-panel {
 			background: rgba(255, 255, 255, 0.02);
 			border: 1px solid rgba(255, 255, 255, 0.08);
@@ -2026,7 +1999,6 @@ function formatServerUrl(url: string | null): string {
 			text-align: center;
 		}
 
-		/* Error Banner */
 		.error-banner {
 			display: flex;
 			align-items: center;
@@ -2046,14 +2018,11 @@ function formatServerUrl(url: string | null): string {
 			height: 18px;
 		}
 
-		/* Continue Button — hoisted to :global so SubmitButton + Button
-		   (both shadcn primitives render the button element inside a
-		   child component) inherit the primary palette, hover translate-y,
-		   and dual shadow (drop + inset highlight). `.continue-button svg`
-		   descendant rule dropped; ArrowRightIcon is sized inline via
-		   `class="size-[18px]"`. Same migration template as iteration 88's
-		   onboarding/sync continue-button (which uses identical CSS;
-		   eventual consolidation candidate). */
+		/* SubmitButton + Button render the actual <button> inside child
+		   components, so this selector must be global for the primary palette,
+		   hover translate-y, and dual shadow to reach it. The icon stays sized
+		   inline to avoid another descendant override across the scoped-style
+		   boundary. */
 		:global(.continue-button) {
 			display: inline-flex;
 			align-items: center;
@@ -2087,7 +2056,6 @@ function formatServerUrl(url: string | null): string {
 			box-shadow: none;
 		}
 
-		/* SSL Connection Card Enhancement */
 		.connection-card.ssl {
 			background: linear-gradient(135deg, rgba(34, 197, 94, 0.06) 0%, rgba(255, 255, 255, 0.03) 100%);
 			border-color: rgba(34, 197, 94, 0.15);
@@ -2104,12 +2072,8 @@ function formatServerUrl(url: string | null): string {
 			box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.2);
 		}
 
-		/*
-		 * Tooltip portal z-index override
-		 * bits-ui sets inline `z-index: auto` on portal elements, which can only be
-		 * overridden with !important. This ensures tooltips appear above the card
-		 * (which has z-index: 10 from .onboarding-container).
-		 */
+		/* bits-ui writes `z-index: auto` inline on tooltip portals; use
+		   !important so tooltips can rise above the onboarding card. */
 		:global([id^='bits-']:has(.connection-tooltip)) {
 			z-index: 100 !important;
 		}
@@ -2168,7 +2132,6 @@ function formatServerUrl(url: string | null): string {
 			color: rgba(255, 255, 255, 0.7);
 		}
 
-		/* Custom URL Section */
 		.custom-url-section {
 			padding: 0 1rem 1rem;
 			margin-top: -0.5rem;
@@ -2294,12 +2257,8 @@ function formatServerUrl(url: string | null): string {
 			box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
 		}
 
-		/* `.custom-url-test-btn` is the connection-test CTA in the
-		   reverse-proxy URL form. Hoisted to :global so shadcn Button
-		   inherits the primary-tinted background + hover-darken. The
-		   `.custom-url-test-btn svg` descendant rule is dropped;
-		   CircleCheckIcon + LoaderCircleIcon are sized inline via
-		   `class="size-4"`. */
+		/* shadcn Button child-renders the real control, so the connection-test
+		   palette must be hoisted. */
 		:global(.custom-url-test-btn) {
 			display: inline-flex;
 			align-items: center;
@@ -2381,7 +2340,6 @@ function formatServerUrl(url: string | null): string {
 			}
 		}
 
-		/* Responsive */
 		@media (max-width: 480px) {
 			.plex-button {
 				width: 100%;

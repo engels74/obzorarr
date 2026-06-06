@@ -30,9 +30,7 @@ export interface UserWithStats {
 	 * admin Users badge can't read "Public"/"Link" while access is private-oauth.
 	 */
 	effectiveShareMode: ShareModeType;
-	/** Badge label derived from {@link effectiveShareMode} (or "Default" for default-sourced rows). */
 	effectiveLabel: string;
-	/** Badge CSS class derived from {@link effectiveShareMode} ('' for default-sourced rows). */
 	effectiveClass: '' | 'public' | 'oauth' | 'link';
 }
 
@@ -54,8 +52,8 @@ export function deriveEffectiveShareBadge(
 	const baseMode = storedMode ?? globalFloor;
 	const effectiveShareMode = getMoreRestrictiveMode(baseMode, globalFloor);
 
-	// A default-sourced row (no explicit override) is shown as "Default" with no
-	// color class — it tracks whatever the global default is.
+	// Default-sourced rows track the global default, so avoid coloring them as if
+	// they were explicit per-user overrides.
 	if (source === ShareModeSource.DEFAULT || source === null) {
 		return { effectiveShareMode, effectiveLabel: 'Default', effectiveClass: '' };
 	}
@@ -151,8 +149,7 @@ export async function getAllUsersWithStats(year: number): Promise<UserWithStats[
 	}
 
 	return allUsers.map((user) => {
-		// Try accountId first (matches playHistory.accountId), then fall back to plexId
-		// This handles the accountId/plexId mismatch for server owners
+		// Legacy rows predate accountId, so plexId remains the compatibility fallback.
 		const stats = (user.accountId !== null ? watchTimeMap.get(user.accountId) : undefined) ??
 			watchTimeMap.get(user.plexId) ?? { totalDuration: 0, totalPlays: 0 };
 		const settings = shareSettingsMap.get(user.id);

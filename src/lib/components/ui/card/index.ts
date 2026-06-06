@@ -18,7 +18,6 @@ export {
 	Header,
 	Header as CardHeader,
 	Root,
-	//
 	Root as Card,
 	Title,
 	Title as CardTitle

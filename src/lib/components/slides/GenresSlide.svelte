@@ -74,12 +74,10 @@ const genresWithPercentage = $derived(
 	}))
 );
 
-// Element references
 let container: HTMLElement | undefined = $state();
 let genreItems: HTMLElement[] = $state([]);
 let bars: HTMLElement[] = $state([]);
 
-// Animation effect with cleanup
 $effect(() => {
 	if (!container || !active || !hasGenres) return;
 
@@ -101,14 +99,12 @@ $effect(() => {
 		return;
 	}
 
-	// Animate container with subtle lift
 	const containerAnim = animate(
 		container,
 		{ opacity: [0, 1], transform: ['translateY(25px) scale(0.98)', 'translateY(0) scale(1)'] },
 		{ type: 'spring', ...SPRING_PRESETS.snappy }
 	);
 
-	// Animate genre items with stagger
 	const validItems = genreItems.filter(Boolean);
 	const validBars = bars.filter(Boolean);
 	const adaptiveStagger = getAdaptiveStagger(validItems.length);
@@ -127,7 +123,6 @@ $effect(() => {
 			}
 		);
 
-		// Animate bars with dramatic spring and additional per-bar delay
 		if (validBars.length > 0) {
 			const barsAnim = animate(
 				validBars,
@@ -258,7 +253,6 @@ $effect(() => {
 			position: relative;
 		}
 
-		/* Glass top highlight line */
 		.genre-list::before {
 			content: '';
 			position: absolute;
@@ -290,7 +284,6 @@ $effect(() => {
 			box-shadow: 0 2px 12px oklch(0 0 0 / 0.25);
 		}
 
-		/* First genre gets special treatment */
 		.genre-item.first {
 			border-color: oklch(var(--primary) / 0.25);
 			background: linear-gradient(
@@ -429,7 +422,6 @@ $effect(() => {
 			margin-top: 1rem;
 		}
 
-		/* Tooltip styling - premium glass effect */
 		:global(.tooltip-content) {
 			background: var(--slide-glass-bg) !important;
 			backdrop-filter: blur(12px);
@@ -460,7 +452,6 @@ $effect(() => {
 			margin: 0;
 		}
 
-		/* Mobile: compact layout */
 		@media (max-width: 767px) {
 			.content {
 				gap: 1.5rem;
@@ -504,7 +495,6 @@ $effect(() => {
 			}
 		}
 
-		/* Tablet: medium layout */
 		@media (min-width: 768px) and (max-width: 1023px) {
 			.content {
 				max-width: var(--content-max-md, 700px);
@@ -545,7 +535,6 @@ $effect(() => {
 			}
 		}
 
-		/* Desktop: wide layout */
 		@media (min-width: 1024px) {
 			.content {
 				max-width: var(--content-max-lg, 800px);

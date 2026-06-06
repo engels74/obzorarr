@@ -23,11 +23,9 @@ let {
 
 const possessive = $derived(getPossessive(messagingContext));
 
-// Compute the "top X%" value
 const topPercentage = $derived(Math.max(1, Math.round(100 - percentileRank)));
 const isTopPerformer = $derived(topPercentage <= 10);
 
-// Generate message based on percentile
 const message = $derived.by(() => {
 	if (topPercentage <= 1) return "You're the #1 viewer!";
 	if (topPercentage <= 5) return "You're in the top 5%!";
@@ -37,12 +35,10 @@ const message = $derived.by(() => {
 	return 'Keep watching!';
 });
 
-// Element references
 let container: HTMLElement | undefined = $state();
 let numberEl: HTMLElement | undefined = $state();
 let messageEl: HTMLElement | undefined = $state();
 
-// Animation effect with cleanup
 $effect(() => {
 	if (!container || !numberEl || !messageEl || !active) return;
 
@@ -61,7 +57,6 @@ $effect(() => {
 
 	const animations: ReturnType<typeof animate>[] = [];
 
-	// Animate container with dramatic center focus
 	const containerAnim = animate(
 		container,
 		{ opacity: [0, 1], transform: ['scale(0.9)', 'scale(1)'] },
@@ -69,7 +64,6 @@ $effect(() => {
 	);
 	animations.push(containerAnim);
 
-	// Animate number with bouncy scale
 	const numberAnim = animate(
 		numberEl,
 		{
@@ -84,7 +78,6 @@ $effect(() => {
 	);
 	animations.push(numberAnim);
 
-	// Animate message with gentle lift
 	const messageAnim = animate(
 		messageEl,
 		{ opacity: [0, 1], transform: ['translateY(20px)', 'translateY(0)'] },
@@ -154,7 +147,6 @@ $effect(() => {
 			letter-spacing: 0.1em;
 		}
 
-		/* Wrapper for gradient ring effect */
 		.stat-wrapper {
 			position: relative;
 			width: 240px;
@@ -166,7 +158,6 @@ $effect(() => {
 			justify-content: center;
 		}
 
-		/* Rotating conic gradient ring */
 		.gradient-ring {
 			position: absolute;
 			inset: 0;
@@ -204,14 +195,12 @@ $effect(() => {
 			}
 		}
 
-		/* Disable animation for reduced motion preference */
 		@media (prefers-reduced-motion: reduce) {
 			.gradient-ring.animate-spin {
 				animation: none;
 			}
 		}
 
-		/* Top performer gold gradient */
 		.top-performer .gradient-ring {
 			background: conic-gradient(
 				from 0deg,
@@ -247,7 +236,6 @@ $effect(() => {
 			z-index: 1;
 		}
 
-		/* Glow effect for top performer */
 		.top-performer .stat-container {
 			box-shadow:
 				inset 0 2px 4px oklch(1 0 0 / 0.15),
@@ -268,7 +256,6 @@ $effect(() => {
 			font-size: clamp(3rem, 8vw, 4.5rem);
 			font-weight: 800;
 			letter-spacing: -0.02em;
-			/* Gradient text effect */
 			background: linear-gradient(
 				180deg,
 				oklch(var(--primary)) 0%,
@@ -280,7 +267,6 @@ $effect(() => {
 			filter: drop-shadow(0 0 15px oklch(var(--primary) / 0.4));
 		}
 
-		/* Gold gradient for top performer */
 		.top-performer .percentage {
 			background: linear-gradient(180deg, oklch(0.8309 0.1622 87.87) 0%, oklch(0.7358 0.1599 66.01) 100%);
 			-webkit-background-clip: text;
@@ -300,7 +286,6 @@ $effect(() => {
 			box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.05);
 		}
 
-		/* Gold styling for top performer message */
 		.top-performer ~ .message {
 			background: oklch(0.8153 0.1652 85.67 / 0.12);
 			color: oklch(0.8394 0.1254 91.1);
@@ -321,7 +306,6 @@ $effect(() => {
 			margin-top: 1.5rem;
 		}
 
-		/* Mobile: compact circle */
 		@media (max-width: 767px) {
 			.content {
 				gap: 1.5rem;
@@ -364,7 +348,6 @@ $effect(() => {
 			}
 		}
 
-		/* Tablet: medium circle */
 		@media (min-width: 768px) and (max-width: 1023px) {
 			.title {
 				font-size: 1.75rem;
@@ -392,7 +375,6 @@ $effect(() => {
 			}
 		}
 
-		/* Desktop: large circle */
 		@media (min-width: 1024px) {
 			.content {
 				gap: 2.5rem;

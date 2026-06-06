@@ -65,7 +65,6 @@ export {
 	Rail,
 	Rail as SidebarRail,
 	Root,
-	//
 	Root as Sidebar,
 	Separator,
 	Separator as SidebarSeparator,

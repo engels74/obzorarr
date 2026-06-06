@@ -23,19 +23,14 @@ export {
 } from './registry';
 
 export {
-	// Context building (for testing/advanced usage)
 	buildGenerationContext,
 	generateFromTemplate,
 	generateFromTemplates,
-	// Main entry points
 	generateFunFacts,
-	// AI generation (for direct AI usage)
 	generateWithAI,
-	// Configuration
 	getFunFactsConfig,
 	interpolateTemplate,
 	isAIAvailable,
-	// Template utilities (for testing/customization)
 	isTemplateApplicable,
 	selectRandomTemplates
 } from './service';

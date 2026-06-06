@@ -38,7 +38,6 @@ const TestConnectionSchema = z
 const CONNECTION_TIMEOUT_MS = 10000;
 
 export const POST: RequestHandler = async ({ request, locals, cookies, url }) => {
-	// Require authenticated admin user
 	if (!locals.user) {
 		error(401, 'Authentication required');
 	}
@@ -56,7 +55,6 @@ export const POST: RequestHandler = async ({ request, locals, cookies, url }) =>
 	}
 
 	try {
-		// Parse and validate request body
 		const body = await request.json();
 		const parseResult = TestConnectionSchema.safeParse(body);
 
@@ -90,7 +88,6 @@ export const POST: RequestHandler = async ({ request, locals, cookies, url }) =>
 				clientIdentifier: clientIdentifier!
 			}));
 
-		// Normalize URL - remove trailing slash
 		const normalizedUrl = url.replace(/\/+$/, '');
 		const endpoint = `${normalizedUrl}/identity`;
 
@@ -99,7 +96,6 @@ export const POST: RequestHandler = async ({ request, locals, cookies, url }) =>
 			'Onboarding'
 		);
 
-		// Create abort controller for timeout
 		const controller = new AbortController();
 		const timeoutId = setTimeout(() => controller.abort(), CONNECTION_TIMEOUT_MS);
 
@@ -112,7 +108,6 @@ export const POST: RequestHandler = async ({ request, locals, cookies, url }) =>
 				signal: controller.signal
 			});
 
-			// Check for authentication errors
 			if (response.status === 401) {
 				logger.debug('Connection test failed: Authentication failed', 'Onboarding');
 				return json(
@@ -138,9 +133,9 @@ export const POST: RequestHandler = async ({ request, locals, cookies, url }) =>
 				);
 			}
 
-			// Parse and validate response. A non-JSON body (e.g. an HTML gateway page
-			// from a non-Plex service) means the endpoint is reachable but is not a
-			// Plex Media Server — surface that as 422, not as a 503 connectivity error.
+			// A non-JSON response (for example from a non-Plex service) means the
+			// endpoint is reachable but is not a Plex Media Server — surface that as
+			// 422, not as a 503 connectivity error.
 			let data: unknown;
 			try {
 				data = await response.json();
@@ -210,7 +205,6 @@ export const POST: RequestHandler = async ({ request, locals, cookies, url }) =>
 			clearTimeout(timeoutId);
 		}
 	} catch (err) {
-		// Re-throw SvelteKit errors
 		if (err && typeof err === 'object' && 'status' in err) {
 			throw err;
 		}

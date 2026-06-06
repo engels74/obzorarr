@@ -33,10 +33,8 @@ import {
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
-	// Initialize default config if needed
 	await initializeDefaultSlideConfig();
 
-	// Load all configurations
 	const [configs, customSlides, funFactFrequency, availableYears] = await Promise.all([
 		getAllSlideConfigs(),
 		getAllCustomSlides(),
@@ -44,7 +42,6 @@ export const load: PageServerLoad = async () => {
 		getAvailableYears()
 	]);
 
-	// Pre-render custom slides for preview
 	const customSlidesWithPreview = customSlides.map((slide) => ({
 		...slide,
 		renderedHtml: renderMarkdownSync(slide.content)
@@ -59,9 +56,6 @@ export const load: PageServerLoad = async () => {
 };
 
 export const actions: Actions = requireAdminActions({
-	/**
-	 * Toggle a slide's enabled state
-	 */
 	toggleSlide: async ({ request }) => {
 		const formData = await request.formData();
 		const slideType = formData.get('slideType');
@@ -80,12 +74,8 @@ export const actions: Actions = requireAdminActions({
 		}
 	},
 
-	/**
-	 * Reorder slides - supports unified ordering of built-in and custom slides
-	 *
-	 * Handles the new unified format: [{ type: 'builtin' | 'custom', id: string | number }]
-	 * Both built-in and custom slides share the same global sortOrder space.
-	 */
+	// Built-in and custom slides share one global sortOrder space, so the
+	// serialized order carries an explicit item kind for each id.
 	reorder: async ({ request }) => {
 		const formData = await request.formData();
 		const orderJson = formData.get('order');
@@ -100,7 +90,6 @@ export const actions: Actions = requireAdminActions({
 				id: string | number;
 			}>;
 
-			// Process each item and update its sortOrder to match its position in the array
 			const builtInUpdates: Array<{ type: SlideType; sortOrder: number }> = [];
 			const customSlideUpdates: Array<{ id: number; sortOrder: number }> = [];
 
@@ -109,14 +98,12 @@ export const actions: Actions = requireAdminActions({
 				if (!item) continue;
 
 				if (item.type === 'builtin') {
-					// Validate the slide type
 					const parsed = SlideTypeSchema.safeParse(item.id);
 					if (!parsed.success) {
 						return fail(400, { error: `Invalid slide type: ${item.id}` });
 					}
 					builtInUpdates.push({ type: item.id as SlideType, sortOrder: i });
 				} else if (item.type === 'custom') {
-					// Custom slide - store its new sort order
 					const customId = typeof item.id === 'string' ? parseInt(item.id, 10) : item.id;
 					if (Number.isNaN(customId)) {
 						return fail(400, { error: `Invalid custom slide ID: ${item.id}` });
@@ -125,12 +112,10 @@ export const actions: Actions = requireAdminActions({
 				}
 			}
 
-			// Update built-in slides with their global sort orders
 			for (const update of builtInUpdates) {
 				await updateSlideConfig(update.type, { sortOrder: update.sortOrder });
 			}
 
-			// Update custom slides with their global sort orders
 			for (const update of customSlideUpdates) {
 				await updateCustomSlide(update.id, { sortOrder: update.sortOrder });
 			}
@@ -142,9 +127,6 @@ export const actions: Actions = requireAdminActions({
 		}
 	},
 
-	/**
-	 * Toggle a custom slide's enabled state
-	 */
 	toggleCustomSlide: async ({ request }) => {
 		const formData = await request.formData();
 		const idStr = formData.get('id');
@@ -167,9 +149,6 @@ export const actions: Actions = requireAdminActions({
 		}
 	},
 
-	/**
-	 * Update slide configuration
-	 */
 	updateConfig: async ({ request }) => {
 		const formData = await request.formData();
 		const slideType = formData.get('slideType');
@@ -195,9 +174,6 @@ export const actions: Actions = requireAdminActions({
 		}
 	},
 
-	/**
-	 * Create a custom slide
-	 */
 	createCustom: async ({ request }) => {
 		const formData = await request.formData();
 		const title = formData.get('title');
@@ -205,7 +181,6 @@ export const actions: Actions = requireAdminActions({
 		const enabled = formData.get('enabled') !== 'false';
 		const yearStr = formData.get('year');
 
-		// Get next sort order
 		const sortOrder = await getNextSortOrder();
 
 		const data = {
@@ -231,9 +206,6 @@ export const actions: Actions = requireAdminActions({
 		}
 	},
 
-	/**
-	 * Update a custom slide
-	 */
 	updateCustom: async ({ request }) => {
 		const formData = await request.formData();
 		const idStr = formData.get('id');
@@ -274,9 +246,6 @@ export const actions: Actions = requireAdminActions({
 		}
 	},
 
-	/**
-	 * Delete a custom slide
-	 */
 	deleteCustom: async ({ request }) => {
 		const formData = await request.formData();
 		const idStr = formData.get('id');
@@ -299,9 +268,6 @@ export const actions: Actions = requireAdminActions({
 		}
 	},
 
-	/**
-	 * Preview Markdown content
-	 */
 	previewMarkdown: async ({ request }) => {
 		const formData = await request.formData();
 		const content = formData.get('content');
@@ -319,15 +285,11 @@ export const actions: Actions = requireAdminActions({
 		}
 	},
 
-	/**
-	 * Set fun fact frequency
-	 */
 	setFunFactFrequency: async ({ request }) => {
 		const formData = await request.formData();
 		const mode = formData.get('mode');
 		const customCountStr = formData.get('customCount');
 
-		// Validate mode
 		const validModes = Object.values(FunFactFrequency);
 		if (typeof mode !== 'string' || !validModes.includes(mode as FunFactFrequencyType)) {
 			logger.warn('setFunFactFrequency rejected: invalid mode', 'Slides', {
@@ -336,7 +298,6 @@ export const actions: Actions = requireAdminActions({
 			return fail(400, { error: 'Invalid frequency mode' });
 		}
 
-		// Parse custom count if provided
 		let customCount: number | undefined;
 		if (mode === FunFactFrequency.CUSTOM) {
 			if (typeof customCountStr !== 'string') {

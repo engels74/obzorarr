@@ -35,7 +35,6 @@ export {
 	RadioItem,
 	RadioItem as ContextMenuRadioItem,
 	Root,
-	//
 	Root as ContextMenu,
 	Separator,
 	Separator as ContextMenuSeparator,

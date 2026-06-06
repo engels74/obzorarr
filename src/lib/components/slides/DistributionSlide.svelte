@@ -34,7 +34,6 @@ let {
 	messagingContext = createPersonalContext()
 }: Props = $props();
 
-// Viewport detection for responsive dual-view
 let isDesktopViewport = $state(false);
 
 $effect(() => {
@@ -51,29 +50,23 @@ $effect(() => {
 	return () => mediaQuery.removeEventListener('change', handleChange);
 });
 
-// Mobile toggle state - explicit type annotation for union type
 type MobileViewType = 'monthly' | 'hourly';
 let mobileView: MobileViewType = $state<MobileViewType>('monthly');
 
-// Derive whether we have data for both views
 const hasMonthlyData = $derived(watchTimeByMonth.minutes.some((m) => m > 0));
 const hasHourlyData = $derived(watchTimeByHour.minutes.some((m) => m > 0));
 const hasBothData = $derived(hasMonthlyData && hasHourlyData);
 
-// Show dual view on tablet/desktop when both datasets have data
 const showDualView = $derived(
 	isDesktopViewport && hasBothData && view !== 'monthly' && view !== 'hourly'
 );
 
-// Get messaging helpers
 const subject = $derived(getSubject(messagingContext));
 const possessive = $derived(getPossessive(messagingContext));
 const watchVerb = $derived(getWatchVerb(messagingContext));
 
-// Month labels
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-// Full month names for tooltips
 const monthsFull = [
 	'January',
 	'February',
@@ -89,11 +82,9 @@ const monthsFull = [
 	'December'
 ];
 
-// Calculate max values for scaling
 const maxMonthly = $derived(Math.max(...watchTimeByMonth.minutes, 1));
 const maxHourly = $derived(Math.max(...watchTimeByHour.minutes, 1));
 
-// Prepare data with percentages
 const monthlyData = $derived(
 	watchTimeByMonth.minutes.map((minutes, i) => ({
 		label: months[i] ?? '',
@@ -114,13 +105,11 @@ const hourlyData = $derived(
 	}))
 );
 
-// Active dataset based on mobile view selection
 const activeData = $derived(mobileView === 'hourly' ? hourlyData : monthlyData);
 const mobileTitle = $derived(
 	mobileView === 'hourly' ? `When ${subject} Watch` : `${possessive} Year in Months`
 );
 
-// Find peaks for each dataset (independent peak highlighting)
 const monthlyPeakIndex = $derived(
 	monthlyData.reduce((maxIdx, curr, idx, arr) => {
 		const maxItem = arr[maxIdx];
@@ -135,23 +124,19 @@ const hourlyPeakIndex = $derived(
 	}, 0)
 );
 
-// For mobile single view
 const activePeakIndex = $derived(mobileView === 'hourly' ? hourlyPeakIndex : monthlyPeakIndex);
 
-// Element references
 let container: HTMLElement | undefined = $state();
 let monthlyBars: HTMLElement[] = $state([]);
 let hourlyBars: HTMLElement[] = $state([]);
 let singleViewBars: HTMLElement[] = $state([]);
 
-// Animation effect with cleanup
 $effect(() => {
 	if (!container || !active) return;
 
 	const shouldAnimate = !prefersReducedMotion.current;
 	const animations: { stop: () => void; finished: Promise<void> }[] = [];
 
-	// Helper to set bars visible without animation
 	const setVisible = (bars: HTMLElement[]) => {
 		bars.forEach((el) => {
 			if (el) el.style.transform = 'scaleY(1)';
@@ -170,7 +155,6 @@ $effect(() => {
 		return;
 	}
 
-	// Animate container with subtle fade (let bars be the focus)
 	const containerAnim = animate(
 		container,
 		{ opacity: [0, 1] },
@@ -179,7 +163,6 @@ $effect(() => {
 	animations.push(containerAnim);
 
 	if (showDualView) {
-		// Dual view: animate monthly bars first, then hourly with staggered delay
 		const validMonthlyBars = monthlyBars.filter(Boolean);
 		const validHourlyBars = hourlyBars.filter(Boolean);
 		const monthlyStagger = getAdaptiveStagger(validMonthlyBars.length);
@@ -199,7 +182,6 @@ $effect(() => {
 		}
 
 		if (validHourlyBars.length > 0) {
-			// 100ms delay between charts
 			const hourlyAnim = animate(
 				validHourlyBars,
 				{ transform: ['scaleY(0)', 'scaleY(1)'] },
@@ -223,7 +205,6 @@ $effect(() => {
 			}
 		}
 	} else {
-		// Single view: animate all bars with adaptive stagger
 		const validBars = singleViewBars.filter(Boolean);
 		const adaptiveStagger = getAdaptiveStagger(validBars.length);
 
@@ -276,12 +257,10 @@ function formatPlays(plays: number): string {
 <BaseSlide {active} class="distribution-slide {klass}">
 	<div bind:this={container} class="content" class:dual-view={showDualView}>
 		{#if showDualView}
-			<!-- Desktop/Tablet: Side-by-side charts -->
 			<h2 class="title">{possessive} Viewing Patterns</h2>
 
 			<Tooltip.Provider>
 				<div class="charts-grid">
-					<!-- Monthly Chart -->
 					<div class="chart-section">
 						<h3 class="section-title">Year in Months</h3>
 						<div class="chart-container monthly">
@@ -323,7 +302,6 @@ function formatPlays(plays: number): string {
 						{/if}
 					</div>
 
-					<!-- Hourly Chart -->
 					<div class="chart-section">
 						<h3 class="section-title">When {subject} {watchVerb}</h3>
 						<div class="chart-container hourly">
@@ -367,7 +345,6 @@ function formatPlays(plays: number): string {
 				</div>
 			</Tooltip.Provider>
 		{:else}
-			<!-- Mobile: Single chart with toggle -->
 			<div class="mobile-header">
 				<h2 class="title">{mobileTitle}</h2>
 				{#if hasBothData}
@@ -488,7 +465,6 @@ function formatPlays(plays: number): string {
 			position: relative;
 		}
 
-		/* Glass top highlight line */
 		.chart-container::before {
 			content: '';
 			position: absolute;
@@ -645,7 +621,6 @@ function formatPlays(plays: number): string {
 			margin-top: 1rem;
 		}
 
-		/* Tooltip styling - premium glass effect */
 		:global(.tooltip-content) {
 			background: var(--slide-glass-bg) !important;
 			backdrop-filter: blur(12px);
@@ -677,10 +652,6 @@ function formatPlays(plays: number): string {
 			margin: 0;
 		}
 
-		/* ==========================================================================
-		   Dual-view styles (tablet/desktop side-by-side charts)
-		   ========================================================================== */
-
 		.content.dual-view {
 			max-width: var(--content-max-xl, 1100px);
 		}
@@ -707,7 +678,6 @@ function formatPlays(plays: number): string {
 			letter-spacing: 0.05em;
 		}
 
-		/* Dual-view chart adjustments */
 		.dual-view .chart-container {
 			height: 180px;
 		}
@@ -735,10 +705,6 @@ function formatPlays(plays: number): string {
 		.dual-view .peak-info {
 			font-size: 0.875rem;
 		}
-
-		/* ==========================================================================
-		   Mobile-only styles (single chart with toggle)
-		   ========================================================================== */
 
 		.mobile-header {
 			display: flex;
@@ -788,11 +754,6 @@ function formatPlays(plays: number): string {
 			outline-offset: 2px;
 		}
 
-		/* ==========================================================================
-		   Responsive breakpoints
-		   ========================================================================== */
-
-		/* Mobile: compact layout */
 		@media (max-width: 767px) {
 			.content {
 				gap: 1.5rem;
@@ -836,7 +797,6 @@ function formatPlays(plays: number): string {
 			}
 		}
 
-		/* Tablet: stacked dual-view with larger charts */
 		@media (min-width: 768px) {
 			.content {
 				max-width: var(--content-max-md, 800px);
@@ -869,7 +829,6 @@ function formatPlays(plays: number): string {
 			}
 		}
 
-		/* Desktop: side-by-side dual-view */
 		@media (min-width: 1024px) {
 			.content {
 				max-width: var(--content-max-lg, 900px);

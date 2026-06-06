@@ -19,12 +19,10 @@ let {
 	children
 }: Props = $props();
 
-// Element references
 let container: HTMLElement | undefined = $state();
 let titleEl: HTMLElement | undefined = $state();
 let contentEl: HTMLElement | undefined = $state();
 
-// Animation effect with cleanup
 $effect(() => {
 	if (!container || !active) return;
 
@@ -40,7 +38,6 @@ $effect(() => {
 
 	const animations: ReturnType<typeof animate>[] = [];
 
-	// Animate container with gentle spring
 	const containerAnim = animate(
 		container,
 		{ opacity: [0, 1], transform: ['translateY(20px)', 'translateY(0)'] },
@@ -48,7 +45,6 @@ $effect(() => {
 	);
 	animations.push(containerAnim);
 
-	// Animate title with simple fade
 	if (titleEl) {
 		const titleAnim = animate(
 			titleEl,
@@ -58,7 +54,6 @@ $effect(() => {
 		animations.push(titleAnim);
 	}
 
-	// Animate content with simple fade
 	if (contentEl) {
 		const contentAnim = animate(
 			contentEl,
@@ -91,7 +86,6 @@ $effect(() => {
 				<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 				{@html renderedHtml}
 			{:else}
-				<!-- Fallback: display raw content if no rendered HTML provided -->
 				<p>{content}</p>
 			{/if}
 		</div>
@@ -135,7 +129,6 @@ $effect(() => {
 			word-break: break-word;
 		}
 
-		/* Markdown styling */
 		.markdown-content :global(h1),
 		.markdown-content :global(h2),
 		.markdown-content :global(h3) {
@@ -228,7 +221,6 @@ $effect(() => {
 			margin-top: 1rem;
 		}
 
-		/* Mobile: compact content */
 		@media (max-width: 767px) {
 			.content {
 				max-width: 100%;
@@ -255,7 +247,6 @@ $effect(() => {
 			}
 		}
 
-		/* Tablet: medium content */
 		@media (min-width: 768px) and (max-width: 1023px) {
 			.content {
 				max-width: var(--content-max-md, 800px);
@@ -283,7 +274,6 @@ $effect(() => {
 			}
 		}
 
-		/* Desktop: wide content */
 		@media (min-width: 1024px) {
 			.content {
 				max-width: var(--content-max-lg, 950px);

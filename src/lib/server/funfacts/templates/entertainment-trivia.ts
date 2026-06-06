@@ -1,14 +1,7 @@
 import { defineTemplateCategory } from './base';
 
-/**
- * Entertainment Trivia Templates
- *
- * Pop culture comparison templates using famous shows/movies
- * (Game of Thrones, Friends, Star Wars, etc.)
- *
- * @module server/funfacts/templates/entertainment-trivia
- */
-
+// Thresholds sit slightly above each source runtime so rounded comparison counts
+// never produce an awkward single-rewatch fact.
 export const ENTERTAINMENT_TRIVIA_TEMPLATES = defineTemplateCategory('entertainment-trivia', [
 	{
 		id: 'game-of-thrones-marathon',
@@ -16,7 +9,7 @@ export const ENTERTAINMENT_TRIVIA_TEMPLATES = defineTemplateCategory('entertainm
 		comparisonTemplate: 'Could get {object} through all of Game of Thrones {gotCount} times!',
 		icon: '🐉',
 		requiredStats: ['hours'],
-		minThresholds: { hours: 74 } // Ensures count > 1 (70 * 1.05 = 73.5)
+		minThresholds: { hours: 74 }
 	},
 	{
 		id: 'friends-forever',
@@ -25,7 +18,7 @@ export const ENTERTAINMENT_TRIVIA_TEMPLATES = defineTemplateCategory('entertainm
 			'{Subject} could have seen every Friends episode {friendsCount} times and still been there for them!',
 		icon: '☕',
 		requiredStats: ['hours'],
-		minThresholds: { hours: 95 } // Ensures count > 1 (90 * 1.05 = 94.5)
+		minThresholds: { hours: 95 }
 	},
 	{
 		id: 'the-office-hours',
@@ -34,7 +27,7 @@ export const ENTERTAINMENT_TRIVIA_TEMPLATES = defineTemplateCategory('entertainm
 			"That's {theOfficeCount} complete rewatches of The Office - that's what she said!",
 		icon: '📎',
 		requiredStats: ['hours'],
-		minThresholds: { hours: 78 } // Ensures count > 1 (74 * 1.05 = 77.7)
+		minThresholds: { hours: 78 }
 	},
 	{
 		id: 'stranger-things',
@@ -43,7 +36,7 @@ export const ENTERTAINMENT_TRIVIA_TEMPLATES = defineTemplateCategory('entertainm
 			'Could take {object} to the Upside Down and back {strangerThingsCount} times!',
 		icon: '👾',
 		requiredStats: ['hours'],
-		minThresholds: { hours: 36 } // Ensures count > 1 (34 * 1.05 = 35.7)
+		minThresholds: { hours: 36 }
 	},
 	{
 		id: 'star-wars-saga',
@@ -52,7 +45,7 @@ export const ENTERTAINMENT_TRIVIA_TEMPLATES = defineTemplateCategory('entertainm
 			'{Subject} could watch the original Star Wars trilogy {starWarsCount} times - may the Force be with {object}!',
 		icon: '⭐',
 		requiredStats: ['hours'],
-		minThresholds: { hours: 7 } // Ensures count > 1 (6.4 * 1.05 = 6.72)
+		minThresholds: { hours: 7 }
 	},
 	{
 		id: 'breaking-bad-marathon',
@@ -61,7 +54,7 @@ export const ENTERTAINMENT_TRIVIA_TEMPLATES = defineTemplateCategory('entertainm
 			"Could power through all of Breaking Bad {breakingBadCount} times - {subject}'re the ones who watch!",
 		icon: '🧪',
 		requiredStats: ['hours'],
-		minThresholds: { hours: 66 } // Ensures count > 1 (62 * 1.05 = 65.1)
+		minThresholds: { hours: 66 }
 	},
 	{
 		id: 'the-wire-complete',
@@ -69,7 +62,7 @@ export const ENTERTAINMENT_TRIVIA_TEMPLATES = defineTemplateCategory('entertainm
 		comparisonTemplate: "That's {theWireCount} complete viewings of The Wire - indeed!",
 		icon: '🔌',
 		requiredStats: ['hours'],
-		minThresholds: { hours: 63 } // Ensures count > 1 (60 * 1.05 = 63)
+		minThresholds: { hours: 63 }
 	},
 	{
 		id: 'sopranos-family',
@@ -78,7 +71,7 @@ export const ENTERTAINMENT_TRIVIA_TEMPLATES = defineTemplateCategory('entertainm
 			'Could take {object} through The Sopranos {sopranosCount} times - fuggedaboutit!',
 		icon: '🍝',
 		requiredStats: ['hours'],
-		minThresholds: { hours: 91 } // Ensures count > 1 (86 * 1.05 = 90.3)
+		minThresholds: { hours: 91 }
 	},
 	{
 		id: 'star-wars-quick',
@@ -87,8 +80,8 @@ export const ENTERTAINMENT_TRIVIA_TEMPLATES = defineTemplateCategory('entertainm
 			"{Subject} could've had {starWarsCount} Star Wars movie nights - not bad for a scruffy-looking nerf herder!",
 		icon: '🚀',
 		requiredStats: ['hours'],
-		minThresholds: { hours: 2 }, // Very low - accessible
-		priority: 35 // Lower priority for quick comparison
+		minThresholds: { hours: 2 },
+		priority: 35
 	},
 	{
 		id: 'quick-binge-comparison',

@@ -22,7 +22,6 @@ const getStepStatus = (index: number): 'completed' | 'active' | 'pending' => {
 	return 'pending';
 };
 
-// Animate on mount
 $effect(() => {
 	if (!containerRef) return;
 
@@ -90,7 +89,7 @@ $effect(() => {
 			align-items: center;
 			flex: 1;
 			max-width: 140px;
-			opacity: 0; /* Start hidden for animation */
+			opacity: 0;
 		}
 
 		.step-node {
@@ -116,14 +115,12 @@ $effect(() => {
 			flex-shrink: 0;
 		}
 
-		/* Pending state */
 		.pending .step-circle {
 			background: rgba(255, 255, 255, 0.05);
 			border: 2px solid rgba(255, 255, 255, 0.15);
 			color: rgba(255, 255, 255, 0.4);
 		}
 
-		/* Active state - uses theme primary color */
 		.active .step-circle {
 			background: linear-gradient(135deg, oklch(var(--primary)) 0%, oklch(var(--accent)) 100%);
 			border: 2px solid oklch(var(--primary));
@@ -135,7 +132,6 @@ $effect(() => {
 			animation: pulse-glow 2s ease-in-out infinite;
 		}
 
-		/* Completed state */
 		.completed .step-circle {
 			background: linear-gradient(135deg, oklch(0.7205 0.192 149.49) 0%, oklch(0.5988 0.1576 149.72) 100%);
 			border: 2px solid oklch(0.7794 0.2087 149.41);
@@ -165,8 +161,8 @@ $effect(() => {
 
 		.step-connector {
 			position: absolute;
-			left: calc(50% + 18px + 4px); /* Circle center + radius + gap */
-			right: calc(-50% + 18px + 4px); /* Extend to next circle edge */
+			left: calc(50% + 18px + 4px);
+			right: calc(-50% + 18px + 4px);
 			top: 50%;
 			transform: translateY(-50%);
 			height: 2px;
@@ -211,7 +207,6 @@ $effect(() => {
 			color: rgba(255, 255, 255, 0.7);
 		}
 
-		/* Responsive */
 		@media (max-width: 480px) {
 			.step-indicator {
 				padding: 0 0.5rem;
@@ -228,7 +223,7 @@ $effect(() => {
 			}
 
 			.step-connector {
-				left: calc(50% + 16px + 3px); /* Smaller circle radius + smaller gap */
+				left: calc(50% + 16px + 3px);
 				right: calc(-50% + 16px + 3px);
 			}
 		}

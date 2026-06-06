@@ -30,8 +30,7 @@ const WEEKDAY_FULL_NAMES = [
 	'Saturday'
 ];
 
-// Display order: Monday-first (Mon, Tue, Wed, Thu, Fri, Sat, Sun)
-// Maps display position to original data index (where 0=Sunday in JS getDay())
+// UI copy is Monday-first, while the stats array follows JavaScript's Sunday-first getDay().
 const DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0] as const;
 const DISPLAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 

@@ -20,22 +20,12 @@ import { Button } from '$lib/components/ui/button';
 import { Input } from '$lib/components/ui/input';
 import type { ActionData, PageData } from './$types';
 
-/**
- * Public Landing Page
- *
- * Soviet/communist themed landing page for Obzorarr with:
- * - Username-based quick access to wrapped pages (primary CTA)
- * - Plex OAuth login button for dashboard access (secondary)
- */
-
 let { data, form }: { data: PageData; form: ActionData } = $props();
 
-// Username lookup state
 let username = $state('');
 let usernameTouched = $state(false);
 let isLookingUp = $state(false);
 
-// Sync username from form response (preserves user input on error).
 // The 403 "public lookup disabled" failure has no `username` field, so narrow
 // the ActionData union with an `in` check before reading it.
 $effect(() => {
@@ -46,21 +36,17 @@ $effect(() => {
 	}
 });
 
-// Plex OAuth state
 let isOAuthLoading = $state(false);
 let isRedirecting = $state(false);
 let oauthError = $state<string | null>(null);
 let loginController: PlexLoginController | null = null;
 
-// Popup fallback state
 let showPopupBlockedModal = $state(false);
 let pendingPinId = $state<number | null>(null);
 let pendingAuthUrl = $state<string | null>(null);
 
-// Element refs for animation
 let heroContainer: HTMLElement | undefined = $state();
 
-// Entrance animation for hero
 $effect(() => {
 	if (!heroContainer || prefersReducedMotion.current) return;
 	const animation = animate(
@@ -71,7 +57,6 @@ $effect(() => {
 	return () => animation.stop();
 });
 
-// Cleanup polling on unmount
 $effect(() => {
 	return () => {
 		loginController?.cancel();
@@ -151,10 +136,8 @@ function handleCancelRedirect(): void {
 </script>
 
 <div class="landing">
-	<!-- Hero Section -->
 	<section class="hero" bind:this={heroContainer}>
 		<div class="hero-content">
-			<!-- Logo Decorative Element -->
 			<div class="logo-glow" aria-hidden="true">
 				<Logo size={120} />
 			</div>
@@ -170,7 +153,6 @@ function handleCancelRedirect(): void {
 			</p>
 
 			{#if data.publicLookupEnabled}
-				<!-- PRIMARY CTA: Username Lookup -->
 				<div class="username-section">
 					<form
 						method="POST"
@@ -244,7 +226,6 @@ function handleCancelRedirect(): void {
 				</div>
 			{/if}
 
-			<!-- SECONDARY: Plex OAuth Login -->
 			<div class="login-section">
 				<p class="login-prompt">Want to access your dashboard or change settings?</p>
 				<Button
@@ -273,7 +254,6 @@ function handleCancelRedirect(): void {
 		</div>
 	</section>
 
-	<!-- Footer -->
 	<footer class="footer">
 		<p>Spotify Wrapped-style summaries for your Plex Media Server</p>
 	</footer>
@@ -293,7 +273,6 @@ function handleCancelRedirect(): void {
 			background: oklch(var(--background));
 		}
 
-		/* Hero Section */
 		.hero {
 			flex: 1;
 			display: flex;
@@ -358,7 +337,6 @@ function handleCancelRedirect(): void {
 			margin: 0 0 2rem;
 		}
 
-		/* Username Section - PRIMARY CTA */
 		.username-section {
 			margin-bottom: 2rem;
 		}
@@ -369,9 +347,9 @@ function handleCancelRedirect(): void {
 			gap: 0.75rem;
 		}
 
-		/* Sign-in CTA rendered when public lookup is disabled. Reuses the primary
-		   `.view-button` pill look; `.cta-link` only neutralises the anchor's
-		   default underline and centers the CTA within the section. */
+		/* When public lookup is disabled, the fallback sign-in link should keep
+		   the primary CTA affordance; `.cta-link` only neutralises the anchor's
+		   default underline. */
 		.signin-required-note {
 			font-size: 0.95rem;
 			color: oklch(var(--muted-foreground));
@@ -406,13 +384,9 @@ function handleCancelRedirect(): void {
 			border: 0;
 		}
 
-		/* Paired :global hoist for the username form input — same migration
-		   story as `.view-button` above: PR-3 / US-024 swaps the native
-		   <input class="username-input"> for the shadcn Input primitive
-		   which renders inside a child component beyond Svelte 5's
-		   component-scope. Globalising the rules now preserves the
-		   hand-tuned focus ring + max-width without forcing the Input
-		   consumer to re-implement them. */
+		/* shadcn Input renders inside a child component beyond Svelte's scoped
+		   style boundary, so the selector must be global to preserve the custom
+		   max-width and focus ring without duplicating them at the call site. */
 		:global(.username-input) {
 			flex: 1;
 			min-width: 200px;
@@ -451,16 +425,9 @@ function handleCancelRedirect(): void {
 			cursor: not-allowed;
 		}
 
-		/* `.view-button` is consumed at scope today by the native <button> in the
-		   username form, but PR-3 / US-024 will swap that for the shadcn
-		   SubmitButton primitive which renders the button element inside a
-		   child component — Svelte 5 component-scoped CSS doesn't reach
-		   inside a child, so the styling has to be globalised now. The rules
-		   are unchanged; only the selector scope is bumped to :global so the
-		   primitive consumer can keep the hero CTA's hover translate-y + glow
-		   without re-implementing them. The .username-input rules below have
-		   the same migration story; the matching :global hoist is paired with
-		   the shadcn Input swap pre-work. */
+		/* shadcn SubmitButton renders the actual <button> inside a child component,
+		   so the selector must be global for the hero CTA's hover translate-y and
+		   glow to reach the primitive without re-implementing those rules. */
 		:global(.view-button) {
 			display: inline-flex;
 			align-items: center;
@@ -501,7 +468,6 @@ function handleCancelRedirect(): void {
 			cursor: not-allowed;
 		}
 
-		/* Login Section - SECONDARY */
 		.login-section {
 			padding-top: 1.5rem;
 			border-top: 1px solid oklch(var(--border) / 0.5);
@@ -513,11 +479,8 @@ function handleCancelRedirect(): void {
 			margin: 0 0 0.75rem;
 		}
 
-		/* `.login-button` is the secondary Plex-OAuth CTA. Same :global hoist
-		   story as .view-button + .username-input above — prep for the
-		   future shadcn Button swap so the child component's rendered
-		   element inherits the styling across Svelte 5's component-scope
-		   boundary. Rule bodies are byte-identical. */
+		/* Keep this hoisted for parity with the shadcn-backed controls above; a
+		   future Button swap should not lose styling across the component boundary. */
 		:global(.login-button) {
 			display: inline-flex;
 			align-items: center;
@@ -595,7 +558,6 @@ function handleCancelRedirect(): void {
 			box-shadow: 0 0 0 2px oklch(var(--ring));
 		}
 
-		/* Footer */
 		.footer {
 			padding: 1.5rem 2rem;
 			text-align: center;
@@ -609,7 +571,6 @@ function handleCancelRedirect(): void {
 			letter-spacing: 0.05em;
 		}
 
-		/* Responsive */
 		@media (max-width: 640px) {
 			.hero {
 				min-height: 70vh;
@@ -645,7 +606,7 @@ function handleCancelRedirect(): void {
 			}
 		}
 
-		/* Reduced motion */
+		/* Respect users who request reduced motion. */
 		@media (prefers-reduced-motion: reduce) {
 			:global(.view-button),
 			:global(.login-button),

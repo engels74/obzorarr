@@ -36,7 +36,7 @@ export const FactTemplateSchema = z.object({
 });
 
 export const AIGenerationRequestSchema = z.object({
-	stats: z.any(), // UserStats or ServerStats
+	stats: z.any(),
 	existingFacts: z.array(z.string()).optional(),
 	count: z.number().int().min(1).max(5).default(3)
 });

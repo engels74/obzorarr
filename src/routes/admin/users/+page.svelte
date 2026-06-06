@@ -5,24 +5,13 @@ import { handleFormToast } from '$lib/utils/form-toast';
 import { maskEmail } from '$lib/utils/format';
 import type { ActionData, PageData } from './$types';
 
-/**
- * Admin Users Page
- *
- * Manages Plex server users:
- * - View all users with watch time stats
- * - Configure per-user permissions
- * - Preview user wrapped pages
- */
-
 let { data, form }: { data: PageData; form: ActionData } = $props();
 let failedAvatarUserIds = $state<Set<number>>(new Set());
 
-// Show toast notifications for form responses
 $effect(() => {
 	handleFormToast(form);
 });
 
-// Format watch time as hours
 function formatWatchTime(minutes: number): string {
 	if (minutes === 0) return '0h';
 	if (minutes > 0 && minutes < 60) return '<1h';
@@ -76,7 +65,6 @@ function markAvatarFailed(userId: number): void {
 		</div>
 	</header>
 
-	<!-- Users List Section -->
 	<section class="section">
 		<div class="section-header">
 			<h2>Server Users</h2>
@@ -327,7 +315,6 @@ function markAvatarFailed(userId: number): void {
 		{/if}
 	</section>
 
-	<!-- Legend Section -->
 	<section class="section legend-section">
 		<h3>Legend</h3>
 		<div class="legend-grid">
@@ -480,7 +467,6 @@ function markAvatarFailed(userId: number): void {
 			opacity: 0.85;
 		}
 
-		/* Users Table */
 		.users-table-wrapper {
 			overflow-x: auto;
 			width: 100%;
@@ -626,13 +612,9 @@ function markAvatarFailed(userId: number): void {
 			margin: 0;
 		}
 
-		/* `.toggle-button` is the Yes/No permission toggle in the user
-		   table cells (desktop) + mobile list. Hoisted to :global so
-		   SubmitButton's child-rendered <button> inherits the muted-
-		   default vs green-enabled palettes + hover-fade. The `.enabled`
-		   modifier toggles via a template literal in the consuming
-		   class prop (Svelte `class:foo` syntax doesn't compose with
-		   component class props — only DOM-level). */
+		/* SubmitButton child-renders the real <button>, and component class props
+		   cannot use Svelte's DOM-only `class:foo` directive, so the enabled
+		   palette is driven by a hoisted template-literal class. */
 		:global(.toggle-button) {
 			padding: 0.25rem 0.5rem;
 			border: 1px solid oklch(var(--border));
@@ -729,7 +711,6 @@ function markAvatarFailed(userId: number): void {
 			padding: 2rem;
 		}
 
-		/* Legend */
 		.legend-section {
 			background: oklch(var(--muted) / 0.3);
 		}
@@ -751,7 +732,6 @@ function markAvatarFailed(userId: number): void {
 			color: oklch(var(--muted-foreground));
 		}
 
-		/* Responsive */
 		@media (max-width: 768px) {
 			.users-page {
 				padding: 1rem;

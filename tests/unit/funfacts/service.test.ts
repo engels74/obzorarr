@@ -1,10 +1,3 @@
-/**
- * Unit tests for Fun Facts Service
- *
- * Tests context building, template applicability, interpolation,
- * and random selection functions.
- */
-
 import { afterAll, afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import { AppSettingsKey } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
@@ -38,15 +31,11 @@ import { getALL_TEMPLATES, getTemplatesForCategory } from '$lib/server/funfacts/
 import type { ServerStats, UserStats } from '$lib/server/stats/types';
 import { resetSharedTestDb } from '../../helpers/db';
 
-// =============================================================================
-// Test Helpers
-// =============================================================================
-
 function createMockUserStats(overrides: Partial<UserStats> = {}): UserStats {
 	return {
 		userId: 1,
 		year: 2024,
-		totalWatchTimeMinutes: 6000, // 100 hours
+		totalWatchTimeMinutes: 6000,
 		totalPlays: 200,
 		topMovies: [
 			{ rank: 1, title: 'The Matrix', count: 5, thumb: null },
@@ -130,24 +119,20 @@ function createMockServerStats(overrides: Partial<ServerStats> = {}): ServerStat
 	};
 }
 
-// =============================================================================
-// Context Building Tests
-// =============================================================================
-
 describe('buildGenerationContext', () => {
 	it('builds context correctly from user stats', () => {
 		const stats = createMockUserStats();
 		const context = buildGenerationContext(stats);
 
-		expect(context.hours).toBe(100); // 6000 / 60
-		expect(context.days).toBe(4.2); // 100 / 24 rounded to 1 decimal
+		expect(context.hours).toBe(100);
+		expect(context.days).toBe(4.2);
 		expect(context.plays).toBe(200);
 		expect(context.topMovie).toBe('The Matrix');
 		expect(context.topMovieCount).toBe(5);
 		expect(context.topShow).toBe('Breaking Bad');
 		expect(context.topShowCount).toBe(50);
 		expect(context.percentile).toBe(85);
-		expect(context.bingeHours).toBe(5); // 300 / 60
+		expect(context.bingeHours).toBe(5);
 		expect(context.bingePlays).toBe(6);
 		expect(context.firstWatchTitle).toBe('New Year Movie');
 		expect(context.lastWatchTitle).toBe('Year End Show');
@@ -160,7 +145,7 @@ describe('buildGenerationContext', () => {
 		const context = buildGenerationContext(stats);
 
 		expect(context.percentile).toBe(50);
-		expect(context.hours).toBe(1000); // 60000 / 60
+		expect(context.hours).toBe(1000);
 	});
 
 	it('handles missing optional fields', () => {
@@ -185,7 +170,7 @@ describe('buildGenerationContext', () => {
 
 	it('calculates peak hour correctly', () => {
 		const minutes = Array(24).fill(0);
-		minutes[22] = 1000; // 10 PM peak
+		minutes[22] = 1000;
 		const stats = createMockUserStats({
 			watchTimeByHour: { minutes, plays: Array(24).fill(1) }
 		});
@@ -196,7 +181,7 @@ describe('buildGenerationContext', () => {
 
 	it('calculates peak month correctly', () => {
 		const minutes = Array(12).fill(0);
-		minutes[6] = 5000; // July peak (0-indexed)
+		minutes[6] = 5000;
 		const stats = createMockUserStats({
 			watchTimeByMonth: { minutes, plays: Array(12).fill(1) }
 		});
@@ -205,10 +190,6 @@ describe('buildGenerationContext', () => {
 		expect(context.peakMonth).toBe(6);
 	});
 });
-
-// =============================================================================
-// Template Applicability Tests
-// =============================================================================
 
 describe('isTemplateApplicable', () => {
 	const mockContext: FactGenerationContext = {
@@ -261,7 +242,7 @@ describe('isTemplateApplicable', () => {
 			category: 'time-equivalency',
 			factTemplate: 'You watched {hours} hours',
 			requiredStats: ['hours'],
-			minThresholds: { hours: 200 } // Higher than context.hours (100)
+			minThresholds: { hours: 200 }
 		};
 
 		expect(isTemplateApplicable(template, mockContext)).toBe(false);
@@ -276,10 +257,8 @@ describe('isTemplateApplicable', () => {
 			minThresholds: { peakHour: 21 }
 		};
 
-		// peakHour is 22, so should be applicable
 		expect(isTemplateApplicable(template, mockContext)).toBe(true);
 
-		// peakHour is 18, so should not be applicable
 		expect(isTemplateApplicable(template, { ...mockContext, peakHour: 18 })).toBe(false);
 	});
 
@@ -291,10 +270,8 @@ describe('isTemplateApplicable', () => {
 			requiredStats: ['peakHour']
 		};
 
-		// peakHour is 22, so should not be applicable
 		expect(isTemplateApplicable(template, mockContext)).toBe(false);
 
-		// peakHour is 7, so should be applicable
 		expect(isTemplateApplicable(template, { ...mockContext, peakHour: 7 })).toBe(true);
 	});
 
@@ -310,10 +287,6 @@ describe('isTemplateApplicable', () => {
 		expect(isTemplateApplicable(template, context)).toBe(true);
 	});
 });
-
-// =============================================================================
-// Template Interpolation Tests
-// =============================================================================
 
 describe('interpolateTemplate', () => {
 	const mockContext: FactGenerationContext = {
@@ -359,7 +332,7 @@ describe('interpolateTemplate', () => {
 
 	it('formats peak month correctly', () => {
 		const result = interpolateTemplate('{peakMonthName}', mockContext);
-		expect(result).toBe('July'); // Month 6 (0-indexed)
+		expect(result).toBe('July');
 	});
 
 	it('preserves unknown placeholders', () => {
@@ -373,10 +346,6 @@ describe('interpolateTemplate', () => {
 		expect(result).toBe('Movie: Unknown');
 	});
 });
-
-// =============================================================================
-// Template Generation Tests
-// =============================================================================
 
 describe('generateFromTemplate', () => {
 	const mockContext: FactGenerationContext = {
@@ -432,10 +401,6 @@ describe('generateFromTemplate', () => {
 	});
 });
 
-// =============================================================================
-// Random Selection Tests
-// =============================================================================
-
 describe('selectRandomTemplates', () => {
 	const templates: FactTemplate[] = [
 		{ id: 'a', category: 'time-equivalency', factTemplate: 'A', requiredStats: [] },
@@ -481,10 +446,6 @@ describe('selectRandomTemplates', () => {
 	});
 });
 
-// =============================================================================
-// Full Generation Tests
-// =============================================================================
-
 describe('generateFromTemplates', () => {
 	it('generates requested number of facts', () => {
 		const stats = createMockUserStats();
@@ -511,7 +472,6 @@ describe('generateFromTemplates', () => {
 		const result = generateFromTemplates(context, { count: 5 });
 
 		for (const fact of result) {
-			// Should not contain {placeholder} patterns
 			expect(fact.fact).not.toMatch(/\{[a-zA-Z]+\}/);
 			if (fact.comparison) {
 				expect(fact.comparison).not.toMatch(/\{[a-zA-Z]+\}/);
@@ -523,16 +483,13 @@ describe('generateFromTemplates', () => {
 		const stats = createMockUserStats();
 		const context = buildGenerationContext(stats);
 
-		// Get all IDs from time-equivalency category
 		const timeEquivIds = TIME_EQUIVALENCY_TEMPLATES.map((t) => t.id);
 
-		// Generate without time-equivalency templates
 		const result = generateFromTemplates(context, {
 			count: 3,
 			excludeIds: timeEquivIds
 		});
 
-		// None should be from time-equivalency category (by verifying they exist in other categories)
 		expect(result.length).toBeGreaterThan(0);
 	});
 
@@ -552,15 +509,10 @@ describe('generateFromTemplates', () => {
 		const context = buildGenerationContext(stats);
 
 		const result = generateFromTemplates(context, { count: 3 });
-		// The year-participant template always applies as a fallback
 		expect(result.length).toBeGreaterThanOrEqual(1);
 		expect(result[0]?.fact).toContain('active viewer');
 	});
 });
-
-// =============================================================================
-// Template Constants Tests
-// =============================================================================
 
 describe('Template constants and registry index', () => {
 	const expectedCategories = [
@@ -641,10 +593,6 @@ describe('Template constants and registry index', () => {
 	});
 });
 
-// =============================================================================
-// Configuration Tests
-// =============================================================================
-
 describe('getFunFactsConfig', () => {
 	beforeEach(async () => {
 		await resetSharedTestDb();
@@ -720,10 +668,6 @@ describe('isAIAvailable', () => {
 		expect(available).toBe(true);
 	});
 });
-
-// =============================================================================
-// AI Generation Tests
-// =============================================================================
 
 describe('generateWithAI', () => {
 	let fetchMock: ReturnType<typeof spyOn>;
@@ -864,7 +808,7 @@ describe('generateWithAI', () => {
 			openaiApiKey: 'sk-test',
 			openaiBaseUrl: 'https://api.openai.com/v1',
 			openaiModel: 'gpt-5-mini',
-			maxAIRetries: 0, // No retries for this test
+			maxAIRetries: 0,
 			aiTimeoutMs: 10000,
 			aiPersona: 'witty' as const
 		};
@@ -896,10 +840,6 @@ describe('generateWithAI', () => {
 	});
 });
 
-// =============================================================================
-// Main generateFunFacts Tests
-// =============================================================================
-
 describe('generateFunFacts', () => {
 	let fetchMock: ReturnType<typeof spyOn>;
 
@@ -918,7 +858,6 @@ describe('generateFunFacts', () => {
 		const facts = await generateFunFacts(stats, { count: 3 });
 
 		expect(facts).toHaveLength(3);
-		// Template facts should have string facts
 		for (const fact of facts) {
 			expect(typeof fact.fact).toBe('string');
 			expect(fact.fact.length).toBeGreaterThan(0);
@@ -977,7 +916,6 @@ describe('generateFunFacts', () => {
 		const stats = createMockUserStats();
 		const facts = await generateFunFacts(stats, { count: 3 });
 
-		// Should have fallen back to templates
 		expect(facts).toHaveLength(3);
 	});
 
@@ -1007,7 +945,6 @@ describe('generateFunFacts', () => {
 		const stats = createMockUserStats();
 		const facts = await generateFunFacts(stats, { count: 3 });
 
-		// Should have 3 facts total (1 AI + 2 templates)
 		expect(facts).toHaveLength(3);
 		expect(facts[0]?.fact).toBe('Only one AI fact');
 	});

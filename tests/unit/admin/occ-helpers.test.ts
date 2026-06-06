@@ -66,7 +66,6 @@ describe('externalOccCheck', () => {
 	it('returns ok when submitted version is fresh (>= current row updatedAt)', async () => {
 		await setAppSetting(AppSettingsKey.UI_THEME, 'modern-minimal');
 
-		// Future timestamp wins.
 		const futureVersion = new Date(Date.now() + 60_000).toISOString();
 		const result = await externalOccCheck(futureVersion, UI_THEME_SETTINGS_KEYS);
 
@@ -115,7 +114,6 @@ describe('inlineOccCheck', () => {
 	});
 
 	it('returns conflict when submitted version is stale', async () => {
-		// Seed one of the LOG_SETTINGS_KEYS rows so max(updatedAt) > 0.
 		await setAppSetting('log_retention_days' as never, '14');
 
 		const result = await inlineOccCheck(new Date(0).toISOString(), LOG_SETTINGS_KEYS);

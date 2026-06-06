@@ -14,22 +14,11 @@ import {
 import type { UserStats } from '$lib/server/stats/types';
 import { resetSharedTestDb } from '../../helpers/db';
 
-/**
- * Unit tests for Fun Facts AI Generation
- *
- * Tests AI configuration, API calls, response parsing, and retry logic.
- * Uses mocked fetch for API calls.
- */
-
-// =============================================================================
-// Test Helpers
-// =============================================================================
-
 function createMockUserStats(overrides: Partial<UserStats> = {}): UserStats {
 	return {
 		userId: 1,
 		year: 2024,
-		totalWatchTimeMinutes: 6000, // 100 hours
+		totalWatchTimeMinutes: 6000,
 		totalPlays: 200,
 		topMovies: [
 			{ rank: 1, title: 'The Matrix', count: 5, thumb: null },
@@ -112,7 +101,6 @@ function createValidAIResponse() {
 	};
 }
 
-// Store original fetch
 let originalFetch: typeof fetch;
 
 describe('Fun Facts AI', () => {
@@ -124,10 +112,6 @@ describe('Fun Facts AI', () => {
 	afterEach(() => {
 		globalThis.fetch = originalFetch;
 	});
-
-	// =========================================================================
-	// Configuration Tests
-	// =========================================================================
 
 	describe('getFunFactsConfig', () => {
 		it('returns defaults when no settings exist', async () => {
@@ -157,11 +141,9 @@ describe('Fun Facts AI', () => {
 		});
 
 		it('aiEnabled is true only when API key exists', async () => {
-			// No API key
 			let config = await getFunFactsConfig();
 			expect(config.aiEnabled).toBe(false);
 
-			// With API key
 			await db.insert(appSettings).values({
 				key: AppSettingsKey.OPENAI_API_KEY,
 				value: 'sk-test'
@@ -188,10 +170,6 @@ describe('Fun Facts AI', () => {
 		});
 	});
 
-	// =========================================================================
-	// generateWithAI Tests
-	// =========================================================================
-
 	describe('generateWithAI', () => {
 		it('throws AIGenerationError when API key not configured', async () => {
 			const stats = createMockUserStats();
@@ -213,7 +191,6 @@ describe('Fun Facts AI', () => {
 			let capturedUrl: string | null = null;
 
 			globalThis.fetch = mock(async (input: RequestInfo | URL) => {
-				// Extract URL from input (could be string, URL, or Request)
 				if (typeof input === 'string') {
 					capturedUrl = input;
 				} else if (input instanceof URL) {
@@ -269,7 +246,6 @@ describe('Fun Facts AI', () => {
 				expect((error as AIGenerationError).message).toContain('400');
 			}
 
-			// Should NOT retry 4xx errors
 			expect(callCount).toBe(1);
 		});
 
@@ -291,7 +267,7 @@ describe('Fun Facts AI', () => {
 
 			const facts = await generateWithAI(stats, config, 3);
 
-			expect(callCount).toBe(3); // Initial + 2 retries
+			expect(callCount).toBe(3);
 			expect(facts).toHaveLength(3);
 		});
 
@@ -334,7 +310,7 @@ describe('Fun Facts AI', () => {
 				expect(error).toBeInstanceOf(AIGenerationError);
 			}
 
-			expect(callCount).toBe(3); // Initial + 2 retries
+			expect(callCount).toBe(3);
 		});
 
 		it('retries on network error', async () => {
@@ -430,38 +406,29 @@ describe('Fun Facts AI', () => {
 		});
 	});
 
-	// =========================================================================
-	// generateFunFacts Tests (AI/Template Fallback)
-	// =========================================================================
-
 	describe('generateFunFacts', () => {
 		it('uses templates when AI is not configured', async () => {
 			const stats = createMockUserStats();
 
-			// No API key configured
 			const facts = await generateFunFacts(stats, { count: 3 });
 
 			expect(facts).toHaveLength(3);
-			// All facts should be from templates (no AI call made)
 		});
 
 		it('falls back to templates when AI fails', async () => {
 			const stats = createMockUserStats();
 
-			// Configure API key
 			await db.insert(appSettings).values({
 				key: AppSettingsKey.OPENAI_API_KEY,
 				value: 'sk-test'
 			});
 
-			// Mock fetch to fail
 			globalThis.fetch = mock(async () => {
 				throw new Error('Network error');
 			}) as unknown as typeof fetch;
 
 			const facts = await generateFunFacts(stats, { count: 3 });
 
-			// Should fall back to templates
 			expect(facts).toHaveLength(3);
 			expect(facts[0]?.fact).toBeTruthy();
 		});
@@ -484,7 +451,7 @@ describe('Fun Facts AI', () => {
 			const facts = await generateFunFacts(stats, { count: 3, preferAI: true });
 
 			expect(facts).toHaveLength(3);
-			expect(facts[0]?.fact).toBe('You watched 100 hours'); // AI response
+			expect(facts[0]?.fact).toBe('You watched 100 hours');
 		});
 
 		it('uses templates when preferAI is false', async () => {
@@ -495,7 +462,6 @@ describe('Fun Facts AI', () => {
 				value: 'sk-test'
 			});
 
-			// Mock should not be called
 			let fetchCalled = false;
 			globalThis.fetch = mock(async () => {
 				fetchCalled = true;
@@ -519,7 +485,6 @@ describe('Fun Facts AI', () => {
 				value: 'sk-test'
 			});
 
-			// AI returns only 1 fact
 			globalThis.fetch = mock(async () => {
 				return new Response(
 					JSON.stringify({
@@ -543,14 +508,9 @@ describe('Fun Facts AI', () => {
 			const facts = await generateFunFacts(stats, { count: 3 });
 
 			expect(facts).toHaveLength(3);
-			expect(facts[0]?.fact).toBe('Only one fact'); // AI fact first
-			// Remaining 2 facts should be from templates
+			expect(facts[0]?.fact).toBe('Only one fact');
 		});
 	});
-
-	// =========================================================================
-	// Template Applicability Edge Cases
-	// =========================================================================
 
 	describe('Template Applicability Edge Cases', () => {
 		it('rejects template when required stat is empty string', async () => {
@@ -559,16 +519,13 @@ describe('Fun Facts AI', () => {
 			});
 			const context = buildGenerationContext(stats);
 
-			// Context should have empty string for topMovie
 			expect(context.topMovie).toBe('');
 
-			// Generate facts should still work (templates requiring topMovie excluded)
 			const facts = await generateFunFacts(stats, { count: 3 });
 			expect(facts).toHaveLength(3);
 		});
 
 		it('night-owl template requires peakHour >= 21', async () => {
-			// Peak hour at 10 PM (22)
 			const nightOwlStats = createMockUserStats({
 				watchTimeByHour: {
 					minutes: Array(24)
@@ -581,13 +538,11 @@ describe('Fun Facts AI', () => {
 			const context = buildGenerationContext(nightOwlStats);
 			expect(context.peakHour).toBe(22);
 
-			// Facts might include night-owl template
 			const facts = await generateFunFacts(nightOwlStats, { count: 10 });
 			expect(facts.length).toBeGreaterThan(0);
 		});
 
 		it('night-owl template is excluded when peakHour < 21', async () => {
-			// Peak hour at 8 PM (20) - should exclude night-owl
 			const notNightOwlStats = createMockUserStats({
 				watchTimeByHour: {
 					minutes: Array(24)
@@ -600,11 +555,9 @@ describe('Fun Facts AI', () => {
 			const context = buildGenerationContext(notNightOwlStats);
 			expect(context.peakHour).toBe(20);
 
-			// Generate facts - night-owl template should be excluded
 			const facts = await generateFunFacts(notNightOwlStats, { count: 20 });
 			expect(facts.length).toBeGreaterThan(0);
 
-			// Verify night-owl specific content is not present
 			const hasNightOwl = facts.some(
 				(f) =>
 					f.fact.toLowerCase().includes('night owl') || f.fact.toLowerCase().includes('9:00 pm')
@@ -613,7 +566,6 @@ describe('Fun Facts AI', () => {
 		});
 
 		it('night-owl template is included at boundary peakHour = 21', async () => {
-			// Peak hour at 9 PM (21) - boundary, should include night-owl
 			const boundaryStats = createMockUserStats({
 				watchTimeByHour: {
 					minutes: Array(24)
@@ -626,13 +578,11 @@ describe('Fun Facts AI', () => {
 			const context = buildGenerationContext(boundaryStats);
 			expect(context.peakHour).toBe(21);
 
-			// Generate many facts to increase chance of hitting night-owl
 			const facts = await generateFunFacts(boundaryStats, { count: 20 });
 			expect(facts.length).toBeGreaterThan(0);
 		});
 
 		it('early-bird template requires peakHour <= 9', async () => {
-			// Peak hour at 6 AM
 			const earlyBirdStats = createMockUserStats({
 				watchTimeByHour: {
 					minutes: Array(24)
@@ -645,13 +595,11 @@ describe('Fun Facts AI', () => {
 			const context = buildGenerationContext(earlyBirdStats);
 			expect(context.peakHour).toBe(6);
 
-			// Facts might include early-bird template
 			const facts = await generateFunFacts(earlyBirdStats, { count: 10 });
 			expect(facts.length).toBeGreaterThan(0);
 		});
 
 		it('early-bird template is excluded when peakHour > 9', async () => {
-			// Peak hour at 10 AM - should exclude early-bird
 			const notEarlyBirdStats = createMockUserStats({
 				watchTimeByHour: {
 					minutes: Array(24)
@@ -664,15 +612,10 @@ describe('Fun Facts AI', () => {
 			const context = buildGenerationContext(notEarlyBirdStats);
 			expect(context.peakHour).toBe(10);
 
-			// Generate facts - early-bird template should be excluded
 			const facts = await generateFunFacts(notEarlyBirdStats, { count: 20 });
 			expect(facts.length).toBeGreaterThan(0);
 		});
 	});
-
-	// =========================================================================
-	// Timeout Handling Tests
-	// =========================================================================
 
 	describe('Timeout Handling', () => {
 		it('retries on AbortError (timeout)', async () => {
@@ -683,7 +626,6 @@ describe('Fun Facts AI', () => {
 			globalThis.fetch = mock(async () => {
 				callCount++;
 				if (callCount === 1) {
-					// Simulate AbortError (timeout)
 					const error = new Error('The operation was aborted');
 					error.name = 'AbortError';
 					throw error;
@@ -696,7 +638,7 @@ describe('Fun Facts AI', () => {
 
 			const facts = await generateWithAI(stats, config, 3);
 
-			expect(callCount).toBe(2); // Initial + 1 retry after timeout
+			expect(callCount).toBe(2);
 			expect(facts).toHaveLength(3);
 		});
 
@@ -707,7 +649,6 @@ describe('Fun Facts AI', () => {
 			let callCount = 0;
 			globalThis.fetch = mock(async () => {
 				callCount++;
-				// Always throw AbortError
 				const error = new Error('The operation was aborted');
 				error.name = 'AbortError';
 				throw error;
@@ -721,7 +662,7 @@ describe('Fun Facts AI', () => {
 				expect((error as AIGenerationError).message).toContain('timed out');
 			}
 
-			expect(callCount).toBe(2); // Initial + 1 retry
+			expect(callCount).toBe(2);
 		});
 
 		it('recovers from timeout then succeeds on retry', async () => {
@@ -732,12 +673,10 @@ describe('Fun Facts AI', () => {
 			globalThis.fetch = mock(async () => {
 				callCount++;
 				if (callCount <= 2) {
-					// First 2 calls timeout
 					const error = new Error('The operation was aborted');
 					error.name = 'AbortError';
 					throw error;
 				}
-				// Third call succeeds
 				return new Response(JSON.stringify(createValidAIResponse()), {
 					status: 200,
 					headers: { 'Content-Type': 'application/json' }

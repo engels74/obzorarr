@@ -269,7 +269,6 @@ describe('privacy nested route — updateUserDefaults', () => {
 			status: 409,
 			data: { conflict: true, error: 'Settings changed in another tab. Please reload.' }
 		});
-		// Stale save did not overwrite the fresh value.
 		expect(await getGlobalDefaultShareMode()).toBe('public');
 	});
 

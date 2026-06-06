@@ -20,15 +20,6 @@ import Logo from '$lib/components/Logo.svelte';
 import CsrfWarningBanner from '$lib/components/security/CsrfWarningBanner.svelte';
 import type { LayoutData } from './$types';
 
-/**
- * Admin Layout
- *
- * Provides a consistent wrapper for all admin pages with:
- * - Sidebar navigation
- * - Admin user info
- * - Modern command center styling
- */
-
 interface Props {
 	data: LayoutData;
 	children: Snippet;
@@ -36,7 +27,6 @@ interface Props {
 
 let { data, children }: Props = $props();
 
-// Navigation items with Lucide icon components
 const navItems: Array<{ href: string; label: string; icon: Component }> = [
 	{ href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
 	{ href: '/admin/wrapped', label: 'Wrapped', icon: Gift },
@@ -47,17 +37,14 @@ const navItems: Array<{ href: string; label: string; icon: Component }> = [
 	{ href: '/admin/settings', label: 'Settings', icon: Settings }
 ];
 
-// Determine if a nav item is active
 const isActive = $derived((href: string) => {
 	const currentPath = $page.url.pathname;
-	// Exact match for dashboard, prefix match for others
 	if (href === '/admin') {
 		return currentPath === '/admin';
 	}
 	return currentPath.startsWith(href);
 });
 
-// Mobile sidebar state
 let sidebarOpen = $state(false);
 let isMobileSidebar = $state(false);
 let sidebarHiddenFromMobile = $derived(isMobileSidebar && !sidebarOpen);
@@ -93,17 +80,14 @@ async function focusAfterRender(selector: string) {
 	document.querySelector<HTMLElement>(selector)?.focus();
 }
 
-// Reset avatar error when thumb URL changes so a new URL gets a fresh load attempt
 $effect(() => {
 	data.adminUser.thumb;
 	adminAvatarError = false;
 });
 
-// CSRF warning state - derived from data with local override for immediate dismiss
 let locallyDismissed = $state(false);
 let showCsrfWarning = $derived(data.csrfWarning.show && !locallyDismissed);
 
-// Reset local dismissed state when server re-enables the warning
 $effect(() => {
 	if (data.csrfWarning.show) {
 		locallyDismissed = false;
@@ -201,7 +185,6 @@ function handleCsrfWarningDismissed() {
 <svelte:window onkeydown={handleWindowKeydown} />
 
 <div class="admin-layout">
-	<!-- Mobile header -->
 		<header class="mobile-header" class:sidebar-open={sidebarOpen}>
 		<button
 			type="button"
@@ -221,7 +204,6 @@ function handleCsrfWarningDismissed() {
 		</div>
 	</header>
 
-	<!-- Sidebar overlay for mobile -->
 	{#if sidebarOpen}
 		<div
 			class="sidebar-overlay"
@@ -233,7 +215,6 @@ function handleCsrfWarningDismissed() {
 		></div>
 	{/if}
 
-	<!-- Sidebar -->
 	<aside
 		class="sidebar"
 		class:open={sidebarOpen}
@@ -322,7 +303,6 @@ function handleCsrfWarningDismissed() {
 		</div>
 	</aside>
 
-	<!-- Main content -->
 	<main
 		class="main-content"
 		inert={mainContentHiddenFromMobile}
@@ -342,7 +322,6 @@ function handleCsrfWarningDismissed() {
 			background: oklch(var(--background));
 		}
 
-		/* Mobile header */
 		.mobile-header {
 			display: none;
 			position: fixed;
@@ -398,7 +377,6 @@ function handleCsrfWarningDismissed() {
 			margin: 0;
 		}
 
-		/* Sidebar overlay */
 		.sidebar-overlay {
 			display: none;
 			position: fixed;
@@ -408,7 +386,6 @@ function handleCsrfWarningDismissed() {
 			z-index: 45;
 		}
 
-		/* Sidebar */
 		.sidebar {
 			position: fixed;
 			top: 0;
@@ -672,15 +649,13 @@ function handleCsrfWarningDismissed() {
 			height: 0.875rem;
 		}
 
-		/* Main content */
 		.main-content {
 			flex: 1;
 			margin-left: 260px;
 			min-height: 100vh;
 		}
 
-		/* Responsive styles.
-		   768px covers phones through tablets; verified 2026-04 at 375px and 280px
+		/* 768px covers phones through tablets; verified 2026-04 at 375px and 280px
 		   (Galaxy Fold folded). Collapses the sidebar behind an overlay and drops the
 		   main-content left margin, so content fills the viewport without horizontal
 		   scroll at smaller widths. */

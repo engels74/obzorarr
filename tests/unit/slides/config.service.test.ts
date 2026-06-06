@@ -1,9 +1,3 @@
-/**
- * Unit tests for Slide Configuration Service
- *
- * Tests slide config initialization, updates, and error handling.
- */
-
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
 import { DEFAULT_SLIDE_ORDER } from '$lib/components/slides/types';
@@ -52,11 +46,9 @@ describe('Slide Config Service', () => {
 		});
 
 		it('does not duplicate existing slides', async () => {
-			// First initialization
 			await initializeDefaultSlideConfig();
 			const firstCount = (await getAllSlideConfigs()).length;
 
-			// Second initialization
 			await initializeDefaultSlideConfig();
 			const secondCount = (await getAllSlideConfigs()).length;
 
@@ -64,14 +56,13 @@ describe('Slide Config Service', () => {
 		});
 
 		it('migrates disabled slides to enabled on first run', async () => {
-			// Insert a disabled slide manually (simulating bug where slides were created disabled)
+			// Reproduces the historical bug where newly-created rows were disabled by default.
 			await db.insert(slideConfig).values({
 				slideType: 'total-time',
 				enabled: false,
 				sortOrder: 0
 			});
 
-			// Run initialization (should migrate)
 			await initializeDefaultSlideConfig();
 
 			const config = await getSlideConfigByType('total-time');
@@ -79,13 +70,10 @@ describe('Slide Config Service', () => {
 		});
 
 		it('does not re-migrate on subsequent runs', async () => {
-			// First initialization with migration
 			await initializeDefaultSlideConfig();
 
-			// Disable a slide
 			await updateSlideConfig('total-time', { enabled: false });
 
-			// Second initialization (should not override user's choice)
 			await initializeDefaultSlideConfig();
 
 			const config = await getSlideConfigByType('total-time');
@@ -220,7 +208,6 @@ describe('Slide Config Service', () => {
 		});
 
 		it('throws NOT_FOUND for non-existent slide', async () => {
-			// Delete all configs first
 			await db.delete(slideConfig);
 
 			let error: SlideError | null = null;
@@ -286,9 +273,7 @@ describe('Slide Config Service', () => {
 			const newOrder = ['genres', 'total-time'] as const;
 			const result = await reorderSlides([...newOrder]);
 
-			// Should return all configs sorted by sortOrder
 			expect(result.length).toBeGreaterThan(0);
-			// First two should be in our specified order
 			expect(result[0]?.slideType).toBe('genres');
 			expect(result[1]?.slideType).toBe('total-time');
 		});
@@ -300,7 +285,6 @@ describe('Slide Config Service', () => {
 		});
 
 		it('toggles enabled slide to disabled', async () => {
-			// Ensure it's enabled first
 			const original = await getSlideConfigByType('total-time');
 			expect(original?.enabled).toBe(true);
 
@@ -309,7 +293,6 @@ describe('Slide Config Service', () => {
 		});
 
 		it('toggles disabled slide to enabled', async () => {
-			// First disable it
 			await updateSlideConfig('total-time', { enabled: false });
 
 			const toggled = await toggleSlide('total-time');
@@ -336,16 +319,14 @@ describe('Slide Config Service', () => {
 
 	describe('resetToDefaultConfig', () => {
 		it('clears and reinitializes all configs', async () => {
-			// Initialize and modify
 			await initializeDefaultSlideConfig();
 			await updateSlideConfig('total-time', { enabled: false, sortOrder: 99 });
 
-			// Reset
 			await resetToDefaultConfig();
 
 			const config = await getSlideConfigByType('total-time');
 			expect(config?.enabled).toBe(true);
-			expect(config?.sortOrder).toBe(0); // Should be back at default position
+			expect(config?.sortOrder).toBe(0);
 		});
 	});
 });

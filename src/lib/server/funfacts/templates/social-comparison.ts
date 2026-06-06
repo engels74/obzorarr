@@ -1,14 +1,5 @@
 import { defineTemplateCategory } from './base';
 
-/**
- * Social Comparison Templates
- *
- * Server-relative comparison templates
- * (rankings, above average, percentiles)
- *
- * @module server/funfacts/templates/social-comparison
- */
-
 export const SOCIAL_COMPARISON_TEMPLATES = defineTemplateCategory('social-comparison', [
 	{
 		id: 'server-champion',
@@ -16,8 +7,8 @@ export const SOCIAL_COMPARISON_TEMPLATES = defineTemplateCategory('social-compar
 		comparisonTemplate: 'The crown is {possessive}, streaming royalty!',
 		icon: '👑',
 		requiredStats: ['percentile'],
-		minThresholds: { percentile: 99 }, // Essentially top 1%
-		priority: 80 // Very high priority for top viewer
+		minThresholds: { percentile: 99 },
+		priority: 80
 	},
 	{
 		id: 'top-five',
@@ -62,7 +53,7 @@ export const SOCIAL_COMPARISON_TEMPLATES = defineTemplateCategory('social-compar
 		icon: '🤝',
 		requiredStats: ['plays'],
 		minThresholds: { plays: 10 },
-		priority: 30 // Lower priority - fallback for lower percentiles
+		priority: 30
 	},
 	{
 		id: 'quality-over-quantity',
@@ -71,6 +62,6 @@ export const SOCIAL_COMPARISON_TEMPLATES = defineTemplateCategory('social-compar
 		icon: '💎',
 		requiredStats: ['plays'],
 		minThresholds: { plays: 1 },
-		priority: 25 // Very low priority - catch-all
+		priority: 25
 	}
 ]);

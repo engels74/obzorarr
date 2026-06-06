@@ -11,27 +11,12 @@ import { toast } from '$lib/services/toast';
 import { handleFormToast } from '$lib/utils/form-toast';
 import type { ActionData, PageData } from './$types';
 
-/**
- * Admin Logs Page
- *
- * Real-time log viewer with filtering and SSE streaming.
- *
- * Features:
- * - Log level filtering (multi-select)
- * - Text search with debounce
- * - Source filter dropdown
- * - Date range filtering
- * - Auto-scroll with SSE streaming
- * - Export and clear functionality
- */
-
 let { data, form }: { data: PageData; form: ActionData } = $props();
 
-// Filter state (reactive to URL params via data)
 let selectedLevels = $derived<LogLevelType[]>(data.filters?.levels ?? []);
 let selectedSource = $derived(data.filters?.source ?? '');
 
-// Search needs local state for debounce pattern, synced from data
+// Debounced search needs a writable buffer; URL data remains the committed value.
 let searchText = $state('');
 $effect.pre(() => {
 	searchText = data.filters?.search ?? '';
@@ -39,7 +24,6 @@ $effect.pre(() => {
 let normalizedSearchText = $derived(searchText.trim());
 let normalizedSearchLower = $derived(normalizedSearchText.toLowerCase());
 
-// Date range filter state
 let fromDate = $state('');
 let toDate = $state('');
 
@@ -58,24 +42,19 @@ $effect.pre(() => {
 });
 let autoScroll = $state(true);
 
-// Clear-logs confirmation dialog
 let clearLogsDialogOpen = $state(false);
 let isClearingLogs = $state(false);
 
-// Run-cleanup confirmation dialog
 let runCleanupDialogOpen = $state(false);
 let isRunningCleanup = $state(false);
 
-// SSE connection state
 let eventSource: EventSource | null = $state(null);
 let streamedLogs = $state<LogEntry[]>([]);
 let lastSeenStreamId = $state(0);
 let isConnected = $state(false);
 
-// Debounce timer for search
 let searchDebounce: ReturnType<typeof setTimeout> | null = null;
 
-// Filter streamed logs to match active filters
 const filteredStreamedLogs = $derived(
 	streamedLogs.filter((log) => {
 		if (selectedLevels.length > 0 && !selectedLevels.includes(log.level)) return false;
@@ -98,7 +77,7 @@ function matchesVisibleFilters(log: LogEntry): boolean {
 	return true;
 }
 
-// Combined logs (filtered streamed + server-filtered), then narrowed by live local inputs.
+// SSE entries arrive ahead of the next server load; merge by id to avoid duplicates.
 const allLogs = $derived.by(() => {
 	const seen = new Set<number>();
 	const merged: LogEntry[] = [];
@@ -131,15 +110,12 @@ const visibleSources = $derived.by(() => {
 
 const visibleTotalCount = $derived(visibleLogs.length);
 
-// Available log levels
 const logLevels: LogLevelType[] = ['DEBUG', 'INFO', 'WARN', 'ERROR'];
 
-// Format timestamp
 function formatTimestamp(timestamp: number): string {
 	return new Date(timestamp).toLocaleString();
 }
 
-// Format relative time
 function formatRelativeTime(timestamp: number): string {
 	const now = Date.now();
 	const diffMs = now - timestamp;
@@ -154,7 +130,6 @@ function formatRelativeTime(timestamp: number): string {
 	return new Date(timestamp).toLocaleDateString();
 }
 
-// Get level badge class
 function getLevelClass(level: LogLevelType): string {
 	switch (level) {
 		case 'ERROR':
@@ -170,13 +145,12 @@ function getLevelClass(level: LogLevelType): string {
 	}
 }
 
-// Preserve current filter query string on the export form so the server action sees them.
+// Export must use the same filters the operator is currently viewing.
 const exportAction = $derived.by(() => {
 	const search = $page.url.searchParams.toString();
 	return search ? `?${search}&/exportLogs` : '?/exportLogs';
 });
 
-// Apply filters to URL (accepts overrides for derived values)
 function applyFilters(overrides?: { levels?: LogLevelType[]; search?: string; source?: string }) {
 	const params = new URLSearchParams();
 	const levels = overrides?.levels ?? selectedLevels;
@@ -209,7 +183,6 @@ function applyFilters(overrides?: { levels?: LogLevelType[]; search?: string; so
 	goto(`/admin/logs${queryString ? `?${queryString}` : ''}`, { replaceState: true });
 }
 
-// Toggle level filter
 function toggleLevel(level: LogLevelType) {
 	const newLevels = selectedLevels.includes(level)
 		? selectedLevels.filter((l) => l !== level)
@@ -217,7 +190,6 @@ function toggleLevel(level: LogLevelType) {
 	applyFilters({ levels: newLevels });
 }
 
-// Handle search input with debounce
 function handleSearchInput(event: Event) {
 	const target = event.target as HTMLInputElement;
 	searchText = target.value;
@@ -231,15 +203,13 @@ function handleSearchInput(event: Event) {
 	}, 300);
 }
 
-// Handle source change
 function handleSourceChange(event: Event) {
 	const target = event.target as HTMLSelectElement;
 	applyFilters({ source: target.value });
 }
 
-// Clear all filters
 function clearFilters() {
-	// Cancel any pending debounced search so it doesn't race the navigation
+	// A pending debounced search would re-add the old query after the clear navigation.
 	if (searchDebounce) {
 		clearTimeout(searchDebounce);
 		searchDebounce = null;
@@ -258,7 +228,6 @@ function clearFilters() {
 	}
 }
 
-// Connect to SSE stream
 function connectSSE() {
 	if (eventSource) {
 		eventSource.close();
@@ -277,13 +246,11 @@ function connectSSE() {
 			const data = JSON.parse(event.data);
 
 			if (data.type === 'log') {
-				// Add new log to streamed logs
 				streamedLogs = [data.log, ...streamedLogs];
 				if (data.log.id > lastSeenStreamId) {
 					lastSeenStreamId = data.log.id;
 				}
 
-				// Scroll to top if auto-scroll is enabled
 				if (autoScroll) {
 					const container = document.querySelector('.logs-table-wrapper');
 					if (container) {
@@ -298,7 +265,6 @@ function connectSSE() {
 
 	eventSource.onerror = () => {
 		isConnected = false;
-		// Attempt to reconnect after 5 seconds
 		setTimeout(() => {
 			if (autoScroll) {
 				connectSSE();
@@ -307,7 +273,6 @@ function connectSSE() {
 	};
 }
 
-// Disconnect from SSE stream
 function disconnectSSE() {
 	if (eventSource) {
 		eventSource.close();
@@ -316,12 +281,11 @@ function disconnectSSE() {
 	isConnected = false;
 }
 
-// Toggle auto-scroll (and SSE connection)
 function toggleAutoScroll() {
 	autoScroll = !autoScroll;
 
 	if (autoScroll) {
-		streamedLogs = []; // Clear old streamed logs
+		streamedLogs = [];
 		lastSeenStreamId = 0;
 		connectSSE();
 	} else {
@@ -340,7 +304,6 @@ async function refreshAfterLogMutation(update: () => Promise<void>): Promise<voi
 	}
 }
 
-// Copy log entry to clipboard
 async function copyLog(log: LogEntry) {
 	const text = `[${new Date(log.timestamp).toISOString()}] [${log.level}] [${log.source ?? 'App'}] ${log.message}`;
 	try {
@@ -351,7 +314,6 @@ async function copyLog(log: LogEntry) {
 	}
 }
 
-// Parse metadata JSON
 function parseMetadata(metadata: string | null): Record<string, unknown> | null {
 	if (!metadata) return null;
 	try {
@@ -361,7 +323,6 @@ function parseMetadata(metadata: string | null): Record<string, unknown> | null 
 	}
 }
 
-// Cleanup on unmount
 $effect(() => {
 	return () => {
 		disconnectSSE();
@@ -371,14 +332,12 @@ $effect(() => {
 	};
 });
 
-// Connect to SSE on mount if autoScroll is enabled (browser-only)
 $effect(() => {
 	if (browser && autoScroll && !eventSource) {
 		connectSSE();
 	}
 });
 
-// Show toast notifications for form responses
 $effect(() => {
 	handleFormToast(form);
 });
@@ -394,7 +353,6 @@ $effect(() => {
 		<p class="subtitle">View and filter application log entries</p>
 	</header>
 
-	<!-- Stats Section -->
 	<section class="stats-section">
 		<div class="stat-card">
 			<span class="stat-value">{visibleTotalCount.toLocaleString()}</span>
@@ -414,7 +372,6 @@ $effect(() => {
 		</div>
 	</section>
 
-	<!-- Filters Section -->
 	<section class="section filters-section">
 		<div class="filters-header">
 			<h2>Filters</h2>
@@ -424,7 +381,6 @@ $effect(() => {
 		</div>
 
 		<div class="filters-grid">
-			<!-- Level Filters -->
 			<div class="filter-group">
 				<span class="filter-label">Log Level</span>
 				<div class="level-checkboxes">
@@ -445,7 +401,6 @@ $effect(() => {
 				</div>
 			</div>
 
-			<!-- Search -->
 			<div class="filter-group">
 				<label class="filter-label" for="search">Search</label>
 				<input
@@ -457,7 +412,6 @@ $effect(() => {
 				/>
 			</div>
 
-			<!-- Source Filter -->
 			<div class="filter-group">
 				<label class="filter-label" for="source">Source</label>
 				<select id="source" value={selectedSource} onchange={handleSourceChange}>
@@ -468,7 +422,6 @@ $effect(() => {
 				</select>
 			</div>
 
-			<!-- Date Range: After -->
 			<div class="filter-group">
 				<label class="filter-label" for="from-date">After</label>
 				<input
@@ -485,7 +438,6 @@ $effect(() => {
 				/>
 			</div>
 
-			<!-- Date Range: Before -->
 			<div class="filter-group">
 				<label class="filter-label" for="to-date">Before</label>
 				<input
@@ -504,7 +456,6 @@ $effect(() => {
 		</div>
 	</section>
 
-	<!-- Controls Section -->
 	<section class="section controls-section">
 		<div class="controls-left">
 			<button
@@ -582,7 +533,6 @@ $effect(() => {
 		</div>
 	</section>
 
-	<!-- Logs Table Section -->
 	<section class="section logs-section">
 		<div class="logs-header">
 			<h2>Log Entries</h2>
@@ -663,7 +613,6 @@ $effect(() => {
 		{/if}
 		</section>
 
-	<!-- Settings Info -->
 	<section class="section settings-info">
 		<h2>Retention Settings</h2>
 		<div class="settings-grid">
@@ -821,7 +770,6 @@ $effect(() => {
 			margin: 0;
 		}
 
-		/* Stats Section */
 		.stats-section {
 			display: grid;
 			grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -863,7 +811,6 @@ $effect(() => {
 			margin-top: 0.25rem;
 		}
 
-		/* Section */
 		.section {
 			background: oklch(var(--card));
 			border: 1px solid oklch(var(--border));
@@ -879,7 +826,6 @@ $effect(() => {
 			margin: 0;
 		}
 
-		/* Filters */
 		.filters-header {
 			display: flex;
 			justify-content: space-between;
@@ -887,10 +833,8 @@ $effect(() => {
 			margin-bottom: 1rem;
 		}
 
-		/* `.clear-filters-button` is the muted-tertiary "Clear All" CTA
-		   in the filters header. Hoisted to :global so shadcn Button's
-		   child-rendered <button> inherits the transparent background +
-		   border + hover-darken treatment. */
+		/* shadcn Button child-renders the real <button>, so this transparent
+		   treatment must be hoisted. */
 		:global(.clear-filters-button) {
 			padding: 0.25rem 0.5rem;
 			font-size: 0.75rem;
@@ -1018,7 +962,6 @@ $effect(() => {
 			margin-left: 0.25rem;
 		}
 
-		/* Controls */
 		.controls-section {
 			display: flex;
 			justify-content: space-between;
@@ -1038,11 +981,8 @@ $effect(() => {
 			display: inline;
 		}
 
-		/* `.control-button` is the log-page actions group (live-view
-		   toggle + Export/Cleanup/Clear). 4 variants (default primary +
-		   .secondary + .danger + .active) all hoisted to :global so the
-		   shadcn Button + SubmitButton consumers inherit each variant's
-		   palette. */
+		/* These actions mix shadcn Button and SubmitButton consumers; hoist the
+		   variant palettes so child-rendered controls inherit them. */
 		:global(.control-button) {
 			padding: 0.5rem 1rem;
 			font-size: 0.875rem;
@@ -1095,7 +1035,6 @@ $effect(() => {
 			}
 		}
 
-		/* Logs Table */
 		.logs-section {
 			padding: 1rem;
 		}
@@ -1243,10 +1182,8 @@ $effect(() => {
 			overflow-x: auto;
 		}
 
-		/* `.copy-button` is the per-row copy-to-clipboard CTA in the log
-		   table. Hoisted to :global so shadcn Button's child-rendered
-		   <button> inherits the muted-default vs primary-on-hover
-		   palette swap. */
+		/* shadcn Button child-renders the real <button>, so the hover palette
+		   must be hoisted. */
 		:global(.copy-button) {
 			padding: 0.25rem 0.5rem;
 			font-size: 0.6875rem;
@@ -1274,11 +1211,8 @@ $effect(() => {
 			padding: 1rem;
 		}
 
-		/* `.load-more-button` renders as an <a> tag (pagination cursor
-		   link). shadcn Button with `href` prop renders <a> internally.
-		   Hoisted to :global so the rendered anchor inherits the
-		   secondary palette + border + hover-darken. text-decoration:none
-		   stays for the underline-removal. */
+		/* shadcn Button with `href` child-renders an <a>, so the pagination
+		   treatment must be hoisted to reach the anchor. */
 		:global(.load-more-button) {
 			display: inline-block;
 			padding: 0.5rem 1.5rem;
@@ -1294,7 +1228,6 @@ $effect(() => {
 			background: oklch(var(--muted));
 		}
 
-		/* Settings Info */
 		.settings-info h2 {
 			margin-bottom: 1rem;
 		}
@@ -1334,7 +1267,6 @@ $effect(() => {
 			color: oklch(var(--primary));
 		}
 
-		/* Responsive */
 		@media (max-width: 768px) {
 			.logs-page {
 				padding: 1rem;

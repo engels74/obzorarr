@@ -118,7 +118,6 @@ const serverWrappedForm = superForm(data.serverWrappedForm, {
 	onUpdate: guardSettingsUpdate,
 	onUpdated({ form: updated }) {
 		if (updated.valid) {
-			// Advance this section's saved baseline to what was just persisted.
 			savedServerWrapped = {
 				anonymizationMode: updated.data.anonymizationMode,
 				serverWrappedShareMode: updated.data.serverWrappedShareMode
@@ -189,9 +188,6 @@ let showContradictionWarning = $derived(
 	$publicLandingLookupData.publicLandingLookup && $userDefaultsData.defaultShareMode !== 'public'
 );
 
-// ---------------------------------------------------------------------------
-// Privacy presets (client-only control surface)
-// ---------------------------------------------------------------------------
 // Auto-open Advanced options at mount ONLY when the saved config is already
 // contradictory (public landing lookup on, but the per-user default isn't
 // public), so the contradiction Alert inside Collapsible.Content isn't hidden
@@ -206,7 +202,7 @@ let advancedOpen = $state(showContradictionWarning);
 // ISSUE-007: expanding "Advanced options" can push each section's Save button
 // below the fold. On expand only, scroll the freshly-revealed section to the top
 // of the viewport (after the DOM settles) so its content + actions stay reachable.
-// Collapsing leaves the scroll position alone. Reuses the tick()-then-scroll idiom.
+// Collapsing leaves the scroll position alone.
 let advancedSectionRef = $state<HTMLDivElement | null>(null);
 async function handleAdvancedToggle(open: boolean): Promise<void> {
 	if (!open) return;
@@ -352,8 +348,6 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 		</dt>
 	{/snippet}
 
-	<!-- Value tooltip: explains the specific effect of the selected value, mirroring
-	     the tipDt label-trigger styling but right-aligned + emphasized like the value. -->
 	{#snippet previewDd(tip: string, label: string)}
 		<dd class="text-right font-medium">
 			<Tooltip.Root>

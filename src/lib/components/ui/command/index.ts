@@ -28,7 +28,6 @@ export {
 	Loading,
 	Loading as CommandLoading,
 	Root,
-	//
 	Root as Command,
 	Separator,
 	Separator as CommandSeparator,

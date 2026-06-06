@@ -120,7 +120,6 @@ export function selectWeightedTemplates(
 		}
 	);
 
-	// Weighted random selection without replacement
 	const selected: FactTemplate[] = [];
 	const remaining = [...weightedPool];
 

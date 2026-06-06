@@ -222,7 +222,7 @@ describe('admin users service', () => {
 			});
 
 			const [row] = await getAllUsersWithStats(2025);
-			expect(row?.shareMode).toBe(ShareMode.PUBLIC); // raw stored value preserved
+			expect(row?.shareMode).toBe(ShareMode.PUBLIC);
 			expect(row?.effectiveShareMode).toBe(ShareMode.PRIVATE_OAUTH);
 			expect(row?.effectiveLabel).toBe('OAuth');
 			expect(row?.effectiveClass).toBe('oauth');

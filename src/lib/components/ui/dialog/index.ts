@@ -25,7 +25,6 @@ export {
 	Portal,
 	Portal as DialogPortal,
 	Root,
-	//
 	Root as Dialog,
 	Title,
 	Title as DialogTitle,

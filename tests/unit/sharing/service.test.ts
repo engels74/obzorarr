@@ -31,21 +31,10 @@ import {
 } from '$lib/server/sharing/types';
 import { resetSharedTestDb } from '../../helpers/db';
 
-/**
- * Unit tests for Sharing Service
- *
- * Tests database operations for share settings management.
- * Uses in-memory SQLite from test setup.
- */
-
 describe('Sharing Service', () => {
 	beforeEach(async () => {
 		await resetSharedTestDb();
 	});
-
-	// =========================================================================
-	// Identifier Helpers
-	// =========================================================================
 
 	describe('Identifier Helpers', () => {
 		it('isPureNumericId accepts non-empty digit strings', () => {
@@ -65,10 +54,6 @@ describe('Sharing Service', () => {
 			expect(isPureNumericId('1.0')).toBe(false);
 		});
 	});
-
-	// =========================================================================
-	// Global Defaults
-	// =========================================================================
 
 	describe('Global Defaults', () => {
 		describe('getGlobalDefaultShareMode', () => {
@@ -140,13 +125,11 @@ describe('Sharing Service', () => {
 			});
 
 			it('updates existing settings', async () => {
-				// Insert initial values
 				await setGlobalShareDefaults({
 					defaultShareMode: ShareMode.PUBLIC,
 					allowUserControl: false
 				});
 
-				// Update values
 				await setGlobalShareDefaults({
 					defaultShareMode: ShareMode.PRIVATE_OAUTH,
 					allowUserControl: true
@@ -301,7 +284,6 @@ describe('Sharing Service', () => {
 
 				const explicitToken = generateShareToken();
 				await db.insert(shareSettings).values([
-					// Default-sourced row: should adopt the new default.
 					{
 						userId: 1,
 						year: 2024,
@@ -310,7 +292,6 @@ describe('Sharing Service', () => {
 						shareToken: null,
 						canUserControl: false
 					},
-					// Explicit override: must be preserved verbatim.
 					{
 						userId: 2,
 						year: 2024,
@@ -453,10 +434,6 @@ describe('Sharing Service', () => {
 			});
 		});
 	});
-
-	// =========================================================================
-	// Share Settings CRUD
-	// =========================================================================
 
 	describe('Share Settings CRUD', () => {
 		const userId = 1;
@@ -616,7 +593,6 @@ describe('Sharing Service', () => {
 
 				const settings = await getOrCreateShareSettings({ userId, year });
 
-				// Mode and token should be preserved from database
 				expect(settings.mode).toBe(ShareMode.PRIVATE_LINK);
 				expect(settings.modeSource).toBe(ShareModeSource.EXPLICIT);
 				expect(settings.shareToken).toBe(existingToken);
@@ -680,13 +656,11 @@ describe('Sharing Service', () => {
 
 		describe('updateShareSettings', () => {
 			beforeEach(async () => {
-				// Set global defaults (canUserControl is now derived from global setting)
 				await setGlobalShareDefaults({
 					defaultShareMode: ShareMode.PUBLIC,
 					allowUserControl: true
 				});
 
-				// Create initial settings
 				await db.insert(shareSettings).values({
 					userId,
 					year,
@@ -701,7 +675,7 @@ describe('Sharing Service', () => {
 					userId,
 					year,
 					{ mode: ShareMode.PRIVATE_OAUTH },
-					true // isAdmin
+					true
 				);
 
 				expect(updated.mode).toBe(ShareMode.PRIVATE_OAUTH);
@@ -713,7 +687,7 @@ describe('Sharing Service', () => {
 					userId,
 					year,
 					{ mode: ShareMode.PRIVATE_LINK },
-					true // isAdmin
+					true
 				);
 
 				expect(updated.mode).toBe(ShareMode.PRIVATE_LINK);
@@ -721,27 +695,15 @@ describe('Sharing Service', () => {
 			});
 
 			it('allows admin to update canUserControl', async () => {
-				const updated = await updateShareSettings(
-					userId,
-					year,
-					{ canUserControl: false },
-					true // isAdmin
-				);
+				const updated = await updateShareSettings(userId, year, { canUserControl: false }, true);
 
 				expect(updated.canUserControl).toBe(false);
 			});
 
 			it('allows user with canUserControl to change to public', async () => {
-				// First set to private-oauth
 				await updateShareSettings(userId, year, { mode: ShareMode.PRIVATE_OAUTH }, true);
 
-				// User changes to public
-				const updated = await updateShareSettings(
-					userId,
-					year,
-					{ mode: ShareMode.PUBLIC },
-					false // not admin
-				);
+				const updated = await updateShareSettings(userId, year, { mode: ShareMode.PUBLIC }, false);
 
 				expect(updated.mode).toBe(ShareMode.PUBLIC);
 			});
@@ -759,7 +721,7 @@ describe('Sharing Service', () => {
 					userId,
 					year,
 					{ mode: ShareMode.PRIVATE_LINK },
-					false // not admin
+					false
 				);
 
 				expect(updated.mode).toBe(ShareMode.PRIVATE_LINK);
@@ -767,10 +729,8 @@ describe('Sharing Service', () => {
 			});
 
 			it('allows user to keep private-link if already set', async () => {
-				// Admin sets private-link
 				await updateShareSettings(userId, year, { mode: ShareMode.PRIVATE_LINK }, true);
 
-				// User updates something else (mode stays the same)
 				const updated = await updateShareSettings(
 					userId,
 					year,
@@ -800,10 +760,8 @@ describe('Sharing Service', () => {
 			});
 
 			it('clears token when switching away from private-link', async () => {
-				// Set to private-link first
 				await updateShareSettings(userId, year, { mode: ShareMode.PRIVATE_LINK }, true);
 
-				// Switch to public
 				const updated = await updateShareSettings(userId, year, { mode: ShareMode.PUBLIC }, true);
 
 				expect(updated.shareToken).toBeNull();
@@ -934,7 +892,6 @@ describe('Sharing Service', () => {
 			});
 
 			it('does nothing for non-existent settings', async () => {
-				// Should not throw
 				await deleteShareSettings(userId, year);
 			});
 		});

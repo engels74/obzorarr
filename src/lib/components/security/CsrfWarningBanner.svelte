@@ -74,7 +74,6 @@ async function handlePermanentDismiss() {
 	</div>
 </div>
 
-<!-- First Confirmation Dialog -->
 <AlertDialog.Root bind:open={showFirstConfirmation}>
 	<AlertDialog.Content class="csrf-dialog">
 		<AlertDialog.Header>
@@ -105,7 +104,6 @@ async function handlePermanentDismiss() {
 	</AlertDialog.Content>
 </AlertDialog.Root>
 
-<!-- Second Confirmation Dialog -->
 <AlertDialog.Root bind:open={showSecondConfirmation}>
 	<AlertDialog.Content class="csrf-dialog">
 		<AlertDialog.Header>

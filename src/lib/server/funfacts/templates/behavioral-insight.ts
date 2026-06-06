@@ -1,14 +1,5 @@
 import { defineTemplateCategory } from './base';
 
-/**
- * Behavioral Insight Templates
- *
- * Templates based on percentile, viewing patterns, and comparisons
- * (night owl, early bird, peak month)
- *
- * @module server/funfacts/templates/behavioral-insight
- */
-
 export const BEHAVIORAL_TEMPLATES = defineTemplateCategory('behavioral-insight', [
 	{
 		id: 'top-percentile-elite',
@@ -32,7 +23,7 @@ export const BEHAVIORAL_TEMPLATES = defineTemplateCategory('behavioral-insight',
 		comparisonTemplate: 'The night owl life suits {object} perfectly!',
 		icon: '🦉',
 		requiredStats: ['peakHour'],
-		minThresholds: { peakHour: 21 } // 9 PM or later
+		minThresholds: { peakHour: 21 }
 	},
 	{
 		id: 'early-bird',
@@ -40,7 +31,8 @@ export const BEHAVIORAL_TEMPLATES = defineTemplateCategory('behavioral-insight',
 		comparisonTemplate: 'Early bird catches the best shows!',
 		icon: '🐦',
 		requiredStats: ['peakHour', 'plays'],
-		// Special handling: peakHour <= 9, plus minimum plays to be meaningful
+		// The generic threshold engine only models lower bounds; the early-bird
+		// upper-bound check is handled by its selector.
 		minThresholds: { plays: 10 }
 	},
 	{
@@ -49,7 +41,8 @@ export const BEHAVIORAL_TEMPLATES = defineTemplateCategory('behavioral-insight',
 		comparisonTemplate: '{Subject} really went all-in that month!',
 		icon: '📅',
 		requiredStats: ['peakMonth', 'plays'],
-		minThresholds: { plays: 10 } // Need actual viewing data for this to be meaningful
+		// Avoid declaring a "biggest month" from a token amount of viewing data.
+		minThresholds: { plays: 10 }
 	},
 	{
 		id: 'steady-watcher',
@@ -57,7 +50,7 @@ export const BEHAVIORAL_TEMPLATES = defineTemplateCategory('behavioral-insight',
 		comparisonTemplate: 'Consistency is key!',
 		icon: '📊',
 		requiredStats: ['plays'],
-		minThresholds: { plays: 100 } // At least ~every 3-4 days
+		minThresholds: { plays: 100 }
 	},
 	{
 		id: 'consistent-viewer',
@@ -65,7 +58,7 @@ export const BEHAVIORAL_TEMPLATES = defineTemplateCategory('behavioral-insight',
 		comparisonTemplate: 'Each session a moment of entertainment!',
 		icon: '▶️',
 		requiredStats: ['plays'],
-		minThresholds: { plays: 1 } // Very low threshold
+		minThresholds: { plays: 1 }
 	},
 	{
 		id: 'any-percentile',
@@ -73,6 +66,6 @@ export const BEHAVIORAL_TEMPLATES = defineTemplateCategory('behavioral-insight',
 		comparisonTemplate: 'Keep on watching!',
 		icon: '📊',
 		requiredStats: ['percentile'],
-		minThresholds: {} // No minimum - always applicable
+		minThresholds: {}
 	}
 ]);

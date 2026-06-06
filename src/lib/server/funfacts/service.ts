@@ -82,7 +82,7 @@ export async function isAIAvailable(): Promise<boolean> {
 }
 
 export function buildGenerationContext(stats: UserStats | ServerStats): FactGenerationContext {
-	// Use Math.floor to avoid rounding < 30 mins to 0 hours
+	// Floor partial hours so comparison facts never exaggerate a user's watch time.
 	const hours = Math.floor(stats.totalWatchTimeMinutes / 60);
 	const days = Math.round((hours / 24) * 10) / 10;
 
@@ -120,7 +120,6 @@ export function buildGenerationContext(stats: UserStats | ServerStats): FactGene
 		scope
 	};
 
-	// Enrich with entertainment trivia calculations
 	return enrichContext(baseContext);
 }
 
@@ -128,23 +127,19 @@ export function isTemplateApplicable(
 	template: FactTemplate,
 	context: FactGenerationContext
 ): boolean {
-	// Check required stats presence
 	for (const stat of template.requiredStats) {
 		const value = context[stat as keyof FactGenerationContext];
 		if (value === null || value === undefined) {
 			return false;
 		}
-		// For strings, check they're not empty
 		if (typeof value === 'string' && value.length === 0) {
 			return false;
 		}
-		// For numbers, check they're positive (except peakHour which can be 0)
 		if (typeof value === 'number' && value <= 0 && stat !== 'peakHour' && stat !== 'peakMonth') {
 			return false;
 		}
 	}
 
-	// Check minimum thresholds
 	if (template.minThresholds) {
 		for (const [key, minValue] of Object.entries(template.minThresholds) as [string, number][]) {
 			const actualValue = context[key as keyof FactGenerationContext];
@@ -154,18 +149,16 @@ export function isTemplateApplicable(
 		}
 	}
 
-	// Special case: early bird requires peakHour <= 9
+	// Template thresholds express minimums only; early-bird needs the opposite bound.
 	if (template.id === 'early-bird' && context.peakHour > 9) {
 		return false;
 	}
 
-	// Special case: night owl requires peakHour >= 21
 	if (template.id === 'night-owl' && context.peakHour < 21) {
 		return false;
 	}
 
-	// Exclude percentile-based templates from server stats
-	// These are user-specific comparisons that don't make sense for collective stats
+	// Percentile comparisons are user-specific; a server aggregate has no peer rank.
 	if (context.scope === 'server' && template.requiredStats.includes('percentile')) {
 		return false;
 	}
@@ -181,11 +174,11 @@ const PRONOUNS = {
 function getPronounReplacements(scope: 'user' | 'server'): Record<string, string> {
 	const p = PRONOUNS[scope];
 	return {
-		Subject: p.subject, // "You" / "We"
-		subject: p.subject.toLowerCase(), // "you" / "we"
-		Possessive: p.possessive, // "Your" / "Our"
-		possessive: p.possessive.toLowerCase(), // "your" / "our"
-		object: p.object // "you" / "us"
+		Subject: p.subject,
+		subject: p.subject.toLowerCase(),
+		Possessive: p.possessive,
+		possessive: p.possessive.toLowerCase(),
+		object: p.object
 	};
 }
 
@@ -207,7 +200,6 @@ export function interpolateTemplate(template: string, context: FactGenerationCon
 		PODCAST_EPISODE_HOURS
 	} = EQUIVALENCY_FACTORS;
 
-	// Calculate derived values
 	const flightCount = Math.round((context.hours / FLIGHT_NYC_TOKYO_HOURS) * 10) / 10;
 	const lotrCount = Math.round((context.hours / LOTR_EXTENDED_TOTAL_HOURS) * 10) / 10;
 	const bookCount = Math.round(context.hours / AVERAGE_BOOK_HOURS);
@@ -218,18 +210,15 @@ export function interpolateTemplate(template: string, context: FactGenerationCon
 	const daysBetweenMovies = Math.max(1, Math.round(365 / Math.max(1, context.uniqueMovies)));
 	const playsPerDay = Math.round((context.plays / 365) * 10) / 10;
 
-	// New calculated values for low-threshold templates
 	const coffeeBreaks = Math.round(context.hours / COFFEE_BREAK_HOURS);
 	const commuteTrips = Math.round(context.hours / COMMUTE_HOURS);
 	const podcastEpisodes = Math.round(context.hours / PODCAST_EPISODE_HOURS);
 	const topPercentile = 100 - Math.round(context.percentile);
-	const year = new Date().getFullYear(); // Current year for the year-participant template
+	const year = new Date().getFullYear();
 
-	// Get pronoun replacements based on scope (user vs server)
 	const pronounReplacements = getPronounReplacements(context.scope);
 
 	const replacements: Record<string, string | number> = {
-		// Pronoun placeholders (context-aware)
 		...pronounReplacements,
 		hours: context.hours,
 		days: context.days,
@@ -250,7 +239,6 @@ export function interpolateTemplate(template: string, context: FactGenerationCon
 		uniqueMovies: context.uniqueMovies,
 		uniqueShows: context.uniqueShows,
 
-		// Calculated equivalencies
 		flightCount,
 		lotrCount,
 		bookCount,
@@ -261,14 +249,12 @@ export function interpolateTemplate(template: string, context: FactGenerationCon
 		daysBetweenMovies,
 		playsPerDay,
 
-		// New low-threshold equivalencies
 		coffeeBreaks,
 		commuteTrips,
 		podcastEpisodes,
 		topPercentile,
 		year,
 
-		// Entertainment trivia (from enriched context)
 		gotCount: context.gotCount ?? 0,
 		friendsCount: context.friendsCount ?? 0,
 		theOfficeCount: context.theOfficeCount ?? 0,
@@ -332,7 +318,6 @@ function parseAIResponse(data: unknown): FunFact[] {
 			throw new AIGenerationError('Empty AI response');
 		}
 
-		// Parse JSON from response
 		const parsed = JSON.parse(content) as {
 			facts?: Array<{ fact: string; comparison?: string; icon?: string }>;
 		};
@@ -401,12 +386,11 @@ export async function generateWithAI(
 					`OpenAI API error: ${response.status} - ${errorText}`
 				);
 
-				// Don't retry client errors (4xx) except rate limiting (429)
+				// 4xx usually means bad config or payload; only 429 is expected to heal with retry.
 				if (response.status >= 400 && response.status < 500 && response.status !== 429) {
 					throw statusError;
 				}
 
-				// Retryable error - store and continue
 				lastError = statusError;
 				continue;
 			}
@@ -414,12 +398,10 @@ export async function generateWithAI(
 			const data: unknown = await response.json();
 			return parseAIResponse(data);
 		} catch (error) {
-			// Clear timeout before handling error
 			clearTimeout(timeoutId);
 
-			// Don't retry AIGenerationErrors from parsing or non-retryable conditions
+			// Parser/config failures will repeat with the same response; retry only status/timeout paths.
 			if (error instanceof AIGenerationError) {
-				// Check if it's a client error (non-retryable)
 				if ((error as AIGenerationError).message.includes('OpenAI API error: 4')) {
 					throw error;
 				}
@@ -427,20 +409,17 @@ export async function generateWithAI(
 				continue;
 			}
 
-			// Handle timeout
 			if ((error as Error).name === 'AbortError') {
 				lastError = new AIGenerationError('AI generation timed out');
 				continue;
 			}
 
-			// Network error - retryable
 			lastError = new AIGenerationError(`AI generation failed: ${(error as Error).message}`, error);
 		} finally {
 			clearTimeout(timeoutId);
 		}
 	}
 
-	// All retries exhausted
 	throw lastError ?? new AIGenerationError('AI generation failed after retries');
 }
 
@@ -450,29 +429,23 @@ export function generateFromTemplates(
 ): FunFact[] {
 	const { count = 3, categories, excludeIds = [], useWeightedSelection = true } = options;
 
-	// Get templates from registry (includes new categories)
 	let templates = getAllTemplates();
 
-	// Filter by category if specified
 	if (categories) {
 		templates = templates.filter((t) => categories.includes(t.category as FactCategory));
 	}
 
-	// Filter by applicability
 	const applicableTemplates = templates.filter((t) => isTemplateApplicable(t, context));
 
 	if (applicableTemplates.length === 0) {
-		// Graceful degradation - return empty array instead of throwing
-		// The page will simply not display fun facts
+		// A sparse Wrapped should omit fun facts rather than fail the whole recap.
 		return [];
 	}
 
-	// Select templates (weighted or random)
 	const selected = useWeightedSelection
 		? selectWeightedTemplates(applicableTemplates, count, excludeIds)
 		: selectRandomTemplates(applicableTemplates, count, excludeIds);
 
-	// Generate facts from templates
 	return selected.map((template) => generateFromTemplate(template, context));
 }
 
@@ -485,14 +458,12 @@ export async function generateFunFacts(
 	const config = await getFunFactsConfig();
 	const context = buildGenerationContext(stats);
 
-	// Try AI generation first if preferred and available
 	if (preferAI && config.aiEnabled && config.openaiApiKey) {
 		try {
 			const aiFacts = await generateWithAI(stats, config, count);
 			if (aiFacts.length >= count) {
 				return aiFacts.slice(0, count);
 			}
-			// If AI returned fewer than requested, supplement with templates
 			const remaining = count - aiFacts.length;
 			const templateFacts = generateFromTemplates(context, {
 				count: remaining,
@@ -502,10 +473,8 @@ export async function generateFunFacts(
 			return [...aiFacts, ...templateFacts].slice(0, count);
 		} catch (error) {
 			console.warn('AI fun fact generation failed, falling back to templates:', error);
-			// Fall through to template generation
 		}
 	}
 
-	// Fall back to template-based generation
 	return generateFromTemplates(context, { count, categories, excludeIds });
 }

@@ -32,7 +32,7 @@ const DEFAULT_POLL_OPTIONS: Required<PollPinOptions> = {
 	intervalMs: 5000
 };
 
-/** Request a new PIN from Plex.tv. The PIN expires after 15 minutes. */
+/** Plex.tv PINs expire after 15 minutes, so callers must start polling immediately. */
 export async function requestPin(): Promise<PlexPinResponse> {
 	const endpoint = `${PLEX_TV_URL}/api/v2/pins`;
 
@@ -81,7 +81,7 @@ export async function requestPin(): Promise<PlexPinResponse> {
 	}
 }
 
-/** Check if a PIN has been authorized. Returns authToken if authorized. */
+/** Plex.tv reports expired or unknown PINs as 404; normalize that into PinExpiredError. */
 export async function checkPinStatus(pinId: number): Promise<PlexPinResponse> {
 	const endpoint = `${PLEX_TV_URL}/api/v2/pins/${pinId}`;
 
@@ -130,7 +130,7 @@ export async function checkPinStatus(pinId: number): Promise<PlexPinResponse> {
 	}
 }
 
-/** Poll a PIN until the user authorizes it or timeout is reached. */
+/** Keep polling server-side so callers get one expiry error for both Plex expiry and UI timeout. */
 export async function pollPinForToken(
 	pinId: number,
 	options: PollPinOptions = {}
@@ -144,14 +144,13 @@ export async function pollPinForToken(
 			return pin.authToken;
 		}
 
-		// Wait before next attempt
 		await new Promise((resolve) => setTimeout(resolve, intervalMs));
 	}
 
 	throw new PinExpiredError('Login timed out. Please try again.');
 }
 
-/** Get Plex user profile information using an auth token. */
+/** Validate Plex's external profile payload before onboarding/auth code trusts its identifiers. */
 export async function getPlexUserInfo(authToken: string): Promise<PlexUser> {
 	const endpoint = `${PLEX_TV_URL}/api/v2/user`;
 
@@ -199,7 +198,7 @@ export async function getPlexUserInfo(authToken: string): Promise<PlexUser> {
 	}
 }
 
-/** Build the Plex OAuth authorization URL for a given PIN code. */
+/** Plex expects app/device context in the hash fragment that the hosted auth page reads. */
 export function buildPlexOAuthUrl(pinCode: string, forwardUrl?: string): string {
 	const params = new URLSearchParams({
 		clientID: PLEX_CLIENT_ID,
@@ -213,7 +212,6 @@ export function buildPlexOAuthUrl(pinCode: string, forwardUrl?: string): string 
 		'context[device][model]': 'hosted'
 	});
 
-	// Add forward URL if provided
 	if (forwardUrl) {
 		params.set('forwardUrl', forwardUrl);
 	}
@@ -221,7 +219,7 @@ export function buildPlexOAuthUrl(pinCode: string, forwardUrl?: string): string 
 	return `${PLEX_AUTH_URL}#?${params.toString()}`;
 }
 
-/** Get complete PIN info for initiating OAuth flow from the client. */
+/** Bundle the PIN and hosted-auth URL so the client and polling loop share one expiry window. */
 export async function getPinInfo(forwardUrl?: string): Promise<PinInfo> {
 	const pin = await requestPin();
 

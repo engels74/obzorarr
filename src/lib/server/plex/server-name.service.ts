@@ -52,13 +52,11 @@ export async function fetchServerNameFromPlex(): Promise<string | null> {
 }
 
 export async function getServerName(): Promise<string | null> {
-	// Check cache first
 	const cached = await getCachedServerName();
 	if (cached) {
 		return cached;
 	}
 
-	// Fetch from Plex and cache
 	const fetched = await fetchServerNameFromPlex();
 	if (fetched) {
 		await setCachedServerName(fetched);

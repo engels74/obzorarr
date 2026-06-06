@@ -237,14 +237,11 @@ const visiblePages = $derived.by(() => {
 	const pages: number[] = [];
 
 	if (totalPages <= 5) {
-		// Show all pages if 5 or fewer
 		for (let i = 1; i <= totalPages; i++) pages.push(i);
 	} else {
-		// Calculate range around current page
 		let start = Math.max(1, page - 2);
 		let end = Math.min(totalPages, page + 2);
 
-		// Adjust if at boundaries
 		if (page <= 3) {
 			end = 5;
 		} else if (page >= totalPages - 2) {
@@ -282,7 +279,6 @@ async function goToPage(page: number) {
 </svelte:head>
 
 <div class="sync-command-center">
-	<!-- Page Header -->
 	<header class="page-header">
 		<div class="header-content">
 			<div class="header-icon">
@@ -305,7 +301,6 @@ async function goToPage(page: number) {
 	</header>
 
 	<div class="content-grid">
-		<!-- Main Sync Panel -->
 		<section class="panel sync-panel" class:active={syncActive || progress}>
 			<div class="panel-header">
 				<h2>
@@ -324,7 +319,6 @@ async function goToPage(page: number) {
 			</div>
 
 			{#if syncActive || progress}
-				<!-- Active Sync Display -->
 				<div class="sync-active-display">
 					{#if syncActive}
 						<!-- ISSUE-009: persistent, AT-announced affordance that a sync is
@@ -456,7 +450,6 @@ async function goToPage(page: number) {
 					{/if}
 				</div>
 			{:else}
-				<!-- Idle State - Start Sync Form -->
 				<form
 					method="POST"
 					action="?/startSync"
@@ -523,7 +516,6 @@ async function goToPage(page: number) {
 			{/if}
 		</section>
 
-		<!-- Scheduler Panel -->
 		<section class="panel scheduler-panel">
 			<div class="panel-header">
 				<h2>
@@ -693,7 +685,6 @@ async function goToPage(page: number) {
 		</section>
 	</div>
 
-	<!-- Sync History Section -->
 	<section class="panel history-panel">
 		<div class="panel-header">
 			<h2>
@@ -782,7 +773,6 @@ async function goToPage(page: number) {
 				{/each}
 			</div>
 
-			<!-- Pagination Controls -->
 			{#if data.pagination.totalPages > 1}
 				<div class="pagination" class:loading={isNavigating}>
 					<div class="pagination-info">
@@ -795,7 +785,6 @@ async function goToPage(page: number) {
 					</div>
 
 					<div class="pagination-controls">
-						<!-- First Page -->
 						<Button
 							type="button"
 							class="pagination-btn tap-target"
@@ -806,7 +795,6 @@ async function goToPage(page: number) {
 							<ChevronsLeftIcon class="size-[18px]" />
 						</Button>
 
-						<!-- Previous Page -->
 						<Button
 							type="button"
 							class="pagination-btn tap-target"
@@ -817,7 +805,6 @@ async function goToPage(page: number) {
 							<ChevronLeftIcon class="size-[18px]" />
 						</Button>
 
-						<!-- Page Numbers -->
 						<div class="pagination-pages">
 							{#if firstVisiblePage !== undefined && firstVisiblePage > 1}
 								<button
@@ -861,7 +848,6 @@ async function goToPage(page: number) {
 							{/if}
 						</div>
 
-						<!-- Next Page -->
 						<Button
 							type="button"
 							class="pagination-btn tap-target"
@@ -872,7 +858,6 @@ async function goToPage(page: number) {
 							<ChevronRightIcon class="size-[18px]" />
 						</Button>
 
-						<!-- Last Page -->
 						<Button
 							type="button"
 							class="pagination-btn tap-target"
@@ -890,14 +875,12 @@ async function goToPage(page: number) {
 </div>
 
 <style>
-	/* ===== Base Layout ===== */
 		.sync-command-center {
 			max-width: 1100px;
 			margin: 0 auto;
 			padding: 1.5rem 2rem 3rem;
 		}
 
-		/* ===== Page Header ===== */
 		.page-header {
 			display: flex;
 			justify-content: space-between;
@@ -969,7 +952,6 @@ async function goToPage(page: number) {
 			letter-spacing: 0.05em;
 		}
 
-		/* ===== Content Grid ===== */
 		.content-grid {
 			display: grid;
 			grid-template-columns: 1fr 380px;
@@ -977,7 +959,6 @@ async function goToPage(page: number) {
 			margin-bottom: 1.5rem;
 		}
 
-		/* ===== Panel Base ===== */
 		.panel {
 			background: oklch(var(--card));
 			border: 1px solid oklch(var(--border));
@@ -1008,7 +989,6 @@ async function goToPage(page: number) {
 			font-size: 1rem;
 		}
 
-		/* ===== Sync Panel ===== */
 		.sync-panel {
 			transition: border-color 0.3s ease;
 		}
@@ -1061,7 +1041,6 @@ async function goToPage(page: number) {
 			}
 		}
 
-		/* ===== Active Sync Display ===== */
 		.sync-active-display {
 			display: flex;
 			flex-direction: column;
@@ -1276,11 +1255,8 @@ async function goToPage(page: number) {
 			color: oklch(var(--primary));
 		}
 
-		/* `.cancel-btn` is the cancel-sync CTA. Hoisted to :global so
-		   SubmitButton's child-rendered <button> inherits the muted-
-		   default vs destructive-on-hover palette swap. The custom
-		   `.btn-spinner` span is replaced by SubmitButton's built-in
-		   LoaderCircleIcon spinner. */
+		/* SubmitButton child-renders the real <button>, so the cancel palette
+		   swap must be hoisted. */
 		:global(.cancel-btn) {
 			display: flex;
 			align-items: center;
@@ -1307,7 +1283,6 @@ async function goToPage(page: number) {
 			cursor: not-allowed;
 		}
 
-		/* ===== Sync Form (Idle State) ===== */
 		.sync-form {
 			padding: 1.5rem;
 			display: flex;
@@ -1356,11 +1331,8 @@ async function goToPage(page: number) {
 			pointer-events: none;
 		}
 
-		/* `.sync-btn` is the primary "Start Sync" CTA. Hoisted to :global
-		   so SubmitButton's child-rendered <button> inherits the
-		   gradient primary palette + hover translate-y + shadow glow.
-		   The `.sync-btn svg` descendant rule is dropped; PlayIcon is
-		   sized inline via `class="size-[18px]"`. */
+		/* SubmitButton child-renders the real <button>, so the primary gradient
+		   and hover treatment must be hoisted. */
 		:global(.sync-btn) {
 			display: flex;
 			align-items: center;
@@ -1431,7 +1403,6 @@ async function goToPage(page: number) {
 			color: oklch(var(--destructive));
 		}
 
-		/* ===== Scheduler Panel ===== */
 		.scheduler-content {
 			padding: 1.25rem;
 			display: flex;
@@ -1500,13 +1471,8 @@ async function goToPage(page: number) {
 			gap: 0.5rem;
 		}
 
-		/* `.control-btn` is the scheduler control quartet (resume / pause
-		   / init / stop). 4 per-variant palettes (green / amber /
-		   primary / muted), each with a hover state. Hoisted to :global
-		   so SubmitButton's child-rendered <button> inherits each
-		   variant's color. The `.control-btn svg` descendant rule is
-		   dropped — PlayIcon / PauseIcon / ClockIcon / SquareIcon are
-		   sized inline via `class="size-4"`. */
+		/* SubmitButton child-renders the real controls, so scheduler variants
+		   need hoisted palettes. */
 		:global(.control-btn) {
 			flex: 1;
 			display: flex;
@@ -1611,11 +1577,8 @@ async function goToPage(page: number) {
 			color: oklch(var(--destructive));
 		}
 
-		/* `.cron-update-btn` is the icon-only commit-cron-expression CTA
-		   (40px wide). Hoisted to :global so SubmitButton's child-
-		   rendered <button> inherits the muted-default vs primary-on-
-		   hover palette swap. `.cron-update-btn svg` descendant rule
-		   dropped — CheckIcon sized inline via `class="size-[18px]"`. */
+		/* SubmitButton child-renders the real <button>, so the cron commit
+		   hover palette must be hoisted. */
 		:global(.cron-update-btn) {
 			display: flex;
 			align-items: center;
@@ -1663,7 +1626,6 @@ async function goToPage(page: number) {
 			color: oklch(var(--primary-foreground));
 		}
 
-		/* ===== History Panel ===== */
 		.history-panel {
 			margin-top: 0;
 		}
@@ -1833,7 +1795,6 @@ async function goToPage(page: number) {
 			flex-shrink: 0;
 		}
 
-		/* ===== Pagination ===== */
 		.pagination {
 			display: flex;
 			flex-direction: column;
@@ -1865,11 +1826,8 @@ async function goToPage(page: number) {
 			gap: 0.375rem;
 		}
 
-		/* `.pagination-btn` is the 4-button nav row (first/prev/next/last).
-		   Hoisted to :global so shadcn Button's child-rendered <button>
-		   inherits the 36px-square shape + muted-default vs primary-on-
-		   hover palette. The `.pagination-btn svg` descendant rule is
-		   dropped — chevron icons sized inline via `class="size-[18px]"`. */
+		/* shadcn Button child-renders the real pagination controls, so the
+		   square shape and hover palette must be hoisted. */
 		:global(.pagination-btn) {
 			display: flex;
 			align-items: center;
@@ -1945,7 +1903,6 @@ async function goToPage(page: number) {
 			font-size: 0.875rem;
 		}
 
-		/* ===== Responsive Design ===== */
 		@media (max-width: 900px) {
 			.content-grid {
 				grid-template-columns: 1fr;
@@ -1997,7 +1954,6 @@ async function goToPage(page: number) {
 				grid-column: 1 / -1;
 			}
 
-			/* Pagination responsive */
 			.pagination {
 				padding: 1rem;
 			}

@@ -10,14 +10,6 @@ import Star from '@lucide/svelte/icons/star';
 import { goto } from '$app/navigation';
 import type { PageData } from './$types';
 
-/**
- * Admin Wrapped Hub Page
- *
- * Central hub for accessing wrapped presentations and configuration.
- * Features a cinematic, premium design with distinct visual identities
- * for personal and server-wide wrapped experiences.
- */
-
 interface Props {
 	data: PageData;
 }
@@ -45,11 +37,9 @@ function handleConfigNavigation(event: MouseEvent): void {
 </svelte:head>
 
 <div class="wrapped-hub">
-	<!-- Atmospheric Background Effects -->
 	<div class="ambient-glow amber"></div>
 	<div class="ambient-glow cyan"></div>
 
-	<!-- Hero Header -->
 	<header class="hero-header">
 		<div class="hero-content">
 			<div class="year-badge">
@@ -69,7 +59,6 @@ function handleConfigNavigation(event: MouseEvent): void {
 		</div>
 	</header>
 
-	<!-- View Wrapped Section -->
 	<section class="wrapped-showcase">
 		<div class="section-label">
 			<Play class="section-icon" />
@@ -77,7 +66,6 @@ function handleConfigNavigation(event: MouseEvent): void {
 		</div>
 
 		<div class="wrapped-cards">
-			<!-- Personal Wrapped Card -->
 			<a href={data.wrappedHref} class="showcase-card personal">
 				<div class="card-glow"></div>
 				<div class="card-shimmer"></div>
@@ -99,7 +87,6 @@ function handleConfigNavigation(event: MouseEvent): void {
 				<div class="card-accent"></div>
 			</a>
 
-			<!-- Server Wrapped Card -->
 			<a href="/wrapped/{data.currentYear}" class="showcase-card server">
 				<div class="card-glow"></div>
 				<div class="card-shimmer"></div>
@@ -121,7 +108,6 @@ function handleConfigNavigation(event: MouseEvent): void {
 		</div>
 	</section>
 
-	<!-- Configuration Section -->
 	<section class="config-section">
 		<div class="section-label">
 			<SlidersHorizontal class="section-icon" />
@@ -174,7 +160,6 @@ function handleConfigNavigation(event: MouseEvent): void {
 			overflow: hidden;
 		}
 
-		/* Ambient Background Glows */
 		.ambient-glow {
 			position: absolute;
 			width: 500px;
@@ -203,7 +188,6 @@ function handleConfigNavigation(event: MouseEvent): void {
 			animation-delay: 4s;
 		}
 
-		/* Hero Header */
 		.hero-header {
 			position: relative;
 			text-align: center;
@@ -281,7 +265,6 @@ function handleConfigNavigation(event: MouseEvent): void {
 			animation: fadeSlideDown 0.6s ease 0.2s backwards;
 		}
 
-		/* Hero Decoration Rings */
 		.hero-decoration {
 			position: absolute;
 			top: 50%;
@@ -324,7 +307,6 @@ function handleConfigNavigation(event: MouseEvent): void {
 			animation-delay: 2.6s;
 		}
 
-		/* Section Labels */
 		.section-label {
 			display: flex;
 			align-items: center;
@@ -343,7 +325,6 @@ function handleConfigNavigation(event: MouseEvent): void {
 			opacity: 0.7;
 		}
 
-		/* Wrapped Showcase Section */
 		.wrapped-showcase {
 			margin-bottom: 2.5rem;
 			animation: fadeIn 0.6s ease 0.3s backwards;
@@ -355,7 +336,6 @@ function handleConfigNavigation(event: MouseEvent): void {
 			gap: 1.25rem;
 		}
 
-		/* Showcase Cards */
 		.showcase-card {
 			position: relative;
 			display: flex;
@@ -377,7 +357,6 @@ function handleConfigNavigation(event: MouseEvent): void {
 				0 0 0 1px oklch(var(--primary) / 0.15);
 		}
 
-		/* Card Glow Effect */
 		.card-glow {
 			position: absolute;
 			top: -100%;
@@ -403,7 +382,6 @@ function handleConfigNavigation(event: MouseEvent): void {
 			opacity: 1;
 		}
 
-		/* Card Shimmer Effect */
 		.card-shimmer {
 			position: absolute;
 			top: 0;
@@ -424,7 +402,6 @@ function handleConfigNavigation(event: MouseEvent): void {
 			left: 100%;
 		}
 
-		/* Card Content */
 		.card-content {
 			position: relative;
 			z-index: 1;
@@ -490,7 +467,6 @@ function handleConfigNavigation(event: MouseEvent): void {
 			line-height: 1.5;
 		}
 
-		/* Card CTA */
 		.card-cta {
 			display: flex;
 			align-items: center;
@@ -532,7 +508,6 @@ function handleConfigNavigation(event: MouseEvent): void {
 			transform: translateX(4px);
 		}
 
-		/* Card Accent Line */
 		.card-accent {
 			position: absolute;
 			bottom: 0;
@@ -555,7 +530,6 @@ function handleConfigNavigation(event: MouseEvent): void {
 			opacity: 1;
 		}
 
-		/* Configuration Section */
 		.config-section {
 			animation: fadeIn 0.6s ease 0.4s backwards;
 		}
@@ -641,7 +615,6 @@ function handleConfigNavigation(event: MouseEvent): void {
 			transform: translateX(2px);
 		}
 
-		/* Animations */
 		@keyframes ambientPulse {
 			0%,
 			100% {
@@ -727,7 +700,6 @@ function handleConfigNavigation(event: MouseEvent): void {
 			}
 		}
 
-		/* Responsive Design */
 		@media (max-width: 768px) {
 			.wrapped-hub {
 				padding: 1rem 1.25rem 2rem;

@@ -1,9 +1,3 @@
-/**
- * Database migration script for Obzorarr
- *
- * Run with: bun run scripts/migrate.ts
- */
-
 import { Database } from 'bun:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -14,25 +8,21 @@ const databasePath = process.env.DATABASE_PATH ?? 'data/obzorarr.db';
 
 console.log(`Migrating database at: ${databasePath}`);
 
-// Ensure the directory exists before opening the database
 if (databasePath !== ':memory:') {
 	mkdirSync(dirname(databasePath), { recursive: true });
 }
 
-// Create database connection
 const sqlite = new Database(databasePath, {
 	strict: true,
 	create: true
 });
 
-// Enable WAL mode
 sqlite.exec('PRAGMA journal_mode = WAL');
 sqlite.exec('PRAGMA synchronous = NORMAL');
 sqlite.exec('PRAGMA foreign_keys = ON');
 
 const db = drizzle(sqlite);
 
-// Run migrations
 console.log('Running migrations...');
 migrate(db, { migrationsFolder: './drizzle' });
 

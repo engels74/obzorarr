@@ -1,6 +1,3 @@
-// Types
-
-// Service
 export {
 	checkRateLimit,
 	cleanupRateLimitStore,

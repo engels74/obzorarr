@@ -66,7 +66,6 @@ export function parseStats(json: string): Stats {
 		throw new StatsParseError('Invalid JSON string', error);
 	}
 
-	// Try to determine the type based on discriminating fields
 	if (typeof parsed === 'object' && parsed !== null) {
 		if ('userId' in parsed) {
 			const result = UserStatsSchema.safeParse(parsed);

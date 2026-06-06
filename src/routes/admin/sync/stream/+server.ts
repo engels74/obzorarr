@@ -2,24 +2,13 @@ import { requireAdmin } from '$lib/server/auth/guards';
 import { getSyncProgress, type LiveSyncProgress } from '$lib/server/sync/progress';
 import type { RequestHandler } from './$types';
 
-/**
- * SSE Endpoint for Real-Time Sync Progress Streaming
- *
- * Streams sync progress to connected clients using Server-Sent Events.
- * Polls the in-memory progress store every 500ms.
- *
- * Authorization is handled by hooks.server.ts (requires admin).
- */
-
 const POLL_INTERVAL_MS = 500;
 
 export const GET: RequestHandler = async ({ locals, request }) => {
 	requireAdmin(locals);
 
-	// Create a readable stream for SSE
 	const stream = new ReadableStream({
 		async start(controller) {
-			// Send initial connection event with current progress
 			const initialProgress = getSyncProgress();
 			controller.enqueue(
 				formatSSE({
@@ -28,14 +17,12 @@ export const GET: RequestHandler = async ({ locals, request }) => {
 				})
 			);
 
-			// Poll for progress updates
 			let lastProgress: LiveSyncProgress | null = initialProgress;
-			let terminalEventSent = false; // Track if terminal event was already sent
+			let terminalEventSent = false;
 			const intervalId = setInterval(() => {
 				try {
 					const currentProgress = getSyncProgress();
 
-					// Always send updates while running, or when status changes
 					if (currentProgress) {
 						const hasChanged =
 							!lastProgress ||
@@ -55,7 +42,6 @@ export const GET: RequestHandler = async ({ locals, request }) => {
 							lastProgress = { ...currentProgress };
 						}
 
-						// Send completion events (only once per sync)
 						if (
 							!terminalEventSent &&
 							(currentProgress.status === 'completed' ||
@@ -69,16 +55,13 @@ export const GET: RequestHandler = async ({ locals, request }) => {
 								})
 							);
 							terminalEventSent = true;
-							// Client should disconnect after receiving completion event
 						}
 					} else if (lastProgress !== null) {
-						// Progress was cleared (sync ended)
 						controller.enqueue(formatSSE({ type: 'idle' }));
 						lastProgress = null;
-						terminalEventSent = false; // Reset for next sync
+						terminalEventSent = false;
 					}
 				} catch (_error) {
-					// Send error event but keep connection open
 					controller.enqueue(
 						formatSSE({
 							type: 'error',
@@ -88,7 +71,6 @@ export const GET: RequestHandler = async ({ locals, request }) => {
 				}
 			}, POLL_INTERVAL_MS);
 
-			// Handle client disconnect
 			request.signal.addEventListener('abort', () => {
 				clearInterval(intervalId);
 				controller.close();
@@ -105,16 +87,10 @@ export const GET: RequestHandler = async ({ locals, request }) => {
 	});
 };
 
-/**
- * Format data as SSE event
- */
 function formatSSE(data: SSEEvent): string {
 	return `data: ${JSON.stringify(data)}\n\n`;
 }
 
-/**
- * SSE event types
- */
 type SSEEvent =
 	| { type: 'connected'; progress: LiveSyncProgress | null }
 	| { type: 'progress'; progress: LiveSyncProgress }

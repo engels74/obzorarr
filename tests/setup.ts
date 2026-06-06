@@ -1,20 +1,11 @@
-/**
- * Test setup file for Obzorarr
- *
- * This file is preloaded before all tests run.
- * Use it for global test configuration, mocks, and utilities.
- */
-
 import { mock } from 'bun:test';
 import { testToast } from './helpers/toast';
 
-// Ensure tests run in a clean environment
 process.env.NODE_ENV = 'test';
 
-// Set a test database path to avoid conflicts with development database
+// Tests must never touch the development SQLite file.
 process.env.DATABASE_PATH = ':memory:';
 
-// Mock SvelteKit's $env/dynamic/private module for tests
 mock.module('$env/dynamic/private', () => ({
 	env: {
 		PLEX_SERVER_URL: 'https://test-plex-server:32400',
@@ -26,7 +17,6 @@ mock.module('$env/dynamic/private', () => ({
 	}
 }));
 
-// Mock SvelteKit's $env/static/private module for tests
 mock.module('$env/static/private', () => ({
 	PLEX_SERVER_URL: 'https://test-plex-server:32400',
 	PLEX_TOKEN: 'test-plex-token'
@@ -47,15 +37,10 @@ mock.module('$lib/services/toast', () => ({
 	toast: testToast
 }));
 
-// Import database client DYNAMICALLY after setting environment variables
-// NOTE: Static imports are hoisted and execute BEFORE the code above,
-// which would cause the db client to read DATABASE_PATH before we set it.
-// Using dynamic import ensures the environment is properly configured first.
+// Static imports would let the DB client read DATABASE_PATH before the test override.
 const { sqlite } = await import('$lib/server/db/client');
 
-// Create all necessary tables for testing
 sqlite.exec(`
-	-- Users table
 	CREATE TABLE IF NOT EXISTS users (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		plex_id INTEGER UNIQUE NOT NULL,
@@ -67,7 +52,6 @@ sqlite.exec(`
 		created_at INTEGER
 	);
 
-	-- Play history table
 	CREATE TABLE IF NOT EXISTS play_history (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		history_key TEXT UNIQUE NOT NULL,
@@ -87,7 +71,6 @@ sqlite.exec(`
 		release_year INTEGER
 	);
 
-	-- Sync status table
 	CREATE TABLE IF NOT EXISTS sync_status (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		started_at INTEGER NOT NULL,
@@ -98,7 +81,6 @@ sqlite.exec(`
 		error TEXT
 	);
 
-	-- Cached stats table
 	CREATE TABLE IF NOT EXISTS cached_stats (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		user_id INTEGER,
@@ -108,7 +90,6 @@ sqlite.exec(`
 		calculated_at INTEGER
 	);
 
-	-- Share settings table
 	CREATE TABLE IF NOT EXISTS share_settings (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		user_id INTEGER NOT NULL,
@@ -120,7 +101,6 @@ sqlite.exec(`
 		show_logo INTEGER
 	);
 
-	-- Custom slides table
 	CREATE TABLE IF NOT EXISTS custom_slides (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		title TEXT NOT NULL,
@@ -130,7 +110,6 @@ sqlite.exec(`
 		year INTEGER
 	);
 
-	-- Slide configuration table
 	CREATE TABLE IF NOT EXISTS slide_config (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		slide_type TEXT NOT NULL,
@@ -138,14 +117,12 @@ sqlite.exec(`
 		sort_order INTEGER NOT NULL
 	);
 
-	-- App settings table
 	CREATE TABLE IF NOT EXISTS app_settings (
 		key TEXT PRIMARY KEY,
 		value TEXT NOT NULL,
 		updated_at INTEGER NOT NULL DEFAULT (cast((julianday('now') - 2440587.5)*86400000 as integer))
 	);
 
-	-- Sessions table
 	CREATE TABLE IF NOT EXISTS sessions (
 		id TEXT PRIMARY KEY,
 		user_id INTEGER NOT NULL,
@@ -154,7 +131,6 @@ sqlite.exec(`
 		expires_at INTEGER NOT NULL
 	);
 
-	-- PIN transactions table
 	CREATE TABLE IF NOT EXISTS pin_transactions (
 		state TEXT PRIMARY KEY NOT NULL,
 		pin_id INTEGER NOT NULL,
@@ -165,7 +141,6 @@ sqlite.exec(`
 	CREATE INDEX IF NOT EXISTS idx_pin_transactions_expires_at
 		ON pin_transactions (expires_at);
 
-	-- Logs table
 	CREATE TABLE IF NOT EXISTS logs (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		level TEXT NOT NULL,
@@ -175,7 +150,6 @@ sqlite.exec(`
 		timestamp INTEGER NOT NULL
 	);
 
-	-- Metadata cache table
 	CREATE TABLE IF NOT EXISTS metadata_cache (
 		rating_key TEXT PRIMARY KEY,
 		duration INTEGER,
@@ -185,7 +159,6 @@ sqlite.exec(`
 		fetch_failed INTEGER DEFAULT 0
 	);
 
-	-- Plex accounts table
 	CREATE TABLE IF NOT EXISTS plex_accounts (
 		account_id INTEGER PRIMARY KEY,
 		plex_id INTEGER NOT NULL,

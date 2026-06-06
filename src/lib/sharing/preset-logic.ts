@@ -22,7 +22,6 @@ import {
 	type WrappedLogoOptionValue
 } from '$lib/sharing/options';
 
-/** Result of a preset match: a known preset id, or `'custom'` for any off-map combination. */
 export type PrivacyPresetMatch = PrivacyPresetId | 'custom';
 
 /**
@@ -45,10 +44,8 @@ export function shouldShowCustomPresetNote(
 }
 
 /**
- * Match the full six-field value set against the shipped presets. Used by
- * ONBOARDING, which owns all six fields (including `logoMode`) in one atomic
- * form. Returns the matching preset id, or `'custom'` if no preset matches.
- * Field order is irrelevant — comparison is key-by-key.
+ * Onboarding owns all six privacy fields in one atomic form, including
+ * `logoMode`, so its preset match must include the full value set.
  */
 export function matchPresetFull(values: PrivacyPresetValues): PrivacyPresetMatch {
 	for (const preset of PRIVACY_PRESETS) {

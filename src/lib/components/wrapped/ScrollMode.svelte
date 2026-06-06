@@ -144,7 +144,6 @@ function handleKeyDown(event: KeyboardEvent): void {
 <svelte:window onkeydown={handleKeyDown} />
 
 <div bind:this={container} class="scroll-mode {klass}" role="main" aria-label="Wrapped statistics">
-	<!-- Scrollable content -->
 	<div class="scroll-content">
 		{#each enabledSlides as slide, index (`${slide.type}-${index}`)}
 			<section
@@ -160,12 +159,10 @@ function handleKeyDown(event: KeyboardEvent): void {
 		{/each}
 	</div>
 
-	<!-- Scroll progress indicator -->
 	<div class="scroll-progress" aria-hidden="true">
 		<span class="progress-text">{visibleSectionIndex + 1} / {totalSlides}</span>
 	</div>
 
-	<!-- Close button (if onClose provided) -->
 	{#if onClose}
 		<button
 			type="button"
@@ -195,13 +192,11 @@ function handleKeyDown(event: KeyboardEvent): void {
 					oklch(var(--slide-bg-end)) 100%
 				)
 			);
-			/* Fix background to viewport for seamless scrolling */
 			background-attachment: fixed;
 			color: var(--foreground, white);
 			position: relative;
 		}
 
-		/* Noise texture layer - fixed to viewport */
 		.scroll-mode::before {
 			content: '';
 			position: fixed;
@@ -213,7 +208,6 @@ function handleKeyDown(event: KeyboardEvent): void {
 			z-index: 0;
 		}
 
-		/* Vignette overlay - fixed to viewport */
 		.scroll-mode::after {
 			content: '';
 			position: fixed;
@@ -228,10 +222,9 @@ function handleKeyDown(event: KeyboardEvent): void {
 		}
 
 		.scroll-content {
-			/* Extra space at bottom for last section to scroll into view */
 			padding-bottom: 50vh;
 			position: relative;
-			z-index: 1; /* Above noise and vignette layers */
+			z-index: 1;
 		}
 
 		.scroll-section {
@@ -243,7 +236,6 @@ function handleKeyDown(event: KeyboardEvent): void {
 			position: relative;
 		}
 
-		/* Alternate background for visual separation */
 		.scroll-section:nth-child(even) {
 			background: rgba(255, 255, 255, 0.02);
 		}
@@ -310,7 +302,6 @@ function handleKeyDown(event: KeyboardEvent): void {
 			height: 1.25rem;
 		}
 
-		/* Mobile: compact layout */
 		@media (max-width: 767px) {
 			.scroll-section {
 				padding: 3rem 1rem;
@@ -341,7 +332,6 @@ function handleKeyDown(event: KeyboardEvent): void {
 			}
 		}
 
-		/* Tablet: medium layout */
 		@media (min-width: 768px) {
 			.scroll-section {
 				padding: 4rem 3rem;
@@ -352,7 +342,6 @@ function handleKeyDown(event: KeyboardEvent): void {
 			}
 		}
 
-		/* Desktop: generous layout with wider content */
 		@media (min-width: 1024px) {
 			.scroll-section {
 				padding: 5rem 4rem;
@@ -371,7 +360,6 @@ function handleKeyDown(event: KeyboardEvent): void {
 			}
 		}
 
-		/* Reduced motion - instant visibility */
 		@media (prefers-reduced-motion: reduce) {
 			.slide-content {
 				opacity: 1 !important;

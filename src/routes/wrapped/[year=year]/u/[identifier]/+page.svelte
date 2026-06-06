@@ -14,30 +14,13 @@ import {
 } from '$lib/components/wrapped';
 import type { PageProps } from './$types';
 
-/**
- * Per-user Wrapped Page
- *
- * Displays the user-specific Year in Review statistics.
- * Supports both Story Mode (full-screen slides) and Scroll Mode.
- *
- * @module routes/wrapped/[year=year]/u/[identifier]
- */
-
 let { data }: PageProps = $props();
 
-// Create messaging context for personal wrapped
 const messagingContext = createPersonalContext();
 
-/** Override for optimistic updates (null means use server value) */
 let showLogoOverride = $state<boolean | null>(null);
-/** Effective logo visibility - uses override if pending, otherwise server value */
 let showLogo = $derived(showLogoOverride ?? data.showLogo);
 
-// ==========================================================================
-// State
-// ==========================================================================
-
-/** Current viewing mode */
 type ViewMode = 'story' | 'scroll';
 let viewMode = $state<ViewMode>('story');
 
@@ -56,16 +39,12 @@ function readInitialSlideIndex(): number {
 	return Math.min(Math.max(parsed, 0), max);
 }
 
-/** Current slide index for mode switching (preserves position) */
 let currentSlideIndex = $state(readInitialSlideIndex());
 
-/** Whether to show the summary page */
 let showSummary = $state(false);
 
-/** Whether to show the share modal */
 let showShareModal = $state(false);
 
-/** Key for forcing StoryMode remount on restart */
 let storyKey = $state(0);
 
 // SvelteKit's replaceState throws "replaceState() called before router was
@@ -76,7 +55,7 @@ afterNavigate(() => {
 	routerReady = true;
 });
 
-// Reflect slide index back into the hash without creating history entries.
+// Use replaceState so slide navigation does not pollute the browser Back stack.
 $effect(() => {
 	if (!browser || !routerReady) return;
 	const next = `#slide=${currentSlideIndex}`;
@@ -87,35 +66,19 @@ $effect(() => {
 	}
 });
 
-// ==========================================================================
-// Event Handlers
-// ==========================================================================
-
-/**
- * Handle mode change from ModeToggle
- */
 function handleModeChange(newMode: ViewMode): void {
 	viewMode = newMode;
 }
 
-/**
- * Handle scroll mode requesting switch (preserves position)
- */
 function handleScrollModeSwitch(slideIndex: number): void {
 	currentSlideIndex = slideIndex;
 	viewMode = 'story';
 }
 
-/**
- * Handle story mode completion - show summary page
- */
 function handleComplete(): void {
 	showSummary = true;
 }
 
-/**
- * Handle close/exit action
- */
 function handleClose(): void {
 	let sameOrigin = false;
 	if (document.referrer) {
@@ -132,28 +95,20 @@ function handleClose(): void {
 	}
 }
 
-/**
- * Handle restart - return to slideshow from summary
- */
 function handleRestart(): void {
 	showSummary = false;
 	viewMode = 'story';
 	currentSlideIndex = 0;
-	// Clear the URL hash before the StoryMode remount. Otherwise the freshly
-	// mounted StoryMode reads the stale `#slide=N` (from the user reaching the
-	// summary) via readInitialSlideIndex and the slideshow restarts at the
-	// last slide instead of slide 0.
+	// Clear the hash before remount so StoryMode does not seed itself from the
+	// stale summary slide index.
 	if (browser && routerReady) {
 		const url = new URL(window.location.href);
 		url.hash = '#slide=0';
 		replaceState(url, {});
 	}
-	storyKey++; // Force StoryMode remount
+	storyKey++;
 }
 
-/**
- * Handle return home from summary
- */
 function handleHome(): void {
 	if (data.isAdmin) {
 		goto('/admin');
@@ -164,16 +119,10 @@ function handleHome(): void {
 	}
 }
 
-/**
- * Handle share button click from summary
- */
 function handleShare(): void {
 	showShareModal = true;
 }
 
-/**
- * Handle logo toggle (optimistic update)
- */
 function handleLogoToggle(): void {
 	showLogoOverride = !showLogo;
 }
@@ -185,14 +134,12 @@ function handleLogoToggle(): void {
 </svelte:head>
 
 <div class="wrapped-page">
-	<!-- Logo Watermark -->
 	{#if showLogo}
 		<div class="logo-watermark">
 			<Logo size="sm" />
 		</div>
 	{/if}
 
-	<!-- Controls Container (top right) -->
 	<div class="controls-container">
 		{#if data.canUserControlLogo}
 			<form
@@ -263,12 +210,10 @@ function handleLogoToggle(): void {
 		{/if}
 	</div>
 
-	<!-- User Header -->
 	<div class="user-header" class:with-logo={showLogo}>
 		<h1 class="user-title">{data.username}'s Year in Review</h1>
 	</div>
 
-	<!-- Year Navigation -->
 	{#if data.availableYears && data.availableYears.length > 1}
 		<YearNavigation
 			currentYear={data.year}
@@ -278,7 +223,6 @@ function handleLogoToggle(): void {
 		/>
 	{/if}
 
-	<!-- Wrapped Content -->
 	{#if showSummary}
 		<SummaryPage
 			stats={data.stats}
@@ -329,7 +273,6 @@ function handleLogoToggle(): void {
 		/>
 	{/if}
 
-	<!-- Share Modal -->
 	<ShareModal
 		bind:open={showShareModal}
 		onOpenChange={(v) => (showShareModal = v)}

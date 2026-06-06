@@ -7,7 +7,7 @@ import * as schema from './schema';
 
 const databasePath = process.env.DATABASE_PATH ?? 'data/obzorarr.db';
 
-// Prevent test environment from accessing production database
+// Fail closed if a test run is not explicitly pointed at an in-memory/test database.
 if (
 	process.env.NODE_ENV === 'test' &&
 	databasePath !== ':memory:' &&
@@ -33,7 +33,6 @@ const sqlite: BunDatabase = new Database(databasePath, {
 	create: true
 });
 
-// WAL mode for concurrent reads - persistent settings
 sqlite.exec('PRAGMA journal_mode = WAL');
 sqlite.exec('PRAGMA synchronous = NORMAL');
 sqlite.exec('PRAGMA foreign_keys = ON');

@@ -13,15 +13,6 @@ import { page } from '$app/stores';
 import Logo from '$lib/components/Logo.svelte';
 import type { LayoutData } from './$types';
 
-/**
- * User Dashboard Layout
- *
- * Provides a consistent wrapper for user dashboard pages with:
- * - Sidebar navigation
- * - User info
- * - Links to wrapped presentations
- */
-
 interface Props {
 	data: LayoutData;
 	children: Snippet;
@@ -29,13 +20,11 @@ interface Props {
 
 let { data, children }: Props = $props();
 
-// Navigation items with Lucide icon components
 const navItems: Array<{ href: string; label: string; icon: Component }> = [
 	{ href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
 	{ href: '/dashboard/settings', label: 'Settings', icon: Settings }
 ];
 
-// Determine if a nav item is active
 const isActive = $derived((href: string) => {
 	const currentPath = $page.url.pathname;
 	if (href === '/dashboard') {
@@ -44,7 +33,6 @@ const isActive = $derived((href: string) => {
 	return currentPath.startsWith(href);
 });
 
-// Mobile sidebar state
 let sidebarOpen = $state(false);
 let isMobileSidebar = $state(false);
 let sidebarHiddenFromMobile = $derived(isMobileSidebar && !sidebarOpen);
@@ -80,7 +68,6 @@ async function focusAfterRender(selector: string) {
 	document.querySelector<HTMLElement>(selector)?.focus();
 }
 
-// Reset avatar error when thumb URL changes so a new URL gets a fresh load attempt
 $effect(() => {
 	data.user.thumb;
 	avatarError = false;
@@ -145,7 +132,6 @@ function handleWindowKeydown(event: KeyboardEvent) {
 <svelte:window onkeydown={handleWindowKeydown} />
 
 <div class="dashboard-layout">
-	<!-- Mobile header -->
 	<header class="mobile-header" class:sidebar-open={sidebarOpen}>
 		<button
 			type="button"
@@ -165,7 +151,6 @@ function handleWindowKeydown(event: KeyboardEvent) {
 		</div>
 	</header>
 
-	<!-- Sidebar overlay for mobile -->
 	{#if sidebarOpen}
 		<div
 			class="sidebar-overlay"
@@ -177,7 +162,6 @@ function handleWindowKeydown(event: KeyboardEvent) {
 		></div>
 	{/if}
 
-	<!-- Sidebar -->
 	<aside
 		class="sidebar"
 		class:open={sidebarOpen}
@@ -260,7 +244,6 @@ function handleWindowKeydown(event: KeyboardEvent) {
 		</div>
 	</aside>
 
-	<!-- Main content -->
 	<main
 		class="main-content"
 		inert={mainContentHiddenFromMobile}
@@ -277,7 +260,6 @@ function handleWindowKeydown(event: KeyboardEvent) {
 			background: oklch(var(--background));
 		}
 
-		/* Mobile header */
 		.mobile-header {
 			display: none;
 			position: fixed;
@@ -330,7 +312,6 @@ function handleWindowKeydown(event: KeyboardEvent) {
 			margin: 0;
 		}
 
-		/* Sidebar overlay */
 		.sidebar-overlay {
 			display: none;
 			position: fixed;
@@ -340,7 +321,6 @@ function handleWindowKeydown(event: KeyboardEvent) {
 			z-index: 45;
 		}
 
-		/* Sidebar */
 		.sidebar {
 			position: fixed;
 			top: 0;
@@ -604,14 +584,12 @@ function handleWindowKeydown(event: KeyboardEvent) {
 			height: 0.875rem;
 		}
 
-		/* Main content */
 		.main-content {
 			flex: 1;
 			margin-left: 260px;
 			min-height: 100vh;
 		}
 
-		/* Responsive styles */
 		@media (max-width: 768px) {
 			.mobile-header {
 				display: flex;

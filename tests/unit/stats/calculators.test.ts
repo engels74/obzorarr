@@ -24,7 +24,6 @@ import {
 
 import { createPlayHistoryRecord } from '../../helpers/factories';
 
-// Alias for cleaner test code
 const createRecord = createPlayHistoryRecord;
 
 describe('Utils', () => {
@@ -58,22 +57,16 @@ describe('Utils', () => {
 
 	describe('getMonthFromTimestamp', () => {
 		it('returns correct month (0-indexed)', () => {
-			// Jan 1, 2024
 			expect(getMonthFromTimestamp(1704067200)).toBe(0);
-			// July 1, 2024
 			expect(getMonthFromTimestamp(1719792000)).toBe(6);
-			// Dec 31, 2024
 			expect(getMonthFromTimestamp(1735603199)).toBe(11);
 		});
 	});
 
 	describe('getHourFromTimestamp', () => {
 		it('returns correct hour (0-23)', () => {
-			// Jan 1, 2024 00:00 UTC
 			expect(getHourFromTimestamp(1704067200)).toBe(0);
-			// Jan 1, 2024 12:00 UTC
 			expect(getHourFromTimestamp(1704110400)).toBe(12);
-			// Jan 1, 2024 23:00 UTC
 			expect(getHourFromTimestamp(1704150000)).toBe(23);
 		});
 	});
@@ -82,14 +75,14 @@ describe('Utils', () => {
 describe('Watch Time Calculator', () => {
 	it('calculates total watch time correctly', () => {
 		const records = [
-			createRecord({ duration: 3600 }), // 1 hour
-			createRecord({ id: 2, historyKey: 'key-2', duration: 1800 }), // 30 min
-			createRecord({ id: 3, historyKey: 'key-3', duration: 900 }) // 15 min
+			createRecord({ duration: 3600 }),
+			createRecord({ id: 2, historyKey: 'key-2', duration: 1800 }),
+			createRecord({ id: 3, historyKey: 'key-3', duration: 900 })
 		];
 
 		const result = calculateWatchTime(records);
 
-		expect(result.totalWatchTimeMinutes).toBe(105); // 60 + 30 + 15
+		expect(result.totalWatchTimeMinutes).toBe(105);
 		expect(result.totalPlays).toBe(3);
 	});
 
@@ -348,15 +341,15 @@ describe('Distribution Calculators', () => {
 	describe('calculateMonthlyDistribution', () => {
 		it('distributes watch time to correct months', () => {
 			const records = [
-				createRecord({ viewedAt: 1704067200, duration: 3600 }), // Jan 2024
-				createRecord({ id: 2, historyKey: 'key-2', viewedAt: 1719792000, duration: 1800 }) // July 2024
+				createRecord({ viewedAt: 1704067200, duration: 3600 }),
+				createRecord({ id: 2, historyKey: 'key-2', viewedAt: 1719792000, duration: 1800 })
 			];
 
 			const result = calculateMonthlyDistribution(records);
 
-			expect(result.minutes[0]).toBe(60); // January
-			expect(result.minutes[6]).toBe(30); // July
-			expect(result.minutes.reduce((a, b) => a + b, 0)).toBe(90); // Total
+			expect(result.minutes[0]).toBe(60);
+			expect(result.minutes[6]).toBe(30);
+			expect(result.minutes.reduce((a, b) => a + b, 0)).toBe(90);
 		});
 
 		it('returns 12 buckets for empty array', () => {
@@ -369,31 +362,31 @@ describe('Distribution Calculators', () => {
 
 		it('counts plays per month', () => {
 			const records = [
-				createRecord({ viewedAt: 1704067200, duration: 3600 }), // Jan 2024
-				createRecord({ id: 2, historyKey: 'key-2', viewedAt: 1704153600, duration: 1800 }), // Jan 2024 (next day)
-				createRecord({ id: 3, historyKey: 'key-3', viewedAt: 1719792000, duration: 1800 }) // July 2024
+				createRecord({ viewedAt: 1704067200, duration: 3600 }),
+				createRecord({ id: 2, historyKey: 'key-2', viewedAt: 1704153600, duration: 1800 }),
+				createRecord({ id: 3, historyKey: 'key-3', viewedAt: 1719792000, duration: 1800 })
 			];
 
 			const result = calculateMonthlyDistribution(records);
 
-			expect(result.plays[0]).toBe(2); // January - 2 plays
-			expect(result.plays[6]).toBe(1); // July - 1 play
-			expect(result.plays.reduce((a, b) => a + b, 0)).toBe(3); // Total plays
+			expect(result.plays[0]).toBe(2);
+			expect(result.plays[6]).toBe(1);
+			expect(result.plays.reduce((a, b) => a + b, 0)).toBe(3);
 		});
 	});
 
 	describe('calculateHourlyDistribution', () => {
 		it('distributes watch time to correct hours', () => {
 			const records = [
-				createRecord({ viewedAt: 1704067200, duration: 3600 }), // 00:00 UTC
-				createRecord({ id: 2, historyKey: 'key-2', viewedAt: 1704110400, duration: 1800 }) // 12:00 UTC
+				createRecord({ viewedAt: 1704067200, duration: 3600 }),
+				createRecord({ id: 2, historyKey: 'key-2', viewedAt: 1704110400, duration: 1800 })
 			];
 
 			const result = calculateHourlyDistribution(records);
 
-			expect(result.minutes[0]).toBe(60); // Midnight
-			expect(result.minutes[12]).toBe(30); // Noon
-			expect(result.minutes.reduce((a, b) => a + b, 0)).toBe(90); // Total
+			expect(result.minutes[0]).toBe(60);
+			expect(result.minutes[12]).toBe(30);
+			expect(result.minutes.reduce((a, b) => a + b, 0)).toBe(90);
 		});
 
 		it('returns 24 buckets for empty array', () => {
@@ -406,24 +399,22 @@ describe('Distribution Calculators', () => {
 
 		it('counts plays per hour', () => {
 			const records = [
-				createRecord({ viewedAt: 1704067200, duration: 3600 }), // 00:00 UTC
-				createRecord({ id: 2, historyKey: 'key-2', viewedAt: 1704067260, duration: 1800 }), // 00:01 UTC (same hour)
-				createRecord({ id: 3, historyKey: 'key-3', viewedAt: 1704110400, duration: 1800 }) // 12:00 UTC
+				createRecord({ viewedAt: 1704067200, duration: 3600 }),
+				createRecord({ id: 2, historyKey: 'key-2', viewedAt: 1704067260, duration: 1800 }),
+				createRecord({ id: 3, historyKey: 'key-3', viewedAt: 1704110400, duration: 1800 })
 			];
 
 			const result = calculateHourlyDistribution(records);
 
-			expect(result.plays[0]).toBe(2); // Midnight - 2 plays
-			expect(result.plays[12]).toBe(1); // Noon - 1 play
-			expect(result.plays.reduce((a, b) => a + b, 0)).toBe(3); // Total plays
+			expect(result.plays[0]).toBe(2);
+			expect(result.plays[12]).toBe(1);
+			expect(result.plays.reduce((a, b) => a + b, 0)).toBe(3);
 		});
 	});
 });
 
 describe('Percentile Calculator', () => {
 	it('calculates percentile correctly', () => {
-		// User with 100 min, others have 50, 75, 150
-		// 2 users have less than 100, so percentile = 2/4 * 100 = 50
 		const percentile = calculatePercentileRank(100, [50, 75, 100, 150]);
 		expect(percentile).toBe(50);
 	});
@@ -435,7 +426,6 @@ describe('Percentile Calculator', () => {
 
 	it('returns high percentile for top watcher', () => {
 		const percentile = calculatePercentileRank(100, [10, 50, 100]);
-		// 2 out of 3 have less, so 66.67%
 		expect(Math.round(percentile * 100) / 100).toBeCloseTo(66.67, 1);
 	});
 
@@ -445,9 +435,7 @@ describe('Percentile Calculator', () => {
 	});
 
 	it('handles ties correctly', () => {
-		// Two users with same watch time
 		const percentile = calculatePercentileRank(50, [50, 50, 100]);
-		// 0 users have less than 50, so 0%
 		expect(percentile).toBe(0);
 	});
 });
@@ -455,22 +443,22 @@ describe('Percentile Calculator', () => {
 describe('Binge Detector', () => {
 	it('detects binge session with small gaps', () => {
 		const records = [
-			createRecord({ viewedAt: 1704067200, duration: 3600 }), // 00:00
-			createRecord({ id: 2, historyKey: 'key-2', viewedAt: 1704068000, duration: 3600 }), // 00:13 (13 min gap)
-			createRecord({ id: 3, historyKey: 'key-3', viewedAt: 1704069000, duration: 3600 }) // 00:30 (16 min gap)
+			createRecord({ viewedAt: 1704067200, duration: 3600 }),
+			createRecord({ id: 2, historyKey: 'key-2', viewedAt: 1704068000, duration: 3600 }),
+			createRecord({ id: 3, historyKey: 'key-3', viewedAt: 1704069000, duration: 3600 })
 		];
 
 		const result = detectLongestBinge(records);
 
 		expect(result).not.toBeNull();
 		expect(result?.plays).toBe(3);
-		expect(result?.totalMinutes).toBe(180); // 3 hours
+		expect(result?.totalMinutes).toBe(180);
 	});
 
 	it('splits into separate sessions for large gaps', () => {
 		const records = [
-			createRecord({ viewedAt: 1704067200, duration: 3600 }), // 00:00
-			createRecord({ id: 2, historyKey: 'key-2', viewedAt: 1704074400, duration: 3600 }) // 02:00 (2 hour gap)
+			createRecord({ viewedAt: 1704067200, duration: 3600 }),
+			createRecord({ id: 2, historyKey: 'key-2', viewedAt: 1704074400, duration: 3600 })
 		];
 
 		const sessions = detectAllBingeSessions(records);
@@ -482,17 +470,13 @@ describe('Binge Detector', () => {
 
 	it('returns the session with max duration', () => {
 		const records = [
-			// First session: 2 short movies
-			createRecord({ viewedAt: 1704067200, duration: 1800 }), // 30 min
-			createRecord({ id: 2, historyKey: 'key-2', viewedAt: 1704068000, duration: 1800 }), // 30 min
-			// Gap of 2 hours
-			// Second session: 1 long movie
-			createRecord({ id: 3, historyKey: 'key-3', viewedAt: 1704074400, duration: 7200 }) // 2 hours
+			createRecord({ viewedAt: 1704067200, duration: 1800 }),
+			createRecord({ id: 2, historyKey: 'key-2', viewedAt: 1704068000, duration: 1800 }),
+			createRecord({ id: 3, historyKey: 'key-3', viewedAt: 1704074400, duration: 7200 })
 		];
 
 		const longest = detectLongestBinge(records);
 
-		// Second session has more total time (2 hours vs 1 hour)
 		expect(longest?.totalMinutes).toBe(120);
 		expect(longest?.plays).toBe(1);
 	});
@@ -514,7 +498,7 @@ describe('Binge Detector', () => {
 
 		const result = detectLongestBinge(records);
 
-		expect(result?.totalMinutes).toBe(60); // Only the non-null duration counts
+		expect(result?.totalMinutes).toBe(60);
 	});
 
 	it('gap threshold is 30 minutes', () => {

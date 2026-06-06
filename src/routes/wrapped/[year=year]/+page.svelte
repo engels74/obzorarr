@@ -13,25 +13,10 @@ import {
 } from '$lib/components/wrapped';
 import type { PageProps } from './$types';
 
-/**
- * Server-wide Wrapped Page
- *
- * Displays the server-wide Year in Review statistics.
- * Supports both Story Mode (full-screen slides) and Scroll Mode.
- *
- * @module routes/wrapped/[year=year]
- */
-
 let { data }: PageProps = $props();
 
-// Create messaging context for server-wide wrapped (reactive to data changes)
 const messagingContext = $derived(createServerContext(data.serverName));
 
-// ==========================================================================
-// State
-// ==========================================================================
-
-/** Current viewing mode */
 type ViewMode = 'story' | 'scroll';
 let viewMode = $state<ViewMode>('story');
 
@@ -50,16 +35,12 @@ function readInitialSlideIndex(): number {
 	return Math.min(Math.max(parsed, 0), max);
 }
 
-/** Current slide index for mode switching (preserves position) */
 let currentSlideIndex = $state(readInitialSlideIndex());
 
-/** Whether to show the summary page */
 let showSummary = $state(false);
 
-/** Whether to show the share modal */
 let showShareModal = $state(false);
 
-/** Key for forcing StoryMode remount on restart */
 let storyKey = $state(0);
 
 // SvelteKit's replaceState throws "replaceState() called before router was
@@ -70,7 +51,7 @@ afterNavigate(() => {
 	routerReady = true;
 });
 
-// Reflect slide index back into the hash without creating history entries.
+// Use replaceState so slide navigation does not pollute the browser Back stack.
 $effect(() => {
 	if (!browser || !routerReady) return;
 	const next = `#slide=${currentSlideIndex}`;
@@ -81,35 +62,19 @@ $effect(() => {
 	}
 });
 
-// ==========================================================================
-// Event Handlers
-// ==========================================================================
-
-/**
- * Handle mode change from ModeToggle
- */
 function handleModeChange(newMode: ViewMode): void {
 	viewMode = newMode;
 }
 
-/**
- * Handle scroll mode requesting switch (preserves position)
- */
 function handleScrollModeSwitch(slideIndex: number): void {
 	currentSlideIndex = slideIndex;
 	viewMode = 'story';
 }
 
-/**
- * Handle story mode completion - show summary page
- */
 function handleComplete(): void {
 	showSummary = true;
 }
 
-/**
- * Handle close/exit action
- */
 function handleClose(): void {
 	let sameOrigin = false;
 	if (document.referrer) {
@@ -126,28 +91,20 @@ function handleClose(): void {
 	}
 }
 
-/**
- * Handle restart - return to slideshow from summary
- */
 function handleRestart(): void {
 	showSummary = false;
 	viewMode = 'story';
 	currentSlideIndex = 0;
-	// Clear the URL hash before the StoryMode remount. Otherwise the freshly
-	// mounted StoryMode reads the stale `#slide=N` (from the user reaching the
-	// summary) via readInitialSlideIndex and the slideshow restarts at the
-	// last slide instead of slide 0.
+	// Clear the hash before remount so StoryMode does not seed itself from the
+	// stale summary slide index.
 	if (browser && routerReady) {
 		const url = new URL(window.location.href);
 		url.hash = '#slide=0';
 		replaceState(url, {});
 	}
-	storyKey++; // Force StoryMode remount
+	storyKey++;
 }
 
-/**
- * Handle return home from summary
- */
 function handleHome(): void {
 	if (data.isAdmin) {
 		goto('/admin');
@@ -158,9 +115,6 @@ function handleHome(): void {
 	}
 }
 
-/**
- * Handle share button click from summary
- */
 function handleShare(): void {
 	showShareModal = true;
 }
@@ -172,24 +126,20 @@ function handleShare(): void {
 </svelte:head>
 
 <div class="wrapped-page">
-	<!-- Logo Watermark -->
 	{#if data.showLogo}
 		<div class="logo-watermark">
 			<Logo size="sm" />
 		</div>
 	{/if}
 
-	<!-- Mode Toggle Button -->
 	<div class="mode-toggle-container">
 		<ModeToggle mode={viewMode} onModeChange={handleModeChange} />
 	</div>
 
-	<!-- Year Navigation -->
 	{#if data.availableYears && data.availableYears.length > 1}
 		<YearNavigation currentYear={data.year} availableYears={data.availableYears} />
 	{/if}
 
-	<!-- Wrapped Content -->
 	{#if showSummary}
 		<SummaryPage
 			stats={data.stats}
@@ -223,7 +173,6 @@ function handleShare(): void {
 		/>
 	{/if}
 
-	<!-- Share Modal (simplified for server-wide - always public) -->
 	<ShareModal
 		bind:open={showShareModal}
 		onOpenChange={(v) => (showShareModal = v)}

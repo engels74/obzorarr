@@ -31,14 +31,12 @@ export async function plexRequest<T>(
 	params?: URLSearchParams,
 	signal?: AbortSignal
 ): Promise<T> {
-	// Get merged config (database takes priority over environment)
 	const config = await getPlexConfig();
 
 	if (!config.serverUrl) {
 		throw new PlexApiError('Plex server URL is not configured', undefined, endpoint);
 	}
 
-	// Build URL with optional query parameters
 	const url = new URL(endpoint, config.serverUrl);
 	if (params) {
 		params.forEach((value, key) => {
@@ -64,17 +62,14 @@ export async function plexRequest<T>(
 		const data = await response.json();
 		return data as T;
 	} catch (error) {
-		// Re-throw PlexApiError as-is
 		if (error instanceof PlexApiError) {
 			throw error;
 		}
 
-		// Handle abort
 		if (error instanceof Error && error.name === 'AbortError') {
 			throw new PlexApiError('Request aborted', undefined, endpoint, error);
 		}
 
-		// Wrap other errors
 		throw new PlexApiError(
 			`Failed to fetch from Plex: ${error instanceof Error ? error.message : 'Unknown error'}`,
 			undefined,

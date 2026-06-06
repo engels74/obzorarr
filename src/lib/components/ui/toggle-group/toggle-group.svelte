@@ -54,10 +54,10 @@ export function getToggleGroupCtx() {
 	});
 </script>
 
-<!--
-Discriminated Unions + Destructing (required for bindable) do not
-get along, so we shut typescript up by casting `value` to `never`.
--->
+	<!--
+	Bits UI's discriminated union type does not compose with Svelte's
+	bindable destructuring here, so the bind target is narrowed manually.
+	-->
 <ToggleGroupPrimitive.Root
 	bind:value={value as never}
 	bind:ref

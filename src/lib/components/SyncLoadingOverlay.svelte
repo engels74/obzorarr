@@ -4,20 +4,15 @@ import { fade } from 'svelte/transition';
 import type { LiveSyncProgress } from '$lib/sync/types';
 
 interface Props {
-	/** Whether the overlay should be visible */
 	visible: boolean;
-	/** Current sync progress data */
 	progress?: LiveSyncProgress | null;
-	/** Whether sync is actually in progress (vs just showing loading state) */
 	syncInProgress?: boolean;
 }
 
 let { visible, progress = null, syncInProgress = false }: Props = $props();
 
-// Transition duration respecting reduced motion preference
 const transitionDuration = $derived(prefersReducedMotion.current ? 0 : 300);
 
-// Derive status text based on sync phase
 const statusText = $derived.by(() => {
 	if (!syncInProgress || !progress) {
 		return 'Loading your wrapped...';
@@ -38,7 +33,6 @@ const statusText = $derived.by(() => {
 	return 'Syncing your viewing history...';
 });
 
-// Secondary status text for additional context
 const secondaryText = $derived.by(() => {
 	if (!syncInProgress) {
 		return 'Preparing your year in review';

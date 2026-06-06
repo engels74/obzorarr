@@ -46,7 +46,6 @@ describe('PUBLIC_LANDING_LOOKUP setting', () => {
 		});
 
 		it('does NOT seed when onboarding is not complete', async () => {
-			// no ONBOARDING_COMPLETED row
 			await ensurePublicLandingLookupDefault();
 			expect(await getAppSetting(AppSettingsKey.PUBLIC_LANDING_LOOKUP)).toBeNull();
 
@@ -86,7 +85,6 @@ describe('PUBLIC_LANDING_LOOKUP setting', () => {
 describe('shared sharing-option copy module', () => {
 	const assertWellFormed = (options: OptionCopy[]) => {
 		const values = options.map((o) => o.value);
-		// exactly one entry per value
 		expect(new Set(values).size).toBe(values.length);
 		for (const opt of options) {
 			expect(opt.label.trim().length).toBeGreaterThan(0);
@@ -167,23 +165,18 @@ describe('shared sharing-option copy module', () => {
 			for (const preset of PRIVACY_PRESETS) {
 				const v = preset.values;
 
-				// anonymizationMode
 				expect(anonymizationValues.has(v.anonymizationMode)).toBe(true);
 				expect(serverAnonymization.has(v.anonymizationMode)).toBe(true);
 
-				// defaultShareMode (per-user, all three modes)
 				expect(shareModeValues.has(v.defaultShareMode)).toBe(true);
 				expect(serverShareModes.has(v.defaultShareMode)).toBe(true);
 
-				// serverWrappedShareMode (public | private-oauth only)
 				expect(serverWrappedValues.has(v.serverWrappedShareMode)).toBe(true);
 				expect(serverShareModes.has(v.serverWrappedShareMode)).toBe(true);
 
-				// logoMode
 				expect(logoValues.has(v.logoMode)).toBe(true);
 				expect(serverLogoModes.has(v.logoMode)).toBe(true);
 
-				// booleans
 				expect(typeof v.publicLandingLookup).toBe('boolean');
 				expect(typeof v.allowUserControl).toBe('boolean');
 			}

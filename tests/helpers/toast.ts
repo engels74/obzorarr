@@ -33,7 +33,5 @@ export const testToast = {
 	info(message: string, options?: unknown) {
 		recordToast('info', message, options);
 	},
-	dismiss() {
-		// no-op in tests
-	}
+	dismiss() {}
 };

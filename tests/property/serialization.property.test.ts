@@ -32,13 +32,6 @@ import type {
  * then deserializing SHALL produce an object equivalent to the original.
  */
 
-// =============================================================================
-// Arbitraries (generators for random test data)
-// =============================================================================
-
-/**
- * Generate a valid RankedItem
- */
 const rankedItemArbitrary: fc.Arbitrary<RankedItem> = fc.record({
 	rank: fc.integer({ min: 1, max: 1000 }),
 	title: fc.string({ minLength: 1, maxLength: 200 }),
@@ -46,35 +39,25 @@ const rankedItemArbitrary: fc.Arbitrary<RankedItem> = fc.record({
 	thumb: fc.option(fc.webUrl(), { nil: null })
 });
 
-/**
- * Generate a valid BingeSession
- */
 const bingeSessionArbitrary: fc.Arbitrary<BingeSession> = fc
 	.record({
-		startTime: fc.integer({ min: 1577836800, max: 1893456000 }), // 2020-2030
+		startTime: fc.integer({ min: 1577836800, max: 1893456000 }),
 		endTime: fc.integer({ min: 1577836800, max: 1893456000 }),
 		plays: fc.integer({ min: 1, max: 100 }),
 		totalMinutes: fc.float({ min: 0, max: 10000, noNaN: true })
 	})
 	.map((session) => ({
 		...session,
-		// Ensure endTime >= startTime
 		endTime: Math.max(session.startTime, session.endTime)
 	}));
 
-/**
- * Generate a valid WatchRecord
- */
 const watchRecordArbitrary: fc.Arbitrary<WatchRecord> = fc.record({
 	title: fc.string({ minLength: 1, maxLength: 200 }),
-	viewedAt: fc.integer({ min: 1577836800, max: 1893456000 }), // 2020-2030
+	viewedAt: fc.integer({ min: 1577836800, max: 1893456000 }),
 	thumb: fc.option(fc.webUrl(), { nil: null }),
 	type: fc.constantFrom('movie', 'episode', 'track') as fc.Arbitrary<'movie' | 'episode' | 'track'>
 });
 
-/**
- * Generate a valid MonthlyDistribution object
- */
 const monthlyDistributionArbitrary = fc.record({
 	minutes: fc
 		.tuple(
@@ -110,9 +93,6 @@ const monthlyDistributionArbitrary = fc.record({
 		.map((tuple) => [...tuple])
 });
 
-/**
- * Generate a valid HourlyDistribution object
- */
 const hourlyDistributionArbitrary = fc.record({
 	minutes: fc
 		.tuple(
@@ -172,9 +152,6 @@ const hourlyDistributionArbitrary = fc.record({
 		.map((tuple) => [...tuple])
 });
 
-/**
- * Generate a valid WeekdayDistribution (7 days)
- */
 const weekdayDistributionArbitrary: fc.Arbitrary<WeekdayDistribution> = fc.record({
 	minutes: fc
 		.tuple(
@@ -200,9 +177,6 @@ const weekdayDistributionArbitrary: fc.Arbitrary<WeekdayDistribution> = fc.recor
 		.map((tuple) => [...tuple])
 });
 
-/**
- * Generate a valid ContentTypeBreakdown
- */
 const contentTypeBreakdownArbitrary: fc.Arbitrary<ContentTypeBreakdown> = fc.record({
 	movies: fc.record({
 		count: fc.integer({ min: 0, max: 10000 }),
@@ -218,18 +192,12 @@ const contentTypeBreakdownArbitrary: fc.Arbitrary<ContentTypeBreakdown> = fc.rec
 	})
 });
 
-/**
- * Generate a valid DecadeDistributionItem
- */
 const decadeDistributionItemArbitrary: fc.Arbitrary<DecadeDistributionItem> = fc.record({
 	decade: fc.constantFrom('1950s', '1960s', '1970s', '1980s', '1990s', '2000s', '2010s', '2020s'),
 	count: fc.integer({ min: 0, max: 10000 }),
 	minutes: fc.float({ min: 0, max: 1000000, noNaN: true })
 });
 
-/**
- * Generate a valid SeriesCompletionItem
- */
 const seriesCompletionItemArbitrary: fc.Arbitrary<SeriesCompletionItem> = fc.record({
 	show: fc.string({ minLength: 1, maxLength: 200 }),
 	thumb: fc.option(fc.string({ minLength: 1, maxLength: 500 }), { nil: null }),
@@ -239,9 +207,6 @@ const seriesCompletionItemArbitrary: fc.Arbitrary<SeriesCompletionItem> = fc.rec
 	percentComplete: fc.float({ min: 0, max: 100, noNaN: true })
 });
 
-/**
- * Generate a valid RewatchItem
- */
 const rewatchItemArbitrary: fc.Arbitrary<RewatchItem> = fc.record({
 	title: fc.string({ minLength: 1, maxLength: 200 }),
 	thumb: fc.option(fc.string({ minLength: 1, maxLength: 500 }), { nil: null }),
@@ -249,15 +214,13 @@ const rewatchItemArbitrary: fc.Arbitrary<RewatchItem> = fc.record({
 	rewatchCount: fc.integer({ min: 2, max: 100 })
 });
 
-/**
- * Generate a valid MarathonDay
- * Uses integer-based date generation to avoid Invalid Date errors during shrinking
- */
+// Limit generated days to 1-28 so fast-check shrinking cannot produce an
+// invalid calendar date for shorter months.
 const marathonDayArbitrary: fc.Arbitrary<MarathonDay> = fc
 	.record({
 		year: fc.integer({ min: 2020, max: 2030 }),
 		month: fc.integer({ min: 1, max: 12 }),
-		day: fc.integer({ min: 1, max: 28 }), // Use 28 to avoid invalid dates
+		day: fc.integer({ min: 1, max: 28 }),
 		minutes: fc.float({ min: 0, max: 1440, noNaN: true }),
 		plays: fc.integer({ min: 1, max: 100 }),
 		items: fc.array(
@@ -275,16 +238,14 @@ const marathonDayArbitrary: fc.Arbitrary<MarathonDay> = fc
 		items: data.items
 	}));
 
-/**
- * Generate a valid WatchStreak
- * Uses integer-based date generation to avoid Invalid Date errors during shrinking
- */
+// Same 1-28 day bound as marathon days: these are date-shape fixtures, not
+// calendar-validity tests.
 const watchStreakArbitrary: fc.Arbitrary<WatchStreak> = fc
 	.record({
 		longestStreak: fc.integer({ min: 0, max: 365 }),
 		year: fc.integer({ min: 2020, max: 2030 }),
 		startMonth: fc.integer({ min: 1, max: 12 }),
-		startDay: fc.integer({ min: 1, max: 28 }), // Use 28 to avoid invalid dates
+		startDay: fc.integer({ min: 1, max: 28 }),
 		endMonth: fc.integer({ min: 1, max: 12 }),
 		endDay: fc.integer({ min: 1, max: 28 })
 	})
@@ -298,19 +259,14 @@ const watchStreakArbitrary: fc.Arbitrary<WatchStreak> = fc
 		};
 	});
 
-/**
- * Generate a valid YearComparison
- */
 const yearComparisonArbitrary: fc.Arbitrary<YearComparison> = fc.record({
 	thisYear: fc.float({ min: 0, max: 10000000, noNaN: true }),
 	lastYear: fc.float({ min: 0, max: 10000000, noNaN: true }),
 	percentChange: fc.float({ min: -100, max: 1000, noNaN: true })
 });
 
-/**
- * Generate a valid UserStats object
- * Note: Property order must match UserStatsSchema for JSON round-trip comparison
- */
+// Property order must match UserStatsSchema so round-trip diffs identify schema
+// drift instead of fixture ordering noise.
 const userStatsArbitrary: fc.Arbitrary<UserStats> = fc.record({
 	userId: fc.integer({ min: 1, max: 1000000 }),
 	year: fc.integer({ min: 2000, max: 2100 }),
@@ -335,10 +291,8 @@ const userStatsArbitrary: fc.Arbitrary<UserStats> = fc.record({
 	lastWatch: fc.option(watchRecordArbitrary, { nil: null })
 });
 
-/**
- * Generate a valid ServerStats object
- * Note: Property order must match ServerStatsSchema for JSON round-trip comparison
- */
+// Property order must match ServerStatsSchema for the same round-trip drift check
+// as the user-stats arbitrary above.
 const serverStatsArbitrary: fc.Arbitrary<ServerStats> = fc.record({
 	year: fc.integer({ min: 2000, max: 2100 }),
 	totalUsers: fc.integer({ min: 0, max: 10000 }),
@@ -371,37 +325,21 @@ const serverStatsArbitrary: fc.Arbitrary<ServerStats> = fc.record({
 	lastWatch: fc.option(watchRecordArbitrary, { nil: null })
 });
 
-// =============================================================================
-// Helper functions
-// =============================================================================
-
-/**
- * Deep equality check for stats objects
- * Handles floating point comparison with tolerance
- */
 function statsAreEqual(a: UserStats | ServerStats, b: UserStats | ServerStats): boolean {
 	const aJson = JSON.stringify(a);
 	const bJson = JSON.stringify(b);
 	return aJson === bJson;
 }
 
-// =============================================================================
-// Property Tests
-// =============================================================================
-
-// Feature: obzorarr, Property 21: Statistics Serialization Round-Trip
 describe('Property 21: Statistics Serialization Round-Trip', () => {
 	describe('UserStats round-trip', () => {
 		it('serialize then deserialize produces equivalent UserStats', () => {
 			fc.assert(
 				fc.property(userStatsArbitrary, (originalStats) => {
-					// Serialize to JSON
 					const json = serializeStats(originalStats);
 
-					// Deserialize back to object
 					const parsedStats = parseUserStats(json);
 
-					// Verify equality
 					return statsAreEqual(originalStats, parsedStats);
 				}),
 				{ numRuns: 100 }
@@ -421,15 +359,12 @@ describe('Property 21: Statistics Serialization Round-Trip', () => {
 		it('double round-trip produces equivalent UserStats', () => {
 			fc.assert(
 				fc.property(userStatsArbitrary, (originalStats) => {
-					// First round-trip
 					const json1 = serializeStats(originalStats);
 					const parsed1 = parseUserStats(json1);
 
-					// Second round-trip
 					const json2 = serializeStats(parsed1);
 					const parsed2 = parseUserStats(json2);
 
-					// Both should be equivalent to original
 					return statsAreEqual(originalStats, parsed1) && statsAreEqual(parsed1, parsed2);
 				}),
 				{ numRuns: 100 }
@@ -441,13 +376,10 @@ describe('Property 21: Statistics Serialization Round-Trip', () => {
 		it('serialize then deserialize produces equivalent ServerStats', () => {
 			fc.assert(
 				fc.property(serverStatsArbitrary, (originalStats) => {
-					// Serialize to JSON
 					const json = serializeStats(originalStats);
 
-					// Deserialize back to object
 					const parsedStats = parseServerStats(json);
 
-					// Verify equality
 					return statsAreEqual(originalStats, parsedStats);
 				}),
 				{ numRuns: 100 }
@@ -467,15 +399,12 @@ describe('Property 21: Statistics Serialization Round-Trip', () => {
 		it('double round-trip produces equivalent ServerStats', () => {
 			fc.assert(
 				fc.property(serverStatsArbitrary, (originalStats) => {
-					// First round-trip
 					const json1 = serializeStats(originalStats);
 					const parsed1 = parseServerStats(json1);
 
-					// Second round-trip
 					const json2 = serializeStats(parsed1);
 					const parsed2 = parseServerStats(json2);
 
-					// Both should be equivalent to original
 					return statsAreEqual(originalStats, parsed1) && statsAreEqual(parsed1, parsed2);
 				}),
 				{ numRuns: 100 }
@@ -488,7 +417,6 @@ describe('Property 21: Statistics Serialization Round-Trip', () => {
 			fc.assert(
 				fc.property(userStatsArbitrary, (stats) => {
 					const json = serializeStats(stats);
-					// Should not throw
 					const parsed = JSON.parse(json);
 					return typeof parsed === 'object' && parsed !== null;
 				}),
@@ -500,7 +428,6 @@ describe('Property 21: Statistics Serialization Round-Trip', () => {
 			fc.assert(
 				fc.property(serverStatsArbitrary, (stats) => {
 					const json = serializeStats(stats);
-					// Should not throw
 					const parsed = JSON.parse(json);
 					return typeof parsed === 'object' && parsed !== null;
 				}),
@@ -510,8 +437,7 @@ describe('Property 21: Statistics Serialization Round-Trip', () => {
 	});
 });
 
-// Additional unit tests for edge cases
-// Note: Property order must match schema order for JSON round-trip comparison
+// Keep fixture key order aligned with the schema so round-trip diffs stay meaningful.
 describe('Serialization edge cases', () => {
 	it('handles UserStats with empty arrays', () => {
 		const stats: UserStats = {
@@ -679,7 +605,7 @@ describe('Serialization edge cases', () => {
 			topMovies: [],
 			topShows: [],
 			topGenres: [],
-			watchTimeByMonth: [1, 2, 3], // Wrong length - should be 12
+			watchTimeByMonth: [1, 2, 3],
 			watchTimeByHour: [
 				1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24
 			],

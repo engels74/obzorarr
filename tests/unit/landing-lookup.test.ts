@@ -240,8 +240,8 @@ describe('landing username lookup', () => {
 
 	describe('public landing lookup gate', () => {
 		it('rejects the lookup with 403 (no redirect) when the toggle is off', async () => {
-			// Toggle off even though the user would otherwise be publicly reachable —
-			// proves the action guard is independent of the per-user share mode.
+			// The landing toggle is the outer gate; this proves it blocks lookup before
+			// per-user share mode is considered.
 			await setPublicLandingLookupEnabled(false);
 			await setGlobalShareDefaults({
 				defaultShareMode: ShareMode.PUBLIC,
@@ -259,7 +259,6 @@ describe('landing username lookup', () => {
 						requiresAuth: true
 					}
 				});
-				// Guard short-circuits before any live-sync work runs.
 				expect(liveSyncCalls).toHaveLength(0);
 			} finally {
 				warnSpy.mockRestore();
@@ -301,8 +300,8 @@ describe('landing username lookup', () => {
 			};
 
 		it('returns publicLookupEnabled === toggle value regardless of default share mode', async () => {
-			// Toggle on but default non-public: load still reports the toggle value
-			// (sole-gate semantics), and surfaces the sign-in href.
+			// The load contract mirrors only the landing toggle (sole-gate semantics)
+			// and still surfaces the sign-in href.
 			await setPublicLandingLookupEnabled(true);
 			await setGlobalShareDefaults({
 				defaultShareMode: ShareMode.PRIVATE_OAUTH,

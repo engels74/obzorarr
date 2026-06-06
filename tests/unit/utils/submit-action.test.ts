@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
 
-// Mock $app/forms before importing the helper that depends on it.
+// The helper binds `$app/forms` at module load, so the test double must be in
+// place before the import.
 mock.module('$app/forms', () => ({
 	deserialize: (text: string) => {
 		const parsed = JSON.parse(text);
@@ -46,9 +47,7 @@ describe('submitAction', () => {
 		globalThis.fetch = originalFetch;
 	});
 
-	beforeEach(() => {
-		// reset
-	});
+	beforeEach(() => {});
 
 	it('sends POST with x-sveltekit-action header', async () => {
 		let capturedInit: RequestInit | undefined;

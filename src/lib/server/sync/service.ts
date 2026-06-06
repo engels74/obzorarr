@@ -43,7 +43,8 @@ function mapPlexRecordToDbInsert(record: ValidPlexHistoryMetadata) {
 		accountId: record.accountID,
 		librarySectionId: parseInt(record.librarySectionID, 10),
 		thumb: record.thumb ?? null,
-		// Convert duration from milliseconds to seconds if present
+		// Plex history reports milliseconds; stats and enriched metadata rows use
+		// seconds so historical and freshly synced records share one duration unit.
 		duration: record.duration !== undefined ? Math.floor(record.duration / 1000) : null,
 		grandparentTitle: record.grandparentTitle ?? null,
 		grandparentRatingKey: extractRatingKeyFromPath(record.grandparentKey),
@@ -224,7 +225,7 @@ export async function startSync(options: StartSyncOptions = {}): Promise<SyncRes
 	try {
 		if (signal?.aborted) throw new SyncCancelledError();
 
-		// Sync Plex accounts first to ensure usernames are available for stats
+		// Stats attribution depends on Plex account names before history rows are read.
 		try {
 			await syncPlexAccounts();
 		} catch (error) {

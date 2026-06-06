@@ -23,9 +23,8 @@ const tabs = [
 	{ name: 'Privacy', href: '/admin/settings/privacy', icon: LockKeyholeIcon }
 ];
 
-// DF-009: give the settings area a single page-level <h1> for orientation +
-// a11y (the index is a pure redirect and the tab pages only carry per-card
-// CardTitles). The heading reflects the active tab.
+// DF-009: keep one page-level <h1> in the settings shell for orientation and
+// accessibility; the index route redirects and child tabs only have per-card headings.
 const activeTab = $derived(
 	tabs.find((tab) => page.url.pathname.startsWith(tab.href))?.name ?? 'Settings'
 );

@@ -31,7 +31,6 @@ export {
 	Portal,
 	Portal as AlertDialogPortal,
 	Root,
-	//
 	Root as AlertDialog,
 	Title,
 	Title as AlertDialogTitle,

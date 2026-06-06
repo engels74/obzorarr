@@ -136,10 +136,6 @@ export const publicLandingLookupCopy = {
 		'Public lookup is on, but your default share mode is non-public — every lookup will return "not found" until the default share mode is set to Public.'
 } as const;
 
-// ============================================================================
-// "What this exposes" preview-row tooltips
-// ============================================================================
-
 /**
  * Stable identifiers for the four shared "What this exposes" preview rows. They
  * map onto the corresponding {@link PrivacyPreviewModel} fields but are keyed by
@@ -210,10 +206,6 @@ export const PRIVACY_PREVIEW_ROW_TOOLTIPS: Record<
 	}
 };
 
-// ============================================================================
-// "What this exposes" preview-VALUE tooltips
-// ============================================================================
-
 /**
  * Value literals each preview row can display, mirroring the matching
  * `PrivacyPreviewModel` field unions in `src/lib/sharing/preset-logic.ts`. They
@@ -273,10 +265,6 @@ export const PRIVACY_PREVIEW_VALUE_TOOLTIPS: PrivacyPreviewValueTooltips = {
 		'user-choice': 'Each user decides whether the Obzorarr logo appears on their own Wrapped pages.'
 	}
 };
-
-// ============================================================================
-// Privacy presets (client-only control surface)
-// ============================================================================
 
 /**
  * Privacy preset identifiers. A preset bundles a recommended combination of the

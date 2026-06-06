@@ -31,23 +31,19 @@ $effect(() => {
 		'theme-champagne-premium'
 	];
 
-	// Remove all existing theme classes
 	document.body.classList.remove(...themeClasses);
 
-	// Add the effective theme class
 	document.body.classList.add(themeClass);
 
-	// Keep <html data-theme> (set by pre-paint script) in sync with live changes
+	// The pre-paint script prevents FOUC; live theme changes must update the same attribute.
 	document.documentElement.setAttribute('data-theme', effectiveTheme);
 
-	// Add/remove wrapped route class for full-viewport theming
 	if (isWrappedRoute) {
 		document.body.classList.add('wrapped-route');
 	} else {
 		document.body.classList.remove('wrapped-route');
 	}
 
-	// Load the font for this theme (if not already loaded)
 	loadThemeFonts(effectiveTheme);
 });
 </script>

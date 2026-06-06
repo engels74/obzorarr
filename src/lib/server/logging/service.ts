@@ -23,7 +23,7 @@ export async function insertLogsBatch(entries: NewLogEntry[]): Promise<void> {
 		message: entry.message,
 		source: entry.source ?? null,
 		metadata: entry.metadata ? JSON.stringify(entry.metadata) : null,
-		// Offset timestamp slightly to preserve order
+		// Batched entries can share the same millisecond; offset keeps UI ordering stable.
 		timestamp: now + index
 	}));
 

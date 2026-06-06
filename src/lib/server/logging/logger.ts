@@ -14,7 +14,6 @@ class Logger {
 	private readonly DEBUG_CACHE_TTL_MS = 30000;
 
 	async debug(message: string, source?: string, metadata?: Record<string, unknown>): Promise<void> {
-		// Check if debug is enabled (with caching)
 		const debugEnabled = await this.isDebugEnabled();
 		if (!debugEnabled) {
 			return;
@@ -54,13 +53,11 @@ class Logger {
 	private addToBuffer(entry: NewLogEntry): void {
 		this.buffer.push(entry);
 
-		// Flush immediately if buffer is full
 		if (this.buffer.length >= BATCH_SIZE) {
 			this.flush();
 			return;
 		}
 
-		// Schedule flush if not already scheduled
 		if (!this.flushTimer) {
 			this.flushTimer = setTimeout(() => {
 				this.flushTimer = null;
@@ -74,7 +71,6 @@ class Logger {
 			return;
 		}
 
-		// Clear any pending timer
 		if (this.flushTimer) {
 			clearTimeout(this.flushTimer);
 			this.flushTimer = null;
@@ -82,19 +78,17 @@ class Logger {
 
 		this.isFlushing = true;
 
-		// Take current buffer (keep reference for potential restore)
 		const entries = this.buffer;
 		this.buffer = [];
 
 		try {
 			await insertLogsBatch(entries);
 		} catch (error) {
-			// Restore entries to buffer on failure (at the start, to preserve order)
-			// Only restore if the buffer hasn't grown too large (avoid memory issues)
+			// A transient DB failure should not silently drop logs, but cap the
+			// restore so an extended outage cannot grow the process unboundedly.
 			if (this.buffer.length + entries.length <= BATCH_SIZE * 2) {
 				this.buffer = [...entries, ...this.buffer];
 			}
-			// Log to console for visibility
 			console.error('[Logger] Failed to flush logs to database:', error);
 		} finally {
 			this.isFlushing = false;
@@ -104,17 +98,14 @@ class Logger {
 	private async isDebugEnabled(): Promise<boolean> {
 		const now = Date.now();
 
-		// Return cached value if still valid
 		if (this.debugEnabledCache !== null && now < this.debugCacheExpiry) {
 			return this.debugEnabledCache;
 		}
 
-		// Refresh cache
 		try {
 			this.debugEnabledCache = await isDebugEnabled();
 			this.debugCacheExpiry = now + this.DEBUG_CACHE_TTL_MS;
 		} catch {
-			// On error, default to false
 			this.debugEnabledCache = false;
 			this.debugCacheExpiry = now + this.DEBUG_CACHE_TTL_MS;
 		}

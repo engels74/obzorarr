@@ -38,7 +38,6 @@ export async function isOnboardingComplete(): Promise<boolean> {
 export async function getOnboardingStep(): Promise<OnboardingStep> {
 	const step = await getAppSetting(AppSettingsKey.ONBOARDING_CURRENT_STEP);
 
-	// Validate the step is a valid OnboardingStep
 	if (step && Object.values(OnboardingSteps).includes(step as OnboardingStep)) {
 		return step as OnboardingStep;
 	}

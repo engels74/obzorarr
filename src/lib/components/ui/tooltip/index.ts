@@ -12,7 +12,6 @@ export {
 	Provider,
 	Provider as TooltipProvider,
 	Root,
-	//
 	Root as Tooltip,
 	Trigger,
 	Trigger as TooltipTrigger

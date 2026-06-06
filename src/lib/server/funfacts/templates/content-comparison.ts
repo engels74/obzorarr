@@ -1,14 +1,5 @@
 import { defineTemplateCategory } from './base';
 
-/**
- * Content Comparison Templates
- *
- * Templates based on top content and play patterns
- * (favorite movies, shows, variety)
- *
- * @module server/funfacts/templates/content-comparison
- */
-
 export const CONTENT_COMPARISON_TEMPLATES = defineTemplateCategory('content-comparison', [
 	{
 		id: 'top-movie-obsession',
@@ -32,7 +23,7 @@ export const CONTENT_COMPARISON_TEMPLATES = defineTemplateCategory('content-comp
 		comparisonTemplate: "That's a new movie every {daysBetweenMovies} days on average!",
 		icon: '🎞️',
 		requiredStats: ['uniqueMovies'],
-		minThresholds: { uniqueMovies: 12 } // At least monthly
+		minThresholds: { uniqueMovies: 12 }
 	},
 	{
 		id: 'show-explorer',
@@ -48,7 +39,7 @@ export const CONTENT_COMPARISON_TEMPLATES = defineTemplateCategory('content-comp
 		comparisonTemplate: 'Every movie is a new adventure!',
 		icon: '🎬',
 		requiredStats: ['uniqueMovies'],
-		minThresholds: { uniqueMovies: 1 } // Very low threshold
+		minThresholds: { uniqueMovies: 1 }
 	},
 	{
 		id: 'show-sampler',
@@ -56,6 +47,6 @@ export const CONTENT_COMPARISON_TEMPLATES = defineTemplateCategory('content-comp
 		comparisonTemplate: "That's some serious channel surfing!",
 		icon: '📺',
 		requiredStats: ['uniqueShows'],
-		minThresholds: { uniqueShows: 1 } // Very low threshold
+		minThresholds: { uniqueShows: 1 }
 	}
 ]);

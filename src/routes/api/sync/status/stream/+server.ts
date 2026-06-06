@@ -40,7 +40,6 @@ const POLL_INTERVAL_IDLE_MS = 2000;
 
 export const GET: RequestHandler = async ({ request, locals }) => {
 	// Gate: allow anonymous access only while onboarding is incomplete.
-	// Once onboarding is done, a valid session is required.
 	const onboardingPending = await requiresOnboarding();
 	if (!onboardingPending && !locals.user) {
 		return new Response(JSON.stringify({ message: 'Unauthorized' }), {
@@ -85,9 +84,8 @@ export const GET: RequestHandler = async ({ request, locals }) => {
 				if (closed || polling) return;
 				polling = true;
 				try {
-					// Re-validate the connection-open gate: once onboarding is
-					// complete, an anonymous (unauthenticated) stream is no longer
-					// permitted and must be closed.
+					// Anonymous streams are allowed only while onboarding is incomplete; once
+					// setup finishes, the unauthenticated connection must be closed.
 					if (!capturedUser) {
 						const onboardingStillPending = await requiresOnboarding();
 						if (!onboardingStillPending) {
@@ -152,7 +150,9 @@ export const GET: RequestHandler = async ({ request, locals }) => {
 						terminalEventSent = false;
 					}
 				} catch {
-					// Silently ignore errors
+					// Keep the stream best-effort: transient onboarding DB checks,
+					// progress reads, or client disconnects should not leak error bodies
+					// or leave overlapping polls armed.
 				} finally {
 					polling = false;
 				}

@@ -28,7 +28,6 @@ const hasFirst = $derived(firstWatch !== null);
 const hasLast = $derived(lastWatch !== null);
 const hasAny = $derived(hasFirst || hasLast);
 
-// Format dates
 const firstDate = $derived.by(() => {
 	if (!firstWatch) return '';
 	return new Date(firstWatch.viewedAt * 1000).toLocaleDateString('en-US', {
@@ -45,7 +44,6 @@ const lastDate = $derived.by(() => {
 	});
 });
 
-// Format type labels
 const firstTypeLabel = $derived.by(() => {
 	if (!firstWatch) return '';
 	switch (firstWatch.type) {
@@ -74,12 +72,10 @@ const lastTypeLabel = $derived.by(() => {
 	}
 });
 
-// Element references
 let container: HTMLElement | undefined = $state();
 let firstCard: HTMLElement | undefined = $state();
 let lastCard: HTMLElement | undefined = $state();
 
-// Animation effect with cleanup
 $effect(() => {
 	if (!container || !active) return;
 
@@ -101,7 +97,6 @@ $effect(() => {
 
 	const animations: ReturnType<typeof animate>[] = [];
 
-	// Container: opacity fade only (cards provide motion)
 	const containerAnim = animate(
 		container,
 		{ opacity: [0, 1] },
@@ -109,7 +104,6 @@ $effect(() => {
 	);
 	animations.push(containerAnim);
 
-	// Animate first card from left
 	if (firstCard) {
 		const firstAnim = animate(firstCard, KEYFRAMES.cardFromLeft, {
 			type: 'spring',
@@ -119,7 +113,6 @@ $effect(() => {
 		animations.push(firstAnim);
 	}
 
-	// Animate last card from right
 	if (lastCard) {
 		const lastAnim = animate(lastCard, KEYFRAMES.cardFromRight, {
 			type: 'spring',
@@ -242,7 +235,6 @@ $effect(() => {
 				border-color 0.3s ease;
 		}
 
-		/* Top highlight line */
 		.card::before {
 			content: '';
 			position: absolute;
@@ -341,7 +333,6 @@ $effect(() => {
 			margin-top: 1rem;
 		}
 
-		/* Mobile: stacked cards */
 		@media (max-width: 767px) {
 			.content {
 				gap: 1.5rem;
@@ -374,7 +365,6 @@ $effect(() => {
 			}
 		}
 
-		/* Tablet: side-by-side with medium sizing */
 		@media (min-width: 768px) and (max-width: 1023px) {
 			.content {
 				max-width: var(--content-max-md, 750px);
@@ -408,7 +398,6 @@ $effect(() => {
 			}
 		}
 
-		/* Desktop: large cards with prominent thumbnails */
 		@media (min-width: 1024px) {
 			.content {
 				max-width: var(--content-max-lg, 900px);

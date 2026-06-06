@@ -23,21 +23,8 @@ import {
 } from '$lib/server/sharing/types';
 import { resetSharedTestDb } from '../../helpers/db';
 
-/**
- * Unit tests for Sharing Access Control
- *
- * Tests access control logic for wrapped pages.
- * Covers pure access check function and high-level route guards.
- *
- * Uses in-memory SQLite from test setup.
- */
-
 describe('Sharing Access Control', () => {
 	beforeEach(resetSharedTestDb);
-
-	// =========================================================================
-	// checkAccess - Pure Function Tests
-	// =========================================================================
 
 	describe('checkAccess', () => {
 		describe('owner access', () => {
@@ -207,10 +194,6 @@ describe('Sharing Access Control', () => {
 			});
 		});
 	});
-
-	// =========================================================================
-	// checkWrappedAccess - Integration Tests
-	// =========================================================================
 
 	describe('checkWrappedAccess', () => {
 		const userId = 1;
@@ -466,10 +449,6 @@ describe('Sharing Access Control', () => {
 		});
 	});
 
-	// =========================================================================
-	// checkTokenAccess - Token Validation Tests
-	// =========================================================================
-
 	describe('checkTokenAccess', () => {
 		const userId = 1;
 		const year = 2024;
@@ -497,11 +476,12 @@ describe('Sharing Access Control', () => {
 		it('throws InvalidShareTokenError when mode is not private-link', async () => {
 			const token = generateShareToken();
 
-			// Insert token but with PUBLIC mode (simulating mode change after token generation)
+			// Simulate a mode change after token generation; stale private-link tokens
+			// must not authorize once the share is public.
 			await db.insert(shareSettings).values({
 				userId,
 				year,
-				mode: ShareMode.PUBLIC, // Not PRIVATE_LINK
+				mode: ShareMode.PUBLIC,
 				shareToken: token,
 				canUserControl: false
 			});
@@ -521,7 +501,7 @@ describe('Sharing Access Control', () => {
 			await db.insert(shareSettings).values({
 				userId,
 				year,
-				mode: ShareMode.PRIVATE_OAUTH, // Not PRIVATE_LINK
+				mode: ShareMode.PRIVATE_OAUTH,
 				shareToken: token,
 				canUserControl: false
 			});
@@ -706,10 +686,6 @@ describe('Sharing Access Control', () => {
 		});
 	});
 
-	// =========================================================================
-	// Integration: Full Access Flow
-	// =========================================================================
-
 	describe('Integration: Access Flow', () => {
 		const userId = 1;
 		const year = 2024;
@@ -717,7 +693,6 @@ describe('Sharing Access Control', () => {
 		it('complete flow: admin sets private-link, user shares token', async () => {
 			const token = generateShareToken();
 
-			// Admin creates private-link settings
 			await db.insert(shareSettings).values({
 				userId,
 				year,
@@ -726,11 +701,9 @@ describe('Sharing Access Control', () => {
 				canUserControl: false
 			});
 
-			// Unauthenticated user with token can access via checkTokenAccess
 			const tokenResult = await checkTokenAccess(token);
 			expect(tokenResult.userId).toBe(userId);
 
-			// And via checkWrappedAccess with token
 			const wrappedResult = await checkWrappedAccess({ userId, year, shareToken: token });
 			expect(wrappedResult.accessReason).toBe('valid_token');
 		});
@@ -738,7 +711,6 @@ describe('Sharing Access Control', () => {
 		it('complete flow: mode changed from private-link to public', async () => {
 			const token = generateShareToken();
 
-			// Start with private-link
 			await db.insert(shareSettings).values({
 				userId,
 				year,
@@ -747,21 +719,17 @@ describe('Sharing Access Control', () => {
 				canUserControl: false
 			});
 
-			// Token works
 			let result = await checkWrappedAccess({ userId, year, shareToken: token });
 			expect(result.accessReason).toBe('valid_token');
 
-			// Change to public
 			await db
 				.update(shareSettings)
 				.set({ mode: ShareMode.PUBLIC })
 				.where(and(eq(shareSettings.userId, userId), eq(shareSettings.year, year)));
 
-			// Now anyone can access (no token needed)
 			result = await checkWrappedAccess({ userId, year });
 			expect(result.accessReason).toBe('public');
 
-			// Old token no longer works via checkTokenAccess
 			try {
 				await checkTokenAccess(token);
 				expect.unreachable('Should have thrown');
@@ -771,10 +739,6 @@ describe('Sharing Access Control', () => {
 		});
 	});
 
-	// =========================================================================
-	// Privacy Level Helpers - Floor Enforcement
-	// =========================================================================
-
 	describe('Privacy Level Helpers', () => {
 		describe('ShareModePrivacyLevel', () => {
 			it('has correct ordering (higher = more restrictive)', () => {
@@ -782,7 +746,6 @@ describe('Sharing Access Control', () => {
 				expect(ShareModePrivacyLevel[ShareMode.PRIVATE_LINK]).toBe(1);
 				expect(ShareModePrivacyLevel[ShareMode.PRIVATE_OAUTH]).toBe(2);
 
-				// OAuth is most restrictive
 				expect(ShareModePrivacyLevel[ShareMode.PRIVATE_OAUTH]).toBeGreaterThan(
 					ShareModePrivacyLevel[ShareMode.PRIVATE_LINK]
 				);
@@ -849,34 +812,27 @@ describe('Sharing Access Control', () => {
 		});
 	});
 
-	// =========================================================================
-	// Floor Enforcement in checkWrappedAccess
-	// =========================================================================
-
 	describe('Floor Enforcement', () => {
 		const userId = 1;
 		const year = 2024;
 
 		describe('when user setting is public but floor is private-oauth', () => {
 			beforeEach(async () => {
-				// Set global floor to private-oauth
 				await setGlobalShareDefaults({
 					defaultShareMode: ShareMode.PRIVATE_OAUTH,
 					allowUserControl: true
 				});
 
-				// Create user setting as public (less restrictive than floor)
 				await db.insert(shareSettings).values({
 					userId,
 					year,
-					mode: ShareMode.PUBLIC, // User wants public
+					mode: ShareMode.PUBLIC,
 					shareToken: null,
 					canUserControl: true
 				});
 			});
 
 			it('enforces floor by requiring authentication', async () => {
-				// Unauthenticated should be denied (floor is OAuth)
 				try {
 					await checkWrappedAccess({ userId, year });
 					expect.unreachable('Should have thrown');
@@ -894,31 +850,27 @@ describe('Sharing Access Control', () => {
 			it('returns effective mode (floor) in settings', async () => {
 				const currentUser = { id: 2, plexId: 200, isAdmin: false };
 				const result = await checkWrappedAccess({ userId, year, currentUser });
-				// Effective mode should be the floor, not the user's setting
 				expect(result.settings.mode).toBe(ShareMode.PRIVATE_OAUTH);
 			});
 		});
 
 		describe('when user setting is more restrictive than floor', () => {
 			beforeEach(async () => {
-				// Set global floor to public
 				await setGlobalShareDefaults({
 					defaultShareMode: ShareMode.PUBLIC,
 					allowUserControl: true
 				});
 
-				// Create user setting as private-oauth (more restrictive)
 				await db.insert(shareSettings).values({
 					userId,
 					year,
-					mode: ShareMode.PRIVATE_OAUTH, // More restrictive than floor
+					mode: ShareMode.PRIVATE_OAUTH,
 					shareToken: null,
 					canUserControl: true
 				});
 			});
 
 			it('respects user setting when more restrictive', async () => {
-				// Unauthenticated should be denied (user wants OAuth)
 				try {
 					await checkWrappedAccess({ userId, year });
 					expect.unreachable('Should have thrown');
@@ -958,10 +910,6 @@ describe('Sharing Access Control', () => {
 			});
 		});
 	});
-
-	// =========================================================================
-	// Server-Wide Wrapped Access Control
-	// =========================================================================
 
 	describe('checkServerWrappedAccess', () => {
 		const year = 2024;

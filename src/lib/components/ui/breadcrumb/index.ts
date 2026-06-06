@@ -18,7 +18,6 @@ export {
 	Page,
 	Page as BreadcrumbPage,
 	Root,
-	//
 	Root as Breadcrumb,
 	Separator,
 	Separator as BreadcrumbSeparator

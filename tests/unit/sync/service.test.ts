@@ -88,7 +88,7 @@ describe('startSync service behavior', () => {
 		expect(row?.status).toBe('cancelled');
 		expect(row?.completedAt).not.toBeNull();
 		expect(row?.error).toBeNull();
-		// lastViewedAt should be persisted even for cancelled syncs (null when aborted before any pages)
+		// Aborting before the first page must not invent a sync watermark.
 		expect(row?.lastViewedAt).toBeNull();
 	});
 

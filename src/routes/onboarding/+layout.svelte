@@ -11,10 +11,8 @@ let { data, children }: { data: LayoutData; children: Snippet } = $props();
 let logoRef: HTMLElement | undefined = $state();
 let contentRef: HTMLElement | undefined = $state();
 
-// Theme class derived from layout data
 const themeClass = $derived(`theme-${data.uiTheme ?? 'modern-minimal'}`);
 
-// All available theme classes for removal
 const themeClasses = [
 	'theme-modern-minimal',
 	'theme-supabase',
@@ -26,18 +24,13 @@ const themeClasses = [
 	'theme-champagne-premium'
 ];
 
-// Apply theme class to body and load font
 $effect(() => {
-	// Remove all existing theme classes
 	document.body.classList.remove(...themeClasses);
 
-	// Add the current theme class
 	document.body.classList.add(themeClass);
 
-	// Add onboarding route class for potential styling hooks
 	document.body.classList.add('onboarding-route');
 
-	// Load theme-specific font
 	loadThemeFonts(data.uiTheme ?? 'modern-minimal');
 
 	return () => {
@@ -45,7 +38,6 @@ $effect(() => {
 	};
 });
 
-// Animate logo on mount
 $effect(() => {
 	if (!logoRef) return;
 
@@ -64,14 +56,11 @@ $effect(() => {
 </svelte:head>
 
 <div class="onboarding-layout">
-	<!-- Background effects -->
 	<div class="bg-gradient"></div>
 	<div class="bg-noise"></div>
 	<div class="bg-vignette"></div>
 
-	<!-- Content container -->
 	<div class="onboarding-container">
-		<!-- Logo -->
 		<header bind:this={logoRef} class="onboarding-header">
 			<div class="logo-wrapper">
 				<Logo size="md" class="logo" />
@@ -80,17 +69,14 @@ $effect(() => {
 			<p class="setup-label">Initial Setup</p>
 		</header>
 
-		<!-- Step indicator -->
 		<div class="step-indicator-wrapper">
 			<StepIndicator steps={data.steps} currentStep={data.currentStepIndex} />
 		</div>
 
-		<!-- Page content -->
 		<main bind:this={contentRef} class="onboarding-content">
 			{@render children()}
 		</main>
 
-		<!-- Footer -->
 		<footer class="onboarding-footer">
 			<p>Your Plex viewing history, beautifully wrapped.</p>
 		</footer>
@@ -110,7 +96,6 @@ $effect(() => {
 			background: oklch(var(--background));
 		}
 
-		/* Background gradient - cinematic theater lighting using theme colors */
 		.bg-gradient {
 			position: fixed;
 			inset: 0;
@@ -123,7 +108,6 @@ $effect(() => {
 			pointer-events: none;
 		}
 
-		/* Film grain texture */
 		.bg-noise {
 			position: fixed;
 			inset: 0;
@@ -133,7 +117,6 @@ $effect(() => {
 			pointer-events: none;
 		}
 
-		/* Vignette effect */
 		.bg-vignette {
 			position: fixed;
 			inset: 0;
@@ -158,7 +141,7 @@ $effect(() => {
 		.onboarding-header {
 			text-align: center;
 			margin-bottom: 2.5rem;
-			opacity: 0; /* Start hidden for animation */
+			opacity: 0;
 		}
 
 		.logo-wrapper {
@@ -219,7 +202,6 @@ $effect(() => {
 			letter-spacing: 0.02em;
 		}
 
-		/* Responsive */
 		@media (max-width: 640px) {
 			.onboarding-container {
 				padding: 1.5rem 1rem;
