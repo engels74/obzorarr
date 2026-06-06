@@ -246,9 +246,6 @@ export const actions: Actions = requireAdminActions({
 		}
 	},
 
-	/**
-	 * Delete a custom slide
-	 */
 	deleteCustom: async ({ request }) => {
 		const formData = await request.formData();
 		const idStr = formData.get('id');

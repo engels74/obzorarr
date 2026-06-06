@@ -224,7 +224,7 @@ function handleKeyDown(event: KeyboardEvent): void {
 		.scroll-content {
 			padding-bottom: 50vh;
 			position: relative;
-			z-index: 1; /* Above noise and vignette layers */
+			z-index: 1;
 		}
 
 		.scroll-section {
@@ -360,7 +360,6 @@ function handleKeyDown(event: KeyboardEvent): void {
 			}
 		}
 
-		/* Reduced motion - instant visibility */
 		@media (prefers-reduced-motion: reduce) {
 			.slide-content {
 				opacity: 1 !important;

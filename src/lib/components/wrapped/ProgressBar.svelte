@@ -2,7 +2,6 @@
 interface Props {
 	current: number;
 	total: number;
-	/** Additional CSS classes */
 	class?: string;
 }
 

@@ -1,14 +1,5 @@
 import { defineTemplateCategory } from './base';
 
-/**
- * Time Equivalency Templates
- *
- * Convert watch time to relatable real-world comparisons
- * (flights, book reading, marathons, etc.)
- *
- * @module server/funfacts/templates/time-equivalency
- */
-
 export const TIME_EQUIVALENCY_TEMPLATES = defineTemplateCategory('time-equivalency', [
 	{
 		id: 'flight-tokyo',

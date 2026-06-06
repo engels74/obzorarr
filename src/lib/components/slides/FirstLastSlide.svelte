@@ -97,7 +97,6 @@ $effect(() => {
 
 	const animations: ReturnType<typeof animate>[] = [];
 
-	// Container: opacity fade only (cards provide motion)
 	const containerAnim = animate(
 		container,
 		{ opacity: [0, 1] },

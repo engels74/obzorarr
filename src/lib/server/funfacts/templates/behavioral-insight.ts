@@ -1,14 +1,5 @@
 import { defineTemplateCategory } from './base';
 
-/**
- * Behavioral Insight Templates
- *
- * Templates based on percentile, viewing patterns, and comparisons
- * (night owl, early bird, peak month)
- *
- * @module server/funfacts/templates/behavioral-insight
- */
-
 export const BEHAVIORAL_TEMPLATES = defineTemplateCategory('behavioral-insight', [
 	{
 		id: 'top-percentile-elite',

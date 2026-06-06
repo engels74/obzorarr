@@ -123,7 +123,6 @@ $effect(() => {
 			}
 		);
 
-		// Animate bars with dramatic spring and additional per-bar delay
 		if (validBars.length > 0) {
 			const barsAnim = animate(
 				validBars,

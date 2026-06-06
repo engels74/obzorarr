@@ -62,9 +62,6 @@ import {
 import { ShareMode, type ShareModeType } from '$lib/sharing/types';
 import type { Actions, PageServerLoad } from './$types';
 
-/**
- * Validation schema for settings form
- */
 const SettingsSchema = z.object({
 	uiTheme: z.enum([
 		ThemePresets.MODERN_MINIMAL,
@@ -118,9 +115,6 @@ const SettingsSchema = z.object({
 	aiPersona: AIPersonaSchema.optional()
 });
 
-/**
- * Load function - provides current settings
- */
 export const load: PageServerLoad = async ({ parent }) => {
 	const parentData = await parent();
 
@@ -251,9 +245,6 @@ async function requireOnboardingSettingsClaim(
 	return null;
 }
 
-/**
- * Form actions
- */
 export const actions: Actions = {
 	saveSettings: async ({ request, locals, cookies, url }) => {
 		const guardResult = await requireOnboardingSettingsClaim(cookies, url);

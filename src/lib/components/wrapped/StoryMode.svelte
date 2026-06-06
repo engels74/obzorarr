@@ -533,7 +533,7 @@ function handleSlideAnimationComplete(): void {}
 			display: flex;
 			align-items: center;
 			justify-content: center;
-			z-index: 3; /* Above noise and vignette layers */
+			z-index: 3;
 		}
 
 		.slide {
@@ -719,7 +719,6 @@ function handleSlideAnimationComplete(): void {}
 			}
 		}
 
-		/* Respect users who request reduced motion. */
 		@media (prefers-reduced-motion: reduce) {
 			.navigation-hint {
 				animation: none;

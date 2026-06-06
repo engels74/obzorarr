@@ -10,17 +10,6 @@ import { createSyncStatusStore, type SyncStatusStore } from '$lib/stores/sync-st
 import type { SyncTerminalEventType } from '$lib/sync/types';
 import type { LayoutData } from './$types';
 
-/**
- * Wrapped Layout
- *
- * Provides the wrapped theme data and real-time sync status to nested routes.
- * The actual theme application is handled by the root layout,
- * which reads the merged wrappedTheme data from this layout's server load.
- *
- * Shows a loading overlay during sync to prevent jarring content transitions.
- * When sync completes, data is refreshed and overlay fades out smoothly.
- */
-
 interface Props {
 	children: Snippet;
 	data: LayoutData;
@@ -145,7 +134,6 @@ $effect(() => {
 	};
 });
 
-// Use reactive store values if available, otherwise fall back to server data
 const inProgress = $derived(syncStatusStore?.inProgress ?? data.syncStatus?.inProgress ?? false);
 const progress = $derived(syncStatusStore?.progress ?? data.syncStatus?.progress ?? null);
 

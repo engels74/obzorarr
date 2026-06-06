@@ -37,17 +37,13 @@ let { active = true, class: klass = '', variant = 'default', children }: Props =
 			overflow: visible;
 		}
 
-		/* Note: Noise and vignette effects are now applied at the StoryMode/ScrollMode level
-		   to ensure seamless full-viewport coverage without visible "card" boundaries */
+		/* StoryMode/ScrollMode own noise and vignette so they cover the full viewport without card seams. */
 
 		.slide:not(.active) {
 			visibility: hidden;
 			position: absolute;
 		}
 
-		/* Variant styles - all use transparent background, effects from parent */
-
-		/* Highlight variant - adds subtle glow overlay (content-level effect) */
 		.variant-highlight::before {
 			content: '';
 			position: absolute;
@@ -60,10 +56,6 @@ let { active = true, class: klass = '', variant = 'default', children }: Props =
 			pointer-events: none;
 			z-index: 0;
 		}
-
-		/* Dark variant - no additional styling needed, uses parent background */
-
-		/* Glass variant - no background change, relies on glass containers */
 
 		.variant-glass > :global(.content),
 		.variant-glass > :global(.slide-content),

@@ -20,14 +20,6 @@ import { Button } from '$lib/components/ui/button';
 import { Input } from '$lib/components/ui/input';
 import type { ActionData, PageData } from './$types';
 
-/**
- * Public Landing Page
- *
- * Soviet/communist themed landing page for Obzorarr with:
- * - Username-based quick access to wrapped pages (primary CTA)
- * - Plex OAuth login button for dashboard access (secondary)
- */
-
 let { data, form }: { data: PageData; form: ActionData } = $props();
 
 let username = $state('');

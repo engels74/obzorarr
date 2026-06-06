@@ -19,9 +19,6 @@ import { getGlobalAllowUserControl, getGlobalDefaultShareMode } from '$lib/serve
 import { getPlayHistoryCount, getSyncProgress, isSyncRunning } from '$lib/server/sync';
 import type { Actions, PageServerLoad } from './$types';
 
-/**
- * Load function - marks onboarding complete and provides summary
- */
 export const load: PageServerLoad = async ({ parent, locals, url, cookies }) => {
 	if (!locals.user?.isAdmin) {
 		redirect(303, '/onboarding/claim');
@@ -171,13 +168,7 @@ async function requireOnboardingCompleteClaim(
 	return null;
 }
 
-/**
- * Form actions
- */
 export const actions: Actions = {
-	/**
-	 * Go to dashboard
-	 */
 	goToDashboard: async ({ locals, cookies, url }) => {
 		const guardResult = await requireOnboardingCompleteClaim(cookies, url);
 		if (guardResult) return guardResult;

@@ -12,13 +12,6 @@ import { handleFormToast } from '$lib/utils/form-toast';
 import { submitAction } from '$lib/utils/submit-action';
 import type { ActionData, PageData } from './$types';
 
-/**
- * Admin Slides Page
- *
- * Manages slide configuration (enable/disable, reordering)
- * and custom slides (create, edit, delete with Markdown).
- */
-
 let { data, form }: { data: PageData; form: ActionData } = $props();
 
 $effect(() => {

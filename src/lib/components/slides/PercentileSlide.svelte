@@ -195,7 +195,6 @@ $effect(() => {
 			}
 		}
 
-		/* Disable animation for reduced motion preference */
 		@media (prefers-reduced-motion: reduce) {
 			.gradient-ring.animate-spin {
 				animation: none;

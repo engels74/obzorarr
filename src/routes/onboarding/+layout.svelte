@@ -96,7 +96,6 @@ $effect(() => {
 			background: oklch(var(--background));
 		}
 
-		/* Background gradient - cinematic theater lighting using theme colors */
 		.bg-gradient {
 			position: fixed;
 			inset: 0;

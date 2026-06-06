@@ -1,14 +1,5 @@
 import { defineTemplateCategory } from './base';
 
-/**
- * Social Comparison Templates
- *
- * Server-relative comparison templates
- * (rankings, above average, percentiles)
- *
- * @module server/funfacts/templates/social-comparison
- */
-
 export const SOCIAL_COMPARISON_TEMPLATES = defineTemplateCategory('social-comparison', [
 	{
 		id: 'server-champion',

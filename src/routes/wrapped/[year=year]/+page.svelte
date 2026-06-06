@@ -13,15 +13,6 @@ import {
 } from '$lib/components/wrapped';
 import type { PageProps } from './$types';
 
-/**
- * Server-wide Wrapped Page
- *
- * Displays the server-wide Year in Review statistics.
- * Supports both Story Mode (full-screen slides) and Scroll Mode.
- *
- * @module routes/wrapped/[year=year]
- */
-
 let { data }: PageProps = $props();
 
 const messagingContext = $derived(createServerContext(data.serverName));
@@ -44,7 +35,6 @@ function readInitialSlideIndex(): number {
 	return Math.min(Math.max(parsed, 0), max);
 }
 
-/** Current slide index for mode switching (preserves position) */
 let currentSlideIndex = $state(readInitialSlideIndex());
 
 let showSummary = $state(false);

@@ -1,14 +1,5 @@
 import { defineTemplateCategory } from './base';
 
-/**
- * Achievement Templates
- *
- * Milestone-based templates celebrating viewing accomplishments
- * (Century Club, Marathon Master, milestones)
- *
- * @module server/funfacts/templates/achievement
- */
-
 export const ACHIEVEMENT_TEMPLATES = defineTemplateCategory('achievement', [
 	{
 		id: 'century-club',

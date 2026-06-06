@@ -14,22 +14,11 @@ import {
 } from '$lib/components/wrapped';
 import type { PageProps } from './$types';
 
-/**
- * Per-user Wrapped Page
- *
- * Displays the user-specific Year in Review statistics.
- * Supports both Story Mode (full-screen slides) and Scroll Mode.
- *
- * @module routes/wrapped/[year=year]/u/[identifier]
- */
-
 let { data }: PageProps = $props();
 
 const messagingContext = createPersonalContext();
 
-/** Override for optimistic updates (null means use server value) */
 let showLogoOverride = $state<boolean | null>(null);
-/** Effective logo visibility - uses override if pending, otherwise server value */
 let showLogo = $derived(showLogoOverride ?? data.showLogo);
 
 type ViewMode = 'story' | 'scroll';
@@ -50,7 +39,6 @@ function readInitialSlideIndex(): number {
 	return Math.min(Math.max(parsed, 0), max);
 }
 
-/** Current slide index for mode switching (preserves position) */
 let currentSlideIndex = $state(readInitialSlideIndex());
 
 let showSummary = $state(false);

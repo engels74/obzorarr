@@ -3,9 +3,7 @@ type ViewMode = 'story' | 'scroll';
 
 interface Props {
 	mode: ViewMode;
-	/** Callback when mode changes */
 	onModeChange: (newMode: ViewMode) => void;
-	/** Additional CSS classes */
 	class?: string;
 }
 

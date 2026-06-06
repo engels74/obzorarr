@@ -70,12 +70,10 @@ describe('Slide Config Service', () => {
 		});
 
 		it('does not re-migrate on subsequent runs', async () => {
-			// First initialization with migration
 			await initializeDefaultSlideConfig();
 
 			await updateSlideConfig('total-time', { enabled: false });
 
-			// Second initialization (should not override user's choice)
 			await initializeDefaultSlideConfig();
 
 			const config = await getSlideConfigByType('total-time');
@@ -275,9 +273,7 @@ describe('Slide Config Service', () => {
 			const newOrder = ['genres', 'total-time'] as const;
 			const result = await reorderSlides([...newOrder]);
 
-			// Should return all configs sorted by sortOrder
 			expect(result.length).toBeGreaterThan(0);
-			// First two should be in our specified order
 			expect(result[0]?.slideType).toBe('genres');
 			expect(result[1]?.slideType).toBe('total-time');
 		});

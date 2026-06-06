@@ -1,14 +1,5 @@
 import { defineTemplateCategory } from './base';
 
-/**
- * Content Comparison Templates
- *
- * Templates based on top content and play patterns
- * (favorite movies, shows, variety)
- *
- * @module server/funfacts/templates/content-comparison
- */
-
 export const CONTENT_COMPARISON_TEMPLATES = defineTemplateCategory('content-comparison', [
 	{
 		id: 'top-movie-obsession',

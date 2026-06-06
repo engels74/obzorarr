@@ -2,9 +2,7 @@
 import obzorarrIcon from '$lib/assets/obzorarr-icon.svg';
 
 interface Props {
-	/** Size preset or pixel value */
 	size?: 'sm' | 'md' | 'lg' | 'xl' | number;
-	/** Additional CSS classes */
 	class?: string;
 }
 

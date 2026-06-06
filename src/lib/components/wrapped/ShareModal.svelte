@@ -124,7 +124,7 @@ async function copyUrl(): Promise<void> {
 			copied = false;
 		}, 2000);
 	} catch {
-		// Fallback for older browsers
+		// Clipboard APIs can be unavailable outside secure contexts or in older browsers.
 		const input = document.createElement('input');
 		input.value = shareUrl;
 		document.body.appendChild(input);
@@ -511,7 +511,6 @@ $effect(() => {
 			</div>
 		{/if}
 
-			<!-- Disabled visibility controls need an in-flow explanation and a recovery path. -->
 		{#if showNoControlNotice}
 			<div class="control-notice">
 				<p class="control-notice-text">
@@ -523,7 +522,6 @@ $effect(() => {
 			</div>
 		{/if}
 
-			<!-- Non-admin users cannot access the admin privacy destination. -->
 		<div class="advanced-section">
 			<a
 				href={isAdmin ? '/admin/settings?tab=privacy' : '/dashboard/settings'}

@@ -163,7 +163,6 @@ $effect(() => {
 	animations.push(containerAnim);
 
 	if (showDualView) {
-		// Dual view: animate monthly bars first, then hourly with staggered delay
 		const validMonthlyBars = monthlyBars.filter(Boolean);
 		const validHourlyBars = hourlyBars.filter(Boolean);
 		const monthlyStagger = getAdaptiveStagger(validMonthlyBars.length);
@@ -653,10 +652,6 @@ function formatPlays(plays: number): string {
 			margin: 0;
 		}
 
-		/* ==========================================================================
-		   Dual-view styles (tablet/desktop side-by-side charts)
-		   ========================================================================== */
-
 		.content.dual-view {
 			max-width: var(--content-max-xl, 1100px);
 		}
@@ -711,10 +706,6 @@ function formatPlays(plays: number): string {
 			font-size: 0.875rem;
 		}
 
-		/* ==========================================================================
-		   Mobile-only styles (single chart with toggle)
-		   ========================================================================== */
-
 		.mobile-header {
 			display: flex;
 			flex-direction: column;
@@ -762,10 +753,6 @@ function formatPlays(plays: number): string {
 			outline: 2px solid oklch(var(--primary) / 0.5);
 			outline-offset: 2px;
 		}
-
-		/* ==========================================================================
-		   Responsive breakpoints
-		   ========================================================================== */
 
 		@media (max-width: 767px) {
 			.content {

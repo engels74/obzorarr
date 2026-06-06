@@ -1,14 +1,5 @@
 import { defineTemplateCategory } from './base';
 
-/**
- * Temporal Pattern Templates
- *
- * Templates based on first/last watch and temporal patterns
- * (year bookends, milestones)
- *
- * @module server/funfacts/templates/temporal-pattern
- */
-
 export const TEMPORAL_TEMPLATES = defineTemplateCategory('temporal-pattern', [
 	{
 		id: 'first-of-year',

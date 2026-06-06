@@ -103,7 +103,6 @@ $effect(() => {
 		...SPRING_PRESETS.snappy
 	});
 
-	// Animate number with impactful scale (more pronounced overshoot)
 	const numberAnim = animate(
 		numberEl,
 		{

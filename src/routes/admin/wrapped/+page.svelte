@@ -10,14 +10,6 @@ import Star from '@lucide/svelte/icons/star';
 import { goto } from '$app/navigation';
 import type { PageData } from './$types';
 
-/**
- * Admin Wrapped Hub Page
- *
- * Central hub for accessing wrapped presentations and configuration.
- * Features a cinematic, premium design with distinct visual identities
- * for personal and server-wide wrapped experiences.
- */
-
 interface Props {
 	data: PageData;
 }

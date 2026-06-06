@@ -177,7 +177,6 @@ $effect(() => {
 			}
 		}
 
-		/* Disable animation for reduced motion preference */
 		@media (prefers-reduced-motion: reduce) {
 			.icon {
 				animation: none;

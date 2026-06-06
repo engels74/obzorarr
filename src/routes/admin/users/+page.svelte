@@ -5,15 +5,6 @@ import { handleFormToast } from '$lib/utils/form-toast';
 import { maskEmail } from '$lib/utils/format';
 import type { ActionData, PageData } from './$types';
 
-/**
- * Admin Users Page
- *
- * Manages Plex server users:
- * - View all users with watch time stats
- * - Configure per-user permissions
- * - Preview user wrapped pages
- */
-
 let { data, form }: { data: PageData; form: ActionData } = $props();
 let failedAvatarUserIds = $state<Set<number>>(new Set());
 

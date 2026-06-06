@@ -1,14 +1,5 @@
 import { defineTemplateCategory } from './base';
 
-/**
- * Entertainment Trivia Templates
- *
- * Pop culture comparison templates using famous shows/movies
- * (Game of Thrones, Friends, Star Wars, etc.)
- *
- * @module server/funfacts/templates/entertainment-trivia
- */
-
 export const ENTERTAINMENT_TRIVIA_TEMPLATES = defineTemplateCategory('entertainment-trivia', [
 	{
 		id: 'game-of-thrones-marathon',
