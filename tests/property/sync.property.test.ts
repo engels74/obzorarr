@@ -478,7 +478,7 @@ describe('getYearStartTimestamp', () => {
 		const ts2024 = getYearStartTimestamp(2024);
 		const date2024 = new Date(ts2024 * 1000);
 		expect(date2024.getUTCFullYear()).toBe(2024);
-		expect(date2024.getUTCMonth()).toBe(0); // January
+		expect(date2024.getUTCMonth()).toBe(0);
 		expect(date2024.getUTCDate()).toBe(1);
 		expect(date2024.getUTCHours()).toBe(0);
 		expect(date2024.getUTCMinutes()).toBe(0);

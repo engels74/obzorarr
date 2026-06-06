@@ -883,7 +883,6 @@ export async function clearPlayHistory(year?: number): Promise<number> {
 			.where(between(playHistory.viewedAt, startTimestamp, endTimestamp))
 			.returning();
 
-		// Invalidate cached stats since they're now stale
 		await clearStatsCache(year);
 
 		return result.length;

@@ -217,12 +217,10 @@ const onboardingHandle: Handle = async ({ event, resolve }) => {
 			return redirectResponse(event, `/onboarding/${currentStep}`);
 		}
 	} catch (error) {
-		// Re-throw redirects - they are expected behavior, not errors
 		if (isRedirect(error)) {
 			throw error;
 		}
 
-		// Log actual errors but don't block the request
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		logger.error(`Onboarding check failed: ${errorMessage}`, 'OnboardingHandle');
 	}

@@ -501,7 +501,7 @@ describe('Sharing Access Control', () => {
 			await db.insert(shareSettings).values({
 				userId,
 				year,
-				mode: ShareMode.PRIVATE_OAUTH, // Not PRIVATE_LINK
+				mode: ShareMode.PRIVATE_OAUTH,
 				shareToken: token,
 				canUserControl: false
 			});
@@ -826,7 +826,7 @@ describe('Sharing Access Control', () => {
 				await db.insert(shareSettings).values({
 					userId,
 					year,
-					mode: ShareMode.PUBLIC, // User wants public
+					mode: ShareMode.PUBLIC,
 					shareToken: null,
 					canUserControl: true
 				});
@@ -864,7 +864,7 @@ describe('Sharing Access Control', () => {
 				await db.insert(shareSettings).values({
 					userId,
 					year,
-					mode: ShareMode.PRIVATE_OAUTH, // More restrictive than floor
+					mode: ShareMode.PRIVATE_OAUTH,
 					shareToken: null,
 					canUserControl: true
 				});

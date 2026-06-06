@@ -7,7 +7,7 @@ export const SOCIAL_COMPARISON_TEMPLATES = defineTemplateCategory('social-compar
 		comparisonTemplate: 'The crown is {possessive}, streaming royalty!',
 		icon: '👑',
 		requiredStats: ['percentile'],
-		minThresholds: { percentile: 99 }, // Essentially top 1%
+		minThresholds: { percentile: 99 },
 		priority: 80
 	},
 	{

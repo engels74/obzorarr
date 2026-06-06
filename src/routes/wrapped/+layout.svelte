@@ -27,7 +27,6 @@ function hasLookupSyncMarker(layoutData: LayoutData): boolean {
 	return Boolean(lookupData.lookupSyncTriggered ?? lookupData.lookupSyncStarted);
 }
 
-/** Minimum time to show loading overlay for consistent UX */
 const MIN_LOADING_DISPLAY_MS = 300;
 const FAILED_LIVE_SYNC_MESSAGE =
 	"Couldn't refresh your viewing history from Plex. Showing your most recent data.";
@@ -36,21 +35,16 @@ let isLoading = $state(untrack(() => data.syncStatus?.inProgress ?? false));
 
 let loadingStartTime = $state(Date.now());
 
-/** Whether sync completion has been handled (prevents double-handling) */
 let syncCompletionHandled = $state(false);
 
 const initialLookupSyncMarker = untrack(() => hasLookupSyncMarker(data));
 
 let lookupSyncFeedbackPending = $state(initialLookupSyncMarker);
 
-/** Prevents repeatedly re-arming the same server-provided lookup marker */
 let lookupSyncMarkerSeen = $state(initialLookupSyncMarker);
 
 let syncStatusStore = $state<SyncStatusStore | null>(null);
 
-/**
- * Hide loading overlay with minimum display time guarantee
- */
 async function hideLoadingWithMinDelay(): Promise<void> {
 	const elapsed = Date.now() - loadingStartTime;
 	if (elapsed < MIN_LOADING_DISPLAY_MS) {
@@ -69,7 +63,6 @@ function consumeLookupSyncMarker(event: SyncTerminalEventType): boolean {
 async function handleSyncComplete(event: SyncTerminalEventType): Promise<void> {
 	lookupSyncFeedbackPending = false;
 
-	// Prevent double handling
 	if (syncCompletionHandled) return;
 	syncCompletionHandled = true;
 	if (!isLoading) {

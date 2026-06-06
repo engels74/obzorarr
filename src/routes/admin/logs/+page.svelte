@@ -332,7 +332,6 @@ $effect(() => {
 	};
 });
 
-// Connect to SSE on mount if autoScroll is enabled (browser-only)
 $effect(() => {
 	if (browser && autoScroll && !eventSource) {
 		connectSSE();

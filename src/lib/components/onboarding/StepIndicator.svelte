@@ -161,7 +161,7 @@ $effect(() => {
 
 		.step-connector {
 			position: absolute;
-			left: calc(50% + 18px + 4px); /* Keep connector lines outside the badge. */
+			left: calc(50% + 18px + 4px);
 			right: calc(-50% + 18px + 4px);
 			top: 50%;
 			transform: translateY(-50%);

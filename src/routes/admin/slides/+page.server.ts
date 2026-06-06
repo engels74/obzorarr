@@ -268,9 +268,6 @@ export const actions: Actions = requireAdminActions({
 		}
 	},
 
-	/**
-	 * Preview Markdown content
-	 */
 	previewMarkdown: async ({ request }) => {
 		const formData = await request.formData();
 		const content = formData.get('content');
@@ -288,9 +285,6 @@ export const actions: Actions = requireAdminActions({
 		}
 	},
 
-	/**
-	 * Set fun fact frequency
-	 */
 	setFunFactFrequency: async ({ request }) => {
 		const formData = await request.formData();
 		const mode = formData.get('mode');

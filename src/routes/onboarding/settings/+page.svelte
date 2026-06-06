@@ -1479,7 +1479,6 @@ function getThemeColors(themeValue: string) {
 			margin-bottom: 0.75rem;
 		}
 
-		/* AI-key-missing notice (ISSUE-004): AI enabled but no effective key. */
 		.ai-key-warning {
 			margin: 0.625rem 0 0;
 			padding: 0.625rem 0.75rem;
@@ -1491,7 +1490,6 @@ function getThemeColors(themeValue: string) {
 			border-radius: 0.625rem;
 		}
 
-		/* Admin contradiction notice: landing lookup on + non-public default. */
 		.landing-warning {
 			margin: 0.625rem 0 0;
 			padding: 0.625rem 0.75rem;
@@ -1503,9 +1501,6 @@ function getThemeColors(themeValue: string) {
 			border-radius: 0.625rem;
 		}
 
-		/* ==========================================================================
-		   Privacy Presets
-		   ========================================================================== */
 		.preset-grid {
 			display: grid;
 			grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));

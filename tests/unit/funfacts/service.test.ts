@@ -124,15 +124,15 @@ describe('buildGenerationContext', () => {
 		const stats = createMockUserStats();
 		const context = buildGenerationContext(stats);
 
-		expect(context.hours).toBe(100); // 6000 / 60
-		expect(context.days).toBe(4.2); // 100 / 24 rounded to 1 decimal
+		expect(context.hours).toBe(100);
+		expect(context.days).toBe(4.2);
 		expect(context.plays).toBe(200);
 		expect(context.topMovie).toBe('The Matrix');
 		expect(context.topMovieCount).toBe(5);
 		expect(context.topShow).toBe('Breaking Bad');
 		expect(context.topShowCount).toBe(50);
 		expect(context.percentile).toBe(85);
-		expect(context.bingeHours).toBe(5); // 300 / 60
+		expect(context.bingeHours).toBe(5);
 		expect(context.bingePlays).toBe(6);
 		expect(context.firstWatchTitle).toBe('New Year Movie');
 		expect(context.lastWatchTitle).toBe('Year End Show');
@@ -145,7 +145,7 @@ describe('buildGenerationContext', () => {
 		const context = buildGenerationContext(stats);
 
 		expect(context.percentile).toBe(50);
-		expect(context.hours).toBe(1000); // 60000 / 60
+		expect(context.hours).toBe(1000);
 	});
 
 	it('handles missing optional fields', () => {
@@ -170,7 +170,7 @@ describe('buildGenerationContext', () => {
 
 	it('calculates peak hour correctly', () => {
 		const minutes = Array(24).fill(0);
-		minutes[22] = 1000; // 10 PM peak
+		minutes[22] = 1000;
 		const stats = createMockUserStats({
 			watchTimeByHour: { minutes, plays: Array(24).fill(1) }
 		});
@@ -181,7 +181,7 @@ describe('buildGenerationContext', () => {
 
 	it('calculates peak month correctly', () => {
 		const minutes = Array(12).fill(0);
-		minutes[6] = 5000; // July peak (0-indexed)
+		minutes[6] = 5000;
 		const stats = createMockUserStats({
 			watchTimeByMonth: { minutes, plays: Array(12).fill(1) }
 		});
@@ -257,10 +257,8 @@ describe('isTemplateApplicable', () => {
 			minThresholds: { peakHour: 21 }
 		};
 
-		// peakHour is 22, so should be applicable
 		expect(isTemplateApplicable(template, mockContext)).toBe(true);
 
-		// peakHour is 18, so should not be applicable
 		expect(isTemplateApplicable(template, { ...mockContext, peakHour: 18 })).toBe(false);
 	});
 
@@ -272,10 +270,8 @@ describe('isTemplateApplicable', () => {
 			requiredStats: ['peakHour']
 		};
 
-		// peakHour is 22, so should not be applicable
 		expect(isTemplateApplicable(template, mockContext)).toBe(false);
 
-		// peakHour is 7, so should be applicable
 		expect(isTemplateApplicable(template, { ...mockContext, peakHour: 7 })).toBe(true);
 	});
 
@@ -336,7 +332,7 @@ describe('interpolateTemplate', () => {
 
 	it('formats peak month correctly', () => {
 		const result = interpolateTemplate('{peakMonthName}', mockContext);
-		expect(result).toBe('July'); // Month 6 (0-indexed)
+		expect(result).toBe('July');
 	});
 
 	it('preserves unknown placeholders', () => {
@@ -476,7 +472,6 @@ describe('generateFromTemplates', () => {
 		const result = generateFromTemplates(context, { count: 5 });
 
 		for (const fact of result) {
-			// Should not contain {placeholder} patterns
 			expect(fact.fact).not.toMatch(/\{[a-zA-Z]+\}/);
 			if (fact.comparison) {
 				expect(fact.comparison).not.toMatch(/\{[a-zA-Z]+\}/);
@@ -815,7 +810,7 @@ describe('generateWithAI', () => {
 			openaiApiKey: 'sk-test',
 			openaiBaseUrl: 'https://api.openai.com/v1',
 			openaiModel: 'gpt-5-mini',
-			maxAIRetries: 0, // No retries for this test
+			maxAIRetries: 0,
 			aiTimeoutMs: 10000,
 			aiPersona: 'witty' as const
 		};

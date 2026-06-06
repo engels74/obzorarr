@@ -326,7 +326,7 @@ describe('Slide Config Service', () => {
 
 			const config = await getSlideConfigByType('total-time');
 			expect(config?.enabled).toBe(true);
-			expect(config?.sortOrder).toBe(0); // Should be back at default position
+			expect(config?.sortOrder).toBe(0);
 		});
 	});
 });

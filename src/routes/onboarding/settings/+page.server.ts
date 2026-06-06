@@ -388,9 +388,6 @@ export const actions: Actions = {
 		}
 	},
 
-	/**
-	 * Skip settings (use defaults) and continue
-	 */
 	skipSettings: async ({ locals, cookies, url }) => {
 		const guardResult = await requireOnboardingSettingsClaim(cookies, url);
 		if (guardResult) return guardResult;

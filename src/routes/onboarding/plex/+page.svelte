@@ -361,7 +361,7 @@ function sortConnections(
 			if (c.uri.includes('.plex.direct')) return 0;
 			if (!c.local && !c.relay) return 1;
 			if (c.local && !c.relay) return 2;
-			return 3; // relay
+			return 3;
 		};
 		return priority(a) - priority(b);
 	});

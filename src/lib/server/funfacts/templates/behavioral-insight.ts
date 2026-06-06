@@ -23,7 +23,7 @@ export const BEHAVIORAL_TEMPLATES = defineTemplateCategory('behavioral-insight',
 		comparisonTemplate: 'The night owl life suits {object} perfectly!',
 		icon: '🦉',
 		requiredStats: ['peakHour'],
-		minThresholds: { peakHour: 21 } // 9 PM or later
+		minThresholds: { peakHour: 21 }
 	},
 	{
 		id: 'early-bird',
@@ -48,7 +48,7 @@ export const BEHAVIORAL_TEMPLATES = defineTemplateCategory('behavioral-insight',
 		comparisonTemplate: 'Consistency is key!',
 		icon: '📊',
 		requiredStats: ['plays'],
-		minThresholds: { plays: 100 } // At least ~every 3-4 days
+		minThresholds: { plays: 100 }
 	},
 	{
 		id: 'consistent-viewer',

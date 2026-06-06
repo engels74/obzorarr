@@ -136,8 +136,6 @@ export const publicLandingLookupCopy = {
 		'Public lookup is on, but your default share mode is non-public — every lookup will return "not found" until the default share mode is set to Public.'
 } as const;
 
-// "What this exposes" preview-row tooltips
-
 /**
  * Stable identifiers for the four shared "What this exposes" preview rows. They
  * map onto the corresponding {@link PrivacyPreviewModel} fields but are keyed by
@@ -207,8 +205,6 @@ export const PRIVACY_PREVIEW_ROW_TOOLTIPS: Record<
 			'Members normally reach Wrapped pages from the dashboard, so this form mainly affects anonymous visitors on the landing page.'
 	}
 };
-
-// "What this exposes" preview-VALUE tooltips
 
 /**
  * Value literals each preview row can display, mirroring the matching

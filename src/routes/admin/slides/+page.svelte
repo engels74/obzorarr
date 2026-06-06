@@ -154,7 +154,6 @@ type UnifiedSlideItem =
 			renderedHtml?: string;
 	  };
 
-// Combine built-in slides and custom slides into a unified sorted list
 const unifiedSlides = $derived.by(() => {
 	const items: UnifiedSlideItem[] = [];
 

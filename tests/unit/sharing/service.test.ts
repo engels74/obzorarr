@@ -593,7 +593,6 @@ describe('Sharing Service', () => {
 
 				const settings = await getOrCreateShareSettings({ userId, year });
 
-				// Mode and token should be preserved from database
 				expect(settings.mode).toBe(ShareMode.PRIVATE_LINK);
 				expect(settings.modeSource).toBe(ShareModeSource.EXPLICIT);
 				expect(settings.shareToken).toBe(existingToken);
@@ -676,7 +675,7 @@ describe('Sharing Service', () => {
 					userId,
 					year,
 					{ mode: ShareMode.PRIVATE_OAUTH },
-					true // isAdmin
+					true
 				);
 
 				expect(updated.mode).toBe(ShareMode.PRIVATE_OAUTH);
@@ -688,7 +687,7 @@ describe('Sharing Service', () => {
 					userId,
 					year,
 					{ mode: ShareMode.PRIVATE_LINK },
-					true // isAdmin
+					true
 				);
 
 				expect(updated.mode).toBe(ShareMode.PRIVATE_LINK);
@@ -696,26 +695,15 @@ describe('Sharing Service', () => {
 			});
 
 			it('allows admin to update canUserControl', async () => {
-				const updated = await updateShareSettings(
-					userId,
-					year,
-					{ canUserControl: false },
-					true // isAdmin
-				);
+				const updated = await updateShareSettings(userId, year, { canUserControl: false }, true);
 
 				expect(updated.canUserControl).toBe(false);
 			});
 
 			it('allows user with canUserControl to change to public', async () => {
-				// First set to private-oauth
 				await updateShareSettings(userId, year, { mode: ShareMode.PRIVATE_OAUTH }, true);
 
-				const updated = await updateShareSettings(
-					userId,
-					year,
-					{ mode: ShareMode.PUBLIC },
-					false // not admin
-				);
+				const updated = await updateShareSettings(userId, year, { mode: ShareMode.PUBLIC }, false);
 
 				expect(updated.mode).toBe(ShareMode.PUBLIC);
 			});
@@ -733,7 +721,7 @@ describe('Sharing Service', () => {
 					userId,
 					year,
 					{ mode: ShareMode.PRIVATE_LINK },
-					false // not admin
+					false
 				);
 
 				expect(updated.mode).toBe(ShareMode.PRIVATE_LINK);
@@ -741,7 +729,6 @@ describe('Sharing Service', () => {
 			});
 
 			it('allows user to keep private-link if already set', async () => {
-				// Admin sets private-link
 				await updateShareSettings(userId, year, { mode: ShareMode.PRIVATE_LINK }, true);
 
 				const updated = await updateShareSettings(
@@ -905,7 +892,6 @@ describe('Sharing Service', () => {
 			});
 
 			it('does nothing for non-existent settings', async () => {
-				// Should not throw
 				await deleteShareSettings(userId, year);
 			});
 		});

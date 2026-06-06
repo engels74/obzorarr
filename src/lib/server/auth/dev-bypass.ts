@@ -182,7 +182,6 @@ async function resolveTargetUser(): Promise<NormalizedServerUser> {
 			return specificUser;
 		}
 
-		// User not found on Plex - try local database
 		logger.info(
 			`Dev bypass: User "${bypassUserSetting}" not found on Plex server, checking local database`,
 			'DevBypass'
@@ -222,7 +221,6 @@ async function resolveTargetUser(): Promise<NormalizedServerUser> {
 
 		return owner;
 	} catch (error) {
-		// Plex API failed - fall back to existing user from database
 		logger.warn(
 			`Dev bypass: Failed to fetch Plex users, attempting to use existing database user. Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
 			'DevBypass'
@@ -299,7 +297,6 @@ export async function getOrCreateDevSession(): Promise<string> {
 		await db.delete(sessions).where(eq(sessions.id, DEV_SESSION_ID));
 	}
 
-	// Priority: DEV_PLEX_TOKEN (for onboarding testing) > configured token > fallback
 	const devPlexToken = getDevPlexToken();
 	const config = await getPlexConfig();
 	const plexToken = devPlexToken || config.token || 'dev-token';

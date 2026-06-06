@@ -75,14 +75,14 @@ describe('Utils', () => {
 describe('Watch Time Calculator', () => {
 	it('calculates total watch time correctly', () => {
 		const records = [
-			createRecord({ duration: 3600 }), // 1 hour
-			createRecord({ id: 2, historyKey: 'key-2', duration: 1800 }), // 30 min
-			createRecord({ id: 3, historyKey: 'key-3', duration: 900 }) // 15 min
+			createRecord({ duration: 3600 }),
+			createRecord({ id: 2, historyKey: 'key-2', duration: 1800 }),
+			createRecord({ id: 3, historyKey: 'key-3', duration: 900 })
 		];
 
 		const result = calculateWatchTime(records);
 
-		expect(result.totalWatchTimeMinutes).toBe(105); // 60 + 30 + 15
+		expect(result.totalWatchTimeMinutes).toBe(105);
 		expect(result.totalPlays).toBe(3);
 	});
 
@@ -341,8 +341,8 @@ describe('Distribution Calculators', () => {
 	describe('calculateMonthlyDistribution', () => {
 		it('distributes watch time to correct months', () => {
 			const records = [
-				createRecord({ viewedAt: 1704067200, duration: 3600 }), // Jan 2024
-				createRecord({ id: 2, historyKey: 'key-2', viewedAt: 1719792000, duration: 1800 }) // July 2024
+				createRecord({ viewedAt: 1704067200, duration: 3600 }),
+				createRecord({ id: 2, historyKey: 'key-2', viewedAt: 1719792000, duration: 1800 })
 			];
 
 			const result = calculateMonthlyDistribution(records);
@@ -501,7 +501,7 @@ describe('Binge Detector', () => {
 
 		const result = detectLongestBinge(records);
 
-		expect(result?.totalMinutes).toBe(60); // Only the non-null duration counts
+		expect(result?.totalMinutes).toBe(60);
 	});
 
 	it('gap threshold is 30 minutes', () => {

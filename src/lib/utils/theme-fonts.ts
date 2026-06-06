@@ -18,8 +18,7 @@ const THEME_FONT_SPECS: Record<string, string[]> = {
 	supabase: ['Outfit:wght@400;500;600;700;800'],
 	'doom-64': ['Oxanium:wght@400;500;600;700;800'],
 	'amber-minimal': ['Inter:wght@400;500;600;700;800'],
-	'soviet-red': [], // System fonts only
-	// Premium wrapped themes — bolder weights for hero typography
+	'soviet-red': [],
 	'obsidian-premium': ['Inter:wght@400;500;600;700;800;900'],
 	'aurora-premium': ['Outfit:wght@400;500;600;700;800;900'],
 	'champagne-premium': ['Inter:wght@400;500;600;700;800;900']

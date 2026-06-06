@@ -23,7 +23,7 @@ export const CONTENT_COMPARISON_TEMPLATES = defineTemplateCategory('content-comp
 		comparisonTemplate: "That's a new movie every {daysBetweenMovies} days on average!",
 		icon: '🎞️',
 		requiredStats: ['uniqueMovies'],
-		minThresholds: { uniqueMovies: 12 } // At least monthly
+		minThresholds: { uniqueMovies: 12 }
 	},
 	{
 		id: 'show-explorer',

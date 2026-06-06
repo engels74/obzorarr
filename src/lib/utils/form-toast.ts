@@ -34,7 +34,6 @@ function isLegacyResponse(value: object): value is LegacyFormResponse {
 export function handleFormToast(form: FormShape): void {
 	if (!form || typeof form !== 'object') return;
 
-	// Superforms ActionResult: discriminated by `type`.
 	if ('type' in form && typeof form.type === 'string') {
 		switch (form.type) {
 			case 'success': {
@@ -64,7 +63,6 @@ export function handleFormToast(form: FormShape): void {
 		}
 	}
 
-	// Legacy `FormResponse` shape.
 	if (isLegacyResponse(form)) {
 		if (form.error) {
 			toast.error(form.error);

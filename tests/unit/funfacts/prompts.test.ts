@@ -155,8 +155,8 @@ describe('AI Prompts', () => {
 
 			expect(prompt).toContain('100 hours');
 			expect(prompt).toContain('200');
-			expect(prompt).toContain('50'); // uniqueMovies
-			expect(prompt).toContain('20'); // uniqueShows
+			expect(prompt).toContain('50');
+			expect(prompt).toContain('20');
 		});
 
 		it('includes count in prompt', () => {

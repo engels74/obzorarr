@@ -85,7 +85,6 @@ $effect(() => {
 	adminAvatarError = false;
 });
 
-// CSRF warning state - derived from data with local override for immediate dismiss
 let locallyDismissed = $state(false);
 let showCsrfWarning = $derived(data.csrfWarning.show && !locallyDismissed);
 

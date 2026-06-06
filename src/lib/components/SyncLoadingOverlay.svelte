@@ -11,7 +11,6 @@ interface Props {
 
 let { visible, progress = null, syncInProgress = false }: Props = $props();
 
-// Transition duration respecting reduced motion preference
 const transitionDuration = $derived(prefersReducedMotion.current ? 0 : 300);
 
 const statusText = $derived.by(() => {

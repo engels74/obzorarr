@@ -68,7 +68,6 @@ export function animateNumber(
 		const elapsed = performance.now() - startTime;
 		const progress = Math.min(elapsed / duration, 1);
 
-		// easeOutExpo - fast start, slow end
 		const eased = progress === 1 ? 1 : 1 - 2 ** (-10 * progress);
 		const current = Math.round(from + (to - from) * eased);
 
@@ -108,7 +107,6 @@ export function animateDecimal(
 		const elapsed = performance.now() - startTime;
 		const progress = Math.min(elapsed / duration, 1);
 
-		// easeOutExpo
 		const eased = progress === 1 ? 1 : 1 - 2 ** (-10 * progress);
 		const current = Math.round((from + (to - from) * eased) * multiplier) / multiplier;
 
