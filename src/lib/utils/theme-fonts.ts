@@ -96,10 +96,18 @@ export function loadThemeFonts(theme: string): void {
 	loadedThemes.add(theme);
 }
 
+/**
+ * Unknown or custom themes fall back to the body stack so callers that only
+ * accept one family string do not need to duplicate theme fallback rules.
+ */
 export function getThemeFontFamily(theme: string): string {
 	return THEME_FAMILIES[theme]?.body ?? DEFAULT_TRIPLE.body;
 }
 
+/**
+ * Surfaces that render display/body/mono text together use the full triple to
+ * keep expressive Wrapped typography from changing monospace UI copy.
+ */
 export function getThemeFontTriple(theme: string): FontTriple {
 	return THEME_FAMILIES[theme] ?? DEFAULT_TRIPLE;
 }

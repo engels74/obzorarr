@@ -43,6 +43,8 @@ function mapPlexRecordToDbInsert(record: ValidPlexHistoryMetadata) {
 		accountId: record.accountID,
 		librarySectionId: parseInt(record.librarySectionID, 10),
 		thumb: record.thumb ?? null,
+		// Plex history reports milliseconds; stats and enriched metadata rows use
+		// seconds so historical and freshly synced records share one duration unit.
 		duration: record.duration !== undefined ? Math.floor(record.duration / 1000) : null,
 		grandparentTitle: record.grandparentTitle ?? null,
 		grandparentRatingKey: extractRatingKeyFromPath(record.grandparentKey),

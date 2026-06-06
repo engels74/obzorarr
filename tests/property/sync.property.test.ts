@@ -121,6 +121,8 @@ function mapPlexRecordToDbInsert(record: TestPlexRecord) {
 		accountId: record.accountID,
 		librarySectionId: parseInt(record.librarySectionID, 10),
 		thumb: record.thumb ?? null,
+		// Mirror sync.service's seconds contract so the properties fail if Plex
+		// millisecond durations ever drift into persisted watch-time inputs.
 		duration: record.duration !== undefined ? Math.floor(record.duration / 1000) : null,
 		grandparentTitle: record.grandparentTitle ?? null,
 		parentTitle: record.parentTitle ?? null
