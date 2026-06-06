@@ -223,7 +223,7 @@ export async function startSync(options: StartSyncOptions = {}): Promise<SyncRes
 	try {
 		if (signal?.aborted) throw new SyncCancelledError();
 
-		// Sync Plex accounts first to ensure usernames are available for stats
+		// Stats attribution depends on Plex account names before history rows are read.
 		try {
 			await syncPlexAccounts();
 		} catch (error) {

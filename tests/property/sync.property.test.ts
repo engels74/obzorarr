@@ -93,7 +93,7 @@ const plexHistoryArbitrary: fc.Arbitrary<TestPlexRecord> = fc.record({
 	ratingKey: fc.string({ minLength: 1, maxLength: 50 }),
 	title: fc.string({ minLength: 1, maxLength: 200 }),
 	type: fc.constantFrom('movie', 'episode', 'track') as fc.Arbitrary<'movie' | 'episode' | 'track'>,
-	viewedAt: fc.integer({ min: 1577836800, max: 1893456000 }), // 2020-01-01 to 2030-01-01
+	viewedAt: fc.integer({ min: 1577836800, max: 1893456000 }),
 	accountID: fc.integer({ min: 1, max: 1000000 }),
 	librarySectionID: fc.integer({ min: 1, max: 99999 }).map((n) => String(n)),
 	thumb: fc.option(fc.webUrl(), { nil: undefined }),
@@ -290,7 +290,6 @@ describe('Property 6: Sync Timestamp Tracking', () => {
 
 				const { maxViewedAt } = await insertRecordsAndCreateSync(db, records);
 
-				// Verify it's a valid Unix timestamp (2020-01-01 to 2030-01-01)
 				expect(maxViewedAt).toBeGreaterThanOrEqual(1577836800);
 				expect(maxViewedAt).toBeLessThanOrEqual(1893456000);
 
@@ -371,7 +370,7 @@ describe('Property 7: Incremental Sync Filtering', () => {
 					for (const sync of syncs) {
 						const completedAt = new Date(sync.completedAtSeconds * 1000);
 						await db.insert(schema.syncStatus).values({
-							startedAt: new Date(completedAt.getTime() - 60000), // 1 minute before
+							startedAt: new Date(completedAt.getTime() - 60000),
 							completedAt,
 							recordsProcessed: sync.recordsProcessed,
 							lastViewedAt: sync.lastViewedAt,
@@ -407,8 +406,8 @@ describe('Property 7: Incremental Sync Filtering', () => {
 		// the stored watermark cannot regress between sync runs.
 		await fc.assert(
 			fc.asyncProperty(
-				fc.integer({ min: 1600000000, max: 1700000000 }), // firstSyncLastViewedAt
-				fc.integer({ min: 0, max: 100000 }), // offset to add for new records
+				fc.integer({ min: 1600000000, max: 1700000000 }),
+				fc.integer({ min: 0, max: 100000 }),
 				async (firstSyncLastViewedAt, _offset) => {
 					const db = createTestDatabase();
 
@@ -420,7 +419,6 @@ describe('Property 7: Incremental Sync Filtering', () => {
 						status: 'completed'
 					});
 
-					// Query last successful sync (simulating what sync service does)
 					const lastSync = await db
 						.select()
 						.from(schema.syncStatus)
@@ -431,7 +429,6 @@ describe('Property 7: Incremental Sync Filtering', () => {
 					const previous = lastSync[0];
 					if (!previous) return false;
 
-					// The minViewedAt for next sync should be the lastViewedAt from previous
 					const minViewedAtForNextSync = previous.lastViewedAt;
 
 					return minViewedAtForNextSync === firstSyncLastViewedAt;
@@ -463,7 +460,6 @@ describe('Property 7: Incremental Sync Filtering', () => {
 
 					const isRunning = runningResult.length > 0;
 
-					// Should only be running if status is 'running'
 					return isRunning === (status === 'running');
 				}
 			),
@@ -474,7 +470,6 @@ describe('Property 7: Incremental Sync Filtering', () => {
 
 describe('getYearStartTimestamp', () => {
 	it('returns correct timestamp for Jan 1 00:00:00 UTC', () => {
-		// 2024-01-01 00:00:00 UTC
 		const ts2024 = getYearStartTimestamp(2024);
 		const date2024 = new Date(ts2024 * 1000);
 		expect(date2024.getUTCFullYear()).toBe(2024);

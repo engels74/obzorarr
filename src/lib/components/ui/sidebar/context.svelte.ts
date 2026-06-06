@@ -6,16 +6,14 @@ type Getter<T> = () => T;
 
 export type SidebarStateProps = {
 	/**
-	 * A getter function that returns the current open state of the sidebar.
-	 * We use a getter function here to support `bind:open` on the `Sidebar.Provider`
-	 * component.
+	 * Getter-backed so `Sidebar.Provider` can support `bind:open` without
+	 * letting child components own the source of truth.
 	 */
 	open: Getter<boolean>;
 
 	/**
-	 * A function that sets the open state of the sidebar. To support `bind:open`, we need
-	 * a source of truth for changing the open state to ensure it will be synced throughout
-	 * the sub-components and any `bind:` references.
+	 * Setter paired with {@link open}; keeping writes routed through the provider
+	 * keeps nested sidebar pieces and any external `bind:` reference in sync.
 	 */
 	setOpen: (open: boolean) => void;
 };
@@ -34,7 +32,7 @@ class SidebarState {
 		this.props = props;
 	}
 
-	// Keep consumers from depending on the internal IsMobile rune wrapper.
+	// Expose only the boolean so consumers cannot depend on the internal IsMobile rune wrapper.
 	get isMobile() {
 		return this.#isMobile.current;
 	}
@@ -61,20 +59,13 @@ class SidebarState {
 
 const SYMBOL_KEY = 'scn-sidebar';
 
-/**
- * Instantiates a new `SidebarState` instance and sets it in the context.
- *
- * @param props The constructor props for the `SidebarState` class.
- * @returns  The `SidebarState` instance.
- */
 export function setSidebar(props: SidebarStateProps): SidebarState {
 	return setContext(Symbol.for(SYMBOL_KEY), new SidebarState(props));
 }
 
 /**
- * Retrieves the `SidebarState` instance from the context. This is a class instance,
- * so you cannot destructure it.
- * @returns The `SidebarState` instance.
+ * Returns a class instance; do not destructure it, or Svelte will lose access
+ * to the reactive getters on the prototype.
  */
 export function useSidebar(): SidebarState {
 	return getContext(Symbol.for(SYMBOL_KEY));

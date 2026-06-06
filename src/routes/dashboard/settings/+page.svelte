@@ -656,7 +656,7 @@ function getLogoModeDescription(): string {
 			margin: 0;
 		}
 
-		/* Tabs Styling - :global() because class is passed to Tabs.Root component */
+		/* Tabs.Root receives these classes via props, so the selectors must escape Svelte scope. */
 		:global(.settings-tabs) {
 			margin-top: 1.5rem;
 		}
@@ -884,7 +884,6 @@ function getLogoModeDescription(): string {
 			border-color: oklch(0.6318 0.1589 149.73);
 		}
 
-		/* Token Actions */
 		.token-actions {
 			margin-top: 1rem;
 		}

@@ -44,9 +44,7 @@ let openaiBaseUrl = $state(settings.openaiBaseUrl.value);
 // svelte-ignore state_referenced_locally
 let openaiModel = $state(settings.openaiModel.value);
 
-// A2: track the current OCC version in $state so both panels immediately use
-// the fresh version returned by a successful save, without waiting for
-// invalidateAll to complete.
+// Both panels share one OCC token; keep the successful save's fresh version locally.
 // svelte-ignore state_referenced_locally
 let apiConfigVersion = $state(data.apiConfigVersion);
 
@@ -112,8 +110,7 @@ const showOpenaiKeyWarning = $derived(!data.hasEffectiveOpenAIKey && !openaiApiK
 							}
 							await update({ reset: false });
 							if (result.type === 'success') {
-								// A2: advance local version so the OpenAI panel's next save
-								// uses the fresh token without waiting for invalidateAll.
+								// The sibling panel can save next without waiting for invalidateAll.
 								const freshVersion = (result.data as { apiConfigVersion?: string })
 									?.apiConfigVersion;
 								if (freshVersion) apiConfigVersion = freshVersion;
@@ -204,7 +201,7 @@ const showOpenaiKeyWarning = $derived(!data.hasEffectiveOpenAIKey && !openaiApiK
 							return;
 						}
 						isTestingPlex = true;
-						// Forward the live form state so the test exercises pending edits.
+						// Connection tests should exercise unsaved edits, not only loaded data.
 						formData.set('plexServerUrl', plexServerUrl);
 						if (plexTokenInput) formData.set('plexToken', plexTokenInput);
 						formData.set(

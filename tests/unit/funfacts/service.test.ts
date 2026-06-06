@@ -242,7 +242,7 @@ describe('isTemplateApplicable', () => {
 			category: 'time-equivalency',
 			factTemplate: 'You watched {hours} hours',
 			requiredStats: ['hours'],
-			minThresholds: { hours: 200 } // Higher than context.hours (100)
+			minThresholds: { hours: 200 }
 		};
 
 		expect(isTemplateApplicable(template, mockContext)).toBe(false);
@@ -490,7 +490,6 @@ describe('generateFromTemplates', () => {
 			excludeIds: timeEquivIds
 		});
 
-		// None should be from time-equivalency category (by verifying they exist in other categories)
 		expect(result.length).toBeGreaterThan(0);
 	});
 
@@ -510,7 +509,6 @@ describe('generateFromTemplates', () => {
 		const context = buildGenerationContext(stats);
 
 		const result = generateFromTemplates(context, { count: 3 });
-		// The year-participant template always applies as a fallback
 		expect(result.length).toBeGreaterThanOrEqual(1);
 		expect(result[0]?.fact).toContain('active viewer');
 	});

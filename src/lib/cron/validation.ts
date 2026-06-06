@@ -3,7 +3,6 @@ export const CRON_ALLOWED_CHARS_MESSAGE = 'Only digits, spaces, and * / - , are 
 export const CRON_FIELD_COUNT_MESSAGE = 'Cron expression must have exactly 5 fields';
 export const CRON_RANGE_MESSAGE = 'Cron expression contains an out-of-range value';
 
-// [min, max] for each of the 5 cron fields (minute, hour, dom, month, dow)
 const FIELD_RANGES: [number, number][] = [
 	[0, 59],
 	[0, 23],
@@ -13,20 +12,19 @@ const FIELD_RANGES: [number, number][] = [
 ];
 
 /**
- * Returns true when every atomic numeric token in the cron field token falls
- * within [min, max]. Handles *, step (/), range (-), and list (,).
+ * Keeps cron validation app-owned instead of delegating to `croner`, so admins
+ * get stable form messages for malformed tokens before the scheduler sees them.
  */
 function isFieldInRange(token: string, min: number, max: number): boolean {
 	if (token === '*') return true;
 
 	if (token.includes('/')) {
 		const parts = token.split('/');
-		// Exactly one "/" — reject tokens like "*/5/2"
+		// Cron syntax permits only one step operator; `*/5/2` is ambiguous.
 		if (parts.length !== 2) return false;
 		const [base, step] = parts;
 		const stepNum = Number(step);
 		if (!step || !Number.isInteger(stepNum) || stepNum < 1) return false;
-		// Base must be present (reject "/5") — can be "*", a plain number, or a range
 		if (!base) return false;
 		if (base !== '*' && !isFieldInRange(base, min, max)) return false;
 		return true;
@@ -38,7 +36,7 @@ function isFieldInRange(token: string, min: number, max: number): boolean {
 
 	if (token.includes('-')) {
 		const parts = token.split('-');
-		// Exactly two non-empty segments — reject "-1", "1-", "1-5-2"
+		// Open-ended or chained ranges have no portable cron meaning.
 		if (parts.length !== 2 || !parts[0] || !parts[1]) return false;
 		const [lo, hi] = parts.map(Number);
 		return (

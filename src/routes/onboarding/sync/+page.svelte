@@ -14,9 +14,9 @@ import type { ActionData, PageData } from './$types';
 
 let { data, form }: { data: PageData; form: ActionData } = $props();
 
-// Using untrack() to explicitly capture initial values (state is updated via SSE, not prop changes)
 type SyncStatus = 'idle' | 'running' | 'completed' | 'failed' | 'cancelled';
 
+// SSE owns progress after mount; prop changes should not rewind the live state.
 let syncStatus = $state<SyncStatus>(untrack(() => (data.syncRunning ? 'running' : 'idle')));
 let recordsProcessed = $state(untrack(() => data.currentProgress?.recordsProcessed ?? 0));
 let recordsInserted = $state(untrack(() => data.currentProgress?.recordsInserted ?? 0));
@@ -49,7 +49,7 @@ const isRunning = $derived(syncStatus === 'running');
 const isComplete = $derived(syncStatus === 'completed');
 const hasFailed = $derived(syncStatus === 'failed' || syncStatus === 'cancelled');
 
-// Phase display text - check terminal states FIRST to avoid stale phase text
+// Terminal states win over the last streamed phase so completion/failure copy cannot go stale.
 const phaseText = $derived(() => {
 	if (isComplete) return 'Sync complete!';
 	if (hasFailed) return 'Sync failed';
@@ -138,9 +138,8 @@ function setupEventSource(es: EventSource) {
 		es.close();
 		eventSource = null;
 
-		// Attempt to reconnect after 2 seconds if sync should still be running.
-		// Track the timer so the effect cleanup can cancel a pending reconnect,
-		// and bail if the component was torn down in the meantime.
+		// The delayed reconnect must be cancellable because onboarding can advance
+		// before the timer fires.
 		if (reconnectTimer) clearTimeout(reconnectTimer);
 		reconnectTimer = setTimeout(() => {
 			reconnectTimer = null;
@@ -156,7 +155,7 @@ $effect(() => {
 	if (!browser) return;
 	if (!isRunning && !data.syncRunning) return;
 
-	// Connect to public SSE endpoint (doesn't require admin auth)
+	// Onboarding sync streams before an admin session exists.
 	sseDisconnected = false;
 	eventSource = new EventSource('/api/sync/status/stream');
 	setupEventSource(eventSource);
@@ -700,12 +699,10 @@ function formatNumber(n: number): string {
 			text-align: center;
 		}
 
-		/* Start button — hoisted to :global so SubmitButton's
-		   child-rendered <button> inherits the primary palette, hover
-		   translate-y (-2px), and triple shadow (drop + accent + inset
-		   highlight). The `.btn-icon` descendant rule was dropped when
-		   the inline SVG was replaced with the lucide RefreshCwIcon
-		   sized inline via `class="size-5"`. */
+		/* SubmitButton child-renders the actual <button>, so the selector must
+		   be global for the primary palette, hover translate-y, and layered
+		   shadows to reach it. The lucide icon stays sized inline to avoid
+		   another descendant override across the scoped-style boundary. */
 		:global(.start-button) {
 			display: inline-flex;
 			align-items: center;
@@ -846,11 +843,10 @@ function formatNumber(n: number): string {
 			flex-wrap: wrap;
 		}
 
-		/* Cancel button — destructive variant. Hoisted to :global so
-		   SubmitButton's child-rendered <button> inherits the red palette
-		   + hover-darken effect. The `.cancel-button svg` descendant rule
-		   is dropped; the lucide XIcon is sized inline via
-		   `class="size-[18px]"`. */
+		/* SubmitButton child-renders the actual <button>, so the destructive
+		   palette and hover-darken treatment need a global selector. The lucide
+		   icon stays sized inline to avoid another descendant override across
+		   the scoped-style boundary. */
 		:global(.cancel-button) {
 			display: inline-flex;
 			align-items: center;
@@ -877,11 +873,10 @@ function formatNumber(n: number): string {
 			cursor: not-allowed;
 		}
 
-		/* Continue button — hoisted to :global so SubmitButton's
-		   child-rendered <button> inherits the primary palette, hover
-		   translate-y, and dual shadow (drop + inset highlight). The
-		   `.continue-button svg` descendant rule is dropped because the
-		   lucide ArrowRightIcon is sized explicitly via `class="size-[18px]"`. */
+		/* SubmitButton child-renders the actual <button>, so the primary
+		   palette, hover translate-y, and dual shadow need a global selector.
+		   The lucide icon stays sized inline to avoid another descendant
+		   override across the scoped-style boundary. */
 		:global(.continue-button) {
 			display: inline-flex;
 			align-items: center;

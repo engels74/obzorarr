@@ -44,9 +44,8 @@ async function invoke(options: InvokeOptions): Promise<InvokeResult> {
 	return { rewrittenUrl: observedUrl };
 }
 
-// Build a request whose headers map can return CR/LF — the WHATWG Headers API
-// strips/rejects these, so we use a fake headers object to exercise the
-// header-injection guard inside proxyHandle.
+// WHATWG Headers strips/rejects CR/LF before proxyHandle sees them, so the
+// injection guard needs a fake headers object that can return raw values.
 async function invokeWithRawHeaders(options: {
 	url: string;
 	headerLookup: (name: string) => string | null;

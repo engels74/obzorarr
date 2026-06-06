@@ -114,7 +114,6 @@ describe('inlineOccCheck', () => {
 	});
 
 	it('returns conflict when submitted version is stale', async () => {
-		// Seed one of the LOG_SETTINGS_KEYS rows so max(updatedAt) > 0.
 		await setAppSetting('log_retention_days' as never, '14');
 
 		const result = await inlineOccCheck(new Date(0).toISOString(), LOG_SETTINGS_KEYS);

@@ -449,7 +449,7 @@ describe('Property 21: Statistics Serialization Round-Trip', () => {
 	});
 });
 
-// Note: Property order must match schema order for JSON round-trip comparison
+// Keep fixture key order aligned with the schema so round-trip diffs stay meaningful.
 describe('Serialization edge cases', () => {
 	it('handles UserStats with empty arrays', () => {
 		const stats: UserStats = {
@@ -617,7 +617,7 @@ describe('Serialization edge cases', () => {
 			topMovies: [],
 			topShows: [],
 			topGenres: [],
-			watchTimeByMonth: [1, 2, 3], // Wrong length - should be 12
+			watchTimeByMonth: [1, 2, 3],
 			watchTimeByHour: [
 				1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24
 			],

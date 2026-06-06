@@ -415,7 +415,6 @@ describe('Distribution Calculators', () => {
 
 describe('Percentile Calculator', () => {
 	it('calculates percentile correctly', () => {
-		// 2 users have less than 100, so percentile = 2/4 * 100 = 50
 		const percentile = calculatePercentileRank(100, [50, 75, 100, 150]);
 		expect(percentile).toBe(50);
 	});
@@ -427,7 +426,6 @@ describe('Percentile Calculator', () => {
 
 	it('returns high percentile for top watcher', () => {
 		const percentile = calculatePercentileRank(100, [10, 50, 100]);
-		// 2 out of 3 have less, so 66.67%
 		expect(Math.round(percentile * 100) / 100).toBeCloseTo(66.67, 1);
 	});
 
@@ -438,7 +436,6 @@ describe('Percentile Calculator', () => {
 
 	it('handles ties correctly', () => {
 		const percentile = calculatePercentileRank(50, [50, 50, 100]);
-		// 0 users have less than 50, so 0%
 		expect(percentile).toBe(0);
 	});
 });

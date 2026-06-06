@@ -63,7 +63,7 @@ async function calculateSeriesCompletion(
 				}
 			}
 		} catch {
-			// Plex API unavailable, fall back to watched episodes as total
+			// Wrapped should still render when show metadata enrichment is unavailable.
 		}
 	}
 

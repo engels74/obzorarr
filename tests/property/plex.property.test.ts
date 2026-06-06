@@ -113,8 +113,6 @@ describe('Property 4: Pagination Completeness', () => {
 							collectedItems.push(...items);
 						}
 
-						// For N > 0: ceil(N/P) pages
-						// For N = 0: 1 page (to discover totalSize = 0)
 						const expected = expectedApiCalls(totalRecords, pageSize);
 						const actualPages = getPagesFetched();
 
@@ -185,7 +183,6 @@ describe('Property 4: Pagination Completeness', () => {
 
 						const result = await fetchAllPaginatedWithStats(fetcher, pageSize);
 
-						// For N > 0: ceil(N/P) pages; For N = 0: 1 page
 						const expected = expectedApiCalls(totalRecords, pageSize);
 						return result.pagesFetched === expected;
 					}
@@ -224,7 +221,6 @@ describe('Property 4: Pagination Completeness', () => {
 				collectedItems.push(...items);
 			}
 
-			// With zero records, we should still make one fetch to discover totalSize=0
 			expect(collectedItems.length).toBe(0);
 			expect(getPagesFetched()).toBe(1);
 		});

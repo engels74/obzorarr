@@ -347,9 +347,9 @@ function handleCancelRedirect(): void {
 			gap: 0.75rem;
 		}
 
-		/* Sign-in CTA rendered when public lookup is disabled. Reuses the primary
-		   `.view-button` pill look; `.cta-link` only neutralises the anchor's
-		   default underline and centers the CTA within the section. */
+		/* When public lookup is disabled, the fallback sign-in link should keep
+		   the primary CTA affordance; `.cta-link` only neutralises the anchor's
+		   default underline. */
 		.signin-required-note {
 			font-size: 0.95rem;
 			color: oklch(var(--muted-foreground));
@@ -384,13 +384,9 @@ function handleCancelRedirect(): void {
 			border: 0;
 		}
 
-		/* Paired :global hoist for the username form input — same migration
-		   story as `.view-button` above: PR-3 / US-024 swaps the native
-		   <input class="username-input"> for the shadcn Input primitive
-		   which renders inside a child component beyond Svelte 5's
-		   component-scope. Globalising the rules now preserves the
-		   hand-tuned focus ring + max-width without forcing the Input
-		   consumer to re-implement them. */
+		/* shadcn Input renders inside a child component beyond Svelte's scoped
+		   style boundary, so the selector must be global to preserve the custom
+		   max-width and focus ring without duplicating them at the call site. */
 		:global(.username-input) {
 			flex: 1;
 			min-width: 200px;
@@ -429,16 +425,9 @@ function handleCancelRedirect(): void {
 			cursor: not-allowed;
 		}
 
-		/* `.view-button` is consumed at scope today by the native <button> in the
-		   username form, but PR-3 / US-024 will swap that for the shadcn
-		   SubmitButton primitive which renders the button element inside a
-		   child component — Svelte 5 component-scoped CSS doesn't reach
-		   inside a child, so the styling has to be globalised now. The rules
-		   are unchanged; only the selector scope is bumped to :global so the
-		   primitive consumer can keep the hero CTA's hover translate-y + glow
-		   without re-implementing them. The .username-input rules below have
-		   the same migration story; the matching :global hoist is paired with
-		   the shadcn Input swap pre-work. */
+		/* shadcn SubmitButton renders the actual <button> inside a child component,
+		   so the selector must be global for the hero CTA's hover translate-y and
+		   glow to reach the primitive without re-implementing those rules. */
 		:global(.view-button) {
 			display: inline-flex;
 			align-items: center;

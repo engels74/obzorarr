@@ -82,7 +82,7 @@ export async function isAIAvailable(): Promise<boolean> {
 }
 
 export function buildGenerationContext(stats: UserStats | ServerStats): FactGenerationContext {
-	// Use Math.floor to avoid rounding < 30 mins to 0 hours
+	// Floor partial hours so comparison facts never exaggerate a user's watch time.
 	const hours = Math.floor(stats.totalWatchTimeMinutes / 60);
 	const days = Math.round((hours / 24) * 10) / 10;
 
@@ -158,7 +158,7 @@ export function isTemplateApplicable(
 		return false;
 	}
 
-	// These are user-specific comparisons that don't make sense for collective stats
+	// Percentile comparisons are user-specific; a server aggregate has no peer rank.
 	if (context.scope === 'server' && template.requiredStats.includes('percentile')) {
 		return false;
 	}
@@ -386,7 +386,7 @@ export async function generateWithAI(
 					`OpenAI API error: ${response.status} - ${errorText}`
 				);
 
-				// Don't retry client errors (4xx) except rate limiting (429)
+				// 4xx usually means bad config or payload; only 429 is expected to heal with retry.
 				if (response.status >= 400 && response.status < 500 && response.status !== 429) {
 					throw statusError;
 				}
@@ -400,7 +400,7 @@ export async function generateWithAI(
 		} catch (error) {
 			clearTimeout(timeoutId);
 
-			// Don't retry AIGenerationErrors from parsing or non-retryable conditions
+			// Parser/config failures will repeat with the same response; retry only status/timeout paths.
 			if (error instanceof AIGenerationError) {
 				if ((error as AIGenerationError).message.includes('OpenAI API error: 4')) {
 					throw error;
@@ -438,7 +438,7 @@ export function generateFromTemplates(
 	const applicableTemplates = templates.filter((t) => isTemplateApplicable(t, context));
 
 	if (applicableTemplates.length === 0) {
-		// Graceful degradation - return empty array instead of throwing
+		// A sparse Wrapped should omit fun facts rather than fail the whole recap.
 		return [];
 	}
 

@@ -51,7 +51,7 @@ afterNavigate(() => {
 	routerReady = true;
 });
 
-// Reflect slide index back into the hash without creating history entries.
+// Use replaceState so slide navigation does not pollute the browser Back stack.
 $effect(() => {
 	if (!browser || !routerReady) return;
 	const next = `#slide=${currentSlideIndex}`;

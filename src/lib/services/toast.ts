@@ -13,7 +13,7 @@ function shouldDebounce(message: string): boolean {
 
 	recentToasts.set(message, now);
 
-	// Cleanup old entries to prevent memory leaks
+	// Cap the debounce cache so repeated unique errors cannot grow it forever.
 	if (recentToasts.size > 50) {
 		const oldest = [...recentToasts.entries()].sort((a, b) => a[1] - b[1]).slice(0, 25);
 		oldest.forEach(([key]) => recentToasts.delete(key));

@@ -267,7 +267,7 @@ function matchesPlainHost(configuredUrl: string, server: PlexResource): boolean 
 		}
 	}
 
-	// Match against server.publicAddress when any advertised connection uses the configured port.
+	// Some resources expose the host only as publicAddress; require a matching advertised port too.
 	if (
 		server.publicAddress &&
 		server.publicAddress.toLowerCase() === configuredHost &&
@@ -284,8 +284,8 @@ function findConfiguredServer(
 	configuredUrl: string,
 	configuredMachineIdFromIdentity?: string
 ): PlexResource | undefined {
-	// Strategy 0: Match by machineIdentifier fetched from GET {PLEX_SERVER_URL}/identity.
-	// This works for any reachable URL form — IP, hostname, .plex.direct, reverse proxy.
+	// A live /identity machineIdentifier is the strongest match because it works
+	// across IP, hostname, .plex.direct, and reverse-proxy URLs.
 	if (configuredMachineIdFromIdentity) {
 		const serverByConfiguredId = servers.find(
 			(s) => s.clientIdentifier.toLowerCase() === configuredMachineIdFromIdentity.toLowerCase()
@@ -301,7 +301,6 @@ function findConfiguredServer(
 		}
 	}
 
-	// Strategy 1: For .plex.direct URLs, try matching by machine ID (most reliable when IDs match)
 	const configuredMachineId = extractPlexDirectMachineId(configuredUrl);
 
 	if (configuredMachineId) {
@@ -318,8 +317,8 @@ function findConfiguredServer(
 			return serverByMachineId;
 		}
 
-		// Strategy 2: For .plex.direct URLs, try matching by embedded IP address
-		// This handles cases where the machineId in the URL differs from clientIdentifier
+		// Some .plex.direct URLs carry a stale machine id while the embedded IP/port
+		// still matches an advertised connection.
 		const serverByIp = servers.find((s) => matchesByIpAndPort(configuredUrl, s.connections));
 		if (serverByIp) {
 			logger.debug(
@@ -332,8 +331,6 @@ function findConfiguredServer(
 			return serverByIp;
 		}
 	} else {
-		// Strategy 3: For plain-host URLs (e.g. http://192.168.1.34:32400), match against
-		// connection address/port, IPs embedded in .plex.direct URIs, or publicAddress.
 		const serverByPlainHost = servers.find((s) => matchesPlainHost(configuredUrl, s));
 		if (serverByPlainHost) {
 			logger.debug(

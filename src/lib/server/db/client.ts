@@ -7,7 +7,7 @@ import * as schema from './schema';
 
 const databasePath = process.env.DATABASE_PATH ?? 'data/obzorarr.db';
 
-// Prevent test environment from accessing production database
+// Fail closed if a test run is not explicitly pointed at an in-memory/test database.
 if (
 	process.env.NODE_ENV === 'test' &&
 	databasePath !== ':memory:' &&

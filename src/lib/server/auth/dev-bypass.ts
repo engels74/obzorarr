@@ -25,7 +25,7 @@ function getDevPlexToken(): string | undefined {
 }
 
 export function isDevBypassEnabled(): boolean {
-	// SECURITY: Never enable in production
+	// Development-only: never permit an auth bypass outside SvelteKit dev mode.
 	if (!dev) {
 		return false;
 	}
@@ -52,7 +52,7 @@ async function getFallbackUser(): Promise<NormalizedServerUser> {
 		};
 	}
 
-	// Try to find any user who has play history (so stats aren't empty)
+	// Prefer a history-backed fallback so dev dashboards exercise real stats.
 	const userWithHistory = await db
 		.selectDistinct({ accountId: playHistory.accountId })
 		.from(playHistory)
@@ -79,7 +79,7 @@ async function getFallbackUser(): Promise<NormalizedServerUser> {
 			};
 		}
 
-		// User doesn't exist in users table but has history - use their accountId
+		// Orphaned history still has a usable local Plex account id for stats joins.
 		logger.info(
 			`Dev bypass: Using orphaned play history accountId ${accountId} as fallback (user may be deleted)`,
 			'DevBypass'
@@ -113,8 +113,8 @@ async function resolveTargetUser(): Promise<NormalizedServerUser> {
 	const config = await getPlexConfig();
 	const hasConfiguredServer = Boolean(config.serverUrl && config.token);
 
-	// When DEV_PLEX_TOKEN is set and main Plex is not configured,
-	// use the dev token to fetch user identity for onboarding testing
+	// DEV_PLEX_TOKEN lets onboarding tests use a real Plex identity before the
+	// main server credentials exist.
 	if (devPlexToken && !hasConfiguredServer && !bypassUserSetting) {
 		try {
 			const userInfo = await getPlexUserInfo(devPlexToken);

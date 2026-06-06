@@ -692,7 +692,7 @@ export async function getWrappedTheme(): Promise<ThemePresetType> {
 		return theme as ThemePresetType;
 	}
 
-	// Fall back to legacy CURRENT_THEME for backward compatibility
+	// Existing installs may still have only the pre-rename key.
 	const legacyTheme = await getAppSetting(AppSettingsKey.CURRENT_THEME);
 	if (legacyTheme && Object.values(ThemePresets).includes(legacyTheme as ThemePresetType)) {
 		return legacyTheme as ThemePresetType;
@@ -1065,9 +1065,8 @@ export interface PlexConfig {
 }
 
 /**
- * Get the merged Plex configuration (environment takes priority over database).
- * This should be used by all Plex-related services to ensure they use
- * settings configured via environment variables when available.
+ * Centralizes env-over-DB precedence and URL normalization so Plex callers never
+ * accidentally use a shadowed or unsafe server URL.
  */
 export async function getPlexConfig(): Promise<PlexConfig> {
 	const config = await getApiConfigWithSources();
@@ -1087,7 +1086,6 @@ export async function getPlexConfig(): Promise<PlexConfig> {
 	};
 }
 
-/** Check if Plex is configured (either via database or environment variables). */
 export async function isPlexConfigured(): Promise<boolean> {
 	const config = await getPlexConfig();
 	return Boolean(config.serverUrl && config.token);
@@ -1137,9 +1135,8 @@ export async function getTrustProxy(): Promise<boolean> {
 }
 
 /**
- * Clear database settings that conflict with environment variables.
- * When ENV takes precedence, we auto-clear conflicting DB values to avoid confusion.
- * Returns the list of setting labels that were cleared.
+ * Removes DB values shadowed by authoritative ENV settings so the admin UI
+ * cannot display stale, ignored configuration as if it were active.
  */
 export async function clearConflictingDbSettings(): Promise<string[]> {
 	const clearedSettings: string[] = [];

@@ -224,7 +224,7 @@ interface SubStep {
 	icon: 'appearance' | 'privacy' | 'slides' | 'ai';
 }
 
-// Fun-fact settings work with built-in templates even without OpenAI, so always show the step
+// Built-in templates make the fun-fact step useful even when OpenAI is absent.
 let subSteps = $derived([
 	{ id: 'appearance', label: 'Appearance', icon: 'appearance' },
 	{ id: 'privacy', label: 'Privacy', icon: 'privacy' },
@@ -239,7 +239,7 @@ let animationDirection = $state<'forward' | 'backward'>('forward');
 let totalSubSteps = $derived(subSteps.length);
 let isFirstSubStep = $derived(currentSubStep === 0);
 let isLastSubStep = $derived(currentSubStep === totalSubSteps - 1);
-// subSteps always has at least 3 items, and currentSubStep is bounded by navigation
+// Navigation bounds `currentSubStep`, so the non-null assertion cannot fail.
 let currentStepData = $derived(subSteps[currentSubStep]!);
 
 function nextSubStep() {

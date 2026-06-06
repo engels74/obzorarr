@@ -118,7 +118,6 @@ const serverWrappedForm = superForm(data.serverWrappedForm, {
 	onUpdate: guardSettingsUpdate,
 	onUpdated({ form: updated }) {
 		if (updated.valid) {
-			// Advance this section's saved baseline to what was just persisted.
 			savedServerWrapped = {
 				anonymizationMode: updated.data.anonymizationMode,
 				serverWrappedShareMode: updated.data.serverWrappedShareMode
@@ -203,7 +202,7 @@ let advancedOpen = $state(showContradictionWarning);
 // ISSUE-007: expanding "Advanced options" can push each section's Save button
 // below the fold. On expand only, scroll the freshly-revealed section to the top
 // of the viewport (after the DOM settles) so its content + actions stay reachable.
-// Collapsing leaves the scroll position alone. Reuses the tick()-then-scroll idiom.
+// Collapsing leaves the scroll position alone.
 let advancedSectionRef = $state<HTMLDivElement | null>(null);
 async function handleAdvancedToggle(open: boolean): Promise<void> {
 	if (!open) return;

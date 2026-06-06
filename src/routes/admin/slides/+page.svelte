@@ -47,7 +47,7 @@ const SLIDE_NAMES: Record<SlideType, string> = {
 	custom: 'Custom Slide'
 };
 
-// Fun Fact frequency state (synced from server data only when server data changes)
+// Keep local radio edits stable until the server confirms a new frequency value.
 let selectedFrequencyMode = $state<typeof data.funFactFrequency.mode>(
 	untrack(() => data.funFactFrequency.mode)
 );
@@ -1095,12 +1095,10 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			opacity: 0.9;
 		}
 
-		/* `.add-button` is the section-header primary CTA ("Add Custom
-		   Slide"). Hoisted to :global so shadcn Button's child-rendered
-		   <button> inherits the primary palette + hover translate-y.
-		   The `.add-button-icon` descendant rule (lucide Plus sizing)
-		   stays — the previous hybrid scoped+global selector is fully
-		   globalised now. */
+		/* shadcn Button child-renders the actual <button>, so this selector
+		   must be global for the primary palette and hover translate-y to
+		   reach it. The lucide icon descendant stays global for the same
+		   scoped-style boundary. */
 		:global(.add-button) {
 			display: inline-flex;
 			align-items: center;
@@ -1321,13 +1319,10 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			margin: 0 0 0.75rem;
 		}
 
-		/* `.preview-button` is the "Update Preview" CTA inside the slide
-		   editor (triggers an async ?/previewMarkdown submitAction call).
-		   Hoisted to :global so shadcn Button's child-rendered <button>
-		   inherits the secondary palette + hover-darken. The button stays
-		   client-side `type="button"` because the async submitAction
-		   handler manages the preview state directly rather than relying
-		   on form submission. */
+		/* shadcn Button child-renders the actual <button>, so this selector
+		   must be global for the secondary palette and hover-darken to reach it.
+		   The button stays client-side `type="button"` because submitAction
+		   owns preview state instead of native form submission. */
 		:global(.preview-button) {
 			padding: 0.375rem 0.75rem;
 			background: oklch(var(--secondary));

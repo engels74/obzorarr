@@ -63,7 +63,7 @@ describe('connections nested route — updateApiConfig (OCC + schema)', () => {
 		const formData = new FormData();
 		formData.set('plexServerUrl', 'http://plex.local:32400');
 		formData.set('plexToken', 'token');
-		// apiConfigVersion intentionally absent
+		// Omitted on purpose; blank and absent versions must both enter the OCC path.
 		const request = new Request('http://localhost/admin/settings/connections?/updateApiConfig', {
 			method: 'POST',
 			body: formData
@@ -202,16 +202,13 @@ describe('connections nested route — updateApiConfig (OCC + schema)', () => {
 			const formData = new FormData();
 			formData.set('openaiModel', 'gpt-4o-mini');
 			formData.set('apiConfigVersion', new Date(Date.now() + 60_000).toISOString());
-			// plexServerUrl intentionally absent
 			const request = new Request('http://localhost/admin/settings/connections?/updateApiConfig', {
 				method: 'POST',
 				body: formData
 			});
 
 			const result = await run(request);
-			// Whatever the outcome, it must NOT be the blank-URL required-field 400.
 			expect(result).not.toMatchObject({ data: { error: 'Plex server URL is required' } });
-			// And the stored Plex URL is preserved.
 			expect((await getApiConfigWithSources()).plex.serverUrl.value).toBe(
 				'http://plex.local:32400'
 			);
@@ -306,10 +303,8 @@ describe('connections nested route — updateApiConfig (OCC + schema)', () => {
 		expect(await getAppSetting(AppSettingsKey.OPENAI_BASE_URL)).toBeNull();
 	});
 
-	// A2: successful save returns a fresh apiConfigVersion
 	it('returns a fresh apiConfigVersion on success (A2)', async () => {
 		await withUnlockedPlex(async () => {
-			// Seed a valid Plex URL so the save can succeed.
 			await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, 'https://plex.local:32400');
 
 			const formData = new FormData();
@@ -321,7 +316,6 @@ describe('connections nested route — updateApiConfig (OCC + schema)', () => {
 			});
 
 			const result = await run(request);
-			// The result must be a success object (not a failure ActionResult).
 			expect(result).toMatchObject({ success: true });
 			const version = (result as { apiConfigVersion?: string }).apiConfigVersion;
 			expect(typeof version).toBe('string');
@@ -330,11 +324,9 @@ describe('connections nested route — updateApiConfig (OCC + schema)', () => {
 		});
 	});
 
-	// C2: submitting a value for a locked field yields the informational note
 	it('includes locked-field note in success message when a locked field is submitted (C2)', async () => {
-		// The test harness has PLEX_SERVER_URL locked via the mock env.
-		// The action should succeed (setApiConfigAtomic ignores locked fields) and
-		// include the informational note in the message.
+		// The harness locks PLEX_SERVER_URL via ENV; the action should ignore the
+		// submitted value but tell the operator why it was ignored.
 		const result = await run(
 			makeRequest('updateApiConfig', {
 				plexServerUrl: 'https://plex.local:32400',

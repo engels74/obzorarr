@@ -94,7 +94,6 @@ describe('system nested route — updateLogSettings (Superforms + inline OCC)', 
 			status: 409,
 			data: { conflict: true }
 		});
-		// First write's values still in place.
 		expect(await getLogRetentionDays()).toBe(14);
 		expect(await getLogMaxCount()).toBe(2000);
 	});
@@ -163,7 +162,7 @@ describe('system nested route — updateLogSettings (Superforms + inline OCC)', 
 		expect(trueResult).toMatchObject({ success: true });
 		expect(await isDebugEnabled()).toBe(true);
 
-		// Seed the row updatedAt so the next write must use a fresh version
+		// The second write must use the row version created by the first save.
 		await setAppSetting('log_debug_enabled' as never, 'true');
 		const falseResult = await run(
 			makeRequest({

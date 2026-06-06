@@ -16,7 +16,7 @@ let { data, form }: { data: PageData; form: ActionData } = $props();
 let selectedLevels = $derived<LogLevelType[]>(data.filters?.levels ?? []);
 let selectedSource = $derived(data.filters?.source ?? '');
 
-// Search needs local state for debounce pattern, synced from data
+// Debounced search needs a writable buffer; URL data remains the committed value.
 let searchText = $state('');
 $effect.pre(() => {
 	searchText = data.filters?.search ?? '';
@@ -77,7 +77,7 @@ function matchesVisibleFilters(log: LogEntry): boolean {
 	return true;
 }
 
-// Combined logs (filtered streamed + server-filtered), then narrowed by live local inputs.
+// SSE entries arrive ahead of the next server load; merge by id to avoid duplicates.
 const allLogs = $derived.by(() => {
 	const seen = new Set<number>();
 	const merged: LogEntry[] = [];
@@ -145,7 +145,7 @@ function getLevelClass(level: LogLevelType): string {
 	}
 }
 
-// Preserve current filter query string on the export form so the server action sees them.
+// Export must use the same filters the operator is currently viewing.
 const exportAction = $derived.by(() => {
 	const search = $page.url.searchParams.toString();
 	return search ? `?${search}&/exportLogs` : '?/exportLogs';
@@ -209,7 +209,7 @@ function handleSourceChange(event: Event) {
 }
 
 function clearFilters() {
-	// Cancel any pending debounced search so it doesn't race the navigation
+	// A pending debounced search would re-add the old query after the clear navigation.
 	if (searchDebounce) {
 		clearTimeout(searchDebounce);
 		searchDebounce = null;

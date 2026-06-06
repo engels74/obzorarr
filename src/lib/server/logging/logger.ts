@@ -78,15 +78,14 @@ class Logger {
 
 		this.isFlushing = true;
 
-		// Take current buffer (keep reference for potential restore)
 		const entries = this.buffer;
 		this.buffer = [];
 
 		try {
 			await insertLogsBatch(entries);
 		} catch (error) {
-			// Restore entries to buffer on failure (at the start, to preserve order)
-			// Only restore if the buffer hasn't grown too large (avoid memory issues)
+			// A transient DB failure should not silently drop logs, but cap the
+			// restore so an extended outage cannot grow the process unboundedly.
 			if (this.buffer.length + entries.length <= BATCH_SIZE * 2) {
 				this.buffer = [...entries, ...this.buffer];
 			}

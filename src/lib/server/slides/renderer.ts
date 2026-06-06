@@ -76,8 +76,8 @@ export function markdownToPlainText(content: string, maxLength: number = 200): s
 	const html = renderMarkdownSync(content);
 
 	const plainText = html
-		.replace(/<[^>]*>/g, ' ') // Replace tags with spaces
-		.replace(/\s+/g, ' ') // Collapse whitespace
+		.replace(/<[^>]*>/g, ' ')
+		.replace(/\s+/g, ' ')
 		.trim();
 
 	if (plainText.length <= maxLength) {

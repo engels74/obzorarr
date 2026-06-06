@@ -248,7 +248,6 @@ describe('Property 23: Historical Data Preservation', () => {
 					actualTotalMinutes += minutes;
 				}
 
-				// Total should match (allow for small floating point differences)
 				expect(Math.abs(actualTotalMinutes - expectedTotalMinutes)).toBeLessThan(0.001);
 
 				return true;
@@ -265,7 +264,6 @@ describe('Property 23: Historical Data Preservation', () => {
 				async (historyRecords, _userRecords) => {
 					const db = createTestDatabase();
 
-					// Split history records: some with matching users, some without
 					const halfIndex = Math.floor(historyRecords.length / 2);
 					const recordsWithUsers = historyRecords.slice(0, halfIndex);
 					const _recordsWithoutUsers = historyRecords.slice(halfIndex);
@@ -293,7 +291,6 @@ describe('Property 23: Historical Data Preservation', () => {
 						.values(historyRecords)
 						.onConflictDoNothing({ target: schema.playHistory.historyKey });
 
-					// Simulate server stats query (queries play_history directly, not joined with users)
 					const yearFilter = createYearFilter(2024);
 					const allRecords = await db
 						.select()
@@ -314,7 +311,6 @@ describe('Property 23: Historical Data Preservation', () => {
 						0
 					);
 
-					// Server stats should include ALL records, not just those with users
 					expect(totalPlays).toBe(expectedPlays);
 					expect(totalWatchTimeSeconds).toBe(expectedWatchTimeSeconds);
 
@@ -335,7 +331,6 @@ describe('Property 23: Historical Data Preservation', () => {
 					.values(records)
 					.onConflictDoNothing({ target: schema.playHistory.historyKey });
 
-				// Count unique accountIds from play_history
 				const yearFilter = createYearFilter(2024);
 				const watchTimeMap = await getAllUsersWatchTime(db, yearFilter);
 				const userCountFromHistory = watchTimeMap.size;
@@ -343,7 +338,6 @@ describe('Property 23: Historical Data Preservation', () => {
 				const usersResult = await db.select().from(schema.users);
 				const userCountFromTable = usersResult.length;
 
-				// These should be different - play_history has users, users table is empty
 				expect(userCountFromTable).toBe(0);
 				expect(userCountFromHistory).toBeGreaterThan(0);
 
@@ -412,7 +406,6 @@ describe('Historical User Data Edge Cases', () => {
 		const users = await db.select().from(schema.users);
 		expect(users.length).toBe(0);
 
-		// Simulate re-authentication (user rejoins Plex server)
 		await db.insert(schema.users).values({
 			plexId: plexId,
 			username: 'ReturningUser',
@@ -420,13 +413,11 @@ describe('Historical User Data Edge Cases', () => {
 			isAdmin: false
 		});
 
-		// Now we can query play history for this user by matching plexId to accountId
 		const userHistory = await db
 			.select()
 			.from(schema.playHistory)
 			.where(sql`account_id = ${plexId}`);
 
-		// User's historical data should be accessible
 		expect(userHistory.length).toBe(1);
 		expect(userHistory[0]?.title).toBe('Old Movie');
 	});

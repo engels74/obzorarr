@@ -35,7 +35,7 @@ $effect(() => {
 
 	document.body.classList.add(themeClass);
 
-	// Keep <html data-theme> (set by pre-paint script) in sync with live changes
+	// The pre-paint script prevents FOUC; live theme changes must update the same attribute.
 	document.documentElement.setAttribute('data-theme', effectiveTheme);
 
 	if (isWrappedRoute) {

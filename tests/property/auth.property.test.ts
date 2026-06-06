@@ -6,13 +6,9 @@ import * as fc from 'fast-check';
 import * as schema from '$lib/server/db/schema';
 import { sessions, users } from '$lib/server/db/schema';
 
-// Note: We can't import from membership.ts directly because it uses $env/static/private
-
 /**
- * Determine the user's role based on ownership
- *
- * This is the same pure function from membership.ts, duplicated here
- * for testing without environment dependencies.
+ * Duplicated instead of imported because membership.ts pulls in
+ * `$env/static/private`, which would make these properties environment-bound.
  */
 function determineRole(isOwner: boolean): { isAdmin: boolean } {
 	return { isAdmin: isOwner };
@@ -265,7 +261,7 @@ describe('Property 2: Non-Member Access Denial', () => {
 });
 
 describe('Property 3: Session Invalidation', () => {
-	// Use a unique counter to ensure unique plexIds across property test iterations
+	// Property runs share the same in-memory DB; generated plexIds must not collide.
 	let plexIdCounter = 0;
 
 	function getUniquePlexId(): number {

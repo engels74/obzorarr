@@ -151,7 +151,7 @@ export async function getAllUsersWithStats(year: number): Promise<UserWithStats[
 	}
 
 	return allUsers.map((user) => {
-		// Try accountId first (matches playHistory.accountId), then fall back to plexId
+		// Legacy rows predate accountId, so plexId remains the compatibility fallback.
 		const stats = (user.accountId !== null ? watchTimeMap.get(user.accountId) : undefined) ??
 			watchTimeMap.get(user.plexId) ?? { totalDuration: 0, totalPlays: 0 };
 		const settings = shareSettingsMap.get(user.id);

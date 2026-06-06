@@ -232,7 +232,6 @@ describe('Property 10: Ranking Correctness', () => {
 					const prev = rankings[i - 1];
 					const curr = rankings[i];
 					if (!prev || !curr) continue;
-					// If counts are equal, titles should be in alphabetical order
 					if (prev.count === curr.count) {
 						if (prev.title.localeCompare(curr.title) > 0) return false;
 					}

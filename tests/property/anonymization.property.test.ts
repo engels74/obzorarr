@@ -109,14 +109,11 @@ describe('Property 18: Anonymization Mode Display', () => {
 			fc.property(uniqueUsersArbitrary, (users) => {
 				const result = applyAnonymization(users, AnonymizationMode.ANONYMOUS, null);
 
-				// All usernames should match "User #N" pattern
 				return result.every((user, index) => user.username === `User #${index + 1}`);
 			}),
 			{ numRuns: 100 }
 		);
 	});
-
-	// Hybrid mode shows viewing user's name only
 
 	it('hybrid mode shows viewing user their name, anonymizes others', () => {
 		fc.assert(
@@ -148,7 +145,6 @@ describe('Property 18: Anonymization Mode Display', () => {
 			fc.property(uniqueUsersArbitrary, (users) => {
 				const result = applyAnonymization(users, AnonymizationMode.HYBRID, null);
 
-				// All usernames should be anonymous (fallback behavior)
 				return result.every((user, index) => user.username === generateAnonymousIdentifier(index));
 			}),
 			{ numRuns: 100 }

@@ -22,7 +22,6 @@ describe('matchPresetFull (onboarding, 6 fields)', () => {
 
 	it('is stable under key reordering', () => {
 		const balanced = byId('balanced').values;
-		// Rebuild the object with keys in a different insertion order.
 		const reordered: PrivacyPresetValues = {
 			logoMode: balanced.logoMode,
 			allowUserControl: balanced.allowUserControl,
@@ -54,7 +53,7 @@ describe('matchPresetPrivacy (admin, 5 fields, logoMode excluded)', () => {
 		const { logoMode: _logoMode, ...fiveFields } = balanced;
 		// logoMode is NOT part of the admin match, so passing only the five fields
 		// (whatever the persisted logoMode is) still resolves to balanced.
-		expect(balanced.logoMode).not.toBe('always_hide'); // sanity: balanced is user_choice
+		expect(balanced.logoMode).not.toBe('always_hide');
 		expect(matchPresetPrivacy(fiveFields)).toBe('balanced');
 	});
 

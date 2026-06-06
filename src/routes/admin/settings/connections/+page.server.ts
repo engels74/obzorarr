@@ -196,10 +196,8 @@ export const actions: Actions = requireAdminActions({
 				}
 			}
 
-			// C2: detect submitted-but-locked fields so we can surface a note.
-			// Only the five lockable fields are checked; plexAllowInsecureLocalHttp
-			// is not ENV-lockable and is excluded from both the locks object and the
-			// submitted-locked scan.
+			// Surface ignored edits on ENV-locked fields; plexAllowInsecureLocalHttp is
+			// not ENV-lockable, so it is deliberately excluded.
 			const locks = {
 				plexServerUrl: apiConfig.plex.serverUrl.isLocked,
 				plexToken: apiConfig.plex.token.isLocked,
@@ -215,8 +213,6 @@ export const actions: Actions = requireAdminActions({
 				'openaiBaseUrl',
 				'openaiModel'
 			];
-			// A field counts as "submitted AND locked" when the FormData contained
-			// the key (values[k] !== undefined) AND the field is ENV-locked.
 			const submittedLockedFields = lockableKeys.filter((k) => values[k] !== undefined && locks[k]);
 			const hasLockedFieldSubmission = submittedLockedFields.length > 0;
 
@@ -237,13 +233,11 @@ export const actions: Actions = requireAdminActions({
 				await clearCachedServerMachineId();
 			}
 
-			// A2: read the new version immediately after the atomic write so the
-			// client can bind both panels to the fresh token without waiting for
-			// invalidateAll to complete.
+			// The sibling panel may save next before invalidateAll finishes, so it
+			// needs the just-written OCC token in the action response.
 			const newUpdatedAt = await getAppSettingsUpdatedAt(API_CONFIG_KEYS);
 			const newApiConfigVersion = settingsVersionISO(newUpdatedAt);
 
-			// C2: include informational note when a locked field was submitted.
 			let message = 'API configuration updated';
 			if (hasLockedFieldSubmission) {
 				message =

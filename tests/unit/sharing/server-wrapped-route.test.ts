@@ -123,7 +123,6 @@ describe('server wrapped route year guard (ISSUE-009, ISSUE-018)', () => {
 	});
 
 	it('returns 404 for an empty past year not in availableYears (ISSUE-009)', async () => {
-		// availableYears = [2026], year 2025 has no data → must 404
 		const currentYear = new Date().getFullYear();
 		const emptyPastYear = currentYear - 1;
 		try {
@@ -175,22 +174,18 @@ describe('server wrapped route year guard (ISSUE-009, ISSUE-018)', () => {
 			await load({
 				params: { year: String(currentYear) },
 				locals: {},
-				parent: makeParent([]), // empty — no data synced yet
+				parent: makeParent([]),
 				url: new URL(`http://localhost/wrapped/${currentYear}`),
 				setHeaders: () => {}
 			} as unknown as Parameters<ServerWrappedLoad>[0]);
-			// If load somehow succeeds, that's also fine for this guard test
 		} catch (err) {
 			expect(isHttpError(err)).toBe(true);
 			if (!isHttpError(err)) throw err;
-			// Must NOT be blocked by the year guard (404 "No data found for this year")
 			expect(err.body.message).not.toBe('No data found for this year');
 		}
 	});
 
 	it('does not 404 for a year present in availableYears', async () => {
-		// A year with actual data should pass the guard and reach access-control.
-		// Expect either success or a non-year-guard error (e.g. 403 from access control).
 		try {
 			await load({
 				params: { year: '2026' },

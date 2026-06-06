@@ -36,7 +36,7 @@ let showPopupBlockedModal = $state(false);
 let pendingPinId = $state<number | null>(null);
 let pendingAuthUrl = $state<string | null>(null);
 
-// Bypasses SvelteKit data prop reactivity timing issues
+// Local optimistic auth state keeps the Plex step responsive while SvelteKit data invalidates.
 let localAuthState = $state<{
 	isAuthenticated: boolean;
 	isAdmin: boolean;
@@ -91,7 +91,7 @@ $effect(() => {
 $effect(() => {
 	if (!contentRef) return;
 
-	// When these change, new .animate-item elements may be added to the DOM
+	// Read these values solely to re-run the effect when auth/server UI branches add new items.
 	// eslint-disable-next-line @typescript-eslint/no-unused-expressions
 	localAuthState?.isAuthenticated;
 	// eslint-disable-next-line @typescript-eslint/no-unused-expressions
@@ -103,7 +103,7 @@ $effect(() => {
 	// eslint-disable-next-line @typescript-eslint/no-unused-expressions
 	servers.length;
 
-	// Use requestAnimationFrame to ensure DOM has updated after state change
+	// Wait one frame so branch-created `.animate-item` nodes are in the DOM before querying.
 	const rafId = requestAnimationFrame(() => {
 		if (!contentRef) return;
 		const items = contentRef.querySelectorAll('.animate-item');
@@ -1196,7 +1196,6 @@ function formatServerUrl(url: string | null): string {
 			opacity: 0;
 		}
 
-		/* Plex Icon */
 		.plex-icon-wrapper {
 			position: relative;
 			width: 72px;
@@ -1378,12 +1377,10 @@ function formatServerUrl(url: string | null): string {
 			text-align: center;
 		}
 
-		/* Plex Login Button — Plex-orange OAuth CTA. Hoisted to :global so
-		   shadcn Button's child-rendered <button> inherits the gradient,
-		   triple shadow (drop + accent + inset highlight), hover translate-y,
-		   and active translate-back. The `.plex-logo` descendant rule
-		   (18px width/height) is dropped; PlayIcon + LoaderCircleIcon
-		   both sized inline via `class="size-[18px]"`. */
+		/* shadcn Button child-renders the actual <button>, so the OAuth CTA
+		   selector must be global for the gradient, layered shadows, and
+		   hover/active transforms to reach it. Icons stay sized inline to avoid
+		   another descendant override across the scoped-style boundary. */
 		:global(.plex-button) {
 			display: inline-flex;
 			align-items: center;
@@ -2025,14 +2022,11 @@ function formatServerUrl(url: string | null): string {
 			height: 18px;
 		}
 
-		/* Continue Button — hoisted to :global so SubmitButton + Button
-		   (both shadcn primitives render the button element inside a
-		   child component) inherit the primary palette, hover translate-y,
-		   and dual shadow (drop + inset highlight). `.continue-button svg`
-		   descendant rule dropped; ArrowRightIcon is sized inline via
-		   `class="size-[18px]"`. Same migration template as iteration 88's
-		   onboarding/sync continue-button (which uses identical CSS;
-		   eventual consolidation candidate). */
+		/* SubmitButton + Button render the actual <button> inside child
+		   components, so this selector must be global for the primary palette,
+		   hover translate-y, and dual shadow to reach it. The icon stays sized
+		   inline to avoid another descendant override across the scoped-style
+		   boundary. */
 		:global(.continue-button) {
 			display: inline-flex;
 			align-items: center;

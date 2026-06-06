@@ -170,8 +170,7 @@ export async function bulkApplyShareDefaults(): Promise<BulkApplyShareDefaultsRe
 			: ShareMode.PUBLIC;
 		const allowUserControl = allowResult[0]?.value === 'true';
 
-		// Count explicit rows up front so the caller can report how many were
-		// deliberately left untouched.
+		// Operators need to know explicit per-user overrides were preserved, not missed.
 		const explicitRows = await tx
 			.select({ id: shareSettings.id })
 			.from(shareSettings)
@@ -188,8 +187,7 @@ export async function bulkApplyShareDefaults(): Promise<BulkApplyShareDefaultsRe
 			baseUpdate.shareToken = null;
 		}
 
-		// Scope the bulk update to default-sourced rows ONLY. Explicit overrides
-		// (modeSource = 'explicit') are preserved verbatim.
+		// Bulk apply must never erase a user/admin override.
 		const updated = await tx
 			.update(shareSettings)
 			.set(baseUpdate)

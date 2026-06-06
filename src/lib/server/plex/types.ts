@@ -113,7 +113,7 @@ export type PlexShowMetadataResponse = z.infer<typeof PlexShowMetadataResponseSc
 /** History metadata with guaranteed ratingKey and title */
 export type ValidPlexHistoryMetadata = PlexHistoryMetadata & { ratingKey: string; title: string };
 
-/** Type guard to filter out items without ratingKey or title before database insertion */
+/** Plex can omit these fields, but play_history requires them. */
 export function hasRequiredFields(item: PlexHistoryMetadata): item is ValidPlexHistoryMetadata {
 	return (
 		typeof item.ratingKey === 'string' &&

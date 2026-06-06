@@ -655,8 +655,7 @@ function handleCsrfWarningDismissed() {
 			min-height: 100vh;
 		}
 
-		/* Responsive styles.
-		   768px covers phones through tablets; verified 2026-04 at 375px and 280px
+		/* 768px covers phones through tablets; verified 2026-04 at 375px and 280px
 		   (Galaxy Fold folded). Collapses the sidebar behind an overlay and drops the
 		   main-content left margin, so content fills the viewport without horizontal
 		   scroll at smaller widths. */

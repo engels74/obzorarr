@@ -313,9 +313,6 @@ function handleKeyDown(event: KeyboardEvent): void {
 			return;
 	}
 
-	// Drop key repeats arriving faster than the throttle window. The OS auto-
-	// repeats held arrow keys at 30+/sec which piles up against the animations
-	// and freezes the main thread.
 	const now = performance.now();
 	if (now - lastKeyTime < KEYDOWN_THROTTLE_MS) {
 		event.preventDefault();

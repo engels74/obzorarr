@@ -267,7 +267,7 @@ describe('Fun Facts AI', () => {
 
 			const facts = await generateWithAI(stats, config, 3);
 
-			expect(callCount).toBe(3); // Initial + 2 retries
+			expect(callCount).toBe(3);
 			expect(facts).toHaveLength(3);
 		});
 
@@ -310,7 +310,7 @@ describe('Fun Facts AI', () => {
 				expect(error).toBeInstanceOf(AIGenerationError);
 			}
 
-			expect(callCount).toBe(3); // Initial + 2 retries
+			expect(callCount).toBe(3);
 		});
 
 		it('retries on network error', async () => {
@@ -405,8 +405,6 @@ describe('Fun Facts AI', () => {
 			}
 		});
 	});
-
-	// generateFunFacts Tests (AI/Template Fallback)
 
 	describe('generateFunFacts', () => {
 		it('uses templates when AI is not configured', async () => {
@@ -640,7 +638,7 @@ describe('Fun Facts AI', () => {
 
 			const facts = await generateWithAI(stats, config, 3);
 
-			expect(callCount).toBe(2); // Initial + 1 retry after timeout
+			expect(callCount).toBe(2);
 			expect(facts).toHaveLength(3);
 		});
 
@@ -664,7 +662,7 @@ describe('Fun Facts AI', () => {
 				expect((error as AIGenerationError).message).toContain('timed out');
 			}
 
-			expect(callCount).toBe(2); // Initial + 1 retry
+			expect(callCount).toBe(2);
 		});
 
 		it('recovers from timeout then succeeds on retry', async () => {
