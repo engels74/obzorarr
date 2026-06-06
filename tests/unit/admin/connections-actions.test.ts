@@ -260,7 +260,6 @@ describe('connections nested route — updateApiConfig (OCC + schema)', () => {
 		}
 	});
 
-	// H5: bad openaiBaseUrl returns fieldErrors.openaiBaseUrl (not just a generic error)
 	it('returns fieldErrors.openaiBaseUrl for an invalid base URL (H5)', async () => {
 		const result = await run(
 			makeRequest('updateApiConfig', {

@@ -99,8 +99,6 @@ describe('csrfHandle (production mode)', () => {
 		});
 
 		it('passes through when onboarding is still in progress', async () => {
-			// ONBOARDING_COMPLETED not set ⇒ onboarding in progress.
-
 			const event = makeEvent({
 				method: 'POST',
 				url: 'https://example.com/onboarding/csrf?/skipCsrf',
@@ -122,7 +120,6 @@ describe('csrfHandle (production mode)', () => {
 			const event = makeEvent({
 				method: 'POST',
 				url: `https://example.com/wrapped/2024/u/${tokenUUID}?/updateShareMode`,
-				// No origin header → missing-origin branch.
 				route: { id: '/wrapped/[year=year]/u/[identifier]' }
 			});
 

@@ -324,9 +324,7 @@ describe('AI Prompts', () => {
 			});
 			const prompt = buildUserPrompt(context, 3);
 
-			// Header shows because counts are truthy
 			expect(prompt).toContain('For Reference');
-			// But individual items don't show because they're < 1
 			expect(prompt).not.toContain('Game of Thrones');
 			expect(prompt).not.toContain('Friends');
 			expect(prompt).not.toContain('Star Wars');

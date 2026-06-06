@@ -295,11 +295,8 @@ describe('Property 17: Permission Enforcement', () => {
 	function isPermissionAllowed(ctx: PermissionContext): boolean {
 		if (ctx.isAdmin) return true;
 
-		// Users without control permission cannot change anything
 		if (!ctx.canUserControl) return false;
 
-		// Users with control can only set public or private-oauth
-		// They cannot enable private-link unless already in that mode
 		if (
 			ctx.requestedMode === ShareMode.PRIVATE_LINK &&
 			ctx.currentMode !== ShareMode.PRIVATE_LINK
@@ -438,7 +435,6 @@ describe('Property 17: Permission Enforcement', () => {
 	it('user settings cannot exceed admin-granted permissions', () => {
 		fc.assert(
 			fc.property(shareModeArbitrary, (currentMode) => {
-				// User without control cannot change from current mode
 				const ctxNoControl: PermissionContext = {
 					isAdmin: false,
 					canUserControl: false,
@@ -448,7 +444,6 @@ describe('Property 17: Permission Enforcement', () => {
 
 				const denied = !isPermissionAllowed(ctxNoControl);
 
-				// User with control cannot exceed to private-link
 				const ctxWithControl: PermissionContext = {
 					isAdmin: false,
 					canUserControl: true,
