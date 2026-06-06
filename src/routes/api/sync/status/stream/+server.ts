@@ -150,8 +150,9 @@ export const GET: RequestHandler = async ({ request, locals }) => {
 						terminalEventSent = false;
 					}
 				} catch {
-					// A client can disconnect between the async auth gate and enqueue;
-					// the next tick or abort handler owns cleanup for that benign race.
+					// Keep the stream best-effort: transient onboarding DB checks,
+					// progress reads, or client disconnects should not leak error bodies
+					// or leave overlapping polls armed.
 				} finally {
 					polling = false;
 				}
