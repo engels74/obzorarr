@@ -22,6 +22,10 @@ type LayoutDataWithLookupSync = LayoutData & {
 
 let { children, data }: Props = $props();
 
+function canUseSyncStatus(layoutData: LayoutData): boolean {
+	return layoutData.syncStatusEnabled === true && Boolean(layoutData.syncStatus);
+}
+
 function hasLookupSyncMarker(layoutData: LayoutData): boolean {
 	const lookupData = layoutData as LayoutDataWithLookupSync;
 	return Boolean(lookupData.lookupSyncTriggered ?? lookupData.lookupSyncStarted);
@@ -31,13 +35,15 @@ const MIN_LOADING_DISPLAY_MS = 300;
 const FAILED_LIVE_SYNC_MESSAGE =
 	"Couldn't refresh your viewing history from Plex. Showing your most recent data.";
 
-let isLoading = $state(untrack(() => data.syncStatus?.inProgress ?? false));
+let isLoading = $state(
+	untrack(() => (canUseSyncStatus(data) ? (data.syncStatus?.inProgress ?? false) : false))
+);
 
 let loadingStartTime = $state(Date.now());
 
 let syncCompletionHandled = $state(false);
 
-const initialLookupSyncMarker = untrack(() => hasLookupSyncMarker(data));
+const initialLookupSyncMarker = untrack(() => canUseSyncStatus(data) && hasLookupSyncMarker(data));
 
 let lookupSyncFeedbackPending = $state(initialLookupSyncMarker);
 
@@ -82,14 +88,15 @@ async function handleSyncComplete(event: SyncTerminalEventType): Promise<void> {
 }
 
 $effect(() => {
-	const lookupSyncStarted = hasLookupSyncMarker(data);
+	const syncStatusEnabled = canUseSyncStatus(data);
+	const lookupSyncStarted = syncStatusEnabled && hasLookupSyncMarker(data);
 
 	if (lookupSyncStarted && !lookupSyncMarkerSeen) {
 		lookupSyncFeedbackPending = true;
 		lookupSyncMarkerSeen = true;
 	}
 
-	if (!lookupSyncStarted) {
+	if (!lookupSyncStarted || !syncStatusEnabled) {
 		lookupSyncMarkerSeen = false;
 		lookupSyncFeedbackPending = false;
 	}
@@ -98,10 +105,13 @@ $effect(() => {
 // Keep the SSE store in an effect so it tracks fresh load data, never runs
 // during SSR, and disconnects whenever the layout data changes.
 $effect(() => {
-	const syncStatus = data.syncStatus;
+	const syncStatus = data.syncStatusEnabled === true ? data.syncStatus : null;
 
 	if (!browser || !syncStatus) {
 		syncStatusStore = null;
+		if (!syncCompletionHandled) {
+			isLoading = false;
+		}
 		return;
 	}
 
@@ -127,8 +137,16 @@ $effect(() => {
 	};
 });
 
-const inProgress = $derived(syncStatusStore?.inProgress ?? data.syncStatus?.inProgress ?? false);
-const progress = $derived(syncStatusStore?.progress ?? data.syncStatus?.progress ?? null);
+const inProgress = $derived(
+	data.syncStatusEnabled === true
+		? (syncStatusStore?.inProgress ?? data.syncStatus?.inProgress ?? false)
+		: false
+);
+const progress = $derived(
+	data.syncStatusEnabled === true
+		? (syncStatusStore?.progress ?? data.syncStatus?.progress ?? null)
+		: null
+);
 
 // Suppress the sync status region entirely on error pages (403/404/+error.svelte).
 // When $page.error is set, the overlay's role="status" aria-live region must be
@@ -138,7 +156,11 @@ const hasPageError = $derived(Boolean($page.error));
 </script>
 
 {#if !hasPageError}
-	<SyncLoadingOverlay visible={isLoading || inProgress} {progress} syncInProgress={inProgress} />
+	<SyncLoadingOverlay
+		visible={data.syncStatusEnabled === true && (isLoading || inProgress)}
+		{progress}
+		syncInProgress={inProgress}
+	/>
 {/if}
 
 {@render children()}
