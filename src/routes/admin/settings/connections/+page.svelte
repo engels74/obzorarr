@@ -422,7 +422,6 @@ const showOpenaiKeyWarning = $derived(!data.hasEffectiveOpenAIKey && !openaiApiK
 									}
 									await update({ reset: false });
 									if (result.type === 'success') {
-										openaiModel = ''; // clear the input — default shows as placeholder
 										await invalidateAll();
 									}
 								} finally {
@@ -456,7 +455,10 @@ const showOpenaiKeyWarning = $derived(!data.hasEffectiveOpenAIKey && !openaiApiK
 										);
 									}
 									await update({ reset: false });
-									if (result.type === 'success') await invalidateAll();
+									if (result.type === 'success') {
+										openaiModel = '';
+										await invalidateAll();
+									}
 								} finally {
 									isClearingOpenaiModel = false;
 								}
