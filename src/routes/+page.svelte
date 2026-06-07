@@ -228,6 +228,9 @@ function handleCancelRedirect(): void {
 							e.preventDefault();
 							handlePlexLogin();
 						}}
+						onauxclick={(e) => {
+							e.preventDefault();
+						}}
 					>
 						<span class="plex-icon" aria-hidden="true">&#9654;</span>
 						Sign in with Plex

@@ -72,36 +72,53 @@ describe('connections nested route — updateApiConfig (OCC + schema)', () => {
 		expect(result).toMatchObject({ status: 409, data: { conflict: true } });
 	});
 
-	it('rejects blank openaiModel as 400 with fieldErrors.openaiModel', async () => {
+	it('treats blank openaiModel as clear-to-default (not a 400)', async () => {
+		// The OpenAI panel always submits openaiModel present-but-empty; a blank
+		// value is an intentional clear-to-default, NOT invalid input. Seed a
+		// stored custom model so we can prove the blank submit clears it.
+		await setAppSetting(AppSettingsKey.OPENAI_MODEL, 'gpt-4o');
+		expect((await getApiConfigWithSources()).openai.model.value).toBe('gpt-4o');
+
 		const result = await run(
 			makeRequest('updateApiConfig', {
 				openaiModel: '',
 				apiConfigVersion: new Date(Date.now() + 60_000).toISOString()
 			})
 		);
-		expect(result).toMatchObject({
-			status: 400,
-			data: {
-				error: 'Invalid input',
-				fieldErrors: { openaiModel: ['Model name is required'] }
-			}
-		});
+
+		// The action succeeds rather than returning a fieldErrors.openaiModel 400.
+		expect(result).toMatchObject({ success: true });
+
+		// writeOrClearEchoed deletes the OPENAI_MODEL row on '', so the resolved
+		// model falls back to the service's hardcoded default (source 'default',
+		// e.g. 'gpt-5-mini'); the user's custom 'gpt-4o' is no longer in effect.
+		const after = (await getApiConfigWithSources()).openai.model;
+		expect(after.value).not.toBe('gpt-4o');
+		expect(after.value).toMatch(/^gpt-/);
+		expect(after.source).toBe('default');
+		expect(after.isLocked).toBe(false);
 	});
 
-	it('rejects whitespace-only openaiModel as 400', async () => {
+	it('treats whitespace-only openaiModel as clear-to-default (trimmed to blank)', async () => {
+		// `.trim()` reduces '   ' to '', which is the same clear-to-default signal
+		// as a blank submit — it must not be rejected as invalid input.
+		await setAppSetting(AppSettingsKey.OPENAI_MODEL, 'gpt-4o');
+		expect((await getApiConfigWithSources()).openai.model.value).toBe('gpt-4o');
+
 		const result = await run(
 			makeRequest('updateApiConfig', {
 				openaiModel: '   ',
 				apiConfigVersion: new Date(Date.now() + 60_000).toISOString()
 			})
 		);
-		expect(result).toMatchObject({
-			status: 400,
-			data: {
-				error: 'Invalid input',
-				fieldErrors: { openaiModel: ['Model name is required'] }
-			}
-		});
+
+		expect(result).toMatchObject({ success: true });
+
+		const after = (await getApiConfigWithSources()).openai.model;
+		expect(after.value).not.toBe('gpt-4o');
+		expect(after.value).toMatch(/^gpt-/);
+		expect(after.source).toBe('default');
+		expect(after.isLocked).toBe(false);
 	});
 
 	it('rejects malformed Plex URL as 400 (Zod URL validator)', async () => {

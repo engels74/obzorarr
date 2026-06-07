@@ -74,7 +74,14 @@ const ApiConfigSchema = z.object({
 		.transform((v) => v === 'true'),
 	openaiApiKey: optionalTrimmed(512),
 	openaiBaseUrl: trimmedUrlOrEmpty,
-	openaiModel: z.string().trim().min(1, 'Model name is required').max(100).optional(),
+	// Blank `openaiModel` is an intentional clear-to-default (parity with
+	// `openaiBaseUrl`/`clearOpenaiModel`): the OpenAI panel always submits this
+	// field present-but-empty, and `setApiConfigAtomic`'s writeOrClearEchoed
+	// deletes the row on '' so resolution falls through to env / built-in
+	// default. Deliberately NO `.min(1)` — that would reject the clear case;
+	// `.trim().max(100)` already accepts '' and `.optional()` covers the
+	// field-absent case (e.g. a Plex-only save) without wiping the model.
+	openaiModel: z.string().trim().max(100).optional(),
 	apiConfigVersion: z.string().min(1, 'Missing api config version (reload the page)')
 });
 
