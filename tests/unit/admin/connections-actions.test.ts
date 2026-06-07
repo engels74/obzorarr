@@ -72,36 +72,53 @@ describe('connections nested route — updateApiConfig (OCC + schema)', () => {
 		expect(result).toMatchObject({ status: 409, data: { conflict: true } });
 	});
 
-	it('rejects blank openaiModel as 400 with fieldErrors.openaiModel', async () => {
+	it('treats blank openaiModel as clear-to-default (not a 400)', async () => {
+		// The OpenAI panel always submits openaiModel present-but-empty; a blank
+		// value is an intentional clear-to-default, NOT invalid input. Seed a
+		// stored custom model so we can prove the blank submit clears it.
+		await setAppSetting(AppSettingsKey.OPENAI_MODEL, 'gpt-4o');
+		expect((await getApiConfigWithSources()).openai.model.value).toBe('gpt-4o');
+
 		const result = await run(
 			makeRequest('updateApiConfig', {
 				openaiModel: '',
 				apiConfigVersion: new Date(Date.now() + 60_000).toISOString()
 			})
 		);
-		expect(result).toMatchObject({
-			status: 400,
-			data: {
-				error: 'Invalid input',
-				fieldErrors: { openaiModel: ['Model name is required'] }
-			}
-		});
+
+		// The action succeeds rather than returning a fieldErrors.openaiModel 400.
+		expect(result).toMatchObject({ success: true });
+
+		// writeOrClearEchoed deletes the OPENAI_MODEL row on '', so the resolved
+		// model falls back to the service's hardcoded default (source 'default',
+		// e.g. 'gpt-5-mini'); the user's custom 'gpt-4o' is no longer in effect.
+		const after = (await getApiConfigWithSources()).openai.model;
+		expect(after.value).not.toBe('gpt-4o');
+		expect(after.value).toMatch(/^gpt-/);
+		expect(after.source).toBe('default');
+		expect(after.isLocked).toBe(false);
 	});
 
-	it('rejects whitespace-only openaiModel as 400', async () => {
+	it('treats whitespace-only openaiModel as clear-to-default (trimmed to blank)', async () => {
+		// `.trim()` reduces '   ' to '', which is the same clear-to-default signal
+		// as a blank submit — it must not be rejected as invalid input.
+		await setAppSetting(AppSettingsKey.OPENAI_MODEL, 'gpt-4o');
+		expect((await getApiConfigWithSources()).openai.model.value).toBe('gpt-4o');
+
 		const result = await run(
 			makeRequest('updateApiConfig', {
 				openaiModel: '   ',
 				apiConfigVersion: new Date(Date.now() + 60_000).toISOString()
 			})
 		);
-		expect(result).toMatchObject({
-			status: 400,
-			data: {
-				error: 'Invalid input',
-				fieldErrors: { openaiModel: ['Model name is required'] }
-			}
-		});
+
+		expect(result).toMatchObject({ success: true });
+
+		const after = (await getApiConfigWithSources()).openai.model;
+		expect(after.value).not.toBe('gpt-4o');
+		expect(after.value).toMatch(/^gpt-/);
+		expect(after.source).toBe('default');
+		expect(after.isLocked).toBe(false);
 	});
 
 	it('rejects malformed Plex URL as 400 (Zod URL validator)', async () => {
@@ -403,10 +420,15 @@ describe('connections nested route — clearOpenaiModel', () => {
 		// resolveConfigValue then returns the service's hardcoded default
 		// model ('gpt-5-mini' per getApiConfigWithSources). The user's
 		// custom 'gpt-4o' is no longer in effect.
-		const after = (await getApiConfigWithSources()).openai.model.value;
-		expect(after).not.toBe('gpt-4o');
-		expect(after.length).toBeGreaterThan(0);
-		expect(after).toMatch(/^gpt-/);
+		const after = (await getApiConfigWithSources()).openai.model;
+		expect(after.value).not.toBe('gpt-4o');
+		expect(after.value.length).toBeGreaterThan(0);
+		expect(after.value).toMatch(/^gpt-/);
+		// ISSUE-003: after a clear the resolved source is 'default', which is the
+		// flag the page uses to blank the editable input (so the default shows as
+		// the placeholder "gpt-5-mini (default)") instead of pre-filling it.
+		expect(after.source).toBe('default');
+		expect(after.isLocked).toBe(false);
 	});
 
 	it('returns 400 when the model is locked via env', async () => {
@@ -424,6 +446,53 @@ describe('connections nested route — clearOpenaiModel', () => {
 		} finally {
 			if (previous === undefined) delete dynamicEnv.OPENAI_MODEL;
 			else dynamicEnv.OPENAI_MODEL = previous;
+		}
+	});
+});
+
+// ISSUE-001 was reported as "ENV badge missing for an env-set Plex URL". It was
+// a FALSE POSITIVE: the dogfood `bun run dev` did not load `.env`, so the value
+// was genuinely DB-sourced (editable, no pill = correct). These tests lock in
+// the resolution contract that drives the page's ENV pill + disabled input, so
+// a genuine lock regression behind that symptom would fail here. The page wires
+// the pill/`disabled` to `settings.plexServerUrl.isLocked` (a source guard in
+// dogfood-ui-invariants.test.ts pins that wiring).
+describe('ISSUE-001 — env authority resolves to a locked, env-sourced config value', () => {
+	const dynamicEnv = env as Record<string, string | undefined>;
+
+	beforeEach(async () => {
+		await resetSharedTestDb();
+	});
+
+	it('reports source=env + isLocked=true when an authoritative PLEX_SERVER_URL env value is present', async () => {
+		const prev = dynamicEnv.PLEX_SERVER_URL;
+		dynamicEnv.PLEX_SERVER_URL = 'http://plex.env.local:32400';
+		try {
+			// A DB row must NOT override an authoritative env value (env-over-DB).
+			await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, 'http://plex.db.local:32400');
+			const resolved = (await getApiConfigWithSources()).plex.serverUrl;
+			expect(resolved.source).toBe('env');
+			expect(resolved.isLocked).toBe(true);
+			expect(resolved.value).toBe('http://plex.env.local:32400');
+		} finally {
+			dynamicEnv.PLEX_SERVER_URL = prev;
+		}
+	});
+
+	it('reports source=db + isLocked=false (editable, no pill) when only a DB value exists', async () => {
+		const prevUrl = dynamicEnv.PLEX_SERVER_URL;
+		const prevToken = dynamicEnv.PLEX_TOKEN;
+		dynamicEnv.PLEX_SERVER_URL = '';
+		dynamicEnv.PLEX_TOKEN = '';
+		try {
+			await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, 'http://plex.db.local:32400');
+			const resolved = (await getApiConfigWithSources()).plex.serverUrl;
+			expect(resolved.source).toBe('db');
+			expect(resolved.isLocked).toBe(false);
+			expect(resolved.value).toBe('http://plex.db.local:32400');
+		} finally {
+			dynamicEnv.PLEX_SERVER_URL = prevUrl;
+			dynamicEnv.PLEX_TOKEN = prevToken;
 		}
 	});
 });

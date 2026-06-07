@@ -125,6 +125,14 @@ bun install
 bun run dev
 ```
 
+> **Note on `.env` in local dev.** `bun run dev` does **not** auto-load `.env`, so any
+> `PLEX_SERVER_URL` / `OPENAI_*` values you put there are ignored — local dev configures the
+> server through onboarding and the admin UI (values stored in the SQLite DB). Environment-variable
+> precedence (and the "Locked by environment variable" UI) applies to **Docker/production**, where
+> the container passes the vars into the process. To exercise env-precedence locally (e.g. to see an
+> env-locked field render its `ENV` badge), run `bun run dev:env`, which loads `.env` via
+> `--env-file`.
+
 ## License
 
 This project is licensed under the [GNU Affero General Public License v3.0](LICENSE).

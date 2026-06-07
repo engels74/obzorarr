@@ -42,7 +42,9 @@ let openaiApiKeyInput = $state('');
 // svelte-ignore state_referenced_locally
 let openaiBaseUrl = $state(settings.openaiBaseUrl.value);
 // svelte-ignore state_referenced_locally
-let openaiModel = $state(settings.openaiModel.value);
+let openaiModel = $state(
+	settings.openaiModel.source === 'default' ? '' : (settings.openaiModel.value ?? '')
+);
 
 // Both panels share one OCC token; keep the successful save's fresh version locally.
 // svelte-ignore state_referenced_locally
@@ -341,6 +343,7 @@ const showOpenaiKeyWarning = $derived(!data.hasEffectiveOpenAIKey && !openaiApiK
 						placeholder="https://api.openai.com/v1"
 						bind:value={openaiBaseUrl}
 						disabled={openaiBaseUrlLocked}
+						maxlength={512}
 					/>
 					{#if openaiBaseUrlError}
 						<p class="text-xs text-destructive">{openaiBaseUrlError}</p>
@@ -358,7 +361,7 @@ const showOpenaiKeyWarning = $derived(!data.hasEffectiveOpenAIKey && !openaiApiK
 						id="openaiModel"
 						name="openaiModel"
 						type="text"
-						placeholder="gpt-5-mini"
+						placeholder="gpt-5-mini (default)"
 						maxlength={100}
 						bind:value={openaiModel}
 						disabled={openaiModelLocked}
@@ -418,7 +421,9 @@ const showOpenaiKeyWarning = $derived(!data.hasEffectiveOpenAIKey && !openaiApiK
 										);
 									}
 									await update({ reset: false });
-									if (result.type === 'success') await invalidateAll();
+									if (result.type === 'success') {
+										await invalidateAll();
+									}
 								} finally {
 									isClearingOpenaiKey = false;
 								}
@@ -432,7 +437,7 @@ const showOpenaiKeyWarning = $derived(!data.hasEffectiveOpenAIKey && !openaiApiK
 					</form>
 				{/if}
 
-				{#if settings.openaiModel.value && !openaiModelLocked}
+				{#if settings.openaiModel.source !== 'default' && !openaiModelLocked}
 					<form
 						method="POST"
 						action="?/clearOpenaiModel"
@@ -450,7 +455,10 @@ const showOpenaiKeyWarning = $derived(!data.hasEffectiveOpenAIKey && !openaiApiK
 										);
 									}
 									await update({ reset: false });
-									if (result.type === 'success') await invalidateAll();
+									if (result.type === 'success') {
+										openaiModel = '';
+										await invalidateAll();
+									}
 								} finally {
 									isClearingOpenaiModel = false;
 								}

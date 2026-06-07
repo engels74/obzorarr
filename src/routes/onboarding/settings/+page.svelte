@@ -1005,7 +1005,7 @@ function getThemeColors(themeValue: string) {
 										type="text"
 										bind:value={openaiModel}
 										maxlength="100"
-										placeholder="gpt-5-mini"
+										placeholder="gpt-5-mini (default)"
 									/>
 									<div class="test-connection-row">
 										<button

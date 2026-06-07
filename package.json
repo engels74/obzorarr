@@ -5,6 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "bun --bun vite dev",
+		"dev:env": "bun --bun --env-file=.env vite dev",
 		"build": "bun --bun vite build",
 		"preview": "bun --bun vite preview",
 		"start": "bun ./build",

@@ -29,8 +29,10 @@ vite.config.ts.timestamp-*
 *.db-shm
 *.db-wal
 
-# Docs
-docs/
+# Docs (scratch/generated) — but keep architecture decision records tracked.
+docs/*
+!docs/adr/
+!docs/adr/**
 
 # Build analysis
 bundle-stats.html
