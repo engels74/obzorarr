@@ -352,6 +352,14 @@ describe('connections nested route — updateApiConfig (OCC + schema)', () => {
 		expect(result).toMatchObject({ success: true });
 		const message = (result as { message?: string }).message ?? '';
 		expect(message).toContain('Some fields are controlled by environment variables');
+
+		// ISSUE-002 security property: the submitted value must be DROPPED, not just
+		// flagged. The env-locked value still wins and the attacker-supplied URL is
+		// never persisted — disabling the input is cosmetic; this is the real block.
+		const after = await getApiConfigWithSources();
+		expect(after.plex.serverUrl.value).toBe('https://test-plex-server:32400');
+		expect(after.plex.serverUrl.value).not.toBe('https://plex.local:32400');
+		expect(after.plex.serverUrl.isLocked).toBe(true);
 	});
 });
 

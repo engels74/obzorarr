@@ -47,10 +47,26 @@ function handleConfigNavigation(event: MouseEvent): void {
 				<span>Year in Review</span>
 			</div>
 			<h1 class="hero-title">
-				<span class="year-display">{data.currentYear}</span>
+				<span class="year-display">{data.year}</span>
 				<span class="title-text">Wrapped</span>
 			</h1>
 			<p class="hero-subtitle">Discover viewing journeys and manage the wrapped experience</p>
+			{#if data.availableYears.length > 0}
+				<form method="GET" class="year-form">
+					<select
+						name="year"
+						class="year-selector"
+						aria-label="Select wrapped year"
+						disabled={data.availableYears.length === 1}
+						onchange={(e) => e.currentTarget.form?.requestSubmit()}
+					>
+						{#each data.availableYears as yr}
+							<option value={yr} selected={yr === data.year}>{yr}</option>
+						{/each}
+					</select>
+					<noscript><button type="submit" class="year-submit">Go</button></noscript>
+				</form>
+			{/if}
 		</div>
 		<div class="hero-decoration">
 			<div class="floating-ring ring-1"></div>
@@ -66,28 +82,30 @@ function handleConfigNavigation(event: MouseEvent): void {
 		</div>
 
 		<div class="wrapped-cards">
-			<a href={data.wrappedHref} class="showcase-card personal">
-				<div class="card-glow"></div>
-				<div class="card-shimmer"></div>
-				<div class="card-content">
-					<div class="card-icon-wrap">
-						<Star class="card-icon" />
+			{#if data.wrappedHref}
+				<a href={data.wrappedHref} class="showcase-card personal">
+					<div class="card-glow"></div>
+					<div class="card-shimmer"></div>
+					<div class="card-content">
+						<div class="card-icon-wrap">
+							<Star class="card-icon" />
+						</div>
+						<div class="card-text">
+							<h2 class="card-title">My Wrapped</h2>
+							<p class="card-description">
+								Your personal viewing journey and stats for {data.year}
+							</p>
+						</div>
+						<div class="card-cta">
+							<span class="cta-text">View your story</span>
+							<ArrowRight class="cta-arrow" />
+						</div>
 					</div>
-					<div class="card-text">
-						<h2 class="card-title">My Wrapped</h2>
-						<p class="card-description">
-							Your personal viewing journey and stats for {data.currentYear}
-						</p>
-					</div>
-					<div class="card-cta">
-						<span class="cta-text">View your story</span>
-						<ArrowRight class="cta-arrow" />
-					</div>
-				</div>
-				<div class="card-accent"></div>
-			</a>
+					<div class="card-accent"></div>
+				</a>
+			{/if}
 
-			<a href="/wrapped/{data.currentYear}" class="showcase-card server">
+			<a href="/wrapped/{data.year}" class="showcase-card server">
 				<div class="card-glow"></div>
 				<div class="card-shimmer"></div>
 				<div class="card-content">
@@ -158,6 +176,32 @@ function handleConfigNavigation(event: MouseEvent): void {
 			margin: 0 auto;
 			padding: 1.5rem 2rem 3rem;
 			overflow: hidden;
+		}
+
+		.year-form {
+			display: contents;
+		}
+
+		.year-selector {
+			padding: 0.5rem 0.75rem;
+			background: oklch(var(--input));
+			border: 1px solid oklch(var(--border));
+			border-radius: var(--radius);
+			color: oklch(var(--foreground));
+			font-size: 0.875rem;
+			cursor: pointer;
+			margin-top: 1rem;
+		}
+
+		.year-selector:focus {
+			outline: none;
+			border-color: oklch(var(--ring));
+			box-shadow: 0 0 0 2px oklch(var(--ring) / 0.2);
+		}
+
+		.year-selector:disabled {
+			cursor: default;
+			opacity: 0.75;
 		}
 
 		.ambient-glow {

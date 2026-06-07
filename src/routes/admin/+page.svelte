@@ -79,8 +79,8 @@ function handleAdminNavigation(event: MouseEvent) {
 const statsConfig = $derived([
 	{
 		value: data.userCount,
-		label: 'Total Users',
-		sub: `${data.syncedViewerCount.toLocaleString()} synced viewers`,
+		label: 'Registered Users',
+		sub: `${data.syncedViewerCount.toLocaleString()} distinct Plex viewers in history`,
 		icon: Users,
 		color: 'blue',
 		gradient: 'from-blue-500/20 to-blue-600/5'

@@ -277,8 +277,11 @@ export async function getShareSettings(
 		return null;
 	}
 
-	const globalDefault = await getGlobalDefaultShareMode();
-	const settings = toShareSettings(record, globalDefault);
+	const [globalDefault, globalAllowUserControl] = await Promise.all([
+		getGlobalDefaultShareMode(),
+		getGlobalAllowUserControl()
+	]);
+	const settings = toShareSettings(record, globalDefault, globalAllowUserControl);
 
 	if (settings.mode !== ShareMode.PRIVATE_LINK || settings.shareToken) {
 		return settings;
@@ -321,10 +324,18 @@ export async function getShareSettingsReadOnly(
 		return null;
 	}
 
-	return toShareSettings(record, await getGlobalDefaultShareMode());
+	const [globalDefault, globalAllowUserControl] = await Promise.all([
+		getGlobalDefaultShareMode(),
+		getGlobalAllowUserControl()
+	]);
+	return toShareSettings(record, globalDefault, globalAllowUserControl);
 }
 
-function toShareSettings(record: ShareSettingsRecord, globalDefault: ShareModeType): ShareSettings {
+function toShareSettings(
+	record: ShareSettingsRecord,
+	globalDefault: ShareModeType,
+	globalAllowUserControl: boolean
+): ShareSettings {
 	const parsedMode = ShareModeSchema.safeParse(record.mode);
 	const storedMode = parsedMode.success ? parsedMode.data : globalDefault;
 	const modeSource = normalizeShareModeSource(record.modeSource);
@@ -335,6 +346,15 @@ function toShareSettings(record: ShareSettingsRecord, globalDefault: ShareModeTy
 	// a token after the effective mode was widened (e.g. global default changed).
 	const shareToken = mode === ShareMode.PRIVATE_LINK ? record.shareToken : null;
 
+	// ISSUE-003: effective per-user control is the AND of the per-row flag and the
+	// LIVE global "allow user control" setting — mirroring how `mode` already folds
+	// in `globalDefault` above. The per-row `canUserControl` is only seeded at
+	// row-creation, so reading it raw lets a user who predates an admin toggling
+	// global control OFF keep editing indefinitely (policy bypass). Folding the
+	// global flag in here — the single centralization point already on every read
+	// path — closes the bypass without a stale read in any caller.
+	const canUserControl = (record.canUserControl ?? false) && globalAllowUserControl;
+
 	return {
 		userId: record.userId,
 		year: record.year,
@@ -342,7 +362,7 @@ function toShareSettings(record: ShareSettingsRecord, globalDefault: ShareModeTy
 		storedMode,
 		modeSource,
 		shareToken,
-		canUserControl: record.canUserControl ?? false
+		canUserControl
 	};
 }
 
@@ -381,7 +401,7 @@ export async function getOrCreateShareSettings(
 		throw new ShareError('Failed to create share settings', 'CREATE_FAILED');
 	}
 
-	return toShareSettings(record, defaultMode);
+	return toShareSettings(record, defaultMode, allowUserControl);
 }
 
 export async function updateShareSettings(
@@ -556,7 +576,11 @@ export async function getShareSettingsByToken(token: string): Promise<ShareSetti
 		return null;
 	}
 
-	return toShareSettings(record, await getGlobalDefaultShareMode());
+	const [globalDefault, globalAllowUserControl] = await Promise.all([
+		getGlobalDefaultShareMode(),
+		getGlobalAllowUserControl()
+	]);
+	return toShareSettings(record, globalDefault, globalAllowUserControl);
 }
 
 export async function deleteShareSettings(userId: number, year: number): Promise<void> {
@@ -567,9 +591,12 @@ export async function deleteShareSettings(userId: number, year: number): Promise
 
 export async function getAllUserShareSettings(userId: number): Promise<ShareSettings[]> {
 	const results = await db.select().from(shareSettings).where(eq(shareSettings.userId, userId));
-	const globalDefault = await getGlobalDefaultShareMode();
+	const [globalDefault, globalAllowUserControl] = await Promise.all([
+		getGlobalDefaultShareMode(),
+		getGlobalAllowUserControl()
+	]);
 
-	return results.map((record) => toShareSettings(record, globalDefault));
+	return results.map((record) => toShareSettings(record, globalDefault, globalAllowUserControl));
 }
 
 export async function updateUserLogoPreference(

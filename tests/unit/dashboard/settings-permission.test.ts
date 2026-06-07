@@ -60,11 +60,32 @@ describe('dashboard settings per-user share control', () => {
 		});
 	});
 
-	it('honors an admin-granted user control row even when the global default is false', async () => {
+	it('denies a share-mode change when global allow-user-control is OFF despite a stored true row (ISSUE-003)', async () => {
+		// beforeEach seeds global allowUserControl=false with a stale per-row
+		// canUserControl=true — the exact dogfood bypass. Effective control must be
+		// false: load reports it disabled and the action returns 403 server-side.
 		const data = (await load({ locals, setHeaders: () => {} } as unknown as LoadArgs)) as {
 			shareSettings: { canUserControl: boolean };
 		};
-		expect(data.shareSettings.canUserControl).toBe(true);
+		expect(data.shareSettings.canUserControl).toBe(false);
+
+		const result = await invokeUpdateShareMode(ShareMode.PRIVATE_LINK);
+		expect((result as { status?: number }).status).toBe(403);
+
+		const row = await db
+			.select({ mode: shareSettings.mode })
+			.from(shareSettings)
+			.where(and(eq(shareSettings.userId, USER_ID), eq(shareSettings.year, YEAR)))
+			.limit(1);
+		// Mode is unchanged — the bypass is blocked.
+		expect(row[0]?.mode).toBe(ShareMode.PUBLIC);
+	});
+
+	it('allows a share-mode change when global allow-user-control is ON', async () => {
+		await setGlobalShareDefaults({
+			defaultShareMode: ShareMode.PUBLIC,
+			allowUserControl: true
+		});
 
 		const result = await invokeUpdateShareMode(ShareMode.PRIVATE_LINK);
 		expect((result as { status?: number }).status).toBeUndefined();
@@ -78,6 +99,11 @@ describe('dashboard settings per-user share control', () => {
 	});
 
 	it('returns the refreshed private href and invalidates the previous token on regenerate', async () => {
+		// Regenerate is a user-control action, so the global flag must be ON.
+		await setGlobalShareDefaults({
+			defaultShareMode: ShareMode.PUBLIC,
+			allowUserControl: true
+		});
 		const oldToken = '11111111-1111-4111-8111-111111111111';
 		await db
 			.update(shareSettings)

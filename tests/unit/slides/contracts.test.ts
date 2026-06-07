@@ -20,11 +20,11 @@ describe('slide messaging context helpers', () => {
 			createServerContext('PARENTI'),
 			true,
 			'PARENTI',
-			'PARENTI',
-			"PARENTI's",
-			'has',
-			'is',
-			'watches'
+			'PARENTI Community',
+			'PARENTI Community',
+			'have',
+			'are',
+			'watch'
 		],
 		['unnamed server', createServerContext(null), true, null, 'We', 'Our', 'have', 'are', 'watch']
 	] as const)('maps %s context to grammar tokens', (_name, ctx, isServerWrapped, serverName, subject, possessive, have, are, watch) => {
@@ -37,10 +37,28 @@ describe('slide messaging context helpers', () => {
 	});
 
 	it.each([
-		[createServerContext('PARENTI'), 'When PARENTI watches'],
+		[createServerContext('PARENTI'), 'When PARENTI Community watch'],
 		[createPersonalContext(), 'When You watch']
 	] as const)('produces grammatical heading %s', (ctx, heading) => {
 		expect(`When ${getSubject(ctx)} ${getWatchVerb(ctx)}`).toBe(heading);
+	});
+
+	it('server context uses community framing, not person-like possessive', () => {
+		const ctx = createServerContext('PARENTI');
+		// Subject must not be bare serverName (community-framed)
+		expect(getSubject(ctx)).not.toBe('PARENTI');
+		expect(getSubject(ctx)).toContain('Community');
+		// Possessive must not use apostrophe-s (no "PARENTI's")
+		expect(getPossessive(ctx)).not.toContain("'s");
+		expect(getPossessive(ctx)).toContain('Community');
+		// Verbs must be plural (community treated as collective, not singular person)
+		expect(getHaveVerb(ctx)).toBe('have');
+		expect(getAreVerb(ctx)).toBe('are');
+		expect(getWatchVerb(ctx)).toBe('watch');
+		// Sanity: personal context is unchanged
+		const personal = createPersonalContext();
+		expect(getSubject(personal)).toBe('You');
+		expect(getPossessive(personal)).toBe('Your');
 	});
 });
 

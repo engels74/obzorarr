@@ -7,38 +7,32 @@ export function getSubject(ctx: SlideMessagingContext): string {
 	if (!ctx.isServerWrapped) {
 		return 'You';
 	}
-	return ctx.serverName ?? 'We';
+	return ctx.serverName ? `${ctx.serverName} Community` : 'We';
 }
 
 export function getPossessive(ctx: SlideMessagingContext): string {
 	if (!ctx.isServerWrapped) {
 		return 'Your';
 	}
-	if (ctx.serverName) {
-		return `${ctx.serverName}'s`;
-	}
-	return 'Our';
+	// Use noun-modifier form ("PARENTI Community Top Movies") to avoid
+	// person-like possessive phrasing ("PARENTI's Top Movies") on server Wrapped.
+	return ctx.serverName ? `${ctx.serverName} Community` : 'Our';
 }
 
-export function getHaveVerb(ctx: SlideMessagingContext): string {
-	if (!ctx.isServerWrapped) {
-		return 'have';
-	}
-	return ctx.serverName ? 'has' : 'have';
+// Both personal and server-wide (community) Wrapped use plural verbs — server
+// context is framed as a collective ("the {serverName} community ... watch"), not
+// a single person (ISSUE-009) — so these are context-independent. The `_ctx`
+// param is kept for a uniform helper API alongside getSubject/getPossessive.
+export function getHaveVerb(_ctx: SlideMessagingContext): string {
+	return 'have';
 }
 
-export function getAreVerb(ctx: SlideMessagingContext): string {
-	if (!ctx.isServerWrapped) {
-		return 'are';
-	}
-	return ctx.serverName ? 'is' : 'are';
+export function getAreVerb(_ctx: SlideMessagingContext): string {
+	return 'are';
 }
 
-export function getWatchVerb(ctx: SlideMessagingContext): string {
-	if (!ctx.isServerWrapped) {
-		return 'watch';
-	}
-	return ctx.serverName ? 'watches' : 'watch';
+export function getWatchVerb(_ctx: SlideMessagingContext): string {
+	return 'watch';
 }
 
 export function createPersonalContext(): SlideMessagingContext {

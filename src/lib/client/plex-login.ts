@@ -318,6 +318,12 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 			pollIntervalId = timers.setInterval(async () => {
 				try {
 					if (finished) return;
+					// Capture the popup state at tick start. A completed login is always
+					// preferred over a cancel, so we only act on "closed" AFTER confirming
+					// the poll did not return a completed login — otherwise a user who
+					// authorizes and then closes the popup before the next poll lands would
+					// see a false "cancelled" over a successful sign-in (ISSUE-015).
+					const popupClosed = authWindow?.closed ?? false;
 					const pollResponse = await fetch('/auth/plex', {
 						method: 'POST',
 						headers: { 'Content-Type': 'application/json' },
@@ -355,6 +361,15 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 							if (cancelled || succeeded || timedOut || pinExpired) return;
 							opts.onError(err instanceof Error ? err.message : 'Login failed');
 						}
+						return;
+					}
+
+					// Still pending: if the user closed the popup, treat it as an explicit
+					// cancel so the landing page can surface feedback (ISSUE-015).
+					if (popupClosed) {
+						cleanup();
+						opts.onError('Sign-in cancelled. You can try again.');
+						return;
 					}
 				} catch (err) {
 					if (cancelled || succeeded || timedOut || pinExpired || callbackInProgress) return;

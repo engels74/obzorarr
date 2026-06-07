@@ -118,8 +118,12 @@ export const actions: Actions = requireAdminActions({
 			const result = await startBackgroundSync(backfillYear);
 
 			if (!result.started) {
-				return fail(400, {
-					error: result.error ?? 'Failed to start sync',
+				// ISSUE-005: the only !started path is an in-progress sync, which is a
+				// conflict (409), not a bad request (400). The client surfaces the
+				// message; the status code lets a concurrent double-trigger be told
+				// apart from a validation failure.
+				return fail(409, {
+					error: result.error ?? 'A sync is already in progress',
 					selectedYear: backfillYear ?? null
 				});
 			}

@@ -271,7 +271,7 @@ $effect(() => {
 	const xOffset = animationDirection === 'forward' ? 30 : -30;
 
 	// biome-ignore lint/suspicious/noExplicitAny: Motion's animate function has complex overloads
-	(animate as any)(
+	const controls = (animate as any)(
 		contentRef,
 		{
 			opacity: [0, 1],
@@ -279,6 +279,22 @@ $effect(() => {
 		},
 		{ duration: 0.3, easing: [0.22, 1, 0.36, 1] }
 	);
+
+	// Motion runs this entrance via a WAAPI animation with `fill: "both"`, which
+	// keeps a *filling* composited layer on contentRef after it finishes. While
+	// that layer is held, DOM inserted into this subtree later (e.g. the Advanced
+	// Options panel toggled open by `{#if advancedPrivacyOpen}`) does not repaint
+	// on the first state change — the click flips the rune but the panel only
+	// becomes visible on the next interaction, the two-click bug (ISSUE-016).
+	// Stopping the animation once finished bakes the final values as plain inline
+	// styles and detaches the filling animation, releasing the stale layer so the
+	// first click expands reliably.
+	controls?.finished?.then(() => controls.stop?.()).catch(() => {});
+
+	// Stop the active animation if the effect reruns (carousel advances) or the
+	// component unmounts before `controls.finished` resolves, so the filling
+	// composited layer is always released and never outlives this run.
+	return () => controls?.stop?.();
 });
 
 const defaultColors = { primary: '#3b82f6', accent: '#60a5fa', bg: '#0f172a' };

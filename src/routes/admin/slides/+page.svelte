@@ -1,6 +1,7 @@
 <script lang="ts">
 import Pencil from '@lucide/svelte/icons/pencil';
 import Plus from '@lucide/svelte/icons/plus';
+import SparklesIcon from '@lucide/svelte/icons/sparkles';
 import Trash2 from '@lucide/svelte/icons/trash-2';
 import { untrack } from 'svelte';
 import { enhance } from '$app/forms';
@@ -460,6 +461,22 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			Control how many fun facts appear interspersed throughout the wrapped presentation.
 		</p>
 
+		<!-- ISSUE-012: tell the admin whether fun facts are AI-generated (OpenAI key
+		     in effect) or falling back to the built-in template generator. -->
+		{#if data.aiFunFactsActive}
+			<p class="ai-status ai-status-active" role="status">
+				<SparklesIcon class="ai-status-icon" aria-hidden="true" />
+				AI fun facts active — generated with your configured OpenAI key.
+			</p>
+		{:else}
+			<p class="ai-status ai-status-fallback" role="status">
+				<SparklesIcon class="ai-status-icon" aria-hidden="true" />
+				Template fallback — no OpenAI key configured, so fun facts use the built-in
+				generator. Add a key in
+				<a href="/admin/settings/connections">Settings → Connections</a> to enable AI fun facts.
+			</p>
+		{/if}
+
 		<form
 			method="POST"
 			action="?/setFunFactFrequency"
@@ -807,6 +824,42 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			color: oklch(var(--muted-foreground));
 			font-size: 0.875rem;
 			margin: 0 0 1rem;
+		}
+
+		/* ISSUE-012: AI-vs-template status badge for the fun-fact section. */
+		.ai-status {
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+			margin: 0 0 1rem;
+			padding: 0.625rem 0.75rem;
+			font-size: 0.8125rem;
+			line-height: 1.4;
+			border-radius: 8px;
+			border: 1px solid transparent;
+		}
+
+		.ai-status :global(.ai-status-icon) {
+			flex-shrink: 0;
+			width: 1rem;
+			height: 1rem;
+		}
+
+		.ai-status-active {
+			color: oklch(var(--foreground));
+			background: oklch(0.72 0.16 152 / 0.12);
+			border-color: oklch(0.72 0.16 152 / 0.32);
+		}
+
+		.ai-status-fallback {
+			color: oklch(var(--foreground));
+			background: oklch(0.79 0.1606 79.6 / 0.1);
+			border-color: oklch(0.79 0.1606 79.6 / 0.3);
+		}
+
+		.ai-status-fallback a {
+			color: inherit;
+			text-decoration: underline;
 		}
 
 		.slide-list {

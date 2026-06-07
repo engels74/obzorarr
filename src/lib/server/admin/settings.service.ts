@@ -996,6 +996,36 @@ export function isAuthoritativeEnvValue(value: string): boolean {
 	return Boolean(value) && !isPlaceholderSentinel(value);
 }
 
+/**
+ * Plex-specific authority check for the SERVER URL (ISSUE-002).
+ *
+ * The shared `isPlaceholderSentinel` treats `http://localhost:32400`
+ * unconditionally as a placeholder because it is the `.env.example` default —
+ * correct when the token is ALSO a placeholder, so a bare template copy never
+ * locks the connections UI (the onboarding-strands guard the L1043-1050 comment
+ * protects). But a genuine localhost Plex deployment supplied via ENV pairs that
+ * URL with a REAL token (`.env.example` ships localhost with the placeholder
+ * token `your-plex-token-here`). So localhost is authoritative ONLY when the
+ * paired `PLEX_TOKEN` is itself authoritative. Any non-localhost URL falls back
+ * to the shared value-only check. This predicate is used solely by the Plex
+ * branch of config resolution; `isPlaceholderSentinel`/`isAuthoritativeEnvValue`
+ * stay value-only so OpenAI/CSRF semantics are unaffected.
+ *
+ * The localhost comparison is canonicalized (trim + strip trailing slashes) so a
+ * near-bare template copy with a cosmetic variant of the `.env.example` default
+ * (e.g. `http://localhost:32400/`) is still recognized as the localhost
+ * sentinel rather than slipping past `isPlaceholderSentinel` and env-locking the
+ * connections UI with a placeholder token.
+ */
+export function isAuthoritativePlexServerUrl(serverUrl: string, token: string): boolean {
+	const canonicalUrl = serverUrl.trim().replace(/\/+$/, '');
+	if (canonicalUrl === 'http://localhost:32400') {
+		return isAuthoritativeEnvValue(token);
+	}
+	if (isAuthoritativeEnvValue(serverUrl)) return true;
+	return false;
+}
+
 function resolveConfigValue(
 	dbSettings: Record<string, string>,
 	dbKey: string,
@@ -1012,6 +1042,28 @@ function resolveConfigValue(
 	return { value: defaultValue, source: 'default', isLocked: false };
 }
 
+/**
+ * Plex SERVER URL resolution (ISSUE-002). Identical to `resolveConfigValue`
+ * except it uses the token-aware `isAuthoritativePlexServerUrl` so a real
+ * localhost deployment supplied via ENV (localhost URL + real token) locks
+ * the field, while a bare `.env.example` copy (localhost URL + placeholder
+ * token) still falls through to the onboarding-written DB row.
+ */
+function resolvePlexServerUrlValue(
+	dbSettings: Record<string, string>,
+	envUrl: string,
+	envToken: string
+): ConfigValue<string> {
+	if (isAuthoritativePlexServerUrl(envUrl, envToken)) {
+		return { value: envUrl, source: 'env', isLocked: true };
+	}
+	const dbValue = dbSettings[AppSettingsKey.PLEX_SERVER_URL];
+	if (dbValue) {
+		return { value: dbValue, source: 'db', isLocked: false };
+	}
+	return { value: '', source: 'default', isLocked: false };
+}
+
 export async function getApiConfigWithSources(): Promise<ApiConfigWithSources> {
 	const dbSettings = await getAllAppSettings();
 	const plexEnv = getPlexEnvConfig();
@@ -1019,7 +1071,7 @@ export async function getApiConfigWithSources(): Promise<ApiConfigWithSources> {
 
 	return {
 		plex: {
-			serverUrl: resolveConfigValue(dbSettings, AppSettingsKey.PLEX_SERVER_URL, plexEnv.serverUrl),
+			serverUrl: resolvePlexServerUrlValue(dbSettings, plexEnv.serverUrl, plexEnv.token),
 			token: resolveConfigValue(dbSettings, AppSettingsKey.PLEX_TOKEN, plexEnv.token)
 		},
 		openai: {
@@ -1145,33 +1197,69 @@ export async function clearConflictingDbSettings(): Promise<string[]> {
 	const csrfEnvOrigin = env.ORIGIN ?? '';
 	const trustProxyEnv = (env.TRUST_PROXY ?? '').trim();
 
-	const envToDbMapping: Array<{ envValue: string; dbKey: AppSettingsKeyType; label: string }> = [
+	// `authoritative` mirrors exactly what config resolution would treat as
+	// env-locked, so a DB row is only cleared when its env value actually wins.
+	// PLEX_SERVER_URL uses the token-aware Plex predicate (ISSUE-002) so a real
+	// localhost deployment (localhost URL + real token) clears the stale
+	// onboarding row, while a bare .env.example copy does not.
+	const envToDbMapping: Array<{
+		envValue: string;
+		dbKey: AppSettingsKeyType;
+		label: string;
+		authoritative: boolean;
+	}> = [
 		{
 			envValue: plexEnv.serverUrl,
 			dbKey: AppSettingsKey.PLEX_SERVER_URL,
-			label: 'PLEX_SERVER_URL'
+			label: 'PLEX_SERVER_URL',
+			authoritative: isAuthoritativePlexServerUrl(plexEnv.serverUrl, plexEnv.token)
 		},
-		{ envValue: plexEnv.token, dbKey: AppSettingsKey.PLEX_TOKEN, label: 'PLEX_TOKEN' },
-		{ envValue: openaiEnv.apiKey, dbKey: AppSettingsKey.OPENAI_API_KEY, label: 'OPENAI_API_KEY' },
+		{
+			envValue: plexEnv.token,
+			dbKey: AppSettingsKey.PLEX_TOKEN,
+			label: 'PLEX_TOKEN',
+			authoritative: isAuthoritativeEnvValue(plexEnv.token)
+		},
+		{
+			envValue: openaiEnv.apiKey,
+			dbKey: AppSettingsKey.OPENAI_API_KEY,
+			label: 'OPENAI_API_KEY',
+			authoritative: isAuthoritativeEnvValue(openaiEnv.apiKey)
+		},
 		{
 			envValue: openaiEnv.baseUrl,
 			dbKey: AppSettingsKey.OPENAI_BASE_URL,
-			label: 'OPENAI_BASE_URL'
+			label: 'OPENAI_BASE_URL',
+			authoritative: isAuthoritativeEnvValue(openaiEnv.baseUrl)
 		},
-		{ envValue: openaiEnv.model, dbKey: AppSettingsKey.OPENAI_MODEL, label: 'OPENAI_MODEL' },
-		{ envValue: csrfEnvOrigin, dbKey: AppSettingsKey.CSRF_ORIGIN, label: 'CSRF_ORIGIN' },
-		{ envValue: trustProxyEnv, dbKey: AppSettingsKey.TRUST_PROXY, label: 'TRUST_PROXY' }
+		{
+			envValue: openaiEnv.model,
+			dbKey: AppSettingsKey.OPENAI_MODEL,
+			label: 'OPENAI_MODEL',
+			authoritative: isAuthoritativeEnvValue(openaiEnv.model)
+		},
+		{
+			envValue: csrfEnvOrigin,
+			dbKey: AppSettingsKey.CSRF_ORIGIN,
+			label: 'CSRF_ORIGIN',
+			authoritative: isAuthoritativeEnvValue(csrfEnvOrigin)
+		},
+		{
+			envValue: trustProxyEnv,
+			dbKey: AppSettingsKey.TRUST_PROXY,
+			label: 'TRUST_PROXY',
+			authoritative: isAuthoritativeEnvValue(trustProxyEnv)
+		}
 	];
 
 	const dbSettings = await getAllAppSettings();
 
-	for (const { envValue, dbKey, label } of envToDbMapping) {
-		// Only an env value that resolveConfigValue would actually treat as
-		// authoritative (non-empty AND not a placeholder sentinel) may clear a
-		// conflicting DB row. Otherwise a shipped .env.example placeholder like
-		// `http://localhost:32400` would delete a real admin-configured value and
-		// resolveConfigValue would then fall through to the empty default.
-		if (envValue && !isPlaceholderSentinel(envValue) && dbSettings[dbKey]) {
+	for (const { dbKey, label, authoritative } of envToDbMapping) {
+		// Only an env value that config resolution would actually treat as
+		// authoritative may clear a conflicting DB row. Otherwise a shipped
+		// .env.example placeholder like `http://localhost:32400` would delete a
+		// real admin-configured value and resolution would fall through to empty.
+		if (authoritative && dbSettings[dbKey]) {
 			await deleteAppSetting(dbKey);
 			clearedSettings.push(label);
 		}
@@ -1181,7 +1269,7 @@ export async function clearConflictingDbSettings(): Promise<string[]> {
 	// have been derived from a different PLEX_SERVER_URL/PLEX_TOKEN (e.g. the env
 	// changed between restarts). Drop the cache so the next call to
 	// getConfiguredServerMachineId() re-fetches /identity against the current config.
-	const plexServerUrlAuthoritative = isAuthoritativeEnvValue(plexEnv.serverUrl);
+	const plexServerUrlAuthoritative = isAuthoritativePlexServerUrl(plexEnv.serverUrl, plexEnv.token);
 	const plexTokenAuthoritative = isAuthoritativeEnvValue(plexEnv.token);
 	if (
 		(plexServerUrlAuthoritative || plexTokenAuthoritative) &&

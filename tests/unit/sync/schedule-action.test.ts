@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import { AppSettingsKey, getAppSetting } from '$lib/server/admin/settings.service';
+import { db } from '$lib/server/db/client';
+import { syncStatus } from '$lib/server/db/schema';
 import { setupSyncScheduler, stopSyncScheduler } from '$lib/server/sync/scheduler';
 import { actions } from '../../../src/routes/admin/sync/+page.server';
 import { resetSharedTestDb } from '../../helpers/db';
@@ -59,5 +61,39 @@ describe('sync updateSchedule action (ISSUE-004 / ISSUE-005)', () => {
 	it('rejects an invalid cron with a 400 and echoes the bad value back', async () => {
 		const result = await run('not a cron');
 		expect(result).toMatchObject({ status: 400 });
+	});
+});
+
+describe('sync startSync action conflict (ISSUE-005)', () => {
+	type StartSyncAction = NonNullable<typeof actions.startSync>;
+
+	beforeEach(async () => {
+		await resetSharedTestDb();
+		stopSyncScheduler();
+	});
+
+	afterEach(() => {
+		stopSyncScheduler();
+	});
+
+	function runStartSync() {
+		const request = new Request('http://localhost/admin/sync?/startSync', {
+			method: 'POST',
+			body: new FormData()
+		});
+		const handler = actions.startSync as StartSyncAction;
+		return handler({ request, locals: adminLocals } as Parameters<StartSyncAction>[0]);
+	}
+
+	it('returns 409 (conflict) when a sync is already in progress', async () => {
+		// getRunningSync() looks for a syncStatus row with status='running'.
+		await db.insert(syncStatus).values({
+			startedAt: new Date(Date.now() - 1000),
+			status: 'running',
+			recordsProcessed: 0
+		});
+
+		const result = (await runStartSync()) as { status?: number; data?: { error?: string } };
+		expect(result.status).toBe(409);
 	});
 });
