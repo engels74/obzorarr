@@ -24,6 +24,7 @@ const config = {
 				'style-src': ['self', 'unsafe-inline', 'https://fonts.googleapis.com'],
 				'font-src': ['self', 'https://fonts.gstatic.com'],
 				'script-src': ['self'],
+				'script-src-attr': ['unsafe-hashes', 'sha256-7dQwUgLau1NFCCGjfn9FsYptB6ZtWxJin6VohGIu20I='],
 				'connect-src': ['self', 'https://plex.tv'],
 				'frame-ancestors': ['none'],
 				'base-uri': ['self'],

@@ -115,6 +115,7 @@ let savedPublicLandingLookup = $state({
 // svelte-ignore state_referenced_locally
 const serverWrappedForm = superForm(data.serverWrappedForm, {
 	resetForm: false,
+	invalidateAll: false,
 	onUpdate: guardSettingsUpdate,
 	onUpdated({ form: updated }) {
 		if (updated.valid) {
@@ -137,6 +138,7 @@ const {
 // svelte-ignore state_referenced_locally
 const userDefaultsForm = superForm(data.userDefaultsForm, {
 	resetForm: false,
+	invalidateAll: false,
 	onUpdate: guardSettingsUpdate,
 	onUpdated({ form: updated }) {
 		if (updated.valid) {
@@ -159,6 +161,7 @@ const {
 // svelte-ignore state_referenced_locally
 const publicLandingLookupForm = superForm(data.publicLandingLookupForm, {
 	resetForm: false,
+	invalidateAll: false,
 	onUpdate: guardSettingsUpdate,
 	onUpdated({ form: updated }) {
 		if (updated.valid) {
@@ -273,11 +276,12 @@ function applyPrivacyPreset(preset: PrivacyPreset) {
 	$publicLandingLookupData.publicLandingLookup = preset.values.publicLandingLookup;
 }
 
-// WAI-ARIA APG radio-group keyboard support for the preset selector. Each preset
-// button is a `role="radio"` in a `role="radiogroup"`; native buttons already
-// handle Space/Enter, so we add roving tabindex (one tab stop) + arrow/Home/End
-// navigation here. Refs are indexed by preset position so a keyboard move can both
-// select (APG: moving in a radio group selects) and shift DOM focus.
+// Privacy dogfood requires every preset card to be directly reachable with Tab,
+// so this intentionally deviates from the APG roving-tabindex radio pattern:
+// every card has tabindex=0 while Arrow/Home/End still move focus and select.
+// Native buttons handle Space/Enter, so this handler only owns navigation keys.
+// Refs are indexed by preset position so a keyboard move can both select and
+// shift DOM focus.
 let presetButtons = $state<(HTMLButtonElement | null)[]>([]);
 
 function handlePresetKeydown(event: KeyboardEvent, index: number) {
@@ -428,15 +432,13 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 						type="button"
 						role="radio"
 						aria-checked={selectedPreset === preset.id}
-						tabindex={selectedPreset === preset.id || (selectedPreset === 'custom' && i === 0)
-							? 0
-							: -1}
+						tabindex={0}
 						onclick={() => applyPrivacyPreset(preset)}
 						onkeydown={(event) => handlePresetKeydown(event, i)}
 						class={selectedPreset === preset.id
-							? 'flex flex-col items-start gap-2 rounded-lg border border-primary bg-primary/5 p-4 text-left ring-1 ring-primary transition-colors'
-							: 'flex flex-col items-start gap-2 rounded-lg border border-border p-4 text-left transition-colors hover:bg-muted/50'}
-					>
+						? 'flex flex-col items-start gap-2 rounded-lg border border-primary bg-primary/5 p-4 text-left ring-1 ring-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+						: 'flex flex-col items-start gap-2 rounded-lg border border-border p-4 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'}
+						>
 						<span class="flex items-center gap-2 text-sm font-medium">
 							<PresetIcon class="size-4 text-primary" />
 							{preset.label}
