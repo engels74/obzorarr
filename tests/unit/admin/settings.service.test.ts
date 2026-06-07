@@ -29,6 +29,7 @@ import {
 	getWrappedTheme,
 	hasOpenAIEnvConfig,
 	hasPlexEnvConfig,
+	isAuthoritativePlexServerUrl,
 	isCsrfWarningDismissed,
 	isPlaceholderSentinel,
 	isPlexConfigured,
@@ -721,6 +722,68 @@ describe('Admin Settings Service', () => {
 				expect(config.plex.token.value).toBe('test-plex-token');
 				expect(config.plex.token.source).toBe('env');
 				expect(config.plex.token.isLocked).toBe(true);
+			});
+
+			it('locks a real localhost Plex deployment supplied via ENV (ISSUE-002)', async () => {
+				const dynamicEnv = env as Record<string, string | undefined>;
+				const prevUrl = dynamicEnv.PLEX_SERVER_URL;
+				const prevToken = dynamicEnv.PLEX_TOKEN;
+				// Real localhost deployment: the .env.example localhost URL paired with a
+				// REAL (non-placeholder) token. Onboarding may have written matching DB
+				// rows, but ENV must win and lock both fields.
+				dynamicEnv.PLEX_SERVER_URL = 'http://localhost:32400';
+				dynamicEnv.PLEX_TOKEN = 'a-real-plex-token-value';
+				await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, 'http://localhost:32400');
+				await setAppSetting(AppSettingsKey.PLEX_TOKEN, 'a-real-plex-token-value');
+
+				try {
+					const config = await getApiConfigWithSources();
+					expect(config.plex.serverUrl.source).toBe('env');
+					expect(config.plex.serverUrl.isLocked).toBe(true);
+					expect(config.plex.token.source).toBe('env');
+					expect(config.plex.token.isLocked).toBe(true);
+				} finally {
+					dynamicEnv.PLEX_SERVER_URL = prevUrl;
+					dynamicEnv.PLEX_TOKEN = prevToken;
+				}
+			});
+
+			it('does NOT lock a bare .env.example localhost copy (placeholder token) (ISSUE-002)', async () => {
+				const dynamicEnv = env as Record<string, string | undefined>;
+				const prevUrl = dynamicEnv.PLEX_SERVER_URL;
+				const prevToken = dynamicEnv.PLEX_TOKEN;
+				// Bare template copy: localhost URL + the shipped placeholder token. The
+				// field must stay editable so onboarding can proceed.
+				dynamicEnv.PLEX_SERVER_URL = 'http://localhost:32400';
+				dynamicEnv.PLEX_TOKEN = 'your-plex-token-here';
+
+				try {
+					const config = await getApiConfigWithSources();
+					expect(config.plex.serverUrl.isLocked).toBe(false);
+					expect(config.plex.serverUrl.source).not.toBe('env');
+					expect(config.plex.token.isLocked).toBe(false);
+				} finally {
+					dynamicEnv.PLEX_SERVER_URL = prevUrl;
+					dynamicEnv.PLEX_TOKEN = prevToken;
+				}
+			});
+		});
+
+		describe('isAuthoritativePlexServerUrl (ISSUE-002)', () => {
+			it('treats a non-localhost real URL as authoritative regardless of token', () => {
+				expect(isAuthoritativePlexServerUrl('https://plex.example.com:32400', '')).toBe(true);
+				expect(isAuthoritativePlexServerUrl('https://plex.example.com:32400', 'tok')).toBe(true);
+			});
+
+			it('treats localhost as authoritative ONLY when paired with a real token', () => {
+				expect(isAuthoritativePlexServerUrl('http://localhost:32400', 'a-real-token')).toBe(true);
+			});
+
+			it('treats a bare .env.example localhost copy as a placeholder (not authoritative)', () => {
+				expect(isAuthoritativePlexServerUrl('http://localhost:32400', 'your-plex-token-here')).toBe(
+					false
+				);
+				expect(isAuthoritativePlexServerUrl('http://localhost:32400', '')).toBe(false);
 			});
 		});
 

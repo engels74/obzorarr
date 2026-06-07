@@ -18,6 +18,7 @@ import { goto, invalidateAll } from '$app/navigation';
 import { page } from '$app/stores';
 import Logo from '$lib/components/Logo.svelte';
 import CsrfWarningBanner from '$lib/components/security/CsrfWarningBanner.svelte';
+import * as AlertDialog from '$lib/components/ui/alert-dialog';
 import type { LayoutData } from './$types';
 
 interface Props {
@@ -288,12 +289,30 @@ function handleCsrfWarningDismissed() {
 					<span class="user-role">Administrator</span>
 				</div>
 			</div>
-			<form method="POST" action="/auth/logout" use:enhance>
-				<button type="submit" class="logout-button">
-					<LogOut class="logout-icon" />
-					<span>Logout</span>
-				</button>
-			</form>
+			<AlertDialog.Root>
+				<AlertDialog.Trigger>
+					{#snippet child({ props })}
+						<button type="button" class="logout-button" {...props}>
+							<LogOut class="logout-icon" />
+							<span>Logout</span>
+						</button>
+					{/snippet}
+				</AlertDialog.Trigger>
+				<AlertDialog.Content>
+					<AlertDialog.Header>
+						<AlertDialog.Title>Sign out?</AlertDialog.Title>
+						<AlertDialog.Description>
+							You will be returned to the sign-in page.
+						</AlertDialog.Description>
+					</AlertDialog.Header>
+					<AlertDialog.Footer>
+						<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+						<form method="POST" action="/auth/logout" use:enhance style="display: contents;">
+							<AlertDialog.Action type="submit">Sign out</AlertDialog.Action>
+						</form>
+					</AlertDialog.Footer>
+				</AlertDialog.Content>
+			</AlertDialog.Root>
 			<div
 				class="text-[10px] text-muted-foreground/50 font-mono tracking-wider text-center leading-none select-all"
 				title={data.appVersion.kind}

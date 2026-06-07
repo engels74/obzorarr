@@ -53,6 +53,33 @@ describe('getSchedulerStatus pause/resume', () => {
 	});
 });
 
+describe('croner instance re-arms on resume — ISSUE-001 regression guard', () => {
+	afterEach(() => {
+		stopSyncScheduler();
+	});
+
+	// getSchedulerStatus().isRunning/.nextRun derive purely from the
+	// pausedByOperator flag (green-by-construction), so they cannot tell a working
+	// resume from a broken one. This assertion reaches PAST getSchedulerStatus to
+	// the underlying Cron: isRunning() is the only croner method that consults
+	// _states.paused, so a resume that stopped/killed the instance (the reported
+	// INACTIVE symptom) would leave it false. nextRun() must be a future fire.
+	it('underlying Cron reports isRunning()===true and a future nextRun after setup->pause->resume', () => {
+		const cron = setupSyncScheduler({ cronExpression: '0 0 * * *', startImmediately: true });
+		expect(cron.isRunning()).toBe(true);
+
+		pauseSyncScheduler();
+		expect(cron.isRunning()).toBe(false);
+
+		resumeSyncScheduler();
+		expect(cron.isRunning()).toBe(true);
+
+		const next = cron.nextRun();
+		expect(next).not.toBeNull();
+		expect(next!.getTime()).toBeGreaterThan(Date.now());
+	});
+});
+
 describe('updateSchedulerCron preserves run-state — ISSUE-012 regression guard', () => {
 	afterEach(() => {
 		stopSyncScheduler();

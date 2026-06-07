@@ -3,6 +3,7 @@ import type { SlideType } from '$lib/components/slides/types';
 import {
 	FunFactFrequency,
 	type FunFactFrequencyType,
+	getApiConfigWithSources,
 	getFunFactFrequency,
 	setFunFactFrequency
 } from '$lib/server/admin/settings.service';
@@ -35,11 +36,12 @@ import type { Actions, PageServerLoad } from './$types';
 export const load: PageServerLoad = async () => {
 	await initializeDefaultSlideConfig();
 
-	const [configs, customSlides, funFactFrequency, availableYears] = await Promise.all([
+	const [configs, customSlides, funFactFrequency, availableYears, apiConfig] = await Promise.all([
 		getAllSlideConfigs(),
 		getAllCustomSlides(),
 		getFunFactFrequency(),
-		getAvailableYears()
+		getAvailableYears(),
+		getApiConfigWithSources()
 	]);
 
 	const customSlidesWithPreview = customSlides.map((slide) => ({
@@ -47,11 +49,19 @@ export const load: PageServerLoad = async () => {
 		renderedHtml: renderMarkdownSync(slide.content)
 	}));
 
+	// ISSUE-012: signal whether AI fun facts will actually run. The effective
+	// OpenAI key (env-over-DB via resolveConfigValue) being non-empty means the
+	// AI generator is used; empty means the built-in template fallback. Surfaced
+	// as a badge on the Fun Fact Frequency section so the admin can tell which
+	// path is in effect. No secret is rendered — only the boolean.
+	const aiFunFactsActive = Boolean(apiConfig.openai.apiKey.value.trim());
+
 	return {
 		configs,
 		customSlides: customSlidesWithPreview,
 		funFactFrequency,
-		availableYears
+		availableYears,
+		aiFunFactsActive
 	};
 };
 

@@ -1,12 +1,17 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import { FunFactFrequency, getFunFactFrequency } from '$lib/server/admin/settings.service';
+import {
+	AppSettingsKey,
+	FunFactFrequency,
+	getFunFactFrequency,
+	setAppSetting
+} from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
 import { customSlides } from '$lib/server/db/schema';
 import {
 	getSlideConfigByType,
 	initializeDefaultSlideConfig
 } from '$lib/server/slides/config.service';
-import { actions } from '../../../src/routes/admin/slides/+page.server';
+import { actions, load } from '../../../src/routes/admin/slides/+page.server';
 import { resetSharedTestDb } from '../../helpers/db';
 
 type SetFunFactFrequencyAction = NonNullable<typeof actions.setFunFactFrequency>;
@@ -362,5 +367,26 @@ describe('admin slides actions', () => {
 			expect((await getSlideConfigByType('genres'))?.sortOrder).toBe(1);
 			expect((await getSlideConfigByType('total-time'))?.sortOrder).toBe(2);
 		});
+	});
+});
+
+describe('slides load — AI fun-fact status flag (ISSUE-012)', () => {
+	beforeEach(async () => {
+		await resetSharedTestDb();
+	});
+
+	function runLoad() {
+		return (load as unknown as () => Promise<{ aiFunFactsActive: boolean }>)();
+	}
+
+	it('reports aiFunFactsActive=false when no OpenAI key is configured', async () => {
+		const data = await runLoad();
+		expect(data.aiFunFactsActive).toBe(false);
+	});
+
+	it('reports aiFunFactsActive=true when an OpenAI key is stored', async () => {
+		await setAppSetting(AppSettingsKey.OPENAI_API_KEY, 'sk-test-key');
+		const data = await runLoad();
+		expect(data.aiFunFactsActive).toBe(true);
 	});
 });

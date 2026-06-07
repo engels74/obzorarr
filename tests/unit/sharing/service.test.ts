@@ -446,6 +446,13 @@ describe('Sharing Service', () => {
 			});
 
 			it('returns settings when they exist', async () => {
+				// ISSUE-003: canUserControl is now the EFFECTIVE value (stored row AND
+				// the live global "allow user control" flag). Enable the global flag so
+				// the stored per-row `true` surfaces as effective `true`.
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PUBLIC,
+					allowUserControl: true
+				});
 				await db.insert(shareSettings).values({
 					userId,
 					year,
@@ -624,7 +631,7 @@ describe('Sharing Service', () => {
 				expect(settings2.canUserControl).toBe(false);
 			});
 
-			it('keeps default-sourced mode effective from global defaults without changing control', async () => {
+			it('keeps default-sourced mode effective from global defaults; global off revokes effective control (ISSUE-003)', async () => {
 				await setGlobalShareDefaults({
 					defaultShareMode: ShareMode.PUBLIC,
 					allowUserControl: true
@@ -644,7 +651,12 @@ describe('Sharing Service', () => {
 				expect(updated.mode).toBe(ShareMode.PRIVATE_OAUTH);
 				expect(updated.storedMode).toBe(ShareMode.PUBLIC);
 				expect(updated.modeSource).toBe(ShareModeSource.DEFAULT);
-				expect(updated.canUserControl).toBe(true);
+				// ISSUE-003: effective canUserControl folds in the LIVE global flag, so
+				// toggling "allow user control" OFF immediately revokes effective control
+				// even though the per-row stored flag is unchanged. (The stored row value
+				// is still surfaced raw to the admin /admin/users "Can Control" column,
+				// which reads the DB directly rather than through toShareSettings.)
+				expect(updated.canUserControl).toBe(false);
 			});
 
 			it('throws when createIfMissing is false and settings do not exist', async () => {
@@ -714,6 +726,35 @@ describe('Sharing Service', () => {
 				await expect(
 					updateShareSettings(userId, year, { mode: ShareMode.PRIVATE_OAUTH }, false)
 				).rejects.toBeInstanceOf(PermissionExceededError);
+			});
+
+			it('denies a non-admin when global allow-user-control is OFF despite stored true (ISSUE-003)', async () => {
+				// Stored per-row canUserControl is true (seeded in beforeEach), but the
+				// admin flips the GLOBAL flag off after the row exists — the exact dogfood
+				// bypass. Effective control must be false, so the non-admin is denied.
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PUBLIC,
+					allowUserControl: false
+				});
+
+				await expect(
+					updateShareSettings(userId, year, { mode: ShareMode.PRIVATE_OAUTH }, false)
+				).rejects.toBeInstanceOf(PermissionExceededError);
+			});
+
+			it('still lets an admin update share mode when global allow-user-control is OFF (ISSUE-003 admin-unaffected)', async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PUBLIC,
+					allowUserControl: false
+				});
+
+				const updated = await updateShareSettings(
+					userId,
+					year,
+					{ mode: ShareMode.PRIVATE_OAUTH },
+					true
+				);
+				expect(updated.mode).toBe(ShareMode.PRIVATE_OAUTH);
 			});
 
 			it('allows user with canUserControl to enable private-link', async () => {

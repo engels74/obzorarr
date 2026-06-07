@@ -3,7 +3,11 @@ import { goto } from '$app/navigation';
 import { page } from '$app/stores';
 
 const status = $derived($page.status);
-const message = $derived($page.error?.message ?? '');
+const rawMessage = $derived($page.error?.message ?? '');
+// Suppress bare generic messages that SvelteKit emits for unmatched routes so
+// the friendly status-based copy is used instead.
+const GENERIC_MESSAGES = new Set(['Not found', 'Not Found']);
+const message = $derived(GENERIC_MESSAGES.has(rawMessage) ? '' : rawMessage);
 
 const title = $derived.by(() => {
 	if (status === 404) return 'Page not found';

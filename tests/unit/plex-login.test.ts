@@ -795,6 +795,131 @@ describe('startPlexLoginPopup', () => {
 		expect(onError).toHaveBeenCalledTimes(1);
 	});
 
+	it('fires onError with cancel message when popup is closed by user before auth completes', async () => {
+		let resolveIntervalRegistered: () => void = () => {};
+		const intervalRegistered = new Promise<void>((resolve) => {
+			resolveIntervalRegistered = resolve;
+		});
+		const intervalCallbacks: Array<() => Promise<void>> = [];
+		const timers = createTimerMocks((callback) => {
+			intervalCallbacks.push(callback);
+			resolveIntervalRegistered();
+		});
+
+		// Popup starts open, user closes it before auth completes.
+		const popup: MockPopupWindow = { closed: false, close: mock(() => {}) };
+		const browserWindow: MockWindow = {
+			location: { origin: 'https://obzorarr.example', href: 'https://obzorarr.example/' },
+			open: mock(() => popup) as unknown as MockWindow['open']
+		};
+
+		globalThis.fetch = mock(async (_input: string | URL | Request, init?: RequestInit) => {
+			// PIN fetch (GET /auth/plex) — always succeeds.
+			if (init?.method !== 'POST') {
+				return new Response(
+					JSON.stringify({ pinId: 42, authUrl: 'https://app.plex.tv/auth#?code=ABCD' }),
+					{ status: 200, headers: { 'Content-Type': 'application/json' } }
+				);
+			}
+			// Poll response — return pending (no user yet).
+			return new Response(JSON.stringify({}), { status: 202 });
+		}) as unknown as typeof fetch;
+
+		const onSuccess = mock(async () => {});
+		const onError = mock(() => {});
+		const onPopupBlocked = mock(() => {});
+
+		startPlexLoginPopup({
+			context: 'landing',
+			onSuccess,
+			onError,
+			onPopupBlocked,
+			window: browserWindow,
+			timers
+		});
+		await intervalRegistered;
+
+		const poll = intervalCallbacks[0] as () => Promise<void>;
+
+		// First tick: popup is still open — no error yet.
+		await poll();
+		expect(onError).not.toHaveBeenCalled();
+
+		// User closes the popup.
+		popup.closed = true;
+
+		// Second tick: closed popup detected → cancel error fired exactly once.
+		await poll();
+		expect(onError).toHaveBeenCalledTimes(1);
+		expect((onError.mock.calls[0] as string[])[0]).toBe('Sign-in cancelled. You can try again.');
+		expect(onSuccess).not.toHaveBeenCalled();
+		expect(onPopupBlocked).not.toHaveBeenCalled();
+
+		// Further ticks must not fire again (finished guard).
+		await poll();
+		expect(onError).toHaveBeenCalledTimes(1);
+	});
+
+	it('prefers a completed login over a closed-popup cancel (ISSUE-015 race guard)', async () => {
+		let resolveIntervalRegistered: () => void = () => {};
+		const intervalRegistered = new Promise<void>((resolve) => {
+			resolveIntervalRegistered = resolve;
+		});
+		const intervalCallbacks: Array<() => Promise<void>> = [];
+		const timers = createTimerMocks((callback) => {
+			intervalCallbacks.push(callback);
+			resolveIntervalRegistered();
+		});
+
+		// Popup opens normally so the poll interval registers.
+		const popup: MockPopupWindow = { closed: false, close: mock(() => {}) };
+		const browserWindow: MockWindow = {
+			location: { origin: 'https://obzorarr.example', href: 'https://obzorarr.example/' },
+			open: mock(() => popup) as unknown as MockWindow['open']
+		};
+
+		globalThis.fetch = mock(async (_input: string | URL | Request, init?: RequestInit) => {
+			if (init?.method !== 'POST') {
+				return new Response(
+					JSON.stringify({ pinId: 42, authUrl: 'https://app.plex.tv/auth#?code=ABCD' }),
+					{ status: 200, headers: { 'Content-Type': 'application/json' } }
+				);
+			}
+			// The poll lands a completed login on the SAME tick the popup is closed.
+			return new Response(
+				JSON.stringify({
+					user: { id: 1, plexId: 123, username: 'alice', isAdmin: false },
+					redirectTo: '/dashboard'
+				}),
+				{ status: 200, headers: { 'Content-Type': 'application/json' } }
+			);
+		}) as unknown as typeof fetch;
+
+		const onSuccess = mock(async () => {});
+		const onError = mock(() => {});
+		const onPopupBlocked = mock(() => {});
+
+		startPlexLoginPopup({
+			context: 'landing',
+			onSuccess,
+			onError,
+			onPopupBlocked,
+			window: browserWindow,
+			timers
+		});
+		await intervalRegistered;
+
+		// User closed the popup just as authorization completed server-side.
+		popup.closed = true;
+
+		const poll = intervalCallbacks[0] as () => Promise<void>;
+		await poll();
+
+		// Completed login wins — no false "cancelled".
+		expect(onSuccess).toHaveBeenCalledTimes(1);
+		expect(onError).not.toHaveBeenCalled();
+	});
+
 	it('surfaces server message and stops polling on 502 (PlexAuthApiError)', async () => {
 		let resolveIntervalRegistered: () => void = () => {};
 		const intervalRegistered = new Promise<void>((resolve) => {
