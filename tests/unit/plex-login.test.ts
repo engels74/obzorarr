@@ -853,3 +853,50 @@ describe('startPlexLoginPopup', () => {
 		expect(onError).toHaveBeenCalledTimes(1);
 	});
 });
+
+// Source guard: ISSUE-009 — landing-page CTA anchor must not allow bare
+// navigation when JS is active (Cmd+Click / middle-click bypass SvelteKit's
+// click interception and open an orphan tab). The <a> must carry an onclick
+// that calls handlePlexLogin() and prevents default so every click path goes
+// through the JS popup/redirect flow rather than the raw browser anchor
+// navigation. This is a Bun.file source scan because the invariant spans a
+// Svelte component template where no DOM runner is available.
+describe('landing-page CTA sign-in anchor (ISSUE-009)', () => {
+	it('has onclick calling handlePlexLogin and preventDefault on the no-JS fallback CTA anchor', async () => {
+		const source = await Bun.file('src/routes/+page.svelte').text();
+
+		// The anchor href must remain as the no-JS fallback target.
+		expect(source).toContain('href={data.loginHref}');
+
+		// Locate the onclick value on the CTA anchor. The attribute is written as
+		// onclick={(e) => { e.preventDefault(); handlePlexLogin(); }} across
+		// multiple lines, so we scan from the loginHref anchor to the next </a>.
+		const ctaBlockMatch = source.match(/href=\{data\.loginHref\}[\s\S]*?<\/a>/);
+		expect(ctaBlockMatch).not.toBeNull();
+		const ctaBlock = ctaBlockMatch![0];
+
+		// The CTA block must wire an onclick handler.
+		expect(ctaBlock).toContain('onclick=');
+
+		// The onclick must call handlePlexLogin.
+		expect(ctaBlock).toContain('handlePlexLogin');
+
+		// The onclick must call preventDefault to suppress bare anchor navigation
+		// so that Cmd+Click / middle-click use the JS popup/redirect flow instead
+		// of opening an orphan tab directly to /auth/plex (ISSUE-009).
+		expect(ctaBlock).toContain('preventDefault');
+	});
+
+	it('does not use data-sveltekit-preload overrides on the CTA anchor', async () => {
+		const source = await Bun.file('src/routes/+page.svelte').text();
+
+		// Preload overrides were a red herring — SvelteKit preload is a no-op for
+		// +server.ts routes (get_navigation_intent returns undefined). The onclick
+		// handler is the real fix. Assert we do not rely on preload suppression.
+		const ctaBlockMatch = source.match(/href=\{data\.loginHref\}[\s\S]*?<\/a>/);
+		expect(ctaBlockMatch).not.toBeNull();
+		const ctaBlock = ctaBlockMatch![0];
+		expect(ctaBlock).not.toContain('data-sveltekit-preload-data');
+		expect(ctaBlock).not.toContain('data-sveltekit-preload-code');
+	});
+});

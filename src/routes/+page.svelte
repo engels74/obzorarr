@@ -215,11 +215,20 @@ function handleCancelRedirect(): void {
 				</div>
 			{:else}
 				<!-- Public lookup disabled by the admin: sign-in CTA instead of the
-				     username field. A real <a> navigation so it works without JS;
-				     anonymous SSR only (authenticated users are redirected in load). -->
+				     username field. Falls back to a hard navigation to /auth/plex when
+				     JS is absent; with JS the onclick handler uses the same popup/redirect
+				     flow as the login button so Cmd+Click or middle-click cannot open an
+				     orphan tab by bypassing SvelteKit's click interception (ISSUE-009). -->
 				<div class="username-section">
 					<p class="signin-required-note">This server requires sign-in to view Wrapped.</p>
-					<a href={data.loginHref} class="view-button cta-link tap-target">
+					<a
+						href={data.loginHref}
+						class="view-button cta-link tap-target"
+						onclick={(e) => {
+							e.preventDefault();
+							handlePlexLogin();
+						}}
+					>
 						<span class="plex-icon" aria-hidden="true">&#9654;</span>
 						Sign in with Plex
 					</a>

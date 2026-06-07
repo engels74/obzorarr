@@ -354,15 +354,21 @@ export async function startSync(options: StartSyncOptions = {}): Promise<SyncRes
 			);
 
 			if (enrichResult.enriched > 0) {
-				const enrichMinYear = minViewedAt
-					? new Date(minViewedAt * 1000).getUTCFullYear()
-					: new Date().getUTCFullYear();
-				const enrichMaxYear = maxViewedAt
-					? new Date(maxViewedAt * 1000).getUTCFullYear()
-					: new Date().getUTCFullYear();
-
-				for (let year = enrichMinYear; year <= enrichMaxYear; year++) {
+				// Enrichment can fill durations on records from any year, not just the
+				// sync's viewed-at window, so invalidate the exact years it touched.
+				// A narrower window leaves older years' cached stats stale (ISSUE-002).
+				for (const year of enrichResult.affectedYears) {
 					await invalidateCache(undefined, year);
+				}
+
+				if (enrichResult.affectedYears.length > 0) {
+					logger.info(
+						`Invalidated stats cache for enriched years ${enrichResult.affectedYears
+							.slice()
+							.sort((a, b) => a - b)
+							.join(', ')}`,
+						`Sync-${syncId}`
+					);
 				}
 			}
 		}
@@ -505,6 +511,13 @@ export interface EnrichMetadataOptions {
 export interface EnrichMetadataResult {
 	enriched: number;
 	failed: number;
+	/**
+	 * UTC years of every record whose stored fields changed. Enrichment scans the
+	 * whole table (any record with a null field), so the set of touched years is a
+	 * superset of the running sync's viewed-at window; callers must invalidate
+	 * exactly these years or older years' cached stats drift (ISSUE-002).
+	 */
+	affectedYears: number[];
 }
 
 export async function enrichMetadata(
@@ -516,6 +529,7 @@ export async function enrichMetadata(
 		.select({
 			id: playHistory.id,
 			ratingKey: playHistory.ratingKey,
+			viewedAt: playHistory.viewedAt,
 			duration: playHistory.duration,
 			genres: playHistory.genres,
 			releaseYear: playHistory.releaseYear
@@ -526,7 +540,7 @@ export async function enrichMetadata(
 		);
 
 	if (records.length === 0) {
-		return { enriched: 0, failed: 0 };
+		return { enriched: 0, failed: 0, affectedYears: [] };
 	}
 
 	const ratingKeyToRecords = new Map<string, typeof records>();
@@ -606,6 +620,7 @@ export async function enrichMetadata(
 	}
 
 	const updateBatches = new Map<string, number[]>();
+	const affectedYears = new Set<number>();
 	let enriched = 0;
 	let failed = 0;
 
@@ -636,6 +651,7 @@ export async function enrichMetadata(
 				const ids = updateBatches.get(key) ?? [];
 				ids.push(record.id);
 				updateBatches.set(key, ids);
+				affectedYears.add(new Date(record.viewedAt * 1000).getUTCFullYear());
 				enriched++;
 			} else {
 				failed++;
@@ -668,7 +684,7 @@ export async function enrichMetadata(
 		'Enrichment'
 	);
 
-	return { enriched, failed };
+	return { enriched, failed, affectedYears: Array.from(affectedYears) };
 }
 
 /** @deprecated Use enrichMetadata instead */

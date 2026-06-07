@@ -6,6 +6,7 @@ import { requireAdminActions } from '$lib/server/auth/guards';
 import { cancelSync } from '$lib/server/sync/progress';
 import {
 	getSchedulerStatus,
+	isSchedulerConfigured,
 	pauseSyncScheduler,
 	resumeSyncScheduler,
 	setupSyncScheduler,
@@ -168,7 +169,11 @@ export const actions: Actions = requireAdminActions({
 		try {
 			updateSchedulerCron(parsed.data.cronExpression);
 			await setAppSetting(AppSettingsKey.SYNC_CRON_EXPRESSION, parsed.data.cronExpression);
-			return { success: true, message: 'Schedule updated successfully' };
+			const isActive = isSchedulerConfigured();
+			const message = isActive
+				? 'Schedule updated successfully'
+				: 'Schedule saved. Click "Initialize" to activate it.';
+			return { success: true, message, cronExpression: parsed.data.cronExpression };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to update schedule';
 			return fail(500, { error: message });
