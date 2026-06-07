@@ -23,7 +23,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			? currentYear
 			: (availableYears[0] ?? currentYear);
 
-	const wrappedHref = await getOwnerWrappedHref(locals.user!.id, year);
+	// Only mint/look up the owner's share href once there's at least one year of
+	// data. With no available years, `year` falls back to currentYear and calling
+	// getOwnerWrappedHref would lazily INSERT a shareSettings row for a year that
+	// isn't actually 'available' (getOrCreateShareSettings creates by default) —
+	// the no-data case must not create share state. The card is hidden client-side
+	// when wrappedHref is null.
+	const wrappedHref =
+		availableYears.length > 0 ? await getOwnerWrappedHref(locals.user!.id, year) : null;
 
 	return {
 		adminUser: {

@@ -1010,12 +1010,19 @@ export function isAuthoritativeEnvValue(value: string): boolean {
  * to the shared value-only check. This predicate is used solely by the Plex
  * branch of config resolution; `isPlaceholderSentinel`/`isAuthoritativeEnvValue`
  * stay value-only so OpenAI/CSRF semantics are unaffected.
+ *
+ * The localhost comparison is canonicalized (trim + strip trailing slashes) so a
+ * near-bare template copy with a cosmetic variant of the `.env.example` default
+ * (e.g. `http://localhost:32400/`) is still recognized as the localhost
+ * sentinel rather than slipping past `isPlaceholderSentinel` and env-locking the
+ * connections UI with a placeholder token.
  */
 export function isAuthoritativePlexServerUrl(serverUrl: string, token: string): boolean {
-	if (isAuthoritativeEnvValue(serverUrl)) return true;
-	if (serverUrl.trim() === 'http://localhost:32400' && isAuthoritativeEnvValue(token)) {
-		return true;
+	const canonicalUrl = serverUrl.trim().replace(/\/+$/, '');
+	if (canonicalUrl === 'http://localhost:32400') {
+		return isAuthoritativeEnvValue(token);
 	}
+	if (isAuthoritativeEnvValue(serverUrl)) return true;
 	return false;
 }
 

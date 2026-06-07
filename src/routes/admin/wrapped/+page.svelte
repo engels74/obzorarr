@@ -56,6 +56,7 @@ function handleConfigNavigation(event: MouseEvent): void {
 					<select
 						name="year"
 						class="year-selector"
+						aria-label="Select wrapped year"
 						disabled={data.availableYears.length === 1}
 						onchange={(e) => e.currentTarget.form?.requestSubmit()}
 					>
@@ -81,26 +82,28 @@ function handleConfigNavigation(event: MouseEvent): void {
 		</div>
 
 		<div class="wrapped-cards">
-			<a href={data.wrappedHref} class="showcase-card personal">
-				<div class="card-glow"></div>
-				<div class="card-shimmer"></div>
-				<div class="card-content">
-					<div class="card-icon-wrap">
-						<Star class="card-icon" />
+			{#if data.wrappedHref}
+				<a href={data.wrappedHref} class="showcase-card personal">
+					<div class="card-glow"></div>
+					<div class="card-shimmer"></div>
+					<div class="card-content">
+						<div class="card-icon-wrap">
+							<Star class="card-icon" />
+						</div>
+						<div class="card-text">
+							<h2 class="card-title">My Wrapped</h2>
+							<p class="card-description">
+								Your personal viewing journey and stats for {data.year}
+							</p>
+						</div>
+						<div class="card-cta">
+							<span class="cta-text">View your story</span>
+							<ArrowRight class="cta-arrow" />
+						</div>
 					</div>
-					<div class="card-text">
-						<h2 class="card-title">My Wrapped</h2>
-						<p class="card-description">
-							Your personal viewing journey and stats for {data.year}
-						</p>
-					</div>
-					<div class="card-cta">
-						<span class="cta-text">View your story</span>
-						<ArrowRight class="cta-arrow" />
-					</div>
-				</div>
-				<div class="card-accent"></div>
-			</a>
+					<div class="card-accent"></div>
+				</a>
+			{/if}
 
 			<a href="/wrapped/{data.year}" class="showcase-card server">
 				<div class="card-glow"></div>

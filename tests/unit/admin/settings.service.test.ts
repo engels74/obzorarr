@@ -785,6 +785,21 @@ describe('Admin Settings Service', () => {
 				);
 				expect(isAuthoritativePlexServerUrl('http://localhost:32400', '')).toBe(false);
 			});
+
+			it('canonicalizes cosmetic localhost variants (trailing slash / whitespace)', () => {
+				// A near-bare template copy with only a cosmetic difference from the
+				// .env.example default must NOT slip past the placeholder check and
+				// env-lock the connections UI with a placeholder token.
+				expect(
+					isAuthoritativePlexServerUrl('http://localhost:32400/', 'your-plex-token-here')
+				).toBe(false);
+				expect(
+					isAuthoritativePlexServerUrl('  http://localhost:32400/  ', 'your-plex-token-here')
+				).toBe(false);
+				// A genuine localhost deployment (real token) still locks regardless of
+				// the cosmetic trailing slash.
+				expect(isAuthoritativePlexServerUrl('http://localhost:32400/', 'a-real-token')).toBe(true);
+			});
 		});
 
 		describe('hasPlexEnvConfig', () => {

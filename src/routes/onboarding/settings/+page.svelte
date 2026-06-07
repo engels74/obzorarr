@@ -290,6 +290,11 @@ $effect(() => {
 	// styles and detaches the filling animation, releasing the stale layer so the
 	// first click expands reliably.
 	controls?.finished?.then(() => controls.stop?.()).catch(() => {});
+
+	// Stop the active animation if the effect reruns (carousel advances) or the
+	// component unmounts before `controls.finished` resolves, so the filling
+	// composited layer is always released and never outlives this run.
+	return () => controls?.stop?.();
 });
 
 const defaultColors = { primary: '#3b82f6', accent: '#60a5fa', bg: '#0f172a' };
