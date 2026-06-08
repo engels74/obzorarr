@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
+import { afterAll, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import { desc, eq } from 'drizzle-orm';
 import * as fc from 'fast-check';
 import { db } from '$lib/server/db/client';
 import { metadataCache, playHistory, syncStatus } from '$lib/server/db/schema';
+import { logger } from '$lib/server/logging';
 import type { FetchHistoryOptions, ValidPlexHistoryMetadata } from '$lib/server/plex/types';
 import type { SyncProgress } from '$lib/server/sync/types';
 import { resetSharedTestDb } from '../../helpers/db';
@@ -11,16 +12,29 @@ import { createPlexHistoryItem } from '../../helpers/sync';
 // Captured logger calls for asserting WARN vs INFO in enrichment tests.
 const loggerCalls: { level: string; message: string }[] = [];
 
-mock.module('$lib/server/logging', () => ({
-	logger: {
-		info: (message: string) => loggerCalls.push({ level: 'info', message }),
-		warn: (message: string) => loggerCalls.push({ level: 'warn', message }),
-		error: (message: string) => loggerCalls.push({ level: 'error', message }),
-		debug: (message: string) => loggerCalls.push({ level: 'debug', message }),
-		forceFlush: async () => {},
-		clearDebugCache: () => {}
+// Spy on the real logger singleton instead of mock.module — mock.module is
+// process-wide and permanent, which poisons other test files that load later.
+const loggerSpies = [
+	spyOn(logger, 'info').mockImplementation((message: string) => {
+		loggerCalls.push({ level: 'info', message });
+	}),
+	spyOn(logger, 'warn').mockImplementation((message: string) => {
+		loggerCalls.push({ level: 'warn', message });
+	}),
+	spyOn(logger, 'error').mockImplementation((message: string) => {
+		loggerCalls.push({ level: 'error', message });
+	}),
+	spyOn(logger, 'debug').mockImplementation(async (message: string) => {
+		loggerCalls.push({ level: 'debug', message });
+	})
+];
+
+// Restore the real logger so subsequently-loaded test files are not affected.
+afterAll(() => {
+	for (const spy of loggerSpies) {
+		spy.mockRestore();
 	}
-}));
+});
 
 type HistoryPage = {
 	items: ValidPlexHistoryMetadata[];
