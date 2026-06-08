@@ -16,7 +16,9 @@ mock.module('$lib/server/logging', () => ({
 		info: (message: string) => loggerCalls.push({ level: 'info', message }),
 		warn: (message: string) => loggerCalls.push({ level: 'warn', message }),
 		error: (message: string) => loggerCalls.push({ level: 'error', message }),
-		debug: (message: string) => loggerCalls.push({ level: 'debug', message })
+		debug: (message: string) => loggerCalls.push({ level: 'debug', message }),
+		forceFlush: async () => {},
+		clearDebugCache: () => {}
 	}
 }));
 
