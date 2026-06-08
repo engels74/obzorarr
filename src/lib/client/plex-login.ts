@@ -380,8 +380,8 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 			}
 
 			const runPoll = async () => {
+				if (finished) return;
 				try {
-					if (finished) return;
 					// Capture the popup state at tick start. A completed login is always
 					// preferred over a cancel, so we only act on "closed" AFTER confirming
 					// the poll did not return a completed login — otherwise a user who
@@ -415,6 +415,16 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 
 					const completedLogin = sanitizeCompletedLoginResponse(result);
 					if (completedLogin) {
+						// Single-flight completion guard. runPoll is driven by both the poll
+						// interval AND the BroadcastChannel handler, so two invocations can
+						// overlap across the awaited fetch above and both observe a completed
+						// login. `finished` only flips inside cleanup() below, so without this
+						// check both would fall through and call opts.onSuccess twice.
+						// `callbackInProgress` is set synchronously here (before any await),
+						// so a second invocation that reaches this point returns instead of
+						// re-completing. Concurrent still-pending polls remain allowed, so a
+						// transient failure on one tick can still be retried by the next.
+						if (callbackInProgress) return;
 						callbackInProgress = true;
 						cleanup();
 
