@@ -15,6 +15,7 @@ const pixelSize = $derived(typeof size === 'number' ? size : sizeMap[size]);
 <img
 	src={obzorarrIcon}
 	alt=""
+	role="presentation"
 	aria-hidden="true"
 	width={pixelSize}
 	height={pixelSize}

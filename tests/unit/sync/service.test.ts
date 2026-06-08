@@ -8,6 +8,18 @@ import type { SyncProgress } from '$lib/server/sync/types';
 import { resetSharedTestDb } from '../../helpers/db';
 import { createPlexHistoryItem } from '../../helpers/sync';
 
+// Captured logger calls for asserting WARN vs INFO in enrichment tests.
+const loggerCalls: { level: string; message: string }[] = [];
+
+mock.module('$lib/server/logging', () => ({
+	logger: {
+		info: (message: string) => loggerCalls.push({ level: 'info', message }),
+		warn: (message: string) => loggerCalls.push({ level: 'warn', message }),
+		error: (message: string) => loggerCalls.push({ level: 'error', message }),
+		debug: (message: string) => loggerCalls.push({ level: 'debug', message })
+	}
+}));
+
 type HistoryPage = {
 	items: ValidPlexHistoryMetadata[];
 	skippedCount: number;
@@ -57,9 +69,8 @@ mock.module('$lib/server/sync/plex-accounts.service', () => ({
 	}
 }));
 
-const { getYearStartTimestamp, reconcileInterruptedSyncs, startSync } = await import(
-	'$lib/server/sync/service'
-);
+const { enrichMetadata, getYearStartTimestamp, reconcileInterruptedSyncs, startSync } =
+	await import('$lib/server/sync/service');
 
 async function resetSyncHarness(): Promise<void> {
 	await resetSharedTestDb();
@@ -336,5 +347,147 @@ describe('sync single-flight property (ISSUE-001)', () => {
 			}),
 			{ numRuns: 25 }
 		);
+	});
+});
+
+describe('enrichMetadata counter accuracy (DF-14)', () => {
+	beforeEach(async () => {
+		await resetSharedTestDb();
+		loggerCalls.length = 0;
+	});
+
+	async function insertHistoryRow(opts: {
+		historyKey: string;
+		ratingKey: string;
+		viewedAt?: number;
+		duration?: number | null;
+		genres?: string | null;
+		releaseYear?: number | null;
+	}) {
+		await db.insert(playHistory).values({
+			historyKey: opts.historyKey,
+			ratingKey: opts.ratingKey,
+			title: 'Test',
+			type: 'movie',
+			viewedAt: opts.viewedAt ?? 1_704_067_200,
+			accountId: 1,
+			librarySectionId: 1,
+			duration: opts.duration ?? null,
+			genres: opts.genres ?? null,
+			releaseYear: opts.releaseYear ?? null
+		});
+	}
+
+	async function insertCacheRow(opts: {
+		ratingKey: string;
+		duration?: number | null;
+		genres?: string | null;
+		releaseYear?: number | null;
+		fetchFailed?: boolean;
+	}) {
+		await db.insert(metadataCache).values({
+			ratingKey: opts.ratingKey,
+			duration: opts.duration ?? null,
+			genres: opts.genres ?? null,
+			releaseYear: opts.releaseYear ?? null,
+			fetchedAt: Math.floor(Date.now() / 1000),
+			fetchFailed: opts.fetchFailed ?? false
+		});
+	}
+
+	it('counts cache-hit no-op records as skipped, not failed', async () => {
+		// Record whose duration is null but the cache entry also has null duration —
+		// metadata was cached but cannot fill the gap. Should be skipped, not failed.
+		await insertHistoryRow({ historyKey: 'h-noop', ratingKey: 'rk-noop', duration: null });
+		await insertCacheRow({ ratingKey: 'rk-noop', duration: null });
+
+		const result = await enrichMetadata();
+
+		expect(result.enriched).toBe(0);
+		expect(result.skipped).toBe(1);
+		expect(result.failed).toBe(0);
+	});
+
+	it('counts only genuine API failures as failed', async () => {
+		// fetchFailed=true in cache means the API call previously errored.
+		await insertHistoryRow({ historyKey: 'h-fail', ratingKey: 'rk-fail', duration: null });
+		await insertCacheRow({ ratingKey: 'rk-fail', duration: null, fetchFailed: true });
+
+		const result = await enrichMetadata();
+
+		expect(result.failed).toBe(1);
+		expect(result.skipped).toBe(0);
+		expect(result.enriched).toBe(0);
+	});
+
+	it('correctly splits enriched / skipped / failed across a mixed batch', async () => {
+		// 3 enriched: cache hit with real data that fills the null field
+		await insertHistoryRow({ historyKey: 'h-enrich-1', ratingKey: 'rk-enrich', duration: null });
+		await insertHistoryRow({ historyKey: 'h-enrich-2', ratingKey: 'rk-enrich', duration: null });
+		await insertHistoryRow({ historyKey: 'h-enrich-3', ratingKey: 'rk-enrich', duration: null });
+		await insertCacheRow({ ratingKey: 'rk-enrich', duration: 5400 });
+
+		// 2 skipped: cache hit but nothing to fill
+		await insertHistoryRow({ historyKey: 'h-skip-1', ratingKey: 'rk-skip', duration: null });
+		await insertHistoryRow({ historyKey: 'h-skip-2', ratingKey: 'rk-skip', duration: null });
+		await insertCacheRow({ ratingKey: 'rk-skip', duration: null });
+
+		// 1 failed: fetchFailed flag set
+		await insertHistoryRow({ historyKey: 'h-fail', ratingKey: 'rk-fail', duration: null });
+		await insertCacheRow({ ratingKey: 'rk-fail', fetchFailed: true });
+
+		const result = await enrichMetadata();
+
+		expect(result.enriched).toBe(3);
+		expect(result.skipped).toBe(2);
+		expect(result.failed).toBe(1);
+	});
+
+	it('a cache-dominated run does not report a near-100% failure rate', async () => {
+		// Simulate the dogfood scenario: many records, all served from cache with
+		// real data. The old bug counted every no-op as failed.
+		const ratingKey = 'rk-cached-movie';
+		for (let i = 0; i < 20; i++) {
+			await insertHistoryRow({
+				historyKey: `h-bulk-${i}`,
+				ratingKey,
+				duration: null,
+				genres: null
+			});
+		}
+		await insertCacheRow({ ratingKey, duration: 7200, genres: JSON.stringify(['Drama']) });
+
+		const result = await enrichMetadata();
+
+		expect(result.enriched).toBe(20);
+		expect(result.failed).toBe(0);
+		// failed must never be a majority of total records when cache has real data
+		const total = result.enriched + result.skipped + result.failed;
+		expect(result.failed / total).toBe(0);
+	});
+
+	it('logs WARN when there are genuine failures, INFO when there are none', async () => {
+		// No-failure run: one record enriched from cache
+		await insertHistoryRow({ historyKey: 'h-ok', ratingKey: 'rk-ok', duration: null });
+		await insertCacheRow({ ratingKey: 'rk-ok', duration: 3600 });
+
+		await enrichMetadata();
+
+		const completionLog = loggerCalls.find((c) => c.message.includes('Enrichment complete'));
+		expect(completionLog).toBeDefined();
+		expect(completionLog?.level).toBe('info');
+
+		// Reset and run with a genuine failure
+		await resetSharedTestDb();
+		loggerCalls.length = 0;
+
+		await insertHistoryRow({ historyKey: 'h-fail2', ratingKey: 'rk-fail2', duration: null });
+		await insertCacheRow({ ratingKey: 'rk-fail2', fetchFailed: true });
+
+		await enrichMetadata();
+
+		const warnLog = loggerCalls.find((c) => c.message.includes('Enrichment complete'));
+		expect(warnLog).toBeDefined();
+		expect(warnLog?.level).toBe('warn');
 	});
 });

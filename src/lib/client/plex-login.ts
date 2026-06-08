@@ -51,6 +51,49 @@ interface LoginTimers {
 	clearTimeout(handle: LoginTimerHandle): void;
 }
 
+/**
+ * Minimal cross-tab signal channel (a subset of the DOM `BroadcastChannel`).
+ * The popup completion page posts `{ type: 'login-complete' }` here so the
+ * opener can poll the server immediately rather than waiting for its next tick
+ * (DF-05). The message is a latency hint only — the opener re-confirms the
+ * session against `/auth/plex` and never trusts this payload for auth.
+ */
+export interface PlexAuthBroadcastChannel {
+	onmessage: ((event: { data: unknown }) => void | Promise<void>) | null;
+	close(): void;
+}
+
+export const PLEX_AUTH_BROADCAST_NAME = 'plex-auth';
+
+/**
+ * Default channel factory: adapts the global `BroadcastChannel` to the minimal
+ * {@link PlexAuthBroadcastChannel} shape the opener consumes. Returns `null`
+ * where `BroadcastChannel` is unavailable (older browsers / SSR), so the opener
+ * falls back to poll-only. Kept as a thin adapter because the DOM channel's
+ * `onmessage` carries a full `MessageEvent`, not the `{ data }` subset used here.
+ */
+function defaultPlexAuthChannelFactory(): PlexAuthBroadcastChannel | null {
+	if (typeof BroadcastChannel === 'undefined') return null;
+	const channel = new BroadcastChannel(PLEX_AUTH_BROADCAST_NAME);
+	return {
+		set onmessage(handler: ((event: { data: unknown }) => void | Promise<void>) | null) {
+			channel.onmessage = handler
+				? (event: MessageEvent) => {
+						void handler({ data: event.data });
+					}
+				: null;
+		},
+		get onmessage() {
+			return channel.onmessage as unknown as
+				| ((event: { data: unknown }) => void | Promise<void>)
+				| null;
+		},
+		close() {
+			channel.close();
+		}
+	};
+}
+
 export interface PlexLoginPopupOptions {
 	context: PlexLoginContext;
 	onSuccess: (user: PlexLoginUser) => void | Promise<void>;
@@ -58,6 +101,13 @@ export interface PlexLoginPopupOptions {
 	onPopupBlocked: (pinId: number, authUrl: string) => void;
 	window?: PopupWindowHost;
 	timers?: LoginTimers;
+	/**
+	 * Factory for the cross-tab login-complete channel (DF-05). Defaults to the
+	 * global `BroadcastChannel` when available; returns `null` when unsupported
+	 * (older browsers / SSR) so the poll-only path remains the fallback. Injected
+	 * in tests with a fake channel.
+	 */
+	createBroadcastChannel?: () => PlexAuthBroadcastChannel | null;
 }
 
 interface RedirectLocation {
@@ -262,8 +312,11 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 		setTimeout: (callback, delay) => ({ id: setTimeout(callback, delay) }),
 		clearTimeout: (handle) => clearTimeout(handle.id as Parameters<typeof clearTimeout>[0])
 	};
+	const createBroadcastChannel: () => PlexAuthBroadcastChannel | null =
+		opts.createBroadcastChannel ?? defaultPlexAuthChannelFactory;
 	let pollIntervalId: LoginTimerHandle | null = null;
 	let timeoutId: LoginTimerHandle | null = null;
+	let authChannel: PlexAuthBroadcastChannel | null = null;
 	let cancelled = false;
 	let finished = false;
 	let succeeded = false;
@@ -272,11 +325,22 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 	let timedOut = false;
 	let authWindow: PopupWindowHandle | null = null;
 
+	const closeChannel = () => {
+		if (authChannel) {
+			authChannel.onmessage = null;
+			try {
+				authChannel.close();
+			} catch {}
+			authChannel = null;
+		}
+	};
+
 	const cleanup = () => {
 		if (pollIntervalId) timers.clearInterval(pollIntervalId);
 		if (timeoutId) timers.clearTimeout(timeoutId);
 		pollIntervalId = null;
 		timeoutId = null;
+		closeChannel();
 		authWindow?.close();
 		finished = true;
 	};
@@ -315,7 +379,7 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 				return;
 			}
 
-			pollIntervalId = timers.setInterval(async () => {
+			const runPoll = async () => {
 				try {
 					if (finished) return;
 					// Capture the popup state at tick start. A completed login is always
@@ -376,7 +440,25 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 					cleanup();
 					opts.onError(err instanceof Error ? err.message : 'Login failed');
 				}
-			}, POLL_INTERVAL_MS);
+			};
+
+			pollIntervalId = timers.setInterval(runPoll, POLL_INTERVAL_MS);
+
+			// Latency optimization (DF-05): the popup completion page broadcasts
+			// `login-complete` once the session is active. On that signal, poll the
+			// server NOW instead of waiting for the next 2s tick. The same runPoll /
+			// finished guards apply, so the server response stays authoritative and a
+			// forged message can at most trigger one extra (harmless) poll.
+			authChannel = createBroadcastChannel();
+			if (authChannel) {
+				authChannel.onmessage = async (event) => {
+					if (finished) return;
+					const data = event?.data as { type?: unknown } | null;
+					if (data && data.type === 'login-complete') {
+						await runPoll();
+					}
+				};
+			}
 
 			timeoutId = timers.setTimeout(() => {
 				if (finished) return;

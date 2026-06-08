@@ -2,7 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import { z } from 'zod';
 import { getPublicLandingLookupEnabled } from '$lib/server/admin/settings.service';
 import { logger } from '$lib/server/logging';
-import { getEffectiveShareMode } from '$lib/server/sharing/service';
+import { getEffectiveShareMode, getShareIdentifier } from '$lib/server/sharing/service';
 import { ShareMode } from '$lib/server/sharing/types';
 import { triggerLiveSyncIfNeeded } from '$lib/server/sync/live-sync';
 import { findUserByUsername } from '$lib/server/sync/plex-accounts.service';
@@ -99,6 +99,11 @@ export const actions: Actions = {
 			logger.error(`Lookup-triggered live sync failed: ${message}`, 'LandingLookup');
 		}
 
-		redirect(303, `/wrapped/${currentYear}/u/${userResult.userId}`);
+		// DF-04: redirect to the opaque public slug, not the enumerable integer id.
+		// The visitor here is anonymous, and a numeric URL no longer resolves for
+		// non-owners — so an integer redirect would land on the anti-enumeration 404.
+		// effectiveMode is confirmed PUBLIC above, so getShareIdentifier returns a slug.
+		const shareIdentifier = await getShareIdentifier(userResult.userId, currentYear);
+		redirect(303, `/wrapped/${currentYear}/u/${shareIdentifier}`);
 	}
 };

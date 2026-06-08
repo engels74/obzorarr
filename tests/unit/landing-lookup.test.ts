@@ -7,7 +7,11 @@ import {
 import { db } from '$lib/server/db/client';
 import { appSettings, plexAccounts, shareSettings, users } from '$lib/server/db/schema';
 import { logger } from '$lib/server/logging';
-import { setGlobalShareDefaults } from '$lib/server/sharing/service';
+import {
+	isValidSlugFormat,
+	resolveSlug,
+	setGlobalShareDefaults
+} from '$lib/server/sharing/service';
 import { ShareMode, ShareModeSource } from '$lib/server/sharing/types';
 import type { LiveSyncResult } from '$lib/server/sync/live-sync';
 import * as liveSync from '$lib/server/sync/live-sync';
@@ -115,7 +119,7 @@ describe('landing username lookup', () => {
 		triggerLiveSyncSpy.mockRestore();
 	});
 
-	it('redirects anonymous lookup only for effectively public wrapped pages', async () => {
+	it('redirects anonymous lookup to the opaque slug (not the integer id) for public wrapped pages (DF-04)', async () => {
 		await setGlobalShareDefaults({ defaultShareMode: ShareMode.PUBLIC, allowUserControl: false });
 		await seedUser();
 
@@ -125,7 +129,14 @@ describe('landing username lookup', () => {
 		} catch (error) {
 			expect(isRedirect(error)).toBe(true);
 			if (!isRedirect(error)) throw error;
-			expect(error.location).toBe(`/wrapped/${YEAR}/u/${USER_ID}`);
+			// DF-04: the anonymous visitor must be sent to the opaque slug, never the
+			// enumerable integer id (which now 404s for non-owners).
+			const prefix = `/wrapped/${YEAR}/u/`;
+			expect(error.location.startsWith(prefix)).toBe(true);
+			const slug = error.location.slice(prefix.length);
+			expect(slug).not.toBe(String(USER_ID));
+			expect(isValidSlugFormat(slug)).toBe(true);
+			expect(await resolveSlug(slug)).toEqual({ userId: USER_ID, year: YEAR });
 		}
 	});
 

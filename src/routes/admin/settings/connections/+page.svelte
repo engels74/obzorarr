@@ -258,6 +258,7 @@ const showOpenaiKeyWarning = $derived(!data.hasEffectiveOpenAIKey && !openaiApiK
 		<CardContent class="space-y-4">
 			<form
 				id="openai-settings-form"
+				novalidate
 				method="POST"
 				action="?/updateApiConfig"
 				use:enhance={({ cancel }) => {

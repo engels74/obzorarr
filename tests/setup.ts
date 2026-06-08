@@ -97,6 +97,7 @@ sqlite.exec(`
 		mode TEXT NOT NULL DEFAULT 'public',
 		mode_source TEXT NOT NULL DEFAULT 'explicit',
 		share_token TEXT UNIQUE,
+		public_slug TEXT UNIQUE,
 		can_user_control INTEGER DEFAULT 0,
 		show_logo INTEGER
 	);

@@ -54,7 +54,10 @@ const controlsDisabled = $derived(isUpdating || isRefreshing);
 
 const shareUrl = $derived.by(() => {
 	const origin = typeof window !== 'undefined' ? window.location.origin : '';
-	const baseUrl = canonicalUrl ?? currentUrl;
+	// DF-04: the copyable link uses the opaque share href (slug for public/oauth,
+	// token for private-link) — never the enumerable numeric canonicalUrl. The
+	// private-link branch below still swaps in the live token.
+	const baseUrl = currentUrl;
 
 	if (!shareSettings) return `${origin}${baseUrl}`;
 
@@ -67,11 +70,11 @@ const shareUrl = $derived.by(() => {
 	return `${origin}${baseUrl}`;
 });
 
-// Server Members (private-oauth) mode has no shareable link: access is gated on
-// Plex server membership, and the page identifier is the enumerable numeric user
-// id (NOT a secret token). Surfacing that integer URL as a "Share Link" is a
-// false affordance and the human-visible symptom of ISSUE-004, so we show a
-// members-only notice instead of a copyable URL. Access control is unchanged.
+// DF-04 / ISSUE-004: Server Members (private-oauth) pages are now served at an
+// opaque slug (not the enumerable integer id), so there IS a real shareable link
+// — it just only resolves for signed-in Plex server members. We show the slug
+// link alongside a members-only note so the owner can share it while recipients
+// understand they must sign in. Access control is unchanged.
 const isMembersOnly = $derived(displayMode === 'private-oauth');
 
 const canControlShare = $derived(
@@ -296,33 +299,6 @@ $effect(() => {
 			</AlertDialog.Description>
 		</AlertDialog.Header>
 
-		{#if isMembersOnly}
-			<div class="url-section">
-				<span class="label">Share Link</span>
-				<div class="members-only-notice">
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						width="18"
-						height="18"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						class="members-only-icon"
-						aria-hidden="true"
-					>
-						<rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-						<path d="M7 11V7a5 5 0 0 1 10 0v4" />
-					</svg>
-					<p class="members-only-text">
-						Visible to Plex server members only. There's no shareable link — members can open
-						this Wrapped after signing in with their Plex account.
-					</p>
-				</div>
-			</div>
-		{:else}
 		<div class="url-section">
 			<label for="share-url" class="label">Share Link</label>
 			<div class="url-row">
@@ -380,8 +356,31 @@ $effect(() => {
 			{#if copied}
 				<span class="copied-feedback">Copied to clipboard!</span>
 			{/if}
+			{#if isMembersOnly}
+				<div class="members-only-notice">
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						width="18"
+						height="18"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						class="members-only-icon"
+						aria-hidden="true"
+					>
+						<rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+						<path d="M7 11V7a5 5 0 0 1 10 0v4" />
+					</svg>
+					<p class="members-only-text">
+						Visible to Plex server members only — recipients must sign in with their Plex
+						account to open this Wrapped.
+					</p>
+				</div>
+			{/if}
 		</div>
-		{/if}
 
 		{#if canControlShare && availableModes.length > 0}
 			<div class="share-modes">
@@ -409,7 +408,10 @@ $effect(() => {
 										console.warn('Failed to refresh share data after share mode update:', error);
 									}
 								}
-								await update();
+								// DF-11: reset:false keeps the native <form> from reverting the
+								// radios to their authored `checked` attribute for a frame, which
+								// flashed the selection off before the optimistic localMode re-applied.
+								await update({ reset: false });
 							} finally {
 								isUpdating = false;
 							}
@@ -481,7 +483,10 @@ $effect(() => {
 									} else {
 										restoreLocalShareState();
 									}
-									await update();
+									// DF-11: reset:false keeps the native <form> from reverting the
+								// radios to their authored `checked` attribute for a frame, which
+								// flashed the selection off before the optimistic localMode re-applied.
+								await update({ reset: false });
 								} finally {
 									isUpdating = false;
 								}
@@ -639,6 +644,7 @@ $effect(() => {
 			display: flex;
 			align-items: flex-start;
 			gap: 0.625rem;
+			margin-top: 0.625rem;
 			padding: 0.75rem 0.875rem;
 			border: 1px solid oklch(var(--border));
 			border-radius: 8px;
