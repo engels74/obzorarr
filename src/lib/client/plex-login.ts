@@ -449,15 +449,25 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 			// server NOW instead of waiting for the next 2s tick. The same runPoll /
 			// finished guards apply, so the server response stays authoritative and a
 			// forged message can at most trigger one extra (harmless) poll.
-			authChannel = createBroadcastChannel();
-			if (authChannel) {
-				authChannel.onmessage = async (event) => {
-					if (finished) return;
-					const data = event?.data as { type?: unknown } | null;
-					if (data && data.type === 'login-complete') {
-						await runPoll();
-					}
-				};
+			//
+			// Channel creation is an optional latency hint: if it throws (e.g.
+			// BroadcastChannel rejects in a partitioned/blocked-storage context),
+			// isolate the failure so the poll-only path established above keeps
+			// running cleanly instead of bubbling into the outer catch — which would
+			// fire a spurious onError and leave the poll interval uncleared.
+			try {
+				authChannel = createBroadcastChannel();
+				if (authChannel) {
+					authChannel.onmessage = async (event) => {
+						if (finished) return;
+						const data = event?.data as { type?: unknown } | null;
+						if (data && data.type === 'login-complete') {
+							await runPoll();
+						}
+					};
+				}
+			} catch {
+				authChannel = null;
 			}
 
 			timeoutId = timers.setTimeout(() => {
