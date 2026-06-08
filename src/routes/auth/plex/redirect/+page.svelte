@@ -9,6 +9,7 @@ import type { ServerPinFallback } from '$lib/client/plex-login';
 import {
 	LOGIN_TIMEOUT_MS,
 	PIN_STORAGE_KEY,
+	PLEX_AUTH_BROADCAST_NAME,
 	POLL_INTERVAL_MS,
 	resolveRedirectPinData,
 	resolveSafeReturnPath,
@@ -43,7 +44,7 @@ onMount(async () => {
 		// auth. Guarded for older browsers / SSR where BroadcastChannel is absent.
 		if (typeof BroadcastChannel !== 'undefined') {
 			try {
-				const channel = new BroadcastChannel('plex-auth');
+				const channel = new BroadcastChannel(PLEX_AUTH_BROADCAST_NAME);
 				channel.postMessage({ type: 'login-complete' });
 				channel.close();
 			} catch {}
