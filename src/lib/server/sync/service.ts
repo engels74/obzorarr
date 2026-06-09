@@ -348,10 +348,12 @@ export async function startSync(options: StartSyncOptions = {}): Promise<SyncRes
 				}
 			});
 
-			logger.info(
-				`Metadata enrichment: ${enrichResult.enriched} enriched, ${enrichResult.failed} failed`,
-				`Sync-${syncId}`
-			);
+			const enrichLog = `Metadata enrichment: ${enrichResult.enriched} enriched, ${enrichResult.skipped} skipped, ${enrichResult.failed} failed`;
+			if (enrichResult.failed > 0) {
+				logger.warn(enrichLog, `Sync-${syncId}`);
+			} else {
+				logger.info(enrichLog, `Sync-${syncId}`);
+			}
 
 			if (enrichResult.enriched > 0) {
 				// Enrichment can fill durations on records from any year, not just the
@@ -510,6 +512,16 @@ export interface EnrichMetadataOptions {
 
 export interface EnrichMetadataResult {
 	enriched: number;
+	/**
+	 * Records that were satisfied from the metadata cache or whose fields were
+	 * already fully populated (no DB write needed). These are not failures.
+	 */
+	skipped: number;
+	/**
+	 * Records whose metadata could not be resolved: the API fetch returned null,
+	 * the fetch was flagged as failed in the cache, or metadata was absent.
+	 * Only genuine resolution failures are counted here.
+	 */
 	failed: number;
 	/**
 	 * UTC years of every record whose stored fields changed. Enrichment scans the
@@ -540,7 +552,7 @@ export async function enrichMetadata(
 		);
 
 	if (records.length === 0) {
-		return { enriched: 0, failed: 0, affectedYears: [] };
+		return { enriched: 0, skipped: 0, failed: 0, affectedYears: [] };
 	}
 
 	const ratingKeyToRecords = new Map<string, typeof records>();
@@ -622,11 +634,13 @@ export async function enrichMetadata(
 	const updateBatches = new Map<string, number[]>();
 	const affectedYears = new Set<number>();
 	let enriched = 0;
+	let skipped = 0;
 	let failed = 0;
 
 	for (const [ratingKey, recordGroup] of ratingKeyToRecords) {
 		const metadata = cachedMap.get(ratingKey);
 		if (!metadata || metadata.fetchFailed) {
+			// Genuine failure: API returned null or the fetch was flagged as failed.
 			failed += recordGroup.length;
 			continue;
 		}
@@ -654,7 +668,8 @@ export async function enrichMetadata(
 				affectedYears.add(new Date(record.viewedAt * 1000).getUTCFullYear());
 				enriched++;
 			} else {
-				failed++;
+				// Metadata was found but all fields already populated — no update needed.
+				skipped++;
 			}
 		}
 	}
@@ -679,12 +694,14 @@ export async function enrichMetadata(
 		await db.update(playHistory).set(updates).where(inArray(playHistory.id, ids));
 	}
 
-	logger.info(
-		`Enrichment complete: ${enriched} enriched, ${failed} failed, ${updateBatches.size} batch updates`,
-		'Enrichment'
-	);
+	const enrichmentSummary = `Enrichment complete: ${enriched} enriched, ${skipped} skipped, ${failed} failed, ${updateBatches.size} batch updates`;
+	if (failed > 0) {
+		logger.warn(enrichmentSummary, 'Enrichment');
+	} else {
+		logger.info(enrichmentSummary, 'Enrichment');
+	}
 
-	return { enriched, failed, affectedYears: Array.from(affectedYears) };
+	return { enriched, skipped, failed, affectedYears: Array.from(affectedYears) };
 }
 
 /** @deprecated Use enrichMetadata instead */

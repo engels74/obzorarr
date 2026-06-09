@@ -75,6 +75,12 @@ export const shareSettings = sqliteTable('share_settings', {
 	mode: text('mode').notNull().default('public'),
 	modeSource: text('mode_source').notNull().default('explicit'),
 	shareToken: text('share_token').unique(),
+	// DF-04 / ISSUE-004: an opaque, non-sequential identifier used in share URLs
+	// for PUBLIC and PRIVATE_OAUTH modes, so the page is no longer served at the
+	// enumerable integer users.id. Lazily minted; NULL until the row is first
+	// shared/viewed. Distinct from shareToken (private-link UUID, own revocation
+	// story) — base62 so it never collides with the UUID-token or numeric-id space.
+	publicSlug: text('public_slug').unique(),
 	canUserControl: integer('can_user_control', { mode: 'boolean' }).default(false),
 	showLogo: integer('show_logo', { mode: 'boolean' })
 });

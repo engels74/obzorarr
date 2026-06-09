@@ -64,6 +64,13 @@
       "when": 1778757213667,
       "tag": "0008_share_settings_cached_stats_fk",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1780950841100,
+      "tag": "0009_mute_scarlet_witch",
+      "breakpoints": true
     }
   ]
 }

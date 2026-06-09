@@ -1,5 +1,10 @@
 import type { Handle } from '@sveltejs/kit';
 import { logger } from '$lib/server/logging';
+import {
+	safeClientAddress,
+	UNKNOWN_CLIENT_ADDRESS,
+	warnIndeterminateClientAddress
+} from './client-address';
 import { isProxiedHttps } from './proxy-handle';
 import { isBlockedPath, isBlockedUserAgent } from './request-filter-patterns';
 import { applySecurityHeaders } from './security-headers';
@@ -7,7 +12,14 @@ import { applySecurityHeaders } from './security-headers';
 export const requestFilterHandle: Handle = async ({ event, resolve }) => {
 	const path = event.url.pathname;
 	const userAgent = event.request.headers.get('user-agent') ?? '';
-	const ip = event.getClientAddress();
+	// `ip` only feeds debug-log context here. If the client address is
+	// indeterminate (see safeClientAddress), fall back to a placeholder instead
+	// of letting getClientAddress() throw into handleError.
+	const clientAddress = safeClientAddress(event);
+	if (clientAddress.indeterminate) {
+		warnIndeterminateClientAddress('Security', path);
+	}
+	const ip = clientAddress.address ?? UNKNOWN_CLIENT_ADDRESS;
 
 	// `/favicon.ico` has no static asset, so SvelteKit's router lets it reach
 	// `handleError` and writes `[ErrorHandler] Unexpected error: Not found:

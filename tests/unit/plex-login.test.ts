@@ -920,6 +920,205 @@ describe('startPlexLoginPopup', () => {
 		expect(onError).not.toHaveBeenCalled();
 	});
 
+	it('polls immediately on a broadcast login-complete signal and resolves onSuccess once (DF-05)', async () => {
+		let resolveIntervalRegistered: () => void = () => {};
+		const intervalRegistered = new Promise<void>((resolve) => {
+			resolveIntervalRegistered = resolve;
+		});
+		const intervalCallbacks: Array<() => Promise<void>> = [];
+		// The interval handler must NOT fire on its own — the broadcast is the only
+		// thing that should drive the poll in this test, proving it beats the 2s tick.
+		const timers = createTimerMocks((callback) => {
+			intervalCallbacks.push(callback);
+			resolveIntervalRegistered();
+		});
+
+		const popup: MockPopupWindow = { closed: false, close: mock(() => {}) };
+		const browserWindow: MockWindow = {
+			location: { origin: 'https://obzorarr.example', href: 'https://obzorarr.example/' },
+			open: mock(() => popup) as unknown as MockWindow['open']
+		};
+
+		let pollCalls = 0;
+		globalThis.fetch = mock(async (input: string | URL | Request, init?: RequestInit) => {
+			const url = typeof input === 'string' ? input : input.toString();
+			if (url === '/auth/plex' && init?.method === 'POST') {
+				pollCalls += 1;
+				return new Response(
+					JSON.stringify({
+						user: { id: 1, username: 'alice', isAdmin: false },
+						redirectTo: '/dashboard'
+					}),
+					{ status: 200, headers: { 'Content-Type': 'application/json' } }
+				);
+			}
+			return new Response(
+				JSON.stringify({ pinId: 42, authUrl: 'https://app.plex.tv/auth#?code=ABCD' }),
+				{ status: 200, headers: { 'Content-Type': 'application/json' } }
+			);
+		}) as unknown as typeof fetch;
+
+		// Fake injectable BroadcastChannel matching PlexAuthBroadcastChannel.
+		const channel: {
+			onmessage: ((event: { data: unknown }) => void | Promise<void>) | null;
+			close: () => void;
+		} = {
+			onmessage: null,
+			close: mock(() => {})
+		};
+
+		const onSuccess = mock(async () => {});
+		const onError = mock(() => {});
+		const onPopupBlocked = mock(() => {});
+
+		startPlexLoginPopup({
+			context: 'landing',
+			onSuccess,
+			onError,
+			onPopupBlocked,
+			window: browserWindow,
+			timers,
+			createBroadcastChannel: () => channel
+		});
+		await intervalRegistered;
+
+		// No poll yet — the interval tick has not fired and no broadcast received.
+		expect(pollCalls).toBe(0);
+		expect(channel.onmessage).not.toBeNull();
+
+		// Popup completion page broadcasts. The opener must poll NOW.
+		await (channel.onmessage as (event: { data: unknown }) => Promise<void>)({
+			data: { type: 'login-complete' }
+		});
+
+		expect(pollCalls).toBe(1);
+		expect(onSuccess).toHaveBeenCalledTimes(1);
+		expect(onError).not.toHaveBeenCalled();
+
+		// cleanup() (run on completion) must close and detach the channel.
+		expect(channel.close).toHaveBeenCalledTimes(1);
+		expect(channel.onmessage).toBeNull();
+	});
+
+	it('ignores unrelated broadcast messages and does not poll (DF-05)', async () => {
+		let resolveIntervalRegistered: () => void = () => {};
+		const intervalRegistered = new Promise<void>((resolve) => {
+			resolveIntervalRegistered = resolve;
+		});
+		const intervalCallbacks: Array<() => Promise<void>> = [];
+		const timers = createTimerMocks((callback) => {
+			intervalCallbacks.push(callback);
+			resolveIntervalRegistered();
+		});
+
+		const popup: MockPopupWindow = { closed: false, close: mock(() => {}) };
+		const browserWindow: MockWindow = {
+			location: { origin: 'https://obzorarr.example', href: 'https://obzorarr.example/' },
+			open: mock(() => popup) as unknown as MockWindow['open']
+		};
+
+		let pollCalls = 0;
+		globalThis.fetch = mock(async (input: string | URL | Request, init?: RequestInit) => {
+			const url = typeof input === 'string' ? input : input.toString();
+			if (url === '/auth/plex' && init?.method === 'POST') {
+				pollCalls += 1;
+				return new Response(JSON.stringify({}), { status: 202 });
+			}
+			return new Response(
+				JSON.stringify({ pinId: 42, authUrl: 'https://app.plex.tv/auth#?code=ABCD' }),
+				{ status: 200, headers: { 'Content-Type': 'application/json' } }
+			);
+		}) as unknown as typeof fetch;
+
+		const channel: {
+			onmessage: ((event: { data: unknown }) => void | Promise<void>) | null;
+			close: () => void;
+		} = {
+			onmessage: null,
+			close: mock(() => {})
+		};
+
+		const onSuccess = mock(async () => {});
+		const onError = mock(() => {});
+		const onPopupBlocked = mock(() => {});
+
+		const controller = startPlexLoginPopup({
+			context: 'landing',
+			onSuccess,
+			onError,
+			onPopupBlocked,
+			window: browserWindow,
+			timers,
+			createBroadcastChannel: () => channel
+		});
+		await intervalRegistered;
+
+		// Unrelated message type must not trigger a poll.
+		await (channel.onmessage as (event: { data: unknown }) => Promise<void>)({
+			data: { type: 'other' }
+		});
+		expect(pollCalls).toBe(0);
+
+		// cancel() must close the channel (cleanup path).
+		controller.cancel();
+		expect(channel.close).toHaveBeenCalledTimes(1);
+		expect(channel.onmessage).toBeNull();
+		expect(onSuccess).not.toHaveBeenCalled();
+		expect(onError).not.toHaveBeenCalled();
+	});
+
+	it('works without a broadcast channel (unsupported browsers fall back to poll-only)', async () => {
+		let resolveIntervalRegistered: () => void = () => {};
+		const intervalRegistered = new Promise<void>((resolve) => {
+			resolveIntervalRegistered = resolve;
+		});
+		const intervalCallbacks: Array<() => Promise<void>> = [];
+		const timers = createTimerMocks((callback) => {
+			intervalCallbacks.push(callback);
+			resolveIntervalRegistered();
+		});
+
+		const popup: MockPopupWindow = { closed: false, close: mock(() => {}) };
+		const browserWindow: MockWindow = {
+			location: { origin: 'https://obzorarr.example', href: 'https://obzorarr.example/' },
+			open: mock(() => popup) as unknown as MockWindow['open']
+		};
+
+		globalThis.fetch = mock(async (input: string | URL | Request, init?: RequestInit) => {
+			const url = typeof input === 'string' ? input : input.toString();
+			if (url === '/auth/plex' && init?.method === 'POST') {
+				return new Response(
+					JSON.stringify({ user: { id: 1, username: 'alice', isAdmin: false } }),
+					{ status: 200, headers: { 'Content-Type': 'application/json' } }
+				);
+			}
+			return new Response(
+				JSON.stringify({ pinId: 42, authUrl: 'https://app.plex.tv/auth#?code=ABCD' }),
+				{ status: 200, headers: { 'Content-Type': 'application/json' } }
+			);
+		}) as unknown as typeof fetch;
+
+		const onSuccess = mock(async () => {});
+		const onError = mock(() => {});
+		const onPopupBlocked = mock(() => {});
+
+		startPlexLoginPopup({
+			context: 'landing',
+			onSuccess,
+			onError,
+			onPopupBlocked,
+			window: browserWindow,
+			timers,
+			createBroadcastChannel: () => null
+		});
+		await intervalRegistered;
+
+		// Poll-only fallback still completes via the interval tick.
+		await (intervalCallbacks[0] as () => Promise<void>)();
+		expect(onSuccess).toHaveBeenCalledTimes(1);
+		expect(onError).not.toHaveBeenCalled();
+	});
+
 	it('surfaces server message and stops polling on 502 (PlexAuthApiError)', async () => {
 		let resolveIntervalRegistered: () => void = () => {};
 		const intervalRegistered = new Promise<void>((resolve) => {

@@ -1,6 +1,7 @@
 import type { Handle } from '@sveltejs/kit';
 import { stringify } from 'devalue';
 import { checkRateLimit, RATE_LIMIT_CONFIGS, type RateLimitConfig } from '$lib/server/ratelimit';
+import { safeClientAddress, warnIndeterminateClientAddress } from './client-address';
 import { isProxiedHttps } from './proxy-handle';
 import { applySecurityHeaders } from './security-headers';
 
@@ -47,7 +48,17 @@ export const rateLimitHandle: Handle = async ({ event, resolve }) => {
 		return resolve(event);
 	}
 
-	const ip = event.getClientAddress();
+	// Fail safe toward availability: when the client address is indeterminate
+	// (see safeClientAddress) we skip rate limiting entirely rather than funnel
+	// every such request into one shared bucket — a proxy/adapter misconfig
+	// could otherwise soft-DoS all clients. The deduped WARN surfaces the issue.
+	const clientAddress = safeClientAddress(event);
+	if (clientAddress.indeterminate || clientAddress.address === null) {
+		warnIndeterminateClientAddress('Security', path);
+		return resolve(event);
+	}
+
+	const ip = clientAddress.address;
 	const config = getConfigForPath(path, event.request.method);
 	const result = checkRateLimit(ip, config);
 

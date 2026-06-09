@@ -367,6 +367,7 @@ function getThemeColors(themeValue: string) {
 
 			<form
 				id="onboarding-settings-form"
+				novalidate
 				method="POST"
 				action="?/saveSettings"
 				use:enhance={({ formData }) => {

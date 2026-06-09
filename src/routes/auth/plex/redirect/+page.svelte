@@ -9,6 +9,7 @@ import type { ServerPinFallback } from '$lib/client/plex-login';
 import {
 	LOGIN_TIMEOUT_MS,
 	PIN_STORAGE_KEY,
+	PLEX_AUTH_BROADCAST_NAME,
 	POLL_INTERVAL_MS,
 	resolveRedirectPinData,
 	resolveSafeReturnPath,
@@ -37,6 +38,17 @@ onMount(async () => {
 
 	if (data.flow === 'popup') {
 		status = 'success';
+		// Nudge the opener tab to poll the server immediately instead of waiting for
+		// its next 2s tick (DF-05). This is a latency optimization only: the opener
+		// re-confirms the session against /auth/plex and never trusts this signal for
+		// auth. Guarded for older browsers / SSR where BroadcastChannel is absent.
+		if (typeof BroadcastChannel !== 'undefined') {
+			try {
+				const channel = new BroadcastChannel(PLEX_AUTH_BROADCAST_NAME);
+				channel.postMessage({ type: 'login-complete' });
+				channel.close();
+			} catch {}
+		}
 		setTimeout(() => window.close(), 750);
 		return;
 	}

@@ -2,7 +2,12 @@ import { beforeEach, describe, expect, it } from 'bun:test';
 import { and, eq } from 'drizzle-orm';
 import { db } from '$lib/server/db/client';
 import { shareSettings, users } from '$lib/server/db/schema';
-import { getOwnerWrappedHref, setGlobalShareDefaults } from '$lib/server/sharing/service';
+import {
+	getOwnerWrappedHref,
+	getShareIdentifier,
+	isValidSlugFormat,
+	setGlobalShareDefaults
+} from '$lib/server/sharing/service';
 import { ShareMode, ShareModeSource } from '$lib/server/sharing/types';
 import { load as loadServerWrapped } from '../../../src/routes/wrapped/[year=year]/+page.server';
 import { actions, load } from '../../../src/routes/wrapped/[year=year]/u/[identifier]/+page.server';
@@ -166,8 +171,9 @@ describe('wrapped/[year=year]/u/[identifier] loader: cross-year token isolation'
 		});
 	});
 
-	it('yearIdentifiers maps the visited year to the presented token and other years to numeric userId', async () => {
-		// Preseed another year's token — loader must not expose it to token visitors.
+	it('yearIdentifiers maps the visited year to the presented token and omits other private-link years (no token leak, DF-04)', async () => {
+		// Preseed another year's token — loader must not expose it to token visitors,
+		// and (DF-04) must not fall back to the numeric id for a non-owner either.
 		await seedShareSettings({
 			userId: USER_ID,
 			year: OTHER_YEAR,
@@ -183,13 +189,14 @@ describe('wrapped/[year=year]/u/[identifier] loader: cross-year token isolation'
 
 		expect(data.yearIdentifiers).toBeDefined();
 		expect(data.yearIdentifiers?.[ORIGIN_YEAR]).toBe(CURRENT_YEAR_TOKEN);
-		expect(data.yearIdentifiers?.[OTHER_YEAR]).toBe(USER_ID);
-		expect(data.yearIdentifiers?.[OTHER_YEAR]).not.toBe(OTHER_YEAR_TOKEN_FOR_PRESEED);
+		// DF-04: a non-owner viewer never gets the numeric id (it no longer resolves
+		// for them) nor another year's private-link token — that year is omitted.
+		expect(data.yearIdentifiers?.[OTHER_YEAR]).toBeUndefined();
 	});
 
-	it('does not mint a share token for years other than the visited one', async () => {
-		// Other year has NO share_settings row at all — the old code path would
-		// have called getOrCreateShareSettings which mints a token for PRIVATE_LINK.
+	it('does not mint a share token or slug for years other than the visited one', async () => {
+		// Other year has NO share_settings row at all — the loader must not call any
+		// minting path (getOrCreateShareSettings / ensurePublicSlug) for it.
 		expect(await getStoredToken(USER_ID, OTHER_YEAR)).toBeNull();
 
 		const data = await invokeLoad({
@@ -198,7 +205,7 @@ describe('wrapped/[year=year]/u/[identifier] loader: cross-year token isolation'
 			availableYears: [ORIGIN_YEAR, OTHER_YEAR]
 		});
 
-		expect(data.yearIdentifiers?.[OTHER_YEAR]).toBe(USER_ID);
+		expect(data.yearIdentifiers?.[OTHER_YEAR]).toBeUndefined();
 		const rows = await db
 			.select()
 			.from(shareSettings)
@@ -306,10 +313,27 @@ describe('wrapped/[year=year]/u/[identifier] loader: identifier validation (F-30
 		await expectStatus(String(USER_ID), 404);
 	});
 
-	it('resolves a valid numeric identifier to the matching user', async () => {
+	it('resolves a numeric identifier for the owner but 404s anonymous numeric (DF-04 owner/admin-only)', async () => {
+		// Anonymous numeric is a uniform 404 — the integer id is owner/admin-only.
+		await expectStatus(String(USER_ID), 404);
+
+		// The owner viewing their own numeric URL still resolves.
 		const data = await invokeLoad({
 			year: ORIGIN_YEAR,
 			identifier: String(USER_ID),
+			availableYears: [ORIGIN_YEAR],
+			currentUser: { id: USER_ID, plexId: 100002, username: `user-${USER_ID}`, isAdmin: false }
+		});
+		expect(data.userId).toBe(USER_ID);
+	});
+
+	it('resolves a public page for anyone via its opaque slug (DF-04)', async () => {
+		const slug = await getShareIdentifier(USER_ID, ORIGIN_YEAR);
+		expect(isValidSlugFormat(slug)).toBe(true);
+
+		const data = await invokeLoad({
+			year: ORIGIN_YEAR,
+			identifier: slug,
 			availableYears: [ORIGIN_YEAR]
 		});
 		expect(data.userId).toBe(USER_ID);
@@ -371,7 +395,7 @@ describe('wrapped/[year=year]/u/[identifier] loader: shareToken payload gating',
 		expect(data.shareSettings.shareToken).toBeNull();
 	});
 
-	it('returns shareToken: null for an authenticated non-owner viewer in private-oauth mode', async () => {
+	it('returns shareToken: null for an authenticated non-owner member viewing private-oauth via its slug (DF-04)', async () => {
 		await setGlobalShareDefaults({
 			defaultShareMode: ShareMode.PRIVATE_OAUTH,
 			allowUserControl: false
@@ -388,9 +412,13 @@ describe('wrapped/[year=year]/u/[identifier] loader: shareToken payload gating',
 
 		await seedUser(OTHER_USER_ID, 100099, 200099);
 
+		// DF-04: the non-owner member reaches the page through the opaque slug
+		// (the numeric id no longer resolves for them), and still never receives
+		// a copyable share token.
+		const slug = await getShareIdentifier(USER_ID, YEAR);
 		const data = await invokeLoad({
 			year: YEAR,
-			identifier: String(USER_ID),
+			identifier: slug,
 			availableYears: [YEAR],
 			currentUser: {
 				id: OTHER_USER_ID,
@@ -740,13 +768,16 @@ describe('wrapped/[year=year]/u/[identifier] actions: token regeneration', () =>
 });
 
 /**
- * ISSUE-004 (D) contract-lock: the "Server Members" (private-oauth) access boundary
- * is auth, NOT the URL identifier. These tests freeze that contract so a future
- * change can't silently regress it. NO tokenization, NO normalization — the
- * enumerable integer id and the intentional 403-vs-404 split are by-design (F-015).
- * See .omc/research/dogfood-d-threatmodel-2026-05-30.md.
+ * DF-04 / ISSUE-004 contract-lock (REVISED for Option (a)): the sequential integer
+ * id resolves ONLY for the owner/admin. Every other caller — anonymous OR an
+ * authenticated non-owner member — gets the byte-identical anti-enumeration 404,
+ * closing both anonymous and member-to-member walking. Legitimate non-owner access
+ * flows through an OPAQUE SLUG (public / private-oauth, gated by mode at access
+ * time) or the private-link UUID token. This freezes the post-Option-(a) contract
+ * so a future change can't silently reopen integer enumeration.
+ * Supersedes the prior "enumerable integer id by-design" lock.
  */
-describe('wrapped/[year=year]/u/[identifier] loader: ISSUE-004 private-oauth contract-lock', () => {
+describe('wrapped/[year=year]/u/[identifier] loader: DF-04 slug + numeric-owner-only contract-lock', () => {
 	const MEMBER_ID = 2;
 	const UNKNOWN_ID = 999;
 	const YEAR = 2024;
@@ -761,9 +792,6 @@ describe('wrapped/[year=year]/u/[identifier] loader: ISSUE-004 private-oauth con
 	});
 
 	it('returns 404 for an UNKNOWN numeric id and mints NO share_settings row (anti-enumeration, no orphan)', async () => {
-		// Unknown id: no users row, no share_settings row. The loader's existence
-		// check (+page.server.ts:132-139) must 404 BEFORE getOrCreateShareSettings,
-		// so no row is created for a non-existent user.
 		await expectLoadStatus(
 			{ year: YEAR, identifier: String(UNKNOWN_ID), currentUser: undefined },
 			404
@@ -773,7 +801,7 @@ describe('wrapped/[year=year]/u/[identifier] loader: ISSUE-004 private-oauth con
 		expect(rows.length).toBe(0);
 	});
 
-	it('allows a signed-in server member (non-owner) to view a known private-oauth numeric id (200)', async () => {
+	it('returns 404 when a non-owner member views a private-oauth page via the numeric id (member walking closed)', async () => {
 		const OWNER_ID = 5;
 		await seedUser(OWNER_ID, 100005, 200005);
 		await seedUser(MEMBER_ID, 100002, 200002);
@@ -784,9 +812,38 @@ describe('wrapped/[year=year]/u/[identifier] loader: ISSUE-004 private-oauth con
 			token: null
 		});
 
+		await expectLoadStatus(
+			{
+				year: YEAR,
+				identifier: String(OWNER_ID),
+				currentUser: {
+					id: MEMBER_ID,
+					plexId: 100002,
+					username: `user-${MEMBER_ID}`,
+					isAdmin: false
+				}
+			},
+			404
+		);
+	});
+
+	it('allows a non-owner member to view a private-oauth page via its opaque slug (200, no token)', async () => {
+		const OWNER_ID = 5;
+		await seedUser(OWNER_ID, 100005, 200005);
+		await seedUser(MEMBER_ID, 100002, 200002);
+		await seedShareSettings({
+			userId: OWNER_ID,
+			year: YEAR,
+			mode: ShareMode.PRIVATE_OAUTH,
+			token: null
+		});
+
+		const slug = await getShareIdentifier(OWNER_ID, YEAR);
+		expect(isValidSlugFormat(slug)).toBe(true);
+
 		const data = await invokeLoad({
 			year: YEAR,
-			identifier: String(OWNER_ID),
+			identifier: slug,
 			availableYears: [YEAR],
 			currentUser: {
 				id: MEMBER_ID,
@@ -797,15 +854,28 @@ describe('wrapped/[year=year]/u/[identifier] loader: ISSUE-004 private-oauth con
 		});
 
 		expect(data.userId).toBe(OWNER_ID);
-		// Members get the canonical (integer) page; never a copyable token.
 		expect(data.shareSettings.shareToken).toBeNull();
 	});
 
-	it('getOwnerWrappedHref emits the integer URL (no token) for private-oauth and a token URL only for private-link', async () => {
+	it('returns 404 when an ANONYMOUS viewer tries a private-oauth slug (auth still enforced)', async () => {
+		const OWNER_ID = 5;
+		await seedUser(OWNER_ID, 100005, 200005);
+		await seedShareSettings({
+			userId: OWNER_ID,
+			year: YEAR,
+			mode: ShareMode.PRIVATE_OAUTH,
+			token: null
+		});
+
+		const slug = await getShareIdentifier(OWNER_ID, YEAR);
+		await expectLoadStatus({ year: YEAR, identifier: slug, currentUser: undefined }, 404);
+	});
+
+	it('getOwnerWrappedHref emits an opaque slug URL for private-oauth and a token URL only for private-link', async () => {
 		const OWNER_ID = 5;
 		await seedUser(OWNER_ID, 100005, 200005);
 
-		// private-oauth: integer URL, no token minted/emitted.
+		// private-oauth: opaque slug URL (NOT the enumerable integer), no token.
 		await seedShareSettings({
 			userId: OWNER_ID,
 			year: YEAR,
@@ -813,13 +883,13 @@ describe('wrapped/[year=year]/u/[identifier] loader: ISSUE-004 private-oauth con
 			token: null
 		});
 		const oauthHref = await getOwnerWrappedHref(OWNER_ID, YEAR);
-		expect(oauthHref).toBe(`/wrapped/${YEAR}/u/${OWNER_ID}`);
+		const oauthSlug = oauthHref.replace(`/wrapped/${YEAR}/u/`, '');
+		expect(isValidSlugFormat(oauthSlug)).toBe(true);
+		expect(oauthHref).not.toBe(`/wrapped/${YEAR}/u/${OWNER_ID}`);
 		expect(await getStoredToken(OWNER_ID, YEAR)).toBeNull();
 
-		// Flip to private-link (with a token) under a PUBLIC floor so the effective
-		// mode stays private-link (a private-oauth floor would correctly elevate it
-		// back to the integer URL — covered by the floor tests above). The token URL
-		// is emitted only when the effective mode is genuinely private-link.
+		// Flip to private-link under a PUBLIC floor so the effective mode stays
+		// private-link; the token URL is emitted only then.
 		await setGlobalShareDefaults({
 			defaultShareMode: ShareMode.PUBLIC,
 			allowUserControl: false
@@ -916,14 +986,22 @@ describe('wrapped/[year=year]/u/[identifier] loader: ISSUE-001 uniform-404 anti-
 		expect(rows.length).toBe(0);
 	});
 
-	it('still loads a PUBLIC personal wrapped for an anonymous viewer (200)', async () => {
+	it('404s anonymous numeric on a PUBLIC page but resolves it via the opaque slug (DF-04)', async () => {
 		await setGlobalShareDefaults({
 			defaultShareMode: ShareMode.PUBLIC,
 			allowUserControl: false
 		});
+		// DF-04: the integer id is owner/admin-only, so anonymous numeric — even on
+		// a public page — is the uniform anti-enumeration 404.
+		const anonNumeric = await captureAnonFailure(String(EXISTING_ID));
+		expect(anonNumeric.status).toBe(404);
+		expect(anonNumeric.message).toBe("We couldn't find a Wrapped page for that link.");
+
+		// The same public page resolves for an anonymous viewer via its opaque slug.
+		const slug = await getShareIdentifier(EXISTING_ID, YEAR);
 		const data = await invokeLoad({
 			year: YEAR,
-			identifier: String(EXISTING_ID),
+			identifier: slug,
 			availableYears: [YEAR]
 		});
 		expect(data.userId).toBe(EXISTING_ID);

@@ -141,7 +141,7 @@ function handleLogoToggle(): void {
 	{/if}
 
 	<div class="controls-container">
-		{#if data.canUserControlLogo}
+		{#if data.isOwner && data.canUserControlLogo}
 			<form
 				method="POST"
 				action="?/toggleLogo"
@@ -218,7 +218,7 @@ function handleLogoToggle(): void {
 		<YearNavigation
 			currentYear={data.year}
 			availableYears={data.availableYears}
-			userIdentifier={data.userId}
+			userIdentifier={data.isOwner || data.isAdmin ? data.userId : null}
 			yearIdentifiers={data.yearIdentifiers}
 		/>
 	{/if}

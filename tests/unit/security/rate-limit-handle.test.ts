@@ -1,6 +1,8 @@
-import { beforeEach, describe, expect, it, mock } from 'bun:test';
+import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import { parse } from 'devalue';
+import { logger } from '$lib/server/logging';
 import { clearRateLimitStore } from '$lib/server/ratelimit';
+import { resetClientAddressWarning } from '$lib/server/security/client-address';
 import { rateLimitHandle } from '$lib/server/security/rate-limit-handle';
 
 function makeEvent(method: string, url: string, ip = '198.51.100.10', init: RequestInit = {}) {
@@ -9,6 +11,17 @@ function makeEvent(method: string, url: string, ip = '198.51.100.10', init: Requ
 		request,
 		url: new URL(url),
 		getClientAddress: () => ip
+	} as unknown as Parameters<typeof rateLimitHandle>[0]['event'];
+}
+
+function makeThrowingEvent(method: string, url: string, init: RequestInit = {}) {
+	const request = new Request(url, { ...init, method });
+	return {
+		request,
+		url: new URL(url),
+		getClientAddress: () => {
+			throw new Error('Could not determine clientAddress');
+		}
 	} as unknown as Parameters<typeof rateLimitHandle>[0]['event'];
 }
 
@@ -80,6 +93,50 @@ describe('rateLimitHandle landing page bucket', () => {
 			error: `Too many requests. Please try again in ${retryAfterSeconds} second${retryAfterSeconds === 1 ? '' : 's'}.`,
 			requiresAuth: false
 		});
+	});
+});
+
+describe('rateLimitHandle with indeterminate client address', () => {
+	beforeEach(() => {
+		clearRateLimitStore();
+		resetClientAddressWarning();
+	});
+
+	it('skips rate limiting (no shared-bucket lockout) when getClientAddress throws', async () => {
+		const warnSpy = spyOn(logger, 'warn').mockImplementation(() => {});
+		try {
+			const sentinel = new Response('resolved', { status: 200 });
+			const resolve = mock(async () => sentinel);
+
+			const statuses: number[] = [];
+			// Far exceeds any per-IP bucket; if these collapsed into one shared
+			// bucket the later requests would 429.
+			for (let i = 0; i < 100; i++) {
+				const result = await rateLimitHandle({
+					event: makeThrowingEvent('POST', 'https://example.com/'),
+					resolve
+				} as unknown as Parameters<typeof rateLimitHandle>[0]);
+				statuses.push((result as Response).status);
+			}
+
+			expect(statuses.every((s) => s === 200)).toBe(true);
+			expect(resolve).toHaveBeenCalledTimes(100);
+			// Deduped WARN: exactly one despite 100 indeterminate requests.
+			expect(warnSpy).toHaveBeenCalledTimes(1);
+		} finally {
+			warnSpy.mockRestore();
+		}
+	});
+
+	it('still applies normal rate limiting when a real address is present', async () => {
+		const statuses: number[] = [];
+		for (let i = 0; i < 31; i++) {
+			const res = await invoke(makeEvent('GET', 'https://example.com/', '203.0.113.42'));
+			statuses.push(res.status);
+		}
+
+		expect(statuses.slice(0, 30).every((s) => s === 200)).toBe(true);
+		expect(statuses[30]).toBe(429);
 	});
 });
 

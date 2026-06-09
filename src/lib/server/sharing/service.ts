@@ -37,6 +37,38 @@ export function isPureNumericId(value: string): boolean {
 	return /^\d+$/.test(value);
 }
 
+// DF-04 / ISSUE-004: opaque public-slug identifier space. Base62, 22 chars
+// (~131 bits) so it is unguessable, URL-safe, never contains the dashes a v4
+// UUID does (so `isValidTokenFormat` never matches a slug), and — guarded below
+// — never a pure-digit string (so `isPureNumericId` never matches it either).
+// The resolver therefore disambiguates token | numeric | slug purely by shape.
+const SLUG_ALPHABET = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const SLUG_LENGTH = 22;
+
+export function generatePublicSlug(): string {
+	// Rejection-sample bytes so the modulo into a 62-char alphabet is unbiased
+	// (bytes >= 248 would skew the first 8 symbols).
+	const max = 256 - (256 % SLUG_ALPHABET.length);
+	let slug = '';
+	while (slug.length < SLUG_LENGTH) {
+		const bytes = crypto.getRandomValues(new Uint8Array(SLUG_LENGTH));
+		for (let i = 0; i < bytes.length && slug.length < SLUG_LENGTH; i++) {
+			const b = bytes[i] as number;
+			if (b < max) slug += SLUG_ALPHABET[b % SLUG_ALPHABET.length];
+		}
+	}
+	// Guarantee the slug never lands in the numeric-id space, so the resolver
+	// (token -> numeric -> slug) can never misroute it. Astronomically unlikely
+	// with base62, but we make the invariant exact rather than probabilistic.
+	return isPureNumericId(slug) ? generatePublicSlug() : slug;
+}
+
+export function isValidSlugFormat(value: string): boolean {
+	// A slug is base62 of the fixed mint length and, by construction, not a
+	// pure-digit string (which belongs to the numeric-id branch) and not a UUID.
+	return value.length === SLUG_LENGTH && /^[0-9A-Za-z]+$/.test(value) && !isPureNumericId(value);
+}
+
 function normalizeShareModeSource(value: string | null): ShareModeSourceType {
 	const parsed = ShareModeSourceSchema.safeParse(value ?? ShareModeSource.EXPLICIT);
 	return parsed.success ? parsed.data : ShareModeSource.EXPLICIT;
@@ -547,17 +579,128 @@ export async function ensureShareToken(userId: number, year: number): Promise<st
 	return refreshed[0]?.shareToken ?? newToken;
 }
 
-export async function getOwnerWrappedHref(userId: number, year: number): Promise<string> {
+export async function ensurePublicSlug(userId: number, year: number): Promise<string> {
+	// Lazy-mint mirror of `ensureShareToken`: read the raw row, mint a slug only
+	// if absent, and re-read to honor a concurrent mint (the column is unique).
+	const raw = await db
+		.select({ publicSlug: shareSettings.publicSlug })
+		.from(shareSettings)
+		.where(and(eq(shareSettings.userId, userId), eq(shareSettings.year, year)))
+		.limit(1);
+
+	const row = raw[0];
+	if (!row) {
+		throw new ShareSettingsNotFoundError();
+	}
+
+	if (row.publicSlug) {
+		return row.publicSlug;
+	}
+
+	const newSlug = generatePublicSlug();
+
+	await db
+		.update(shareSettings)
+		.set({ publicSlug: newSlug })
+		.where(
+			and(
+				eq(shareSettings.userId, userId),
+				eq(shareSettings.year, year),
+				isNull(shareSettings.publicSlug)
+			)
+		);
+
+	const refreshed = await db
+		.select({ publicSlug: shareSettings.publicSlug })
+		.from(shareSettings)
+		.where(and(eq(shareSettings.userId, userId), eq(shareSettings.year, year)))
+		.limit(1);
+
+	return refreshed[0]?.publicSlug ?? newSlug;
+}
+
+/**
+ * Resolve an opaque public slug back to its (userId, year). Read-only; returns
+ * null for an unknown or malformed slug. Access control (mode/floor) is applied
+ * by the caller via checkWrappedAccess — the slug only identifies the resource,
+ * it does not grant access.
+ */
+export async function resolveSlug(slug: string): Promise<{ userId: number; year: number } | null> {
+	if (!isValidSlugFormat(slug)) {
+		return null;
+	}
+
+	const row = await db
+		.select({ userId: shareSettings.userId, year: shareSettings.year })
+		.from(shareSettings)
+		.where(eq(shareSettings.publicSlug, slug))
+		.limit(1);
+
+	return row[0] ?? null;
+}
+
+/**
+ * The enumeration-resistant identifier a NON-OWNER viewer should use to reach
+ * (userId, year): a private-link UUID token when the effective mode is
+ * private-link, otherwise an opaque public slug. Mints on demand. (DF-04)
+ */
+export async function getShareIdentifier(userId: number, year: number): Promise<string> {
 	const settings = await getOrCreateShareSettings({ userId, year });
 	const globalFloor = await getGlobalDefaultShareMode();
 	const effectiveMode = getMoreRestrictiveMode(settings.mode, globalFloor);
 
-	if (effectiveMode !== ShareMode.PRIVATE_LINK) {
-		return `/wrapped/${year}/u/${userId}`;
+	if (effectiveMode === ShareMode.PRIVATE_LINK) {
+		return settings.shareToken ?? (await ensureShareToken(userId, year));
 	}
 
-	const token = settings.shareToken ?? (await ensureShareToken(userId, year));
-	return `/wrapped/${year}/u/${token}`;
+	return ensurePublicSlug(userId, year);
+}
+
+/**
+ * Read-only counterpart of {@link getShareIdentifier} for cross-year navigation
+ * by a non-owner: returns an EXISTING opaque slug for (userId, year) WITHOUT
+ * minting and WITHOUT ever exposing another year's private-link token. Returns
+ * null for a private-link year (a token is required and must not leak across
+ * years — preserves the cross-year token-isolation contract) or when no slug
+ * has been minted yet. No share_settings row is created.
+ */
+export async function getExistingShareIdentifier(
+	userId: number,
+	year: number
+): Promise<string | null> {
+	const raw = await db
+		.select({
+			mode: shareSettings.mode,
+			modeSource: shareSettings.modeSource,
+			publicSlug: shareSettings.publicSlug
+		})
+		.from(shareSettings)
+		.where(and(eq(shareSettings.userId, userId), eq(shareSettings.year, year)))
+		.limit(1);
+
+	const row = raw[0];
+	if (!row) {
+		return null;
+	}
+
+	const globalDefault = await getGlobalDefaultShareMode();
+	const parsedMode = ShareModeSchema.safeParse(row.mode);
+	const storedMode = parsedMode.success ? parsedMode.data : globalDefault;
+	const source = normalizeShareModeSource(row.modeSource);
+	const rowMode = source === ShareModeSource.DEFAULT ? globalDefault : storedMode;
+	const effectiveMode = getMoreRestrictiveMode(rowMode, globalDefault);
+
+	if (effectiveMode === ShareMode.PRIVATE_LINK) {
+		return null;
+	}
+
+	return row.publicSlug;
+}
+
+export async function getOwnerWrappedHref(userId: number, year: number): Promise<string> {
+	// PRIVATE_LINK keeps its dedicated UUID token; PUBLIC and PRIVATE_OAUTH are
+	// served via an opaque slug instead of the enumerable integer id (DF-04).
+	return `/wrapped/${year}/u/${await getShareIdentifier(userId, year)}`;
 }
 
 export async function getShareSettingsByToken(token: string): Promise<ShareSettings | null> {

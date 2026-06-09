@@ -9,12 +9,14 @@ import { signStatsThumbnails } from '$lib/server/plex/thumbnail-auth';
 import { checkTokenAccess, checkWrappedAccess } from '$lib/server/sharing/access-control';
 import {
 	ensureShareToken,
+	getExistingShareIdentifier,
 	getGlobalDefaultShareMode,
 	getOrCreateShareSettings,
 	getOwnerWrappedHref,
 	isPureNumericId,
 	isValidTokenFormat,
 	regenerateShareToken,
+	resolveSlug,
 	updateShareSettings
 } from '$lib/server/sharing/service';
 import {
@@ -68,21 +70,32 @@ async function resolveUserIdFromIdentifier(
 		}
 	}
 
-	if (!isPureNumericId(identifier)) {
-		return null;
+	if (isPureNumericId(identifier)) {
+		const userId = Number(identifier);
+		if (!Number.isSafeInteger(userId) || userId <= 0) {
+			return null;
+		}
+
+		// DF-04: the sequential integer id resolves only for the owner themselves
+		// or an admin. Everyone else gets null (no existence signal), so a member
+		// cannot drive a mutation against another member's numeric URL.
+		const isOwnerOrAdmin = currentUser?.id === userId || currentUser?.isAdmin === true;
+		if (!isOwnerOrAdmin) {
+			return null;
+		}
+
+		const userRow = await db
+			.select({ id: users.id })
+			.from(users)
+			.where(eq(users.id, userId))
+			.limit(1);
+		return userRow[0]?.id ?? null;
 	}
 
-	const userId = Number(identifier);
-	if (!Number.isSafeInteger(userId) || userId <= 0) {
-		return null;
-	}
-
-	const userRow = await db
-		.select({ id: users.id })
-		.from(users)
-		.where(eq(users.id, userId))
-		.limit(1);
-	return userRow[0]?.id ?? null;
+	// DF-04: opaque public/oauth slug. Resolves to its owning (userId, year);
+	// the caller still enforces owner/admin authorization for mutations.
+	const resolved = await resolveSlug(identifier);
+	return resolved && resolved.year === year ? resolved.userId : null;
 }
 
 export const load: PageServerLoad = async ({ params, locals, parent, setHeaders }) => {
@@ -98,6 +111,7 @@ export const load: PageServerLoad = async ({ params, locals, parent, setHeaders 
 	const { identifier } = params;
 	let userId: number;
 	let accessedViaToken = false;
+	let accessedViaSlug = false;
 
 	if (isValidTokenFormat(identifier)) {
 		accessedViaToken = true;
@@ -120,22 +134,23 @@ export const load: PageServerLoad = async ({ params, locals, parent, setHeaders 
 			}
 			throw err;
 		}
-	} else {
-		if (!isPureNumericId(identifier)) {
-			error(404, WRAPPED_NOT_FOUND_MESSAGE);
-		}
+	} else if (isPureNumericId(identifier)) {
+		// DF-04 / ISSUE-004: the sequential integer id is owner/admin-only. Anyone
+		// else — anonymous OR an authenticated non-owner member — gets the
+		// byte-identical anti-enumeration 404, closing both anonymous and
+		// member-to-member walking. Legitimate viewers reach the page through the
+		// opaque slug (PUBLIC / PRIVATE_OAUTH) or the UUID token (PRIVATE_LINK).
 		const parsedId = Number(identifier);
 		if (!Number.isSafeInteger(parsedId) || parsedId <= 0) {
 			error(404, WRAPPED_NOT_FOUND_MESSAGE);
 		}
+		const isOwnerOrAdmin = locals.user?.id === parsedId || locals.user?.isAdmin === true;
+		if (!isOwnerOrAdmin) {
+			error(404, WRAPPED_NOT_FOUND_MESSAGE);
+		}
 		userId = parsedId;
 
-		// Verify the user actually exists before any code path that may create
-		// share_settings rows for them (checkWrappedAccess -> getOrCreateShareSettings).
-		// Preserves the F-015 anti-enumeration story (unknown id -> 404) and blocks
-		// the route by which a stray numeric id (e.g. a Plex id) became a
-		// share_settings.user_id orphan. This is a read-only existence check, so no
-		// orphan share_settings row is created for a non-existent id.
+		// Read-only existence check (no orphan share_settings row for a bad id).
 		const userExists = await db
 			.select({ id: users.id })
 			.from(users)
@@ -152,14 +167,38 @@ export const load: PageServerLoad = async ({ params, locals, parent, setHeaders 
 				currentUser: locals.user
 			});
 		} catch (err) {
-			// F-015 / ISSUE-001 uniform-404 anti-enumeration contract: an anonymous
-			// caller on a numeric id must not be able to tell "exists but private"
-			// from "does not exist". For anonymous callers every "cannot view"
-			// outcome collapses to one byte-identical 404 + body (matching the
-			// non-existent-id 404 above and the canonical landing `lookupUser`
-			// pattern). Authenticated callers keep the existing 403/404 split — a
-			// signed-in viewer already proves server membership, so existence is
-			// not a secret we are protecting from them.
+			// Only owner/admin reach here. Preserve private-link-requires-token
+			// (the owner/admin must use the token URL) while keeping the 404 body
+			// byte-identical to the anti-enumeration 404 for the access-denied case.
+			if (err instanceof ShareAccessDeniedError) {
+				error(404, WRAPPED_NOT_FOUND_MESSAGE);
+			}
+			if (err instanceof InvalidShareTokenError) {
+				error(404, 'This share link is invalid, expired, or has been revoked.');
+			}
+			throw err;
+		}
+	} else {
+		// DF-04: opaque public/oauth slug path. The slug only names the resource;
+		// checkWrappedAccess still enforces the effective mode (PUBLIC -> anyone,
+		// PRIVATE_OAUTH -> signed-in members only, PRIVATE_LINK -> a token is
+		// required so the slug resolves to a uniform 404).
+		accessedViaSlug = true;
+		const resolved = await resolveSlug(identifier);
+		if (!resolved || resolved.year !== year) {
+			error(404, WRAPPED_NOT_FOUND_MESSAGE);
+		}
+		userId = resolved.userId;
+
+		try {
+			await checkWrappedAccess({
+				userId,
+				year,
+				currentUser: locals.user
+			});
+		} catch (err) {
+			// Uniform-404 for anonymous callers (no existence signal); authenticated
+			// callers keep the 403/404 split since membership already proves access.
 			const isAnonymous = !locals.user;
 			if (err instanceof ShareAccessDeniedError) {
 				if (isAnonymous) {
@@ -190,15 +229,32 @@ export const load: PageServerLoad = async ({ params, locals, parent, setHeaders 
 	const stats = await calculateUserStats(statsAccountId, year);
 	const userHasWatchHistory = hasWatchHistory(stats);
 
+	const isOwner = locals.user?.id === userId;
+	const isAdmin = locals.user?.isAdmin ?? false;
+	const ownerOrAdmin = isOwner || isAdmin;
+
 	let yearIdentifiers: Record<number, string | number> | undefined;
 
-	if (accessedViaToken) {
+	// DF-04: a non-owner viewer (slug or token access) can no longer navigate
+	// other years via the numeric id. Map the current year to the identifier they
+	// arrived on, and other years to an EXISTING opaque slug only — read-only, so
+	// we never mint here and never leak another year's private-link token
+	// (preserving the cross-year token-isolation contract). Years without a usable
+	// slug are omitted. Owner/admin keep the numeric identifier (see the page's
+	// `userIdentifier` prop).
+	if (!ownerOrAdmin && (accessedViaToken || accessedViaSlug)) {
 		const parentData = await parent();
-		const availableYears = parentData.availableYears;
 		yearIdentifiers = {};
 
-		for (const availYear of availableYears) {
-			yearIdentifiers[availYear] = availYear === year ? identifier : userId;
+		for (const availYear of parentData.availableYears) {
+			if (availYear === year) {
+				yearIdentifiers[availYear] = identifier;
+				continue;
+			}
+			const existing = await getExistingShareIdentifier(userId, availYear);
+			if (existing) {
+				yearIdentifiers[availYear] = existing;
+			}
 		}
 	}
 
@@ -230,12 +286,8 @@ export const load: PageServerLoad = async ({ params, locals, parent, setHeaders 
 	const logoVisibility = await getLogoVisibility(userId, year);
 	const shareSettings = await getOrCreateShareSettings({ userId, year });
 
-	const isOwner = locals.user?.id === userId;
-	const isAdmin = locals.user?.isAdmin ?? false;
-
 	const globalFloorForUrl = await getGlobalDefaultShareMode();
 	const effectiveModeForUrl = getMoreRestrictiveMode(shareSettings.mode, globalFloorForUrl);
-	const ownerOrAdmin = isOwner || isAdmin;
 	const needsTokenForUrl = effectiveModeForUrl === ShareMode.PRIVATE_LINK;
 	// Owner/admin keep their canonical token even when the floor raises the
 	// effective mode above PRIVATE_LINK, so the share modal stays stable
@@ -243,12 +295,12 @@ export const load: PageServerLoad = async ({ params, locals, parent, setHeaders 
 	const rawTokenForOwner = ownerOrAdmin
 		? (shareSettings.shareToken ?? (needsTokenForUrl ? await ensureShareToken(userId, year) : null))
 		: null;
-	const resolvedShareToken = needsTokenForUrl
-		? (rawTokenForOwner ?? shareSettings.shareToken ?? (await ensureShareToken(userId, year)))
-		: null;
+	// Owner/admin get the opaque share href (slug for public/oauth, token for
+	// private-link). A non-owner always arrived via the opaque identifier itself
+	// (numeric ids are owner/admin-only now), so we echo what they came in on.
 	const currentUrl = ownerOrAdmin
 		? await getOwnerWrappedHref(userId, year)
-		: `/wrapped/${year}/u/${accessedViaToken ? identifier : (resolvedShareToken ?? userId)}`;
+		: `/wrapped/${year}/u/${identifier}`;
 
 	const exposedShareToken = ownerOrAdmin ? rawTokenForOwner : null;
 	const signedStats = await signStatsThumbnails(stats, {
