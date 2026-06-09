@@ -433,7 +433,11 @@ async function goToPage(page: number) {
 							use:enhance={() => {
 								isCancelling = true;
 								return async ({ update }) => {
-									await update();
+									try {
+										await update();
+									} finally {
+										isCancelling = false;
+									}
 								};
 							}}
 						>
