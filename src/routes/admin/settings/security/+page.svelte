@@ -31,6 +31,7 @@ const security = $derived(data.security);
 
 // svelte-ignore state_referenced_locally
 let csrfOriginInput = $state(security.originValue);
+let csrfOriginError = $state<string | undefined>(undefined);
 
 let isSavingCsrf = $state(false);
 let isTestingCsrf = $state(false);
@@ -236,7 +237,13 @@ function getForwardedPairLabel(status: string): string {
 									pendingCsrfOrigin = String(d.attemptedOrigin ?? '');
 									pendingMismatchMessage = String(d.csrfMismatchMessage ?? '');
 									csrfMismatchDialogOpen = true;
+									csrfOriginError = undefined;
 								} else if (result.type === 'success' || result.type === 'failure') {
+									csrfOriginError =
+										result.type === 'failure'
+											? (result.data as { fieldErrors?: Record<string, string[] | undefined> })
+													?.fieldErrors?.csrfOrigin?.[0]
+											: undefined;
 									handleFormToast(
 										result.data as { success?: boolean; message?: string; error?: string }
 									);
@@ -262,6 +269,9 @@ function getForwardedPairLabel(status: string): string {
 						<p class="text-xs text-muted-foreground">
 							Leave blank to clear (only allowed when ORIGIN env is set or the skip flag is on).
 						</p>
+						{#if csrfOriginError}
+							<p class="text-xs text-destructive">{csrfOriginError}</p>
+						{/if}
 					</div>
 
 					<input type="hidden" name="settingsVersion" value={data.csrfOriginVersion} />

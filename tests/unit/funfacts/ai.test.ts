@@ -120,7 +120,7 @@ describe('Fun Facts AI', () => {
 			expect(config.aiEnabled).toBe(false);
 			expect(config.openaiApiKey).toBeUndefined();
 			expect(config.openaiBaseUrl).toBe('https://api.openai.com/v1');
-			expect(config.openaiModel).toBe('gpt-5-mini');
+			expect(config.openaiModel).toBe('gpt-4o-mini');
 			expect(config.maxAIRetries).toBe(2);
 			expect(config.aiTimeoutMs).toBe(10000);
 		});

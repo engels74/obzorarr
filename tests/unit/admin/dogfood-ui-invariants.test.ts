@@ -33,7 +33,7 @@ describe('dogfood UI invariants — admin connections page', () => {
 	it('communicates the effective default in the model placeholder (ISSUE-003)', async () => {
 		const src = await readSource(CONNECTIONS);
 		const modelBlock = src.slice(src.indexOf('id="openaiModel"'));
-		expect(modelBlock).toContain('placeholder="gpt-5-mini (default)"');
+		expect(modelBlock).toContain('placeholder="gpt-4o-mini (default)"');
 	});
 
 	it('gates the Plex server URL ENV pill + disabled input on isLocked (ISSUE-001)', async () => {
@@ -71,7 +71,7 @@ describe('dogfood UI invariants — onboarding settings page', () => {
 	it('communicates the effective default in the model placeholder (ISSUE-003)', async () => {
 		const src = await readSource(ONBOARDING);
 		const modelBlock = src.slice(src.indexOf('id="onboarding-openai-model"'));
-		expect(modelBlock).toContain('placeholder="gpt-5-mini (default)"');
+		expect(modelBlock).toContain('placeholder="gpt-4o-mini (default)"');
 	});
 
 	it('onboarding-settings-form has novalidate so malformed Base URLs reach the server validator (DF-09)', async () => {

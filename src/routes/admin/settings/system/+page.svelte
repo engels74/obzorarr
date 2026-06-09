@@ -137,7 +137,7 @@ function formatUptime(seconds: number): string {
 							/>
 						{/snippet}
 					</Form.Control>
-					<Form.Description>Older entries dropped once this ceiling is reached.</Form.Description>
+					<Form.Description>Older entries dropped once this ceiling is reached. Range 1,000–1,000,000.</Form.Description>
 					<Form.FieldErrors />
 					{#if maxCountError}
 						<p class="text-sm text-destructive">{maxCountError}</p>

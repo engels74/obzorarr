@@ -403,7 +403,7 @@ function formatNumber(n: number): string {
 					</SubmitButton>
 				</form>
 			{/if}
-			<form method="POST" action="?/continue" use:enhance>
+			<form method="POST" action="?/continue">
 				<SubmitButton class="continue-button tap-target" disabled={!hasStarted}>
 					{#snippet children()}
 						<span>Continue</span>

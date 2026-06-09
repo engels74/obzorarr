@@ -252,7 +252,7 @@ export const API_CONFIG_KEYS = [
  * `max(updatedAt)` over each key group strictly advances on every successful
  * mutation.
  */
-function nextOccVersionDate(dbFloorMs: number): Date {
+export function nextOccVersionDate(dbFloorMs: number): Date {
 	return new Date(Math.max(Date.now(), dbFloorMs + 1));
 }
 
@@ -1086,7 +1086,7 @@ export async function getApiConfigWithSources(): Promise<ApiConfigWithSources> {
 				dbSettings,
 				AppSettingsKey.OPENAI_MODEL,
 				openaiEnv.model,
-				'gpt-5-mini'
+				'gpt-4o-mini'
 			)
 		}
 	};

@@ -454,17 +454,22 @@ async function goToPage(page: number) {
 					method="POST"
 					action="?/startSync"
 					use:enhance={() => {
-						isSyncing = true;
-						syncCompleted = false;
-						pendingStart = true;
-						connectSSE();
 						return async ({ update, result }) => {
 							try {
 								await update();
-								if (result.type === 'failure' || result.type === 'error') {
-									pendingStart = false;
+								// ISSUE-010: only enter the syncing UI and open the SSE stream once
+								// the server confirms a sync actually started. On a 409 (a sync is
+								// already running) the start form stays mounted so the reactive
+								// handleFormToast(form) surfaces the conflict toast instead of the
+								// UI flipping to a stuck "syncing" state with a dangling EventSource.
+								if (result.type === 'success') {
+									syncCompleted = false;
+									isSyncing = true;
+									pendingStart = true;
+									connectSSE();
 								}
 							} catch {
+								isSyncing = false;
 								pendingStart = false;
 							}
 						};
