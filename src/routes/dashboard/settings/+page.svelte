@@ -203,8 +203,11 @@ function getLogoModeDescription(): string {
 							}
 							isUpdating = true;
 							return async ({ result, update }) => {
-								await update({ reset: false });
-								isUpdating = false;
+								try {
+									await update({ reset: false });
+								} finally {
+									isUpdating = false;
+								}
 							};
 						}}
 						class="share-form"

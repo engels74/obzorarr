@@ -268,6 +268,8 @@ const showOpenaiKeyWarning = $derived(!data.hasEffectiveOpenAIKey && !openaiApiK
 						return;
 					}
 					isSavingOpenai = true;
+					openaiBaseUrlError = undefined;
+					openaiModelError = undefined;
 					return async ({ result, update }) => {
 						try {
 							if (result.type === 'success' || result.type === 'failure') {
