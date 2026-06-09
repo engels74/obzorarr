@@ -227,8 +227,11 @@ html[data-theme="doom-64"],
 	--popover-foreground: 0.9234 0 0;
 	--primary: 0.6885 0.1738 51.21;
 	--primary-foreground: 0.1953 0.0103 61.46;
-	--secondary: 0.6599 0.1644 147.39;
-	--secondary-foreground: 0.2005 0.0176 151.15;
+	/* --secondary mirrors --muted (dark in-theme surface) like every other theme.
+	   The prior bright-green value (0.6599 0.1644 147.39) made subtle card/row
+	   backgrounds that read --secondary look out of theme (ISSUE-009/013). */
+	--secondary: 0.2832 0.014 61.5;
+	--secondary-foreground: 0.9234 0 0;
 	--muted: 0.2832 0.014 61.5;
 	--muted-foreground: 0.5547 0 0;
 	--accent: 0.6018 0.1371 257.16;

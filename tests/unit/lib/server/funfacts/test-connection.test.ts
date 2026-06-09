@@ -52,7 +52,7 @@ describe('testOpenAIConnection', () => {
 
 		const result = await testOpenAIConnection('sk-test-key');
 
-		expect(result).toEqual({ success: true, message: 'Connected (model: gpt-5-mini)' });
+		expect(result).toEqual({ success: true, message: 'Connected (model: gpt-4o-mini)' });
 		expect(captured.url).toBe('https://api.openai.com/v1/chat/completions');
 		expect(captured.init?.method).toBe('POST');
 		const headers = captured.init?.headers as Record<string, string>;
@@ -60,7 +60,7 @@ describe('testOpenAIConnection', () => {
 		expect(headers['Content-Type']).toBe('application/json');
 		const body = JSON.parse(captured.init?.body as string);
 		expect(body).toEqual({
-			model: 'gpt-5-mini',
+			model: 'gpt-4o-mini',
 			messages: [{ role: 'user', content: 'ping' }],
 			max_tokens: 1
 		});
@@ -212,7 +212,7 @@ describe('testOpenAIConnection', () => {
 
 		expect(result.success).toBe(true);
 		expect(captured.url).toBe('https://api.openai.com/v1/chat/completions');
-		expect(JSON.parse(captured.body ?? '{}').model).toBe('gpt-5-mini');
+		expect(JSON.parse(captured.body ?? '{}').model).toBe('gpt-4o-mini');
 	});
 
 	it('treats whitespace-only baseUrl and model as missing, falling back to defaults', async () => {
@@ -228,6 +228,6 @@ describe('testOpenAIConnection', () => {
 
 		expect(result.success).toBe(true);
 		expect(captured.url).toBe('https://api.openai.com/v1/chat/completions');
-		expect(JSON.parse(captured.body ?? '{}').model).toBe('gpt-5-mini');
+		expect(JSON.parse(captured.body ?? '{}').model).toBe('gpt-4o-mini');
 	});
 });

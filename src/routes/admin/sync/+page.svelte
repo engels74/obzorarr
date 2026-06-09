@@ -433,7 +433,11 @@ async function goToPage(page: number) {
 							use:enhance={() => {
 								isCancelling = true;
 								return async ({ update }) => {
-									await update();
+									try {
+										await update();
+									} finally {
+										isCancelling = false;
+									}
 								};
 							}}
 						>
@@ -454,17 +458,28 @@ async function goToPage(page: number) {
 					method="POST"
 					action="?/startSync"
 					use:enhance={() => {
+						// Optimistically disable the Start button and mount the Cancel affordance
+						// synchronously on click, so the button can't be double-submitted and Cancel
+						// is hit-testable during the click -> first-SSE-frame window.
 						isSyncing = true;
-						syncCompleted = false;
 						pendingStart = true;
-						connectSSE();
+						syncCompleted = false;
 						return async ({ update, result }) => {
 							try {
 								await update();
-								if (result.type === 'failure' || result.type === 'error') {
+								// ISSUE-010: only keep the syncing UI and open the SSE stream once
+								// the server confirms a sync actually started. On a 409 (a sync is
+								// already running) the start form stays mounted so the reactive
+								// handleFormToast(form) surfaces the conflict toast instead of the
+								// UI flipping to a stuck "syncing" state with a dangling EventSource.
+								if (result.type === 'success') {
+									connectSSE();
+								} else {
+									isSyncing = false;
 									pendingStart = false;
 								}
 							} catch {
+								isSyncing = false;
 								pendingStart = false;
 							}
 						};

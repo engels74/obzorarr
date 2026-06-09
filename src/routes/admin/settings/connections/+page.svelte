@@ -51,6 +51,7 @@ let openaiModel = $state(
 let apiConfigVersion = $state(data.apiConfigVersion);
 
 let openaiBaseUrlError = $state<string | undefined>(undefined);
+let openaiModelError = $state<string | undefined>(undefined);
 
 let isSavingPlex = $state(false);
 let isTestingPlex = $state(false);
@@ -267,6 +268,8 @@ const showOpenaiKeyWarning = $derived(!data.hasEffectiveOpenAIKey && !openaiApiK
 						return;
 					}
 					isSavingOpenai = true;
+					openaiBaseUrlError = undefined;
+					openaiModelError = undefined;
 					return async ({ result, update }) => {
 						try {
 							if (result.type === 'success' || result.type === 'failure') {
@@ -279,8 +282,10 @@ const showOpenaiKeyWarning = $derived(!data.hasEffectiveOpenAIKey && !openaiApiK
 								};
 								if (result.type === 'failure') {
 									openaiBaseUrlError = data?.fieldErrors?.openaiBaseUrl?.[0];
+									openaiModelError = data?.fieldErrors?.openaiModel?.[0];
 								} else {
 									openaiBaseUrlError = undefined;
+									openaiModelError = undefined;
 								}
 								handleFormToast(data);
 							}
@@ -362,11 +367,14 @@ const showOpenaiKeyWarning = $derived(!data.hasEffectiveOpenAIKey && !openaiApiK
 						id="openaiModel"
 						name="openaiModel"
 						type="text"
-						placeholder="gpt-5-mini (default)"
+						placeholder="gpt-4o-mini (default)"
 						maxlength={100}
 						bind:value={openaiModel}
 						disabled={openaiModelLocked}
 					/>
+					{#if openaiModelError}
+						<p class="text-xs text-destructive">{openaiModelError}</p>
+					{/if}
 				</div>
 
 				<input type="hidden" name="apiConfigVersion" value={apiConfigVersion} />

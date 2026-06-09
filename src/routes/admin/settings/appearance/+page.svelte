@@ -20,9 +20,20 @@ interface Props {
 
 let { data }: Props = $props();
 
+let isSavingUiTheme = $state(false);
+let isSavingWrappedTheme = $state(false);
+let isSavingWrappedLogoMode = $state(false);
+
 // svelte-ignore state_referenced_locally
 const uiThemeForm = superForm(data.uiThemeForm, {
 	resetForm: false,
+	onSubmit({ cancel }) {
+		if (isSavingUiTheme) {
+			cancel();
+			return;
+		}
+		isSavingUiTheme = true;
+	},
 	onUpdate: surfaceOccConflict,
 	onUpdated({ form: updated }) {
 		if (updated.valid) {
@@ -37,6 +48,13 @@ const { form: uiThemeData, enhance: uiThemeEnhance, submitting: uiThemeSubmittin
 // svelte-ignore state_referenced_locally
 const wrappedThemeForm = superForm(data.wrappedThemeForm, {
 	resetForm: false,
+	onSubmit({ cancel }) {
+		if (isSavingWrappedTheme) {
+			cancel();
+			return;
+		}
+		isSavingWrappedTheme = true;
+	},
 	onUpdate: surfaceOccConflict,
 	onUpdated({ form: updated }) {
 		if (updated.valid) {
@@ -55,6 +73,13 @@ const {
 // svelte-ignore state_referenced_locally
 const wrappedLogoModeForm = superForm(data.wrappedLogoModeForm, {
 	resetForm: false,
+	onSubmit({ cancel }) {
+		if (isSavingWrappedLogoMode) {
+			cancel();
+			return;
+		}
+		isSavingWrappedLogoMode = true;
+	},
 	onUpdate: surfaceOccConflict,
 	onUpdated({ form: updated }) {
 		if (updated.valid) {
@@ -70,14 +95,22 @@ const {
 	submitting: wrappedLogoModeSubmitting
 } = wrappedLogoModeForm;
 
+// Reset the in-flight guards once each superForm finishes (success, validation
+// failure, or network error all flip `submitting` back to false).
+$effect(() => {
+	if (!$uiThemeSubmitting) isSavingUiTheme = false;
+});
+$effect(() => {
+	if (!$wrappedThemeSubmitting) isSavingWrappedTheme = false;
+});
+$effect(() => {
+	if (!$wrappedLogoModeSubmitting) isSavingWrappedLogoMode = false;
+});
+
 const themeSwatches: Record<string, string[]> = {
 	'modern-minimal': ['oklch(0.6261 0.1859 259.6)', 'oklch(0.2267 0 0)', 'oklch(0.9389 0 0)'],
 	supabase: ['oklch(0.7906 0.171 160.45)', 'oklch(0.2207 0.0083 173.44)', 'oklch(0.9466 0 0)'],
-	'doom-64': [
-		'oklch(0.6885 0.1738 51.21)',
-		'oklch(0.2399 0.011 61.56)',
-		'oklch(0.6599 0.1644 147.39)'
-	],
+	'doom-64': ['oklch(0.6885 0.1738 51.21)', 'oklch(0.2399 0.011 61.56)', 'oklch(0.9234 0 0)'],
 	'amber-minimal': [
 		'oklch(0.8309 0.1622 87.87)',
 		'oklch(0.2327 0.0082 91.67)',

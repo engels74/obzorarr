@@ -3,6 +3,7 @@ import { externalOccCheck, inlineOccCheck } from '$lib/server/admin/occ-helpers'
 import {
 	AppSettingsKey,
 	LOG_SETTINGS_KEYS,
+	nextOccVersionDate,
 	setAppSetting,
 	UI_THEME_SETTINGS_KEYS
 } from '$lib/server/admin/settings.service';
@@ -141,5 +142,44 @@ describe('inlineOccCheck', () => {
 		const boundaryVersion = new Date(currentMs).toISOString();
 		const result = await inlineOccCheck(boundaryVersion, LOG_SETTINGS_KEYS);
 		expect(result).toEqual({ status: 'ok' });
+	});
+});
+
+describe('nextOccVersionDate — monotonic OCC version minting (ISSUE-002)', () => {
+	// inlineOccCheck passes exact-ms boundary submissions (strict `<`), so two
+	// tabs that loaded the same version can both clear the inline gate within one
+	// wall-clock millisecond. The transactional re-check is the final arbiter, and
+	// it only works because nextOccVersionDate forces each committed write to mint
+	// a STRICTLY greater version than the stored floor. This guarantees a stale
+	// same-ms resubmit always sees its loaded version below the advanced floor and
+	// conflicts — the regression oracle for the "stale tab overwrites" claim.
+
+	it('mints floor + 1ms when the DB floor is at or ahead of the wall clock (same-ms write)', () => {
+		// Floor pinned ahead of Date.now() so the monotonic branch always wins.
+		const floor = Date.now() + 60_000;
+		expect(nextOccVersionDate(floor).getTime()).toBe(floor + 1);
+	});
+
+	it('mints the current wall-clock time when the DB floor is in the past', () => {
+		const before = Date.now();
+		const minted = nextOccVersionDate(0).getTime();
+		const after = Date.now();
+		expect(minted).toBeGreaterThanOrEqual(before);
+		expect(minted).toBeLessThanOrEqual(after);
+	});
+
+	it('advances strictly and uniquely across rapid same-ms sequential writes', () => {
+		// Chain each minted version as the next floor to simulate N writes landing
+		// inside the same wall-clock ms (floor pinned ahead so Date.now() never
+		// dominates). Every version must be strictly greater and distinct.
+		let floor = Date.now() + 60_000;
+		const seen = new Set<number>();
+		for (let i = 0; i < 5; i++) {
+			const next = nextOccVersionDate(floor).getTime();
+			expect(next).toBeGreaterThan(floor);
+			expect(seen.has(next)).toBe(false);
+			seen.add(next);
+			floor = next;
+		}
 	});
 });

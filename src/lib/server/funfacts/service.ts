@@ -24,7 +24,7 @@ import type {
 import { AIGenerationError } from './types';
 
 const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1';
-const DEFAULT_OPENAI_MODEL = 'gpt-5-mini';
+const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini';
 
 function resolveOpenAIBaseUrl(rawBaseUrl: string): {
 	baseUrl: string;

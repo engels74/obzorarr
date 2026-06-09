@@ -158,7 +158,7 @@ let openaiApiKey = $state('');
 let openaiBaseUrl = $state(
 	untrack(() => data.openaiConfig?.baseUrl || 'https://api.openai.com/v1')
 );
-let openaiModel = $state(untrack(() => data.openaiConfig?.model || 'gpt-5-mini'));
+let openaiModel = $state(untrack(() => data.openaiConfig?.model || 'gpt-4o-mini'));
 let aiPersona = $state(
 	untrack(() => {
 		const p = data.openaiConfig?.persona;
@@ -1022,7 +1022,7 @@ function getThemeColors(themeValue: string) {
 										type="text"
 										bind:value={openaiModel}
 										maxlength="100"
-										placeholder="gpt-5-mini (default)"
+										placeholder="gpt-4o-mini (default)"
 									/>
 									<div class="test-connection-row">
 										<button
@@ -1130,6 +1130,10 @@ function getThemeColors(themeValue: string) {
 				type="button"
 				class="btn-nav btn-prev tap-target"
 				disabled={isFirstSubStep || isSubmitting}
+				title={isFirstSubStep ? 'You are on the first step' : undefined}
+				aria-label={isFirstSubStep
+					? 'Previous step (unavailable — this is the first step)'
+					: 'Go to previous step'}
 				onclick={prevSubStep}
 			>
 				<ArrowLeftIcon class="nav-arrow" />
