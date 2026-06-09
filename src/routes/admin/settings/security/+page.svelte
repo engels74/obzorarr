@@ -226,6 +226,7 @@ function getForwardedPairLabel(status: string): string {
 							return;
 						}
 						isSavingCsrf = true;
+						csrfOriginError = undefined;
 						return async ({ result, update }) => {
 							try {
 								if (
