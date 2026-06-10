@@ -626,6 +626,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 							name="title"
 							bind:this={editorTitleInputRef}
 							bind:value={editorTitle}
+							oninput={() => (fieldErrorsDismissed = true)}
 							required
 							maxlength="200"
 							placeholder="Enter slide title"

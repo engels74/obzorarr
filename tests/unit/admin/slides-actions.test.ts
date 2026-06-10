@@ -249,7 +249,7 @@ describe('admin slides actions', () => {
 			);
 		});
 
-		it('dismisses stale errors on content edit (oninput) and on dialog (re)open', async () => {
+		it('dismisses stale errors on title/content edit (oninput) and on dialog (re)open', async () => {
 			const src = await readSource();
 			expect(src).toContain('oninput={() => (fieldErrorsDismissed = true)}');
 			// openNewEditor + openEditEditor each set the flag so a reopened dialog

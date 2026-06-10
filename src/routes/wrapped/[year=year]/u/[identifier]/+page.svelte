@@ -26,9 +26,10 @@ type ViewMode = 'story' | 'scroll';
 let viewMode = $state<ViewMode>('story');
 
 // Read the initial slide index from the URL hash. During SSR `browser` is
-// false, so this serializes 0; the real seeding happens once in afterNavigate
-// (client-only) below, before StoryMode mounts and before the hash-sync effect
-// is armed.
+// false, so this serializes 0; on the client this runs synchronously at $state
+// init time (before any effect or afterNavigate), so StoryMode receives the
+// deep-linked slide on its very first render. afterNavigate below re-applies the
+// hash once as a belt-and-suspenders guard.
 function readInitialSlideIndex(): number {
 	return browser ? parseSlideHash(window.location.hash, data.slides.length) : 0;
 }
@@ -45,10 +46,11 @@ let storyKey = $state(0);
 // initialized" if invoked before the first afterNavigate tick. Gate the hash
 // sync on this flag to avoid the error during hydration.
 let routerReady = $state(false);
-// One-shot guard so the deep-link seed wins the first race: the hash is only
-// readable in the browser (SSR serialized 0), so seed currentSlideIndex from the
-// hash exactly once in afterNavigate — before StoryMode mounts and before the
-// hash-sync effect is armed — then mark it seeded.
+// One-shot guard for the deep-link seed. The synchronous readInitialSlideIndex()
+// above is the primary seed; this re-applies the hash exactly once in
+// afterNavigate (which fires after StoryMode mounts) to cover cases where the
+// hash only becomes available post-navigation, then marks it seeded so the
+// hash-sync effect below can arm without clobbering the deep link.
 let hashSeeded = $state(false);
 afterNavigate(() => {
 	if (!hashSeeded) {

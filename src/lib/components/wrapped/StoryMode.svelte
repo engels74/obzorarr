@@ -52,10 +52,17 @@ let initialized = $state(false);
 let initializedSlideCount = $state(0);
 
 $effect(() => {
-	if (!initialized || initializedSlideCount !== slides.length) {
-		navigation.initialize(slides.length, initialSlideIndex);
+	// Read every reactive dependency upfront so Svelte 5's fine-grained tracking
+	// registers them even when the guard short-circuits. Reading initialSlideIndex
+	// only inside the branch would drop it as a dependency once initialized is
+	// true, so a late seed (e.g. a deep-link hash applied in the parent's
+	// afterNavigate) would be silently ignored.
+	const seedIndex = initialSlideIndex;
+	const slideCount = slides.length;
+	if (!initialized || initializedSlideCount !== slideCount) {
+		navigation.initialize(slideCount, seedIndex);
 		initialized = true;
-		initializedSlideCount = slides.length;
+		initializedSlideCount = slideCount;
 		onSlideChange?.(navigation.currentSlide);
 	}
 });
