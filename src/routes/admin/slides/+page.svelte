@@ -28,6 +28,14 @@ const slideFieldErrors = $derived(
 		: undefined
 );
 
+// ISSUE-003: slideFieldErrors is derived from the page-level `form` action data,
+// which survives until the next POST — so a validation error stayed stuck after
+// the user corrected the content or reopened the dialog. Gate visibility behind a
+// local dismissal flag: dismiss on content edit and on each dialog (re)open, and
+// re-arm on a fresh failed submit so genuine new errors still surface.
+let fieldErrorsDismissed = $state(false);
+const visibleFieldErrors = $derived(fieldErrorsDismissed ? undefined : slideFieldErrors);
+
 const SLIDE_NAMES: Record<SlideType, string> = {
 	'total-time': 'Total Watch Time',
 	'top-movies': 'Top Movies',
@@ -195,6 +203,8 @@ function openNewEditor() {
 	previewHtml = '';
 	previewError = '';
 	previewRendered = false;
+	// Dismiss any stale validation errors carried by `form` from a prior submit.
+	fieldErrorsDismissed = true;
 	showEditor = true;
 }
 
@@ -208,6 +218,8 @@ function openEditEditor(slide: (typeof data.customSlides)[0]) {
 	previewHtml = slide.renderedHtml ?? '';
 	previewError = '';
 	previewRendered = typeof slide.renderedHtml === 'string';
+	// Dismiss any stale validation errors carried by `form` from a prior submit.
+	fieldErrorsDismissed = true;
 	showEditor = true;
 }
 
@@ -587,6 +599,11 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 					action={editingSlide ? '?/updateCustom' : '?/createCustom'}
 					use:enhance={() => {
 						return async ({ result, update }) => {
+							// A fresh validation failure must re-show errors even if the user
+							// dismissed a prior one by editing or reopening (ISSUE-003).
+							if (result.type === 'failure') {
+								fieldErrorsDismissed = false;
+							}
 							// Refresh the list first so a newly created/updated slide appears
 							// immediately; keep the user's entered content on failure
 							// (reset: false) so a validation error never blanks the open modal.
@@ -609,15 +626,16 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 							name="title"
 							bind:this={editorTitleInputRef}
 							bind:value={editorTitle}
+							oninput={() => (fieldErrorsDismissed = true)}
 							required
 							maxlength="200"
 							placeholder="Enter slide title"
-							aria-invalid={slideFieldErrors?.title?.[0] ? 'true' : undefined}
-							aria-describedby={slideFieldErrors?.title?.[0] ? 'title-error' : undefined}
+							aria-invalid={visibleFieldErrors?.title?.[0] ? 'true' : undefined}
+							aria-describedby={visibleFieldErrors?.title?.[0] ? 'title-error' : undefined}
 						/>
-						{#if slideFieldErrors?.title?.[0]}
+						{#if visibleFieldErrors?.title?.[0]}
 							<span id="title-error" class="field-error" role="alert">
-								{slideFieldErrors.title[0]}
+								{visibleFieldErrors.title[0]}
 							</span>
 						{/if}
 					</div>
@@ -628,15 +646,16 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 							id="content"
 							name="content"
 							bind:value={editorContent}
+							oninput={() => (fieldErrorsDismissed = true)}
 							required
 							rows="10"
 							placeholder="Write your slide content in Markdown..."
-							aria-invalid={slideFieldErrors?.content?.[0] ? 'true' : undefined}
-							aria-describedby={slideFieldErrors?.content?.[0] ? 'content-error' : undefined}
+							aria-invalid={visibleFieldErrors?.content?.[0] ? 'true' : undefined}
+							aria-describedby={visibleFieldErrors?.content?.[0] ? 'content-error' : undefined}
 						></textarea>
-						{#if slideFieldErrors?.content?.[0]}
+						{#if visibleFieldErrors?.content?.[0]}
 							<span id="content-error" class="field-error" role="alert">
-								{slideFieldErrors.content[0]}
+								{visibleFieldErrors.content[0]}
 							</span>
 						{/if}
 					</div>

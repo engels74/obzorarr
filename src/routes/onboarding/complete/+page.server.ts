@@ -34,7 +34,7 @@ export const load: PageServerLoad = async ({ parent, locals, url, cookies }) => 
 	}
 
 	const parentData = await parent();
-	const notice = url.searchParams.get('notice');
+	const noticeRequested = url.searchParams.get('notice') === 'ai-key-missing';
 
 	const syncRunning = await isSyncRunning();
 	const syncProgress = getSyncProgress();
@@ -67,9 +67,14 @@ export const load: PageServerLoad = async ({ parent, locals, url, cookies }) => 
 	// onboarding "Configure" step treats that as AI fun facts being off.
 	const enableFunFacts = Boolean(apiConfig.openai.apiKey.value.trim());
 
+	// ISSUE-010: reconcile the AI-key notice against the actual saved key state
+	// instead of trusting the raw URL param (which persists across reload/back-
+	// forward and went stale once a key was added or fun facts were toggled off).
+	const notice = deriveAiKeyMissingNotice(enableFunFacts, noticeRequested);
+
 	return {
 		...parentData,
-		notice: notice === 'ai-key-missing' ? 'ai-key-missing' : null,
+		notice,
 		syncStatus: {
 			running: syncRunning,
 			progress: syncProgress,
@@ -126,6 +131,23 @@ function formatLogoMode(mode: string): string {
 function formatFunFactFrequency(config: { mode: string; count: number }): string {
 	if (config.mode === 'custom') return `Custom (${config.count})`;
 	return `${formatThemeName(config.mode)} (${config.count})`;
+}
+
+/**
+ * Reconcile the completion-page AI-key notice against the actual saved state.
+ *
+ * The `?notice=ai-key-missing` query param is an untrusted, non-reconciled
+ * carrier: it survives reloads and back/forward even after the saved config no
+ * longer warrants it (ISSUE-010). Once an effective OpenAI key exists the AI path
+ * is operative, so the notice must never show. Without a key we honor the param,
+ * which is the only carrier of the user's "fun facts intended on" intent (that
+ * intent is not persisted separately from the key's presence).
+ */
+export function deriveAiKeyMissingNotice(
+	hasEffectiveApiKey: boolean,
+	noticeRequested: boolean
+): 'ai-key-missing' | null {
+	return !hasEffectiveApiKey && noticeRequested ? 'ai-key-missing' : null;
 }
 
 /**

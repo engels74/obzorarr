@@ -12,6 +12,7 @@ import {
 	SummaryPage,
 	YearNavigation
 } from '$lib/components/wrapped';
+import { parseSlideHash } from '$lib/utils/slide-hash';
 import type { PageProps } from './$types';
 
 let { data }: PageProps = $props();
@@ -24,19 +25,13 @@ let showLogo = $derived(showLogoOverride ?? data.showLogo);
 type ViewMode = 'story' | 'scroll';
 let viewMode = $state<ViewMode>('story');
 
-// Read the initial slide index from the URL hash synchronously so StoryMode
-// receives the correct `initialSlideIndex` prop on its first render.
-// Deferring this to a $effect raced with StoryMode's own one-shot
-// `navigation.initialize()` effect — the seeded index could arrive after
-// StoryMode had already initialised with the default 0.
+// Read the initial slide index from the URL hash. During SSR `browser` is
+// false, so this serializes 0; on the client this runs synchronously at $state
+// init time (before any effect or afterNavigate), so StoryMode receives the
+// deep-linked slide on its very first render. afterNavigate below re-applies the
+// hash once as a belt-and-suspenders guard.
 function readInitialSlideIndex(): number {
-	if (!browser) return 0;
-	const match = window.location.hash.match(/^#slide=(\d+)$/);
-	if (!match) return 0;
-	const parsed = parseInt(match[1]!, 10);
-	if (Number.isNaN(parsed)) return 0;
-	const max = Math.max(0, data.slides.length - 1);
-	return Math.min(Math.max(parsed, 0), max);
+	return browser ? parseSlideHash(window.location.hash, data.slides.length) : 0;
 }
 
 let currentSlideIndex = $state(readInitialSlideIndex());
@@ -51,13 +46,25 @@ let storyKey = $state(0);
 // initialized" if invoked before the first afterNavigate tick. Gate the hash
 // sync on this flag to avoid the error during hydration.
 let routerReady = $state(false);
+// One-shot guard for the deep-link seed. The synchronous readInitialSlideIndex()
+// above is the primary seed; this re-applies the hash exactly once in
+// afterNavigate (which fires after StoryMode mounts) to cover cases where the
+// hash only becomes available post-navigation, then marks it seeded so the
+// hash-sync effect below can arm without clobbering the deep link.
+let hashSeeded = $state(false);
 afterNavigate(() => {
+	if (!hashSeeded) {
+		currentSlideIndex = parseSlideHash(window.location.hash, data.slides.length);
+		hashSeeded = true;
+	}
 	routerReady = true;
 });
 
 // Use replaceState so slide navigation does not pollute the browser Back stack.
+// Gated on hashSeeded so its first run sees currentSlideIndex already equal to
+// the deep-linked slide (no transient replaceState back to #slide=0).
 $effect(() => {
-	if (!browser || !routerReady) return;
+	if (!browser || !routerReady || !hashSeeded) return;
 	const next = `#slide=${currentSlideIndex}`;
 	if (window.location.hash !== next) {
 		const url = new URL(window.location.href);

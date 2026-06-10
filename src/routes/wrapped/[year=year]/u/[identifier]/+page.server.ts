@@ -25,7 +25,8 @@ import {
 	PermissionExceededError,
 	ShareAccessDeniedError,
 	ShareMode,
-	ShareModeSchema
+	ShareModeSchema,
+	WRAPPED_NOT_FOUND_MESSAGE
 } from '$lib/server/sharing/types';
 import {
 	buildSlideRenderConfigs,
@@ -41,12 +42,11 @@ import { triggerLiveSyncIfNeeded } from '$lib/server/sync/live-sync';
 import { hasWatchHistory } from '$lib/stats/types';
 import type { Actions, PageServerLoad } from './$types';
 
-// Single source of truth for the anti-enumeration 404 body on the numeric
-// identifier path. Every anonymous "cannot view" outcome (non-existent id,
-// existing-but-private-oauth, existing-but-private-link-without-token) returns
-// this exact status+body so an anonymous caller can't tell them apart (F-015 /
-// ISSUE-001 uniform-404 contract).
-const WRAPPED_NOT_FOUND_MESSAGE = "We couldn't find a Wrapped page for that link.";
+// WRAPPED_NOT_FOUND_MESSAGE is the single source of truth for the
+// anti-enumeration 404 body (now shared with the server-wide route via
+// $lib/server/sharing/types). Every anonymous "cannot view" outcome (non-existent
+// id, existing-but-private-oauth, existing-but-private-link-without-token) returns
+// this exact status+body so an anonymous caller can't tell them apart.
 
 async function resolveUserIdFromIdentifier(
 	identifier: string,

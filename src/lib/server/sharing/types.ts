@@ -10,6 +10,12 @@ export const ShareSettingsKey = {
 	SERVER_WRAPPED_SHARE_MODE: 'server_wrapped_share_mode'
 } as const;
 
+// Single source of truth for the anti-enumeration 404 body shared by the
+// server-wide and personal Wrapped routes. Both echo this exact status+body for
+// an anonymous "cannot view" outcome so an anonymous caller can't tell a denied
+// page from a non-existent one (ISSUE-004 parity).
+export const WRAPPED_NOT_FOUND_MESSAGE = "We couldn't find a Wrapped page for that link.";
+
 export const ShareModeSource = {
 	DEFAULT: 'default',
 	EXPLICIT: 'explicit'

@@ -554,6 +554,9 @@ $effect(() => {
 			<a
 				href={isAdmin ? '/admin/settings?tab=privacy' : '/dashboard/settings'}
 				class="advanced-link"
+				target="_blank"
+				rel="noopener noreferrer"
+				aria-label="Advanced sharing options (opens in a new tab)"
 			>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
@@ -572,6 +575,26 @@ $effect(() => {
 						<circle cx="12" cy="12" r="3" />
 					</svg>
 					Advanced sharing options
+					<!-- ISSUE-005: open in a new tab so the Wrapped page + this share
+					     modal survive (a same-tab nav unmounted both). External-link glyph
+					     signals the new-tab behavior. -->
+					<svg
+						class="advanced-link-external"
+						xmlns="http://www.w3.org/2000/svg"
+						width="12"
+						height="12"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+					>
+						<path d="M15 3h6v6" />
+						<path d="M10 14 21 3" />
+						<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+					</svg>
 				</a>
 			</div>
 
@@ -848,5 +871,9 @@ $effect(() => {
 
 		.advanced-link:hover {
 			color: oklch(var(--foreground));
+		}
+
+		.advanced-link-external {
+			opacity: 0.7;
 		}
 </style>
