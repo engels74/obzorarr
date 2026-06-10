@@ -64,6 +64,14 @@ $effect(() => {
 		initialized = true;
 		initializedSlideCount = slideCount;
 		onSlideChange?.(navigation.currentSlide);
+	} else if (seedIndex !== navigation.currentSlide) {
+		// A late seed (e.g. a deep-link hash applied in the parent's afterNavigate
+		// after first init) must still move the view. goToSlide is a no-op when the
+		// index already matches currentSlide, so the normal user-navigation echo
+		// (seedIndex === currentSlide) does not fight live navigation, and it bails
+		// while a transition is in flight. Do NOT emit onSlideChange here: the parent
+		// already holds this index, and echoing would arm a spurious hash replaceState.
+		navigation.goToSlide(seedIndex);
 	}
 });
 
