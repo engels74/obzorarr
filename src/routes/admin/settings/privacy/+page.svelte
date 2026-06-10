@@ -274,6 +274,13 @@ function applyPrivacyPreset(preset: PrivacyPreset) {
 	$userDefaultsData.defaultShareMode = preset.values.defaultShareMode;
 	$userDefaultsData.allowUserControl = preset.values.allowUserControl;
 	$publicLandingLookupData.publicLandingLookup = preset.values.publicLandingLookup;
+	// ISSUE-006: applying a preset stages unsaved changes whose per-section Save
+	// buttons live inside the (possibly collapsed) Advanced accordion. Auto-expand
+	// so the "{n} unsaved sections" alert never points at hidden Save buttons.
+	// Only ever opens — never force-collapses — and both the card click and the
+	// keyboard arrow handler route through here. (No state-in-$effect: this is an
+	// explicit user action, respecting the file's no-effect-writes rule.)
+	advancedOpen = true;
 }
 
 // Privacy dogfood requires every preset card to be directly reachable with Tab,

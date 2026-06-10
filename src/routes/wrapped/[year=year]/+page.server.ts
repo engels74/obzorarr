@@ -5,7 +5,7 @@ import { getLogoVisibility } from '$lib/server/logo';
 import { getServerName } from '$lib/server/plex/server-name.service';
 import { signStatsThumbnails } from '$lib/server/plex/thumbnail-auth';
 import { checkServerWrappedAccess } from '$lib/server/sharing/access-control';
-import { ShareAccessDeniedError } from '$lib/server/sharing/types';
+import { ShareAccessDeniedError, WRAPPED_NOT_FOUND_MESSAGE } from '$lib/server/sharing/types';
 import {
 	buildSlideRenderConfigs,
 	customSlidesToMap,
@@ -40,6 +40,13 @@ export const load: PageServerLoad = async ({ params, locals, parent, setHeaders 
 		});
 	} catch (err) {
 		if (err instanceof ShareAccessDeniedError) {
+			// Anonymous callers get the byte-identical anti-enumeration 404 (matching
+			// the personal route), so a denied server-wide page is indistinguishable
+			// from a non-existent one. Authenticated non-members keep the deliberate
+			// 403 signal since membership already proves they exist.
+			if (!locals.user) {
+				error(404, WRAPPED_NOT_FOUND_MESSAGE);
+			}
 			error(403, err.message);
 		}
 		throw err;

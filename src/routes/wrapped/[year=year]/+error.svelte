@@ -26,8 +26,13 @@ const description = $derived.by(() => {
 	if (isNoDataForYear) {
 		return `There's no Wrapped data for ${year} yet. It appears here once a sync has imported viewing history for that year.`;
 	}
-	if (message) return message;
+	// ISSUE-007: unify the invalid-year 404 copy. Both a param-matcher rejection
+	// (SvelteKit's bare "Not Found") and the in-range `error(404, 'Invalid year')`
+	// land here; render the same generic 404 description for both rather than
+	// leaking two different raw messages. The isNoDataForYear empty-state above is
+	// checked first, so it stays untouched.
 	if (status === 404) return "We couldn't find the page you were looking for.";
+	if (message) return message;
 	if (status === 403) return "You don't have permission to view this page.";
 	if (status === 429) return 'Please slow down and try again in a moment.';
 	if (status >= 500) return 'An unexpected error occurred on the server.';

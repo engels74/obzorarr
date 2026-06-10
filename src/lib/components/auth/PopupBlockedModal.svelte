@@ -10,6 +10,12 @@ interface Props {
 	onCancel: () => void;
 }
 
+// ISSUE-002: this in-app overlay is always dismissable without starting OAuth —
+// the visible "Cancel" button (and Escape, via AlertDialog) calls onCancel and
+// closes, returning the user to the prior page intact. Only "Continue to Plex"
+// (handleContinue) initiates the OAuth flow. The report's "Escape/backdrop
+// navigates away" symptom is the Plex-hosted OAuth page (third-party DOM we do
+// not own), not this modal.
 let { open = $bindable(false), onOpenChange, onContinue, onCancel }: Props = $props();
 
 function handleOpenChange(value: boolean): void {

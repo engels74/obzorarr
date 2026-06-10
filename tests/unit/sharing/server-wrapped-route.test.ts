@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { isHttpError } from '@sveltejs/kit';
 import { setServerWrappedShareMode } from '$lib/server/sharing/service';
-import { ShareMode } from '$lib/server/sharing/types';
+import { ShareMode, WRAPPED_NOT_FOUND_MESSAGE } from '$lib/server/sharing/types';
 // This route-level guard keeps server-wrapped settings behavior pinned after
 // the handler moved out of the deleted monolith into privacy/+page.server.ts.
 import { actions as adminSettingsActions } from '../../../src/routes/admin/settings/privacy/+page.server';
@@ -25,7 +25,7 @@ function makeParent(availableYears: number[]) {
 describe('server wrapped route access', () => {
 	beforeEach(resetSharedTestDb);
 
-	it('denies anonymous route loads when server wrapped mode is private-oauth', async () => {
+	it('returns the anti-enumeration 404 for anonymous loads when server wrapped mode is private-oauth', async () => {
 		await setServerWrappedShareMode(ShareMode.PRIVATE_OAUTH);
 
 		try {
@@ -40,8 +40,10 @@ describe('server wrapped route access', () => {
 		} catch (error) {
 			expect(isHttpError(error)).toBe(true);
 			if (!isHttpError(error)) throw error;
-			expect(error.status).toBe(403);
-			expect(error.body.message).toContain('Sign in');
+			// ISSUE-004: anonymous denial standardized on 404 with the byte-identical
+			// anti-enumeration body (parity with the personal route).
+			expect(error.status).toBe(404);
+			expect(error.body.message).toBe(WRAPPED_NOT_FOUND_MESSAGE);
 		}
 	});
 
@@ -97,7 +99,9 @@ describe('server wrapped route access', () => {
 		} catch (error) {
 			expect(isHttpError(error)).toBe(true);
 			if (!isHttpError(error)) throw error;
-			expect(error.status).toBe(403);
+			// ISSUE-004: anonymous denial is the anti-enumeration 404, not 403.
+			expect(error.status).toBe(404);
+			expect(error.body.message).toBe(WRAPPED_NOT_FOUND_MESSAGE);
 		}
 	});
 });

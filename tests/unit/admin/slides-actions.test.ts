@@ -233,6 +233,44 @@ describe('admin slides actions', () => {
 		});
 	});
 
+	describe('validation-alert dismissal (ISSUE-003 source guard)', () => {
+		// The custom-slide validation alert is derived from the page-level `form`
+		// action data, which survives until the next POST — so a corrected/reopened
+		// dialog kept showing a stale error. A local dismissal flag gates visibility:
+		// dismiss on content edit + dialog (re)open, re-arm on a fresh failed submit.
+		// No vitest-browser-svelte harness exists, so pin the mechanism in source.
+		const readSource = async () => await Bun.file('src/routes/admin/slides/+page.svelte').text();
+
+		it('declares the dismissal flag and a gated visibleFieldErrors derivation', async () => {
+			const src = await readSource();
+			expect(src).toContain('let fieldErrorsDismissed = $state(false)');
+			expect(src).toContain(
+				'const visibleFieldErrors = $derived(fieldErrorsDismissed ? undefined : slideFieldErrors)'
+			);
+		});
+
+		it('dismisses stale errors on content edit (oninput) and on dialog (re)open', async () => {
+			const src = await readSource();
+			expect(src).toContain('oninput={() => (fieldErrorsDismissed = true)}');
+			// openNewEditor + openEditEditor each set the flag so a reopened dialog
+			// shows no stale error (the oninput uses an arrow, not a `;` statement).
+			const dismissOnOpen = src.match(/fieldErrorsDismissed = true;/g) ?? [];
+			expect(dismissOnOpen.length).toBeGreaterThanOrEqual(2);
+		});
+
+		it('re-arms the alert on a fresh failed submit', async () => {
+			const src = await readSource();
+			expect(src).toContain("if (result.type === 'failure')");
+			expect(src).toContain('fieldErrorsDismissed = false');
+		});
+
+		it('binds the rendered field errors to visibleFieldErrors, not the raw form errors', async () => {
+			const src = await readSource();
+			expect(src).toContain('{#if visibleFieldErrors?.content?.[0]}');
+			expect(src).toContain('{#if visibleFieldErrors?.title?.[0]}');
+		});
+	});
+
 	describe('createCustom error mapping', () => {
 		it('returns 400 with fieldErrors.content when content has unsafe HTML', async () => {
 			const result = await runCreateCustom(

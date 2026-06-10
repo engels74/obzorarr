@@ -52,6 +52,13 @@ export const GET: RequestHandler = async ({ cookies, url, request, setHeaders })
 		const pin = await requestPin();
 		const state = await createPinTransaction(pin.id, cookies);
 		const forwardUrl = appendPinStateToForwardUrl(redirectUrl, url, state);
+		// The recurring `[Parser] Unable to parse JSON: "undefined"` console noise
+		// (~5x/page) originates in Plex's bundled OAuth/auth JS reached via
+		// buildPlexOAuthUrl below — no Obzorarr code emits that string. Third-party,
+		// no functional impact; deliberately NOT swallowed by monkey-patching
+		// console.warn (that would mask genuine warnings). See
+		// docs/adr/ISSUE-006-motion-console-noise.md (2026-06-07) and
+		// docs/adr/2026-06-10-dogfood-third-party-dispositions.md (report ISSUE-008).
 		const pinInfo = {
 			pinId: pin.id,
 			code: pin.code,

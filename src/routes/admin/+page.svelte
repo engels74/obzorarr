@@ -78,9 +78,13 @@ function handleAdminNavigation(event: MouseEvent) {
 
 const statsConfig = $derived([
 	{
+		// ISSUE-009: the headline number is signed-in Obzorarr accounts; the sub is
+		// the distinct Plex viewers that appear in synced watch history. Spell out
+		// both so the two counts (and the underlying Plex account total) don't read
+		// as three conflicting numbers.
 		value: data.userCount,
-		label: 'Registered Users',
-		sub: `${data.syncedViewerCount.toLocaleString()} distinct Plex viewers in history`,
+		label: 'Registered Accounts',
+		sub: `${data.syncedViewerCount.toLocaleString()} Plex viewers with synced watch history`,
 		icon: Users,
 		color: 'blue',
 		gradient: 'from-blue-500/20 to-blue-600/5'
