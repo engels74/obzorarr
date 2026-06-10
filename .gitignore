@@ -29,10 +29,8 @@ vite.config.ts.timestamp-*
 *.db-shm
 *.db-wal
 
-# Docs (scratch/generated) — but keep architecture decision records tracked.
-docs/*
-!docs/adr/
-!docs/adr/**
+# Docs (scratch/generated) — entire docs/ tree is local-only, not tracked.
+docs/
 
 # Build analysis
 bundle-stats.html
