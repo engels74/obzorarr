@@ -59,18 +59,26 @@ $effect(() => {
 	// afterNavigate) would be silently ignored.
 	const seedIndex = initialSlideIndex;
 	const slideCount = slides.length;
+	// Track isAnimating so the effect re-runs when a transition completes (the only
+	// reactive change at animation end). goToSlide's own isAnimating guard would
+	// silently drop a late seed that arrives mid-transition, and without isAnimating
+	// as a dependency the effect would never re-run to retry it.
+	const animating = navigation.isAnimating;
 	if (!initialized || initializedSlideCount !== slideCount) {
 		navigation.initialize(slideCount, seedIndex);
 		initialized = true;
 		initializedSlideCount = slideCount;
 		onSlideChange?.(navigation.currentSlide);
-	} else if (seedIndex !== navigation.currentSlide) {
+	} else if (!animating && seedIndex !== navigation.currentSlide) {
 		// A late seed (e.g. a deep-link hash applied in the parent's afterNavigate
 		// after first init) must still move the view. goToSlide is a no-op when the
 		// index already matches currentSlide, so the normal user-navigation echo
-		// (seedIndex === currentSlide) does not fight live navigation, and it bails
-		// while a transition is in flight. Do NOT emit onSlideChange here: the parent
-		// already holds this index, and echoing would arm a spurious hash replaceState.
+		// (seedIndex === currentSlide) does not fight live navigation. We gate on
+		// !animating here so a seed that lands mid-transition is retried the moment
+		// the animation ends (the effect re-runs when isAnimating flips false), rather
+		// than being lost to goToSlide's internal guard. Do NOT emit onSlideChange
+		// here: the parent already holds this index, and echoing would arm a spurious
+		// hash replaceState.
 		navigation.goToSlide(seedIndex);
 	}
 });
