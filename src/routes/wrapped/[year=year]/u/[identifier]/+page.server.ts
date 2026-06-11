@@ -115,6 +115,15 @@ export const load: PageServerLoad = async ({ params, locals, parent, setHeaders 
 
 	if (isValidTokenFormat(identifier)) {
 		accessedViaToken = true;
+		// ISSUE-009: for an anonymous caller, EVERY token-path denial must be the
+		// byte-identical anti-enumeration 404 (status + body) — non-existent token,
+		// revoked token, oauth-floor-blocked token, and valid-token-wrong-year alike
+		// — matching the slug path below so existence can't be inferred. Authenticated
+		// callers keep the differentiated 403/404 (membership already proves access;
+		// the authenticated 403/404 divergence is accepted in-threat-model). This
+		// narrows information disclosure only; access decisions in access-control.ts
+		// are unchanged.
+		const isAnonymous = !locals.user;
 		try {
 			const tokenResult = await checkTokenAccess({
 				token: identifier,
@@ -123,13 +132,26 @@ export const load: PageServerLoad = async ({ params, locals, parent, setHeaders 
 			userId = tokenResult.userId;
 
 			if (tokenResult.year !== year) {
-				error(404, 'This share link is invalid, expired, or has been revoked.');
+				error(
+					404,
+					isAnonymous
+						? WRAPPED_NOT_FOUND_MESSAGE
+						: 'This share link is invalid, expired, or has been revoked.'
+				);
 			}
 		} catch (err) {
 			if (err instanceof InvalidShareTokenError) {
-				error(404, 'This share link is invalid, expired, or has been revoked.');
+				error(
+					404,
+					isAnonymous
+						? WRAPPED_NOT_FOUND_MESSAGE
+						: 'This share link is invalid, expired, or has been revoked.'
+				);
 			}
 			if (err instanceof ShareAccessDeniedError) {
+				if (isAnonymous) {
+					error(404, WRAPPED_NOT_FOUND_MESSAGE);
+				}
 				error(403, err.message);
 			}
 			throw err;
