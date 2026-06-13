@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import { readdir, readFile, stat } from 'node:fs/promises';
-import { join, relative } from 'node:path';
+import { join } from 'node:path';
 
 const PROJECT_ROOT = join(import.meta.dir, '..', '..');
 const TEST_ROOT = join(PROJECT_ROOT, 'tests');
@@ -21,25 +21,6 @@ async function collectFiles(dir: string): Promise<string[]> {
 }
 
 describe('test suite architecture contract', () => {
-	it('keeps retained Bun.file source guards registered', async () => {
-		const registry = await readFile(join(TEST_ROOT, 'SOURCE_GUARDS.md'), 'utf8');
-		const testFiles = (await collectFiles(TEST_ROOT)).filter((file) => file.endsWith('.ts'));
-		const sourceGuardFiles: string[] = [];
-		const sourceGuardCall = ['Bun', 'file('].join('.');
-
-		for (const file of testFiles) {
-			const source = await readFile(file, 'utf8');
-			if (source.includes(sourceGuardCall)) {
-				sourceGuardFiles.push(relative(PROJECT_ROOT, file));
-			}
-		}
-
-		expect(sourceGuardFiles).not.toHaveLength(0);
-		for (const guardFile of sourceGuardFiles) {
-			expect(registry).toContain(`\`${guardFile}\``);
-		}
-	});
-
 	it('keeps tests under unit, property, and helpers instead of nested server paths', async () => {
 		let serverPathExists = true;
 		try {

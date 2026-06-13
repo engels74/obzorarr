@@ -3,8 +3,7 @@ import { join } from 'node:path';
 
 // Source guards for dogfood UI invariants that have no DOM-render harness in
 // this Bun-only suite. Each pins a template attribute/wiring that a behavior
-// test cannot observe without a component runner. Registered in
-// tests/SOURCE_GUARDS.md under `dogfood-ui-invariants`.
+// test cannot observe without a component runner.
 
 const PROJECT_ROOT = join(import.meta.dir, '..', '..', '..');
 

@@ -17,6 +17,7 @@ import { Input } from '$lib/components/ui/input/index.js';
 import { Label } from '$lib/components/ui/label/index.js';
 import { Switch } from '$lib/components/ui/switch/index.js';
 import { REVERSE_PROXY_COPY } from '$lib/copy/reverse-proxy';
+import { toast } from '$lib/services/toast';
 import { handleFormToast } from '$lib/utils/form-toast';
 import { submitAction } from '$lib/utils/submit-action';
 import type { PageData } from './$types';
@@ -83,7 +84,12 @@ let showDiagnosticDetails = $state(false);
 let hasRunInitialDiagnostic = $state(false);
 let diagnosticRunToken = 0;
 
-async function runDiagnostic() {
+// ISSUE-007: the on-mount auto-run must be silent (only the inline status panel
+// updates); a success/error toast fires ONLY when the user clicks "Re-run
+// diagnostic". `userInitiated` defaults to false so the on-mount $effect (which
+// calls runDiagnostic() with no args) never toasts. The toast is purely additive
+// — the inline panel still reflects every outcome regardless of `userInitiated`.
+async function runDiagnostic({ userInitiated = false }: { userInitiated?: boolean } = {}) {
 	if (diagnosticStatus === 'checking') return;
 
 	const myToken = ++diagnosticRunToken;
@@ -106,21 +112,26 @@ async function runDiagnostic() {
 			if (result.data.reverseProxyDiagnostic) {
 				diagnostic = result.data.reverseProxyDiagnostic;
 				diagnosticStatus = 'success';
+				if (userInitiated) toast.success('Reverse-proxy diagnostic completed');
 			} else {
 				diagnosticStatus = 'failure';
 				diagnosticError = 'Diagnostic response was incomplete';
+				if (userInitiated) toast.error(diagnosticError);
 			}
 		} else if (result.type === 'failure') {
 			diagnosticStatus = 'failure';
 			diagnosticError = result.data.diagnosticError ?? 'Diagnostic failed';
+			if (userInitiated) toast.error(diagnosticError);
 		} else {
 			diagnosticStatus = 'failure';
 			diagnosticError = 'Unexpected diagnostic response';
+			if (userInitiated) toast.error(diagnosticError);
 		}
 	} catch {
 		if (myToken !== diagnosticRunToken) return;
 		diagnosticStatus = 'failure';
 		diagnosticError = 'Network error - could not complete diagnostic';
+		if (userInitiated) toast.error(diagnosticError);
 	}
 }
 
@@ -536,7 +547,7 @@ function getForwardedPairLabel(status: string): string {
 								type="button"
 								variant="outline"
 								class="tap-target"
-								onclick={runDiagnostic}
+								onclick={() => void runDiagnostic({ userInitiated: true })}
 								disabled={diagnosticStatus === 'checking'}
 								aria-busy={diagnosticStatus === 'checking'}
 							>
