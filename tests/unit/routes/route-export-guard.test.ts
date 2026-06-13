@@ -17,12 +17,18 @@ import { Glob } from 'bun';
 // commented-out `export ...` is never mistaken for a live one), folds multi-line
 // `export { ... }` lists, flags `export * from "..."` wildcards, and extracts
 // every bound name from multi-declarator and destructured `export const|let|var`
-// bindings — all conservatively. It still CANNOT resolve re-export aliases at
-// runtime or follow computed/dynamic re-exports, and it does not actually load
-// the modules. The comment stripper is deliberately simple and does NOT track
-// string/template literals, so a `//` or `/*` sequence that appears INSIDE a
-// string literal is still treated as a comment delimiter; this is acceptable
-// because real route files never place a line-start `export` inside a string.
+// bindings — all conservatively. The `export const|let|var` binding scan is
+// string-aware: it tracks `'`/`"`/`` ` `` quotes so a comma or `=` INSIDE an
+// initializer string (`export const x = "a,b"`) is not misread as a declarator
+// separator or binding boundary, and it skips computed property keys
+// (`{ [expr]: local }`) so the key expression's identifiers are not collected as
+// bindings. It still CANNOT resolve re-export aliases at runtime or follow
+// computed/dynamic re-exports, and it does not actually load the modules. NOTE:
+// the comment stripper (below) is a SEPARATE, deliberately simpler pass that
+// still does NOT track string/template literals, so a `//` or `/*` sequence that
+// appears INSIDE a string literal is still treated as a comment delimiter; this
+// is acceptable because real route files never place a line-start `export`
+// inside a string.
 // The faithful long-term guard is `bun run build` (option (c) in the plan):
 // svelte-adapter-bun loads every route module and fails on a bad export. Adding
 // `bun run build` to CI is the authoritative fix when the maintainer wants it;
@@ -64,17 +70,40 @@ function isAllowedName(name: string): boolean {
  * only the LOCAL name (`local`) is — and a default/initializer value
  * (`{ a = something }`) is not a binding either; both are excluded by trimming
  * to the binding side of `:` and dropping `= ...` initializers.
+ *
+ * String/template-literal aware: the declarator-splitting and initializer-finding
+ * scans track an active quote (`'`, `"`, `` ` ``) and treat characters inside a
+ * string as opaque, so a comma or `=` INSIDE an initializer string
+ * (`export const x = "a,b"`) is not mistaken for a declarator separator or the
+ * binding/initializer boundary. (It still does not evaluate `${...}` template
+ * interpolations — their contents stay inside the template string and are never
+ * collected as bindings.)
  */
 function extractBoundNames(declarators: string): string[] {
 	const names: string[] = [];
 
 	// Split top-level declarators on commas that are NOT inside a destructuring
 	// pattern. Track brace/bracket/paren depth so commas within `{...}`/`[...]`
-	// stay grouped with their pattern.
+	// stay grouped with their pattern, and track string/template-literal state so
+	// a comma INSIDE a string initializer (`= "a,b"`) is treated as opaque text,
+	// not a declarator separator.
 	const parts: string[] = [];
 	let depth = 0;
 	let current = '';
+	let quote = ''; // active string delimiter: `'`, `"`, or `` ` `` (empty = none)
 	for (const ch of declarators) {
+		if (quote) {
+			// Inside a string: only its matching delimiter ends it. Everything else
+			// (commas, braces, `=`) is opaque.
+			current += ch;
+			if (ch === quote) quote = '';
+			continue;
+		}
+		if (ch === "'" || ch === '"' || ch === '`') {
+			quote = ch;
+			current += ch;
+			continue;
+		}
 		if (ch === '{' || ch === '[' || ch === '(') depth++;
 		else if (ch === '}' || ch === ']' || ch === ')') depth = Math.max(0, depth - 1);
 		if (ch === ',' && depth === 0) {
@@ -92,9 +121,16 @@ function extractBoundNames(declarators: string): string[] {
 		// `{ a = 1 }`, live at depth > 0 and are handled per-token below.)
 		let lhs = part;
 		let d = 0;
+		let q = ''; // active string delimiter while scanning for the initializer `=`
 		for (let k = 0; k < part.length; k++) {
 			const ch = part[k];
-			if (ch === '{' || ch === '[' || ch === '(') d++;
+			if (q) {
+				// Inside a string literal: ignore any `=`/braces until it closes.
+				if (ch === q) q = '';
+				continue;
+			}
+			if (ch === "'" || ch === '"' || ch === '`') q = ch;
+			else if (ch === '{' || ch === '[' || ch === '(') d++;
 			else if (ch === '}' || ch === ']' || ch === ')') d = Math.max(0, d - 1);
 			else if (ch === '=' && d === 0 && part[k + 1] !== '=' && part[k - 1] !== '!') {
 				lhs = part.slice(0, k);
@@ -132,8 +168,10 @@ function extractBoundNames(declarators: string): string[] {
 /**
  * Collects bound LOCAL identifiers from a destructuring pattern string
  * (`{ ... }` / `[ ... ]`, possibly nested). Property keys (`key:` in
- * `{ key: local }`) and default-value expressions (after `=`) are excluded so
- * only the names actually introduced into scope are returned.
+ * `{ key: local }`), computed property keys (`[expr]:` in `{ [key]: local }`,
+ * whose `expr` identifiers are references, not bindings), and default-value
+ * expressions (after `=`) are excluded so only the names actually introduced
+ * into scope are returned.
  */
 function extractPatternNames(pattern: string): string[] {
 	const names: string[] = [];
@@ -142,6 +180,31 @@ function extractPatternNames(pattern: string): string[] {
 	let entered = false;
 	while (i < pattern.length) {
 		const ch = pattern[i];
+		// Computed property key: `{ [expr]: value }`. The identifiers inside the
+		// `[...]` are a key EXPRESSION (a reference), not bindings. Detect it by
+		// matching the `[` to its `]` and checking the next non-space char is `:`;
+		// if so, skip the whole `[...]:` zone. A plain array pattern's `[` is NOT
+		// followed by `:` after its close, so it falls through to normal handling.
+		if (ch === '[') {
+			let bd = 0;
+			let j = i;
+			for (; j < pattern.length; j++) {
+				const c = pattern[j];
+				if (c === '[') bd++;
+				else if (c === ']') {
+					bd--;
+					if (bd === 0) break;
+				}
+			}
+			let m = j + 1;
+			while (m < pattern.length && /\s/.test(pattern[m] ?? '')) m++;
+			if (pattern[m] === ':') {
+				// Skip past the `[...]:` key zone; the value side that follows is
+				// scanned normally for its bound local name(s).
+				i = m + 1;
+				continue;
+			}
+		}
 		if (ch === '{' || ch === '[' || ch === '(') {
 			depth++;
 			entered = true;
@@ -470,6 +533,37 @@ describe('ISSUE-002 route-export guard — matcher logic', () => {
 
 	it('flags nested destructuring bindings', () => {
 		expect(findDisallowedExports('export const { a: { b } } = obj;')).toEqual(['b']);
+	});
+
+	it('does NOT split on a comma inside a string initializer', () => {
+		// The comma in `"a,b"` is string content, not a declarator separator, so
+		// only the real binding `x` is collected (not a phantom `b`).
+		expect(findDisallowedExports('export const x = "a,b";')).toEqual(['x']);
+		expect(findDisallowedExports("export const x = 'a,b';")).toEqual(['x']);
+		// `_`-prefixed binding with a comma-containing string → nothing disallowed.
+		expect(findDisallowedExports('export const _x = "a,b";')).toEqual([]);
+	});
+
+	it('does NOT collect names from a template-literal interpolation', () => {
+		// The whole template (including the `${f(a, b)}` interpolation) is the
+		// initializer; no `$`/`a`/`b`/`f` is a binding. Only the real binding `x` is
+		// collected. The interpolation token is built via concatenation so this
+		// source string is not itself mistaken for a template placeholder.
+		const src = `export const x = \`a,$${'{'}f(a, b)}\`;`;
+		expect(findDisallowedExports(src)).toEqual(['x']);
+	});
+
+	it('still splits a genuine multi-declarator with commas OUTSIDE strings', () => {
+		// The string-awareness must not regress real comma-separated declarators.
+		expect(findDisallowedExports('export const a = 1, b = 2;')).toEqual(['a', 'b']);
+		// Mixed: a string-comma declarator next to a real second declarator.
+		expect(findDisallowedExports('export const x = "a,b", y = 2;')).toEqual(['x', 'y']);
+	});
+
+	it('does NOT collect the computed-key expression in `{ [key]: value }`', () => {
+		// `key` is a reference (the computed key expression), not a binding; only
+		// the local `value` is bound.
+		expect(findDisallowedExports('export const { [key]: value } = obj;')).toEqual(['value']);
 	});
 
 	it('flags `export * from "..."` wildcard re-exports', () => {
