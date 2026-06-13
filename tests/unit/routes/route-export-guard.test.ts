@@ -23,12 +23,14 @@ import { Glob } from 'bun';
 // separator or binding boundary, and it skips computed property keys
 // (`{ [expr]: local }`) so the key expression's identifiers are not collected as
 // bindings. It still CANNOT resolve re-export aliases at runtime or follow
-// computed/dynamic re-exports, and it does not actually load the modules. NOTE:
-// the comment stripper (below) is a SEPARATE, deliberately simpler pass that
-// still does NOT track string/template literals, so a `//` or `/*` sequence that
-// appears INSIDE a string literal is still treated as a comment delimiter; this
-// is acceptable because real route files never place a line-start `export`
-// inside a string.
+// computed/dynamic re-exports, and it does not actually load the modules. The
+// comment stripper (below) is also string-aware: a `//` or `/*` sequence INSIDE
+// a string or template literal is treated as string content, not a comment
+// delimiter, so a real export sharing a line with such a string (e.g. a URL like
+// `"https://h"` in an initializer) is not truncated — this removes the
+// false-NEGATIVE that an unaware stripper would produce. The remaining limit is
+// the usual one: this is a source-text scan, not a loader, so it cannot resolve
+// re-export aliases at runtime or follow computed/dynamic re-exports.
 // The faithful long-term guard is `bun run build` (option (c) in the plan):
 // svelte-adapter-bun loads every route module and fails on a bad export. Adding
 // `bun run build` to CI is the authoritative fix when the maintainer wants it;
@@ -171,7 +173,9 @@ function extractBoundNames(declarators: string): string[] {
  * `{ key: local }`), computed property keys (`[expr]:` in `{ [key]: local }`,
  * whose `expr` identifiers are references, not bindings), and default-value
  * expressions (after `=`) are excluded so only the names actually introduced
- * into scope are returned.
+ * into scope are returned. The default-value skip is string/template-literal
+ * aware: a comma or closing delimiter INSIDE the default's string (`{ a = "x,y" }`)
+ * is opaque text and does not end the skip, so `y` is not misread as a binding.
  */
 function extractPatternNames(pattern: string): string[] {
 	const names: string[] = [];
@@ -231,13 +235,24 @@ function extractPatternNames(pattern: string): string[] {
 			continue;
 		}
 		// On a default `=`, skip its value expression up to the next top-level
-		// (relative to this point) comma or closing delimiter.
+		// (relative to this point) comma or closing delimiter. String/template-aware:
+		// a comma or closing delimiter INSIDE the default's string literal
+		// (`{ a = "x,y" }`) is opaque text and does NOT end the skip — only a
+		// genuinely string-closed, depth-0 separator does.
 		if (ch === '=' && pattern[i + 1] !== '=') {
 			let d = 0;
+			let q = ''; // active string delimiter: `'`, `"`, or `` ` `` (empty = none)
 			i++;
 			while (i < pattern.length) {
 				const c = pattern[i];
-				if (c === '{' || c === '[' || c === '(') d++;
+				if (q) {
+					// Inside a string: only its matching delimiter ends it.
+					if (c === q) q = '';
+					i++;
+					continue;
+				}
+				if (c === "'" || c === '"' || c === '`') q = c;
+				else if (c === '{' || c === '[' || c === '(') d++;
 				else if (c === '}' || c === ']' || c === ')') {
 					if (d === 0) break;
 					d--;
@@ -276,19 +291,39 @@ function extractPatternNames(pattern: string): string[] {
  * working, this preserves line structure: comment bodies are blanked out but the
  * newlines they spanned are kept, so line counts and offsets are unchanged.
  *
- * Deliberately simple: it does NOT track string or template literals, so a `//`
- * or `/*` sequence inside a string is still treated as a comment delimiter. This
- * is acceptable per the conservative source-text stance — real route files never
- * place a line-start `export` inside a string literal, so this cannot produce a
- * false NEGATIVE on the shapes this guard targets.
+ * String/template-literal aware: when inside a `'`/`"`/`` ` `` string, a `//` or
+ * `/*` sequence is string CONTENT, not a comment delimiter, and is emitted
+ * verbatim so a real export sharing the line with such a string (e.g. a URL in an
+ * initializer, `export const x = "https://h", y = 2`) is not truncated. Comments
+ * are only stripped OUTSIDE strings, and entering a comment cannot start a string
+ * (the comment is consumed first). The template literal is treated as opaque
+ * string content for stripping purposes: a `${...}` interpolation is NOT scanned
+ * for nested comments — conservative and consistent with the binding scan's
+ * template handling. Escaped quotes (`\"`) are honored so a backslash-escaped
+ * delimiter does not prematurely close the string.
  */
 function stripComments(source: string): string {
 	let out = '';
 	let i = 0;
 	const n = source.length;
+	let quote = ''; // active string delimiter: `'`, `"`, or `` ` `` (empty = none)
 	while (i < n) {
 		const ch = source[i];
 		const next = source[i + 1];
+		if (quote) {
+			// Inside a string literal: emit verbatim. A backslash escapes the next
+			// char (so `\"` does not close a `"` string). Only the matching,
+			// unescaped delimiter ends it. `//` and `/*` here are string content.
+			out += ch;
+			if (ch === '\\' && i + 1 < n) {
+				out += source[i + 1];
+				i += 2;
+				continue;
+			}
+			if (ch === quote) quote = '';
+			i++;
+			continue;
+		}
 		// Block comment: replace its body with spaces but keep any newlines so
 		// line structure is preserved for the line-based scan below.
 		if (ch === '/' && next === '*') {
@@ -304,6 +339,14 @@ function stripComments(source: string): string {
 		if (ch === '/' && next === '/') {
 			i += 2;
 			while (i < n && source[i] !== '\n') i++;
+			continue;
+		}
+		// String/template-literal open: enter opaque-content mode so `//`/`/*`
+		// inside it are not mistaken for comment delimiters.
+		if (ch === "'" || ch === '"' || ch === '`') {
+			quote = ch;
+			out += ch;
+			i++;
 			continue;
 		}
 		out += ch;
@@ -545,6 +588,16 @@ describe('ISSUE-002 route-export guard — matcher logic', () => {
 	it('does NOT flag default values or reserved bindings in a pattern', () => {
 		// `_priv` is private; default value `fallback` is not a binding.
 		expect(findDisallowedExports('export const { _priv = fallback } = obj;')).toEqual([]);
+		// Non-string default (`{ a = x }`) still binds only `a`.
+		expect(findDisallowedExports('export const { a = x } = obj;')).toEqual(['a']);
+	});
+
+	it('does NOT split a default-value string on a comma inside it', () => {
+		// The default-value skip is string-aware: the comma in `"x,y"` is string
+		// content, so the skip does not end early and `y` is NOT mis-collected as a
+		// binding. Only the real binding `a` is flagged.
+		expect(findDisallowedExports('export const { a = "x,y" } = obj;')).toEqual(['a']);
+		expect(findDisallowedExports("export const { a = 'x,y' } = obj;")).toEqual(['a']);
 	});
 
 	it('flags rest bindings in destructuring (`{ ...rest }`)', () => {
@@ -626,6 +679,31 @@ describe('ISSUE-002 route-export guard — matcher logic', () => {
 	it('does NOT flag an export inside a `//` line comment', () => {
 		expect(findDisallowedExports('// export const foo = 1;')).toEqual([]);
 		expect(findDisallowedExports('export const x = 1; // export const foo = 1;')).toEqual(['x']);
+	});
+
+	it('does NOT treat `//` inside a string initializer as a line comment', () => {
+		// A URL in an initializer contains `//`; an unaware stripper would drop the
+		// rest of the line and MISS the second declarator `y` (a false negative —
+		// the guard's most serious failure mode). String-aware stripping keeps the
+		// whole line, so both `x` and `y` are flagged.
+		expect(findDisallowedExports('export const x = "https://example.com", y = 2;')).toEqual([
+			'x',
+			'y'
+		]);
+	});
+
+	it('does NOT treat `/*` inside a string initializer as a block comment', () => {
+		// `"a/*b"` contains a `/*` that an unaware stripper would treat as the start
+		// of a block comment and blank the rest, dropping `y`. String-aware
+		// stripping emits it verbatim, so both `x` and `y` are flagged.
+		expect(findDisallowedExports('export const x = "a/*b", y = 2;')).toEqual(['x', 'y']);
+	});
+
+	it('still strips a REAL `//` comment that follows a string on the same line', () => {
+		// String-awareness must not regress real comment stripping: the `//` here is
+		// OUTSIDE the closed `"ok"` string, so it is a genuine line comment and the
+		// commented-out `export` after it must NOT be flagged.
+		expect(findDisallowedExports('export const x = "ok"; // export const foo = 1;')).toEqual(['x']);
 	});
 
 	it('does NOT flag a single-line `/* export { foo } */` block comment', () => {
