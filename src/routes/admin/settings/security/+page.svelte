@@ -547,7 +547,7 @@ function getForwardedPairLabel(status: string): string {
 								type="button"
 								variant="outline"
 								class="tap-target"
-								onclick={() => runDiagnostic({ userInitiated: true })}
+								onclick={() => void runDiagnostic({ userInitiated: true })}
 								disabled={diagnosticStatus === 'checking'}
 								aria-busy={diagnosticStatus === 'checking'}
 							>
