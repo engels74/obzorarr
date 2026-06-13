@@ -12,9 +12,11 @@ import { Glob } from 'bun';
 // ISSUE-001 shape (and the related `export const`, `export default`,
 // `export { x as y }` shapes) cheaply, with no CI-config change.
 //
-// COVERAGE LIMITS (stated honestly): this is a source-text scan. It CANNOT
-// resolve re-export aliases at runtime or follow computed/dynamic re-exports,
-// and it does not actually load the modules. The faithful long-term guard is
+// COVERAGE LIMITS (stated honestly): this is a source-text scan. It folds
+// multi-line `export { ... }` lists and flags `export * from "..."` wildcards
+// conservatively, but it still CANNOT resolve re-export aliases at runtime or
+// follow computed/dynamic re-exports, and it does not actually load the
+// modules. The faithful long-term guard is
 // `bun run build` (option (c) in the plan): svelte-adapter-bun loads every route
 // module and fails on a bad export. Adding `bun run build` to CI is the
 // authoritative fix when the maintainer wants it; this test buys immediate,
@@ -42,16 +44,49 @@ function isAllowedName(name: string): boolean {
 }
 
 /**
+ * Joins multi-line `export { ... }` lists onto a single logical line so the
+ * line-by-line scan below sees the whole specifier list. A list that opens with
+ * `export {` (or `export type {`) but does not close its brace on the same line
+ * has subsequent lines folded in (with newlines turned into spaces) until the
+ * closing `}` is found. All other lines pass through unchanged.
+ */
+function joinMultilineExportLists(source: string): string[] {
+	const lines = source.split('\n');
+	const joined: string[] = [];
+
+	for (let i = 0; i < lines.length; i++) {
+		const trimmed = lines[i]?.trimStart() ?? '';
+		const opensList = /^export\s+(?:type\s+)?\{/.test(trimmed);
+		if (opensList && !trimmed.includes('}')) {
+			// Fold continuation lines until the closing brace appears.
+			let buffer = lines[i] ?? '';
+			while (i + 1 < lines.length && !buffer.includes('}')) {
+				i++;
+				buffer += ` ${(lines[i] ?? '').trim()}`;
+			}
+			joined.push(buffer);
+		} else {
+			joined.push(lines[i] ?? '');
+		}
+	}
+
+	return joined;
+}
+
+/**
  * Returns the list of disallowed runtime export names found in a +page.server.ts
  * source string. Type-only exports (`export type` / `export interface`) are
  * skipped because they are erased at runtime. Within an `export { ... }` list,
  * the EXPORTED name is what matters (`export { internal as load }` exports
- * `load`), and `type`-qualified specifiers are skipped.
+ * `load`), and `type`-qualified specifiers are skipped. Multi-line `export
+ * { ... }` lists are folded onto one logical line first, and `export * from`
+ * wildcard re-exports are flagged because their re-exported names cannot be
+ * statically resolved and may include non-reserved runtime exports.
  */
 export function findDisallowedExports(source: string): string[] {
 	const disallowed: string[] = [];
 
-	for (const rawLine of source.split('\n')) {
+	for (const rawLine of joinMultilineExportLists(source)) {
 		const line = rawLine.trimStart();
 		if (!line.startsWith('export')) continue;
 
@@ -61,6 +96,19 @@ export function findDisallowedExports(source: string): string[] {
 		// `export default ...` is forbidden in a +page.server.ts.
 		if (/^export\s+default\b/.test(line)) {
 			disallowed.push('default');
+			continue;
+		}
+
+		// `export * from "..."` (and `export * as ns from "..."`) re-exports
+		// names that cannot be resolved statically. A bare `export *` may surface
+		// non-reserved runtime exports from the target module, so flag it. A
+		// `type`-qualified wildcard (`export type * from`) is erased at runtime.
+		if (/^export\s+\*/.test(line) && !/^export\s+type\s+\*/.test(line)) {
+			const nsMatch = line.match(/^export\s+\*\s+as\s+([A-Za-z_$][\w$]*)/);
+			const wildcardName = nsMatch?.[1] ?? '*';
+			if (!isAllowedName(wildcardName)) {
+				disallowed.push(wildcardName);
+			}
 			continue;
 		}
 
@@ -131,6 +179,35 @@ describe('ISSUE-002 route-export guard — matcher logic', () => {
 		expect(findDisallowedExports('export type Foo = string;')).toEqual([]);
 		expect(findDisallowedExports('export interface Bar { x: number }')).toEqual([]);
 		expect(findDisallowedExports('export { type Baz } from "./types";')).toEqual([]);
+	});
+
+	it('flags disallowed names in a multi-line `export { ... }` list', () => {
+		const source = ['export {', '\tfoo,', '\tbar as baz', '};'].join('\n');
+		expect(findDisallowedExports(source)).toEqual(['foo', 'baz']);
+	});
+
+	it('honors reserved/`_`/type specifiers inside a multi-line list', () => {
+		const source = [
+			'export {',
+			'\thandler as load,',
+			'\t_private,',
+			'\ttype OnlyAType,',
+			'\tnope',
+			'} from "./mod";'
+		].join('\n');
+		expect(findDisallowedExports(source)).toEqual(['nope']);
+	});
+
+	it('flags `export * from "..."` wildcard re-exports', () => {
+		expect(findDisallowedExports('export * from "./barrel";')).toEqual(['*']);
+	});
+
+	it('flags `export * as ns from "..."` by its namespace name', () => {
+		expect(findDisallowedExports('export * as helpers from "./barrel";')).toEqual(['helpers']);
+	});
+
+	it('does NOT flag `export type * from "..."` (erased at runtime)', () => {
+		expect(findDisallowedExports('export type * from "./types";')).toEqual([]);
 	});
 
 	it('does NOT flag the SvelteKit-reserved exports', () => {
