@@ -13,10 +13,11 @@ import { Glob } from 'bun';
 // `export { x as y }` shapes) cheaply, with no CI-config change.
 //
 // COVERAGE LIMITS (stated honestly): this is a source-text scan. It folds
-// multi-line `export { ... }` lists and flags `export * from "..."` wildcards
-// conservatively, but it still CANNOT resolve re-export aliases at runtime or
-// follow computed/dynamic re-exports, and it does not actually load the
-// modules. The faithful long-term guard is
+// multi-line `export { ... }` lists, flags `export * from "..."` wildcards, and
+// extracts every bound name from multi-declarator and destructured
+// `export const|let|var` bindings — all conservatively. It still CANNOT resolve
+// re-export aliases at runtime or follow computed/dynamic re-exports, and it
+// does not actually load the modules. The faithful long-term guard is
 // `bun run build` (option (c) in the plan): svelte-adapter-bun loads every route
 // module and fails on a bad export. Adding `bun run build` to CI is the
 // authoritative fix when the maintainer wants it; this test buys immediate,
@@ -41,6 +42,152 @@ const ALLOWED_EXPORTS = new Set([
 
 function isAllowedName(name: string): boolean {
 	return ALLOWED_EXPORTS.has(name) || name.startsWith('_');
+}
+
+/**
+ * Extracts the bound identifiers introduced by an `export const|let|var`
+ * binding-list string (everything after the keyword, e.g. `foo = 1, bar = 2`
+ * or `{ a, b: c = d, ...rest } = obj`). This is a conservative regex-level
+ * scan, NOT a real parser: it strips out the initializer of each top-level
+ * declarator (`= ...`) and then collects identifiers from any destructuring
+ * pattern (object/array, including nested, aliased, default, and rest forms)
+ * or plain identifier on the left-hand side.
+ *
+ * Consistent with the `export *` "flag when you can't resolve" stance, this
+ * prefers over-collecting an ambiguous binding to silently missing it. A
+ * property KEY in object destructuring (`{ key: local }`) is not a binding —
+ * only the LOCAL name (`local`) is — and a default/initializer value
+ * (`{ a = something }`) is not a binding either; both are excluded by trimming
+ * to the binding side of `:` and dropping `= ...` initializers.
+ */
+function extractBoundNames(declarators: string): string[] {
+	const names: string[] = [];
+
+	// Split top-level declarators on commas that are NOT inside a destructuring
+	// pattern. Track brace/bracket/paren depth so commas within `{...}`/`[...]`
+	// stay grouped with their pattern.
+	const parts: string[] = [];
+	let depth = 0;
+	let current = '';
+	for (const ch of declarators) {
+		if (ch === '{' || ch === '[' || ch === '(') depth++;
+		else if (ch === '}' || ch === ']' || ch === ')') depth = Math.max(0, depth - 1);
+		if (ch === ',' && depth === 0) {
+			parts.push(current);
+			current = '';
+		} else {
+			current += ch;
+		}
+	}
+	if (current.trim()) parts.push(current);
+
+	for (const part of parts) {
+		// Drop the initializer of this declarator: the binding side is the text
+		// before the first top-level `=`. (Defaults inside a pattern, e.g.
+		// `{ a = 1 }`, live at depth > 0 and are handled per-token below.)
+		let lhs = part;
+		let d = 0;
+		for (let k = 0; k < part.length; k++) {
+			const ch = part[k];
+			if (ch === '{' || ch === '[' || ch === '(') d++;
+			else if (ch === '}' || ch === ']' || ch === ')') d = Math.max(0, d - 1);
+			else if (ch === '=' && d === 0 && part[k + 1] !== '=' && part[k - 1] !== '!') {
+				lhs = part.slice(0, k);
+				break;
+			}
+		}
+
+		const trimmedLhs = lhs.trim();
+		if (!trimmedLhs) continue;
+
+		// Plain (non-destructured) declarator — `foo` or a type-annotated
+		// `foo: SomeType`. Only the leading identifier is a binding; any `: Type`
+		// annotation is erased at runtime, so capture just the head identifier.
+		if (!trimmedLhs.startsWith('{') && !trimmedLhs.startsWith('[')) {
+			const plain = trimmedLhs.match(/^([A-Za-z_$][\w$]*)/);
+			if (plain?.[1]) {
+				names.push(plain[1]);
+			}
+			continue;
+		}
+
+		// Destructuring pattern. Collect bound LOCAL names: in `{ key: local }`
+		// the binding is `local`; in `{ key }` it is `key`; rest/defaults handled.
+		// Strategy: tokenize identifiers, but exclude any identifier immediately
+		// FOLLOWED by `:` (it is a property key, not a binding) and any default
+		// value after `=` within the pattern (handled by skipping the value side).
+		for (const name of extractPatternNames(trimmedLhs)) {
+			names.push(name);
+		}
+	}
+
+	return names;
+}
+
+/**
+ * Collects bound LOCAL identifiers from a destructuring pattern string
+ * (`{ ... }` / `[ ... ]`, possibly nested). Property keys (`key:` in
+ * `{ key: local }`) and default-value expressions (after `=`) are excluded so
+ * only the names actually introduced into scope are returned.
+ */
+function extractPatternNames(pattern: string): string[] {
+	const names: string[] = [];
+	let i = 0;
+	let depth = 0;
+	let entered = false;
+	while (i < pattern.length) {
+		const ch = pattern[i];
+		if (ch === '{' || ch === '[' || ch === '(') {
+			depth++;
+			entered = true;
+			i++;
+			continue;
+		}
+		if (ch === '}' || ch === ']' || ch === ')') {
+			depth = Math.max(0, depth - 1);
+			i++;
+			// Once the outermost pattern has closed, anything that follows is a
+			// trailing type annotation (`{ foo }: Type`) — erased at runtime, not a
+			// binding — so stop scanning.
+			if (entered && depth === 0) break;
+			continue;
+		}
+		// On a default `=`, skip its value expression up to the next top-level
+		// (relative to this point) comma or closing delimiter.
+		if (ch === '=' && pattern[i + 1] !== '=') {
+			let d = 0;
+			i++;
+			while (i < pattern.length) {
+				const c = pattern[i];
+				if (c === '{' || c === '[' || c === '(') d++;
+				else if (c === '}' || c === ']' || c === ')') {
+					if (d === 0) break;
+					d--;
+				} else if (c === ',' && d === 0) break;
+				i++;
+			}
+			continue;
+		}
+		// Identifier start.
+		if (/[A-Za-z_$]/.test(ch ?? '')) {
+			let j = i;
+			while (j < pattern.length && /[\w$]/.test(pattern[j] ?? '')) j++;
+			const ident = pattern.slice(i, j);
+			// Look ahead past whitespace: a following `:` marks this as a property
+			// KEY (the binding is its value), so skip it.
+			let k = j;
+			while (k < pattern.length && /\s/.test(pattern[k] ?? '')) k++;
+			if (pattern[k] === ':') {
+				i = j;
+				continue;
+			}
+			names.push(ident);
+			i = j;
+			continue;
+		}
+		i++;
+	}
+	return names;
 }
 
 /**
@@ -82,6 +229,13 @@ function joinMultilineExportLists(source: string): string[] {
  * { ... }` lists are folded onto one logical line first, and `export * from`
  * wildcard re-exports are flagged because their re-exported names cannot be
  * statically resolved and may include non-reserved runtime exports.
+ *
+ * `export const|let|var` bindings are decomposed into every name they bind, so
+ * multi-declarator lists (`export const foo = 1, bar = 2`) and destructuring
+ * patterns (`export const { foo } = obj` / `export const [a, b] = arr`,
+ * including nested/aliased/default/rest forms) are each fully flagged rather
+ * than only catching the first identifier. `function`/`class` declarations bind
+ * exactly one name and are handled directly.
  */
 export function findDisallowedExports(source: string): string[] {
 	const disallowed: string[] = [];
@@ -131,13 +285,30 @@ export function findDisallowedExports(source: string): string[] {
 			continue;
 		}
 
-		// `export (async )?function NAME` / `export (const|let|var|class) NAME`.
-		const decl = line.match(
-			/^export\s+(?:async\s+)?(?:function\*?|const|let|var|class)\s+([A-Za-z_$][\w$]*)/
-		);
-		const declName = decl?.[1];
-		if (declName && !isAllowedName(declName)) {
-			disallowed.push(declName);
+		// `export (async )?function NAME` / `export (class) NAME` — these forms
+		// ALWAYS bind exactly one name and can never be multi-declarator or
+		// destructured, so a single-identifier capture is correct.
+		const fnClass = line.match(/^export\s+(?:async\s+)?(?:function\*?|class)\s+([A-Za-z_$][\w$]*)/);
+		const fnClassName = fnClass?.[1];
+		if (fnClassName) {
+			if (!isAllowedName(fnClassName)) {
+				disallowed.push(fnClassName);
+			}
+			continue;
+		}
+
+		// `export (const|let|var) <binding-list>` — a binding list may contain
+		// multiple comma-separated declarators (`foo = 1, bar = 2`) and/or
+		// destructuring patterns (`{ foo } = obj`, `[a, b] = arr`), each of which
+		// introduces its own runtime export. Extract every bound name so none is
+		// silently missed (the ISSUE-001 class of bug applies to each binding).
+		const varDecl = line.match(/^export\s+(?:const|let|var)\s+([\s\S]+)$/);
+		if (varDecl?.[1]) {
+			for (const name of extractBoundNames(varDecl[1])) {
+				if (!isAllowedName(name)) {
+					disallowed.push(name);
+				}
+			}
 		}
 	}
 
@@ -196,6 +367,56 @@ describe('ISSUE-002 route-export guard — matcher logic', () => {
 			'} from "./mod";'
 		].join('\n');
 		expect(findDisallowedExports(source)).toEqual(['nope']);
+	});
+
+	it('flags every declarator in a multi-declarator `export const a, b`', () => {
+		expect(findDisallowedExports('export const foo = 1, bar = 2;')).toEqual(['foo', 'bar']);
+	});
+
+	it('flags a forbidden 2nd declarator even when the 1st is reserved', () => {
+		// `load` is reserved (allowed); `bar` is not.
+		expect(findDisallowedExports('export const load = () => {}, bar = 2;')).toEqual(['bar']);
+	});
+
+	it('does NOT flag a multi-declarator list of only reserved/`_`/allowed names', () => {
+		expect(findDisallowedExports('export const load = () => {}, _x = 1, ssr = false;')).toEqual([]);
+	});
+
+	it('flags a forbidden name in object destructuring (`export const { foo }`)', () => {
+		expect(findDisallowedExports('export const { foo } = obj;')).toEqual(['foo']);
+		expect(findDisallowedExports('export const { foo, bar } = obj;')).toEqual(['foo', 'bar']);
+	});
+
+	it('flags the LOCAL (aliased) name in object destructuring, not the key', () => {
+		// `export const { key: bar } = obj` binds `bar`, not `key`.
+		expect(findDisallowedExports('export const { key: bar } = obj;')).toEqual(['bar']);
+	});
+
+	it('honors reserved names in object destructuring (`{ load }` passes)', () => {
+		expect(findDisallowedExports('export const { load } = helper;')).toEqual([]);
+		expect(findDisallowedExports('export const { helper: load } = mod;')).toEqual([]);
+	});
+
+	it('flags forbidden names in array destructuring (`export const [a, b]`)', () => {
+		expect(findDisallowedExports('export const [a, b] = arr;')).toEqual(['a', 'b']);
+	});
+
+	it('does NOT flag default values or reserved bindings in a pattern', () => {
+		// `_priv` is private; default value `fallback` is not a binding.
+		expect(findDisallowedExports('export const { _priv = fallback } = obj;')).toEqual([]);
+	});
+
+	it('flags rest bindings in destructuring (`{ ...rest }`)', () => {
+		expect(findDisallowedExports('export const { ...rest } = obj;')).toEqual(['rest']);
+	});
+
+	it('ignores a trailing type annotation on a destructured binding', () => {
+		// `{ foo }: SomeType` binds `foo`; `SomeType` is erased at runtime.
+		expect(findDisallowedExports('export const { foo }: SomeType = obj;')).toEqual(['foo']);
+	});
+
+	it('flags nested destructuring bindings', () => {
+		expect(findDisallowedExports('export const { a: { b } } = obj;')).toEqual(['b']);
 	});
 
 	it('flags `export * from "..."` wildcard re-exports', () => {
