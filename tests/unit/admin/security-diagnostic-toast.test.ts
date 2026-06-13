@@ -31,7 +31,7 @@ describe('ISSUE-007 — reverse-proxy diagnostic toast is user-initiated only', 
 	it('the re-run button passes userInitiated: true', async () => {
 		const src = await readSource(SECURITY_PAGE);
 		expect(src).toMatch(
-			/onclick=\{\(\)\s*=>\s*runDiagnostic\(\s*\{\s*userInitiated:\s*true\s*\}\s*\)\}/
+			/onclick=\{\(\)\s*=>\s*(?:void\s+)?runDiagnostic\(\s*\{\s*userInitiated:\s*true\s*\}\s*\)\}/
 		);
 	});
 
@@ -40,8 +40,11 @@ describe('ISSUE-007 — reverse-proxy diagnostic toast is user-initiated only', 
 		// The auto-run is `void runDiagnostic();` — no userInitiated argument, so it
 		// defaults to false and never toasts.
 		expect(src).toMatch(/void runDiagnostic\(\s*\);/);
-		// And it must NOT pass userInitiated: true on the auto-run.
-		expect(src).not.toMatch(/void runDiagnostic\(\s*\{\s*userInitiated:\s*true/);
+		// And it must NOT pass userInitiated: true on the auto-run. The negative
+		// lookbehind excludes the re-run button (`=> void runDiagnostic({...})`),
+		// which legitimately passes userInitiated: true — we only forbid the
+		// standalone on-mount statement from carrying the flag.
+		expect(src).not.toMatch(/(?<!>\s)void runDiagnostic\(\s*\{\s*userInitiated:\s*true/);
 	});
 
 	it('every toast call is gated behind userInitiated', async () => {
