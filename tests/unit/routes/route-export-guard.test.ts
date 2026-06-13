@@ -12,16 +12,21 @@ import { Glob } from 'bun';
 // ISSUE-001 shape (and the related `export const`, `export default`,
 // `export { x as y }` shapes) cheaply, with no CI-config change.
 //
-// COVERAGE LIMITS (stated honestly): this is a source-text scan. It folds
-// multi-line `export { ... }` lists, flags `export * from "..."` wildcards, and
-// extracts every bound name from multi-declarator and destructured
-// `export const|let|var` bindings — all conservatively. It still CANNOT resolve
-// re-export aliases at runtime or follow computed/dynamic re-exports, and it
-// does not actually load the modules. The faithful long-term guard is
-// `bun run build` (option (c) in the plan): svelte-adapter-bun loads every route
-// module and fails on a bad export. Adding `bun run build` to CI is the
-// authoritative fix when the maintainer wants it; this test buys immediate,
-// zero-setup protection in the meantime.
+// COVERAGE LIMITS (stated honestly): this is a source-text scan. It strips
+// `/* ... */` block comments and `//` line comments before scanning (so a
+// commented-out `export ...` is never mistaken for a live one), folds multi-line
+// `export { ... }` lists, flags `export * from "..."` wildcards, and extracts
+// every bound name from multi-declarator and destructured `export const|let|var`
+// bindings — all conservatively. It still CANNOT resolve re-export aliases at
+// runtime or follow computed/dynamic re-exports, and it does not actually load
+// the modules. The comment stripper is deliberately simple and does NOT track
+// string/template literals, so a `//` or `/*` sequence that appears INSIDE a
+// string literal is still treated as a comment delimiter; this is acceptable
+// because real route files never place a line-start `export` inside a string.
+// The faithful long-term guard is `bun run build` (option (c) in the plan):
+// svelte-adapter-bun loads every route module and fails on a bad export. Adding
+// `bun run build` to CI is the authoritative fix when the maintainer wants it;
+// this test buys immediate, zero-setup protection in the meantime.
 
 const PROJECT_ROOT = join(import.meta.dir, '..', '..', '..');
 const ROUTES_DIR = join(PROJECT_ROOT, 'src', 'routes');
@@ -191,6 +196,50 @@ function extractPatternNames(pattern: string): string[] {
 }
 
 /**
+ * Removes `/* ... *\/` block comments and `//` line comments from the source so
+ * a commented-out `export ...` is never scanned as a live export (the key
+ * false-positive: a block comment whose body has `export` at column 0). To keep
+ * the downstream line-by-line scan and multi-line `export { ... }` folding
+ * working, this preserves line structure: comment bodies are blanked out but the
+ * newlines they spanned are kept, so line counts and offsets are unchanged.
+ *
+ * Deliberately simple: it does NOT track string or template literals, so a `//`
+ * or `/*` sequence inside a string is still treated as a comment delimiter. This
+ * is acceptable per the conservative source-text stance — real route files never
+ * place a line-start `export` inside a string literal, so this cannot produce a
+ * false NEGATIVE on the shapes this guard targets.
+ */
+function stripComments(source: string): string {
+	let out = '';
+	let i = 0;
+	const n = source.length;
+	while (i < n) {
+		const ch = source[i];
+		const next = source[i + 1];
+		// Block comment: replace its body with spaces but keep any newlines so
+		// line structure is preserved for the line-based scan below.
+		if (ch === '/' && next === '*') {
+			i += 2;
+			while (i < n && !(source[i] === '*' && source[i + 1] === '/')) {
+				out += source[i] === '\n' ? '\n' : ' ';
+				i++;
+			}
+			i += 2; // consume the closing `*/` (or run off the end if unterminated)
+			continue;
+		}
+		// Line comment: drop everything up to (but not including) the newline.
+		if (ch === '/' && next === '/') {
+			i += 2;
+			while (i < n && source[i] !== '\n') i++;
+			continue;
+		}
+		out += ch;
+		i++;
+	}
+	return out;
+}
+
+/**
  * Joins multi-line `export { ... }` lists onto a single logical line so the
  * line-by-line scan below sees the whole specifier list. A list that opens with
  * `export {` (or `export type {`) but does not close its brace on the same line
@@ -222,8 +271,10 @@ function joinMultilineExportLists(source: string): string[] {
 
 /**
  * Returns the list of disallowed runtime export names found in a +page.server.ts
- * source string. Type-only exports (`export type` / `export interface`) are
- * skipped because they are erased at runtime. Within an `export { ... }` list,
+ * source string. Block (`/* ... *\/`) and line (`//`) comments are stripped first
+ * so a commented-out `export ...` is never counted as a live export. Type-only
+ * exports (`export type` / `export interface`) are skipped because they are
+ * erased at runtime. Within an `export { ... }` list,
  * the EXPORTED name is what matters (`export { internal as load }` exports
  * `load`), and `type`-qualified specifiers are skipped. Multi-line `export
  * { ... }` lists are folded onto one logical line first, and `export * from`
@@ -240,7 +291,9 @@ function joinMultilineExportLists(source: string): string[] {
 export function findDisallowedExports(source: string): string[] {
 	const disallowed: string[] = [];
 
-	for (const rawLine of joinMultilineExportLists(source)) {
+	// Strip comments first so a commented-out `export ...` (e.g. a block comment
+	// whose body has `export` at column 0) is never mistaken for a live export.
+	for (const rawLine of joinMultilineExportLists(stripComments(source))) {
 		const line = rawLine.trimStart();
 		if (!line.startsWith('export')) continue;
 
@@ -444,6 +497,30 @@ describe('ISSUE-002 route-export guard — matcher logic', () => {
 			'export { handler as load };'
 		].join('\n');
 		expect(findDisallowedExports(reserved)).toEqual([]);
+	});
+
+	it('does NOT flag an export inside a block comment (the false-positive case)', () => {
+		const source = ['/*', 'export const foo = 1;', '*/'].join('\n');
+		expect(findDisallowedExports(source)).toEqual([]);
+	});
+
+	it('does NOT flag an export inside a `//` line comment', () => {
+		expect(findDisallowedExports('// export const foo = 1;')).toEqual([]);
+		expect(findDisallowedExports('export const x = 1; // export const foo = 1;')).toEqual(['x']);
+	});
+
+	it('does NOT flag a single-line `/* export { foo } */` block comment', () => {
+		expect(findDisallowedExports('/* export { foo } */')).toEqual([]);
+	});
+
+	it('still flags a REAL export immediately after a block comment', () => {
+		// Stripping the comment must NOT eat the live declaration that follows it.
+		const source = ['/*', 'export const commented = 1;', '*/', 'export const live = 2;'].join('\n');
+		expect(findDisallowedExports(source)).toEqual(['live']);
+	});
+
+	it('still flags a REAL export on the same line after an inline block comment', () => {
+		expect(findDisallowedExports('/* note */ export const foo = 1;')).toEqual(['foo']);
 	});
 });
 
