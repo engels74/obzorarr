@@ -183,9 +183,19 @@ function extractPatternNames(pattern: string): string[] {
 		// Computed property key: `{ [expr]: value }`. The identifiers inside the
 		// `[...]` are a key EXPRESSION (a reference), not bindings. Detect it by
 		// matching the `[` to its `]` and checking the next non-space char is `:`;
-		// if so, skip the whole `[...]:` zone. A plain array pattern's `[` is NOT
-		// followed by `:` after its close, so it falls through to normal handling.
-		if (ch === '[') {
+		// if so, skip the whole `[...]:` zone.
+		//
+		// Gate on `depth > 0`: a computed key is only valid INSIDE an object
+		// pattern, so its `[` is always seen after the enclosing `{` bumped depth
+		// to >= 1. A TOP-LEVEL array pattern with a trailing type annotation
+		// (`[a, b]: Tuple`) has its `[` at depth 0 and ALSO has a `]:` — without
+		// the gate it would be wrongly skipped, silently missing the real bindings
+		// `a`/`b` (a false negative) and collecting the type `Tuple` (false
+		// positive). At depth 0 we fall through to normal bracket traversal: the
+		// array bindings are scanned, then the closing `]` returns depth to 0 and
+		// the `entered && depth === 0` break below stops before the `: Tuple` tail
+		// (a runtime-erased type), so `Tuple` is correctly never collected.
+		if (ch === '[' && depth > 0) {
 			let bd = 0;
 			let j = i;
 			for (; j < pattern.length; j++) {
@@ -515,6 +525,21 @@ describe('ISSUE-002 route-export guard — matcher logic', () => {
 
 	it('flags forbidden names in array destructuring (`export const [a, b]`)', () => {
 		expect(findDisallowedExports('export const [a, b] = arr;')).toEqual(['a', 'b']);
+	});
+
+	it('flags array-pattern bindings with a trailing type annotation (`[a, b]: Tuple`)', () => {
+		// The top-level array `[` is at depth 0, so the computed-key skip (which
+		// only applies INSIDE an object pattern, depth > 0) must NOT fire here.
+		// `a`/`b` are real bindings; `Tuple` is a type and is erased at runtime, so
+		// it must NOT be collected. Regression guard for the iteration-4 skip that
+		// wrongly swallowed `[a, b]: Tuple` → `['Tuple']`.
+		expect(findDisallowedExports('export const [a, b]: Tuple = arr;')).toEqual(['a', 'b']);
+	});
+
+	it('honors reserved names in a type-annotated array pattern (`[load, foo]: Tuple`)', () => {
+		// `load` is reserved (allowed); only `foo` is forbidden. The trailing
+		// `: Tuple` type must not leak in as a collected name.
+		expect(findDisallowedExports('export const [load, foo]: Tuple = arr;')).toEqual(['foo']);
 	});
 
 	it('does NOT flag default values or reserved bindings in a pattern', () => {
