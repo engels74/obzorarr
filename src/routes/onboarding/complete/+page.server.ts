@@ -70,7 +70,7 @@ export const load: PageServerLoad = async ({ parent, locals, url, cookies }) => 
 	// ISSUE-010: reconcile the AI-key notice against the actual saved key state
 	// instead of trusting the raw URL param (which persists across reload/back-
 	// forward and went stale once a key was added or fun facts were toggled off).
-	const notice = deriveAiKeyMissingNotice(enableFunFacts, noticeRequested);
+	const notice = _deriveAiKeyMissingNotice(enableFunFacts, noticeRequested);
 
 	return {
 		...parentData,
@@ -143,7 +143,7 @@ function formatFunFactFrequency(config: { mode: string; count: number }): string
  * which is the only carrier of the user's "fun facts intended on" intent (that
  * intent is not persisted separately from the key's presence).
  */
-export function deriveAiKeyMissingNotice(
+export function _deriveAiKeyMissingNotice(
 	hasEffectiveApiKey: boolean,
 	noticeRequested: boolean
 ): 'ai-key-missing' | null {
