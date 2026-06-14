@@ -149,9 +149,14 @@ function handleLogoToggle(): void {
 
 	<div class="controls-container">
 		{#if data.isOwner && data.canUserControlLogo}
+			<!-- ISSUE-006: post to the opaque canonical href (data.currentUrl is the
+			     owner's slug/token path) instead of the relative page URL, so the
+			     toggleLogo request never carries the internal integer user id. The
+			     form only renders for the owner (isOwner above), so currentUrl is
+			     always the viewer's own canonical href — never another user's token. -->
 			<form
 				method="POST"
-				action="?/toggleLogo"
+				action="{data.currentUrl}?/toggleLogo"
 				use:enhance={() => {
 					handleLogoToggle();
 					return async ({ result, update }) => {

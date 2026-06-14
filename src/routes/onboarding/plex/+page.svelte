@@ -702,7 +702,10 @@ function formatServerUrl(url: string | null): string {
 					{:else}
 						<a class="redirect-fallback" href="?auth=redirect">
 							<span class="redirect-fallback-label">Use redirect instead</span>
-							<span class="redirect-fallback-hint">If sign-in doesn't return, use this.</span>
+							<span class="redirect-fallback-hint"
+								>Sign-in opens in a popup by default. If it's blocked, switch to a
+								same-tab redirect.</span
+							>
 						</a>
 					{/if}
 				</div>
@@ -770,7 +773,10 @@ function formatServerUrl(url: string | null): string {
 					{:else}
 						<a class="redirect-fallback" href="?auth=redirect">
 							<span class="redirect-fallback-label">Use redirect instead</span>
-							<span class="redirect-fallback-hint">If sign-in doesn't return, use this.</span>
+							<span class="redirect-fallback-hint"
+								>Sign-in opens in a popup by default. If it's blocked, switch to a
+								same-tab redirect.</span
+							>
 						</a>
 					{/if}
 				</div>

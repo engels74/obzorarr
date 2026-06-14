@@ -228,6 +228,19 @@ const onboardingHandle: Handle = async ({ event, resolve }) => {
 	return resolve(event);
 };
 
+// ISSUE-008 — SSE denial contract. Admin stream routes (/admin/logs/stream,
+// /admin/sync/stream) are denied by `authorizationHandle` below with a 303
+// (anon: '/?returnTo=<encodedPath>' for a safe path, else '/'; non-admin:
+// '/dashboard') BEFORE their endpoint's own requireAdmin 403
+// ever runs, so the 403 is unreachable for anonymous callers and the observable
+// anon contract for admin streams is this hook 303. /api/sync/status/stream
+// instead returns a 401 JSON from its own handler. The split is intentional and
+// only matters for document navigation vs. programmatic clients (curl/fetch): a
+// browser `EventSource` cannot consume either a 303 or a 401 — both surface as a
+// generic `onerror` — so the status-code difference is cosmetic for SSE consumers.
+// Admin streams are reached by in-app navigation that benefits from a
+// redirect-to-login; the api endpoint is a programmatic surface where a 401 is
+// cleaner. Do not "unify" these without re-reading this rationale.
 const authorizationHandle: Handle = async ({ event, resolve }) => {
 	if (isAdminRouteId(event.route.id)) {
 		if (!event.locals.user || !event.locals.user.isAdmin) {

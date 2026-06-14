@@ -254,7 +254,10 @@ function getLogoModeDescription(): string {
 								<span class="card-desc">{shareModeDescriptions['private-link']}</span>
 								{#if isBelowFloor('private-link')}
 									<span class="floor-note">
-										Your administrator requires at least {shareModeLabels[data.globalFloor ?? ''] ?? data.globalFloor} privacy.
+										Private links and token regeneration are unavailable while your
+										administrator limits sharing to at least {shareModeLabels[
+											data.globalFloor ?? ''
+										] ?? data.globalFloor} privacy.
 									</span>
 								{/if}
 							</label>
