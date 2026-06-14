@@ -229,8 +229,9 @@ const onboardingHandle: Handle = async ({ event, resolve }) => {
 };
 
 // ISSUE-008 — SSE denial contract. Admin stream routes (/admin/logs/stream,
-// /admin/sync/stream) are denied by `authorizationHandle` below with a 303 to '/'
-// (anon) or '/dashboard' (non-admin) BEFORE their endpoint's own requireAdmin 403
+// /admin/sync/stream) are denied by `authorizationHandle` below with a 303
+// (anon: '/?returnTo=<encodedPath>' for a safe path, else '/'; non-admin:
+// '/dashboard') BEFORE their endpoint's own requireAdmin 403
 // ever runs, so the 403 is unreachable for anonymous callers and the observable
 // anon contract for admin streams is this hook 303. /api/sync/status/stream
 // instead returns a 401 JSON from its own handler. The split is intentional and

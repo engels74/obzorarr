@@ -12,8 +12,9 @@ import { resetSharedTestDb } from '../../helpers/db';
 // The denial responses for the three streaming endpoints are intentionally
 // split and documented in hooks.server.ts / the api endpoint:
 //   - admin streams (/admin/logs/stream, /admin/sync/stream): denied by the
-//     `authorizationHandle` hook with a 303 to '/' for anonymous callers,
-//     BEFORE the endpoint's own requireAdmin 403 ever runs.
+//     `authorizationHandle` hook with a 303 for anonymous callers (to
+//     '/?returnTo=<encodedPath>' for a safe path, else '/'), BEFORE the
+//     endpoint's own requireAdmin 403 ever runs.
 //   - /api/sync/status/stream: returns 401 JSON from its own handler once
 //     onboarding is complete.
 //
