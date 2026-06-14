@@ -33,7 +33,7 @@ function handleConfigNavigation(event: MouseEvent): void {
 </script>
 
 <svelte:head>
-	<title>Wrapped - Admin - Obzorarr</title>
+	<title>Wrapped — Admin — Obzorarr</title>
 </svelte:head>
 
 <div class="wrapped-hub">

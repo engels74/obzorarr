@@ -40,6 +40,13 @@ const POLL_INTERVAL_IDLE_MS = 2000;
 
 export const GET: RequestHandler = async ({ request, locals }) => {
 	// Gate: allow anonymous access only while onboarding is incomplete.
+	// ISSUE-008 — denial contract: this programmatic endpoint returns 401 JSON,
+	// whereas admin stream routes are denied with a 303 by `authorizationHandle`
+	// in hooks.server.ts (see the rationale there). The split is intentional and
+	// cosmetic for SSE consumers — a browser `EventSource` cannot read either a
+	// 401 body or follow a 303, so both surface only as `onerror`; it is observable
+	// only to curl/fetch-style clients, for which a 401 status is the cleaner
+	// contract on an API surface.
 	const onboardingPending = await requiresOnboarding();
 	if (!onboardingPending && !locals.user) {
 		return new Response(JSON.stringify({ message: 'Unauthorized' }), {

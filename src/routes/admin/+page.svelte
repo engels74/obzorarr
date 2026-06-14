@@ -84,7 +84,7 @@ const statsConfig = $derived([
 		// as three conflicting numbers.
 		value: data.userCount,
 		label: 'Registered Accounts',
-		sub: `${data.syncedViewerCount.toLocaleString()} Plex viewers with synced watch history`,
+		sub: `${data.syncedViewerCount.toLocaleString()} distinct Plex viewers in synced history (not registered accounts)`,
 		icon: Users,
 		color: 'blue',
 		gradient: 'from-blue-500/20 to-blue-600/5'
@@ -124,7 +124,7 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 </script>
 
 <svelte:head>
-	<title>Dashboard - Admin - Obzorarr</title>
+	<title>Dashboard — Admin — Obzorarr</title>
 </svelte:head>
 
 <div class="dashboard">

@@ -18,6 +18,8 @@ const WRAPPED_PAGE = 'src/routes/wrapped/[year=year]/u/[identifier]/+page.svelte
 const SHARE_MODAL = 'src/lib/components/wrapped/ShareModal.svelte';
 const SLIDES_PAGE = 'src/routes/admin/slides/+page.svelte';
 const ADMIN_DASHBOARD = 'src/routes/admin/+page.svelte';
+const ADMIN_WRAPPED = 'src/routes/admin/wrapped/+page.svelte';
+const DASHBOARD_SETTINGS = 'src/routes/dashboard/settings/+page.svelte';
 
 describe('dogfood UI invariants — admin connections page', () => {
 	it('caps the OpenAI Base URL input at maxlength=512 (ISSUE-008)', async () => {
@@ -140,8 +142,10 @@ describe('DF-06 source-guard — wrapped page logo toggle gated on isOwner && ca
 		const src = await readSource(WRAPPED_PAGE);
 		// The condition must include BOTH flags joined with &&.
 		// We find the toggleLogo action attribute and walk backwards to its
-		// enclosing {#if} to verify the full gate.
-		const toggleIdx = src.indexOf('action="?/toggleLogo"');
+		// enclosing {#if} to verify the full gate. (ISSUE-006 made the action an
+		// absolute opaque href; we match on the action prefix so this guard is
+		// agnostic to the relative-vs-absolute form.)
+		const toggleIdx = src.indexOf('?/toggleLogo"');
 		expect(toggleIdx).toBeGreaterThan(-1);
 		// The nearest {#if ...} before the toggleLogo form must contain isOwner.
 		const before = src.slice(0, toggleIdx);
@@ -151,6 +155,23 @@ describe('DF-06 source-guard — wrapped page logo toggle gated on isOwner && ca
 		expect(ifBlock).toContain('data.canUserControlLogo');
 		// The two conditions must be ANDed (not ORed).
 		expect(ifBlock).toContain('&&');
+	});
+});
+
+describe('ISSUE-006 source-guard — toggleLogo posts to the opaque canonical href', () => {
+	// ISSUE-006: the toggleLogo form must post to data.currentUrl (the owner's
+	// opaque slug/token path), NOT the relative page URL, so the request never
+	// carries the internal integer user id. The form only renders for the owner
+	// (DF-06 guard above), so currentUrl is always the viewer's own canonical href.
+
+	it('toggle form action is the absolute opaque href {data.currentUrl}?/toggleLogo', async () => {
+		const src = await readSource(WRAPPED_PAGE);
+		expect(src).toContain('action="{data.currentUrl}?/toggleLogo"');
+	});
+
+	it('the relative action="?/toggleLogo" (which would leak /u/{int}) is gone', async () => {
+		const src = await readSource(WRAPPED_PAGE);
+		expect(src).not.toContain('action="?/toggleLogo"');
 	});
 });
 
@@ -243,5 +264,85 @@ describe('DF-16 source-guard — admin dashboard scheduler-cta callout', () => {
 		const syncStatusBlock = src.slice(src.indexOf('const syncStatus = $derived'));
 		const closingParen = syncStatusBlock.indexOf('});');
 		expect(syncStatusBlock.slice(0, closingParen)).toContain("return 'inactive'");
+	});
+});
+
+describe('ISSUE-005 source-guard — admin <title> separator uniformity', () => {
+	// All admin document titles use an em-dash separator. Dashboard and Wrapped
+	// previously used a hyphen; this guard pins the em-dash so the separator
+	// stays consistent across admin pages.
+
+	it('admin dashboard title uses the em-dash separator', async () => {
+		const src = await readSource(ADMIN_DASHBOARD);
+		expect(src).toContain('<title>Dashboard — Admin — Obzorarr</title>');
+		expect(src).not.toContain('<title>Dashboard - Admin - Obzorarr</title>');
+	});
+
+	it('admin wrapped hub title uses the em-dash separator', async () => {
+		const src = await readSource(ADMIN_WRAPPED);
+		expect(src).toContain('<title>Wrapped — Admin — Obzorarr</title>');
+		expect(src).not.toContain('<title>Wrapped - Admin - Obzorarr</title>');
+	});
+});
+
+describe('ISSUE-004 source-guard — admin slides toggles expose aria-pressed', () => {
+	// The built-in and custom slide enable/disable toggles are native SubmitButton
+	// buttons (not the bits-ui Toggle). They must expose aria-pressed bound to the
+	// enabled state so screen readers announce on/off, not just a visual style.
+
+	it('built-in slide toggle SubmitButton sets aria-pressed={item.enabled}', async () => {
+		const src = await readSource(SLIDES_PAGE);
+		const block = src.slice(src.indexOf('action="?/toggleSlide"'));
+		const formEnd = block.indexOf('</form>');
+		expect(block.slice(0, formEnd)).toContain('aria-pressed={item.enabled}');
+	});
+
+	it('custom slide toggle SubmitButton sets aria-pressed={item.enabled}', async () => {
+		const src = await readSource(SLIDES_PAGE);
+		const block = src.slice(src.indexOf('action="?/toggleCustomSlide"'));
+		const formEnd = block.indexOf('</form>');
+		expect(block.slice(0, formEnd)).toContain('aria-pressed={item.enabled}');
+	});
+});
+
+describe('ISSUE-003 source-guard — dashboard registered-accounts clarifying copy', () => {
+	// The "Registered Accounts" stat card subtitle must distinguish registered app
+	// accounts from distinct synced Plex viewers, consistent with the /admin/users
+	// note, so the two counts don't read as a discrepancy.
+
+	it('registered-accounts card subtitle distinguishes viewers from registered accounts', async () => {
+		const src = await readSource(ADMIN_DASHBOARD);
+		const cardBlock = src.slice(src.indexOf("label: 'Registered Accounts'"));
+		const subLine = cardBlock.slice(0, cardBlock.indexOf('icon:'));
+		expect(subLine).toContain('distinct Plex viewers in synced history');
+		expect(subLine).toContain('not registered accounts');
+	});
+});
+
+describe('ISSUE-002 source-guard — Plex login redirect-fallback copy reflects popup default', () => {
+	// The "Use redirect instead" affordance copy must describe popup as the default
+	// with same-tab redirect as the fallback, reconciling copy with behavior
+	// (shouldUseRedirectAuth defaults to popup unless headless/blocked).
+
+	it('redirect-fallback hint states popup is the default with redirect fallback', async () => {
+		const src = await readSource(ONBOARDING_PLEX);
+		expect(src).toContain('Sign-in opens in a popup by default. If it');
+		// The stale vague hint must be gone.
+		expect(src).not.toContain("If sign-in doesn't return, use this.");
+	});
+});
+
+describe('ISSUE-001 source-guard — share-floor private-link unavailable copy', () => {
+	// When the server floor clamps private-link, the Privacy tab must explain that
+	// private links and token regeneration are unavailable (not just the generic
+	// "below floor" note), reusing the .floor-note pattern.
+
+	it('private-link card surfaces unavailable-feature copy under the floor', async () => {
+		const src = await readSource(DASHBOARD_SETTINGS);
+		const block = src.slice(src.indexOf("isBelowFloor('private-link')"));
+		// Walk to the end of the {#if} floor-note for the private-link card.
+		const floorNoteEnd = block.indexOf('</label>');
+		const floorNote = block.slice(0, floorNoteEnd);
+		expect(floorNote).toContain('Private links and token regeneration are unavailable');
 	});
 });

@@ -365,6 +365,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 							<input type="hidden" name="slideType" value={item.slideType} />
 							<SubmitButton
 								class={`toggle-button tap-target ${item.enabled ? 'enabled' : ''}`}
+								aria-pressed={item.enabled}
 								aria-label={`${item.enabled ? 'Disable' : 'Enable'} ${SLIDE_NAMES[item.slideType as SlideType] ?? item.slideType} slide`}
 							>
 								{#snippet children()}
@@ -402,6 +403,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 								<input type="hidden" name="id" value={item.id} />
 								<SubmitButton
 									class={`toggle-button tap-target ${item.enabled ? 'enabled' : ''}`}
+									aria-pressed={item.enabled}
 									aria-label={`${item.enabled ? 'Disable' : 'Enable'} ${item.title.trim().length > 0 ? item.title : 'Untitled custom slide'}`}
 								>
 									{#snippet children()}
