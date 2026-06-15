@@ -17,9 +17,10 @@ import type { PageServerLoad } from './$types';
 const KNOWN_TABS = new Set(['connections', 'security', 'data', 'system', 'appearance', 'privacy']);
 
 export const load: PageServerLoad = async ({ url }) => {
+	// Legacy ?tab=<name> redirects are preserved for backward compatibility.
+	// When no ?tab= param is present, render the hub index page instead of redirecting.
 	const tab = url.searchParams.get('tab');
 	if (tab && KNOWN_TABS.has(tab)) {
 		redirect(303, `/admin/settings/${tab}`);
 	}
-	redirect(303, '/admin/settings/connections');
 };

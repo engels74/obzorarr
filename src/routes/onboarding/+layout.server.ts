@@ -58,6 +58,8 @@ export const load: LayoutServerLoad = async ({ cookies, locals, url }) => {
 		{ id: OnboardingSteps.COMPLETE, label: 'Done' }
 	];
 
+	const plexServerUrlLocked = apiConfig.plex.serverUrl.isLocked;
+
 	return {
 		steps,
 		currentStep: displayedStep,
@@ -68,7 +70,11 @@ export const load: LayoutServerLoad = async ({ cookies, locals, url }) => {
 		username: locals.user?.username,
 		hasEnvConfig: hasEnvConfigValue,
 		plexConfigured: !!(apiConfig.plex.serverUrl.value && apiConfig.plex.token.value),
-		plexServerUrl: apiConfig.plex.serverUrl.value,
+		// Never ship the raw URL to the client when it is ENV-locked — mirror the
+		// token masking pattern (toSafeConfigValue). The Svelte page uses
+		// plexServerUrlLocked to show a placeholder instead of the real value.
+		plexServerUrl: plexServerUrlLocked ? '' : apiConfig.plex.serverUrl.value,
+		plexServerUrlLocked,
 		plexConfigSource: apiConfig.plex.serverUrl.source,
 		plexServerName: serverName,
 		uiTheme

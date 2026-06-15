@@ -36,7 +36,9 @@ let isClaiming = $state(false);
 				id="bootstrap-token"
 				name="token"
 				type="password"
-				bind:value={token}
+				value={token}
+				oninput={(e) => (token = e.currentTarget.value)}
+				onchange={(e) => (token = e.currentTarget.value)}
 				class="bootstrap-token-input"
 				autocomplete="one-time-code"
 				autocapitalize="none"

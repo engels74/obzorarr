@@ -224,6 +224,13 @@ function handleLogoToggle(): void {
 
 	<div class="user-header" class:with-logo={showLogo}>
 		<h1 class="user-title">{data.username}'s Year in Review</h1>
+		{#if data.visibleToServerMembers}
+			<!-- ISSUE-013: quiet owner-only affordance — under the server-members
+			     (private-oauth) floor any signed-in member can open this page. -->
+			<p class="visibility-note" title="Any signed-in member of this server can view this Wrapped">
+				Visible to server members
+			</p>
+		{/if}
 	</div>
 
 	{#if data.availableYears && data.availableYears.length > 1}
@@ -385,6 +392,15 @@ function handleLogoToggle(): void {
 			color: var(--foreground);
 			opacity: 0.8;
 			margin: 0;
+		}
+
+		.visibility-note {
+			font-size: 0.6875rem;
+			font-weight: 500;
+			color: var(--foreground);
+			opacity: 0.55;
+			margin: 0.125rem 0 0;
+			letter-spacing: 0.01em;
 		}
 
 		.empty-wrapped-state {

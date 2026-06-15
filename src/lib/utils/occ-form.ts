@@ -1,5 +1,5 @@
 import type { ActionResult } from '@sveltejs/kit';
-import { handleFormToast } from '$lib/utils/form-toast';
+import { toast } from '$lib/services/toast';
 
 /**
  * Sentinel matching the server's `OCC_CONFLICT_CODE`
@@ -43,7 +43,7 @@ export function surfaceOccConflict(event: { result: ActionResult; cancel: () => 
 		const message =
 			(result.data as { error?: string } | undefined)?.error ??
 			'Settings changed in another tab. Please reload.';
-		handleFormToast({ error: message });
+		toast.error(message, { action: { label: 'Reload', onClick: () => window.location.reload() } });
 		event.cancel();
 	}
 }

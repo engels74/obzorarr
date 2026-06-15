@@ -58,12 +58,16 @@ function handleConfigNavigation(event: MouseEvent): void {
 						class="year-selector"
 						aria-label="Select wrapped year"
 						disabled={data.availableYears.length === 1}
+						title={data.availableYears.length === 1 ? 'Only one year of data available' : undefined}
 						onchange={(e) => e.currentTarget.form?.requestSubmit()}
 					>
 						{#each data.availableYears as yr}
 							<option value={yr} selected={yr === data.year}>{yr}</option>
 						{/each}
 					</select>
+					{#if data.availableYears.length === 1}
+						<p class="year-selector-hint">Only one year of data available</p>
+					{/if}
 					<noscript><button type="submit" class="year-submit">Go</button></noscript>
 				</form>
 			{/if}
@@ -202,6 +206,12 @@ function handleConfigNavigation(event: MouseEvent): void {
 		.year-selector:disabled {
 			cursor: default;
 			opacity: 0.75;
+		}
+
+		.year-selector-hint {
+			margin: 0.375rem 0 0;
+			font-size: 0.75rem;
+			color: oklch(var(--muted-foreground));
 		}
 
 		.ambient-glow {

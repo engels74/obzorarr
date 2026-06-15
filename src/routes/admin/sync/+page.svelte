@@ -580,7 +580,7 @@ async function goToPage(page: number) {
 				<div class="scheduler-controls">
 					{#if data.schedulerStatus.isPaused}
 						<form method="POST" action="?/resumeScheduler" use:enhance>
-							<SubmitButton class="control-btn resume tap-target">
+							<SubmitButton class="control-btn resume tap-target" data-testid="scheduler-resume">
 								{#snippet children()}
 									<PlayIcon class="size-4" fill="currentColor" />
 									Resume
@@ -589,7 +589,7 @@ async function goToPage(page: number) {
 						</form>
 					{:else if data.schedulerStatus.isRunning}
 						<form method="POST" action="?/pauseScheduler" use:enhance>
-							<SubmitButton class="control-btn pause tap-target">
+							<SubmitButton class="control-btn pause tap-target" data-testid="scheduler-pause">
 								{#snippet children()}
 									<PauseIcon class="size-4" fill="currentColor" />
 									Pause
@@ -601,6 +601,7 @@ async function goToPage(page: number) {
 							<input type="hidden" name="cronExpression" value={cronExpression} />
 							<SubmitButton
 								class="control-btn init tap-target"
+								data-testid="scheduler-initialize"
 								disabled={!!cronError}
 								aria-describedby={cronError ? 'cronExpression-error' : undefined}
 							>
@@ -628,7 +629,7 @@ async function goToPage(page: number) {
 								};
 							}}
 						>
-							<SubmitButton class="control-btn stop tap-target">
+							<SubmitButton class="control-btn stop tap-target" data-testid="scheduler-stop">
 								{#snippet children()}
 									<SquareIcon class="size-4" fill="currentColor" />
 									Stop

@@ -111,9 +111,18 @@ export const load: PageServerLoad = async () => {
 	// latter case instead of only the subtle "falls back" copy.
 	const hasEffectiveOpenAIKey = Boolean(apiConfig.openai.apiKey.value.trim());
 
+	// Never ship the raw URL to the client when it is ENV-locked — mirror the
+	// token masking pattern (toSafeConfigValue). The Svelte page initialises its
+	// plexServerUrl $state to '' when locked, then skips the formData.set on
+	// test-connection so the server-side submittedUrl || storedUrl fallback fires.
+	const plexServerUrlRaw = apiConfig.plex.serverUrl;
+	const plexServerUrlMasked: SettingValue = plexServerUrlRaw.isLocked
+		? { value: '', source: plexServerUrlRaw.source, isLocked: true }
+		: (plexServerUrlRaw as SettingValue);
+
 	return {
 		settings: {
-			plexServerUrl: apiConfig.plex.serverUrl as SettingValue,
+			plexServerUrl: plexServerUrlMasked,
 			plexToken: toSafeConfigValue(apiConfig.plex.token) satisfies SafeSettingValue,
 			plexAllowInsecureLocalHttp,
 			openaiApiKey: toSafeConfigValue(apiConfig.openai.apiKey) satisfies SafeSettingValue,

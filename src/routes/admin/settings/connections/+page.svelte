@@ -138,7 +138,7 @@ const showOpenaiKeyWarning = $derived(!data.hasEffectiveOpenAIKey && !openaiApiK
 						id="plexServerUrl"
 						name="plexServerUrl"
 						type="url"
-						placeholder="http://plex.local:32400"
+						placeholder={plexServerUrlLocked ? '(set by environment)' : 'http://plex.local:32400'}
 						bind:value={plexServerUrl}
 						disabled={plexServerUrlLocked}
 					/>
@@ -205,7 +205,9 @@ const showOpenaiKeyWarning = $derived(!data.hasEffectiveOpenAIKey && !openaiApiK
 						}
 						isTestingPlex = true;
 						// Connection tests should exercise unsaved edits, not only loaded data.
-						formData.set('plexServerUrl', plexServerUrl);
+						// Mirror the token pattern: skip the set when ENV-locked so the
+						// server-side `submittedUrl || storedUrl` fallback uses the stored URL.
+						if (!plexServerUrlLocked) formData.set('plexServerUrl', plexServerUrl);
 						if (plexTokenInput) formData.set('plexToken', plexTokenInput);
 						formData.set(
 							'plexAllowInsecureLocalHttp',

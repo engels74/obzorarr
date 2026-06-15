@@ -1101,18 +1101,24 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 		/* SubmitButton and shadcn Button child-render the real controls, so
 		   the delete-confirmation palettes must be hoisted. */
 		:global(.confirm-button) {
-			padding: 0.25rem 0.5rem;
+			padding: 0.25rem 0.75rem;
 			background: oklch(var(--destructive));
 			color: oklch(var(--destructive-foreground));
 			border: none;
 			border-radius: var(--radius);
 			font-size: 0.75rem;
-			font-weight: 500;
+			font-weight: 700;
 			cursor: pointer;
 		}
 
 		:global(.confirm-button:hover) {
-			opacity: 0.9;
+			opacity: 0.88;
+			box-shadow: 0 0 0 2px oklch(var(--destructive) / 0.4);
+		}
+
+		:global(.confirm-button:focus-visible) {
+			outline: 2px solid oklch(var(--destructive));
+			outline-offset: 2px;
 		}
 
 		:global(.cancel-delete-button) {
@@ -1122,6 +1128,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			border: 1px solid oklch(var(--border));
 			border-radius: var(--radius);
 			font-size: 0.75rem;
+			font-weight: 400;
 			cursor: pointer;
 		}
 
