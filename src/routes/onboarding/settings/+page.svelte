@@ -574,7 +574,17 @@ function getThemeColors(themeValue: string) {
 												<PresetIcon />
 											</span>
 											<span class="preset-card-body">
-												<span class="preset-card-label">{preset.label}</span>
+												<span class="preset-card-label">
+													{preset.label}
+													<!-- ISSUE-003: presentational-only "Recommended" badge on the
+													     Balanced card. Static markup keyed off the immutable preset
+													     id — it binds to NO rune and does NOT touch selectedPreset, so
+													     it never highlights a card or alters the no-interaction POST
+													     payload (persist-parity holds by construction). -->
+													{#if preset.id === 'balanced'}
+														<span class="preset-card-badge">Recommended</span>
+													{/if}
+												</span>
 												<span class="preset-card-desc">{preset.description}</span>
 												<span class="preset-card-summary">{preset.exposureSummary}</span>
 											</span>
@@ -587,7 +597,8 @@ function getThemeColors(themeValue: string) {
 									</p>
 								{:else if selectedPreset === 'custom'}
 									<p class="preset-custom-note preset-custom-note-neutral" role="status">
-										No preset selected yet — pick one above to get started.
+										No preset selected yet — pick one above, or continue with the current
+										defaults.
 									</p>
 								{/if}
 							</div>
@@ -1579,9 +1590,31 @@ function getThemeColors(themeValue: string) {
 		}
 
 		.preset-card-label {
+			display: inline-flex;
+			align-items: center;
+			flex-wrap: wrap;
+			gap: 0.375rem;
 			font-size: 0.875rem;
 			font-weight: 600;
 			color: rgba(255, 255, 255, 0.92);
+		}
+
+		/* ISSUE-003: presentational "Recommended" badge on the Balanced card.
+		   Themed via the OKLCH custom properties (oklch(var(--token))) so it tracks
+		   the active dashboard theme without referencing preset selection state. */
+		.preset-card-badge {
+			display: inline-flex;
+			align-items: center;
+			padding: 0.0625rem 0.4rem;
+			border-radius: 999px;
+			background: oklch(var(--primary) / 0.16);
+			border: 1px solid oklch(var(--primary) / 0.35);
+			color: oklch(var(--primary));
+			font-size: 0.6rem;
+			font-weight: 600;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+			line-height: 1.2;
 		}
 
 		.preset-card-desc {

@@ -9,6 +9,13 @@ const rawMessage = $derived($page.error?.message ?? '');
 const GENERIC_MESSAGES = new Set(['Not found', 'Not Found']);
 const message = $derived(GENERIC_MESSAGES.has(rawMessage) ? '' : rawMessage);
 
+// ISSUE-002: suppress the bare numeric status code for the friendly 404 case so
+// it matches the polished empty-state intent (the big "404" reads as a hard
+// error above the friendly "Page not found" copy). Other surfaces (403, 429,
+// 5xx) keep the code for context. The HTTP status is unchanged — presentation
+// only.
+const showStatusCode = $derived(status !== 404);
+
 const title = $derived.by(() => {
 	if (status === 404) return 'Page not found';
 	if (status === 403) return 'Access denied';
@@ -41,7 +48,9 @@ function goBack(): void {
 
 <div class="error-page">
 	<div class="error-card">
-		<div class="status-code">{status}</div>
+		{#if showStatusCode}
+			<div class="status-code">{status}</div>
+		{/if}
 		<h1>{title}</h1>
 		<p>{description}</p>
 		<div class="actions">

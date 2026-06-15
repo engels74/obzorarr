@@ -121,6 +121,62 @@ describe('connections nested route — updateApiConfig (OCC + schema)', () => {
 		expect(after.isLocked).toBe(false);
 	});
 
+	// ISSUE-001: false-accept-leaning OpenAI model validation. The rule is a
+	// NARROW reject-list (control chars + shell metacharacters); everything else,
+	// including provider slugs and INTERNAL SPACES in local aliases, must PASS.
+	// A bad model degrades gracefully to template fun facts, so over-rejecting is
+	// strictly worse than over-accepting — hence only one FAIL case (a shell
+	// injection), and never a fail based solely on an internal space.
+	it.each([
+		'gpt-4o-mini',
+		'meta-llama/Llama-3.1-8B:free',
+		'anthropic/claude-3.5'
+	])('accepts and persists a valid OpenAI model id %s (ISSUE-001)', async (openaiModel) => {
+		const result = await run(
+			makeRequest('updateApiConfig', {
+				openaiModel,
+				apiConfigVersion: new Date(Date.now() + 60_000).toISOString()
+			})
+		);
+
+		expect(result).toMatchObject({ success: true });
+		expect((await getApiConfigWithSources()).openai.model.value).toBe(openaiModel);
+	});
+
+	it('PASSES a space-containing local alias (internal-space alias PASSES) (ISSUE-001)', async () => {
+		// Local/aliased model names legitimately contain spaces — an internal space
+		// must NEVER trigger a rejection.
+		const openaiModel = 'My Local Model 7B';
+		const result = await run(
+			makeRequest('updateApiConfig', {
+				openaiModel,
+				apiConfigVersion: new Date(Date.now() + 60_000).toISOString()
+			})
+		);
+
+		expect(result).toMatchObject({ success: true });
+		expect((await getApiConfigWithSources()).openai.model.value).toBe(openaiModel);
+	});
+
+	it('rejects a shell-metacharacter OpenAI model as 400 with fieldErrors.openaiModel and does not persist (ISSUE-001)', async () => {
+		const result = await run(
+			makeRequest('updateApiConfig', {
+				openaiModel: 'gpt; rm -rf',
+				apiConfigVersion: new Date(Date.now() + 60_000).toISOString()
+			})
+		);
+
+		expect(result).toMatchObject({
+			status: 400,
+			data: { error: 'Invalid input' }
+		});
+		const fieldErrors = (result as { data: { fieldErrors?: Record<string, string[]> } }).data
+			.fieldErrors;
+		expect(fieldErrors?.openaiModel?.length).toBeGreaterThan(0);
+		// The malicious value must NOT have been written.
+		expect(await getAppSetting(AppSettingsKey.OPENAI_MODEL)).toBeNull();
+	});
+
 	it('rejects malformed Plex URL as 400 (Zod URL validator)', async () => {
 		const result = await run(
 			makeRequest('updateApiConfig', {

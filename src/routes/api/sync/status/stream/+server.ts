@@ -6,6 +6,18 @@ import type { RequestHandler } from './$types';
 /**
  * SSE stream of sync status.
  *
+ * MEMBER-VISIBLE BY DESIGN: this endpoint is intentionally NOT admin-gated. It
+ * is consumed by the non-admin `/wrapped` layout live-sync indicator via the
+ * client store `src/lib/stores/sync-status.svelte.ts`, so any authenticated
+ * user (member or admin) must be able to reach it. Access matrix:
+ *   - anonymous, onboarding complete  -> 401 (see gate below)
+ *   - anonymous, onboarding pending   -> 200 (onboarding wizard polls progress)
+ *   - any authenticated user          -> 200 (text/event-stream)
+ * The payload is sync-status-only and carries no PII; `simplifyProgress()`
+ * enforces the frame shape (see "Exposed fields per frame" below). This is the
+ * deliberate distinction from the admin-only `/admin/sync/stream` and
+ * `/admin/logs/stream` routes, which expose richer/operational data.
+ *
  * CONDITIONALLY PUBLIC: anonymous access is allowed only while onboarding is
  * incomplete (i.e. before any user account exists), so the onboarding wizard
  * can poll sync progress. Once onboarding is complete, a valid authenticated

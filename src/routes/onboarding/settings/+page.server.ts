@@ -28,6 +28,7 @@ import {
 	WrappedLogoMode,
 	type WrappedLogoModeType
 } from '$lib/server/admin/settings.service';
+import { openaiModelOrEmpty } from '$lib/server/admin/zod-helpers';
 import { testOpenAIConnection } from '$lib/server/funfacts/test-connection';
 import { AIPersonaSchema } from '$lib/server/funfacts/types';
 import { logger } from '$lib/server/logging';
@@ -111,7 +112,14 @@ const SettingsSchema = z.object({
 		.optional(),
 	openaiApiKey: z.string().max(512).optional(),
 	openaiBaseUrl: z.string().max(512).optional(),
-	openaiModel: z.string().max(100).optional(),
+	// ISSUE-001: mirror the connections page's false-accept-leaning model rule.
+	// `optionalString` already coerces blank/whitespace to undefined upstream, so
+	// the empty-string branch is rarely hit here; the helper still tolerates ''
+	// and undefined and applies the same narrow reject-list (control chars +
+	// shell metacharacters only, internal spaces/`. _ - : /` permitted) to a
+	// non-empty value. A bad model degrades gracefully to template fun facts, so
+	// over-rejecting is strictly worse than over-accepting.
+	openaiModel: openaiModelOrEmpty(),
 	aiPersona: AIPersonaSchema.optional()
 });
 

@@ -14,7 +14,7 @@ import {
 	setCachedServerName,
 	toSafeConfigValue
 } from '$lib/server/admin/settings.service';
-import { optionalTrimmed } from '$lib/server/admin/zod-helpers';
+import { openaiModelOrEmpty, optionalTrimmed } from '$lib/server/admin/zod-helpers';
 import { requireAdminActions } from '$lib/server/auth/guards';
 import { testOpenAIConnection } from '$lib/server/funfacts/test-connection';
 import { logger } from '$lib/server/logging';
@@ -81,7 +81,17 @@ const ApiConfigSchema = z.object({
 	// default. Deliberately NO `.min(1)` — that would reject the clear case;
 	// `.trim().max(100)` already accepts '' and `.optional()` covers the
 	// field-absent case (e.g. a Plex-only save) without wiping the model.
-	openaiModel: z.string().trim().max(100).optional(),
+	//
+	// ISSUE-001: `openaiModelOrEmpty()` adds a NARROW, false-accept-leaning
+	// reject-list on TOP of the above (control chars + shell metacharacters
+	// only; internal spaces and `. _ - : /` permitted). A bad/typo'd model
+	// degrades gracefully to the built-in template generator, so over-rejecting
+	// is strictly worse than over-accepting — the refinement only blocks clearly
+	// malicious/garbage input while still honoring '' (clear) and absent (Plex-
+	// only save). A refinement failure populates `fieldErrors.openaiModel`, which
+	// the parse-error path below surfaces as fail(400, { fieldErrors }) without
+	// persisting (parity with the `openaiBaseUrl` inline-error contract).
+	openaiModel: openaiModelOrEmpty(),
 	apiConfigVersion: z.string().min(1, 'Missing api config version (reload the page)')
 });
 

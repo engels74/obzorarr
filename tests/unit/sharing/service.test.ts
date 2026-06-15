@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { eq } from 'drizzle-orm';
+import { setUserDefaultsAtomic } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
 import { appSettings, shareSettings } from '$lib/server/db/schema';
 import {
@@ -431,6 +432,99 @@ describe('Sharing Service', () => {
 				for (const row of rows) {
 					expect(row.modeSource).toBe(ShareModeSource.EXPLICIT);
 				}
+			});
+		});
+
+		// ISSUE-012: the global allow-user-control model is "explicit-apply,
+		// new-users-auto". Saving the global toggle (setUserDefaultsAtomic) writes
+		// only the appSettings rows and must NOT re-materialize existing per-user
+		// can_user_control rows; fan-out to existing default-sourced rows happens
+		// ONLY through the explicit bulkApplyShareDefaults action, which still skips
+		// explicit per-user overrides.
+		describe('allow_user_control propagation model (ISSUE-012)', () => {
+			it('saving the global toggle does NOT change existing per-user can_user_control rows', async () => {
+				// Seed one default-sourced and one explicit row, both with stored
+				// can_user_control = true, while the global flag started OFF.
+				await db.insert(shareSettings).values([
+					{
+						userId: 1,
+						year: 2024,
+						mode: ShareMode.PUBLIC,
+						modeSource: ShareModeSource.DEFAULT,
+						shareToken: null,
+						canUserControl: true
+					},
+					{
+						userId: 2,
+						year: 2024,
+						mode: ShareMode.PRIVATE_OAUTH,
+						modeSource: ShareModeSource.EXPLICIT,
+						shareToken: null,
+						canUserControl: true
+					}
+				]);
+
+				// Flip the GLOBAL allow-user-control flag OFF via the real save path.
+				const result = await setUserDefaultsAtomic({
+					defaultShareMode: ShareMode.PUBLIC,
+					allowUserControl: false,
+					submittedVersion: new Date().toISOString()
+				});
+				expect(result.status).toBe('ok');
+
+				// The global appSettings row reflects the save...
+				expect(await getGlobalAllowUserControl()).toBe(false);
+
+				// ...but the stored per-user can_user_control columns are untouched
+				// (no toggle-time fan-out). Read the raw DB rows directly.
+				const rows = await db.select().from(shareSettings);
+				const defaultRow = rows.find((r) => r.userId === 1);
+				const explicitRow = rows.find((r) => r.userId === 2);
+				expect(defaultRow?.canUserControl).toBe(true);
+				expect(explicitRow?.canUserControl).toBe(true);
+			});
+
+			it('bulkApplyShareDefaults updates default-sourced rows and SKIPS explicit overrides', async () => {
+				// Global flag is OFF; existing rows still carry stored true.
+				await setUserDefaultsAtomic({
+					defaultShareMode: ShareMode.PUBLIC,
+					allowUserControl: false,
+					submittedVersion: new Date().toISOString()
+				});
+
+				await db.insert(shareSettings).values([
+					{
+						userId: 1,
+						year: 2024,
+						mode: ShareMode.PUBLIC,
+						modeSource: ShareModeSource.DEFAULT,
+						shareToken: null,
+						canUserControl: true
+					},
+					{
+						userId: 2,
+						year: 2024,
+						mode: ShareMode.PRIVATE_OAUTH,
+						modeSource: ShareModeSource.EXPLICIT,
+						shareToken: null,
+						canUserControl: true
+					}
+				]);
+
+				const result = await bulkApplyShareDefaults();
+				expect(result).toEqual({ updated: 1, skipped: 1 });
+
+				const rows = await db.select().from(shareSettings);
+				const defaultRow = rows.find((r) => r.userId === 1);
+				const explicitRow = rows.find((r) => r.userId === 2);
+
+				// Default-sourced row is re-materialized to the current global (false).
+				expect(defaultRow?.canUserControl).toBe(false);
+				expect(defaultRow?.modeSource).toBe(ShareModeSource.DEFAULT);
+
+				// Explicit override is skipped: stored can_user_control unchanged.
+				expect(explicitRow?.canUserControl).toBe(true);
+				expect(explicitRow?.modeSource).toBe(ShareModeSource.EXPLICIT);
 			});
 		});
 	});
