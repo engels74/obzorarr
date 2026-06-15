@@ -338,6 +338,16 @@ export async function setServerWrappedSettingsAtomic(opts: {
  * share mode + allow-user-control flag) have not changed since
  * `submittedVersion` and, if so, writes both values in a single SQLite
  * transaction. Returns `'conflict'` when the submitted version is stale.
+ *
+ * ISSUE-012 (explicit-apply, new-users-auto): this writes ONLY the global
+ * `ALLOW_USER_CONTROL` / `DEFAULT_SHARE_MODE` appSettings rows. It does NOT
+ * fan out to existing per-user `share_settings.can_user_control` rows — that
+ * would be a surprising destructive side effect of a single toggle save.
+ * The new global takes effect for NEW rows on creation (via
+ * `getOrCreateShareSettings`) and is applied to EXISTING default-sourced rows
+ * only through the explicit `bulkApplyShareDefaults` admin action (which still
+ * skips explicit per-user overrides). See `bulkApplyShareDefaults` in
+ * `$lib/server/sharing/service`.
  */
 export async function setUserDefaultsAtomic(opts: {
 	defaultShareMode: string;

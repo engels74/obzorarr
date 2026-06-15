@@ -909,6 +909,104 @@ describe('Sharing Access Control', () => {
 				expect(result.accessReason).toBe('owner');
 			});
 		});
+
+		// ISSUE-008 (DECISION: KEEP conservative floor — no admin self-override).
+		// The server-wide privacy floor (getMoreRestrictiveMode in
+		// access-control.ts) clamps the EFFECTIVE share mode for owners and admins
+		// exactly as it does for ordinary members: an admin/owner whose own per-user
+		// row is MORE permissive than the floor is still floored down, and cannot
+		// self-share above the floor. These tests pin that decision against
+		// accidental regression. To self-share, an admin must deliberately lower the
+		// server-wide floor in /admin/settings/privacy (which affects all users).
+		describe('floor applies to admin/owner (no self-override)', () => {
+			it('floors the OWNER down to the more-restrictive global floor even when their own row is more permissive', async () => {
+				// Owner's per-user preference is fully public...
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_OAUTH,
+					allowUserControl: true
+				});
+				await db.insert(shareSettings).values({
+					userId,
+					year,
+					mode: ShareMode.PUBLIC,
+					shareToken: null,
+					canUserControl: true
+				});
+
+				// ...but the more-restrictive floor (private-oauth) is what takes effect.
+				// The owner is still allowed (owner reason) but the EFFECTIVE mode
+				// returned is the floor, not their permissive request — proving the
+				// floor was applied identically to a member (getMoreRestrictiveMode).
+				const currentUser = { id: userId, plexId: 100, isAdmin: false };
+				const result = await checkWrappedAccess({ userId, year, currentUser });
+				expect(result.settings.mode).toBe(ShareMode.PRIVATE_OAUTH);
+			});
+
+			it('floors the ADMIN down to the more-restrictive global floor even when the target row is more permissive', async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_OAUTH,
+					allowUserControl: true
+				});
+				await db.insert(shareSettings).values({
+					userId,
+					year,
+					mode: ShareMode.PUBLIC,
+					shareToken: null,
+					canUserControl: true
+				});
+
+				const currentUser = { id: 999, plexId: 999, isAdmin: true };
+				const result = await checkWrappedAccess({ userId, year, currentUser });
+				expect(result.settings.mode).toBe(ShareMode.PRIVATE_OAUTH);
+			});
+
+			it('floors the OWNER to private-link (token required) for a public row, exactly like a member', async () => {
+				// A private-link floor over a public row clamps the effective mode to
+				// private-link; the floor forces token enforcement on the owner too —
+				// the owner cannot self-promote to token-free public access.
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_LINK,
+					allowUserControl: true
+				});
+				await db.insert(shareSettings).values({
+					userId,
+					year,
+					mode: ShareMode.PUBLIC,
+					shareToken: null,
+					canUserControl: true
+				});
+
+				await expect(
+					checkWrappedAccess({
+						userId,
+						year,
+						currentUser: { id: userId, plexId: 100, isAdmin: false }
+					})
+				).rejects.toBeInstanceOf(InvalidShareTokenError);
+			});
+
+			it('floors the ADMIN to private-link (token required) for a public row, exactly like a member', async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_LINK,
+					allowUserControl: true
+				});
+				await db.insert(shareSettings).values({
+					userId,
+					year,
+					mode: ShareMode.PUBLIC,
+					shareToken: null,
+					canUserControl: true
+				});
+
+				await expect(
+					checkWrappedAccess({
+						userId,
+						year,
+						currentUser: { id: 999, plexId: 999, isAdmin: true }
+					})
+				).rejects.toBeInstanceOf(InvalidShareTokenError);
+			});
+		});
 	});
 
 	describe('checkServerWrappedAccess', () => {

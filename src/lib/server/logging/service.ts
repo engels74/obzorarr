@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, like, lt, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, like, lt, or, sql } from 'drizzle-orm';
 import { db } from '$lib/server/db/client';
 import { appSettings, logs } from '$lib/server/db/schema';
 import type { LogEntry, LogLevelType, LogQueryOptions, LogQueryResult, NewLogEntry } from './types';
@@ -56,7 +56,8 @@ export async function queryLogs(options: LogQueryOptions = {}): Promise<LogQuery
 	}
 
 	if (normalizedSearch) {
-		conditions.push(like(logs.message, `%${normalizedSearch}%`));
+		const pat = `%${normalizedSearch}%`;
+		conditions.push(or(like(logs.message, pat), like(logs.source, pat))!);
 	}
 
 	const whereClause = conditions.length > 0 ? and(...conditions) : undefined;

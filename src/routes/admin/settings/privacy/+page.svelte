@@ -738,10 +738,10 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 						{/snippet}
 					</Form.Control>
 					<Form.Description>
-						Applies to newly-created users. It does not change existing users — use
-						“Apply current defaults to all users” below, or each user’s “Can Control”
-						toggle on the <a href="/admin/users" class="underline">Users</a> page, to update
-						them.
+						New users get this automatically; saving does not change existing users. For
+						retroactive changes use “Apply current defaults to all users” below, or each
+						user’s “Can Control” toggle on the
+						<a href="/admin/users" class="underline">Users</a> page.
 					</Form.Description>
 					<Form.FieldErrors />
 				</Form.Field>

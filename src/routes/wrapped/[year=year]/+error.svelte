@@ -13,6 +13,13 @@ const year = $derived($page.params.year ?? '');
 // the generic copy below — no internal paths or admin-only affordances leaked.
 const isNoDataForYear = $derived(status === 404 && message === 'No data found for this year');
 
+// ISSUE-002: suppress the bare numeric status code on the friendly empty-state
+// surfaces. The big "404" reads as a hard error above the polished "No Wrapped
+// for {year} yet" copy, so hide it for the no-data case (and for any generic 404
+// here for consistency). The HTTP status is unchanged — this is presentation
+// only. Other surfaces (403, 429, 5xx) still show the code for context.
+const showStatusCode = $derived(!isNoDataForYear && status !== 404);
+
 const title = $derived.by(() => {
 	if (isNoDataForYear) return `No Wrapped for ${year} yet`;
 	if (status === 404) return 'Page not found';
@@ -59,7 +66,9 @@ function goBack(): void {
 
 <div class="error-page">
 	<div class="error-card">
-		<div class="status-code">{status}</div>
+		{#if showStatusCode}
+			<div class="status-code">{status}</div>
+		{/if}
 		<h1>{title}</h1>
 		<p>{description}</p>
 		<div class="actions">

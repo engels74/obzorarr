@@ -205,7 +205,7 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 
 				{#if data.lastSync}
 					<div class="sync-row">
-						<span class="sync-label">Records Synced</span>
+						<span class="sync-label">Records (last sync)</span>
 						<span class="sync-value highlight"
 							>{data.lastSync.recordsProcessed.toLocaleString()}</span
 						>

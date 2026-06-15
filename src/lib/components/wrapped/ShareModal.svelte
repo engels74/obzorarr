@@ -462,11 +462,19 @@ $effect(() => {
 									<span class="mode-desc">{modeLabels[mode as ShareModeType].description}</span>
 									{#if globalFloor && isBelowFloor(mode as ShareModeType)}
 										<span class="floor-note">
-											Disabled by server policy: visibility can't be more public than
-											<strong>{modeLabels[globalFloor].label}</strong>. Effective mode at access
-											time will be <strong>{modeLabels[globalFloor].label}</strong>.
-											{#if !isAdmin}
-												Contact your admin to change the server floor.
+											Disabled by the server-wide privacy floor: visibility can't be
+											more public than <strong>{modeLabels[globalFloor].label}</strong>.
+											Effective mode at access time will be
+											<strong>{modeLabels[globalFloor].label}</strong>.
+											{#if isAdmin}
+												Lower the server-wide floor in
+												<a href="/admin/settings/privacy" class="floor-note-link">
+													Privacy settings
+												</a>
+												to self-share — note this lowers the floor for
+												<strong>all users</strong> server-wide, not just you.
+											{:else}
+												Contact your admin to change the server-wide floor.
 											{/if}
 										</span>
 									{/if}
@@ -797,6 +805,16 @@ $effect(() => {
 			background: rgba(250, 204, 21, 0.08);
 			border-left: 2px solid rgba(250, 204, 21, 0.5);
 			border-radius: 4px;
+		}
+
+		.floor-note-link {
+			color: inherit;
+			font-weight: 600;
+			text-decoration: underline;
+		}
+
+		.floor-note-link:hover {
+			text-decoration: none;
 		}
 
 		.check-icon {

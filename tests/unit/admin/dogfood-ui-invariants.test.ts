@@ -346,3 +346,18 @@ describe('ISSUE-001 source-guard — share-floor private-link unavailable copy',
 		expect(floorNote).toContain('Private links and token regeneration are unavailable');
 	});
 });
+
+describe('ISSUE-006 source-guard — admin dashboard sync card label is last-sync-scoped', () => {
+	// The "Records Synced" label previously read as a lifetime total but binds
+	// data.lastSync.recordsProcessed which is the most-recent-sync count only.
+	// The label has been renamed to "Records (last sync)" to make the scope clear.
+	// This guard pins the clarified label so it cannot regress to the ambiguous copy.
+
+	it('sync card label is "Records (last sync)" not the ambiguous "Records Synced"', async () => {
+		const src = await readSource(ADMIN_DASHBOARD);
+		// The clarified label must be present.
+		expect(src).toContain('Records (last sync)');
+		// The old ambiguous label must be gone.
+		expect(src).not.toContain('>Records Synced<');
+	});
+});
