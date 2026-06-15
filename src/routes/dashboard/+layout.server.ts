@@ -1,7 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import { isSafeReturnPath } from '$lib/client/plex-login';
-import { getUserFullProfile } from '$lib/server/admin/users.service';
-import { getOwnerWrappedHref } from '$lib/server/sharing/service';
+import { getOwnerWrappedHrefIfData, getUserFullProfile } from '$lib/server/admin/users.service';
 import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = async ({ locals, url }) => {
@@ -21,9 +20,12 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 	}
 
 	const currentYear = new Date().getFullYear();
+	// Null when the user has no plays this year, so no "My Wrapped" link is rendered
+	// to hover-preload (no recurring 404, ISSUE-001) and no share state is lazily
+	// minted for a no-data user on every load.
 	const [profile, wrappedHref] = await Promise.all([
 		getUserFullProfile(locals.user.id),
-		getOwnerWrappedHref(locals.user.id, currentYear)
+		getOwnerWrappedHrefIfData(locals.user.id, currentYear)
 	]);
 
 	return {

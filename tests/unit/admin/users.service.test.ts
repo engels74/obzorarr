@@ -2,10 +2,20 @@ import { beforeEach, describe, expect, it } from 'bun:test';
 import {
 	deriveEffectiveShareBadge,
 	getAllUsersWithStats,
-	getSyncedViewerCount
+	getOwnerWrappedHrefIfData,
+	getSyncedViewerCount,
+	resolvePlexAccountId,
+	resolveStatsAccountId,
+	userHasResolvablePlaysForYear
 } from '$lib/server/admin/users.service';
 import { db } from '$lib/server/db/client';
-import { appSettings, playHistory, shareSettings, users } from '$lib/server/db/schema';
+import {
+	appSettings,
+	playHistory,
+	plexAccounts,
+	shareSettings,
+	users
+} from '$lib/server/db/schema';
 import {
 	ShareMode,
 	ShareModePrivacyLevel,
@@ -198,6 +208,177 @@ describe('admin users service', () => {
 					}
 				}
 			}
+		});
+	});
+
+	// ISSUE-007 (T2): a registered user/admin whose plays live under a local
+	// play_history.accountId must show non-zero hours even when users.accountId is
+	// null, by bridging plexId -> accountId via plex_accounts — WITHOUT ever
+	// cross-attributing one viewer's history to another on an ambiguous lookup.
+	describe('resolvePlexAccountId (ISSUE-007, pure)', () => {
+		it('returns the local accountId for a single matching plex_accounts row', () => {
+			const rows = [{ accountId: 2001, plexId: 1001, isOwner: true }];
+			expect(resolvePlexAccountId(1001, rows)).toBe(2001);
+		});
+
+		it('returns null (fall back) when there is no matching row', () => {
+			const rows = [{ accountId: 2001, plexId: 1001, isOwner: true }];
+			expect(resolvePlexAccountId(9999, rows)).toBeNull();
+		});
+
+		it('prefers the unique owner row when multiple rows match the plexId', () => {
+			const rows = [
+				{ accountId: 3001, plexId: 1001, isOwner: false },
+				{ accountId: 3002, plexId: 1001, isOwner: true },
+				{ accountId: 3003, plexId: 1001, isOwner: false }
+			];
+			expect(resolvePlexAccountId(1001, rows)).toBe(3002);
+		});
+
+		it('refuses (returns null) when multiple rows match and none is owner', () => {
+			const rows = [
+				{ accountId: 3001, plexId: 1001, isOwner: false },
+				{ accountId: 3002, plexId: 1001, isOwner: false }
+			];
+			expect(resolvePlexAccountId(1001, rows)).toBeNull();
+		});
+
+		it('refuses (returns null) when multiple rows match and more than one is owner', () => {
+			const rows = [
+				{ accountId: 3001, plexId: 1001, isOwner: true },
+				{ accountId: 3002, plexId: 1001, isOwner: true }
+			];
+			expect(resolvePlexAccountId(1001, rows)).toBeNull();
+		});
+	});
+
+	describe('resolveStatsAccountId (ISSUE-007, DB-backed)', () => {
+		it('returns the user own accountId without consulting plex_accounts', async () => {
+			expect(await resolveStatsAccountId({ accountId: 2001, plexId: 1001 })).toBe(2001);
+		});
+
+		it('bridges a null accountId to the local accountId via a single plex_accounts row', async () => {
+			await db.insert(plexAccounts).values({
+				accountId: 2001,
+				plexId: 1001,
+				username: 'owner',
+				isOwner: true
+			});
+			expect(await resolveStatsAccountId({ accountId: null, plexId: 1001 })).toBe(2001);
+		});
+
+		it('falls back to plexId when no plex_accounts row matches', async () => {
+			expect(await resolveStatsAccountId({ accountId: null, plexId: 7777 })).toBe(7777);
+		});
+
+		it('prefers the owner row on an ambiguous (multi-row) plexId', async () => {
+			await db.insert(plexAccounts).values([
+				{ accountId: 4001, plexId: 1001, username: 'managed', isOwner: false },
+				{ accountId: 4002, plexId: 1001, username: 'owner', isOwner: true }
+			]);
+			expect(await resolveStatsAccountId({ accountId: null, plexId: 1001 })).toBe(4002);
+		});
+
+		it('falls back to plexId (never an arbitrary row) when ambiguous with no owner', async () => {
+			await db.insert(plexAccounts).values([
+				{ accountId: 4001, plexId: 1001, username: 'managed-a', isOwner: false },
+				{ accountId: 4002, plexId: 1001, username: 'managed-b', isOwner: false }
+			]);
+			expect(await resolveStatsAccountId({ accountId: null, plexId: 1001 })).toBe(1001);
+		});
+	});
+
+	describe('getAllUsersWithStats account bridging (ISSUE-007)', () => {
+		it('shows non-zero hours for a null-accountId user whose plays live under a bridged accountId', async () => {
+			await db.insert(users).values({ id: 1, plexId: 1001, accountId: null, username: 'admin' });
+			await db.insert(plexAccounts).values({
+				accountId: 2001,
+				plexId: 1001,
+				username: 'admin',
+				isOwner: true
+			});
+			await db.insert(playHistory).values([
+				{
+					historyKey: 'bridge-1',
+					ratingKey: 'r-1',
+					title: 'Movie 1',
+					type: 'movie',
+					viewedAt: createTimestamp(2025, 1, 15),
+					accountId: 2001,
+					librarySectionId: 1,
+					duration: 3600
+				}
+			]);
+
+			const [row] = await getAllUsersWithStats(2025);
+			expect(row?.totalWatchTimeMinutes).toBe(60);
+			expect(row?.totalPlays).toBe(1);
+			expect(row?.hasWatchHistory).toBe(true);
+		});
+
+		it('keeps 0h for a null-accountId user with genuinely no plays', async () => {
+			await db.insert(users).values({ id: 1, plexId: 1001, accountId: null, username: 'admin' });
+			const [row] = await getAllUsersWithStats(2025);
+			expect(row?.totalWatchTimeMinutes).toBe(0);
+			expect(row?.hasWatchHistory).toBe(false);
+		});
+	});
+
+	// ISSUE-001 (T1): the owner Wrapped href must be null for a user with no plays
+	// that year, so callers render no link to hover-preload (eliminating the recurring
+	// swallowed 404) AND no share_settings row is lazily minted on every page load.
+	describe('getOwnerWrappedHrefIfData (ISSUE-001)', () => {
+		it('returns null and mints NO share_settings row for a 0-play user', async () => {
+			await db.insert(users).values({ id: 1, plexId: 1001, accountId: null, username: 'admin' });
+
+			const href = await getOwnerWrappedHrefIfData(1, 2026);
+
+			expect(href).toBeNull();
+			const rows = await db.select().from(shareSettings);
+			expect(rows.length).toBe(0);
+		});
+
+		it('returns a Wrapped href for a user who has plays that year', async () => {
+			await db.insert(users).values({ id: 1, plexId: 1001, accountId: 2001, username: 'viewer' });
+			await db.insert(playHistory).values({
+				historyKey: 'href-1',
+				ratingKey: 'r-1',
+				title: 'Movie 1',
+				type: 'movie',
+				viewedAt: createTimestamp(2026, 1, 15),
+				accountId: 2001,
+				librarySectionId: 1,
+				duration: 3600
+			});
+
+			const href = await getOwnerWrappedHrefIfData(1, 2026);
+
+			expect(href).toMatch(/^\/wrapped\/2026\/u\//);
+		});
+
+		it('bridges plexId -> accountId so a null-accountId user with plays still gets a href', async () => {
+			await db.insert(users).values({ id: 1, plexId: 1001, accountId: null, username: 'admin' });
+			await db.insert(plexAccounts).values({
+				accountId: 2001,
+				plexId: 1001,
+				username: 'admin',
+				isOwner: true
+			});
+			await db.insert(playHistory).values({
+				historyKey: 'href-2',
+				ratingKey: 'r-2',
+				title: 'Movie 2',
+				type: 'movie',
+				viewedAt: createTimestamp(2026, 2, 15),
+				accountId: 2001,
+				librarySectionId: 1,
+				duration: 3600
+			});
+
+			expect(await userHasResolvablePlaysForYear({ accountId: null, plexId: 1001 }, 2026)).toBe(
+				true
+			);
+			expect(await getOwnerWrappedHrefIfData(1, 2026)).toMatch(/^\/wrapped\/2026\/u\//);
 		});
 	});
 

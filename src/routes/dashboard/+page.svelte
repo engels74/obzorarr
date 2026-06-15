@@ -30,25 +30,27 @@ let { data }: Props = $props();
 	</header>
 
 	<div class="cards-container">
-		<a href={data.wrappedHref} class="wrapped-card personal">
-			<div class="card-glow"></div>
-			<div class="card-badge">
-				<span>Personal</span>
-			</div>
-			<div class="card-icon-wrap">
-				<Star class="card-icon" />
-			</div>
-			<div class="card-content">
-				<h2 class="card-title">My Wrapped</h2>
-				<p class="card-description">
-					Discover your personal viewing journey - your top shows, movies, and more
-				</p>
-			</div>
-			<div class="card-action">
-				<span>View your stats</span>
-				<ArrowRight class="card-arrow" />
-			</div>
-		</a>
+		{#if data.wrappedHref}
+			<a href={data.wrappedHref} class="wrapped-card personal">
+				<div class="card-glow"></div>
+				<div class="card-badge">
+					<span>Personal</span>
+				</div>
+				<div class="card-icon-wrap">
+					<Star class="card-icon" />
+				</div>
+				<div class="card-content">
+					<h2 class="card-title">My Wrapped</h2>
+					<p class="card-description">
+						Discover your personal viewing journey - your top shows, movies, and more
+					</p>
+				</div>
+				<div class="card-action">
+					<span>View your stats</span>
+					<ArrowRight class="card-arrow" />
+				</div>
+			</a>
+		{/if}
 
 		<a href="/wrapped/{data.currentYear}" class="wrapped-card server">
 			<div class="card-glow"></div>

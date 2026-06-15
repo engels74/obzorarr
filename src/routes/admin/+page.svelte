@@ -288,14 +288,16 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 			</div>
 
 			<div class="wrapped-grid">
-				<a href={data.wrappedHref} class="wrapped-card personal" onclick={handleAdminNavigation}>
-					<div class="wrapped-card-glow"></div>
-					<div class="wrapped-icon-wrap">
-						<Star class="wrapped-icon" />
-					</div>
-					<span class="wrapped-label">My Wrapped</span>
-					<ArrowRight class="wrapped-arrow" />
-				</a>
+				{#if data.wrappedHref}
+					<a href={data.wrappedHref} class="wrapped-card personal" onclick={handleAdminNavigation}>
+						<div class="wrapped-card-glow"></div>
+						<div class="wrapped-icon-wrap">
+							<Star class="wrapped-icon" />
+						</div>
+						<span class="wrapped-label">My Wrapped</span>
+						<ArrowRight class="wrapped-arrow" />
+					</a>
+				{/if}
 
 				<a href="/wrapped/{data.year}" class="wrapped-card server" onclick={handleAdminNavigation}>
 					<div class="wrapped-card-glow"></div>
