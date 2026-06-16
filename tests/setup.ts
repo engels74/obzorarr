@@ -102,6 +102,11 @@ sqlite.exec(`
 		show_logo INTEGER
 	);
 
+	-- ISSUE-001: mirror migration 0010's UNIQUE(user_id, year) so the test DB
+	-- matches production. getOrCreateShareSettings' onConflictDoNothing targets
+	-- this index; without it SQLite rejects the ON CONFLICT clause.
+	CREATE UNIQUE INDEX IF NOT EXISTS share_settings_user_year_unq ON share_settings (user_id, year);
+
 	CREATE TABLE IF NOT EXISTS custom_slides (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		title TEXT NOT NULL,

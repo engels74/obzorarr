@@ -126,13 +126,19 @@ describe('wrapped/[year]/u/[identifier]: ISSUE-009 anonymous-denial uniformity',
 		const oauthBlockedToken = await captureFailure({ year: YEAR, identifier: OAUTH_BLOCKED_TOKEN });
 
 		// Case 4: valid token for the WRONG year (the line-126 exit). Floor PUBLIC so
-		// the token still resolves; the year mismatch is what denies it.
+		// the token still resolves; the year mismatch is what denies it. Seed under a
+		// SEPARATE user so it does not collide with the case-3 row at (USER_ID, YEAR)
+		// now that share_settings enforces UNIQUE(user_id, year) (ISSUE-001). The
+		// token resolves globally (by token, not user), so a distinct owner does not
+		// change the wrong-year denial under test.
+		const WRONG_YEAR_USER = 43;
+		await seedUser(WRONG_YEAR_USER);
 		await setGlobalShareDefaults({
 			defaultShareMode: ShareMode.PUBLIC,
 			allowUserControl: false
 		});
 		await seedShareSettings({
-			userId: USER_ID,
+			userId: WRONG_YEAR_USER,
 			year: YEAR,
 			mode: ShareMode.PRIVATE_LINK,
 			token: WRONG_YEAR_TOKEN

@@ -145,10 +145,14 @@ describe('server wrapped route year guard (ISSUE-009, ISSUE-018)', () => {
 		}
 	});
 
-	it('throws the exact "No data found for this year" 404 message (FIX-2 +error.svelte contract)', async () => {
-		// The route-scoped wrapped/[year=year]/+error.svelte detects this exact message
-		// to render its friendly empty-state. Lock the string so the boundary copy
-		// and the thrown error can never silently drift apart.
+	it('returns the byte-identical anti-enumeration 404 for an anonymous in-range empty year (ISSUE-003)', async () => {
+		// ISSUE-003 moved access control AHEAD of the data-presence decision, so an
+		// anonymous visitor on a private (private-oauth, the fresh-install default)
+		// server can no longer tell an in-range empty year apart from an
+		// access-denied one: both are now the byte-identical WRAPPED_NOT_FOUND_MESSAGE
+		// 404 (this used to be a distinguishable "No data found for this year" 404
+		// that leaked which years exist). The friendly empty state is reserved for
+		// AUTHORIZED viewers — see the hasData:false tests below.
 		const currentYear = new Date().getFullYear();
 		const emptyPastYear = currentYear - 1;
 		try {
@@ -159,13 +163,49 @@ describe('server wrapped route year guard (ISSUE-009, ISSUE-018)', () => {
 				url: new URL(`http://localhost/wrapped/${emptyPastYear}`),
 				setHeaders: () => {}
 			} as unknown as Parameters<ServerWrappedLoad>[0]);
-			expect.unreachable('Expected 404 for empty past year');
+			expect.unreachable('Expected anti-enumeration 404 for an anonymous empty past year');
 		} catch (err) {
 			expect(isHttpError(err)).toBe(true);
 			if (!isHttpError(err)) throw err;
 			expect(err.status).toBe(404);
-			expect(err.body.message).toBe('No data found for this year');
+			expect(err.body.message).toBe(WRAPPED_NOT_FOUND_MESSAGE);
 		}
+	});
+
+	it('renders a friendly empty state (hasData:false, no throw) for an authorized viewer on an in-range empty year', async () => {
+		// Server mode PUBLIC so the anonymous viewer passes access control; the
+		// in-range empty past year then yields the 200 empty state instead of a 404.
+		await setServerWrappedShareMode(ShareMode.PUBLIC);
+		const currentYear = new Date().getFullYear();
+		const emptyPastYear = currentYear - 1;
+
+		const result = (await load({
+			params: { year: String(emptyPastYear) },
+			locals: {},
+			parent: makeParent([currentYear]),
+			url: new URL(`http://localhost/wrapped/${emptyPastYear}`),
+			setHeaders: () => {}
+		} as unknown as Parameters<ServerWrappedLoad>[0])) as { hasData: boolean; year: number };
+
+		expect(result.hasData).toBe(false);
+		expect(result.year).toBe(emptyPastYear);
+	});
+
+	it('renders the empty state for an authenticated member on an in-range empty year (private-oauth)', async () => {
+		await setServerWrappedShareMode(ShareMode.PRIVATE_OAUTH);
+		const currentYear = new Date().getFullYear();
+		const emptyPastYear = currentYear - 1;
+
+		const result = (await load({
+			params: { year: String(emptyPastYear) },
+			locals: { user: { id: 5, plexId: 100005, username: 'member', isAdmin: false } },
+			parent: makeParent([currentYear]),
+			url: new URL(`http://localhost/wrapped/${emptyPastYear}`),
+			setHeaders: () => {}
+		} as unknown as Parameters<ServerWrappedLoad>[0])) as { hasData: boolean; year: number };
+
+		expect(result.hasData).toBe(false);
+		expect(result.year).toBe(emptyPastYear);
 	});
 
 	it('does not 404 for the current year even when not yet in availableYears (pre-first-sync)', async () => {

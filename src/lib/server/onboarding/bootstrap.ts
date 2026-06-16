@@ -9,7 +9,11 @@ import {
 } from '$lib/server/admin/settings.service';
 
 const BOOTSTRAP_TOKEN_TTL_MS = 15 * 60 * 1000;
-const CLAIM_TTL_SECONDS = 10 * 60;
+// ISSUE-002: 30 min (was 10). The onboarding claim must outlast a slow off-site
+// Plex OAuth round-trip; the return path lands on a page `load` (renewed there)
+// rather than an onboarding action, and a 10-minute window could lapse mid-flow.
+// Both the cookie maxAge and the stored-claim TTL derive from this one constant.
+const CLAIM_TTL_SECONDS = 30 * 60;
 const CLAIM_TTL_MS = CLAIM_TTL_SECONDS * 1000;
 const TOKEN_LENGTH = 14;
 const TOKEN_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';

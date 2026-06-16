@@ -10,7 +10,8 @@ import {
 	hasActiveOnboardingClaim,
 	isOnboardingComplete,
 	type OnboardingStep,
-	OnboardingSteps
+	OnboardingSteps,
+	renewOnboardingClaim
 } from '$lib/server/onboarding';
 import { getServerName } from '$lib/server/plex/server-name.service';
 import type { LayoutServerLoad } from './$types';
@@ -25,6 +26,21 @@ export const load: LayoutServerLoad = async ({ cookies, locals, url }) => {
 	const requestedPath = url.pathname;
 	const isClaimPath = requestedPath === '/onboarding/claim';
 	const hasActiveClaim = await hasActiveOnboardingClaim(cookies);
+
+	// ISSUE-002: renew the claim on every onboarding page load so it survives the
+	// off-site Plex OAuth round-trip. The return path (`/auth/plex/redirect`) lands
+	// back on an onboarding `load`, not an onboarding *action*, so without renewing
+	// here a slow OAuth could lapse the claim and wrongly demand "Setup claim
+	// required" after the owner already authenticated. Renewal still requires the
+	// existing valid claim cookie (anti-theft preserved) and is best-effort: a
+	// failed renewal must never block the onboarding page from rendering.
+	if (hasActiveClaim) {
+		try {
+			await renewOnboardingClaim(cookies, { requestUrl: url });
+		} catch {
+			// Keep the current expiry rather than breaking the page on a write error.
+		}
+	}
 
 	if (!hasActiveClaim && !isClaimPath) {
 		redirect(303, '/onboarding/claim');

@@ -16,7 +16,7 @@ import type { PageProps } from './$types';
 
 let { data }: PageProps = $props();
 
-const messagingContext = $derived(createServerContext(data.serverName));
+const messagingContext = $derived(createServerContext(data.hasData ? data.serverName : null));
 
 type ViewMode = 'story' | 'scroll';
 let viewMode = $state<ViewMode>('story');
@@ -27,7 +27,8 @@ let viewMode = $state<ViewMode>('story');
 // deep-linked slide on its very first render. afterNavigate below re-applies the
 // hash once as a belt-and-suspenders guard.
 function readInitialSlideIndex(): number {
-	return browser ? parseSlideHash(window.location.hash, data.slides.length) : 0;
+	if (!browser || !data.hasData) return 0;
+	return parseSlideHash(window.location.hash, data.slides.length);
 }
 
 let currentSlideIndex = $state(readInitialSlideIndex());
@@ -50,7 +51,7 @@ let routerReady = $state(false);
 let hashSeeded = $state(false);
 afterNavigate(() => {
 	if (!hashSeeded) {
-		currentSlideIndex = parseSlideHash(window.location.hash, data.slides.length);
+		currentSlideIndex = data.hasData ? parseSlideHash(window.location.hash, data.slides.length) : 0;
 		hashSeeded = true;
 	}
 	routerReady = true;
@@ -133,21 +134,41 @@ function handleShare(): void {
 </svelte:head>
 
 <div class="wrapped-page">
-	{#if data.showLogo}
-		<div class="logo-watermark">
-			<Logo size="sm" />
+	{#if !data.hasData}
+		<!-- ISSUE-003: an authorized viewer reached an in-range year with no synced
+		recap yet. Friendly empty state (HTTP 200) instead of the old hard 404. -->
+		{#if data.availableYears && data.availableYears.length > 0}
+			<YearNavigation currentYear={data.year} availableYears={data.availableYears} />
+		{/if}
+		<div class="empty-state">
+			<div class="empty-card">
+				<h1>No {data.year} data yet</h1>
+				<p>
+					There's no Wrapped recap for {data.year} yet. It appears here once a sync has imported
+					viewing history for that year.
+				</p>
+				<div class="empty-actions">
+					<button type="button" class="btn secondary" onclick={handleClose}>Go back</button>
+					<button type="button" class="btn primary" onclick={handleHome}>Home</button>
+				</div>
+			</div>
 		</div>
-	{/if}
+	{:else}
+		{#if data.showLogo}
+			<div class="logo-watermark">
+				<Logo size="sm" />
+			</div>
+		{/if}
 
-	<div class="mode-toggle-container">
-		<ModeToggle mode={viewMode} onModeChange={handleModeChange} />
-	</div>
+		<div class="mode-toggle-container">
+			<ModeToggle mode={viewMode} onModeChange={handleModeChange} />
+		</div>
 
-	{#if data.availableYears && data.availableYears.length > 1}
-		<YearNavigation currentYear={data.year} availableYears={data.availableYears} />
-	{/if}
+		{#if data.availableYears && data.availableYears.length > 1}
+			<YearNavigation currentYear={data.year} availableYears={data.availableYears} />
+		{/if}
 
-	{#if showSummary}
+		{#if showSummary}
 		<SummaryPage
 			stats={data.stats}
 			year={data.year}
@@ -180,14 +201,15 @@ function handleShare(): void {
 		/>
 	{/if}
 
-	<ShareModal
-		bind:open={showShareModal}
-		onOpenChange={(v) => (showShareModal = v)}
-		currentUrl={data.currentUrl}
-		isOwner={false}
-		isAdmin={data.isAdmin}
-		isServerWrapped={true}
-	/>
+		<ShareModal
+			bind:open={showShareModal}
+			onOpenChange={(v) => (showShareModal = v)}
+			currentUrl={data.currentUrl}
+			isOwner={false}
+			isAdmin={data.isAdmin}
+			isServerWrapped={true}
+		/>
+	{/if}
 </div>
 
 <style>
@@ -220,5 +242,76 @@ function handleShare(): void {
 			top: 1rem;
 			right: 1rem;
 			z-index: 100;
+		}
+
+		.empty-state {
+			position: relative;
+			z-index: 1;
+			min-height: 100vh;
+			min-height: 100dvh;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			padding: 2rem;
+		}
+
+		.empty-card {
+			max-width: 480px;
+			width: 100%;
+			text-align: center;
+			background: oklch(var(--card));
+			border: 1px solid oklch(var(--border));
+			border-radius: var(--radius);
+			padding: 2.5rem 2rem;
+		}
+
+		.empty-card h1 {
+			font-size: 1.5rem;
+			font-weight: 600;
+			margin: 0 0 0.75rem;
+			color: oklch(var(--foreground));
+		}
+
+		.empty-card p {
+			color: oklch(var(--muted-foreground));
+			margin: 0 0 2rem;
+			line-height: 1.5;
+		}
+
+		.empty-actions {
+			display: flex;
+			gap: 0.75rem;
+			justify-content: center;
+			flex-wrap: wrap;
+		}
+
+		.btn {
+			padding: 0.625rem 1.25rem;
+			border-radius: var(--radius);
+			font-size: 0.875rem;
+			font-weight: 500;
+			cursor: pointer;
+			border: 1px solid oklch(var(--border));
+			transition: opacity 0.15s ease;
+			text-decoration: none;
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			line-height: 1;
+		}
+
+		.btn:hover {
+			opacity: 0.85;
+		}
+
+		.btn.primary {
+			background: oklch(var(--primary));
+			color: oklch(var(--primary-foreground));
+			border-color: oklch(var(--primary));
+		}
+
+		.btn.secondary {
+			background: oklch(var(--muted));
+			color: oklch(var(--foreground));
 		}
 </style>

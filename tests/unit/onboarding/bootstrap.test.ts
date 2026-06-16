@@ -13,6 +13,7 @@ import {
 	isBootstrapTokenExpired,
 	ONBOARDING_CLAIM_COOKIE,
 	printOnboardingBootstrapBanner,
+	renewOnboardingClaim,
 	validateBootstrapToken
 } from '$lib/server/onboarding/bootstrap';
 import { resetSharedTestDb } from '../../helpers/db';
@@ -189,5 +190,46 @@ describe('onboarding bootstrap token and claim', () => {
 		expect(await getAppSetting(AppSettingsKey.ONBOARDING_CLAIMED)).toBeNull();
 		expect(await getAppSetting(AppSettingsKey.ONBOARDING_CLAIM_PROOF_HASH)).toBeNull();
 		expect(await hasActiveOnboardingClaim(cookies as unknown as Cookies)).toBe(false);
+	});
+
+	// ISSUE-002: the onboarding layout `load` renews the claim on every page view
+	// so it survives a slow off-site Plex OAuth round-trip (the return path lands on
+	// a load, not an action). These lock the renew-on-load primitive it calls.
+	it('renews a still-active claim on load, extending its stored expiry (ISSUE-002)', async () => {
+		const cookies = createCookies();
+		const token = createBootstrapToken();
+		expect(await claimOnboardingInstance(cookies as unknown as Cookies, token)).toBe('claimed');
+
+		// Backdate the claim to near-expiry (still valid, but old) to prove renewal
+		// pushes the expiry forward rather than being a no-op.
+		const backdated = Date.now() - 9 * 60 * 1000;
+		await setAppSetting(AppSettingsKey.ONBOARDING_CLAIMED_AT, String(backdated));
+
+		const renewed = await renewOnboardingClaim(cookies as unknown as Cookies, {
+			requestUrl: new URL('https://example.com/onboarding/plex')
+		});
+		expect(renewed).toBe(true);
+
+		const claimedAt = Number(await getAppSetting(AppSettingsKey.ONBOARDING_CLAIMED_AT));
+		expect(claimedAt).toBeGreaterThan(backdated);
+		expect(await hasActiveOnboardingClaim(cookies as unknown as Cookies)).toBe(true);
+	});
+
+	it('does not let a foreign session renew an active claim (anti-theft preserved)', async () => {
+		const owner = createCookies();
+		const stranger = createCookies();
+		const token = createBootstrapToken();
+		expect(await claimOnboardingInstance(owner as unknown as Cookies, token)).toBe('claimed');
+
+		const before = await getAppSetting(AppSettingsKey.ONBOARDING_CLAIMED_AT);
+
+		// A different session with no valid claim cookie must not be able to renew
+		// (or thereby steal) the owner's active claim.
+		const renewed = await renewOnboardingClaim(stranger as unknown as Cookies, {
+			requestUrl: new URL('https://example.com/onboarding/plex')
+		});
+		expect(renewed).toBe(false);
+		expect(stranger.values.get(ONBOARDING_CLAIM_COOKIE)).toBeUndefined();
+		expect(await getAppSetting(AppSettingsKey.ONBOARDING_CLAIMED_AT)).toBe(before);
 	});
 });

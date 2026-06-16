@@ -416,7 +416,14 @@ export async function getOrCreateShareSettings(
 	const allowUserControl = await getGlobalAllowUserControl();
 	const shareToken = defaultMode === ShareMode.PRIVATE_LINK ? generateShareToken() : null;
 
-	const result = await db
+	// Atomic create (ISSUE-001): a concurrent caller can insert the (user_id, year)
+	// row between the read above and this insert. `onConflictDoNothing` on the
+	// share_settings_user_year_unq index turns that race into a no-op instead of a
+	// duplicate row (which previously let ensurePublicSlug assign one slug to two
+	// rows and 500 the dashboard). Re-select via getShareSettings so every caller
+	// receives the canonical row plus its lazy private-link token mint and the
+	// toShareSettings global-folding — keeping the ShareSettings return contract.
+	await db
 		.insert(shareSettings)
 		.values({
 			userId,
@@ -426,14 +433,14 @@ export async function getOrCreateShareSettings(
 			shareToken,
 			canUserControl: allowUserControl
 		})
-		.returning();
+		.onConflictDoNothing({ target: [shareSettings.userId, shareSettings.year] });
 
-	const record = result[0];
-	if (!record) {
+	const created = await getShareSettings(userId, year);
+	if (!created) {
 		throw new ShareError('Failed to create share settings', 'CREATE_FAILED');
 	}
 
-	return toShareSettings(record, defaultMode, allowUserControl);
+	return created;
 }
 
 export async function updateShareSettings(

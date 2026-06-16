@@ -41,9 +41,16 @@ export const load: PageServerLoad = async ({ locals, setHeaders }) => {
 	const userId = locals.user!.id;
 	const currentYear = new Date().getFullYear();
 
+	// ISSUE-001: resolve/create the (userId, currentYear) share row FIRST, before
+	// getOwnerWrappedHref (which resolves it again via getShareIdentifier). Running
+	// both inside one Promise.all raced two getOrCreateShareSettings inserts into
+	// duplicate rows, which then tripped the public_slug unique constraint and 500'd
+	// this page for brand-new users. The onConflictDoNothing upsert is the structural
+	// fix; this sequencing keeps the hot path single-create as belt-and-suspenders.
+	const shareSettings = await getOrCreateShareSettings({ userId, year: currentYear });
+
 	const [
 		userProfile,
-		shareSettings,
 		wrappedLogoMode,
 		userLogoPreference,
 		sessionExpiration,
@@ -51,7 +58,6 @@ export const load: PageServerLoad = async ({ locals, setHeaders }) => {
 		wrappedHref
 	] = await Promise.all([
 		getUserFullProfile(userId),
-		getOrCreateShareSettings({ userId, year: currentYear }),
 		getWrappedLogoMode(),
 		getUserLogoPreference(userId, currentYear),
 		getSessionExpiration(userId),

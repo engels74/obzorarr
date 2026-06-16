@@ -71,6 +71,13 @@
       "when": 1780950841100,
       "tag": "0009_mute_scarlet_witch",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1781617842203,
+      "tag": "0010_cynical_screwball",
+      "breakpoints": true
     }
   ]
 }
