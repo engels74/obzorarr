@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { index, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const users = sqliteTable('users', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
@@ -66,24 +66,33 @@ export const cachedStats = sqliteTable(
 	(table) => [index('idx_cached_stats_lookup').on(table.userId, table.year, table.statsType)]
 );
 
-export const shareSettings = sqliteTable('share_settings', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	userId: integer('user_id')
-		.notNull()
-		.references(() => users.id, { onDelete: 'cascade' }),
-	year: integer('year').notNull(),
-	mode: text('mode').notNull().default('public'),
-	modeSource: text('mode_source').notNull().default('explicit'),
-	shareToken: text('share_token').unique(),
-	// DF-04 / ISSUE-004: an opaque, non-sequential identifier used in share URLs
-	// for PUBLIC and PRIVATE_OAUTH modes, so the page is no longer served at the
-	// enumerable integer users.id. Lazily minted; NULL until the row is first
-	// shared/viewed. Distinct from shareToken (private-link UUID, own revocation
-	// story) — base62 so it never collides with the UUID-token or numeric-id space.
-	publicSlug: text('public_slug').unique(),
-	canUserControl: integer('can_user_control', { mode: 'boolean' }).default(false),
-	showLogo: integer('show_logo', { mode: 'boolean' })
-});
+export const shareSettings = sqliteTable(
+	'share_settings',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		userId: integer('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		year: integer('year').notNull(),
+		mode: text('mode').notNull().default('public'),
+		modeSource: text('mode_source').notNull().default('explicit'),
+		shareToken: text('share_token').unique(),
+		// DF-04 / ISSUE-004: an opaque, non-sequential identifier used in share URLs
+		// for PUBLIC and PRIVATE_OAUTH modes, so the page is no longer served at the
+		// enumerable integer users.id. Lazily minted; NULL until the row is first
+		// shared/viewed. Distinct from shareToken (private-link UUID, own revocation
+		// story) — base62 so it never collides with the UUID-token or numeric-id space.
+		publicSlug: text('public_slug').unique(),
+		canUserControl: integer('can_user_control', { mode: 'boolean' }).default(false),
+		showLogo: integer('show_logo', { mode: 'boolean' })
+	},
+	// ISSUE-001: one share row per (user_id, year). Without this, the non-atomic
+	// read-then-insert in getOrCreateShareSettings could race two concurrent
+	// callers into duplicate rows, after which ensurePublicSlug's multi-row
+	// `WHERE ... IS NULL` UPDATE assigned one slug to two rows and tripped the
+	// public_slug unique constraint (HTTP 500 on /dashboard/settings).
+	(table) => [uniqueIndex('share_settings_user_year_unq').on(table.userId, table.year)]
+);
 
 export const customSlides = sqliteTable('custom_slides', {
 	id: integer('id').primaryKey({ autoIncrement: true }),

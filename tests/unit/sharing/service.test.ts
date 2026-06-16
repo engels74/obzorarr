@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { setUserDefaultsAtomic } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
 import { appSettings, shareSettings } from '$lib/server/db/schema';
 import {
 	bulkApplyShareDefaults,
 	deleteShareSettings,
+	ensurePublicSlug,
+	ensureShareToken,
 	generateShareToken,
 	getAllUserShareSettings,
 	getEffectiveShareMode,
@@ -757,6 +759,99 @@ describe('Sharing Service', () => {
 				await expect(
 					getOrCreateShareSettings({ userId, year, createIfMissing: false })
 				).rejects.toBeInstanceOf(ShareSettingsNotFoundError);
+			});
+		});
+
+		describe('getOrCreateShareSettings concurrency (ISSUE-001)', () => {
+			it('creates exactly one row when two callers race for a fresh (user, year)', async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PUBLIC,
+					allowUserControl: false
+				});
+
+				// This is the dogfood-500 reproduction: the dashboard load fired
+				// getOrCreateShareSettings twice in one Promise.all. Pre-fix both reads
+				// saw "missing" and both inserted, leaving two rows; now the
+				// onConflictDoNothing upsert collapses the race to a single row.
+				const [a, b] = await Promise.all([
+					getOrCreateShareSettings({ userId, year }),
+					getOrCreateShareSettings({ userId, year })
+				]);
+				expect(a.userId).toBe(userId);
+				expect(a.year).toBe(year);
+				expect(b.userId).toBe(userId);
+
+				const rows = await db
+					.select()
+					.from(shareSettings)
+					.where(and(eq(shareSettings.userId, userId), eq(shareSettings.year, year)));
+				expect(rows).toHaveLength(1);
+			});
+
+			it('keeps exactly one row across many concurrent calls (private-link default)', async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_LINK,
+					allowUserControl: false
+				});
+
+				await Promise.all(
+					Array.from({ length: 8 }, () => getOrCreateShareSettings({ userId, year }))
+				);
+
+				const rows = await db
+					.select()
+					.from(shareSettings)
+					.where(and(eq(shareSettings.userId, userId), eq(shareSettings.year, year)));
+				expect(rows).toHaveLength(1);
+			});
+
+			it('ensurePublicSlug under concurrency assigns one slug to the single row (no unique violation)', async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PUBLIC,
+					allowUserControl: false
+				});
+				await getOrCreateShareSettings({ userId, year });
+
+				// Pre-fix, duplicate rows let this multi-row `WHERE ... IS NULL` UPDATE
+				// assign the same slug to two rows and trip the public_slug unique
+				// constraint (the actual 500). With a single row it mints exactly once.
+				const slugs = await Promise.all([
+					ensurePublicSlug(userId, year),
+					ensurePublicSlug(userId, year)
+				]);
+				expect(slugs[0]).toBe(slugs[1]);
+
+				const rows = await db
+					.select()
+					.from(shareSettings)
+					.where(and(eq(shareSettings.userId, userId), eq(shareSettings.year, year)));
+				expect(rows).toHaveLength(1);
+				expect(rows[0]?.publicSlug).toBe(slugs[0]);
+			});
+
+			it('ensureShareToken under concurrency assigns one token to the single row', async () => {
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_LINK,
+					allowUserControl: false
+				});
+				await getOrCreateShareSettings({ userId, year });
+				// Clear the default-minted token so ensureShareToken must mint.
+				await db
+					.update(shareSettings)
+					.set({ shareToken: null })
+					.where(and(eq(shareSettings.userId, userId), eq(shareSettings.year, year)));
+
+				const tokens = await Promise.all([
+					ensureShareToken(userId, year),
+					ensureShareToken(userId, year)
+				]);
+				expect(tokens[0]).toBe(tokens[1]);
+
+				const rows = await db
+					.select()
+					.from(shareSettings)
+					.where(and(eq(shareSettings.userId, userId), eq(shareSettings.year, year)));
+				expect(rows).toHaveLength(1);
 			});
 		});
 
