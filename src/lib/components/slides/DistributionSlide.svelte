@@ -238,14 +238,14 @@ function formatMinutes(minutes: number): string {
 }
 
 function formatMinutesDetailed(minutes: number): string {
-	if (minutes < 60) return `${Math.round(minutes)} minutes`;
+	if (minutes < 60) return `${Math.round(minutes)}m`;
 	let hours = Math.floor(minutes / 60);
 	let mins = Math.round(minutes % 60);
 	if (mins >= 60) {
 		hours++;
 		mins -= 60;
 	}
-	if (mins === 0) return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+	if (mins === 0) return `${hours}h`;
 	return `${hours}h ${mins}m`;
 }
 

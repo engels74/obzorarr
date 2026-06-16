@@ -468,7 +468,12 @@ $effect(() => {
 											<strong>{modeLabels[globalFloor].label}</strong>.
 											{#if isAdmin}
 												Lower the server-wide floor in
-												<a href="/admin/settings/privacy" class="floor-note-link">
+												<a
+													href="/admin/settings/privacy"
+													class="floor-note-link"
+													target="_blank"
+													rel="noopener noreferrer"
+												>
 													Privacy settings
 												</a>
 												to self-share — note this lowers the floor for
@@ -615,6 +620,12 @@ $effect(() => {
 <style>
 	:global(.share-modal) {
 			max-width: 28rem !important;
+			/* ISSUE-003: under the privacy floor the modal grows tall enough that the
+			   "Regenerate share link" action fell below the viewport with no way to
+			   reach it. Cap the height and scroll INSIDE the dialog so every control
+			   (incl. Regenerate) is reachable without dismissing the modal. */
+			max-height: calc(100dvh - 4rem) !important;
+			overflow-y: auto !important;
 		}
 
 		.url-section {

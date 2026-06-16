@@ -1,6 +1,7 @@
 import { error, fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import { getFunFactFrequency } from '$lib/server/admin/settings.service';
+import { resolveStatsAccountId } from '$lib/server/admin/users.service';
 import { db } from '$lib/server/db/client';
 import { users } from '$lib/server/db/schema';
 import { generateFunFacts } from '$lib/server/funfacts';
@@ -247,7 +248,7 @@ export const load: PageServerLoad = async ({ params, locals, parent, setHeaders 
 		error(404, 'User not found');
 	}
 
-	const statsAccountId = user.accountId ?? user.plexId;
+	const statsAccountId = await resolveStatsAccountId(user);
 	const stats = await calculateUserStats(statsAccountId, year);
 	const userHasWatchHistory = hasWatchHistory(stats);
 
@@ -355,6 +356,12 @@ export const load: PageServerLoad = async ({ params, locals, parent, setHeaders 
 		isAdmin,
 		isLoggedIn: !!locals.user,
 		globalFloor: globalFloorForUrl,
+		// ISSUE-013: display-only affordance. When the effective mode is
+		// server-members (private-oauth), any signed-in member can open this page by
+		// direct URL — intended by the sharing model, not a bypass. Surface a quiet
+		// badge so the OWNER knows their Wrapped is readable by all server members.
+		// No access-control change; anonymous/non-member denial is untouched.
+		visibleToServerMembers: isOwner && effectiveModeForUrl === ShareMode.PRIVATE_OAUTH,
 		currentUrl,
 		canonicalUrl: `/wrapped/${year}/u/${userId}`,
 		yearIdentifiers

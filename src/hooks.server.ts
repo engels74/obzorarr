@@ -306,6 +306,16 @@ export const handleError: HandleServerError = async ({ error, event }) => {
 		return { message: 'Not found' };
 	}
 
+	// Remaining 4xx HttpErrors (403/422/etc — the 404 is handled above) are caller
+	// mistakes, not server faults, so log them at WARN to keep the ERROR channel
+	// reserved for genuine 5xx/unexpected failures (ISSUE-009). Placed after BOTH
+	// 404 guards so neither 404 path is mis-leveled. SvelteKitError is not an
+	// HttpError, so unmatched-route 404s never reach this branch.
+	if (isHttpError(error) && error.status >= 400 && error.status < 500) {
+		logger.warn(`Client error ${error.status}: ${event.url.pathname}`, 'ClientError', metadata);
+		return { message: error.body.message ?? 'Request error' };
+	}
+
 	logger.error(`Unexpected error: ${error}`, 'ErrorHandler', metadata);
 
 	return {

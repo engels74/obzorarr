@@ -49,17 +49,23 @@ function markAvatarFailed(userId: number): void {
 			</div>
 			{#if data.availableYears.length > 0}
 				<form method="GET" class="year-form">
-					<select
-						name="year"
-						class="year-selector"
-						disabled={data.availableYears.length === 1}
-						onchange={(e) => e.currentTarget.form?.requestSubmit()}
-					>
-						{#each data.availableYears as yr}
-							<option value={yr} selected={yr === data.year}>{yr}</option>
-						{/each}
-					</select>
-					<noscript><button type="submit" class="year-submit">Go</button></noscript>
+					<div class="year-selector-wrap">
+						<select
+							name="year"
+							class="year-selector"
+							disabled={data.availableYears.length === 1}
+							title={data.availableYears.length === 1 ? 'Only one year of data available' : undefined}
+							onchange={(e) => e.currentTarget.form?.requestSubmit()}
+						>
+							{#each data.availableYears as yr}
+								<option value={yr} selected={yr === data.year}>{yr}</option>
+							{/each}
+						</select>
+						{#if data.availableYears.length === 1}
+							<p class="year-selector-hint">Only one year of data available</p>
+						{/if}
+						<noscript><button type="submit" class="year-submit">Go</button></noscript>
+					</div>
 				</form>
 			{/if}
 		</div>
@@ -398,6 +404,19 @@ function markAvatarFailed(userId: number): void {
 		.year-selector:disabled {
 			cursor: default;
 			opacity: 0.75;
+		}
+
+		.year-selector-wrap {
+			display: flex;
+			flex-direction: column;
+			align-items: flex-end;
+			gap: 0.25rem;
+		}
+
+		.year-selector-hint {
+			margin: 0;
+			font-size: 0.75rem;
+			color: oklch(var(--muted-foreground));
 		}
 
 		.section {

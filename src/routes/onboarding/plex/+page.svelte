@@ -548,10 +548,12 @@ function formatServerUrl(url: string | null): string {
 					{#if data.plexServerName}
 						<span class="preconfigured-server-name">{data.plexServerName}</span>
 					{/if}
-					{#if data.plexServerUrl}
+					{#if data.plexServerUrl || data.plexServerUrlLocked}
 						<div class="preconfigured-field-row">
 							<span class="preconfigured-field-label">Server URL</span>
-							<span class="preconfigured-url">{formatServerUrl(data.plexServerUrl)}</span>
+							<span class="preconfigured-url">
+								{data.plexServerUrlLocked ? '(set by environment)' : formatServerUrl(data.plexServerUrl)}
+							</span>
 							{#if data.plexServerUrlLocked}
 								<span class="preconfigured-badge" aria-label="Set by environment variable">
 									<svg

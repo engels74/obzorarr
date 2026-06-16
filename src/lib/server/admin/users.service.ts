@@ -1,7 +1,11 @@
 import { and, between, eq, sql } from 'drizzle-orm';
 import { db } from '$lib/server/db/client';
-import { playHistory, shareSettings, users } from '$lib/server/db/schema';
-import { generateShareToken, getGlobalDefaultShareMode } from '$lib/server/sharing/service';
+import { playHistory, plexAccounts, shareSettings, users } from '$lib/server/db/schema';
+import {
+	generateShareToken,
+	getGlobalDefaultShareMode,
+	getOwnerWrappedHref
+} from '$lib/server/sharing/service';
 import {
 	getMoreRestrictiveMode,
 	ShareMode,
@@ -106,12 +110,116 @@ export async function getSyncedViewerCount(): Promise<number> {
 	return result[0]?.count ?? 0;
 }
 
+/**
+ * Bridge a user's Plex.tv id (`plexId`) to the LOCAL Plex `accountId` that
+ * `play_history` is keyed by, using the `plex_accounts` map. Needed because
+ * `users.accountId` is nullable with no backfill yet (ISSUE-007), and a user's
+ * `plexId` (Plex.tv id) is NOT the same number as `play_history.accountId`
+ * (local server id), so stats came back as 0h for accounts that actually had data.
+ *
+ * `plex_accounts.plexId` is NOT unique (managed/home users, multiple servers can
+ * share a Plex.tv id), so the lookup can return several rows. Disambiguate
+ * deterministically: a single match wins; for multiple matches prefer the unique
+ * owner row; if still ambiguous (no owner, or more than one owner) REFUSE and
+ * return null so the caller falls back rather than cross-attributing one viewer's
+ * history to another (P5). Pure, so the three paths are unit-testable without a DB.
+ */
+export function resolvePlexAccountId(
+	plexId: number,
+	rows: { accountId: number; plexId: number; isOwner: boolean | null }[]
+): number | null {
+	const matches = rows.filter((r) => r.plexId === plexId);
+	if (matches.length === 0) return null;
+	if (matches.length === 1) return matches[0]!.accountId;
+	const owners = matches.filter((r) => r.isOwner === true);
+	if (owners.length === 1) return owners[0]!.accountId;
+	return null;
+}
+
+/**
+ * Resolve the LOCAL Plex account id to feed {@link calculateUserStats} for an app
+ * user. Prefers the user's own `accountId`; when null, bridges via `plex_accounts`
+ * ({@link resolvePlexAccountId}); last-resort keeps the legacy `plexId` fallback so
+ * behavior is never worse than before for rows that predate `plex_accounts`.
+ */
+export async function resolveStatsAccountId(user: {
+	accountId: number | null;
+	plexId: number;
+}): Promise<number> {
+	if (user.accountId !== null) return user.accountId;
+	const rows = await db
+		.select({
+			accountId: plexAccounts.accountId,
+			plexId: plexAccounts.plexId,
+			isOwner: plexAccounts.isOwner
+		})
+		.from(plexAccounts)
+		.where(eq(plexAccounts.plexId, user.plexId));
+	return resolvePlexAccountId(user.plexId, rows) ?? user.plexId;
+}
+
+/**
+ * Whether the user has at least one play in `year`, using the bridged local
+ * accountId ({@link resolveStatsAccountId}). Cheap existence check (LIMIT 1).
+ */
+export async function userHasResolvablePlaysForYear(
+	user: { accountId: number | null; plexId: number },
+	year: number
+): Promise<boolean> {
+	const accountId = await resolveStatsAccountId(user);
+	const yearStart = Math.floor(new Date(Date.UTC(year, 0, 1, 0, 0, 0)).getTime() / 1000);
+	const yearEnd = Math.floor(new Date(Date.UTC(year, 11, 31, 23, 59, 59)).getTime() / 1000);
+	const rows = await db
+		.select({ id: playHistory.id })
+		.from(playHistory)
+		.where(
+			and(eq(playHistory.accountId, accountId), between(playHistory.viewedAt, yearStart, yearEnd))
+		)
+		.limit(1);
+	return rows.length > 0;
+}
+
+/**
+ * The owner's Wrapped href for `year`, or null when the user has no resolvable
+ * plays that year. Returning null lets callers render no link, so SvelteKit's
+ * hover-preload (`data-sveltekit-preload-data` in app.html) never fires a request
+ * for an empty personal Wrapped (ISSUE-001). Equally important: by skipping
+ * {@link getOwnerWrappedHref} entirely for a no-data user we avoid lazily minting a
+ * share_settings row on every page load (getOrCreateShareSettings creates on read),
+ * so a 0-play admin no longer accrues share state just by visiting /admin. Mirrors
+ * the existing guard in src/routes/admin/wrapped/+page.server.ts.
+ */
+export async function getOwnerWrappedHrefIfData(
+	userId: number,
+	year: number
+): Promise<string | null> {
+	const userRow = await db
+		.select({ accountId: users.accountId, plexId: users.plexId })
+		.from(users)
+		.where(eq(users.id, userId))
+		.limit(1);
+	const user = userRow[0];
+	if (!user) return null;
+	if (!(await userHasResolvablePlaysForYear(user, year))) return null;
+	return getOwnerWrappedHref(userId, year);
+}
+
 export async function getAllUsersWithStats(year: number): Promise<UserWithStats[]> {
 	const yearStart = Math.floor(new Date(Date.UTC(year, 0, 1, 0, 0, 0)).getTime() / 1000);
 	const yearEnd = Math.floor(new Date(Date.UTC(year, 11, 31, 23, 59, 59)).getTime() / 1000);
 
 	const allUsers = await db.select().from(users);
 	const globalFloor = await getGlobalDefaultShareMode();
+
+	// Bridge null-accountId users to their local play_history accountId via
+	// plex_accounts (ISSUE-007). Loaded once (tiny table) to avoid an N+1 lookup.
+	const plexAccountRows = await db
+		.select({
+			accountId: plexAccounts.accountId,
+			plexId: plexAccounts.plexId,
+			isOwner: plexAccounts.isOwner
+		})
+		.from(plexAccounts);
 
 	const watchTimeByUser = await db
 		.select({
@@ -149,8 +257,11 @@ export async function getAllUsersWithStats(year: number): Promise<UserWithStats[
 	}
 
 	return allUsers.map((user) => {
-		// Legacy rows predate accountId, so plexId remains the compatibility fallback.
-		const stats = (user.accountId !== null ? watchTimeMap.get(user.accountId) : undefined) ??
+		// Prefer the user's own accountId; otherwise bridge plexId -> local accountId
+		// via plex_accounts (ISSUE-007). Legacy rows with neither still fall back to
+		// the plexId lookup, so behavior is never worse than before.
+		const resolvedAccountId = user.accountId ?? resolvePlexAccountId(user.plexId, plexAccountRows);
+		const stats = (resolvedAccountId !== null ? watchTimeMap.get(resolvedAccountId) : undefined) ??
 			watchTimeMap.get(user.plexId) ?? { totalDuration: 0, totalPlays: 0 };
 		const settings = shareSettingsMap.get(user.id);
 		const shareMode = settings?.mode ?? null;

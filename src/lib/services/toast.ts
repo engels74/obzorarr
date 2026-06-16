@@ -25,6 +25,7 @@ function shouldDebounce(message: string): boolean {
 interface ToastOptions {
 	duration?: number;
 	description?: string;
+	action?: { label: string; onClick: () => void };
 }
 
 export const toast = {
@@ -40,7 +41,8 @@ export const toast = {
 		if (shouldDebounce(message)) return;
 		return sonnerToast.error(message, {
 			duration: options?.duration ?? 7000,
-			description: options?.description
+			description: options?.description,
+			action: options?.action
 		});
 	},
 
