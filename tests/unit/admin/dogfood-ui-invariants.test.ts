@@ -12,6 +12,7 @@ async function readSource(relPath: string): Promise<string> {
 }
 
 const CONNECTIONS = 'src/routes/admin/settings/connections/+page.svelte';
+const PRIVACY_PAGE = 'src/routes/admin/settings/privacy/+page.svelte';
 const ONBOARDING = 'src/routes/onboarding/settings/+page.svelte';
 const ONBOARDING_PLEX = 'src/routes/onboarding/plex/+page.svelte';
 const WRAPPED_PAGE = 'src/routes/wrapped/[year=year]/u/[identifier]/+page.svelte';
@@ -359,5 +360,55 @@ describe('ISSUE-006 source-guard — admin dashboard sync card label is last-syn
 		expect(src).toContain('Records (last sync)');
 		// The old ambiguous label must be gone.
 		expect(src).not.toContain('>Records Synced<');
+	});
+});
+
+describe('ISSUE-002 source-guard — bulk-apply confirm dialog uses focus-trapping bits-ui primitive', () => {
+	// The bits-ui AlertDialogPrimitive.Content provides the focus trap; a
+	// Bun/JSDOM-free source suite cannot assert runtime focus movement, so this
+	// pins the primitive wiring instead; only a real Playwright pass should
+	// escalate to a primitive-prop fix if the trap is ever proven broken.
+
+	it('privacy page imports the AlertDialog primitive from $lib/components/ui/alert-dialog/index.js', async () => {
+		const src = await readSource(PRIVACY_PAGE);
+		expect(src).toContain("from '$lib/components/ui/alert-dialog/index.js'");
+	});
+
+	it('bulk-apply dialog uses <AlertDialog.Root bind:open={bulkApplyDialogOpen}> (ISSUE-002)', async () => {
+		const src = await readSource(PRIVACY_PAGE);
+		expect(src).toContain('<AlertDialog.Root bind:open={bulkApplyDialogOpen}>');
+	});
+
+	it('bulk-apply dialog uses <AlertDialog.Content> (the focus-trapping primitive) (ISSUE-002)', async () => {
+		const src = await readSource(PRIVACY_PAGE);
+		// AlertDialog.Content wraps AlertDialogPrimitive.Content from bits-ui which
+		// provides keyboard focus trapping for the modal. A regression that replaces
+		// it with a bare <div> would remove the trap silently.
+		const rootIdx = src.indexOf('<AlertDialog.Root bind:open={bulkApplyDialogOpen}>');
+		expect(rootIdx).toBeGreaterThan(-1);
+		const dialogBlock = src.slice(rootIdx);
+		expect(dialogBlock).toContain('<AlertDialog.Content>');
+	});
+
+	it('bulk-apply dialog has <AlertDialog.Title> (labelled for AT) (ISSUE-002)', async () => {
+		const src = await readSource(PRIVACY_PAGE);
+		const rootIdx = src.indexOf('<AlertDialog.Root bind:open={bulkApplyDialogOpen}>');
+		const dialogBlock = src.slice(rootIdx);
+		expect(dialogBlock).toContain('<AlertDialog.Title>');
+	});
+
+	it('bulk-apply dialog has <AlertDialog.Cancel> (keyboard-dismissable) (ISSUE-002)', async () => {
+		const src = await readSource(PRIVACY_PAGE);
+		const rootIdx = src.indexOf('<AlertDialog.Root bind:open={bulkApplyDialogOpen}>');
+		const dialogBlock = src.slice(rootIdx);
+		expect(dialogBlock).toContain('<AlertDialog.Cancel');
+	});
+
+	it('alert-dialog-content.svelte renders AlertDialogPrimitive.Content from bits-ui (the focus trap element)', async () => {
+		const src = await readSource('src/lib/components/ui/alert-dialog/alert-dialog-content.svelte');
+		// bits-ui's AlertDialogPrimitive.Content is the element that installs the
+		// focus trap. Confirming it is rendered here pins the primitive wiring so a
+		// refactor that swaps it for a bare element cannot go unnoticed.
+		expect(src).toContain('<AlertDialogPrimitive.Content');
 	});
 });
