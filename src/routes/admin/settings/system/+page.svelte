@@ -111,6 +111,7 @@ function formatUptime(seconds: number): string {
 								type="number"
 								min="1"
 								max="365"
+								step="1"
 								{...props}
 								bind:value={$formData.retentionDays}
 							/>
