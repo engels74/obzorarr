@@ -24,7 +24,13 @@ let { data }: Props = $props();
 				<span class="greeting-text">Welcome back</span>
 			</div>
 			<h1 class="page-title">{data.user.username}</h1>
-			<p class="page-subtitle">Your Plex Wrapped for {data.currentYear} is ready to explore</p>
+			{#if data.wrappedHref}
+				<p class="page-subtitle">Your Plex Wrapped for {data.currentYear} is ready to explore</p>
+			{:else}
+				<p class="page-subtitle">
+					No {data.currentYear} viewing history synced yet — your Wrapped will appear here once you have activity
+				</p>
+			{/if}
 		</div>
 		<div class="header-glow"></div>
 	</header>
@@ -50,6 +56,21 @@ let { data }: Props = $props();
 					<ArrowRight class="card-arrow" />
 				</div>
 			</a>
+		{:else}
+			<div class="wrapped-card personal empty">
+				<div class="card-badge">
+					<span>Personal</span>
+				</div>
+				<div class="card-icon-wrap">
+					<Star class="card-icon" />
+				</div>
+				<div class="card-content">
+					<h2 class="card-title">Your {data.currentYear} Wrapped</h2>
+					<p class="card-description">
+						Appears here once you have viewing history this year.
+					</p>
+				</div>
+			</div>
 		{/if}
 
 		<a href="/wrapped/{data.currentYear}" class="wrapped-card server">
@@ -195,6 +216,21 @@ let { data }: Props = $props();
 			opacity: 0;
 			transition: opacity 0.4s ease;
 			pointer-events: none;
+		}
+
+		.wrapped-card.empty {
+			opacity: 0.6;
+			cursor: default;
+		}
+
+		.wrapped-card.empty:hover {
+			border-color: oklch(var(--border));
+			transform: none;
+			box-shadow: none;
+		}
+
+		.wrapped-card.empty:hover .card-icon-wrap {
+			transform: none;
 		}
 
 		.wrapped-card.personal .card-glow {

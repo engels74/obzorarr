@@ -211,6 +211,36 @@ describe('thumbnail auth tokens', () => {
 		await expectHttpStatus(() => authorizeThumbnailPayload(payload!, {}), 403);
 	});
 
+	it('mints thumbnail tokens with a ~30-minute TTL, not ~1 year (ISSUE-005 false-positive proof)', async () => {
+		// TOKEN_TTL_SECONDS = 30*60 = 1800 (thumbnail-auth.ts:15,163)
+		const before = Math.floor(Date.now() / 1000);
+
+		const signedUrl = await createSignedThumbnailUrl('/library/metadata/123/thumb/456', {
+			kind: 'server',
+			year: 2026
+		});
+
+		const payload = await verifyThumbnailToken(extractToken(signedUrl as string));
+		const after = Math.floor(Date.now() / 1000);
+		expect(payload).not.toBeNull();
+
+		// Bound exp against both `before` and `after` so the assertion stays
+		// deterministic regardless of how long the (async) mint took: exp is
+		// stamped at mint time, so before+1800 <= exp <= after+1800 (±1s for
+		// second-boundary rounding). This is robust on slow CI runners.
+		const tolerance = 1;
+		expect(payload!.exp).toBeGreaterThanOrEqual(before + 1800 - tolerance);
+		expect(payload!.exp).toBeLessThanOrEqual(after + 1800 + tolerance);
+
+		// Assert it is definitively NOT ~1 year (~31_536_000s)
+		expect(payload!.exp - after).toBeLessThan(60 * 60);
+
+		// The tester likely misread the `year:2026` payload field as a TTL.
+		// `year` is the Wrapped year (e.g. 2026), not an expiry timestamp.
+		expect(payload!.year).toBe(2026);
+		expect(payload!.year).not.toBe(payload!.exp);
+	});
+
 	it('rejects private-link thumbnail tokens without recreating missing share settings', async () => {
 		await setGlobalShareDefaults({
 			defaultShareMode: ShareMode.PRIVATE_LINK,
