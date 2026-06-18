@@ -89,7 +89,11 @@ export const load: PageServerLoad = async ({ parent, locals, url, cookies }) => 
 			logoMode: formatLogoMode(logoMode),
 			shareMode: formatShareMode(shareMode),
 			allowUserControl: allowUserControl ? 'Allowed' : 'Locked by admin',
-			funFacts: deriveFunFactsSummary(enableFunFacts, notice === 'ai-key-missing', funFactFrequency)
+			funFacts: _deriveFunFactsSummary(
+				enableFunFacts,
+				notice === 'ai-key-missing',
+				funFactFrequency
+			)
 		}
 	};
 };
@@ -161,7 +165,7 @@ export function _deriveAiKeyMissingNotice(
  *    mode", not disabled;
  *  - no key and fun facts were left off  -> genuinely "Disabled".
  */
-function deriveFunFactsSummary(
+export function _deriveFunFactsSummary(
 	hasOpenAiKey: boolean,
 	aiKeyMissing: boolean,
 	frequency: { mode: string; count: number }
