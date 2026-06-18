@@ -229,6 +229,10 @@ let { data }: Props = $props();
 			box-shadow: none;
 		}
 
+		.wrapped-card.empty:hover .card-icon-wrap {
+			transform: none;
+		}
+
 		.wrapped-card.personal .card-glow {
 			background: radial-gradient(circle, oklch(var(--primary) / 0.2) 0%, transparent 70%);
 		}

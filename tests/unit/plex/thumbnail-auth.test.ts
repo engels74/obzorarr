@@ -221,16 +221,19 @@ describe('thumbnail auth tokens', () => {
 		});
 
 		const payload = await verifyThumbnailToken(extractToken(signedUrl as string));
+		const after = Math.floor(Date.now() / 1000);
 		expect(payload).not.toBeNull();
 
-		const ttl = payload!.exp - before;
-
-		// Assert TTL is ~1800s (30 minutes), with a small tolerance for second-boundary crossing
-		expect(ttl).toBeGreaterThanOrEqual(1795);
-		expect(ttl).toBeLessThanOrEqual(1805);
+		// Bound exp against both `before` and `after` so the assertion stays
+		// deterministic regardless of how long the (async) mint took: exp is
+		// stamped at mint time, so before+1800 <= exp <= after+1800 (±1s for
+		// second-boundary rounding). This is robust on slow CI runners.
+		const tolerance = 1;
+		expect(payload!.exp).toBeGreaterThanOrEqual(before + 1800 - tolerance);
+		expect(payload!.exp).toBeLessThanOrEqual(after + 1800 + tolerance);
 
 		// Assert it is definitively NOT ~1 year (~31_536_000s)
-		expect(ttl).toBeLessThan(60 * 60);
+		expect(payload!.exp - after).toBeLessThan(60 * 60);
 
 		// The tester likely misread the `year:2026` payload field as a TTL.
 		// `year` is the Wrapped year (e.g. 2026), not an expiry timestamp.
