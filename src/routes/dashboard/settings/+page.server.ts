@@ -1,8 +1,10 @@
-import { fail } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
+import { isSafeReturnPath } from '$lib/client/plex-login';
 import { getWrappedLogoMode, WrappedLogoMode } from '$lib/server/admin/settings.service';
 import { getUserFullProfile } from '$lib/server/admin/users.service';
+import { requireUserActions } from '$lib/server/auth/guards';
 import { db } from '$lib/server/db/client';
 import { sessions } from '$lib/server/db/schema';
 import {
@@ -31,14 +33,26 @@ async function getSessionExpiration(userId: number): Promise<Date | null> {
 	return result[0]?.expiresAt ?? null;
 }
 
-export const load: PageServerLoad = async ({ locals, setHeaders }) => {
+export const load: PageServerLoad = async ({ locals, setHeaders, url }) => {
+	// Page `load` runs in parallel with the layout `load` redirect, so guard the
+	// unauthenticated case here too — otherwise the `locals.user!.id` deref below
+	// can win the race and 500 with a TypeError instead of redirecting (ISSUE-006).
+	// Mirror the layout's isSafeReturnPath returnTo carrier to land back here post-login.
+	if (!locals.user) {
+		const requestedPath = url.pathname;
+		const location = isSafeReturnPath(requestedPath)
+			? `/?returnTo=${encodeURIComponent(requestedPath)}`
+			: '/';
+		redirect(303, location);
+	}
+
 	// The floor message and disabled-radio state are derived from the live
 	// global default share mode (admin-controlled). Browsers MUST refetch on
 	// every navigation, otherwise the page renders with a stale floor when the
 	// admin flips the global default in another tab.
 	setHeaders({ 'cache-control': 'no-store' });
 
-	const userId = locals.user!.id;
+	const userId = locals.user.id;
 	const currentYear = new Date().getFullYear();
 
 	// ISSUE-001: resolve/create the (userId, currentYear) share row FIRST, before
@@ -68,8 +82,8 @@ export const load: PageServerLoad = async ({ locals, setHeaders }) => {
 	return {
 		user: {
 			id: userProfile?.id ?? userId,
-			plexId: userProfile?.plexId ?? locals.user!.plexId ?? null,
-			username: userProfile?.username ?? locals.user!.username,
+			plexId: userProfile?.plexId ?? locals.user.plexId ?? null,
+			username: userProfile?.username ?? locals.user.username,
 			email: userProfile?.email ?? null,
 			thumb: userProfile?.thumb ?? null,
 			createdAt: userProfile?.createdAt ?? null
@@ -89,7 +103,7 @@ export const load: PageServerLoad = async ({ locals, setHeaders }) => {
 	};
 };
 
-export const actions: Actions = {
+export const actions: Actions = requireUserActions({
 	updateShareMode: async ({ request, locals }) => {
 		const userId = locals.user!.id;
 		const currentYear = new Date().getFullYear();
@@ -214,4 +228,4 @@ export const actions: Actions = {
 			return fail(500, { error: message, action: 'updateLogoPreference' });
 		}
 	}
-};
+});
