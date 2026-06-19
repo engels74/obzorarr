@@ -227,8 +227,13 @@ function getForwardedPairLabel(status: string): string {
 		</CardHeader>
 		<CardContent class="space-y-4">
 			{#if !security.originLocked}
+				<!-- novalidate defers URL validation to the server so an invalid origin
+				     reaches the `?/updateCsrfOrigin` action and `csrfOriginError` can render
+				     the field error, instead of the browser silently blocking submit on the
+				     type="url" input. Mirrors `openai-settings-form` (connections/+page.svelte:264). -->
 				<form
 					id="csrf-origin-form"
+					novalidate
 					method="POST"
 					action="?/updateCsrfOrigin"
 					use:enhance={({ cancel }) => {
