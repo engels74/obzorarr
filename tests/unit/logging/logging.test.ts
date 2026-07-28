@@ -270,10 +270,13 @@ describe('logging service and logger', () => {
 			['deleteLogsOlderThan', async () => deleteLogsOlderThan(Date.now() - 3 * DAY_MS), 2, 2],
 			['trimLogsToCount', async () => trimLogsToCount(2), 1, 3],
 			['trimLogsToCount above total', async () => trimLogsToCount(10), 0, 4]
-		] as const)('%s returns deleted count and leaves expected rows', async (_name, cleanup, deleted, remaining) => {
-			expect(await cleanup()).toBe(deleted);
-			expect((await queryLogs()).logs).toHaveLength(remaining);
-		});
+		] as const)(
+			'%s returns deleted count and leaves expected rows',
+			async (_name, cleanup, deleted, remaining) => {
+				expect(await cleanup()).toBe(deleted);
+				expect((await queryLogs()).logs).toHaveLength(remaining);
+			}
+		);
 
 		it('runs retention cleanup with configured and default settings', async () => {
 			await setLogRetentionDays(3);
@@ -453,16 +456,19 @@ describe('logging retention scheduler', () => {
 		['defaults', undefined, undefined, '0 3 * * *', 'UTC'],
 		['custom cron', '0 6 * * *', undefined, '0 6 * * *', 'UTC'],
 		['custom timezone', '0 3 * * *', 'America/New_York', '0 3 * * *', 'America/New_York']
-	] as const)('creates scheduler with %s', (_name, cronExpression, timezone, expectedExpression, expectedTimezone) => {
-		retention.setupLogRetentionScheduler(cronExpression, timezone);
+	] as const)(
+		'creates scheduler with %s',
+		(_name, cronExpression, timezone, expectedExpression, expectedTimezone) => {
+			retention.setupLogRetentionScheduler(cronExpression, timezone);
 
-		expect(mockCronInstances).toHaveLength(1);
-		expect(mockCronInstances[0]).toMatchObject({
-			expression: expectedExpression,
-			timezone: expectedTimezone,
-			name: 'log-retention'
-		});
-	});
+			expect(mockCronInstances).toHaveLength(1);
+			expect(mockCronInstances[0]).toMatchObject({
+				expression: expectedExpression,
+				timezone: expectedTimezone,
+				name: 'log-retention'
+			});
+		}
+	);
 
 	it('replaces existing schedulers and logs configuration', () => {
 		retention.setupLogRetentionScheduler();
@@ -555,10 +561,13 @@ describe('logging retention scheduler', () => {
 		['no scheduler', false, false],
 		['scheduler exists', true, true],
 		['scheduler stopped', true, false]
-	] as const)('isRetentionSchedulerConfigured returns %s state', (_name, createScheduler, expected) => {
-		if (createScheduler) retention.setupLogRetentionScheduler();
-		if (!expected && createScheduler) retention.stopLogRetentionScheduler();
+	] as const)(
+		'isRetentionSchedulerConfigured returns %s state',
+		(_name, createScheduler, expected) => {
+			if (createScheduler) retention.setupLogRetentionScheduler();
+			if (!expected && createScheduler) retention.stopLogRetentionScheduler();
 
-		expect(retention.isRetentionSchedulerConfigured()).toBe(expected);
-	});
+			expect(retention.isRetentionSchedulerConfigured()).toBe(expected);
+		}
+	);
 });

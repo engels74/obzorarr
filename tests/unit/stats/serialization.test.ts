@@ -92,16 +92,19 @@ describe('stats serialization contracts', () => {
 	it.each([
 		['user', userStats(), parseUserStats, 'userId', 1],
 		['server', serverStats(), parseServerStats, 'totalUsers', 10]
-	] as const)('serializes, parses, auto-detects, and round-trips %s stats', (_name, stats, parser, key, value) => {
-		const json = serializeStats(stats);
-		const parsed = parser(json);
-		const detected = parseStats(json);
+	] as const)(
+		'serializes, parses, auto-detects, and round-trips %s stats',
+		(_name, stats, parser, key, value) => {
+			const json = serializeStats(stats);
+			const parsed = parser(json);
+			const detected = parseStats(json);
 
-		expect(json).toContain(`"${key}":${value}`);
-		expect(parsed).toEqual(stats);
-		expect(detected).toEqual(stats);
-		expect(roundTripStats(stats)).toEqual(stats);
-	});
+			expect(json).toContain(`"${key}":${value}`);
+			expect(parsed).toEqual(stats);
+			expect(detected).toEqual(stats);
+			expect(roundTripStats(stats)).toEqual(stats);
+		}
+	);
 
 	it('preserves nullable rich fields through round-trip', () => {
 		const original = userStats({

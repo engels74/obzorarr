@@ -73,18 +73,17 @@ describe('core client/server utility contracts', () => {
 			expect(shouldUseRedirectAuth(new URLSearchParams(params), navigator)).toBe(expected);
 		});
 
-		it.each([
-			'Playwright/1.44',
-			'Puppeteer/22.0',
-			'Selenium/4.0'
-		] as const)('redirects for automation user agent %s', (tool) => {
-			expect(
-				shouldUseRedirectAuth(
-					new URLSearchParams(),
-					createNavigator({ userAgent: `Mozilla/5.0 ${tool}` })
-				)
-			).toBe(true);
-		});
+		it.each(['Playwright/1.44', 'Puppeteer/22.0', 'Selenium/4.0'] as const)(
+			'redirects for automation user agent %s',
+			(tool) => {
+				expect(
+					shouldUseRedirectAuth(
+						new URLSearchParams(),
+						createNavigator({ userAgent: `Mozilla/5.0 ${tool}` })
+					)
+				).toBe(true);
+			}
+		);
 	});
 
 	describe('route params and versioning', () => {

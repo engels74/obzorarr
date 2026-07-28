@@ -126,18 +126,21 @@ describe('onboarding settings actions', () => {
 			'https://api.openai.example/v1#models',
 			'Configured base URLs must not include query strings or fragments.'
 		]
-	] as const)('rejects OpenAI base URL %s even when the API key is blank', async (openaiBaseUrl, error) => {
-		const result = await runSaveSettings(
-			createSettingsRequest({
-				enableFunFacts: 'true',
-				funFactFrequency: 'normal',
-				openaiApiKey: '',
-				openaiBaseUrl
-			})
-		);
+	] as const)(
+		'rejects OpenAI base URL %s even when the API key is blank',
+		async (openaiBaseUrl, error) => {
+			const result = await runSaveSettings(
+				createSettingsRequest({
+					enableFunFacts: 'true',
+					funFactFrequency: 'normal',
+					openaiApiKey: '',
+					openaiBaseUrl
+				})
+			);
 
-		expect(result).toMatchObject({ status: 400, data: { error } });
-	});
+			expect(result).toMatchObject({ status: 400, data: { error } });
+		}
+	);
 
 	it('persists non-default visual/privacy settings before redirecting to completion', async () => {
 		await expectRedirect(

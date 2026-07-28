@@ -80,17 +80,16 @@ describe('onboarding openaiModel validation (ISSUE-001)', () => {
 		await initializeDefaultSlideConfig();
 	});
 
-	it.each([
-		'gpt-4o-mini',
-		'meta-llama/Llama-3.1-8B:free',
-		'anthropic/claude-3.5'
-	])('accepts and persists a valid OpenAI model id %s', async (openaiModel) => {
-		await expectRedirect(
-			() => runSaveSettings(createSettingsRequest(aiOverrides(openaiModel))),
-			'/onboarding/complete'
-		);
-		expect(await getAppSetting(AppSettingsKey.OPENAI_MODEL)).toBe(openaiModel);
-	});
+	it.each(['gpt-4o-mini', 'meta-llama/Llama-3.1-8B:free', 'anthropic/claude-3.5'])(
+		'accepts and persists a valid OpenAI model id %s',
+		async (openaiModel) => {
+			await expectRedirect(
+				() => runSaveSettings(createSettingsRequest(aiOverrides(openaiModel))),
+				'/onboarding/complete'
+			);
+			expect(await getAppSetting(AppSettingsKey.OPENAI_MODEL)).toBe(openaiModel);
+		}
+	);
 
 	it('PASSES a space-containing local alias (internal-space alias PASSES)', async () => {
 		const openaiModel = 'My Local Model 7B';

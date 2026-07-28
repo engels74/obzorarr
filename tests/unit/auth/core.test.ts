@@ -96,15 +96,18 @@ describe('auth core contracts', () => {
 				'Custom session expired message',
 				'SESSION_EXPIRED'
 			]
-		] as const)('%s preserves default/custom messages, code, name, and inheritance', (name, ErrorClass, defaultMessage, customMessage, code) => {
-			const defaultError = new ErrorClass();
-			const customError = new ErrorClass(customMessage);
+		] as const)(
+			'%s preserves default/custom messages, code, name, and inheritance',
+			(name, ErrorClass, defaultMessage, customMessage, code) => {
+				const defaultError = new ErrorClass();
+				const customError = new ErrorClass(customMessage);
 
-			expect(defaultError).toBeInstanceOf(AuthError);
-			expect(defaultError).toBeInstanceOf(Error);
-			expect(defaultError).toMatchObject({ message: defaultMessage, code, name });
-			expect(customError.message).toBe(customMessage);
-		});
+				expect(defaultError).toBeInstanceOf(AuthError);
+				expect(defaultError).toBeInstanceOf(Error);
+				expect(defaultError).toMatchObject({ message: defaultMessage, code, name });
+				expect(customError.message).toBe(customMessage);
+			}
+		);
 
 		it('stores Plex API error context and distinguishes concrete error classes', () => {
 			const cause = new Error('Network failure');
@@ -537,18 +540,22 @@ describe('auth routes and browser login flow', () => {
 		it.each([
 			['GET load', 0],
 			['POST action', 1]
-		] as const)('%s redirects to / and only POST clears the session cookie', async (_name, deletes) => {
-			const cookies = createTestCookies({ session: 'session-abc' });
-			const action =
-				_name === 'GET load'
-					? () => logoutLoad({ cookies } as never)
-					: () => logoutActions.default!({ cookies } as never);
+		] as const)(
+			'%s redirects to / and only POST clears the session cookie',
+			async (_name, deletes) => {
+				const cookies = createTestCookies({ session: 'session-abc' });
+				const action =
+					_name === 'GET load'
+						? () => logoutLoad({ cookies } as never)
+						: () => logoutActions.default!({ cookies } as never);
 
-			await expectRedirect(action, '/');
+				await expectRedirect(action, '/');
 
-			expect(cookies.deletes).toHaveLength(deletes);
-			if (deletes) expect(cookies.deletes[0]).toEqual({ name: 'session', options: { path: '/' } });
-		});
+				expect(cookies.deletes).toHaveLength(deletes);
+				if (deletes)
+					expect(cookies.deletes[0]).toEqual({ name: 'session', options: { path: '/' } });
+			}
+		);
 	});
 
 	describe('GET /auth/plex content negotiation', () => {
@@ -660,19 +667,22 @@ describe('auth routes and browser login flow', () => {
 		it.each([
 			['onboarding', false, 456, 'https://app.plex.tv'],
 			['landing', true, 789, undefined]
-		] as const)('redirect load exposes %s PIN fallback without tokens', async (context, onboarded, pinId, referer) => {
-			if (onboarded) await setAppSetting(AppSettingsKey.ONBOARDING_COMPLETED, 'true');
-			const cookies = createTestCookies();
-			const state = await createPinTransaction(pinId, cookies);
+		] as const)(
+			'redirect load exposes %s PIN fallback without tokens',
+			async (context, onboarded, pinId, referer) => {
+				if (onboarded) await setAppSetting(AppSettingsKey.ONBOARDING_COMPLETED, 'true');
+				const cookies = createTestCookies();
+				const state = await createPinTransaction(pinId, cookies);
 
-			const result = await redirectLoad(redirectEvent(cookies, state, referer));
+				const result = await redirectLoad(redirectEvent(cookies, state, referer));
 
-			expect(result).toMatchObject({
-				stateVerified: true,
-				serverPinFallback: { pinId, context }
-			});
-			expect(JSON.stringify(result)).not.toContain('token');
-		});
+				expect(result).toMatchObject({
+					stateVerified: true,
+					serverPinFallback: { pinId, context }
+				});
+				expect(JSON.stringify(result)).not.toContain('token');
+			}
+		);
 
 		it('does not poll Plex or create a session before callback verification', async () => {
 			const cookies = createTestCookies();
@@ -689,14 +699,12 @@ describe('auth routes and browser login flow', () => {
 	});
 
 	describe('returnTo open-redirect protection', () => {
-		it.each([
-			'/admin/settings',
-			'/admin',
-			'/dashboard?tab=x',
-			'/admin/users#section'
-		] as const)('accepts safe same-origin path %s', (path) => {
-			expect(isSafeReturnPath(path)).toBe(true);
-		});
+		it.each(['/admin/settings', '/admin', '/dashboard?tab=x', '/admin/users#section'] as const)(
+			'accepts safe same-origin path %s',
+			(path) => {
+				expect(isSafeReturnPath(path)).toBe(true);
+			}
+		);
 
 		it.each([
 			'//evil.com',

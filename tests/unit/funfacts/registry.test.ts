@@ -63,15 +63,18 @@ describe('fun facts errors', () => {
 			'INSUFFICIENT_STATS',
 			400
 		]
-	] as const)('%s preserves defaults, overrides, status, and inheritance', (name, ErrorClass, defaultMessage, customMessage, code, statusCode) => {
-		const defaultError = new ErrorClass();
-		const customError = new ErrorClass(customMessage);
+	] as const)(
+		'%s preserves defaults, overrides, status, and inheritance',
+		(name, ErrorClass, defaultMessage, customMessage, code, statusCode) => {
+			const defaultError = new ErrorClass();
+			const customError = new ErrorClass(customMessage);
 
-		expect(defaultError).toBeInstanceOf(FunFactsError);
-		expect(defaultError).toBeInstanceOf(Error);
-		expect(defaultError).toMatchObject({ message: defaultMessage, code, statusCode, name });
-		expect(customError.message).toBe(customMessage);
-	});
+			expect(defaultError).toBeInstanceOf(FunFactsError);
+			expect(defaultError).toBeInstanceOf(Error);
+			expect(defaultError).toMatchObject({ message: defaultMessage, code, statusCode, name });
+			expect(customError.message).toBe(customMessage);
+		}
+	);
 
 	it('stores AI generation causes and keeps subclasses distinguishable', () => {
 		const cause = new Error('Original error');
