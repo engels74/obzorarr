@@ -127,15 +127,16 @@ describe('onboarding page action claim and admin guards', () => {
 		clearBootstrapToken();
 	});
 
-	it.each(
-		claimCheckedActions
-	)('%s returns the shared claim-required failure', async (_name, action) => {
-		const result = await runAction(action, createOnboardingCookies());
-		expect(result).toMatchObject({
-			status: 403,
-			data: { error: ONBOARDING_CLAIM_REQUIRED_MESSAGE }
-		});
-	});
+	it.each(claimCheckedActions)(
+		'%s returns the shared claim-required failure',
+		async (_name, action) => {
+			const result = await runAction(action, createOnboardingCookies());
+			expect(result).toMatchObject({
+				status: 403,
+				data: { error: ONBOARDING_CLAIM_REQUIRED_MESSAGE }
+			});
+		}
+	);
 
 	it.each(claimCheckedActions)('%s propagates unexpected claim errors', async (name, action) => {
 		const unexpected = new Error(`unexpected claim renewal failure in ${name}`);
@@ -147,16 +148,17 @@ describe('onboarding page action claim and admin guards', () => {
 		}
 	});
 
-	it.each(
-		adminRequiredActions
-	)('%s preserves the admin failure after a valid setup claim', async (_name, action) => {
-		const cookies = await claimOnboardingCookies();
-		for (const locals of [anonymousLocals, nonAdminLocals]) {
-			const result = await runAction(action, cookies, locals);
-			expect(result).toMatchObject({
-				status: 403,
-				data: { error: 'Admin access required' }
-			});
+	it.each(adminRequiredActions)(
+		'%s preserves the admin failure after a valid setup claim',
+		async (_name, action) => {
+			const cookies = await claimOnboardingCookies();
+			for (const locals of [anonymousLocals, nonAdminLocals]) {
+				const result = await runAction(action, cookies, locals);
+				expect(result).toMatchObject({
+					status: 403,
+					data: { error: 'Admin access required' }
+				});
+			}
 		}
-	});
+	);
 });

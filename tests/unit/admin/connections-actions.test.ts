@@ -127,21 +127,20 @@ describe('connections nested route — updateApiConfig (OCC + schema)', () => {
 	// A bad model degrades gracefully to template fun facts, so over-rejecting is
 	// strictly worse than over-accepting — hence only one FAIL case (a shell
 	// injection), and never a fail based solely on an internal space.
-	it.each([
-		'gpt-4o-mini',
-		'meta-llama/Llama-3.1-8B:free',
-		'anthropic/claude-3.5'
-	])('accepts and persists a valid OpenAI model id %s (ISSUE-001)', async (openaiModel) => {
-		const result = await run(
-			makeRequest('updateApiConfig', {
-				openaiModel,
-				apiConfigVersion: new Date(Date.now() + 60_000).toISOString()
-			})
-		);
+	it.each(['gpt-4o-mini', 'meta-llama/Llama-3.1-8B:free', 'anthropic/claude-3.5'])(
+		'accepts and persists a valid OpenAI model id %s (ISSUE-001)',
+		async (openaiModel) => {
+			const result = await run(
+				makeRequest('updateApiConfig', {
+					openaiModel,
+					apiConfigVersion: new Date(Date.now() + 60_000).toISOString()
+				})
+			);
 
-		expect(result).toMatchObject({ success: true });
-		expect((await getApiConfigWithSources()).openai.model.value).toBe(openaiModel);
-	});
+			expect(result).toMatchObject({ success: true });
+			expect((await getApiConfigWithSources()).openai.model.value).toBe(openaiModel);
+		}
+	);
 
 	it('PASSES a space-containing local alias (internal-space alias PASSES) (ISSUE-001)', async () => {
 		// Local/aliased model names legitimately contain spaces — an internal space
@@ -363,17 +362,20 @@ describe('connections nested route — updateApiConfig (OCC + schema)', () => {
 			'https://api.openai.example/v1#models',
 			'Configured base URLs must not include query strings or fragments.'
 		]
-	])('rejects unsafe OpenAI base URL %s with no API key submitted', async (openaiBaseUrl, error) => {
-		const result = await run(
-			makeRequest('updateApiConfig', {
-				openaiBaseUrl,
-				apiConfigVersion: new Date(0).toISOString()
-			})
-		);
+	])(
+		'rejects unsafe OpenAI base URL %s with no API key submitted',
+		async (openaiBaseUrl, error) => {
+			const result = await run(
+				makeRequest('updateApiConfig', {
+					openaiBaseUrl,
+					apiConfigVersion: new Date(0).toISOString()
+				})
+			);
 
-		expect(result).toMatchObject({ status: 400, data: { error } });
-		expect(await getAppSetting(AppSettingsKey.OPENAI_BASE_URL)).toBeNull();
-	});
+			expect(result).toMatchObject({ status: 400, data: { error } });
+			expect(await getAppSetting(AppSettingsKey.OPENAI_BASE_URL)).toBeNull();
+		}
+	);
 
 	it('returns a fresh apiConfigVersion on success (A2)', async () => {
 		await withUnlockedPlex(async () => {

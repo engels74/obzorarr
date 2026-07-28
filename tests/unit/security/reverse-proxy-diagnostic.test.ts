@@ -283,12 +283,15 @@ describe('assertEnableTrustProxyAllowed', () => {
 		'appears-working',
 		'unable-to-determine',
 		'env-controlled'
-	] as ReverseProxyRecommendationAction[])('rejects enabling when the diagnostic recommendation is "%s"', (action) => {
-		expect(assertEnableTrustProxyAllowed(diagnosticWith(action))).toEqual({
-			ok: false,
-			error: ENABLE_TRUST_PROXY_NOT_RECOMMENDED_MESSAGE
-		});
-	});
+	] as ReverseProxyRecommendationAction[])(
+		'rejects enabling when the diagnostic recommendation is "%s"',
+		(action) => {
+			expect(assertEnableTrustProxyAllowed(diagnosticWith(action))).toEqual({
+				ok: false,
+				error: ENABLE_TRUST_PROXY_NOT_RECOMMENDED_MESSAGE
+			});
+		}
+	);
 });
 
 type HandlerArgs = Parameters<typeof diagnosticGET>[0];

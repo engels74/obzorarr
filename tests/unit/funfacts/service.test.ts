@@ -559,17 +559,20 @@ describe('Template constants and registry index', () => {
 			(templates: FactTemplate[]) => templates.length
 		],
 		['resetTemplates', () => resetTemplates(), () => getAllTemplates().length]
-	] as const)('%s initializes or restores the registry without duplicates', (_name, action, lengthOf) => {
-		clearRegistry();
-		expect(isRegistryInitialized()).toBe(false);
+	] as const)(
+		'%s initializes or restores the registry without duplicates',
+		(_name, action, lengthOf) => {
+			clearRegistry();
+			expect(isRegistryInitialized()).toBe(false);
 
-		const firstLength = lengthOf(action() as FactTemplate[]);
-		const secondLength = lengthOf(action() as FactTemplate[]);
+			const firstLength = lengthOf(action() as FactTemplate[]);
+			const secondLength = lengthOf(action() as FactTemplate[]);
 
-		expect(isRegistryInitialized()).toBe(true);
-		expect(firstLength).toBeGreaterThan(0);
-		expect(secondLength).toBe(firstLength);
-	});
+			expect(isRegistryInitialized()).toBe(true);
+			expect(firstLength).toBeGreaterThan(0);
+			expect(secondLength).toBe(firstLength);
+		}
+	);
 
 	it.each([
 		['time-equivalency', TIME_EQUIVALENCY_TEMPLATES.length],

@@ -27,14 +27,17 @@ describe('slide messaging context helpers', () => {
 			'watch'
 		],
 		['unnamed server', createServerContext(null), true, null, 'We', 'Our', 'have', 'are', 'watch']
-	] as const)('maps %s context to grammar tokens', (_name, ctx, isServerWrapped, serverName, subject, possessive, have, are, watch) => {
-		expect(ctx).toMatchObject({ isServerWrapped, serverName });
-		expect(getSubject(ctx)).toBe(subject);
-		expect(getPossessive(ctx)).toBe(possessive);
-		expect(getHaveVerb(ctx)).toBe(have);
-		expect(getAreVerb(ctx)).toBe(are);
-		expect(getWatchVerb(ctx)).toBe(watch);
-	});
+	] as const)(
+		'maps %s context to grammar tokens',
+		(_name, ctx, isServerWrapped, serverName, subject, possessive, have, are, watch) => {
+			expect(ctx).toMatchObject({ isServerWrapped, serverName });
+			expect(getSubject(ctx)).toBe(subject);
+			expect(getPossessive(ctx)).toBe(possessive);
+			expect(getHaveVerb(ctx)).toBe(have);
+			expect(getAreVerb(ctx)).toBe(are);
+			expect(getWatchVerb(ctx)).toBe(watch);
+		}
+	);
 
 	it.each([
 		[createServerContext('PARENTI'), 'When PARENTI Community watch'],
@@ -205,13 +208,12 @@ describe('server slide error/type contracts', () => {
 		expect(new Error('Regular error')).not.toBeInstanceOf(SlideError);
 	});
 
-	it.each([
-		'INVALID_SLIDE_TYPE',
-		'NOT_FOUND',
-		'UPDATE_FAILED'
-	] as const)('supports %s code', (code) => {
-		expect(new SlideError('message', code).code).toBe(code);
-	});
+	it.each(['INVALID_SLIDE_TYPE', 'NOT_FOUND', 'UPDATE_FAILED'] as const)(
+		'supports %s code',
+		(code) => {
+			expect(new SlideError('message', code).code).toBe(code);
+		}
+	);
 
 	it.each([
 		[
@@ -280,7 +282,8 @@ describe('server slide error/type contracts', () => {
 		'first-last',
 		'custom'
 	] as const)('accepts slide type %s', (type) =>
-		expect(SlideTypeSchema.safeParse(type).success).toBe(true));
+		expect(SlideTypeSchema.safeParse(type).success).toBe(true)
+	);
 
 	it.each(['invalid-type', '', 123, null] as const)('rejects slide type %p', (type) => {
 		expect(SlideTypeSchema.safeParse(type).success).toBe(false);
