@@ -381,7 +381,8 @@ export async function generateWithAI(
 			});
 
 			if (!response.ok) {
-				const errorDetail = (await readOpenAIErrorDetail(response)) ?? 'Unknown error';
+				const errorDetail =
+					(await readOpenAIErrorDetail(response)) || response.statusText || 'Unknown error';
 				const statusError = new AIGenerationError(
 					`OpenAI API error: ${response.status} - ${errorDetail}`
 				);

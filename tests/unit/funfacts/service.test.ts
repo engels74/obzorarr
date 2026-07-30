@@ -808,6 +808,30 @@ describe('generateWithAI', () => {
 		expect(facts[0]?.fact).toBe('Retried fact');
 	});
 
+	it('uses the response status text when a 5xx response body is empty', async () => {
+		fetchMock = spyOn(globalThis, 'fetch').mockImplementation((() =>
+			Promise.resolve({
+				ok: false,
+				status: 503,
+				statusText: 'Service Unavailable',
+				text: () => Promise.resolve('')
+			} as Response)) as unknown as typeof fetch);
+
+		const config = {
+			aiEnabled: true,
+			openaiApiKey: 'sk-test',
+			openaiBaseUrl: 'https://api.openai.com/v1',
+			openaiModel: 'gpt-5-mini',
+			maxAIRetries: 0,
+			aiTimeoutMs: 10000,
+			aiPersona: 'witty' as const
+		};
+
+		await expect(generateWithAI(mockStats, config, 1)).rejects.toThrow(
+			'OpenAI API error: 503 - Service Unavailable'
+		);
+	});
+
 	it('throws AIGenerationError on empty AI response', async () => {
 		fetchMock = spyOn(globalThis, 'fetch').mockImplementation((() =>
 			Promise.resolve({
