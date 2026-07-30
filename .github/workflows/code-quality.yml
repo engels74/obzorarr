@@ -101,5 +101,4 @@ jobs:
       - name: Smoke test production server
         env:
           DATABASE_PATH: ${{ runner.temp }}/obzorarr-smoke.db
-          PORT: 3000
         run: bun run smoke:production
