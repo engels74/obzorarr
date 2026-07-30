@@ -133,7 +133,7 @@ describe('testOpenAIConnection', () => {
 
 	it('maps 401 to authentication error', async () => {
 		globalThis.fetch = mock(async () => {
-			return new Response('Unauthorized', { status: 401, statusText: 'Unauthorized' });
+			return new Response(null, { status: 401, statusText: 'Unauthorized' });
 		}) as unknown as typeof fetch;
 
 		const result = await testOpenAIConnection('sk-bad');
@@ -146,7 +146,7 @@ describe('testOpenAIConnection', () => {
 
 	it('maps 404 to model-not-found error', async () => {
 		globalThis.fetch = mock(async () => {
-			return new Response('Not Found', { status: 404, statusText: 'Not Found' });
+			return new Response(null, { status: 404, statusText: 'Not Found' });
 		}) as unknown as typeof fetch;
 
 		const result = await testOpenAIConnection('sk-test');
@@ -167,6 +167,19 @@ describe('testOpenAIConnection', () => {
 		expect(result).toEqual({
 			success: false,
 			error: 'Request failed: 500 Internal Server Error — Server Error'
+		});
+	});
+
+	it('does not duplicate status text when another error response has an empty body', async () => {
+		globalThis.fetch = mock(async () => {
+			return new Response(null, { status: 500, statusText: 'Internal Server Error' });
+		}) as unknown as typeof fetch;
+
+		const result = await testOpenAIConnection('sk-test');
+
+		expect(result).toEqual({
+			success: false,
+			error: 'Request failed: 500 Internal Server Error'
 		});
 	});
 

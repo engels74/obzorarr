@@ -56,16 +56,17 @@ export async function testOpenAIConnection(
 		}
 
 		const detail = await readOpenAIErrorDetail(response);
+		const statusDetail = detail || response.statusText || null;
 		if (response.status === 401) {
 			return {
 				success: false,
-				error: appendErrorDetail('Authentication failed — check your API key', detail)
+				error: appendErrorDetail('Authentication failed — check your API key', statusDetail)
 			};
 		}
 		if (response.status === 404) {
 			return {
 				success: false,
-				error: appendErrorDetail('Model not found or base URL is incorrect', detail)
+				error: appendErrorDetail('Model not found or base URL is incorrect', statusDetail)
 			};
 		}
 
