@@ -70,10 +70,14 @@ export async function testOpenAIConnection(
 			};
 		}
 
-		const status = `${response.status} ${response.statusText}`.trim();
+		const normalizedStatusText = response.statusText.replace(/\s+/g, ' ').trim();
+		const status = `${response.status} ${normalizedStatusText}`.trim();
 		return {
 			success: false,
-			error: appendErrorDetail(`Request failed: ${status}`, detail)
+			error: appendErrorDetail(
+				`Request failed: ${status}`,
+				detail === normalizedStatusText ? null : detail
+			)
 		};
 	} catch (error) {
 		if (error instanceof Error && error.name === 'AbortError') {

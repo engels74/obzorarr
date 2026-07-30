@@ -170,6 +170,22 @@ describe('testOpenAIConnection', () => {
 		});
 	});
 
+	it('does not duplicate a response body that equals the status text', async () => {
+		globalThis.fetch = mock(async () => {
+			return new Response('Internal Server Error', {
+				status: 500,
+				statusText: 'Internal Server Error'
+			});
+		}) as unknown as typeof fetch;
+
+		const result = await testOpenAIConnection('sk-test');
+
+		expect(result).toEqual({
+			success: false,
+			error: 'Request failed: 500 Internal Server Error'
+		});
+	});
+
 	it('does not duplicate status text when another error response has an empty body', async () => {
 		globalThis.fetch = mock(async () => {
 			return new Response(null, { status: 500, statusText: 'Internal Server Error' });
