@@ -102,6 +102,22 @@ describe('testOpenAIConnection', () => {
 		expect(body).not.toHaveProperty('temperature');
 	});
 
+	it('uses current completion parameters for provider-prefixed GPT-5 models', async () => {
+		let body: Record<string, unknown> = {};
+
+		globalThis.fetch = mock(async (_input: RequestInfo | URL, init?: RequestInit) => {
+			body = JSON.parse(init?.body as string);
+			return new Response(null, { status: 200 });
+		}) as unknown as typeof fetch;
+
+		const result = await testOpenAIConnection('sk-test', undefined, 'openai/gpt-5-mini');
+
+		expect(result.success).toBe(true);
+		expect(body.max_completion_tokens).toBe(1);
+		expect(body).not.toHaveProperty('max_tokens');
+		expect(body).not.toHaveProperty('temperature');
+	});
+
 	it('rejects HTTP baseUrl without calling fetch', async () => {
 		let fetchCalled = false;
 		globalThis.fetch = mock(async () => {
@@ -271,5 +287,34 @@ describe('testOpenAIConnection', () => {
 		expect(result.success).toBe(true);
 		expect(captured.url).toBe('https://api.openai.com/v1/chat/completions');
 		expect(JSON.parse(captured.body ?? '{}').model).toBe('gpt-4o-mini');
+	});
+	it('bounds error body reads from upstream providers', async () => {
+		let pulls = 0;
+		let cancelled = false;
+		const chunk = new TextEncoder().encode('x'.repeat(1_024));
+		const body = new ReadableStream<Uint8Array>({
+			pull(controller) {
+				pulls++;
+				if (pulls > 100) {
+					controller.close();
+					return;
+				}
+				controller.enqueue(chunk);
+			},
+			cancel() {
+				cancelled = true;
+			}
+		});
+
+		globalThis.fetch = mock(async () => {
+			return new Response(body, { status: 500, statusText: 'Internal Server Error' });
+		}) as unknown as typeof fetch;
+
+		const result = await testOpenAIConnection('sk-test');
+
+		if (result.success) throw new Error('Expected the connection test to fail');
+		expect(result.error.length).toBeLessThan(1_100);
+		expect(cancelled).toBe(true);
+		expect(pulls).toBeLessThan(100);
 	});
 });
