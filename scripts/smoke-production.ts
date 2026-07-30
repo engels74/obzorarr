@@ -1,3 +1,5 @@
+import { stopSubprocess } from './subprocess';
+
 const databasePath = process.env.DATABASE_PATH;
 if (!databasePath) {
 	throw new Error('DATABASE_PATH must point to a disposable database');
@@ -44,6 +46,7 @@ const stdout = new Response(server.stdout).text();
 const stderr = new Response(server.stderr).text();
 const deadline = Date.now() + timeoutMs;
 let ready = false;
+const shutdownTimeoutMs = 2_000;
 
 try {
 	while (Date.now() < deadline) {
@@ -69,10 +72,7 @@ try {
 		await Bun.sleep(250);
 	}
 } finally {
-	if (server.exitCode === null) {
-		server.kill();
-	}
-	await server.exited;
+	await stopSubprocess(server, shutdownTimeoutMs);
 }
 
 if (!ready) {

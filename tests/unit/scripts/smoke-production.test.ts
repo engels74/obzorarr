@@ -2,8 +2,45 @@ import { describe, expect, it } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { type StoppableSubprocess, stopSubprocess } from '../../../scripts/subprocess';
 
 const PROJECT_ROOT = join(import.meta.dir, '..', '..', '..');
+type Signal = number | NodeJS.Signals | undefined;
+
+function createFakeSubprocess(onKill?: (signal: Signal, exit: (code: number) => void) => void) {
+	let exitCode: number | null = null;
+	let resolveExit!: (code: number) => void;
+	const signals: Signal[] = [];
+	let unrefCalls = 0;
+	const exited = new Promise<number>((resolve) => {
+		resolveExit = resolve;
+	});
+	const exit = (code: number) => {
+		exitCode = code;
+		resolveExit(code);
+	};
+	const subprocess: StoppableSubprocess = {
+		get exitCode() {
+			return exitCode;
+		},
+		exited,
+		kill(signal) {
+			signals.push(signal);
+			onKill?.(signal, exit);
+		},
+		unref() {
+			unrefCalls += 1;
+		}
+	};
+
+	return {
+		subprocess,
+		signals,
+		get unrefCalls() {
+			return unrefCalls;
+		}
+	};
+}
 
 describe('production smoke runner', () => {
 	it('rejects an occupied port instead of accepting a foreign HTTP server', async () => {
@@ -40,5 +77,39 @@ describe('production smoke runner', () => {
 			await foreignServer.stop(true);
 			rmSync(tempDir, { recursive: true, force: true });
 		}
+	});
+});
+
+describe('bounded subprocess shutdown', () => {
+	it('returns after graceful termination', async () => {
+		const fake = createFakeSubprocess((signal, exit) => {
+			if (signal === undefined) exit(0);
+		});
+
+		await stopSubprocess(fake.subprocess, 20);
+
+		expect(fake.signals).toEqual([undefined]);
+		expect(fake.unrefCalls).toBe(0);
+	});
+
+	it('escalates to SIGKILL when graceful termination times out', async () => {
+		const fake = createFakeSubprocess((signal, exit) => {
+			if (signal === 'SIGKILL') exit(137);
+		});
+
+		await stopSubprocess(fake.subprocess, 5);
+
+		expect(fake.signals).toEqual([undefined, 'SIGKILL']);
+		expect(fake.unrefCalls).toBe(0);
+	});
+
+	it('unrefs and fails after both termination attempts time out', async () => {
+		const fake = createFakeSubprocess();
+
+		await expect(stopSubprocess(fake.subprocess, 5)).rejects.toThrow(
+			'Subprocess did not terminate within 10ms'
+		);
+		expect(fake.signals).toEqual([undefined, 'SIGKILL']);
+		expect(fake.unrefCalls).toBe(1);
 	});
 });
