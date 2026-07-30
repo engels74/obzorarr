@@ -710,12 +710,18 @@ describe('generateWithAI', () => {
 				}
 			]
 		};
+		let requestBody: Record<string, unknown> = {};
 
-		fetchMock = spyOn(globalThis, 'fetch').mockImplementation((() =>
-			Promise.resolve({
+		fetchMock = spyOn(globalThis, 'fetch').mockImplementation(((
+			_input: RequestInfo | URL,
+			init?: RequestInit
+		) => {
+			requestBody = JSON.parse(init?.body as string);
+			return Promise.resolve({
 				ok: true,
 				json: () => Promise.resolve(mockResponse)
-			} as Response)) as unknown as typeof fetch);
+			} as Response);
+		}) as unknown as typeof fetch);
 
 		const config = {
 			aiEnabled: true,
@@ -732,6 +738,9 @@ describe('generateWithAI', () => {
 		expect(facts).toHaveLength(2);
 		expect(facts[0]?.fact).toBe('AI generated fact 1');
 		expect(facts[1]?.icon).toBe('📺');
+		expect(requestBody.max_completion_tokens).toBe(500);
+		expect(requestBody).not.toHaveProperty('max_tokens');
+		expect(requestBody).not.toHaveProperty('temperature');
 	});
 
 	it('throws on 4xx errors without retry (except 429)', async () => {
@@ -797,6 +806,30 @@ describe('generateWithAI', () => {
 
 		expect(callCount).toBe(2);
 		expect(facts[0]?.fact).toBe('Retried fact');
+	});
+
+	it('uses the response status text when a 5xx response body is empty', async () => {
+		fetchMock = spyOn(globalThis, 'fetch').mockImplementation((() =>
+			Promise.resolve({
+				ok: false,
+				status: 503,
+				statusText: 'Service Unavailable',
+				text: () => Promise.resolve('')
+			} as Response)) as unknown as typeof fetch);
+
+		const config = {
+			aiEnabled: true,
+			openaiApiKey: 'sk-test',
+			openaiBaseUrl: 'https://api.openai.com/v1',
+			openaiModel: 'gpt-5-mini',
+			maxAIRetries: 0,
+			aiTimeoutMs: 10000,
+			aiPersona: 'witty' as const
+		};
+
+		await expect(generateWithAI(mockStats, config, 1)).rejects.toThrow(
+			'OpenAI API error: 503 - Service Unavailable'
+		);
 	});
 
 	it('throws AIGenerationError on empty AI response', async () => {

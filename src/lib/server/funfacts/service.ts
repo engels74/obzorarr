@@ -11,6 +11,7 @@ import type { ServerStats, Stats, UserStats } from '$lib/server/stats/types';
 import { isUserStats } from '$lib/server/stats/types';
 import { buildEnhancedPrompt, enrichContext } from './ai';
 import { EQUIVALENCY_FACTORS, formatHour, MONTH_NAMES } from './constants';
+import { buildCompletionOptions, readOpenAIErrorDetail } from './openai-api';
 import { getAllTemplates, selectWeightedTemplates } from './registry';
 import type {
 	AIPersona,
@@ -374,16 +375,16 @@ export async function generateWithAI(
 						{ role: 'system', content: systemPrompt },
 						{ role: 'user', content: userPrompt }
 					],
-					temperature: 0.8,
-					max_tokens: 500
+					...buildCompletionOptions(model, 500, 0.8)
 				}),
 				signal: controller.signal
 			});
 
 			if (!response.ok) {
-				const errorText = await response.text().catch(() => 'Unknown error');
+				const errorDetail =
+					(await readOpenAIErrorDetail(response)) || response.statusText || 'Unknown error';
 				const statusError = new AIGenerationError(
-					`OpenAI API error: ${response.status} - ${errorText}`
+					`OpenAI API error: ${response.status} - ${errorDetail}`
 				);
 
 				// 4xx usually means bad config or payload; only 429 is expected to heal with retry.

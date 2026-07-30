@@ -86,6 +86,38 @@ describe('testOpenAIConnection', () => {
 		expect(JSON.parse(captured.body ?? '{}').model).toBe('gpt-4o-mini');
 	});
 
+	it('uses current completion parameters for GPT-5 models', async () => {
+		let body: Record<string, unknown> = {};
+
+		globalThis.fetch = mock(async (_input: RequestInfo | URL, init?: RequestInit) => {
+			body = JSON.parse(init?.body as string);
+			return new Response(null, { status: 200 });
+		}) as unknown as typeof fetch;
+
+		const result = await testOpenAIConnection('sk-test', undefined, 'gpt-5-mini');
+
+		expect(result.success).toBe(true);
+		expect(body.max_completion_tokens).toBe(1);
+		expect(body).not.toHaveProperty('max_tokens');
+		expect(body).not.toHaveProperty('temperature');
+	});
+
+	it('uses current completion parameters for provider-prefixed GPT-5 models', async () => {
+		let body: Record<string, unknown> = {};
+
+		globalThis.fetch = mock(async (_input: RequestInfo | URL, init?: RequestInit) => {
+			body = JSON.parse(init?.body as string);
+			return new Response(null, { status: 200 });
+		}) as unknown as typeof fetch;
+
+		const result = await testOpenAIConnection('sk-test', undefined, 'openai/gpt-5-mini');
+
+		expect(result.success).toBe(true);
+		expect(body.max_completion_tokens).toBe(1);
+		expect(body).not.toHaveProperty('max_tokens');
+		expect(body).not.toHaveProperty('temperature');
+	});
+
 	it('rejects HTTP baseUrl without calling fetch', async () => {
 		let fetchCalled = false;
 		globalThis.fetch = mock(async () => {
@@ -101,31 +133,31 @@ describe('testOpenAIConnection', () => {
 
 	it('maps 401 to authentication error', async () => {
 		globalThis.fetch = mock(async () => {
-			return new Response('Unauthorized', { status: 401, statusText: 'Unauthorized' });
+			return new Response(null, { status: 401, statusText: 'Unauthorized' });
 		}) as unknown as typeof fetch;
 
 		const result = await testOpenAIConnection('sk-bad');
 
 		expect(result).toEqual({
 			success: false,
-			error: 'Authentication failed — check your API key'
+			error: 'Authentication failed — check your API key — Unauthorized'
 		});
 	});
 
 	it('maps 404 to model-not-found error', async () => {
 		globalThis.fetch = mock(async () => {
-			return new Response('Not Found', { status: 404, statusText: 'Not Found' });
+			return new Response(null, { status: 404, statusText: 'Not Found' });
 		}) as unknown as typeof fetch;
 
 		const result = await testOpenAIConnection('sk-test');
 
 		expect(result).toEqual({
 			success: false,
-			error: 'Model not found or base URL is incorrect'
+			error: 'Model not found or base URL is incorrect — Not Found'
 		});
 	});
 
-	it('maps other non-OK responses to status/statusText message', async () => {
+	it('includes plain-text error details in other non-OK responses', async () => {
 		globalThis.fetch = mock(async () => {
 			return new Response('Server Error', { status: 500, statusText: 'Internal Server Error' });
 		}) as unknown as typeof fetch;
@@ -134,7 +166,62 @@ describe('testOpenAIConnection', () => {
 
 		expect(result).toEqual({
 			success: false,
+			error: 'Request failed: 500 Internal Server Error — Server Error'
+		});
+	});
+
+	it('does not duplicate a response body that equals the status text', async () => {
+		globalThis.fetch = mock(async () => {
+			return new Response('Internal Server Error', {
+				status: 500,
+				statusText: 'Internal Server Error'
+			});
+		}) as unknown as typeof fetch;
+
+		const result = await testOpenAIConnection('sk-test');
+
+		expect(result).toEqual({
+			success: false,
 			error: 'Request failed: 500 Internal Server Error'
+		});
+	});
+
+	it('does not duplicate status text when another error response has an empty body', async () => {
+		globalThis.fetch = mock(async () => {
+			return new Response(null, { status: 500, statusText: 'Internal Server Error' });
+		}) as unknown as typeof fetch;
+
+		const result = await testOpenAIConnection('sk-test');
+
+		expect(result).toEqual({
+			success: false,
+			error: 'Request failed: 500 Internal Server Error'
+		});
+	});
+
+	it('extracts the OpenAI error message from a JSON response', async () => {
+		globalThis.fetch = mock(async () => {
+			return new Response(
+				JSON.stringify({
+					error: {
+						message: "Unsupported parameter: 'max_tokens' is not supported with this model.",
+						type: 'invalid_request_error'
+					}
+				}),
+				{
+					status: 400,
+					statusText: 'Bad Request',
+					headers: { 'Content-Type': 'application/json' }
+				}
+			);
+		}) as unknown as typeof fetch;
+
+		const result = await testOpenAIConnection('sk-test', undefined, 'gpt-5-mini');
+
+		expect(result).toEqual({
+			success: false,
+			error:
+				"Request failed: 400 Bad Request — Unsupported parameter: 'max_tokens' is not supported with this model."
 		});
 	});
 
@@ -229,5 +316,34 @@ describe('testOpenAIConnection', () => {
 		expect(result.success).toBe(true);
 		expect(captured.url).toBe('https://api.openai.com/v1/chat/completions');
 		expect(JSON.parse(captured.body ?? '{}').model).toBe('gpt-4o-mini');
+	});
+	it('bounds error body reads from upstream providers', async () => {
+		let pulls = 0;
+		let cancelled = false;
+		const chunk = new TextEncoder().encode('x'.repeat(1_024));
+		const body = new ReadableStream<Uint8Array>({
+			pull(controller) {
+				pulls++;
+				if (pulls > 100) {
+					controller.close();
+					return;
+				}
+				controller.enqueue(chunk);
+			},
+			cancel() {
+				cancelled = true;
+			}
+		});
+
+		globalThis.fetch = mock(async () => {
+			return new Response(body, { status: 500, statusText: 'Internal Server Error' });
+		}) as unknown as typeof fetch;
+
+		const result = await testOpenAIConnection('sk-test');
+
+		if (result.success) throw new Error('Expected the connection test to fail');
+		expect(result.error.length).toBeLessThan(1_100);
+		expect(cancelled).toBe(true);
+		expect(pulls).toBeLessThan(100);
 	});
 });
