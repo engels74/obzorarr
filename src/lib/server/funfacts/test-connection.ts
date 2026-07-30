@@ -2,6 +2,7 @@ import {
 	CredentialedUrlError,
 	normalizeOpenAIBaseUrl
 } from '$lib/server/security/credentialed-url';
+import { buildCompletionOptions, readOpenAIErrorDetail } from './openai-api';
 
 const DEFAULT_BASE_URL = 'https://api.openai.com/v1';
 const DEFAULT_MODEL = 'gpt-4o-mini';
@@ -45,7 +46,7 @@ export async function testOpenAIConnection(
 			body: JSON.stringify({
 				model: resolvedModel,
 				messages: [{ role: 'user', content: 'ping' }],
-				max_tokens: 1
+				...buildCompletionOptions(resolvedModel, 1)
 			}),
 			signal: controller.signal
 		});
@@ -54,15 +55,24 @@ export async function testOpenAIConnection(
 			return { success: true, message: `Connected (model: ${resolvedModel})` };
 		}
 
+		const detail = await readOpenAIErrorDetail(response);
 		if (response.status === 401) {
-			return { success: false, error: 'Authentication failed — check your API key' };
+			return {
+				success: false,
+				error: appendErrorDetail('Authentication failed — check your API key', detail)
+			};
 		}
 		if (response.status === 404) {
-			return { success: false, error: 'Model not found or base URL is incorrect' };
+			return {
+				success: false,
+				error: appendErrorDetail('Model not found or base URL is incorrect', detail)
+			};
 		}
+
+		const status = `${response.status} ${response.statusText}`.trim();
 		return {
 			success: false,
-			error: `Request failed: ${response.status} ${response.statusText}`
+			error: appendErrorDetail(`Request failed: ${status}`, detail)
 		};
 	} catch (error) {
 		if (error instanceof Error && error.name === 'AbortError') {
@@ -75,4 +85,8 @@ export async function testOpenAIConnection(
 	} finally {
 		clearTimeout(timeoutId);
 	}
+}
+
+function appendErrorDetail(message: string, detail: string | null): string {
+	return detail ? `${message} — ${detail}` : message;
 }

@@ -710,12 +710,18 @@ describe('generateWithAI', () => {
 				}
 			]
 		};
+		let requestBody: Record<string, unknown> = {};
 
-		fetchMock = spyOn(globalThis, 'fetch').mockImplementation((() =>
-			Promise.resolve({
+		fetchMock = spyOn(globalThis, 'fetch').mockImplementation(((
+			_input: RequestInfo | URL,
+			init?: RequestInit
+		) => {
+			requestBody = JSON.parse(init?.body as string);
+			return Promise.resolve({
 				ok: true,
 				json: () => Promise.resolve(mockResponse)
-			} as Response)) as unknown as typeof fetch);
+			} as Response);
+		}) as unknown as typeof fetch);
 
 		const config = {
 			aiEnabled: true,
@@ -732,6 +738,9 @@ describe('generateWithAI', () => {
 		expect(facts).toHaveLength(2);
 		expect(facts[0]?.fact).toBe('AI generated fact 1');
 		expect(facts[1]?.icon).toBe('📺');
+		expect(requestBody.max_completion_tokens).toBe(500);
+		expect(requestBody).not.toHaveProperty('max_tokens');
+		expect(requestBody).not.toHaveProperty('temperature');
 	});
 
 	it('throws on 4xx errors without retry (except 429)', async () => {

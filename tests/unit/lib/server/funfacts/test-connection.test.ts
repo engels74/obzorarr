@@ -86,6 +86,22 @@ describe('testOpenAIConnection', () => {
 		expect(JSON.parse(captured.body ?? '{}').model).toBe('gpt-4o-mini');
 	});
 
+	it('uses current completion parameters for GPT-5 models', async () => {
+		let body: Record<string, unknown> = {};
+
+		globalThis.fetch = mock(async (_input: RequestInfo | URL, init?: RequestInit) => {
+			body = JSON.parse(init?.body as string);
+			return new Response(null, { status: 200 });
+		}) as unknown as typeof fetch;
+
+		const result = await testOpenAIConnection('sk-test', undefined, 'gpt-5-mini');
+
+		expect(result.success).toBe(true);
+		expect(body.max_completion_tokens).toBe(1);
+		expect(body).not.toHaveProperty('max_tokens');
+		expect(body).not.toHaveProperty('temperature');
+	});
+
 	it('rejects HTTP baseUrl without calling fetch', async () => {
 		let fetchCalled = false;
 		globalThis.fetch = mock(async () => {
@@ -108,7 +124,7 @@ describe('testOpenAIConnection', () => {
 
 		expect(result).toEqual({
 			success: false,
-			error: 'Authentication failed — check your API key'
+			error: 'Authentication failed — check your API key — Unauthorized'
 		});
 	});
 
@@ -121,11 +137,11 @@ describe('testOpenAIConnection', () => {
 
 		expect(result).toEqual({
 			success: false,
-			error: 'Model not found or base URL is incorrect'
+			error: 'Model not found or base URL is incorrect — Not Found'
 		});
 	});
 
-	it('maps other non-OK responses to status/statusText message', async () => {
+	it('includes plain-text error details in other non-OK responses', async () => {
 		globalThis.fetch = mock(async () => {
 			return new Response('Server Error', { status: 500, statusText: 'Internal Server Error' });
 		}) as unknown as typeof fetch;
@@ -134,7 +150,33 @@ describe('testOpenAIConnection', () => {
 
 		expect(result).toEqual({
 			success: false,
-			error: 'Request failed: 500 Internal Server Error'
+			error: 'Request failed: 500 Internal Server Error — Server Error'
+		});
+	});
+
+	it('extracts the OpenAI error message from a JSON response', async () => {
+		globalThis.fetch = mock(async () => {
+			return new Response(
+				JSON.stringify({
+					error: {
+						message: "Unsupported parameter: 'max_tokens' is not supported with this model.",
+						type: 'invalid_request_error'
+					}
+				}),
+				{
+					status: 400,
+					statusText: 'Bad Request',
+					headers: { 'Content-Type': 'application/json' }
+				}
+			);
+		}) as unknown as typeof fetch;
+
+		const result = await testOpenAIConnection('sk-test', undefined, 'gpt-5-mini');
+
+		expect(result).toEqual({
+			success: false,
+			error:
+				"Request failed: 400 Bad Request — Unsupported parameter: 'max_tokens' is not supported with this model."
 		});
 	});
 
