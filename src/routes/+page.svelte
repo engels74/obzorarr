@@ -199,6 +199,7 @@ function handleCancelRedirect(): void {
 							<SubmitButton
 								class="view-button tap-target"
 								submitting={isLookingUp}
+								disabled={browser && !username.trim()}
 							>
 								{#snippet children()}
 									View {data.currentYear} Wrapped
