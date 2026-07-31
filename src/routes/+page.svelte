@@ -161,8 +161,11 @@ function handleCancelRedirect(): void {
 						use:enhance={() => {
 							isLookingUp = true;
 							return async ({ update }) => {
-								await update();
-								isLookingUp = false;
+								try {
+									await update();
+								} finally {
+									isLookingUp = false;
+								}
 								if (form?.error) {
 									await tick();
 									usernameInput?.focus();
