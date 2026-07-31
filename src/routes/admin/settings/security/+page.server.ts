@@ -284,7 +284,8 @@ export const actions: Actions = requireAdminActions({
 		}
 	},
 
-	diagnoseReverseProxy: async ({ request, url, getClientAddress }) => {
+	diagnoseReverseProxy: async ({ request, url, getClientAddress, setHeaders }) => {
+		setHeaders?.({ 'Cache-Control': 'no-store' });
 		const formData = await request.formData();
 		const parsed = BrowserOriginSchema.safeParse({
 			browserOrigin: formData.get('browserOrigin')
@@ -317,7 +318,8 @@ export const actions: Actions = requireAdminActions({
 		}
 	},
 
-	updateTrustProxy: async ({ request, url, getClientAddress }) => {
+	updateTrustProxy: async ({ request, url, getClientAddress, setHeaders }) => {
+		setHeaders?.({ 'Cache-Control': 'no-store' });
 		const trustProxyConfig = await getTrustProxyConfigWithSource();
 		if (trustProxyConfig.trustProxy.isLocked) {
 			return fail(400, {
@@ -372,6 +374,11 @@ export const actions: Actions = requireAdminActions({
 				return fail(400, {
 					error:
 						'Browser origin is required to verify the reverse-proxy diagnostic before enabling header trust.'
+				});
+			}
+			if (!adminRequestOriginMatches(request, parsed.data.browserOrigin)) {
+				return fail(403, {
+					error: 'TRUST_PROXY can only be enabled from the submitted browser origin'
 				});
 			}
 			const diagnostic = await createReverseProxyDiagnostic({

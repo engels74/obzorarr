@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import { readFile } from 'node:fs/promises';
 import type { Cookies } from '@sveltejs/kit';
 import { isRedirect } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
@@ -37,6 +38,7 @@ function createCookies() {
 
 let cookies: ReturnType<typeof createCookies>;
 let previousTrustProxyEnv: string | undefined;
+let actionHeaders: Record<string, string>[] = [];
 
 function createThrowingClaimCookies(errorToThrow: Error): ReturnType<typeof createCookies> {
 	return {
@@ -102,21 +104,25 @@ async function runContinue(request: Request) {
 
 async function runDiagnoseReverseProxy(request: Request) {
 	const action = actions.diagnoseReverseProxy as DiagnoseReverseProxyAction;
+	actionHeaders = [];
 	return action({
 		request,
 		cookies,
 		url: new URL(request.url),
-		getClientAddress: () => '172.18.0.2'
+		getClientAddress: () => '172.18.0.2',
+		setHeaders: (headers: Record<string, string>) => actionHeaders.push(headers)
 	} as unknown as Parameters<DiagnoseReverseProxyAction>[0]);
 }
 
 async function runEnableTrustProxy(request: Request) {
 	const action = actions.enableTrustProxy as EnableTrustProxyAction;
+	actionHeaders = [];
 	return action({
 		request,
 		cookies,
 		url: new URL(request.url),
-		getClientAddress: () => '172.18.0.2'
+		getClientAddress: () => '172.18.0.2',
+		setHeaders: (headers: Record<string, string>) => actionHeaders.push(headers)
 	} as unknown as Parameters<EnableTrustProxyAction>[0]);
 }
 
@@ -155,6 +161,28 @@ describe('onboarding proxy-trust actions', () => {
 		expect(typeof actions.diagnoseReverseProxy).toBe('function');
 		expect(typeof actions.enableTrustProxy).toBe('function');
 	});
+	it('uses the shared presenter and accessible progressive disclosure in the onboarding UI', async () => {
+		const page = await readFile('src/routes/onboarding/proxy-trust/+page.svelte', 'utf8');
+
+		expect(page).toContain('presentReverseProxyDiagnostic(diagnostic)');
+		expect(page).toContain('documentationForGuide(guide)');
+		expect(page).toContain('REVERSE_PROXY_PROVIDER_GUIDES');
+		expect(page).toContain('role="status"');
+		expect(page).toContain('role="alert"');
+		expect(page).toContain('aria-controls="proxy-technical-details"');
+		expect(page).toContain('REVERSE_PROXY_COPY.continueWarning');
+		expect(page).toContain('navigator.clipboard.writeText');
+		expect(page).toContain('<details class="provider-guide">');
+		expect(page).toContain('role="status" aria-live="polite"');
+		expect(page).toContain('Copy configuration');
+		expect(page).toContain("savedState = 'verifying'");
+		expect(page).toContain('void runDiagnostic(true)');
+		expect(page).toContain('REVERSE_PROXY_COPY.savedUnverified');
+		expect(page).toContain('presentation.documentationIds.includes(guide.documentationId)');
+		expect(page).toContain('{#each applicableProviderGuides as guide}');
+		expect(page).toContain('class="details-toggle tap-target"');
+		expect(page).toContain('<SubmitButton class="tap-target">');
+	});
 
 	it('continue advances to plex and redirects', async () => {
 		await expectRedirect(() => runContinue(createContinueRequest()), '/onboarding/plex');
@@ -189,18 +217,23 @@ describe('onboarding proxy-trust actions', () => {
 
 		expect(result).toMatchObject({
 			reverseProxyDiagnostic: {
-				trustProxy: {
-					enabled: false,
-					source: 'default',
-					isLocked: false
+				facts: {
+					trustProxy: {
+						enabled: false,
+						source: 'default',
+						isLocked: false
+					},
+					forwardedHeaders: {
+						present: ['X-Forwarded-Host', 'X-Forwarded-Proto']
+					}
 				},
-				recommendation: {
-					action: 'enable'
-				}
+				action: 'enable',
+				reasonCodes: ['forwarded-pair-matches-browser']
 			}
 		});
 		expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBeNull();
 		expect(await getOnboardingStep()).toBe(OnboardingSteps.PROXY_TRUST);
+		expect(actionHeaders).toEqual([{ 'Cache-Control': 'no-store' }]);
 	});
 
 	it('rejects structurally abusive reverse proxy diagnostic browser origins', async () => {
@@ -235,6 +268,7 @@ describe('onboarding proxy-trust actions', () => {
 		expect(serialized).not.toContain('198.51.100.88');
 		expect(serialized).not.toContain('hidden-client');
 		expect(serialized).not.toContain('hidden.example');
+		expect(actionHeaders).toEqual([{ 'Cache-Control': 'no-store' }]);
 	});
 
 	it('rejects enabling TRUST_PROXY without explicit risk confirmation', async () => {
@@ -322,6 +356,7 @@ describe('onboarding proxy-trust actions', () => {
 		});
 		expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBe('true');
 		expect(await getOnboardingStep()).toBe(OnboardingSteps.PROXY_TRUST);
+		expect(actionHeaders).toEqual([{ 'Cache-Control': 'no-store' }]);
 	});
 
 	it('rejects enabling TRUST_PROXY when the current diagnostic does not recommend it', async () => {

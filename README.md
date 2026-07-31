@@ -133,6 +133,32 @@ bun run dev
 > env-locked field render its `ENV` badge), run `bun run dev:env`, which loads `.env` via
 > `--env-file`.
 
+## Reverse proxy header trust
+
+Obzorarr uses `X-Forwarded-Proto` and `X-Forwarded-Host` only when `TRUST_PROXY=true`.
+Enable it only when every request reaches Obzorarr through a trusted upstream proxy that strips or
+overwrites visitor-supplied values for both headers. Do not enable it when visitors can connect to
+Obzorarr directly.
+
+Configure the proxy to send the public request scheme and host, then use the onboarding or
+**Admin → Settings → Security** diagnostic to compare the browser, forwarded, and effective app
+origins. When `TRUST_PROXY` is controlled by the environment or container configuration, change the
+exact setting there and restart Obzorarr before rerunning the diagnostic:
+
+```env
+TRUST_PROXY=true
+ORIGIN=https://obzorarr.example.com
+```
+
+`ORIGIN` is the public origin used for CSRF validation. It must match the browser origin exactly,
+including scheme and any non-default port. The diagnostic reports header names and normalized
+origins only; it does not expose header values that may contain credentials or client addresses.
+
+Use a strict virtual host or site match and set the forwarded host to the deployment's canonical public
+hostname; merely copying an unrestricted visitor `Host` value does not establish a trusted boundary.
+`TRUST_PROXY` affects Obzorarr's effective URL host and protocol only. Client-IP trust must be
+configured separately in the Bun adapter or runtime.
+
 ## License
 
 This project is licensed under the [GNU Affero General Public License v3.0](LICENSE).

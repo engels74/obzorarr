@@ -15,8 +15,13 @@ import {
 } from '$lib/components/ui/card/index.js';
 import { Input } from '$lib/components/ui/input/index.js';
 import { Label } from '$lib/components/ui/label/index.js';
-import { Switch } from '$lib/components/ui/switch/index.js';
-import { REVERSE_PROXY_COPY } from '$lib/copy/reverse-proxy';
+import {
+	documentationForGuide,
+	presentReverseProxyDiagnostic,
+	REVERSE_PROXY_COPY,
+	REVERSE_PROXY_PROVIDER_GUIDES
+} from '$lib/copy/reverse-proxy';
+import type { ReverseProxyDiagnostic } from '$lib/security/reverse-proxy';
 import { toast } from '$lib/services/toast';
 import { handleFormToast } from '$lib/utils/form-toast';
 import { submitAction } from '$lib/utils/submit-action';
@@ -48,47 +53,15 @@ let pendingMismatchMessage = $state('');
 
 let trustProxyConfirmDialogOpen = $state(false);
 
-type ReverseProxyDiagnosticView = {
-	trustProxy: {
-		enabled: boolean;
-		source: 'env' | 'db' | 'default';
-		isLocked: boolean;
-	};
-	forwardedHeaders: {
-		present: string[];
-		pair: {
-			status: string;
-			isUsable: boolean;
-			protoPresent: boolean;
-			hostPresent: boolean;
-		};
-	};
-	recommendation: {
-		action:
-			| 'enable'
-			| 'leave-disabled'
-			| 'review-proxy'
-			| 'appears-working'
-			| 'unable-to-determine'
-			| 'env-controlled';
-		summary: string;
-	};
-	reasons: string[];
-	safetyNotice: string;
-};
-
-let diagnostic = $state<ReverseProxyDiagnosticView | null>(null);
+let diagnostic = $state<ReverseProxyDiagnostic | null>(null);
 let diagnosticStatus = $state<'idle' | 'checking' | 'success' | 'failure'>('idle');
 let diagnosticError = $state<string | null>(null);
 let showDiagnosticDetails = $state(false);
 let hasRunInitialDiagnostic = $state(false);
 let diagnosticRunToken = 0;
+let trustProxyVerificationPending = $state(false);
+let copiedGuideId = $state<string | null>(null);
 
-// ISSUE-007: the on-mount auto-run must be silent (only the inline status panel
-// updates); a success/error toast fires ONLY when the user clicks "Re-run
-// diagnostic". `userInitiated` defaults to false so the on-mount $effect (which
-// calls runDiagnostic() with no args) never toasts. The toast is purely additive
-// — the inline panel still reflects every outcome regardless of `userInitiated`.
 async function runDiagnostic({ userInitiated = false }: { userInitiated?: boolean } = {}) {
 	if (diagnosticStatus === 'checking') return;
 
@@ -102,7 +75,7 @@ async function runDiagnostic({ userInitiated = false }: { userInitiated?: boolea
 
 	try {
 		const result = await submitAction<{
-			reverseProxyDiagnostic?: ReverseProxyDiagnosticView;
+			reverseProxyDiagnostic?: ReverseProxyDiagnostic;
 			diagnosticError?: string;
 		}>('?/diagnoseReverseProxy', formData);
 
@@ -134,6 +107,34 @@ async function runDiagnostic({ userInitiated = false }: { userInitiated?: boolea
 		if (userInitiated) toast.error(diagnosticError);
 	}
 }
+async function refreshDiagnosticAfterTrustProxyWrite() {
+	diagnostic = null;
+	diagnosticError = null;
+	diagnosticStatus = 'idle';
+	trustProxyVerificationPending = true;
+	try {
+		await invalidateAll();
+		await runDiagnostic();
+	} catch {
+		diagnosticStatus = 'failure';
+		diagnosticError = REVERSE_PROXY_COPY.savedUnverified;
+	} finally {
+		trustProxyVerificationPending = false;
+	}
+	if (!diagnostic) {
+		diagnosticStatus = 'failure';
+		diagnosticError = REVERSE_PROXY_COPY.savedUnverified;
+	}
+}
+
+async function copyGuide(id: string, config: string) {
+	try {
+		await navigator.clipboard.writeText(config);
+		copiedGuideId = id;
+	} catch {
+		copiedGuideId = `error:${id}`;
+	}
+}
 
 $effect(() => {
 	if (hasRunInitialDiagnostic) return;
@@ -141,74 +142,14 @@ $effect(() => {
 	void runDiagnostic();
 });
 
-type StatusTone = 'success' | 'warning' | 'neutral';
-
-const statusView = $derived.by<{
-	tone: StatusTone;
-	headline: string;
-	body: string;
-} | null>(() => {
-	if (!diagnostic) return null;
-	const action = diagnostic.recommendation.action;
-
-	if (action === 'appears-working') {
-		return {
-			tone: 'success',
-			headline: 'Header trust is working',
-			body: 'Obzorarr is correctly identifying visitor IP addresses and protocols from your reverse proxy.'
-		};
-	}
-	if (action === 'leave-disabled') {
-		return {
-			tone: 'success',
-			headline: 'No proxy detected',
-			body: 'Direct connection details look correct. Header trust does not need to be enabled.'
-		};
-	}
-	if (action === 'enable') {
-		return {
-			tone: 'warning',
-			headline: 'Proxy detected — header trust recommended',
-			body: 'Obzorarr appears to be behind a reverse proxy. Enable header trust to use forwarded IPs and protocols, but only if your proxy strips incoming x-forwarded-* headers from external traffic.'
-		};
-	}
-	if (action === 'review-proxy') {
-		return {
-			tone: 'warning',
-			headline: 'Proxy configuration needs review',
-			body: 'Some forwarded headers are present but do not match the browser origin. Check your reverse proxy configuration and re-run the check.'
-		};
-	}
-	if (action === 'env-controlled') {
-		return {
-			tone: 'neutral',
-			headline: 'Managed by environment',
-			body: 'TRUST_PROXY is controlled by the environment variable. Change it in your environment or container configuration to switch the setting.'
-		};
-	}
-	return {
-		tone: 'neutral',
-		headline: 'Could not verify automatically',
-		body: 'Obzorarr could not determine your proxy setup from the current request.'
-	};
-});
-
-function getForwardedPairLabel(status: string): string {
-	switch (status) {
-		case 'usable':
-			return 'Forwarded scheme and host look usable';
-		case 'missing':
-			return 'No forwarded scheme/host pair detected';
-		case 'partial':
-			return 'Forwarded scheme/host pair is incomplete';
-		case 'invalid-proto':
-		case 'unsafe-host':
-		case 'invalid-host':
-			return 'Forwarded scheme/host pair is invalid';
-		default:
-			return 'Forwarded scheme/host pair needs review';
-	}
-}
+const presentation = $derived(diagnostic ? presentReverseProxyDiagnostic(diagnostic) : null);
+const applicableProviderGuides = $derived(
+	presentation && presentation.documentationIds.length > 1
+		? REVERSE_PROXY_PROVIDER_GUIDES.filter((guide) =>
+				presentation.documentationIds.includes(guide.documentationId)
+			)
+		: []
+);
 </script>
 
 <svelte:head>
@@ -419,74 +360,29 @@ function getForwardedPairLabel(status: string): string {
 		</CardHeader>
 		<CardContent class="space-y-4">
 			{#if diagnosticStatus === 'checking' && !diagnostic}
-				<div class="status-card neutral">
+				<div class="status-card neutral" role="status" aria-live="polite" aria-busy="true">
 					<LoaderCircleIcon class="size-5 animate-spin status-icon" aria-hidden="true" />
 					<div class="status-text">
-						<span class="status-headline">Checking your connection…</span>
-						<span class="status-body">
-							Comparing what your browser sees with what Obzorarr receives.
-						</span>
+						<span class="status-headline">{trustProxyVerificationPending ? 'Saved. Verifying…' : 'Checking your connection…'}</span>
+						<span class="status-body">Comparing what your browser sees with what Obzorarr receives.</span>
 					</div>
 				</div>
 			{:else if diagnosticStatus === 'failure' && !diagnostic}
-				<div class="status-card warning">
-					<svg
-						class="status-icon"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-					>
-						<circle cx="12" cy="12" r="10" />
-						<line x1="15" y1="9" x2="9" y2="15" stroke-linecap="round" />
-						<line x1="9" y1="9" x2="15" y2="15" stroke-linecap="round" />
-					</svg>
+				<div class="status-card warning" role="alert">
 					<div class="status-text">
 						<span class="status-headline">Could not run the diagnostic</span>
 						<span class="status-body">{diagnosticError ?? 'Diagnostic failed'}</span>
 					</div>
+					<Button type="button" variant="outline" class="tap-target" onclick={() => void runDiagnostic({ userInitiated: true })}>
+						{REVERSE_PROXY_COPY.rerunButton}
+					</Button>
 				</div>
-			{:else if statusView && diagnostic}
-				<div class="status-card {statusView.tone}">
-					{#if statusView.tone === 'success'}
-						<svg
-							class="status-icon"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-						>
-							<circle cx="12" cy="12" r="10" />
-							<path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round" />
-						</svg>
-					{:else if statusView.tone === 'warning'}
-						<svg
-							class="status-icon"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-						>
-							<path d="M12 2l10 18H2z" stroke-linecap="round" stroke-linejoin="round" />
-							<line x1="12" y1="9" x2="12" y2="13" stroke-linecap="round" />
-							<circle cx="12" cy="16" r="0.6" fill="currentColor" />
-						</svg>
-					{:else}
-						<svg
-							class="status-icon"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-						>
-							<circle cx="12" cy="12" r="10" />
-							<path d="M12 16v-4" stroke-linecap="round" />
-							<path d="M12 8h.01" stroke-linecap="round" />
-						</svg>
-					{/if}
+			{:else if presentation && diagnostic}
+				<div class="status-card {presentation.tone}" role="status" aria-live="polite" aria-busy="false">
 					<div class="status-text">
-						<span class="status-headline">{statusView.headline}</span>
-						<span class="status-body">{statusView.body}</span>
+						<span class="status-headline">{presentation.headline}</span>
+						<span class="status-body">{presentation.diagnosis}</span>
+						<span class="status-body"><strong>Next action:</strong> {presentation.nextAction}</span>
 					</div>
 				</div>
 
@@ -495,70 +391,62 @@ function getForwardedPairLabel(status: string): string {
 					class="details-toggle"
 					onclick={() => (showDiagnosticDetails = !showDiagnosticDetails)}
 					aria-expanded={showDiagnosticDetails}
+					aria-controls="reverse-proxy-diagnostic-details"
 				>
-					<span>
-						{showDiagnosticDetails ? 'Hide technical details' : 'Show technical details'}
-					</span>
-					<ChevronDownIcon
-						class="size-4 chevron"
-						data-open={showDiagnosticDetails}
-						aria-hidden="true"
-					/>
+					<span>{showDiagnosticDetails ? 'Hide technical details' : 'Show technical details and proxy setup'}</span>
+					<ChevronDownIcon class="size-4 chevron" data-open={showDiagnosticDetails} aria-hidden="true" />
 				</button>
 
 				{#if showDiagnosticDetails}
-					<div class="details-panel">
+					<div id="reverse-proxy-diagnostic-details" class="details-panel">
 						<div class="diagnostic-facts">
-							<div>
-								<span class="fact-label">Forwarded headers</span>
-								<span class="fact-value">
-									{getForwardedPairLabel(diagnostic.forwardedHeaders.pair.status)}
-								</span>
-							</div>
-							<div>
-								<span class="fact-label">Signals present</span>
-								<span class="fact-value">
-									{diagnostic.forwardedHeaders.present.length > 0
-										? diagnostic.forwardedHeaders.present.join(', ')
-										: 'None'}
-								</span>
-							</div>
-							<div>
-								<span class="fact-label">Current setting</span>
-								<span class="fact-value">
-									{diagnostic.trustProxy.enabled ? 'Enabled' : 'Disabled'}
-									{#if diagnostic.trustProxy.isLocked}
-										<span class="inline-badge">ENV</span>
-									{/if}
-								</span>
-							</div>
+							<div><span class="fact-label">Present headers</span><span class="fact-value">{diagnostic.facts.forwardedHeaders.present.length ? diagnostic.facts.forwardedHeaders.present.join(', ') : 'None'}</span></div>
+							<div><span class="fact-label">Forwarded pair</span><span class="fact-value">{presentation.pairLabel}</span></div>
+							<div><span class="fact-label">Browser origin</span><span class="fact-value">{diagnostic.facts.browserOrigin.origin ?? 'not available'}</span></div>
+							<div><span class="fact-label">Effective app origin</span><span class="fact-value">{diagnostic.facts.origins.effectiveApp ?? 'not available'}</span></div>
+							<div><span class="fact-label">Forwarded origin</span><span class="fact-value">{diagnostic.facts.origins.forwardedPair ?? 'not available'}</span></div>
+							<div><span class="fact-label">TRUST_PROXY</span><span class="fact-value">{diagnostic.facts.trustProxy.enabled ? 'Enabled' : 'Disabled'} — {diagnostic.facts.trustProxy.source}{#if diagnostic.facts.trustProxy.isLocked} (locked){/if}</span></div>
 						</div>
-
-						{#if diagnostic.reasons.length > 0}
-							<div class="reasons-block">
-								<span class="reasons-label">Why we recommend this</span>
-								<ul>
-									{#each diagnostic.reasons as reason}
-										<li>{reason}</li>
-									{/each}
-								</ul>
-							</div>
+						<p class="safety-note">{presentation.safetyNotice}</p>
+						{#if applicableProviderGuides.length > 0}
+						<div class="provider-guides">
+							<span class="reasons-label">Repair steps by proxy</span>
+							{#each applicableProviderGuides as guide}
+								<details class="provider-guide">
+									<summary>{guide.label}</summary>
+									<div class="provider-guide-content">
+										<ol>
+											{#each guide.steps as step}
+												<li>{step}</li>
+											{/each}
+										</ol>
+										{#if guide.config}
+											<div class="provider-config">
+												<pre><code>{guide.config}</code></pre>
+												<Button type="button" variant="outline" class="tap-target" onclick={() => void copyGuide(guide.id, guide.config ?? '')}>
+													Copy configuration
+												</Button>
+											</div>
+											<span class="copy-status" role="status" aria-live="polite">
+												{copiedGuideId === guide.id
+													? `${guide.label} configuration copied`
+													: copiedGuideId === `error:${guide.id}`
+														? `Could not copy the ${guide.label} configuration`
+														: ''}
+											</span>
+										{/if}
+										<a href={documentationForGuide(guide).url} target="_blank" rel="noreferrer">
+											{guide.id === 'other' ? 'Open Obzorarr configuration guidance' : `Open official ${guide.label} documentation`}
+										</a>
+									</div>
+								</details>
+							{/each}
+						</div>
 						{/if}
-
-						<p class="safety-note">{diagnostic.safetyNotice}</p>
-
+						<p class="safety-note">{presentation.consequence} Restart Obzorarr after changing an environment-controlled TRUST_PROXY setting, then rerun this diagnostic.</p>
 						<div class="re-check">
-							<Button
-								type="button"
-								variant="outline"
-								class="tap-target"
-								onclick={() => void runDiagnostic({ userInitiated: true })}
-								disabled={diagnosticStatus === 'checking'}
-								aria-busy={diagnosticStatus === 'checking'}
-							>
-								{diagnosticStatus === 'checking'
-									? REVERSE_PROXY_COPY.rerunButtonInProgress
-									: REVERSE_PROXY_COPY.rerunButton}
+							<Button type="button" variant="outline" class="tap-target" onclick={() => void runDiagnostic({ userInitiated: true })} disabled={diagnosticStatus === 'checking'} aria-busy={diagnosticStatus === 'checking'}>
+								{diagnosticStatus === 'checking' ? REVERSE_PROXY_COPY.rerunButtonInProgress : REVERSE_PROXY_COPY.rerunButton}
 							</Button>
 						</div>
 					</div>
@@ -587,7 +475,7 @@ function getForwardedPairLabel(status: string): string {
 									);
 								}
 								await update({ reset: false });
-								if (result.type === 'success') await invalidateAll();
+								if (result.type === 'success') await refreshDiagnosticAfterTrustProxyWrite();
 							} finally {
 								isTogglingTrustProxy = false;
 							}
@@ -607,7 +495,7 @@ function getForwardedPairLabel(status: string): string {
 						</Button>
 					</SettingsActionBar>
 				</form>
-			{:else}
+			{:else if diagnostic?.action === 'enable'}
 				<SettingsActionBar>
 					<button
 						type="button"
@@ -673,9 +561,11 @@ function getForwardedPairLabel(status: string): string {
 		<AlertDialog.Header>
 			<AlertDialog.Title>Enable reverse-proxy header trust?</AlertDialog.Title>
 			<AlertDialog.Description>
-				Obzorarr will trust the upstream proxy's `x-forwarded-*` headers for client IP, host,
-				and protocol. If those headers can reach obzorarr unsanitised, attackers can spoof the
-				host or protocol used for security decisions and generated URLs.
+				Obzorarr will use the upstream proxy's X-Forwarded-Host and X-Forwarded-Proto
+				values for effective public URLs. Enable this only when the proxy removes or overwrites
+				visitor-supplied forwarding headers; otherwise attackers could spoof the host or protocol
+				used for security decisions and generated URLs. Client-IP handling is configured separately
+				by the runtime or adapter.
 			</AlertDialog.Description>
 		</AlertDialog.Header>
 		<AlertDialog.Footer>
@@ -693,7 +583,7 @@ function getForwardedPairLabel(status: string): string {
 								);
 							}
 							await update({ reset: false });
-							if (result.type === 'success') await invalidateAll();
+							if (result.type === 'success') await refreshDiagnosticAfterTrustProxyWrite();
 						} finally {
 							isConfirmingTrustProxy = false;
 							trustProxyConfirmDialogOpen = false;
@@ -909,11 +799,6 @@ function getForwardedPairLabel(status: string): string {
 		letter-spacing: 0.05em;
 	}
 
-	.reasons-block {
-		display: flex;
-		flex-direction: column;
-		gap: 0.35rem;
-	}
 
 	.reasons-label {
 		font-size: 0.7rem;
@@ -923,13 +808,59 @@ function getForwardedPairLabel(status: string): string {
 		color: oklch(var(--muted-foreground));
 	}
 
-	.reasons-block ul {
+	.provider-guides {
+		display: grid;
+		gap: 0.75rem;
+	}
+
+	.provider-guide {
+		min-width: 0;
+		border: 1px solid oklch(var(--border));
+		border-radius: 8px;
+	}
+
+	.provider-guide summary {
+		cursor: pointer;
+		padding: 0.65rem 0.75rem;
+		font-weight: 600;
+	}
+
+	.provider-guide-content {
+		display: grid;
+		gap: 0.65rem;
+		padding: 0 0.75rem 0.75rem;
+	}
+
+	.provider-guides ol {
 		margin: 0;
-		padding-left: 1.1rem;
-		color: oklch(var(--muted-foreground));
+		padding-left: 1.25rem;
 		font-size: 0.8rem;
 		line-height: 1.5;
 	}
+
+	.provider-config {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		gap: 0.5rem;
+		align-items: start;
+	}
+
+	.provider-config pre {
+		min-width: 0;
+		margin: 0;
+		overflow-x: auto;
+		padding: 0.6rem;
+		border: 1px solid oklch(var(--border));
+		border-radius: 8px;
+		font-size: 0.75rem;
+	}
+
+	.copy-status {
+		min-height: 1.25rem;
+		font-size: 0.75rem;
+		color: oklch(var(--muted-foreground));
+	}
+
 
 	.safety-note {
 		margin: 0;
@@ -945,6 +876,9 @@ function getForwardedPairLabel(status: string): string {
 
 	@media (max-width: 640px) {
 		.diagnostic-facts {
+			grid-template-columns: 1fr;
+		}
+		.provider-config {
 			grid-template-columns: 1fr;
 		}
 	}

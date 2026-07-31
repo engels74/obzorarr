@@ -1,33 +1,20 @@
 import { isIP } from 'node:net';
+import type {
+	ReverseProxyDiagnostic,
+	ReverseProxyDiagnosticReasonCode,
+	SourceAddressCategory
+} from '$lib/security/reverse-proxy';
 import {
-	type ConfigSource,
 	type ConfigValue,
 	getCsrfConfigWithSource,
 	getTrustProxyConfigWithSource
 } from '$lib/server/admin/settings.service';
-import {
-	type ForwardedHeaderName,
-	type ForwardedProtoHostStatus,
-	getForwardedHeaderNamesPresent,
-	parseForwardedProtoHost
-} from './forwarded-headers';
+import { getForwardedHeaderNamesPresent, parseForwardedProtoHost } from './forwarded-headers';
 
-export type SourceAddressCategory =
-	| 'loopback'
-	| 'private-lan'
-	| 'docker/private-range'
-	| 'tailscale/cgnat'
-	| 'link-local'
-	| 'public'
-	| 'unknown';
-
-export type ReverseProxyRecommendationAction =
-	| 'enable'
-	| 'leave-disabled'
-	| 'review-proxy'
-	| 'appears-working'
-	| 'unable-to-determine'
-	| 'env-controlled';
+export type {
+	ReverseProxyDiagnostic,
+	ReverseProxyRecommendationAction
+} from '$lib/security/reverse-proxy';
 
 export interface ReverseProxyDiagnosticInput {
 	request: Request;
@@ -42,58 +29,10 @@ export interface ReverseProxyDiagnosticBuildInput extends ReverseProxyDiagnostic
 	csrfOrigin: ConfigValue<string>;
 }
 
-export interface OriginDiagnostic {
+interface OriginDiagnostic {
 	origin: string | null;
 	isValid: boolean;
 }
-
-export interface ConfiguredOriginDiagnostic extends OriginDiagnostic {
-	source: ConfigSource;
-	isConfigured: boolean;
-	isLocked: boolean;
-}
-
-export interface ForwardedPairDiagnostic {
-	status: ForwardedProtoHostStatus;
-	isUsable: boolean;
-	protoPresent: boolean;
-	hostPresent: boolean;
-}
-
-export interface ReverseProxyDiagnostic {
-	trustProxy: {
-		enabled: boolean;
-		source: ConfigSource;
-		isLocked: boolean;
-	};
-	origins: {
-		rawApp: string | null;
-		effectiveApp: string | null;
-		browser: OriginDiagnostic;
-		configuredPublic: ConfiguredOriginDiagnostic;
-	};
-	forwardedHeaders: {
-		present: ForwardedHeaderName[];
-		pair: ForwardedPairDiagnostic;
-	};
-	sourceAddress: {
-		category: SourceAddressCategory;
-	};
-	originComparison: {
-		browserMatchesRawApp: boolean | null;
-		browserMatchesEffectiveApp: boolean | null;
-		forwardedPairMatchesBrowser: boolean | null;
-	};
-	recommendation: {
-		action: ReverseProxyRecommendationAction;
-		summary: string;
-	};
-	reasons: string[];
-	safetyNotice: string;
-}
-
-const SAFETY_NOTICE =
-	'Only enable reverse proxy header trust when your upstream proxy strips visitor-supplied forwarding headers before requests reach Obzorarr.';
 
 function originFromUrl(value: string | URL): string | null {
 	try {
@@ -184,14 +123,23 @@ export function classifySourceAddress(address: string | null | undefined): Sourc
 	return 'public';
 }
 
+function reasonForReview(
+	forwardedPair: ReturnType<typeof parseForwardedProtoHost>
+): ReverseProxyDiagnosticReasonCode {
+	if (forwardedPair.status === 'missing') return 'forwarded-pair-missing';
+	if (forwardedPair.status === 'partial') return 'forwarded-pair-partial';
+	if (!forwardedPair.isUsable) return 'forwarded-pair-invalid';
+	return 'forwarded-pair-ambiguous';
+}
+
 function recommendationFor(input: {
 	trustEnabled: boolean;
-	trustSource: ConfigSource;
+	trustSource: ReverseProxyDiagnostic['facts']['trustProxy']['source'];
 	browserOrigin: OriginDiagnostic;
 	rawAppOrigin: string | null;
 	effectiveAppOrigin: string | null;
 	forwardedPair: ReturnType<typeof parseForwardedProtoHost>;
-}): Pick<ReverseProxyDiagnostic, 'recommendation' | 'reasons'> {
+}): Pick<ReverseProxyDiagnostic, 'action' | 'reasonCodes'> {
 	const browserMatchesRawApp = originsEqual(input.browserOrigin.origin, input.rawAppOrigin);
 	const browserMatchesEffectiveApp = originsEqual(
 		input.browserOrigin.origin,
@@ -201,38 +149,18 @@ function recommendationFor(input: {
 		input.browserOrigin.origin,
 		input.forwardedPair.url?.origin ?? null
 	);
-	const reasons: string[] = [];
 
 	if (input.trustSource === 'env') {
-		reasons.push(
-			`TRUST_PROXY is controlled by the environment and is currently ${input.trustEnabled ? 'enabled' : 'disabled'}.`
-		);
-		reasons.push('Obzorarr will not change this setting from the UI while it is locked.');
 		return {
-			recommendation: {
-				action: 'env-controlled',
-				summary: 'TRUST_PROXY is controlled by the environment.'
-			},
-			reasons
+			action: 'env-controlled',
+			reasonCodes: [
+				input.trustEnabled ? 'trust-proxy-env-locked-enabled' : 'trust-proxy-env-locked-disabled'
+			]
 		};
 	}
 
 	if (!input.browserOrigin.isValid) {
-		reasons.push(
-			'The browser origin was missing or invalid, so the server cannot compare it safely.'
-		);
-		if (input.forwardedPair.isUsable) {
-			reasons.push(
-				'A usable forwarded proto and host pair is present, but it was not trusted alone.'
-			);
-		}
-		return {
-			recommendation: {
-				action: 'unable-to-determine',
-				summary: 'Unable to determine safely without a valid browser origin.'
-			},
-			reasons
-		};
+		return { action: 'unable-to-determine', reasonCodes: ['browser-origin-invalid'] };
 	}
 
 	if (!input.trustEnabled) {
@@ -241,71 +169,30 @@ function recommendationFor(input: {
 			input.forwardedPair.isUsable &&
 			forwardedPairMatchesBrowser === true
 		) {
-			reasons.push('The browser origin differs from the raw app origin seen by Obzorarr.');
-			reasons.push('The forwarded proto and host pair is usable and matches the browser origin.');
-			reasons.push(
-				'Enabling trust may fix public URL detection after you verify proxy header stripping.'
-			);
 			return {
-				recommendation: {
-					action: 'enable',
-					summary: 'Enable reverse proxy header trust after confirming your proxy strips headers.'
-				},
-				reasons
+				action: 'enable',
+				reasonCodes: ['forwarded-pair-matches-browser']
 			};
 		}
 
 		if (browserMatchesRawApp === true && input.forwardedPair.status === 'missing') {
-			reasons.push('The browser origin already matches the raw app origin.');
-			reasons.push('No usable forwarded proto and host pair is present.');
 			return {
-				recommendation: {
-					action: 'leave-disabled',
-					summary: 'Leave reverse proxy header trust disabled.'
-				},
-				reasons
+				action: 'leave-disabled',
+				reasonCodes: ['direct-access-without-forwarded-pair']
 			};
 		}
 
-		reasons.push(
-			'Forwarded headers are partial, invalid, missing for this proxy shape, or do not match the browser origin.'
-		);
-		reasons.push('Review your reverse proxy configuration before enabling header trust.');
 		return {
-			recommendation: {
-				action: 'review-proxy',
-				summary: 'Review proxy configuration before changing reverse proxy header trust.'
-			},
-			reasons
+			action: 'review-proxy',
+			reasonCodes: [reasonForReview(input.forwardedPair)]
 		};
 	}
 
 	if (input.forwardedPair.isUsable && browserMatchesEffectiveApp === true) {
-		reasons.push('Reverse proxy header trust is enabled.');
-		reasons.push('The effective app origin matches the browser origin.');
-		reasons.push(
-			'This appears to be working only if the upstream proxy strips visitor-supplied forwarding headers.'
-		);
-		return {
-			recommendation: {
-				action: 'appears-working',
-				summary: 'Reverse proxy header trust appears to be working.'
-			},
-			reasons
-		};
+		return { action: 'appears-working', reasonCodes: ['trust-proxy-working'] };
 	}
 
-	reasons.push(
-		'Reverse proxy header trust is enabled, but the forwarded pair is missing, invalid, or not producing the browser origin.'
-	);
-	reasons.push('Review the proxy setup and disable trust if no trusted reverse proxy needs it.');
-	return {
-		recommendation: {
-			action: 'review-proxy',
-			summary: 'Review proxy configuration for the current TRUST_PROXY setting.'
-		},
-		reasons
-	};
+	return { action: 'review-proxy', reasonCodes: ['trust-proxy-enabled-broken'] };
 }
 
 export function buildReverseProxyDiagnostic(
@@ -317,7 +204,7 @@ export function buildReverseProxyDiagnostic(
 	const browserOrigin = normalizeOrigin(input.browserOrigin);
 	const configuredPublicOrigin = normalizeOrigin(input.csrfOrigin.value || null);
 	const trustEnabled = input.trustProxy.value === 'true';
-	const { recommendation, reasons } = recommendationFor({
+	const { action, reasonCodes } = recommendationFor({
 		trustEnabled,
 		trustSource: input.trustProxy.source,
 		browserOrigin,
@@ -327,45 +214,49 @@ export function buildReverseProxyDiagnostic(
 	});
 
 	return {
-		trustProxy: {
-			enabled: trustEnabled,
-			source: input.trustProxy.source,
-			isLocked: input.trustProxy.isLocked
-		},
-		origins: {
-			rawApp: rawAppOrigin,
-			effectiveApp: effectiveAppOrigin,
-			browser: browserOrigin,
-			configuredPublic: {
-				...configuredPublicOrigin,
+		facts: {
+			trustProxy: {
+				enabled: trustEnabled,
+				source: input.trustProxy.source,
+				isLocked: input.trustProxy.isLocked
+			},
+			browserOrigin: {
+				isValid: browserOrigin.isValid,
+				origin: browserOrigin.origin
+			},
+			configuredPublicOrigin: {
+				isValid: configuredPublicOrigin.isValid,
 				source: input.csrfOrigin.source,
 				isConfigured: Boolean(input.csrfOrigin.value),
 				isLocked: input.csrfOrigin.isLocked
+			},
+			origins: {
+				effectiveApp: effectiveAppOrigin,
+				forwardedPair: forwardedPair.url?.origin ?? null
+			},
+			forwardedHeaders: {
+				present: getForwardedHeaderNamesPresent(input.request.headers),
+				pair: {
+					status: forwardedPair.status,
+					isUsable: forwardedPair.isUsable,
+					protoPresent: forwardedPair.protoPresent,
+					hostPresent: forwardedPair.hostPresent
+				}
+			},
+			sourceAddress: {
+				category: classifySourceAddress(input.sourceAddress)
+			},
+			originComparison: {
+				browserMatchesRawApp: originsEqual(browserOrigin.origin, rawAppOrigin),
+				browserMatchesEffectiveApp: originsEqual(browserOrigin.origin, effectiveAppOrigin),
+				forwardedPairMatchesBrowser: originsEqual(
+					browserOrigin.origin,
+					forwardedPair.url?.origin ?? null
+				)
 			}
 		},
-		forwardedHeaders: {
-			present: getForwardedHeaderNamesPresent(input.request.headers),
-			pair: {
-				status: forwardedPair.status,
-				isUsable: forwardedPair.isUsable,
-				protoPresent: forwardedPair.protoPresent,
-				hostPresent: forwardedPair.hostPresent
-			}
-		},
-		sourceAddress: {
-			category: classifySourceAddress(input.sourceAddress)
-		},
-		originComparison: {
-			browserMatchesRawApp: originsEqual(browserOrigin.origin, rawAppOrigin),
-			browserMatchesEffectiveApp: originsEqual(browserOrigin.origin, effectiveAppOrigin),
-			forwardedPairMatchesBrowser: originsEqual(
-				browserOrigin.origin,
-				forwardedPair.url?.origin ?? null
-			)
-		},
-		recommendation,
-		reasons,
-		safetyNotice: SAFETY_NOTICE
+		action,
+		reasonCodes
 	};
 }
 
@@ -398,7 +289,7 @@ export type EnableTrustProxyDecision = { ok: true } | { ok: false; error: string
 export function assertEnableTrustProxyAllowed(
 	diagnostic: ReverseProxyDiagnostic
 ): EnableTrustProxyDecision {
-	if (diagnostic.recommendation.action === 'enable') {
+	if (diagnostic.action === 'enable') {
 		return { ok: true };
 	}
 	return { ok: false, error: ENABLE_TRUST_PROXY_NOT_RECOMMENDED_MESSAGE };
