@@ -89,6 +89,17 @@ describe('reverse proxy presenter', () => {
 		);
 	});
 
+	it('identifies a missing forwarded proto when only the host arrives', () => {
+		const partial = diagnostic('review-proxy', 'partial');
+		partial.facts.forwardedHeaders.present = ['X-Forwarded-Host'];
+		partial.facts.forwardedHeaders.pair.protoPresent = false;
+		partial.facts.forwardedHeaders.pair.hostPresent = true;
+
+		expect(presentReverseProxyDiagnostic(partial).diagnosis).toContain(
+			'X-Forwarded-Host arrived, but X-Forwarded-Proto is missing'
+		);
+	});
+
 	it.each([
 		['missing', 'both X-Forwarded-Proto and X-Forwarded-Host'],
 		['partial', 'missing member'],
