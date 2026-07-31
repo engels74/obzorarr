@@ -1,4 +1,5 @@
 import {
+	getEffectiveShareMode,
 	getGlobalDefaultShareMode,
 	getOrCreateShareSettings,
 	getServerWrappedShareMode,
@@ -86,8 +87,7 @@ export async function checkWrappedAccess(
 
 	const settings = await getOrCreateShareSettings({ userId, year });
 
-	const globalFloor = await getGlobalDefaultShareMode();
-	const effectiveMode = getMoreRestrictiveMode(settings.mode, globalFloor);
+	const effectiveMode = await getEffectiveShareMode(userId, year);
 	const isOwner = currentUser?.id === userId || currentUser?.isAdmin === true;
 
 	// Private-link pages require the token even for owners/admins. Owner/admin
@@ -126,7 +126,8 @@ export async function checkWrappedAccess(
 	return {
 		settings: {
 			...settings,
-			mode: effectiveMode
+			mode: effectiveMode,
+			shareToken: effectiveMode === ShareMode.PRIVATE_LINK ? settings.shareToken : null
 		},
 		accessReason: result.reason ?? 'unknown'
 	};

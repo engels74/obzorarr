@@ -1,4 +1,5 @@
 import { and, eq, isNull, ne } from 'drizzle-orm';
+import { getPublicLandingLookupEnabled } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
 import { appSettings, shareSettings } from '$lib/server/db/schema';
 import {
@@ -106,7 +107,11 @@ export async function getGlobalAllowUserControl(): Promise<boolean> {
 }
 
 export async function getEffectiveShareMode(userId: number, year: number): Promise<ShareModeType> {
-	const globalDefault = await getGlobalDefaultShareMode();
+	const [globalDefault, allowUserControl, publicLookupEnabled] = await Promise.all([
+		getGlobalDefaultShareMode(),
+		getGlobalAllowUserControl(),
+		getPublicLandingLookupEnabled()
+	]);
 	const result = await db
 		.select({
 			mode: shareSettings.mode,
@@ -117,6 +122,25 @@ export async function getEffectiveShareMode(userId: number, year: number): Promi
 		.limit(1);
 
 	const record = result[0];
+
+	// Public landing lookup is an access policy for the current-year Wrapped page,
+	// not just a form-visibility switch. It establishes PUBLIC as the effective
+	// default. When user control is enabled, only an explicit non-public row opts
+	// that user out; when control is disabled, the administrator's choice wins.
+	if (publicLookupEnabled && year === new Date().getFullYear()) {
+		if (!allowUserControl || !record) {
+			return ShareMode.PUBLIC;
+		}
+
+		const source = normalizeShareModeSource(record.modeSource);
+		if (source === ShareModeSource.DEFAULT) {
+			return ShareMode.PUBLIC;
+		}
+
+		const parsed = ShareModeSchema.safeParse(record.mode);
+		return parsed.success ? parsed.data : ShareMode.PRIVATE_OAUTH;
+	}
+
 	if (!record) {
 		return globalDefault;
 	}
@@ -624,6 +648,17 @@ export async function ensurePublicSlug(userId: number, year: number): Promise<st
 		.limit(1);
 
 	return refreshed[0]?.publicSlug ?? newSlug;
+}
+
+/**
+ * Return an opaque identifier that is safe to disclose from anonymous public
+ * lookup. The share row is created with the normal defaults when needed, but
+ * this helper can only mint or return `publicSlug`; it never reads or returns a
+ * private-link token.
+ */
+export async function getPublicShareIdentifier(userId: number, year: number): Promise<string> {
+	await getOrCreateShareSettings({ userId, year });
+	return ensurePublicSlug(userId, year);
 }
 
 /**

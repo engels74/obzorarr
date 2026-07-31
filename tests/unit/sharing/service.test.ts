@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { and, eq } from 'drizzle-orm';
-import { setUserDefaultsAtomic } from '$lib/server/admin/settings.service';
+import {
+	setPublicLandingLookupEnabled,
+	setUserDefaultsAtomic
+} from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
 import { appSettings, shareSettings } from '$lib/server/db/schema';
 import {
@@ -608,6 +611,25 @@ describe('Sharing Service', () => {
 				expect(readOnlySettings?.storedMode).toBe(ShareMode.PRIVATE_OAUTH);
 				expect(readOnlySettings?.mode).toBe(ShareMode.PRIVATE_OAUTH);
 				expect(effectiveMode).toBe(ShareMode.PRIVATE_OAUTH);
+			});
+
+			it('fails closed for a malformed explicit opt-out while public lookup is enabled', async () => {
+				const currentYear = new Date().getFullYear();
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PUBLIC,
+					allowUserControl: true
+				});
+				await setPublicLandingLookupEnabled(true);
+				await db.insert(shareSettings).values({
+					userId,
+					year: currentYear,
+					mode: 'invalid-mode',
+					modeSource: ShareModeSource.EXPLICIT,
+					shareToken: null,
+					canUserControl: true
+				});
+
+				expect(await getEffectiveShareMode(userId, currentYear)).toBe(ShareMode.PRIVATE_OAUTH);
 			});
 
 			it('maps shareToken correctly', async () => {

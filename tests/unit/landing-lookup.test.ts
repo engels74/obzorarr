@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import { isRedirect } from '@sveltejs/kit';
+import { eq } from 'drizzle-orm';
 import {
 	getPublicLandingLookupEnabled,
 	setPublicLandingLookupEnabled
@@ -15,6 +16,7 @@ import {
 import { ShareMode, ShareModeSource } from '$lib/server/sharing/types';
 import type { LiveSyncResult } from '$lib/server/sync/live-sync';
 import * as liveSync from '$lib/server/sync/live-sync';
+import { load as loadWrapped } from '../../src/routes/wrapped/[year=year]/u/[identifier]/+page.server';
 
 let liveSyncResult: LiveSyncResult = {
 	triggered: false,
@@ -199,29 +201,93 @@ describe('landing username lookup', () => {
 		}
 	});
 
-	it('returns the same generic response for private users and missing users', async () => {
-		await setGlobalShareDefaults({ defaultShareMode: ShareMode.PUBLIC, allowUserControl: false });
+	it('returns the same generic response for an allowed opt-out and an unknown user', async () => {
+		await setGlobalShareDefaults({
+			defaultShareMode: ShareMode.PRIVATE_OAUTH,
+			allowUserControl: true
+		});
 		await seedUser(ShareMode.PRIVATE_OAUTH);
 
-		const privateResult = await invokeLookup('alice', '198.51.100.2');
+		const optedOutResult = await invokeLookup('alice', '198.51.100.2');
 		const missingResult = await invokeLookup('nobody', '198.51.100.3');
 
-		expect(privateResult).toEqual({
+		expect(optedOutResult).toEqual({
 			status: 404,
 			data: {
-				error: 'No public Wrapped found for that username.',
+				error: 'No publicly shared Wrapped found for that username.',
 				username: 'alice',
-				requiresAuth: true
+				requiresAuth: false
 			}
 		});
 		expect(missingResult).toEqual({
 			status: 404,
 			data: {
-				error: 'No public Wrapped found for that username.',
+				error: 'No publicly shared Wrapped found for that username.',
 				username: 'nobody',
-				requiresAuth: true
+				requiresAuth: false
 			}
 		});
+		expect(liveSyncCalls).toEqual([]);
+	});
+
+	it('uses public lookup as the default even when the global share default is private', async () => {
+		await setGlobalShareDefaults({
+			defaultShareMode: ShareMode.PRIVATE_OAUTH,
+			allowUserControl: true
+		});
+		await seedUser();
+
+		try {
+			await invokeLookup('alice', '198.51.100.13');
+			throw new Error('Expected redirect');
+		} catch (error) {
+			expect(isRedirect(error)).toBe(true);
+		}
+	});
+
+	it('redirects with a slug but denies destination access when sync makes the page private-link', async () => {
+		const PRIVATE_TOKEN = '550e8400-e29b-41d4-a716-446655440999';
+		await setGlobalShareDefaults({ defaultShareMode: ShareMode.PUBLIC, allowUserControl: true });
+		await seedUser(ShareMode.PUBLIC);
+		triggerLiveSyncSpy.mockImplementation(async (source: string) => {
+			liveSyncCalls.push(source);
+			await db
+				.update(shareSettings)
+				.set({ mode: ShareMode.PRIVATE_LINK, shareToken: PRIVATE_TOKEN })
+				.where(eq(shareSettings.userId, USER_ID));
+			return { triggered: false, syncInProgress: false, reason: 'disabled' };
+		});
+
+		let slug = '';
+		try {
+			await invokeLookup('alice', '198.51.100.15');
+			throw new Error('Expected redirect');
+		} catch (error) {
+			expect(isRedirect(error)).toBe(true);
+			if (!isRedirect(error)) throw error;
+			slug = error.location.replace(`/wrapped/${YEAR}/u/`, '');
+		}
+
+		expect(isValidSlugFormat(slug)).toBe(true);
+		expect(slug).not.toBe(PRIVATE_TOKEN);
+		const row = await db
+			.select({ publicSlug: shareSettings.publicSlug, shareToken: shareSettings.shareToken })
+			.from(shareSettings)
+			.where(eq(shareSettings.userId, USER_ID))
+			.limit(1);
+		expect(row[0]).toEqual({ publicSlug: slug, shareToken: PRIVATE_TOKEN });
+
+		try {
+			await loadWrapped({
+				params: { year: String(YEAR), identifier: slug },
+				locals: {},
+				parent: async () => ({ availableYears: [YEAR] }),
+				setHeaders: () => {}
+			} as unknown as Parameters<typeof loadWrapped>[0]);
+			expect.unreachable('Expected private-link slug destination to be denied');
+		} catch (error) {
+			expect((error as { status?: number }).status).toBe(404);
+		}
 	});
 
 	it('does not create local users from anonymous lookup', async () => {
@@ -236,17 +302,34 @@ describe('landing username lookup', () => {
 		await invokeLookup('synced-only', '198.51.100.4');
 
 		const createdUsers = await db.select().from(users);
+		const createdShareSettings = await db.select().from(shareSettings);
 		expect(createdUsers).toHaveLength(0);
+		expect(createdShareSettings).toHaveLength(0);
 	});
 
-	it('rejects over-length usernames before lookup side effects', async () => {
-		const result = await invokeLookup('a'.repeat(1001), '198.51.100.9');
+	it('accepts trimmed, case-insensitive usernames and enforces the 100-character boundary', async () => {
+		await setGlobalShareDefaults({ defaultShareMode: ShareMode.PUBLIC, allowUserControl: false });
+		await seedUser();
 
-		expect(result).toMatchObject({
+		try {
+			await invokeLookup('  ALICE  ', '198.51.100.9');
+			throw new Error('Expected redirect');
+		} catch (error) {
+			expect(isRedirect(error)).toBe(true);
+		}
+
+		const oneHundredCharacters = await invokeLookup('a'.repeat(100), '198.51.100.10');
+		expect(oneHundredCharacters).toMatchObject({
+			status: 404,
+			data: { requiresAuth: false }
+		});
+
+		const oneHundredAndOneCharacters = await invokeLookup('a'.repeat(101), '198.51.100.11');
+		expect(oneHundredAndOneCharacters).toMatchObject({
 			status: 400,
 			data: { error: 'Username is too long', requiresAuth: false }
 		});
-		expect(liveSyncCalls).toEqual([]);
+		expect(liveSyncCalls).toEqual(['landing-page-lookup']);
 	});
 
 	describe('public landing lookup gate', () => {
@@ -275,23 +358,41 @@ describe('landing username lookup', () => {
 				warnSpy.mockRestore();
 			}
 		});
-
-		it('still 404s a non-public user when the toggle is on (per-user gate intact)', async () => {
+		it('does not mint a slug, start sync, or set cookies when disabled', async () => {
 			await setGlobalShareDefaults({
 				defaultShareMode: ShareMode.PUBLIC,
 				allowUserControl: false
 			});
+			await seedUser(ShareMode.PUBLIC);
+			await setPublicLandingLookupEnabled(false);
+			const cookies = createCookies();
+
+			const result = await invokeLookup('alice', '198.51.100.16', cookies);
+
+			expect(result).toMatchObject({ status: 403, data: { requiresAuth: true } });
+			expect(liveSyncCalls).toEqual([]);
+			expect(cookies.sets).toEqual([]);
+			const row = await db
+				.select({ publicSlug: shareSettings.publicSlug, shareToken: shareSettings.shareToken })
+				.from(shareSettings)
+				.where(eq(shareSettings.userId, USER_ID))
+				.limit(1);
+			expect(row[0]).toEqual({ publicSlug: null, shareToken: null });
+		});
+
+		it('lets the administrator make every user public when user control is disabled', async () => {
+			await setGlobalShareDefaults({
+				defaultShareMode: ShareMode.PRIVATE_OAUTH,
+				allowUserControl: false
+			});
 			await seedUser(ShareMode.PRIVATE_OAUTH);
 
-			const result = await invokeLookup('alice', '198.51.100.8');
-			expect(result).toEqual({
-				status: 404,
-				data: {
-					error: 'No public Wrapped found for that username.',
-					username: 'alice',
-					requiresAuth: true
-				}
-			});
+			try {
+				await invokeLookup('alice', '198.51.100.8');
+				throw new Error('Expected redirect');
+			} catch (error) {
+				expect(isRedirect(error)).toBe(true);
+			}
 		});
 	});
 

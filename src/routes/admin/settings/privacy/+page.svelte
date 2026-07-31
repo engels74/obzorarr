@@ -47,7 +47,8 @@ import {
 	type PrivacyPreset,
 	type PrivacyPresetId,
 	type PrivacyPreviewRowKey,
-	publicLandingLookupCopy
+	publicLandingLookupCopy,
+	shareDefaultCopy
 } from '$lib/sharing/options';
 import {
 	derivePreview,
@@ -183,24 +184,9 @@ const {
 let bulkApplyDialogOpen = $state(false);
 let isBulkApplying = $state(false);
 
-// Live contradiction warning: the toggle is the SOLE landing-page gate (D1), so a
-// non-public per-user default means visitors see the form but every lookup 404s.
-// Surface that to the admin instead of silently hiding the form. Reads across two
-// Superform stores so it updates as the admin edits either control.
-let showContradictionWarning = $derived(
-	$publicLandingLookupData.publicLandingLookup && $userDefaultsData.defaultShareMode !== 'public'
-);
-
-// Auto-open Advanced options at mount ONLY when the saved config is already
-// contradictory (public landing lookup on, but the per-user default isn't
-// public), so the contradiction Alert inside Collapsible.Content isn't hidden
-// on page load. This is a one-time init snapshot of showContradictionWarning,
-// not a $effect — the project rule forbids state updates in effects, and an
-// effect would intrusively re-open the section while the admin is editing.
-// After mount the admin can freely collapse/expand. The suppressor matches the
-// other one-time $state-from-reactive declarations above.
-// svelte-ignore state_referenced_locally
-let advancedOpen = $state(showContradictionWarning);
+// Advanced controls stay collapsed until the administrator opens them or stages
+// a preset. Public lookup no longer creates a contradictory default state.
+let advancedOpen = $state(false);
 
 // ISSUE-007: expanding "Advanced options" can push each section's Save button
 // below the fold. On expand only, scroll the freshly-revealed section to the top
@@ -283,12 +269,8 @@ function applyPrivacyPreset(preset: PrivacyPreset) {
 	advancedOpen = true;
 }
 
-// Privacy dogfood requires every preset card to be directly reachable with Tab,
-// so this intentionally deviates from the APG roving-tabindex radio pattern:
-// every card has tabindex=0 while Arrow/Home/End still move focus and select.
-// Native buttons handle Space/Enter, so this handler only owns navigation keys.
-// Refs are indexed by preset position so a keyboard move can both select and
-// shift DOM focus.
+// Use the same APG roving-tabindex radio pattern as onboarding: the selected
+// card is the single Tab stop, with the first card reachable for Custom state.
 let presetButtons = $state<(HTMLButtonElement | null)[]>([]);
 
 function handlePresetKeydown(event: KeyboardEvent, index: number) {
@@ -411,19 +393,15 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 				)}
 			</div>
 		</dl>
-		<!-- The only preview warning is the landing-lookup contradiction, which the
-		     inline Alert in the "Public landing lookup" card already surfaces (with
-		     icon, where the admin edits). Rendering it here too duplicated the same
-		     sentence across both preview panels + the Alert, so the warnings line is
-		     intentionally not shown in the preview. -->
 	{/snippet}
 
 	<Card>
 		<CardHeader>
 			<CardTitle>Privacy presets</CardTitle>
 			<CardDescription>
-				Pick a preset to set anonymization, sharing and landing-lookup in one step — then save each
-				section below. Logo behavior is configured separately on Appearance.
+				Pick a recommended starting point, then save each affected section below. These presets
+				stage five privacy fields here; the full onboarding presets also set the Wrapped logo to
+				Always Show.
 			</CardDescription>
 		</CardHeader>
 		<CardContent class="space-y-4">
@@ -439,7 +417,7 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 						type="button"
 						role="radio"
 						aria-checked={selectedPreset === preset.id}
-						tabindex={0}
+						tabindex={selectedPreset === preset.id || (selectedPreset === 'custom' && i === 0) ? 0 : -1}
 						onclick={() => applyPrivacyPreset(preset)}
 						onkeydown={(event) => handlePresetKeydown(event, i)}
 						class={selectedPreset === preset.id
@@ -465,11 +443,12 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 				<div class="space-y-1">
 					<p class="font-medium">Wrapped logo</p>
 					<p class="text-muted-foreground">
-						Logo behavior is configured on
+						Every shipped preset uses Always Show. This admin page does not change Appearance
+						settings, so confirm the current value under
 						<a
 							href="/admin/settings/appearance"
 							class="inline-flex items-center gap-1 underline"
-						>Appearance<ExternalLinkIcon class="size-3" /></a>. Presets don’t change it.
+						>Appearance<ExternalLinkIcon class="size-3" /></a>.
 					</p>
 				</div>
 			</div>
@@ -519,12 +498,6 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 		>
 			<span class="flex items-center gap-2">
 				Advanced options
-				{#if showContradictionWarning}
-					<!-- At-a-glance flag for the collapsed case: if the admin closes Advanced
-					     while the saved config is still contradictory, this keeps the broken
-					     public-lookup state visible without duplicating the Alert's full text. -->
-					<TriangleAlertIcon class="size-4 text-destructive" />
-				{/if}
 			</span>
 			<ChevronDownIcon class={advancedOpen ? 'size-4 rotate-180 transition-transform' : 'size-4 transition-transform'} />
 		</Collapsible.Trigger>
@@ -647,12 +620,13 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 					{/snippet}
 				</SettingsToggleRow>
 
-				{#if showContradictionWarning}
-					<Alert>
-						<TriangleAlertIcon />
-						<AlertDescription>{publicLandingLookupCopy.contradictionWarning}</AlertDescription>
-					</Alert>
-				{/if}
+				<Alert>
+					<GlobeIcon />
+					<AlertDescription>
+						{publicLandingLookupCopy.protectedBoundary}
+						{publicLandingLookupCopy.privateOutcome}
+					</AlertDescription>
+				</Alert>
 
 				<input
 					type="hidden"
@@ -738,9 +712,8 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 						{/snippet}
 					</Form.Control>
 					<Form.Description>
-						New users get this automatically; saving does not change existing users. For
-						retroactive changes use “Apply current defaults to all users” below, or each
-						user’s “Can Control” toggle on the
+						{shareDefaultCopy.summary} {shareDefaultCopy.explicitRows} Use the explicit bulk action
+						below for default-managed existing rows, or manage an individual user on the
 						<a href="/admin/users" class="underline">Users</a> page.
 					</Form.Description>
 					<Form.FieldErrors />
@@ -767,10 +740,7 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 	<Card>
 		<CardHeader>
 			<CardTitle>Apply defaults to existing users</CardTitle>
-			<CardDescription>
-				Reset every existing user's share mode + "can control" flag to match the current
-				defaults above. Users with an explicit per-user override are skipped, not reset.
-			</CardDescription>
+			<CardDescription>{shareDefaultCopy.bulkApply}</CardDescription>
 		</CardHeader>
 		<CardContent>
 			<SettingsActionBar>
@@ -781,7 +751,7 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 					disabled={isBulkApplying}
 				>
 					<UsersIcon />
-					Apply current defaults to all users
+					Apply defaults to managed users
 				</Button>
 			</SettingsActionBar>
 		</CardContent>
@@ -791,11 +761,9 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 <AlertDialog.Root bind:open={bulkApplyDialogOpen}>
 	<AlertDialog.Content>
 		<AlertDialog.Header>
-			<AlertDialog.Title>Apply current defaults to all users?</AlertDialog.Title>
+			<AlertDialog.Title>Apply defaults to default-managed users?</AlertDialog.Title>
 			<AlertDialog.Description>
-				This resets every existing user's share mode and "can control" setting back to the
-				current server defaults. Users with an explicit per-user override are skipped, not reset. Future users continue to
-				receive the current defaults.
+				{shareDefaultCopy.bulkApply} The result reports how many rows were updated and skipped.
 			</AlertDialog.Description>
 		</AlertDialog.Header>
 		<AlertDialog.Footer>
@@ -829,7 +797,7 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 				style="display: contents;"
 			>
 				<AlertDialog.Action type="submit" class="tap-target" disabled={isBulkApplying}>
-					{isBulkApplying ? 'Applying…' : 'Apply to all users'}
+					{isBulkApplying ? 'Applying…' : 'Apply managed defaults'}
 				</AlertDialog.Action>
 			</form>
 		</AlertDialog.Footer>

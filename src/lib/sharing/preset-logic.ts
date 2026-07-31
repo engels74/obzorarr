@@ -8,17 +8,15 @@
  * functions to its own state source (onboarding `$state` runes vs. admin
  * Superform stores) and renders the result in its own idiom.
  *
- * Privacy trust is the top constraint: `derivePreview` deliberately separates
- * admin-controlled *form/recap visibility* from *per-user effective
- * reachability* (the server-side `getEffectiveShareMode` floor, which admin
- * defaults do NOT override), so the preview can never overstate exposure.
+ * Privacy trust is the top constraint: `derivePreview` names each independently
+ * controlled Wrapped surface and never implies that “public” opens protected
+ * dashboards, settings, or administration.
  */
 import {
 	PRIVACY_PRESETS,
 	type PrivacyPresetId,
 	type PrivacyPresetPrivacyKey,
 	type PrivacyPresetValues,
-	publicLandingLookupCopy,
 	type WrappedLogoOptionValue
 } from '$lib/sharing/options';
 
@@ -96,20 +94,17 @@ export function matchPresetPrivacy(
  * per-page in each flow's own markup. Each field is scoped precisely so the
  * preview never overstates exposure or privacy:
  *
- * - `landingLookupForm` — whether the landing page shows the username lookup
- *   FORM. Admin-controlled (the `publicLandingLookup` toggle). Showing the form
- *   never makes a non-public Wrapped reachable — the server still 404s those.
- * - `serverRecapVisibility` — who can view the server-wide `/wrapped` recap.
- *   Admin-controlled (`serverWrappedShareMode`).
- * - `perUserDefaultForNewUsers` — the default share mode applied to NEW users.
- *   Explicitly labeled "for new users": it does NOT change existing/private
- *   users, and the model never claims an existing private user becomes reachable.
+ * - `landingLookupForm` — whether anonymous visitors can search for eligible
+ *   current-year personal Wrapped pages. Enabling it also establishes the
+ *   current-year public default enforced by the server.
+ * - `serverRecapVisibility` — who can view the aggregate server-wide `/wrapped`
+ *   recap. This does not affect protected application surfaces.
+ * - `perUserDefaultForNewUsers` — the ordinary personal-link baseline followed
+ *   by new and default-managed users. Explicit rows retain their stored choice.
  * - `nameDisplay` — how usernames appear, mirroring anonymization (including the
  *   hybrid "self sees own name" nuance).
  * - `logoVisibility` — OPTIONAL. Present only when `logoMode` is supplied
  *   (onboarding). Admin omits it (logoMode is managed on a different route).
- * - `warnings` — surfaced contradiction copy, e.g. landing lookup on while the
- *   default is non-public.
  */
 export interface PrivacyPreviewModel {
 	landingLookupForm: 'visible' | 'hidden';
@@ -159,13 +154,6 @@ export function derivePreview(
 	values: Omit<PrivacyPresetValues, 'logoMode'> & { logoMode?: WrappedLogoOptionValue }
 ): PrivacyPreviewModel {
 	const warnings: string[] = [];
-
-	// Landing lookup on while the default is non-public: the form shows but every
-	// lookup 404s until the default share mode is set to public. Mirrors the live warning
-	// both flows already surface; sourced from the shared copy module.
-	if (values.publicLandingLookup && values.defaultShareMode !== 'public') {
-		warnings.push(publicLandingLookupCopy.contradictionWarning);
-	}
 
 	const model: PrivacyPreviewModel = {
 		landingLookupForm: values.publicLandingLookup ? 'visible' : 'hidden',

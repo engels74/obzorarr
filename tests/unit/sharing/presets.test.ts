@@ -35,7 +35,7 @@ describe('matchPresetFull (onboarding, 6 fields)', () => {
 
 	it('returns "custom" for an off-map combination', () => {
 		const balanced = byId('balanced').values;
-		const offMap: PrivacyPresetValues = { ...balanced, logoMode: 'always_show' };
+		const offMap: PrivacyPresetValues = { ...balanced, logoMode: 'always_hide' };
 		expect(matchPresetFull(offMap)).toBe('custom');
 	});
 });
@@ -48,7 +48,7 @@ describe('matchPresetPrivacy (admin, 5 fields, logoMode excluded)', () => {
 		}
 	});
 
-	it('matches regardless of logoMode: Balanced 5 fields + logoMode always_hide => "balanced"', () => {
+	it('matches regardless of the separately persisted admin logo mode', () => {
 		const balanced = byId('balanced').values;
 		const { logoMode: _logoMode, ...fiveFields } = balanced;
 		// logoMode is NOT part of the admin match, so passing only the five fields
@@ -76,12 +76,12 @@ describe('derivePreview', () => {
 		expect(preview.logoVisibility).toBeUndefined();
 	});
 
-	it('separates form/recap visibility from per-user reachability for a public showcase', () => {
+	it('separates current-year lookup, recap visibility, and ordinary personal-link defaults', () => {
 		const preview = derivePreview(byId('public-showcase').values);
 		expect(preview.landingLookupForm).toBe('visible');
 		expect(preview.serverRecapVisibility).toBe('public');
 		expect(preview.perUserDefaultForNewUsers).toBe('public');
-		// No field on the model claims an existing/private user is reachable.
+		expect(preview.logoVisibility).toBe('always-show');
 		expect(preview.warnings).toHaveLength(0);
 	});
 
@@ -111,7 +111,7 @@ describe('derivePreview', () => {
 		expect(derivePreview(byId('internal-community').values).nameDisplay).toBe('real');
 	});
 
-	it('emits the contradiction warning for a custom combo (public lookup on + non-public default)', () => {
+	it('allows public lookup with a private ordinary-link baseline without a contradiction', () => {
 		const preview = derivePreview({
 			anonymizationMode: 'hybrid',
 			defaultShareMode: 'private-oauth',
@@ -119,11 +119,18 @@ describe('derivePreview', () => {
 			publicLandingLookup: true,
 			allowUserControl: true
 		});
-		expect(preview.warnings.length).toBeGreaterThan(0);
-		expect(preview.warnings.some((w) => /public lookup is on/i.test(w))).toBe(true);
+		expect(preview.landingLookupForm).toBe('visible');
+		expect(preview.perUserDefaultForNewUsers).toBe('members-only');
+		expect(preview.warnings).toHaveLength(0);
 	});
 
-	it('no shipped preset trips the contradiction warning', () => {
+	it('sets every shipped preset logo mode to Always Show', () => {
+		for (const preset of PRIVACY_PRESETS) {
+			expect(preset.values.logoMode).toBe('always_show');
+		}
+	});
+
+	it('keeps every shipped preset warning-free', () => {
 		for (const preset of PRIVACY_PRESETS) {
 			expect(derivePreview(preset.values).warnings).toHaveLength(0);
 		}
