@@ -245,6 +245,32 @@ describe('landing username lookup', () => {
 		}
 	});
 
+	it('does not mint a private-link token for a new user during anonymous lookup', async () => {
+		await setGlobalShareDefaults({
+			defaultShareMode: ShareMode.PRIVATE_LINK,
+			allowUserControl: true
+		});
+		await seedUser();
+
+		let slug = '';
+		try {
+			await invokeLookup('alice', '198.51.100.14');
+			throw new Error('Expected redirect');
+		} catch (error) {
+			expect(isRedirect(error)).toBe(true);
+			if (!isRedirect(error)) throw error;
+			slug = error.location.replace(`/wrapped/${YEAR}/u/`, '');
+		}
+
+		expect(isValidSlugFormat(slug)).toBe(true);
+		const row = await db
+			.select({ publicSlug: shareSettings.publicSlug, shareToken: shareSettings.shareToken })
+			.from(shareSettings)
+			.where(eq(shareSettings.userId, USER_ID))
+			.limit(1);
+		expect(row[0]).toEqual({ publicSlug: slug, shareToken: null });
+	});
+
 	it('redirects with a slug but denies destination access when sync makes the page private-link', async () => {
 		const PRIVATE_TOKEN = '550e8400-e29b-41d4-a716-446655440999';
 		await setGlobalShareDefaults({ defaultShareMode: ShareMode.PUBLIC, allowUserControl: true });

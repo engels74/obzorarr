@@ -652,12 +652,35 @@ export async function ensurePublicSlug(userId: number, year: number): Promise<st
 
 /**
  * Return an opaque identifier that is safe to disclose from anonymous public
- * lookup. The share row is created with the normal defaults when needed, but
- * this helper can only mint or return `publicSlug`; it never reads or returns a
- * private-link token.
+ * lookup. A missing share row is created with the normal defaults except that
+ * private-link token creation is deliberately deferred; this helper only mints
+ * or returns `publicSlug`.
  */
 export async function getPublicShareIdentifier(userId: number, year: number): Promise<string> {
-	await getOrCreateShareSettings({ userId, year });
+	const existing = await db
+		.select({ userId: shareSettings.userId })
+		.from(shareSettings)
+		.where(and(eq(shareSettings.userId, userId), eq(shareSettings.year, year)))
+		.limit(1);
+
+	if (!existing[0]) {
+		const [defaultMode, allowUserControl] = await Promise.all([
+			getGlobalDefaultShareMode(),
+			getGlobalAllowUserControl()
+		]);
+		await db
+			.insert(shareSettings)
+			.values({
+				userId,
+				year,
+				mode: defaultMode,
+				modeSource: ShareModeSource.DEFAULT,
+				shareToken: null,
+				canUserControl: allowUserControl
+			})
+			.onConflictDoNothing({ target: [shareSettings.userId, shareSettings.year] });
+	}
+
 	return ensurePublicSlug(userId, year);
 }
 
