@@ -106,7 +106,11 @@ export async function getGlobalAllowUserControl(): Promise<boolean> {
 	return setting.value === 'true';
 }
 
-export async function getEffectiveShareMode(userId: number, year: number): Promise<ShareModeType> {
+export async function getEffectiveShareMode(
+	userId: number,
+	year: number,
+	currentYear = new Date().getFullYear()
+): Promise<ShareModeType> {
 	const [globalDefault, allowUserControl, publicLookupEnabled] = await Promise.all([
 		getGlobalDefaultShareMode(),
 		getGlobalAllowUserControl(),
@@ -127,7 +131,7 @@ export async function getEffectiveShareMode(userId: number, year: number): Promi
 	// not just a form-visibility switch. It establishes PUBLIC as the effective
 	// default. When user control is enabled, only an explicit non-public row opts
 	// that user out; when control is disabled, the administrator's choice wins.
-	if (publicLookupEnabled && year === new Date().getFullYear()) {
+	if (publicLookupEnabled && year === currentYear) {
 		if (!allowUserControl || !record) {
 			return ShareMode.PUBLIC;
 		}

@@ -73,7 +73,7 @@ export const actions: Actions = {
 			return fail(404, publicLookupFailure);
 		}
 
-		const effectiveMode = await getEffectiveShareMode(userResult.userId, currentYear);
+		const effectiveMode = await getEffectiveShareMode(userResult.userId, currentYear, currentYear);
 		if (effectiveMode !== ShareMode.PUBLIC) {
 			return fail(404, publicLookupFailure);
 		}

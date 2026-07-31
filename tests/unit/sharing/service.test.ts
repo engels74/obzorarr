@@ -632,6 +632,22 @@ describe('Sharing Service', () => {
 				expect(await getEffectiveShareMode(userId, currentYear)).toBe(ShareMode.PRIVATE_OAUTH);
 			});
 
+			it('uses the caller current-year snapshot for public lookup policy', async () => {
+				const boundaryYear = 2099;
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_LINK,
+					allowUserControl: false
+				});
+				await setPublicLandingLookupEnabled(true);
+
+				expect(await getEffectiveShareMode(userId, boundaryYear, boundaryYear)).toBe(
+					ShareMode.PUBLIC
+				);
+				expect(await getEffectiveShareMode(userId, boundaryYear, boundaryYear + 1)).toBe(
+					ShareMode.PRIVATE_LINK
+				);
+			});
+
 			it('maps shareToken correctly', async () => {
 				const token = generateShareToken();
 				await db.insert(shareSettings).values({
