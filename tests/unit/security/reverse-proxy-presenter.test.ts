@@ -17,6 +17,8 @@ function diagnostic(
 	status: ForwardedProtoHostStatus = 'usable',
 	overrides: Partial<ReverseProxyDiagnostic['facts']['trustProxy']> = {}
 ): ReverseProxyDiagnostic {
+	const protoPresent = status !== 'missing';
+	const hostPresent = status !== 'missing' && status !== 'partial';
 	return {
 		facts: {
 			trustProxy: { enabled: false, source: 'default', isLocked: false, ...overrides },
@@ -32,12 +34,17 @@ function diagnostic(
 				forwardedPair: 'https://wrapped.example.com'
 			},
 			forwardedHeaders: {
-				present: ['X-Forwarded-Host', 'X-Forwarded-Proto'],
+				present:
+					status === 'missing'
+						? []
+						: status === 'partial'
+							? ['X-Forwarded-Proto']
+							: ['X-Forwarded-Host', 'X-Forwarded-Proto'],
 				pair: {
 					status,
 					isUsable: status === 'usable',
-					protoPresent: status !== 'missing',
-					hostPresent: status !== 'missing'
+					protoPresent,
+					hostPresent
 				}
 			},
 			sourceAddress: { category: 'docker/private-range' },
