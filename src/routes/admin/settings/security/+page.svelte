@@ -659,6 +659,11 @@ const applicableProviderGuides = $derived(
 		border-color: oklch(0.79 0.1606 79.6 / 0.25);
 	}
 
+	.status-card.danger {
+		background: oklch(var(--destructive) / 0.08);
+		border-color: oklch(var(--destructive) / 0.25);
+	}
+
 	.status-card.neutral {
 		background: oklch(var(--muted) / 0.4);
 	}
