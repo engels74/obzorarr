@@ -3,7 +3,8 @@ import {
 	getGlobalDefaultShareMode,
 	getOrCreateShareSettings,
 	getServerWrappedShareMode,
-	getShareSettingsByToken
+	getShareSettingsByToken,
+	getShareSettingsReadOnly
 } from './service';
 import {
 	type AccessCheckContext,
@@ -85,9 +86,12 @@ export async function checkWrappedAccess(
 ): Promise<CheckWrappedAccessResult> {
 	const { userId, year, currentUser, shareToken } = options;
 
-	const settings = await getOrCreateShareSettings({ userId, year });
-
 	const effectiveMode = await getEffectiveShareMode(userId, year);
+	const settings =
+		effectiveMode === ShareMode.PRIVATE_LINK
+			? await getOrCreateShareSettings({ userId, year })
+			: ((await getShareSettingsReadOnly(userId, year)) ??
+				(await getOrCreateShareSettings({ userId, year, mintPrivateLinkToken: false })));
 	const isOwner = currentUser?.id === userId || currentUser?.isAdmin === true;
 
 	// Private-link pages require the token even for owners/admins. Owner/admin

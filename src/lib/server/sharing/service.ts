@@ -425,9 +425,11 @@ function toShareSettings(
 export async function getOrCreateShareSettings(
 	options: GetOrCreateShareSettingsOptions
 ): Promise<ShareSettings> {
-	const { userId, year, createIfMissing = true } = options;
+	const { userId, year, createIfMissing = true, mintPrivateLinkToken = true } = options;
 
-	const existing = await getShareSettings(userId, year);
+	const existing = mintPrivateLinkToken
+		? await getShareSettings(userId, year)
+		: await getShareSettingsReadOnly(userId, year);
 	if (existing) {
 		return existing;
 	}
@@ -438,15 +440,15 @@ export async function getOrCreateShareSettings(
 
 	const defaultMode = await getGlobalDefaultShareMode();
 	const allowUserControl = await getGlobalAllowUserControl();
-	const shareToken = defaultMode === ShareMode.PRIVATE_LINK ? generateShareToken() : null;
+	const shareToken =
+		mintPrivateLinkToken && defaultMode === ShareMode.PRIVATE_LINK ? generateShareToken() : null;
 
 	// Atomic create (ISSUE-001): a concurrent caller can insert the (user_id, year)
 	// row between the read above and this insert. `onConflictDoNothing` on the
 	// share_settings_user_year_unq index turns that race into a no-op instead of a
 	// duplicate row (which previously let ensurePublicSlug assign one slug to two
-	// rows and 500 the dashboard). Re-select via getShareSettings so every caller
-	// receives the canonical row plus its lazy private-link token mint and the
-	// toShareSettings global-folding — keeping the ShareSettings return contract.
+	// rows and 500 the dashboard). Re-select through the same read mode so callers
+	// that explicitly suppress private-link token minting remain side-effect free.
 	await db
 		.insert(shareSettings)
 		.values({
@@ -459,7 +461,9 @@ export async function getOrCreateShareSettings(
 		})
 		.onConflictDoNothing({ target: [shareSettings.userId, shareSettings.year] });
 
-	const created = await getShareSettings(userId, year);
+	const created = mintPrivateLinkToken
+		? await getShareSettings(userId, year)
+		: await getShareSettingsReadOnly(userId, year);
 	if (!created) {
 		throw new ShareError('Failed to create share settings', 'CREATE_FAILED');
 	}

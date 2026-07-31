@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { and, eq } from 'drizzle-orm';
+import { setPublicLandingLookupEnabled } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
 import { shareSettings } from '$lib/server/db/schema';
 import {
@@ -236,6 +237,35 @@ describe('Sharing Access Control', () => {
 				const result = await checkWrappedAccess({ userId, year, currentUser });
 
 				expect(result.accessReason).toBe('owner');
+			});
+		});
+
+		describe('with public landing lookup enabled', () => {
+			it('does not mint a private-link token when the current-year effective mode is public', async () => {
+				const currentYear = new Date().getFullYear();
+				await setGlobalShareDefaults({
+					defaultShareMode: ShareMode.PRIVATE_LINK,
+					allowUserControl: false
+				});
+				await setPublicLandingLookupEnabled(true);
+				await db.insert(shareSettings).values({
+					userId,
+					year: currentYear,
+					mode: ShareMode.PRIVATE_LINK,
+					shareToken: null,
+					canUserControl: false
+				});
+
+				const result = await checkWrappedAccess({ userId, year: currentYear });
+				const [stored] = await db
+					.select({ shareToken: shareSettings.shareToken })
+					.from(shareSettings)
+					.where(and(eq(shareSettings.userId, userId), eq(shareSettings.year, currentYear)));
+
+				expect(result.accessReason).toBe('public');
+				expect(result.settings.mode).toBe(ShareMode.PUBLIC);
+				expect(result.settings.shareToken).toBeNull();
+				expect(stored?.shareToken).toBeNull();
 			});
 		});
 

@@ -125,4 +125,5 @@ export interface GetOrCreateShareSettingsOptions {
 	userId: number;
 	year: number;
 	createIfMissing?: boolean;
+	mintPrivateLinkToken?: boolean;
 }
