@@ -17,10 +17,51 @@ async function readSource(relPath: string): Promise<string> {
 	return Bun.file(join(PROJECT_ROOT, relPath)).text();
 }
 
-describe('ISSUE-007 — reverse-proxy diagnostic toast is user-initiated only', () => {
+describe('reverse-proxy diagnostic toast and progressive guidance', () => {
 	it('imports the toast service', async () => {
 		const src = await readSource(SECURITY_PAGE);
 		expect(src).toContain("import { toast } from '$lib/services/toast'");
+	});
+	it('uses the shared diagnostic DTO and presenter rather than route-local semantic maps', async () => {
+		const src = await readSource(SECURITY_PAGE);
+		expect(src).toContain(
+			"import type { ReverseProxyDiagnostic } from '$lib/security/reverse-proxy'"
+		);
+		expect(src).toContain('presentReverseProxyDiagnostic(diagnostic)');
+		expect(src).toContain('documentationForGuide(guide)');
+		expect(src).toContain('REVERSE_PROXY_PROVIDER_GUIDES');
+		expect(src).toContain('<details class="provider-guide">');
+		expect(src).toContain('Copy configuration');
+		expect(src).toContain('role="status" aria-live="polite"');
+		expect(src).not.toContain('type ReverseProxyDiagnosticView');
+		expect(src).not.toContain('function getForwardedPairLabel');
+	});
+
+	it('only offers enable when the live diagnostic recommends it and keeps client-IP scope separate', async () => {
+		const src = await readSource(SECURITY_PAGE);
+		expect(src).toContain("{:else if diagnostic?.action === 'enable'}");
+		expect(src).toContain('Client-IP handling is configured separately');
+		expect(src).not.toContain('headers for client IP, host');
+		expect(src).not.toContain('Raw app origin');
+	});
+
+	it('scopes provider repair guides to the presenter and keeps failure recovery actionable', async () => {
+		const src = await readSource(SECURITY_PAGE);
+		expect(src).toContain('presentation.documentationIds.includes(guide.documentationId)');
+		expect(src).toContain('{#each applicableProviderGuides as guide}');
+		expect(src).toMatch(
+			/diagnosticStatus === 'failure'[\s\S]*runDiagnostic\(\{ userInitiated: true \}\)/
+		);
+		expect(src).toMatch(/try \{[\s\S]*await invalidateAll\(\)[\s\S]*finally \{/);
+	});
+
+	it('clears stale results and silently reruns after a TRUST_PROXY write', async () => {
+		const src = await readSource(SECURITY_PAGE);
+		expect(src).toMatch(
+			/async function refreshDiagnosticAfterTrustProxyWrite\(\)[\s\S]*diagnostic = null[\s\S]*await invalidateAll\(\)[\s\S]*await runDiagnostic\(\)/
+		);
+		expect(src).toContain('diagnosticError = REVERSE_PROXY_COPY.savedUnverified');
+		expect(src).toContain('Saved. Verifying…');
 	});
 
 	it('runDiagnostic accepts a userInitiated option defaulting to false', async () => {

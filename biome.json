@@ -67,11 +67,13 @@
 			"!**/build",
 			"!**/.svelte-kit",
 			"!**/.omc",
+			"!**/.gjc",
 			"!**/node_modules",
 			"!/data",
 			"!**/dogfood-output",
 			"!**/drizzle",
 			"!**/*.db",
+			"!src/lib/assets/obzorarr-icon.svg",
 			"!**/bun.lock"
 		]
 	}

@@ -5,6 +5,7 @@ import { shareSettings, users } from '$lib/server/db/schema';
 import {
 	ensurePublicSlug,
 	generatePublicSlug,
+	generateShareToken,
 	getExistingShareIdentifier,
 	getShareIdentifier,
 	isPureNumericId,
@@ -84,6 +85,21 @@ describe('DF-04 public slug: minting + resolution', () => {
 		await expect(ensurePublicSlug(USER_ID, YEAR)).rejects.toBeInstanceOf(
 			ShareSettingsNotFoundError
 		);
+	});
+	it('mints and returns only a public slug for a private-link row without changing its token', async () => {
+		const token = generateShareToken();
+		await seedRow(ShareMode.PRIVATE_LINK, token);
+
+		const slug = await ensurePublicSlug(USER_ID, YEAR);
+
+		expect(isValidSlugFormat(slug)).toBe(true);
+		expect(slug).not.toBe(token);
+		const row = await db
+			.select({ publicSlug: shareSettings.publicSlug, shareToken: shareSettings.shareToken })
+			.from(shareSettings)
+			.where(and(eq(shareSettings.userId, USER_ID), eq(shareSettings.year, YEAR)))
+			.limit(1);
+		expect(row[0]).toEqual({ publicSlug: slug, shareToken: token });
 	});
 
 	it('resolveSlug returns null for malformed and unknown slugs', async () => {

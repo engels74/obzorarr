@@ -1,4 +1,5 @@
 import { and, eq, isNull, ne } from 'drizzle-orm';
+import { getPublicLandingLookupEnabled } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
 import { appSettings, shareSettings } from '$lib/server/db/schema';
 import {
@@ -105,8 +106,16 @@ export async function getGlobalAllowUserControl(): Promise<boolean> {
 	return setting.value === 'true';
 }
 
-export async function getEffectiveShareMode(userId: number, year: number): Promise<ShareModeType> {
-	const globalDefault = await getGlobalDefaultShareMode();
+export async function getEffectiveShareMode(
+	userId: number,
+	year: number,
+	currentYear = new Date().getFullYear()
+): Promise<ShareModeType> {
+	const [globalDefault, allowUserControl, publicLookupEnabled] = await Promise.all([
+		getGlobalDefaultShareMode(),
+		getGlobalAllowUserControl(),
+		getPublicLandingLookupEnabled()
+	]);
 	const result = await db
 		.select({
 			mode: shareSettings.mode,
@@ -117,6 +126,25 @@ export async function getEffectiveShareMode(userId: number, year: number): Promi
 		.limit(1);
 
 	const record = result[0];
+
+	// Public landing lookup is an access policy for the current-year Wrapped page,
+	// not just a form-visibility switch. It establishes PUBLIC as the effective
+	// default. When user control is enabled, only an explicit non-public row opts
+	// that user out; when control is disabled, the administrator's choice wins.
+	if (publicLookupEnabled && year === currentYear) {
+		if (!allowUserControl || !record) {
+			return ShareMode.PUBLIC;
+		}
+
+		const source = normalizeShareModeSource(record.modeSource);
+		if (source === ShareModeSource.DEFAULT) {
+			return ShareMode.PUBLIC;
+		}
+
+		const parsed = ShareModeSchema.safeParse(record.mode);
+		return parsed.success ? parsed.data : ShareMode.PRIVATE_OAUTH;
+	}
+
 	if (!record) {
 		return globalDefault;
 	}
@@ -401,9 +429,11 @@ function toShareSettings(
 export async function getOrCreateShareSettings(
 	options: GetOrCreateShareSettingsOptions
 ): Promise<ShareSettings> {
-	const { userId, year, createIfMissing = true } = options;
+	const { userId, year, createIfMissing = true, mintPrivateLinkToken = true } = options;
 
-	const existing = await getShareSettings(userId, year);
+	const existing = mintPrivateLinkToken
+		? await getShareSettings(userId, year)
+		: await getShareSettingsReadOnly(userId, year);
 	if (existing) {
 		return existing;
 	}
@@ -414,15 +444,15 @@ export async function getOrCreateShareSettings(
 
 	const defaultMode = await getGlobalDefaultShareMode();
 	const allowUserControl = await getGlobalAllowUserControl();
-	const shareToken = defaultMode === ShareMode.PRIVATE_LINK ? generateShareToken() : null;
+	const shareToken =
+		mintPrivateLinkToken && defaultMode === ShareMode.PRIVATE_LINK ? generateShareToken() : null;
 
 	// Atomic create (ISSUE-001): a concurrent caller can insert the (user_id, year)
 	// row between the read above and this insert. `onConflictDoNothing` on the
 	// share_settings_user_year_unq index turns that race into a no-op instead of a
 	// duplicate row (which previously let ensurePublicSlug assign one slug to two
-	// rows and 500 the dashboard). Re-select via getShareSettings so every caller
-	// receives the canonical row plus its lazy private-link token mint and the
-	// toShareSettings global-folding — keeping the ShareSettings return contract.
+	// rows and 500 the dashboard). Re-select through the same read mode so callers
+	// that explicitly suppress private-link token minting remain side-effect free.
 	await db
 		.insert(shareSettings)
 		.values({
@@ -435,7 +465,9 @@ export async function getOrCreateShareSettings(
 		})
 		.onConflictDoNothing({ target: [shareSettings.userId, shareSettings.year] });
 
-	const created = await getShareSettings(userId, year);
+	const created = mintPrivateLinkToken
+		? await getShareSettings(userId, year)
+		: await getShareSettingsReadOnly(userId, year);
 	if (!created) {
 		throw new ShareError('Failed to create share settings', 'CREATE_FAILED');
 	}
@@ -624,6 +656,40 @@ export async function ensurePublicSlug(userId: number, year: number): Promise<st
 		.limit(1);
 
 	return refreshed[0]?.publicSlug ?? newSlug;
+}
+
+/**
+ * Return an opaque identifier that is safe to disclose from anonymous public
+ * lookup. A missing share row is created with the normal defaults except that
+ * private-link token creation is deliberately deferred; this helper only mints
+ * or returns `publicSlug`.
+ */
+export async function getPublicShareIdentifier(userId: number, year: number): Promise<string> {
+	const existing = await db
+		.select({ userId: shareSettings.userId })
+		.from(shareSettings)
+		.where(and(eq(shareSettings.userId, userId), eq(shareSettings.year, year)))
+		.limit(1);
+
+	if (!existing[0]) {
+		const [defaultMode, allowUserControl] = await Promise.all([
+			getGlobalDefaultShareMode(),
+			getGlobalAllowUserControl()
+		]);
+		await db
+			.insert(shareSettings)
+			.values({
+				userId,
+				year,
+				mode: defaultMode,
+				modeSource: ShareModeSource.DEFAULT,
+				shareToken: null,
+				canUserControl: allowUserControl
+			})
+			.onConflictDoNothing({ target: [shareSettings.userId, shareSettings.year] });
+	}
+
+	return ensurePublicSlug(userId, year);
 }
 
 /**

@@ -128,10 +128,6 @@ export const actions: Actions = {
 		redirect(303, '/onboarding/plex');
 	},
 
-	// Rewind to the previous step so the user can review the security settings.
-	// Both steps are pure configuration with no destructive side effects, so the
-	// only state changed is the onboarding cursor; forward navigation re-runs the
-	// normal `continue` action and its validation.
 	goBack: async ({ cookies, url }) => {
 		const guardResult = await requireOnboardingProxyTrustAction(cookies, url, 'error');
 		if (guardResult) return guardResult;
@@ -140,7 +136,8 @@ export const actions: Actions = {
 		redirect(303, '/onboarding/csrf');
 	},
 
-	diagnoseReverseProxy: async ({ request, cookies, url, getClientAddress }) => {
+	diagnoseReverseProxy: async ({ request, cookies, url, getClientAddress, setHeaders }) => {
+		setHeaders({ 'Cache-Control': 'no-store' });
 		const guardResult = await requireOnboardingProxyTrustAction(cookies, url, 'diagnosticError');
 		if (guardResult) return guardResult;
 
@@ -170,7 +167,8 @@ export const actions: Actions = {
 		}
 	},
 
-	enableTrustProxy: async ({ request, cookies, url, getClientAddress }) => {
+	enableTrustProxy: async ({ request, cookies, url, getClientAddress, setHeaders }) => {
+		setHeaders({ 'Cache-Control': 'no-store' });
 		const guardResult = await requireOnboardingProxyTrustAction(cookies, url, 'trustProxyError');
 		if (guardResult) return guardResult;
 
@@ -182,10 +180,6 @@ export const actions: Actions = {
 			});
 		}
 
-		// Re-ordered per ISSUE-001: the diagnostic-recommendation guard must run
-		// BEFORE the confirmRisk guard, otherwise an API-direct caller posting
-		// `confirmRisk=1` on a system the diagnostic told to leave disabled would
-		// see the wrong error message and assume the diagnostic guard had passed.
 		const formData = await request.formData();
 		const browserOriginParsed = BrowserOriginSchema.safeParse({
 			browserOrigin: formData.get('browserOrigin')

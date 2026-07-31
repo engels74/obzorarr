@@ -1,19 +1,6 @@
-export type ForwardedHeaderName =
-	| 'Forwarded'
-	| 'X-Forwarded-For'
-	| 'X-Forwarded-Host'
-	| 'X-Forwarded-Proto'
-	| 'X-Real-IP';
+import type { ForwardedHeaderName, ForwardedProtoHostStatus } from '$lib/security/reverse-proxy';
 
-export type ForwardedProto = 'http' | 'https';
-
-export type ForwardedProtoHostStatus =
-	| 'usable'
-	| 'missing'
-	| 'partial'
-	| 'invalid-proto'
-	| 'unsafe-host'
-	| 'invalid-host';
+type ForwardedProto = 'http' | 'https';
 
 export interface ForwardedProtoHostResult {
 	status: ForwardedProtoHostStatus;

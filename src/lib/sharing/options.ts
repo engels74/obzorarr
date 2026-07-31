@@ -117,23 +117,31 @@ export const wrappedLogoOptions: OptionCopy<WrappedLogoOptionValue>[] = [
 ];
 
 /**
- * Copy for the public-landing-lookup toggle (the new dedicated admin setting).
- * `contradictionWarning` is surfaced in both settings and onboarding when the
- * toggle is on while the default share mode is non-public — visitors would see
- * the lookup form but every lookup would 404 until the default share mode is set to public.
- * (A non-public default is a privacy floor: per-user public rows are blocked at write
- * time and promoted back to the floor at read time, so only raising the default unblocks lookups.)
+ * Shared copy for the administrator-controlled landing lookup policy. Enabling
+ * it changes current-year access semantics as well as showing the form.
  */
 export const publicLandingLookupCopy = {
-	label: 'Allow public Wrapped lookup on the landing page',
+	label: 'Allow public current-year Wrapped lookup',
 	helper:
-		'Show a username field on the landing page so anyone can look up a public Wrapped without signing in.',
+		'Let anyone search a Plex username and open that user’s current-year Wrapped without signing in.',
 	enabledDescription:
-		'The landing page shows a username lookup field. Only Wrapped pages set to "Public" are reachable this way.',
+		'Current-year Wrapped pages are public by default. If user control is allowed, an explicit user opt-out stays hidden; otherwise this administrator setting applies to everyone.',
 	disabledDescription:
-		'The landing page hides the lookup field and shows a "Sign in with Plex" button instead.',
-	contradictionWarning:
-		'Public lookup is on, but your default share mode is non-public — every lookup will return "not found" until the default share mode is set to Public.'
+		'The public username field is hidden. Visitors use Plex sign-in, and normal per-page sharing rules continue to apply.',
+	protectedBoundary:
+		'This opens only eligible current-year Wrapped pages. Admin controls, user settings, dashboards, and the rest of Obzorarr still require authentication.',
+	privateOutcome:
+		'Unknown usernames and users who opted out receive the same “not publicly shared” response.'
+} as const;
+
+/** Canonical explanation of stored defaults versus effective access. */
+export const shareDefaultCopy = {
+	summary:
+		'New users and existing default-managed users follow the current default. Saving it does not rewrite explicit user choices.',
+	explicitRows:
+		'Explicit user choices stay stored. A stricter global floor can limit effective access; relaxing the floor can reveal the stored choice again.',
+	bulkApply:
+		'Apply the current defaults only to existing default-managed rows. Explicit user overrides are skipped, and users without a row already inherit the current default.'
 } as const;
 
 /**
@@ -174,35 +182,34 @@ export const PRIVACY_PREVIEW_ROW_TOOLTIPS: Record<
 > = {
 	namesInStats: {
 		admin:
-			'Admins always see real usernames in the dashboard and Users page. This setting only changes how names appear in public-facing, server-wide stats and leaderboards.',
+			'Admins always see real usernames in protected dashboards. This setting changes names only in Wrapped recap output and public-facing statistics.',
 		visitor:
-			'Anonymous visitors see real names, an anonymous placeholder, or no name at all — whichever anonymization mode you choose here.',
+			'On Wrapped output they can access, visitors see real names, anonymous labels, or hybrid labels according to this setting.',
 		member:
-			'With Hybrid, a signed-in member sees their own real name while everyone else stays anonymized. Real shows all names; Anonymous hides them for everyone.'
+			'Hybrid shows a signed-in member their own real name while other people stay anonymized. Real shows names; Anonymous replaces them.'
 	},
 	newUserDefault: {
 		admin:
-			'Sets the share mode applied to each newly-created user. Existing users keep their current setting until you apply defaults to all users.',
+			'New users and existing default-managed rows follow this baseline. Explicit choices are not rewritten, though a stricter global floor can limit effective access.',
 		visitor:
-			"A visitor can open a user's Wrapped without signing in when this default is Public, or Private Link if they have the share link. Server-members-only pages require signing in.",
+			'This controls ordinary personal Wrapped links. Public landing lookup is separate: when enabled, eligible current-year Wrapped pages are public by default.',
 		member:
-			'Signed-in members can open members-only Wrapped pages. If user control is allowed, each member can still override their own share mode.'
+			'Members can open members-only pages after sign-in. When user control is allowed, an explicit non-public choice also opts that user out of public lookup.'
 	},
 	serverWideRecap: {
 		admin:
-			"Controls who can open the server-wide Wrapped recap that aggregates every user's stats.",
+			'Controls only the aggregate server-wide /wrapped recap. It does not open admin pages, dashboards, settings, or every route on the server.',
 		visitor:
-			'A visitor sees the server-wide recap only when it is set to Public; otherwise they are prompted to sign in.',
-		member:
-			'Signed-in server members can open the server-wide recap whether it is set to members-only or public.'
+			'Visitors can open the server-wide recap only when it is Public; otherwise Plex server membership is required.',
+		member: 'Signed-in server members can open the recap whether it is members-only or Public.'
 	},
 	landingLookupForm: {
 		admin:
-			'Shows or hides the username lookup field on the public landing page. Only Wrapped pages set to Public are reachable through it.',
+			'Shows the public username field and makes eligible current-year personal Wrapped pages public by default. User opt-outs apply only when user control is allowed.',
 		visitor:
-			"When shown, a visitor can type a username to find that person's public Wrapped without signing in.",
+			'Visitors can search a username and open an eligible current-year Wrapped without signing in. Unknown and opted-out users look the same.',
 		member:
-			'Members normally reach Wrapped pages from the dashboard, so this form mainly affects anonymous visitors on the landing page.'
+			'This affects current-year personal Wrapped output only. Dashboards, settings, admin controls, and other private surfaces remain protected.'
 	}
 };
 
@@ -234,14 +241,14 @@ export interface PrivacyPreviewValueTooltips {
  */
 export const PRIVACY_PREVIEW_VALUE_TOOLTIPS: PrivacyPreviewValueTooltips = {
 	namesInStats: {
-		real: "Public, server-wide stats and leaderboards show each person's actual Plex username.",
+		real: 'Wrapped recap output and leaderboards show each person’s actual Plex username.',
 		anonymous:
 			'Usernames are replaced with neutral placeholders like “User #1” everywhere except the admin dashboard — no one is identifiable in public stats.',
 		'hybrid-self-sees-own':
 			'A signed-in member sees their own real name, while everyone else stays anonymized as “User #1”.'
 	},
 	newUserDefault: {
-		public: "New users' Wrapped pages are reachable by anyone with the link — no sign-in required.",
+		public: 'Ordinary personal Wrapped links are open without sign-in.',
 		'members-only':
 			"New users' Wrapped pages require signing in with a Plex account on this server.",
 		'private-link':
@@ -249,15 +256,14 @@ export const PRIVACY_PREVIEW_VALUE_TOOLTIPS: PrivacyPreviewValueTooltips = {
 	},
 	serverWideRecap: {
 		public:
-			"The server-wide /wrapped recap is open to anyone, including anonymous visitors who aren't signed in.",
+			'Only the aggregate server-wide /wrapped recap is open without sign-in; protected Obzorarr areas stay private.',
 		'members-only':
-			'The server-wide /wrapped recap requires signing in with a Plex account on this server.'
+			'The aggregate server-wide /wrapped recap requires signing in as a Plex member of this server.'
 	},
 	landingLookupForm: {
 		visible:
-			'The landing page shows a username lookup field so visitors can open any Public Wrapped without signing in.',
-		hidden:
-			'The landing page hides the lookup field and shows a “Sign in with Plex” button instead.'
+			'Visitors can search usernames and open eligible current-year Wrapped pages without signing in; other Obzorarr areas remain protected.',
+		hidden: 'The public username field is hidden and the landing page offers Plex sign-in instead.'
 	},
 	wrappedLogo: {
 		'always-show': "The Obzorarr logo is shown on every Wrapped page and users can't hide it.",
@@ -317,59 +323,60 @@ export interface PrivacyPreset {
  * documented order: anonymizationMode / defaultShareMode / serverWrappedShareMode
  * / publicLandingLookup / allowUserControl / logoMode.
  *
- * Note: "Balanced" ships with `publicLandingLookup: false` (a clean first-run,
- * members-only default that exposes nothing to anonymous visitors), so no shipped
- * preset trips the landing-lookup contradiction warning — that path is still
- * reachable (and tested) via a custom combination.
+ * Public lookup is a current-year policy rather than a form layered over the
+ * default share mode, so presets may combine it with a private ordinary-link
+ * baseline without creating a dead lookup experience.
  */
 export const PRIVACY_PRESETS: PrivacyPreset[] = [
 	{
 		id: 'maximum-privacy',
 		label: 'Maximum Privacy',
-		description: 'Everything locked down. Usernames hidden, nothing public, no landing lookup.',
-		exposureSummary: 'Anonymous stats, server-members-only recap, no public exposure.',
+		description: 'Personal and server recap links stay members-only; names are anonymous.',
+		exposureSummary:
+			'No public Wrapped output; protected dashboards still show admin-only details.',
 		values: {
 			anonymizationMode: 'anonymous',
 			defaultShareMode: ShareMode.PRIVATE_OAUTH,
 			serverWrappedShareMode: 'private-oauth',
 			publicLandingLookup: false,
 			allowUserControl: false,
-			logoMode: 'always_hide'
+			logoMode: 'always_show'
 		}
 	},
 	{
 		id: 'internal-community',
 		label: 'Internal Community',
-		description: 'Real names for your members, but nothing exposed to the public web.',
-		exposureSummary: 'Real names, server-members-only access, nothing public.',
+		description: 'Real names for signed-in members, with no public Wrapped output.',
+		exposureSummary: 'Members-only personal pages and recap; users may choose stricter sharing.',
 		values: {
 			anonymizationMode: 'real',
 			defaultShareMode: ShareMode.PRIVATE_OAUTH,
 			serverWrappedShareMode: 'private-oauth',
 			publicLandingLookup: false,
 			allowUserControl: true,
-			logoMode: 'user_choice'
+			logoMode: 'always_show'
 		}
 	},
 	{
 		id: 'balanced',
 		label: 'Balanced',
-		description: 'Recommended default. Members see their own name; nothing is public by default.',
-		exposureSummary: 'Hybrid names, members-only recap, nothing public.',
+		description: 'Recommended starting point: hybrid names and members-only sharing.',
+		exposureSummary: 'No public Wrapped output unless the administrator enables public lookup.',
 		values: {
 			anonymizationMode: 'hybrid',
 			defaultShareMode: ShareMode.PRIVATE_OAUTH,
 			serverWrappedShareMode: 'private-oauth',
 			publicLandingLookup: false,
 			allowUserControl: true,
-			logoMode: 'user_choice'
+			logoMode: 'always_show'
 		}
 	},
 	{
 		id: 'public-showcase',
 		label: 'Public Showcase',
-		description: 'Share everything publicly with real names and a public landing lookup.',
-		exposureSummary: 'Real names, public recap + landing lookup, users control their sharing.',
+		description: 'Public recap and current-year username lookup with real names.',
+		exposureSummary:
+			'Specific Wrapped output is public; dashboards, settings, and admin controls stay protected.',
 		values: {
 			anonymizationMode: 'real',
 			defaultShareMode: ShareMode.PUBLIC,
@@ -382,8 +389,9 @@ export const PRIVACY_PRESETS: PrivacyPreset[] = [
 	{
 		id: 'anonymous-public',
 		label: 'Anonymous Public',
-		description: 'Public stats, but every username stays anonymous and locked.',
-		exposureSummary: 'Anonymous names (forced), public recap + landing lookup.',
+		description: 'Public recap and current-year lookup with anonymous recap names.',
+		exposureSummary:
+			'Wrapped output is public and names stay anonymous; protected controls remain signed-in only.',
 		values: {
 			anonymizationMode: 'anonymous',
 			defaultShareMode: ShareMode.PUBLIC,
@@ -391,7 +399,7 @@ export const PRIVACY_PRESETS: PrivacyPreset[] = [
 			publicLandingLookup: true,
 			// Deliberate: "forced anonymization" only holds if users cannot reveal themselves.
 			allowUserControl: false,
-			logoMode: 'always_hide'
+			logoMode: 'always_show'
 		}
 	}
 ];

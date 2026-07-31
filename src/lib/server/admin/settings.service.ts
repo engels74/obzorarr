@@ -51,11 +51,11 @@ export const AppSettingsKey = {
 	TRUST_PROXY: 'trust_proxy',
 	THUMBNAIL_SIGNING_SECRET: 'thumbnail_signing_secret',
 	/**
-	 * Admin opt-in for the public username lookup form on the landing page. When
-	 * absent, `getPublicLandingLookupEnabled()` defaults to `false` (login-only).
-	 * DB-only (no ENV companion) so it is NOT subject to `clearConflictingDbSettings`;
-	 * `ensurePublicLandingLookupDefault()` seeds `true` for already-onboarded servers
-	 * on upgrade so a live public landing page never silently flips to login-required.
+	 * Admin opt-in for public current-year Wrapped lookup from the landing page.
+	 * When absent, `getPublicLandingLookupEnabled()` defaults to `false`
+	 * (login-only). DB-only (no ENV companion), so it is not subject to
+	 * `clearConflictingDbSettings`; upgrade backfill also stays disabled until an
+	 * administrator explicitly enables the public access policy.
 	 */
 	PUBLIC_LANDING_LOOKUP: 'public_landing_lookup'
 } as const;
@@ -1363,23 +1363,15 @@ export async function setPublicLandingLookupEnabledAtomic(opts: {
 }
 
 /**
- * DB-idempotent backfill for `PUBLIC_LANDING_LOOKUP`. Seeds `'true'` for servers
- * that completed onboarding *before* this toggle existed, so upgrading never
- * silently flips a live public landing page to login-required. Correctness is
- * guaranteed by the DB row-absence check (safe across replicas/restarts); the
- * caller (`initializationHandle`) wraps this in a process-local "attempted" flag
- * purely as a hot-path optimisation — that flag is never the idempotency guard.
+ * DB-idempotent backfill for `PUBLIC_LANDING_LOOKUP`. Servers that completed
+ * onboarding before this setting existed receive the privacy-preserving `false`
+ * value. Public lookup now changes current-year access semantics, so an upgrade
+ * must not opt users into public reachability without an administrator's choice.
  *
- * Seeds ONLY when `ONBOARDING_COMPLETED === 'true'` AND no row exists:
- *   - a not-yet-onboarded install is left untouched (onboarding writes the
- *     toggle explicitly so the admin sees the choice);
- *   - an explicit `'true'`/`'false'` is never overwritten — the leading
- *     null-check skips the write, and `onConflictDoNothing` makes the insert a
- *     no-op under a concurrent first-request race.
- *
- * This is a *backfill*, not a schema migration: `app_settings` is a generic
- * key/value table, so no `db:generate` is required (per CLAUDE.md, the
- * "add a table/column" workflow does not apply to key/value rows).
+ * Seeds only when `ONBOARDING_COMPLETED === 'true'` and no row exists. New
+ * installs are left to onboarding, explicit values are never overwritten, and
+ * `onConflictDoNothing` keeps concurrent first requests idempotent. This remains
+ * a key/value backfill rather than a schema migration.
  */
 export async function ensurePublicLandingLookupDefault(): Promise<void> {
 	const onboardingCompleted = await getAppSetting(AppSettingsKey.ONBOARDING_COMPLETED);
@@ -1391,7 +1383,7 @@ export async function ensurePublicLandingLookupDefault(): Promise<void> {
 	const now = new Date();
 	await db
 		.insert(appSettings)
-		.values({ key: AppSettingsKey.PUBLIC_LANDING_LOOKUP, value: 'true', updatedAt: now })
+		.values({ key: AppSettingsKey.PUBLIC_LANDING_LOOKUP, value: 'false', updatedAt: now })
 		.onConflictDoNothing({ target: appSettings.key });
 }
 

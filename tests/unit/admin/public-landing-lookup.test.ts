@@ -39,10 +39,10 @@ describe('PUBLIC_LANDING_LOOKUP setting', () => {
 	});
 
 	describe('ensurePublicLandingLookupDefault (upgrade backfill)', () => {
-		it('seeds true when onboarded and no row exists', async () => {
+		it('seeds false when an upgraded server has no explicit administrator choice', async () => {
 			await setAppSetting(AppSettingsKey.ONBOARDING_COMPLETED, 'true');
 			await ensurePublicLandingLookupDefault();
-			expect(await getAppSetting(AppSettingsKey.PUBLIC_LANDING_LOOKUP)).toBe('true');
+			expect(await getAppSetting(AppSettingsKey.PUBLIC_LANDING_LOOKUP)).toBe('false');
 		});
 
 		it('does NOT seed when onboarding is not complete', async () => {
@@ -77,7 +77,7 @@ describe('PUBLIC_LANDING_LOOKUP setting', () => {
 			const rows = await db.select().from(appSettings);
 			const lookupRows = rows.filter((r) => r.key === AppSettingsKey.PUBLIC_LANDING_LOOKUP);
 			expect(lookupRows).toHaveLength(1);
-			expect(lookupRows[0]?.value).toBe('true');
+			expect(lookupRows[0]?.value).toBe('false');
 		});
 	});
 });

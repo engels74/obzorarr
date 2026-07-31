@@ -2,7 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import { z } from 'zod';
 import { getPublicLandingLookupEnabled } from '$lib/server/admin/settings.service';
 import { logger } from '$lib/server/logging';
-import { getEffectiveShareMode, getShareIdentifier } from '$lib/server/sharing/service';
+import { getEffectiveShareMode, getPublicShareIdentifier } from '$lib/server/sharing/service';
 import { ShareMode } from '$lib/server/sharing/types';
 import { triggerLiveSyncIfNeeded } from '$lib/server/sync/live-sync';
 import { findUserByUsername } from '$lib/server/sync/plex-accounts.service';
@@ -23,10 +23,9 @@ export const load: PageServerLoad = async ({ locals }) => {
 		redirect(303, locals.user.isAdmin ? '/admin' : '/dashboard');
 	}
 
-	// The toggle is the SOLE visibility gate (decision D1): the form renders iff
-	// the admin opted in, independent of the default share mode. A contradictory
-	// config (toggle on + non-public default) is surfaced to the admin as a
-	// warning in settings/onboarding rather than hidden from visitors here.
+	// The administrator controls whether anonymous current-year lookup exists.
+	// The same setting also establishes the effective public default enforced by
+	// the action and destination loader, so the form cannot advertise a dead path.
 	return {
 		currentYear: new Date().getFullYear(),
 		publicLookupEnabled: await getPublicLandingLookupEnabled(),
@@ -65,16 +64,16 @@ export const actions: Actions = {
 		const userResult = await findUserByUsername(username, { createIfMissing: false });
 		const currentYear = new Date().getFullYear();
 		const publicLookupFailure = {
-			error: 'No public Wrapped found for that username.',
+			error: 'No publicly shared Wrapped found for that username.',
 			username,
-			requiresAuth: true
+			requiresAuth: false
 		};
 
 		if (!userResult) {
 			return fail(404, publicLookupFailure);
 		}
 
-		const effectiveMode = await getEffectiveShareMode(userResult.userId, currentYear);
+		const effectiveMode = await getEffectiveShareMode(userResult.userId, currentYear, currentYear);
 		if (effectiveMode !== ShareMode.PUBLIC) {
 			return fail(404, publicLookupFailure);
 		}
@@ -99,11 +98,10 @@ export const actions: Actions = {
 			logger.error(`Lookup-triggered live sync failed: ${message}`, 'LandingLookup');
 		}
 
-		// DF-04: redirect to the opaque public slug, not the enumerable integer id.
-		// The visitor here is anonymous, and a numeric URL no longer resolves for
-		// non-owners — so an integer redirect would land on the anti-enumeration 404.
-		// effectiveMode is confirmed PUBLIC above, so getShareIdentifier returns a slug.
-		const shareIdentifier = await getShareIdentifier(userResult.userId, currentYear);
-		redirect(303, `/wrapped/${currentYear}/u/${shareIdentifier}`);
+		// The mode may become more restrictive while the nonblocking sync runs.
+		// Landing lookup must still never mint or disclose a private-link token;
+		// the opaque slug is authorized again by the destination loader.
+		const publicSlug = await getPublicShareIdentifier(userResult.userId, currentYear);
+		redirect(303, `/wrapped/${currentYear}/u/${publicSlug}`);
 	}
 };

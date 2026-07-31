@@ -24,7 +24,8 @@ import {
 	type PrivacyPresetId,
 	type PrivacyPreviewRowKey,
 	publicLandingLookupCopy,
-	type ServerWrappedShareModeValue
+	type ServerWrappedShareModeValue,
+	shareDefaultCopy
 } from '$lib/sharing/options';
 import {
 	derivePreview,
@@ -79,8 +80,6 @@ let selectedPreset = $derived(
 	})
 );
 
-// Onboarding owns logoMode, so this preview is the one place that can surface
-// both logo visibility and landing-lookup contradiction warnings.
 let privacyPreview = $derived(
 	derivePreview({
 		anonymizationMode,
@@ -645,7 +644,7 @@ function getThemeColors(themeValue: string) {
 								</dd>
 							{/snippet}
 							<div class="privacy-preview" aria-live="polite">
-								<span class="preview-title">What this exposes</span>
+								<span class="preview-title">What this means</span>
 								<Tooltip.Provider delayDuration={150}>
 									<dl class="preview-rows">
 										<div class="preview-row">
@@ -656,7 +655,7 @@ function getThemeColors(themeValue: string) {
 											)}
 										</div>
 										<div class="preview-row">
-											{@render previewDt('newUserDefault', 'New-user default')}
+											{@render previewDt('newUserDefault', 'Personal link baseline')}
 											{@render previewDd(
 												PRIVACY_PREVIEW_VALUE_TOOLTIPS.newUserDefault[
 													privacyPreview.perUserDefaultForNewUsers
@@ -693,9 +692,11 @@ function getThemeColors(themeValue: string) {
 										{/if}
 									</dl>
 								</Tooltip.Provider>
-								{#each privacyPreview.warnings as warning}
-									<p class="landing-warning" role="status">{warning}</p>
-								{/each}
+								<div class="preview-boundary">
+									<strong>Protected areas stay protected.</strong>
+									{publicLandingLookupCopy.protectedBoundary}
+									{shareDefaultCopy.summary}
+								</div>
 							</div>
 
 							<div class="advanced-options">
@@ -767,7 +768,9 @@ function getThemeColors(themeValue: string) {
 
 							<div class="setting-group">
 								<span class="setting-label">Default Sharing Mode</span>
-								<p class="setting-description">How wrapped pages are shared by default</p>
+								<p class="setting-description">
+									{shareDefaultCopy.summary} {shareDefaultCopy.explicitRows}
+								</p>
 								<div class="radio-cards">
 									{#each data.shareModeOptions as option}
 										<label class="radio-card" class:selected={defaultShareMode === option.value}>
@@ -852,7 +855,11 @@ function getThemeColors(themeValue: string) {
 								<label class="toggle-row">
 									<div class="toggle-text">
 										<span class="toggle-label">{publicLandingLookupCopy.label}</span>
-										<span class="toggle-description">{publicLandingLookupCopy.helper}</span>
+										<span class="toggle-description">
+											{publicLandingLookup
+												? publicLandingLookupCopy.enabledDescription
+												: publicLandingLookupCopy.disabledDescription}
+										</span>
 									</div>
 									<button
 										type="button"
@@ -869,6 +876,7 @@ function getThemeColors(themeValue: string) {
 									</button>
 								</label>
 							</div>
+							<p class="setting-description">{publicLandingLookupCopy.protectedBoundary}</p>
 									</div>
 								{/if}
 							</div>
@@ -1518,16 +1526,6 @@ function getThemeColors(themeValue: string) {
 			border-radius: 0.625rem;
 		}
 
-		.landing-warning {
-			margin: 0.625rem 0 0;
-			padding: 0.625rem 0.75rem;
-			font-size: 0.78rem;
-			line-height: 1.4;
-			color: #fcd34d;
-			background: rgba(245, 158, 11, 0.12);
-			border: 1px solid rgba(245, 158, 11, 0.35);
-			border-radius: 0.625rem;
-		}
 
 		.preset-grid {
 			display: grid;
@@ -1680,6 +1678,21 @@ function getThemeColors(themeValue: string) {
 		.preview-row:last-child {
 			padding-bottom: 0;
 			border-bottom: none;
+		}
+
+		.preview-boundary {
+			display: grid;
+			gap: 0.35rem;
+			margin-top: 0.85rem;
+			padding-top: 0.85rem;
+			border-top: 1px solid rgba(255, 255, 255, 0.08);
+			font-size: 0.76rem;
+			line-height: 1.5;
+			color: rgba(255, 255, 255, 0.68);
+		}
+
+		.preview-boundary strong {
+			color: rgba(255, 255, 255, 0.9);
 		}
 
 		.preview-row dt {

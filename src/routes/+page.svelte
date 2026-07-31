@@ -1,6 +1,7 @@
 <script lang="ts">
 import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 import { animate } from 'motion';
+import { tick } from 'svelte';
 import { prefersReducedMotion } from 'svelte/motion';
 import { browser } from '$app/environment';
 import { enhance } from '$app/forms';
@@ -17,7 +18,6 @@ import PopupBlockedModal from '$lib/components/auth/PopupBlockedModal.svelte';
 import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import Logo from '$lib/components/Logo.svelte';
 import { Button } from '$lib/components/ui/button';
-import { Input } from '$lib/components/ui/input';
 import type { ActionData, PageData } from './$types';
 
 let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -25,6 +25,7 @@ let { data, form }: { data: PageData; form: ActionData } = $props();
 let username = $state('');
 let usernameTouched = $state(false);
 let isLookingUp = $state(false);
+let usernameInput: HTMLInputElement | undefined = $state();
 
 // The 403 "public lookup disabled" failure has no `username` field, so narrow
 // the ActionData union with an `in` check before reading it.
@@ -160,16 +161,25 @@ function handleCancelRedirect(): void {
 						use:enhance={() => {
 							isLookingUp = true;
 							return async ({ update }) => {
-								isLookingUp = false;
-								await update();
+								try {
+									await update();
+								} finally {
+									isLookingUp = false;
+								}
+								if (form?.error) {
+									await tick();
+									usernameInput?.focus();
+								}
 							};
 						}}
 						class="username-form"
+						aria-busy={isLookingUp}
 					>
 						<div class="username-input-group">
-							<label for="username-input" class="sr-only">Plex username</label>
-							<Input
+							<label for="username-input" class="lookup-label">Find a current-year Wrapped</label>
+							<input
 								id="username-input"
+								bind:this={usernameInput}
 								type="text"
 								name="username"
 								bind:value={username}
@@ -179,24 +189,39 @@ function handleCancelRedirect(): void {
 								autocomplete="off"
 								autocapitalize="off"
 								spellcheck="false"
+								required
+								aria-describedby={form?.error
+									? 'username-help username-action-error'
+									: 'username-help'}
+								aria-invalid={form?.error ? 'true' : undefined}
 								onblur={() => (usernameTouched = true)}
 							/>
 							<SubmitButton
 								class="view-button tap-target"
 								submitting={isLookingUp}
-								disabled={!username.trim()}
+								disabled={browser && !username.trim()}
 							>
 								{#snippet children()}
-									View My {data.currentYear} Wrapped
+									View {data.currentYear} Wrapped
 								{/snippet}
 								{#snippet submittingLabel()}
 									Looking up...
 								{/snippet}
 							</SubmitButton>
 						</div>
+						<p id="username-help" class="lookup-help">
+							Search a Plex username. Eligible pages open without sign-in; unknown and opted-out users
+							receive the same response.
+						</p>
+						<p class="lookup-boundary">
+							This opens only a Wrapped page. Dashboards, settings, and admin controls remain protected.
+						</p>
+						<p class="lookup-status" role="status" aria-live="polite">
+							{isLookingUp ? 'Looking for that Wrapped…' : ''}
+						</p>
 
 						{#if form?.error}
-							<p class="error-message" role="alert">
+							<p id="username-action-error" class="error-message" role="alert">
 								{form.error}
 								{#if form.requiresAuth}
 									<button type="button" class="link-button" onclick={handlePlexLogin}>
@@ -239,7 +264,7 @@ function handleCancelRedirect(): void {
 			{/if}
 
 			<div class="login-section">
-				<p class="login-prompt">Want to access your dashboard or change settings?</p>
+				<p class="login-prompt">Sign in to access your protected dashboard or change settings.</p>
 				<Button
 					type="button"
 					class="login-button secondary tap-target"
@@ -384,17 +409,33 @@ function handleCancelRedirect(): void {
 			align-items: center;
 		}
 
-		.sr-only {
-			position: absolute;
-			width: 1px;
-			height: 1px;
-			padding: 0;
-			margin: -1px;
-			overflow: hidden;
-			clip: rect(0, 0, 0, 0);
-			white-space: nowrap;
-			border: 0;
+		.lookup-label {
+			width: 100%;
+			font-size: 0.9rem;
+			font-weight: 600;
+			text-align: center;
 		}
+
+		.lookup-help,
+		.lookup-boundary,
+		.lookup-status {
+			max-width: 38rem;
+			margin: 0 auto;
+			overflow-wrap: anywhere;
+			font-size: 0.82rem;
+			line-height: 1.5;
+			color: oklch(var(--muted-foreground));
+		}
+
+		.lookup-boundary {
+			font-weight: 500;
+		}
+
+		.lookup-status {
+			min-height: 1.25rem;
+			color: oklch(var(--foreground));
+		}
+
 
 		/* shadcn Input renders inside a child component beyond Svelte's scoped
 		   style boundary, so the selector must be global to preserve the custom
@@ -547,7 +588,9 @@ function handleCancelRedirect(): void {
 			border-radius: var(--radius);
 			color: oklch(var(--destructive-foreground));
 			font-size: 0.875rem;
+			overflow-wrap: anywhere;
 		}
+
 
 		.link-button {
 			background: none;
@@ -579,7 +622,7 @@ function handleCancelRedirect(): void {
 		.footer p {
 			margin: 0;
 			font-size: 0.75rem;
-			color: oklch(var(--muted-foreground));
+			color: oklch(var(--foreground));
 			letter-spacing: 0.05em;
 		}
 

@@ -14,6 +14,7 @@ type UpdateCsrfOriginAction = NonNullable<typeof actions.updateCsrfOrigin>;
 type ToggleCsrfSkipAction = NonNullable<typeof actions.toggleCsrfSkip>;
 type ResetCsrfWarningAction = NonNullable<typeof actions.resetCsrfWarning>;
 type UpdateTrustProxyAction = NonNullable<typeof actions.updateTrustProxy>;
+type DiagnoseReverseProxyAction = NonNullable<typeof actions.diagnoseReverseProxy>;
 
 const ORIGIN = 'http://localhost:5173';
 
@@ -211,6 +212,26 @@ describe('security nested route — resetCsrfWarning', () => {
 	});
 });
 
+describe('security nested route — diagnoseReverseProxy cache controls', () => {
+	it('sets no-store when setHeaders is available', async () => {
+		const handler = actions.diagnoseReverseProxy as DiagnoseReverseProxyAction;
+		const formData = new FormData();
+		formData.set('browserOrigin', ORIGIN);
+		const headers: Record<string, string>[] = [];
+		await handler({
+			request: new Request(`${ORIGIN}/admin/settings/security?/diagnoseReverseProxy`, {
+				method: 'POST',
+				body: formData,
+				headers: { Origin: ORIGIN }
+			}),
+			url: new URL(ORIGIN),
+			getClientAddress: () => '127.0.0.1',
+			setHeaders: (headersToSet: Record<string, string>) => headers.push(headersToSet),
+			locals: adminLocals
+		} as unknown as Parameters<DiagnoseReverseProxyAction>[0]);
+		expect(headers).toEqual([{ 'Cache-Control': 'no-store' }]);
+	});
+});
 describe('security nested route — updateTrustProxy (confirmRisk + OCC)', () => {
 	beforeEach(async () => {
 		await resetSharedTestDb();
@@ -224,28 +245,34 @@ describe('security nested route — updateTrustProxy (confirmRisk + OCC)', () =>
 	const TRUST_FORWARDED_HOST = 'obzorarr.example.com';
 	const TRUST_APP_URL = `${ORIGIN}/admin/settings/security?/updateTrustProxy`;
 
-	function trustProxyRequest(fields: Record<string, string>): Request {
+	function trustProxyRequest(
+		fields: Record<string, string>,
+		originHeader: string | null = TRUST_BROWSER_ORIGIN
+	): Request {
 		const formData = new FormData();
 		for (const [k, v] of Object.entries(fields)) formData.set(k, v);
 		if (!formData.has('browserOrigin')) {
 			formData.set('browserOrigin', TRUST_BROWSER_ORIGIN);
 		}
+		const headers: HeadersInit = {
+			'x-forwarded-proto': 'https',
+			'x-forwarded-host': TRUST_FORWARDED_HOST
+		};
+		if (originHeader !== null) headers.Origin = originHeader;
 		return new Request(TRUST_APP_URL, {
 			method: 'POST',
 			body: formData,
-			headers: {
-				'x-forwarded-proto': 'https',
-				'x-forwarded-host': TRUST_FORWARDED_HOST
-			}
+			headers
 		});
 	}
 
-	async function run(request: Request) {
+	async function run(request: Request, setHeaders?: (headers: Record<string, string>) => void) {
 		const handler = actions.updateTrustProxy as UpdateTrustProxyAction;
 		return handler({
 			request,
 			url: new URL(TRUST_APP_URL),
 			getClientAddress: () => '203.0.113.1',
+			setHeaders,
 			locals: adminLocals
 		} as Parameters<UpdateTrustProxyAction>[0]);
 	}
@@ -309,6 +336,36 @@ describe('security nested route — updateTrustProxy (confirmRisk + OCC)', () =>
 		);
 		expect(result).toMatchObject({ success: true });
 		expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBe('true');
+	});
+	it('fails closed without a request Origin and does not write TRUST_PROXY', async () => {
+		const result = await run(
+			trustProxyRequest(
+				{ enabled: 'true', confirmRisk: 'true', settingsVersion: new Date(0).toISOString() },
+				null
+			)
+		);
+		expect(result).toMatchObject({ status: 403 });
+		expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBeNull();
+	});
+
+	it('fails closed when request Origin mismatches browserOrigin and does not write TRUST_PROXY', async () => {
+		const result = await run(
+			trustProxyRequest(
+				{ enabled: 'true', confirmRisk: 'true', settingsVersion: new Date(0).toISOString() },
+				'https://attacker.example.com'
+			)
+		);
+		expect(result).toMatchObject({ status: 403 });
+		expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBeNull();
+	});
+
+	it('sets no-store for TRUST_PROXY actions when setHeaders is available', async () => {
+		const headers: Record<string, string>[] = [];
+		await run(
+			trustProxyRequest({ enabled: 'false', settingsVersion: new Date(0).toISOString() }),
+			(headersToSet) => headers.push(headersToSet)
+		);
+		expect(headers).toEqual([{ 'Cache-Control': 'no-store' }]);
 	});
 
 	it('rejects blank settingsVersion as 409 conflict', async () => {
