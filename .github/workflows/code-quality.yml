@@ -94,3 +94,11 @@ jobs:
 
       - name: Run tests
         run: bun run test
+
+      - name: Build production bundle
+        run: bun run build
+
+      - name: Smoke test production server
+        env:
+          DATABASE_PATH: ${{ runner.temp }}/obzorarr-smoke.db
+        run: bun run smoke:production

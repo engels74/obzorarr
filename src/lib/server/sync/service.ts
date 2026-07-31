@@ -132,8 +132,8 @@ async function createSyncRecord(): Promise<number | null> {
 	return record ? record.id : null;
 }
 
-// Re-exported from the lightweight `reconcile` module so it can also be invoked
-// at boot from `db/client.ts` without pulling this module's Plex/`$env` graph.
+// Re-exported from the focused `reconcile` module for callers that need to
+// perform or test stale-sync recovery without importing the rest of this service.
 export { reconcileInterruptedSyncs } from './reconcile';
 
 async function completeSyncRecord(

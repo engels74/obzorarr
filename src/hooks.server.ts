@@ -1,4 +1,4 @@
-import type { Handle, HandleServerError } from '@sveltejs/kit';
+import type { Handle, HandleServerError, ServerInit } from '@sveltejs/kit';
 import { isHttpError, isRedirect } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { dev } from '$app/environment';
@@ -35,7 +35,9 @@ import {
 	rateLimitHandle,
 	requestFilterHandle
 } from '$lib/server/security';
+import { initializeServer } from '$lib/server/startup';
 
+export const init: ServerInit = initializeServer;
 // `event.url.protocol` is the single source of truth: proxyHandle rewrites
 // event.url from x-forwarded-proto only when TRUST_PROXY is enabled, so reading
 // it here keeps the HSTS decision aligned with the trust-proxy gate rather than
