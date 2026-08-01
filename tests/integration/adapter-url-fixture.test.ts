@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
-import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -216,7 +216,7 @@ afterAll(async () => {
 	if (!fixtureRoot) return;
 	const cleanedPath = fixtureRoot;
 	await rm(cleanedPath, { recursive: true, force: true });
-	expect(await Bun.file(cleanedPath).exists()).toBe(false);
+	await expect(access(cleanedPath)).rejects.toThrow();
 });
 
 describe('pinned svelte-adapter-bun request URL construction', () => {
