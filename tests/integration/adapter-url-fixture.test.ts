@@ -81,22 +81,50 @@ interface AdapterCase {
 	env?: Record<string, string>;
 	headers?: Record<string, string>;
 }
-async function readServerOrigin(stdout: ReadableStream<Uint8Array>): Promise<string> {
-	const reader = stdout.getReader();
-	const decoder = new TextDecoder();
-	let output = '';
+function consumeServerOutput(stdout: ReadableStream<Uint8Array>): {
+	origin: Promise<string>;
+	drained: Promise<void>;
+} {
+	let resolveOrigin!: (origin: string) => void;
+	let rejectOrigin!: (reason: unknown) => void;
+	const origin = new Promise<string>((resolve, reject) => {
+		resolveOrigin = resolve;
+		rejectOrigin = reject;
+	});
+	const drained = (async () => {
+		const reader = stdout.getReader();
+		const decoder = new TextDecoder();
+		let output = '';
+		let foundOrigin = false;
 
-	try {
-		while (true) {
-			const { done, value } = await reader.read();
-			if (done) throw new Error(`Fixture server exited before listening: ${output}`);
-			output += decoder.decode(value, { stream: true });
-			const origin = output.match(/Listening on (https?:\/\/\S+)/)?.[1];
-			if (origin) return origin;
+		try {
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) {
+					if (!foundOrigin) {
+						rejectOrigin(new Error(`Fixture server exited before listening: ${output}`));
+					}
+					return;
+				}
+				if (foundOrigin) continue;
+
+				output += decoder.decode(value, { stream: true });
+				const listeningOrigin = output.match(/Listening on (https?:\/\/\S+)/)?.[1];
+				if (listeningOrigin) {
+					foundOrigin = true;
+					resolveOrigin(listeningOrigin);
+					output = '';
+				}
+			}
+		} catch (error) {
+			if (!foundOrigin) rejectOrigin(error);
+			throw error;
+		} finally {
+			reader.releaseLock();
 		}
-	} finally {
-		reader.releaseLock();
-	}
+	})();
+
+	return { origin, drained };
 }
 
 async function observeAdapterUrl(testCase: AdapterCase): Promise<{
@@ -127,9 +155,17 @@ async function observeAdapterUrl(testCase: AdapterCase): Promise<{
 		stdout: 'pipe',
 		stderr: 'inherit'
 	});
+	const serverOutput = consumeServerOutput(server.stdout);
+	let outputFailure: { error: unknown } | undefined;
+	const outputDrain = serverOutput.drained.catch((error) => {
+		outputFailure = { error };
+		server.kill();
+	});
+	let result: { requestUrl: string; eventUrl: string } | undefined;
+	let operationFailure: { error: unknown } | undefined;
 	try {
 		const serverOrigin = await Promise.race([
-			readServerOrigin(server.stdout),
+			serverOutput.origin,
 			server.exited.then((exitCode) => {
 				throw new Error(`Fixture server exited before listening (${exitCode})`);
 			}),
@@ -152,11 +188,17 @@ async function observeAdapterUrl(testCase: AdapterCase): Promise<{
 			throw new Error('Fixture server did not accept requests');
 		}
 		expect(response.status).toBe(200);
-		return (await response.json()) as { requestUrl: string; eventUrl: string };
+		result = (await response.json()) as { requestUrl: string; eventUrl: string };
+	} catch (error) {
+		operationFailure = { error };
 	} finally {
 		server.kill();
-		await server.exited;
+		await Promise.all([server.exited, outputDrain]);
 	}
+	if (outputFailure) throw outputFailure.error;
+	if (operationFailure) throw operationFailure.error;
+	if (!result) throw new Error('Fixture server returned no observation');
+	return result;
 }
 
 beforeAll(async () => {
