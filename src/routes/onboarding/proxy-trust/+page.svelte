@@ -38,7 +38,7 @@ const applicableProviderGuides = $derived(
 );
 const canEnable = $derived(
 	diagnosticStatus === 'success' &&
-		diagnostic?.action === 'enable' &&
+		diagnostic?.action === 'confirm-trust-boundary' &&
 		!diagnostic.facts.trustProxy.isLocked &&
 		savedState === 'idle'
 );

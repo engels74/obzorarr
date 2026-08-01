@@ -18,7 +18,6 @@ export type {
 
 export interface ReverseProxyDiagnosticInput {
 	request: Request;
-	rawAppUrl: string | URL;
 	effectiveAppUrl: string | URL;
 	browserOrigin?: string | null;
 	sourceAddress?: string | null;
@@ -136,11 +135,11 @@ function recommendationFor(input: {
 	trustEnabled: boolean;
 	trustSource: ReverseProxyDiagnostic['facts']['trustProxy']['source'];
 	browserOrigin: OriginDiagnostic;
-	rawAppOrigin: string | null;
+	requestOrigin: string | null;
 	effectiveAppOrigin: string | null;
 	forwardedPair: ReturnType<typeof parseForwardedProtoHost>;
 }): Pick<ReverseProxyDiagnostic, 'action' | 'reasonCodes'> {
-	const browserMatchesRawApp = originsEqual(input.browserOrigin.origin, input.rawAppOrigin);
+	const browserMatchesRequestUrl = originsEqual(input.browserOrigin.origin, input.requestOrigin);
 	const browserMatchesEffectiveApp = originsEqual(
 		input.browserOrigin.origin,
 		input.effectiveAppOrigin
@@ -165,20 +164,24 @@ function recommendationFor(input: {
 
 	if (!input.trustEnabled) {
 		if (
-			browserMatchesRawApp === false &&
+			browserMatchesRequestUrl === false &&
 			input.forwardedPair.isUsable &&
 			forwardedPairMatchesBrowser === true
 		) {
 			return {
-				action: 'enable',
+				action: 'confirm-trust-boundary',
 				reasonCodes: ['forwarded-pair-matches-browser']
 			};
 		}
 
-		if (browserMatchesRawApp === true && input.forwardedPair.status === 'missing') {
+		if (browserMatchesRequestUrl === true) {
 			return {
 				action: 'leave-disabled',
-				reasonCodes: ['direct-access-without-forwarded-pair']
+				reasonCodes: [
+					input.forwardedPair.status === 'missing'
+						? 'request-origin-matches-without-forwarded-pair'
+						: 'request-origin-already-matches-browser'
+				]
 			};
 		}
 
@@ -199,7 +202,7 @@ export function buildReverseProxyDiagnostic(
 	input: ReverseProxyDiagnosticBuildInput
 ): ReverseProxyDiagnostic {
 	const forwardedPair = parseForwardedProtoHost(input.request.headers);
-	const rawAppOrigin = originFromUrl(input.rawAppUrl);
+	const requestOrigin = originFromUrl(input.request.url);
 	const effectiveAppOrigin = originFromUrl(input.effectiveAppUrl);
 	const browserOrigin = normalizeOrigin(input.browserOrigin);
 	const configuredPublicOrigin = normalizeOrigin(input.csrfOrigin.value || null);
@@ -208,7 +211,7 @@ export function buildReverseProxyDiagnostic(
 		trustEnabled,
 		trustSource: input.trustProxy.source,
 		browserOrigin,
-		rawAppOrigin,
+		requestOrigin,
 		effectiveAppOrigin,
 		forwardedPair
 	});
@@ -247,7 +250,7 @@ export function buildReverseProxyDiagnostic(
 				category: classifySourceAddress(input.sourceAddress)
 			},
 			originComparison: {
-				browserMatchesRawApp: originsEqual(browserOrigin.origin, rawAppOrigin),
+				browserMatchesRequestUrl: originsEqual(browserOrigin.origin, requestOrigin),
 				browserMatchesEffectiveApp: originsEqual(browserOrigin.origin, effectiveAppOrigin),
 				forwardedPairMatchesBrowser: originsEqual(
 					browserOrigin.origin,
@@ -289,7 +292,7 @@ export type EnableTrustProxyDecision = { ok: true } | { ok: false; error: string
 export function assertEnableTrustProxyAllowed(
 	diagnostic: ReverseProxyDiagnostic
 ): EnableTrustProxyDecision {
-	if (diagnostic.action === 'enable') {
+	if (diagnostic.action === 'confirm-trust-boundary') {
 		return { ok: true };
 	}
 	return { ok: false, error: ENABLE_TRUST_PROXY_NOT_RECOMMENDED_MESSAGE };

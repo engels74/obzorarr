@@ -42,9 +42,9 @@ function isCsrfOriginRepairRequest(event: Parameters<Handle>[0]['event']): boole
 	return false;
 }
 
-// Exported so admin actions (e.g. updateCsrfOrigin) can predict the same
-// origin csrfHandle compares against, rather than rederiving from
-// `request.url` which is the immutable raw URL behind a reverse proxy.
+// Exported so admin actions (e.g. updateCsrfOrigin) use the same browser-supplied
+// Origin/Referer evidence as csrfHandle. The adapter constructs `request.url`
+// before hooks, so that URL is not an independent browser-origin observation.
 export function getOriginFromRequest(request: Request): string | null {
 	const origin = request.headers.get('origin');
 	if (origin) return origin;

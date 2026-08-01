@@ -45,7 +45,7 @@ export type SourceAddressCategory =
 	| 'unknown';
 
 export type ReverseProxyRecommendationAction =
-	| 'enable'
+	| 'confirm-trust-boundary'
 	| 'leave-disabled'
 	| 'review-proxy'
 	| 'appears-working'
@@ -57,7 +57,8 @@ export type ReverseProxyDiagnosticReasonCode =
 	| 'trust-proxy-env-locked-disabled'
 	| 'browser-origin-invalid'
 	| 'forwarded-pair-matches-browser'
-	| 'direct-access-without-forwarded-pair'
+	| 'request-origin-matches-without-forwarded-pair'
+	| 'request-origin-already-matches-browser'
 	| 'forwarded-pair-missing'
 	| 'forwarded-pair-partial'
 	| 'forwarded-pair-invalid'
@@ -118,7 +119,7 @@ export interface ReverseProxyDiagnosticFacts {
 		category: SourceAddressCategory;
 	};
 	originComparison: {
-		browserMatchesRawApp: boolean | null;
+		browserMatchesRequestUrl: boolean | null;
 		browserMatchesEffectiveApp: boolean | null;
 		forwardedPairMatchesBrowser: boolean | null;
 	};

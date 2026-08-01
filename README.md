@@ -135,29 +135,29 @@ bun run dev
 
 ## Reverse proxy header trust
 
-Obzorarr uses `X-Forwarded-Proto` and `X-Forwarded-Host` only when `TRUST_PROXY=true`.
-Enable it only when every request reaches Obzorarr through a trusted upstream proxy that strips or
-overwrites visitor-supplied values for both headers. Do not enable it when visitors can connect to
-Obzorarr directly.
-
-Configure the proxy to send the public request scheme and host, then use the onboarding or
-**Admin → Settings → Security** diagnostic to compare the browser, forwarded, and effective app
-origins. When `TRUST_PROXY` is controlled by the environment or container configuration, change the
-exact setting there and restart Obzorarr before rerunning the diagnostic:
+For a single public origin, set `ORIGIN` to the exact browser-facing origin, including any
+non-default port. The pinned Bun adapter uses it to construct SvelteKit's `request.url` before
+Obzorarr's hooks run, and Obzorarr also uses it as the environment-controlled CSRF origin:
 
 ```env
-TRUST_PROXY=true
 ORIGIN=https://obzorarr.example.com
 ```
 
-`ORIGIN` is the public origin used for CSRF validation. It must match the browser origin exactly,
-including scheme and any non-default port. The diagnostic reports header names and normalized
-origins only; it does not expose header values that may contain credentials or client addresses.
+`TRUST_PROXY` is a separate, optional in-app URL rewrite. When enabled, Obzorarr replaces the
+SvelteKit event URL's host and protocol from `X-Forwarded-Host` and `X-Forwarded-Proto`; it does
+not change `request.url` or client-IP handling. Leave it disabled when `ORIGIN` or the adapter's
+normal Host handling already gives Obzorarr the correct public origin.
 
-Use a strict virtual host or site match and set the forwarded host to the deployment's canonical public
-hostname; merely copying an unrestricted visitor `Host` value does not establish a trusted boundary.
-`TRUST_PROXY` affects Obzorarr's effective URL host and protocol only. Client-IP trust must be
-configured separately in the Bun adapter or runtime.
+Enable `TRUST_PROXY=true` only when Obzorarr cannot be reached around the proxy and the last
+trusted hop removes or overwrites visitor-supplied values for both headers. A matching diagnostic
+shows that the values are consistent with the browser origin; it cannot prove the proxy boundary
+from one request. Environment-controlled changes require an Obzorarr restart.
+
+Use the onboarding or **Admin → Settings → Security** diagnostic to compare the browser,
+forwarded, and effective app origins. Provider guidance in the diagnostic reflects differing
+defaults: Caddy manages both headers by default, while Nginx, Nginx Proxy Manager, and Apache
+need provider-specific handling. Client-IP trust is configured separately through the Bun
+adapter's `ADDRESS_HEADER` and `XFF_DEPTH` settings.
 
 ## License
 

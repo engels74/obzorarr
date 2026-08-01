@@ -227,7 +227,7 @@ describe('onboarding proxy-trust actions', () => {
 						present: ['X-Forwarded-Host', 'X-Forwarded-Proto']
 					}
 				},
-				action: 'enable',
+				action: 'confirm-trust-boundary',
 				reasonCodes: ['forwarded-pair-matches-browser']
 			}
 		});
