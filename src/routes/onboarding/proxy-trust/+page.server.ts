@@ -154,7 +154,6 @@ export const actions: Actions = {
 		try {
 			const diagnostic = await createReverseProxyDiagnostic({
 				request,
-				rawAppUrl: request.url,
 				effectiveAppUrl: url,
 				browserOrigin: parsed.data.browserOrigin,
 				sourceAddress: getClientAddress()
@@ -199,7 +198,6 @@ export const actions: Actions = {
 
 		const diagnostic = await createReverseProxyDiagnostic({
 			request,
-			rawAppUrl: request.url,
 			effectiveAppUrl: url,
 			browserOrigin: browserOriginParsed.data.browserOrigin,
 			sourceAddress: getClientAddress()

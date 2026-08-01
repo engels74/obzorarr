@@ -237,17 +237,17 @@ describe('security nested route — updateTrustProxy (confirmRisk + OCC)', () =>
 		await resetSharedTestDb();
 	});
 
-	// Match the diagnostic's "enable" recommendation shape (cf. settings-actions
-	// test): raw app URL internal, forwarded proto+host matches browser origin.
-	// The new diagnostic gate in updateTrustProxy refuses enable when the
-	// recommendation is anything other than 'enable'.
+	// Match the diagnostic's boundary-confirmation shape: adapter request URL internal,
+	// while the forwarded pair matches the submitted browser origin. The write gate
+	// refuses enablement for every other recommendation.
 	const TRUST_BROWSER_ORIGIN = 'https://obzorarr.example.com';
 	const TRUST_FORWARDED_HOST = 'obzorarr.example.com';
 	const TRUST_APP_URL = `${ORIGIN}/admin/settings/security?/updateTrustProxy`;
 
 	function trustProxyRequest(
 		fields: Record<string, string>,
-		originHeader: string | null = TRUST_BROWSER_ORIGIN
+		originHeader: string | null = TRUST_BROWSER_ORIGIN,
+		requestUrl = TRUST_APP_URL
 	): Request {
 		const formData = new FormData();
 		for (const [k, v] of Object.entries(fields)) formData.set(k, v);
@@ -259,7 +259,7 @@ describe('security nested route — updateTrustProxy (confirmRisk + OCC)', () =>
 			'x-forwarded-host': TRUST_FORWARDED_HOST
 		};
 		if (originHeader !== null) headers.Origin = originHeader;
-		return new Request(TRUST_APP_URL, {
+		return new Request(requestUrl, {
 			method: 'POST',
 			body: formData,
 			headers
@@ -336,6 +336,22 @@ describe('security nested route — updateTrustProxy (confirmRisk + OCC)', () =>
 		);
 		expect(result).toMatchObject({ success: true });
 		expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBe('true');
+	});
+	it('does not enable trust when the adapter request origin already matches the browser', async () => {
+		const result = await run(
+			trustProxyRequest(
+				{
+					enabled: 'true',
+					confirmRisk: 'true',
+					settingsVersion: new Date(0).toISOString()
+				},
+				TRUST_BROWSER_ORIGIN,
+				`${TRUST_BROWSER_ORIGIN}/admin/settings/security?/updateTrustProxy`
+			)
+		);
+
+		expect(result).toMatchObject({ status: 400 });
+		expect(await getAppSetting(AppSettingsKey.TRUST_PROXY)).toBeNull();
 	});
 	it('fails closed without a request Origin and does not write TRUST_PROXY', async () => {
 		const result = await run(

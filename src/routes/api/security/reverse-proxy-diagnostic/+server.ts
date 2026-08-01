@@ -48,7 +48,6 @@ export const GET: RequestHandler = async ({ getClientAddress, locals, request, u
 
 	const diagnostic = await createReverseProxyDiagnostic({
 		request,
-		rawAppUrl: request.url,
 		effectiveAppUrl: url,
 		browserOrigin,
 		sourceAddress

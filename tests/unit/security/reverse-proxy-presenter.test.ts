@@ -49,7 +49,7 @@ function diagnostic(
 			},
 			sourceAddress: { category: 'docker/private-range' },
 			originComparison: {
-				browserMatchesRawApp: false,
+				browserMatchesRequestUrl: false,
 				browserMatchesEffectiveApp: true,
 				forwardedPairMatchesBrowser: true
 			}
@@ -61,7 +61,7 @@ function diagnostic(
 
 describe('reverse proxy presenter', () => {
 	it.each([
-		'enable',
+		'confirm-trust-boundary',
 		'leave-disabled',
 		'review-proxy',
 		'appears-working',
@@ -118,6 +118,12 @@ describe('reverse proxy presenter', () => {
 		const view = presentReverseProxyDiagnostic(mismatch);
 		expect(view.nextAction).toContain('conflicts with the browser origin');
 	});
+	it('does not present matching forwarded values as proof of a trusted proxy', () => {
+		const view = presentReverseProxyDiagnostic(diagnostic('confirm-trust-boundary'));
+		expect(view.headline).toContain('boundary is unverified');
+		expect(view.consequence).toContain('consistency');
+		expect(view.consequence).toContain('not that a trusted proxy supplied them');
+	});
 
 	it('states the exact environment setting and restart requirement', () => {
 		const view = presentReverseProxyDiagnostic(
@@ -138,13 +144,40 @@ describe('reverse proxy presenter', () => {
 			source: 'env',
 			isLocked: true
 		});
-		direct.facts.originComparison.browserMatchesRawApp = true;
+		direct.facts.originComparison.browserMatchesRequestUrl = true;
 		direct.facts.originComparison.browserMatchesEffectiveApp = true;
 		direct.facts.originComparison.forwardedPairMatchesBrowser = null;
 		const view = presentReverseProxyDiagnostic(direct);
 		expect(view.tone).toBe('success');
 		expect(view.nextAction).toContain('Leave TRUST_PROXY=false');
 		expect(view.documentationIds).toEqual(['obzorarr-trust-proxy']);
+	});
+	it('keeps environment-managed trust disabled when Caddy headers are present but unnecessary', () => {
+		const caddy = diagnostic('env-controlled', 'usable', {
+			enabled: false,
+			source: 'env',
+			isLocked: true
+		});
+		caddy.facts.originComparison.browserMatchesRequestUrl = true;
+		const view = presentReverseProxyDiagnostic(caddy);
+		expect(view.tone).toBe('success');
+		expect(view.nextAction).toContain('Leave TRUST_PROXY=false');
+		expect(view.nextAction).not.toContain('TRUST_PROXY=true');
+	});
+	it('does not make unused malformed headers override an environment-managed false setting', () => {
+		const partial = diagnostic('env-controlled', 'partial', {
+			enabled: false,
+			source: 'env',
+			isLocked: true
+		});
+		partial.facts.originComparison.browserMatchesRequestUrl = true;
+		partial.facts.originComparison.browserMatchesEffectiveApp = true;
+		partial.facts.originComparison.forwardedPairMatchesBrowser = null;
+
+		const view = presentReverseProxyDiagnostic(partial);
+		expect(view.tone).toBe('success');
+		expect(view.nextAction).toContain('Leave TRUST_PROXY=false');
+		expect(view.nextAction).not.toContain('TRUST_PROXY=true');
 	});
 
 	it('distinguishes working and broken environment-managed trust', () => {
@@ -154,6 +187,21 @@ describe('reverse proxy presenter', () => {
 			isLocked: true
 		});
 		expect(presentReverseProxyDiagnostic(working).headline).toContain('origin matches');
+		const unusable = diagnostic('env-controlled', 'invalid-proto', {
+			enabled: true,
+			source: 'env',
+			isLocked: true
+		});
+		expect(presentReverseProxyDiagnostic(unusable).consequence).toContain(
+			'unusable forwarding metadata'
+		);
+		const unknown = diagnostic('env-controlled', 'usable', {
+			enabled: true,
+			source: 'env',
+			isLocked: true
+		});
+		unknown.facts.originComparison.browserMatchesEffectiveApp = null;
+		expect(presentReverseProxyDiagnostic(unknown).consequence).toContain('cannot be verified');
 
 		const broken = diagnostic('env-controlled', 'invalid-proto', {
 			enabled: true,
@@ -165,6 +213,7 @@ describe('reverse proxy presenter', () => {
 		expect(brokenView.tone).toBe('danger');
 		expect(brokenView.nextAction).toContain('exactly http or https');
 		expect(brokenView.nextAction).toContain('Restart Obzorarr');
+		expect(brokenView.consequence).toContain('rejected the unusable forwarding metadata');
 	});
 
 	it('keeps documentation official, purpose-scoped, and provider-complete', () => {
@@ -179,7 +228,11 @@ describe('reverse proxy presenter', () => {
 			'apache',
 			'other'
 		]);
-		expect(REVERSE_PROXY_PROVIDER_GUIDES.slice(0, 4).every((guide) => guide.config)).toBe(true);
+		expect(
+			REVERSE_PROXY_PROVIDER_GUIDES.filter((guide) =>
+				['nginx', 'caddy', 'apache'].includes(guide.id)
+			).every((guide) => guide.config)
+		).toBe(true);
 		expect(
 			REVERSE_PROXY_PROVIDER_GUIDES.every(
 				(guide) => documentationForGuide(guide).id === guide.documentationId
@@ -187,18 +240,31 @@ describe('reverse proxy presenter', () => {
 		).toBe(true);
 	});
 
-	it('uses canonical public hosts instead of reflecting an unrestricted request Host', () => {
-		const configs = REVERSE_PROXY_PROVIDER_GUIDES.flatMap((guide) =>
-			guide.config ? [guide.config] : []
-		).join('\n');
-		expect(configs).toContain('obzorarr.example.com');
-		expect(configs).not.toContain('$http_host');
-		expect(configs).not.toContain('{host}');
-		expect(configs).not.toContain('%{HTTP_HOST}');
+	it('uses provider-derived values without redundant or hardcoded forwarding headers', () => {
+		const guide = (id: (typeof REVERSE_PROXY_PROVIDER_GUIDES)[number]['id']) =>
+			REVERSE_PROXY_PROVIDER_GUIDES.find((candidate) => candidate.id === id);
+
+		const caddy = guide('caddy');
+		expect(caddy?.config).toBe('obzorarr.example.com {\n\treverse_proxy obzorarr:3000\n}');
+		expect(caddy?.config).not.toContain('header_up');
+		const npm = guide('nginx-proxy-manager');
+		expect(npm?.config).toBeUndefined();
+		expect(npm?.steps.join(' ')).toContain('not runtime-verified');
+
+		const nginx = guide('nginx');
+		expect(nginx?.config).toContain('X-Forwarded-Proto $scheme');
+		expect(nginx?.config).toContain('X-Forwarded-Host $server_name:$server_port');
+		expect(nginx?.config).not.toContain('X-Forwarded-Proto https');
+		expect(nginx?.config).not.toContain('$http_host');
+
+		expect(guide('apache')?.config).toContain('expr=%{REQUEST_SCHEME}');
+		expect(guide('apache')?.config).toContain('expr=%{SERVER_NAME}:%{SERVER_PORT}');
+		expect(guide('apache')?.steps.join(' ')).toContain('rejects unmatched Host values');
+		expect(guide('apache')?.config).not.toContain('%{HTTP_HOST}');
 	});
 
 	it('uses only host/protocol and Obzorarr configuration guidance', () => {
-		const links = documentationForDiagnostic(diagnostic('enable'));
+		const links = documentationForDiagnostic(diagnostic('confirm-trust-boundary'));
 		expect(links.length).toBeGreaterThan(0);
 		expect(
 			links.every((link) =>

@@ -305,7 +305,6 @@ export const actions: Actions = requireAdminActions({
 		try {
 			const diagnostic = await createReverseProxyDiagnostic({
 				request,
-				rawAppUrl: request.url,
 				effectiveAppUrl: url,
 				browserOrigin: parsed.data.browserOrigin,
 				sourceAddress: getClientAddress()
@@ -383,7 +382,6 @@ export const actions: Actions = requireAdminActions({
 			}
 			const diagnostic = await createReverseProxyDiagnostic({
 				request,
-				rawAppUrl: request.url,
 				effectiveAppUrl: url,
 				browserOrigin: parsed.data.browserOrigin,
 				sourceAddress: getClientAddress()

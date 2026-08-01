@@ -36,8 +36,9 @@ const config = {
 			precompress: true
 		}),
 		csrf: {
-			// Origin checking is incompatible with reverse proxy deployments.
-			// CSRF protection is maintained via SameSite=Lax cookies.
+			// Obzorarr enforces configured-origin checks in csrfHandle. SvelteKit's
+			// built-in form-origin gate is disabled here to preserve the dedicated
+			// self-repair path; SameSite=Lax cookies remain defense in depth.
 			trustedOrigins: ['*']
 		}
 	}

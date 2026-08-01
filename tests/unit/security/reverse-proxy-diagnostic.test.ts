@@ -24,8 +24,8 @@ function diagnosticFor({
 	trustProxy = 'false',
 	trustSource = 'default',
 	browserOrigin = 'https://browser.example.com',
-	rawAppUrl = 'http://internal.local/path',
-	effectiveAppUrl = rawAppUrl,
+	requestUrl = 'http://internal.local/path',
+	effectiveAppUrl = requestUrl,
 	headers = {},
 	csrfOrigin = '',
 	sourceAddress = '172.18.0.2'
@@ -33,15 +33,14 @@ function diagnosticFor({
 	trustProxy?: string;
 	trustSource?: ReverseProxyConfigSource;
 	browserOrigin?: string | null;
-	rawAppUrl?: string;
+	requestUrl?: string;
 	effectiveAppUrl?: string;
 	headers?: Readonly<Record<string, string>>;
 	csrfOrigin?: string;
 	sourceAddress?: string;
 } = {}) {
 	return buildReverseProxyDiagnostic({
-		request: new Request(rawAppUrl, { headers: { ...headers } }),
-		rawAppUrl,
+		request: new Request(requestUrl, { headers: { ...headers } }),
 		effectiveAppUrl,
 		browserOrigin,
 		sourceAddress,
@@ -93,24 +92,58 @@ describe('reverse proxy diagnostic contract', () => {
 			reason: 'browser-origin-invalid'
 		},
 		{
-			name: 'enable evidence',
+			name: 'matching forwarded pair requires boundary confirmation',
 			input: {
 				headers: {
 					'x-forwarded-proto': 'https',
 					'x-forwarded-host': 'browser.example.com'
 				}
 			},
-			action: 'enable',
+			action: 'confirm-trust-boundary',
 			reason: 'forwarded-pair-matches-browser'
 		},
 		{
 			name: 'direct access',
 			input: {
 				browserOrigin: 'http://internal.local',
-				rawAppUrl: 'http://internal.local/path'
+				requestUrl: 'http://internal.local/path'
 			},
 			action: 'leave-disabled',
-			reason: 'direct-access-without-forwarded-pair'
+			reason: 'request-origin-matches-without-forwarded-pair'
+		},
+		{
+			name: 'Caddy-shaped downstream values need no in-app trust when request origin matches',
+			input: {
+				requestUrl: 'https://browser.example.com/path',
+				headers: {
+					'x-forwarded-proto': 'https',
+					'x-forwarded-host': 'browser.example.com'
+				}
+			},
+			action: 'leave-disabled',
+			reason: 'request-origin-already-matches-browser'
+		},
+		{
+			name: 'Caddy-shaped downstream values preserve a non-default public port',
+			input: {
+				browserOrigin: 'https://browser.example.com:8443',
+				requestUrl: 'https://browser.example.com:8443/path',
+				headers: {
+					'x-forwarded-proto': 'https',
+					'x-forwarded-host': 'browser.example.com:8443'
+				}
+			},
+			action: 'leave-disabled',
+			reason: 'request-origin-already-matches-browser'
+		},
+		{
+			name: 'partial forwarding metadata is unused when the request origin matches',
+			input: {
+				requestUrl: 'https://browser.example.com/path',
+				headers: { 'x-forwarded-proto': 'https' }
+			},
+			action: 'leave-disabled',
+			reason: 'request-origin-already-matches-browser'
 		},
 		{
 			name: 'missing forwarded pair with mismatched origins',
@@ -127,6 +160,18 @@ describe('reverse proxy diagnostic contract', () => {
 		{
 			name: 'invalid forwarded pair',
 			input: {
+				requestUrl: 'https://browser.example.com/path',
+				headers: {
+					'x-forwarded-proto': 'ftp',
+					'x-forwarded-host': 'browser.example.com'
+				}
+			},
+			action: 'leave-disabled',
+			reason: 'request-origin-already-matches-browser'
+		},
+		{
+			name: 'invalid forwarded pair with mismatched origins',
+			input: {
 				headers: {
 					'x-forwarded-proto': 'ftp',
 					'x-forwarded-host': 'browser.example.com'
@@ -137,6 +182,18 @@ describe('reverse proxy diagnostic contract', () => {
 		},
 		{
 			name: 'ambiguous forwarded pair',
+			input: {
+				requestUrl: 'https://browser.example.com/path',
+				headers: {
+					'x-forwarded-proto': 'https',
+					'x-forwarded-host': 'different.example.com'
+				}
+			},
+			action: 'leave-disabled',
+			reason: 'request-origin-already-matches-browser'
+		},
+		{
+			name: 'ambiguous forwarded pair with mismatched origins',
 			input: {
 				headers: {
 					'x-forwarded-proto': 'https',
@@ -173,7 +230,7 @@ describe('reverse proxy diagnostic contract', () => {
 
 	it('serializes only safe facts, action, and stable reason codes', () => {
 		const diagnostic = diagnosticFor({
-			rawAppUrl: 'http://internal.local/path?token=secret-query',
+			requestUrl: 'http://internal.local/path?token=secret-query',
 			effectiveAppUrl: 'http://internal.local/path?token=secret-query',
 			browserOrigin: 'https://browser-secret.example.com',
 			csrfOrigin: 'https://configured-secret.example.com',
@@ -215,7 +272,7 @@ describe('reverse proxy diagnostic contract', () => {
 			},
 			sourceAddress: { category: 'public' },
 			originComparison: {
-				browserMatchesRawApp: false,
+				browserMatchesRequestUrl: false,
 				browserMatchesEffectiveApp: false,
 				forwardedPairMatchesBrowser: false
 			}
@@ -250,7 +307,7 @@ describe('reverse proxy diagnostic contract', () => {
 		expect(classifySourceAddress(address)).toBe(category);
 	});
 
-	it('keeps enabling authority with the action code', () => {
+	it('keeps enabling authority behind the explicit boundary-confirmation action', () => {
 		const enabled = diagnosticFor({
 			headers: {
 				'x-forwarded-proto': 'https',
@@ -334,7 +391,7 @@ describe('GET /api/security/reverse-proxy-diagnostic', () => {
 		expect(response.headers.get('Cache-Control')).toBe('no-store');
 		const body = await response.json();
 		expect(Object.keys(body).sort()).toEqual(['action', 'facts', 'reasonCodes']);
-		expect(body.action).toBe('enable');
+		expect(body.action).toBe('confirm-trust-boundary');
 		expect(body.facts.forwardedHeaders.present).toEqual([
 			'Forwarded',
 			'X-Forwarded-For',

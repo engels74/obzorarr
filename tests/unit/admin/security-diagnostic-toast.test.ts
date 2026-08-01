@@ -37,9 +37,9 @@ describe('reverse-proxy diagnostic toast and progressive guidance', () => {
 		expect(src).not.toContain('function getForwardedPairLabel');
 	});
 
-	it('only offers enable when the live diagnostic recommends it and keeps client-IP scope separate', async () => {
+	it('only offers enable after the live diagnostic asks for boundary confirmation', async () => {
 		const src = await readSource(SECURITY_PAGE);
-		expect(src).toContain("{:else if diagnostic?.action === 'enable'}");
+		expect(src).toContain("{:else if diagnostic?.action === 'confirm-trust-boundary'}");
 		expect(src).toContain('Client-IP handling is configured separately');
 		expect(src).not.toContain('headers for client IP, host');
 		expect(src).not.toContain('Raw app origin');

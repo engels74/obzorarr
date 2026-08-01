@@ -65,8 +65,8 @@ function observedEvidence(diagnostic: ReverseProxyDiagnostic): string {
 			if (diagnostic.facts.originComparison.forwardedPairMatchesBrowser === false) {
 				return `Both required headers arrived, but forwarded origin ${forwardedOrigin} does not match browser origin ${browserOrigin}.`;
 			}
-			if (diagnostic.facts.originComparison.browserMatchesRawApp === true) {
-				return `Both required headers arrived, but browser origin ${browserOrigin} already matches the direct app origin.`;
+			if (diagnostic.facts.originComparison.browserMatchesRequestUrl === true) {
+				return `Both required headers arrived, and the request origin Obzorarr received already matches browser origin ${browserOrigin}.`;
 			}
 			return `Both required headers arrived with forwarded origin ${forwardedOrigin}.`;
 		default: {
@@ -92,8 +92,8 @@ function reviewNextAction(diagnostic: ReverseProxyDiagnostic): string {
 			if (diagnostic.facts.originComparison.forwardedPairMatchesBrowser === false) {
 				return 'The forwarded origin conflicts with the browser origin. Set both headers from the public request, then rerun.';
 			}
-			if (diagnostic.facts.originComparison.browserMatchesRawApp === true) {
-				return 'The direct app origin already matches the browser, so these headers do not prove a trusted proxy is required. Remove unnecessary forwarding headers and leave TRUST_PROXY disabled, or open the intended public proxy address and rerun.';
+			if (diagnostic.facts.originComparison.browserMatchesRequestUrl === true) {
+				return 'Obzorarr already sees the browser origin, so in-app forwarding-header trust is not needed for this request.';
 			}
 			return 'The pair is valid, but Obzorarr could not confirm the trusted proxy boundary. Verify the last proxy overwrites both headers, then rerun.';
 		default: {
@@ -110,15 +110,15 @@ export function presentReverseProxyDiagnostic(
 	const diagnosis = observedEvidence(diagnostic);
 
 	switch (diagnostic.action) {
-		case 'enable':
+		case 'confirm-trust-boundary':
 			return {
 				tone: 'warning',
-				headline: 'Forwarded origin matches; trust is still disabled',
+				headline: 'Forwarded origin is consistent; proxy boundary is unverified',
 				diagnosis,
 				nextAction:
-					'Verify that the upstream proxy overwrites visitor-supplied forwarding headers, confirm the risk, then enable TRUST_PROXY.',
+					'Confirm that Obzorarr cannot be reached around the proxy and that the last proxy overwrites both forwarding headers, then enable TRUST_PROXY.',
 				consequence:
-					'Until enabled, Obzorarr continues using the internal app origin for generated public URLs.',
+					'Matching values show consistency, not that a trusted proxy supplied them. Until enabled, Obzorarr keeps using its adapter-constructed request origin.',
 				pairLabel,
 				safetyNotice: SAFETY_NOTICE,
 				documentationIds: [...PROXY_REPAIR_DOCUMENTATION_IDS]
@@ -126,11 +126,11 @@ export function presentReverseProxyDiagnostic(
 		case 'leave-disabled':
 			return {
 				tone: 'success',
-				headline: 'Direct origin is already consistent',
+				headline: 'Obzorarr already sees the browser origin',
 				diagnosis,
 				nextAction:
-					'Leave TRUST_PROXY disabled unless you later place Obzorarr behind a trusted proxy.',
-				consequence: 'No proxy-origin repair is needed for this request.',
+					'Leave TRUST_PROXY disabled; forwarding-header trust is unnecessary while the request origin remains correct.',
+				consequence: 'No host or protocol repair is needed for this request.',
 				pairLabel,
 				safetyNotice: SAFETY_NOTICE,
 				documentationIds: ['obzorarr-trust-proxy']
@@ -163,7 +163,7 @@ export function presentReverseProxyDiagnostic(
 			const enabled = diagnostic.facts.trustProxy.enabled;
 			const pair = diagnostic.facts.forwardedHeaders.pair;
 			const effectiveMatches = diagnostic.facts.originComparison.browserMatchesEffectiveApp;
-			const rawMatches = diagnostic.facts.originComparison.browserMatchesRawApp;
+			const requestMatches = diagnostic.facts.originComparison.browserMatchesRequestUrl;
 			const forwardedMatches = diagnostic.facts.originComparison.forwardedPairMatchesBrowser;
 
 			if (enabled && pair.isUsable && effectiveMatches === true) {
@@ -181,22 +181,22 @@ export function presentReverseProxyDiagnostic(
 				};
 			}
 
-			if (!enabled && rawMatches === true && pair.status === 'missing') {
+			if (!enabled && requestMatches === true) {
 				return {
 					tone: 'success',
-					headline: 'TRUST_PROXY is disabled by the environment and direct origin is consistent',
+					headline: 'TRUST_PROXY is disabled by the environment and the request origin matches',
 					diagnosis,
 					nextAction:
-						'Leave TRUST_PROXY=false. Change it only after placing Obzorarr behind a trusted proxy that overwrites both forwarding headers.',
+						'Leave TRUST_PROXY=false. Change it only when Obzorarr needs forwarded host/protocol values and is isolated behind a proxy that overwrites both headers.',
 					consequence:
-						'The environment-managed setting already matches this direct-access request.',
+						'The environment-managed setting already produces the correct origin for this request.',
 					pairLabel,
 					safetyNotice: SAFETY_NOTICE,
 					documentationIds: ['obzorarr-trust-proxy']
 				};
 			}
 
-			if (!enabled && pair.isUsable && forwardedMatches === true && rawMatches === false) {
+			if (!enabled && pair.isUsable && forwardedMatches === true && requestMatches === false) {
 				return {
 					tone: 'warning',
 					headline: 'TRUST_PROXY is disabled by the environment',
@@ -217,7 +217,11 @@ export function presentReverseProxyDiagnostic(
 				diagnosis,
 				nextAction: `${reviewNextAction(diagnostic)} Restart Obzorarr after changing TRUST_PROXY in the environment or container configuration.`,
 				consequence: enabled
-					? 'Obzorarr is trusting a host/protocol result that does not match the browser origin.'
+					? pair.isUsable
+						? 'Obzorarr is trusting a host/protocol result that does not match or cannot be verified against the browser origin.'
+						: effectiveMatches === false
+							? 'Obzorarr rejected the unusable forwarding metadata, and the adapter fallback does not match the browser origin.'
+							: 'Obzorarr rejected the unusable forwarding metadata; repair it before relying on proxy trust.'
 					: 'Do not enable TRUST_PROXY until the forwarding pair and replacement boundary are correct.',
 				pairLabel,
 				safetyNotice: SAFETY_NOTICE,
@@ -253,9 +257,9 @@ export const REVERSE_PROXY_DOCUMENTATION: ReverseProxyDocumentationLink[] = [
 	{
 		id: 'nginx-proxy-manager-custom-config',
 		provider: 'Nginx Proxy Manager',
-		url: 'https://nginxproxymanager.com/advanced-config/#custom-nginx-configurations',
+		url: 'https://github.com/NginxProxyManager/nginx-proxy-manager/blob/v2.14.0/docker/rootfs/etc/nginx/conf.d/include/proxy.conf',
 		purpose: 'forwarded-host-proto',
-		applicabilityLabel: 'Official custom Nginx configuration locations'
+		applicabilityLabel: 'Official v2.14.0 generated proxy header configuration'
 	},
 	{
 		id: 'caddy-reverse-proxy',
@@ -293,44 +297,41 @@ export const REVERSE_PROXY_PROVIDER_GUIDES: ReverseProxyProviderGuide[] = [
 		id: 'nginx',
 		label: 'Nginx',
 		steps: [
-			'Route only the intended public hostname to this server block. Replace the example hostname and scheme below with the exact public origin.',
-			'Add these directives in the location that proxies to Obzorarr, reload Nginx, then rerun. Restart Obzorarr too only when TRUST_PROXY is environment-controlled.'
+			'Use an exact server_name and reject unmatched hosts so the selected server name is an approved public hostname.',
+			'These directives derive protocol, hostname, and listener port from the selected public server. If external port translation changes the public port, configure an allowlisted public authority instead.'
 		],
 		config:
-			'# Replace with your exact public origin.\nproxy_set_header X-Forwarded-Proto https;\nproxy_set_header X-Forwarded-Host obzorarr.example.com;',
+			'proxy_set_header X-Forwarded-Proto $scheme;\nproxy_set_header X-Forwarded-Host $server_name:$server_port;',
 		documentationId: 'nginx-proxy-set-header'
 	},
 	{
 		id: 'nginx-proxy-manager',
 		label: 'Nginx Proxy Manager',
 		steps: [
-			'Make this Proxy Host match only the intended public hostname. In Advanced, replace the example hostname and scheme below with that exact public origin.',
-			'Save the host, then rerun. Restart Obzorarr too only when TRUST_PROXY is environment-controlled.'
+			'Use a Proxy Host for the exact public hostname. Nginx Proxy Manager 2.14.0 sets X-Forwarded-Proto by default but can preserve an incoming valid value, and it does not set X-Forwarded-Host.',
+			'Obzorarr does not provide a TRUST_PROXY recipe for NPM because the generated directive placement was not runtime-verified. Leave trust disabled when Obzorarr already sees the browser origin; otherwise verify that the generated Nginx configuration replaces both headers before enabling it.'
 		],
-		config:
-			'# Replace with your exact public origin.\nproxy_set_header X-Forwarded-Proto https;\nproxy_set_header X-Forwarded-Host obzorarr.example.com;',
 		documentationId: 'nginx-proxy-manager-custom-config'
 	},
 	{
 		id: 'caddy',
 		label: 'Caddy',
 		steps: [
-			'Use the exact public hostname as the Caddy site address. Replace the example upstream and hostname below for your deployment.',
-			'Reload Caddy, then rerun. Restart Obzorarr too only when TRUST_PROXY is environment-controlled.'
+			'Caddy sets X-Forwarded-Proto and X-Forwarded-Host and ignores incoming values for those managed headers by default. No header_up override is needed.',
+			'If another proxy is in front of Caddy, configure Caddy trusted_proxies for only that known upstream chain. Reload Caddy, then rerun.'
 		],
-		config:
-			'obzorarr.example.com {\n\treverse_proxy obzorarr:3000 {\n\t\theader_up X-Forwarded-Proto https\n\t\theader_up X-Forwarded-Host obzorarr.example.com\n\t}\n}',
+		config: 'obzorarr.example.com {\n\treverse_proxy obzorarr:3000\n}',
 		documentationId: 'caddy-reverse-proxy'
 	},
 	{
 		id: 'apache',
 		label: 'Apache',
 		steps: [
-			'Use a name-based virtual host for the exact public hostname. Replace the example hostname and scheme below for your deployment.',
-			'Enable mod_proxy, mod_proxy_http, and mod_headers; reload Apache, then rerun. Restart Obzorarr too only when TRUST_PROXY is environment-controlled.'
+			'Use a name-based VirtualHost for the exact public host and a separate first/default VirtualHost that rejects unmatched Host values.',
+			'Apache adds X-Forwarded-Host by default, but not X-Forwarded-Proto; these replacements derive both from the accepted VirtualHost and its listener. If external port translation changes the public port, configure an allowlisted public authority instead.'
 		],
 		config:
-			'# Replace with your exact public origin.\nRequestHeader set X-Forwarded-Proto "https"\nRequestHeader set X-Forwarded-Host "obzorarr.example.com"',
+			'RequestHeader set X-Forwarded-Proto "expr=%{REQUEST_SCHEME}"\nRequestHeader set X-Forwarded-Host "expr=%{SERVER_NAME}:%{SERVER_PORT}"',
 		documentationId: 'apache-request-header'
 	},
 	{

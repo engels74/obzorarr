@@ -495,7 +495,7 @@ const applicableProviderGuides = $derived(
 						</Button>
 					</SettingsActionBar>
 				</form>
-			{:else if diagnostic?.action === 'enable'}
+			{:else if diagnostic?.action === 'confirm-trust-boundary'}
 				<SettingsActionBar>
 					<button
 						type="button"
