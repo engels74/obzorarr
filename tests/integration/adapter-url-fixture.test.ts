@@ -81,12 +81,29 @@ interface AdapterCase {
 	env?: Record<string, string>;
 	headers?: Record<string, string>;
 }
+async function readServerOrigin(stdout: ReadableStream<Uint8Array>): Promise<string> {
+	const reader = stdout.getReader();
+	const decoder = new TextDecoder();
+	let output = '';
+
+	try {
+		while (true) {
+			const { done, value } = await reader.read();
+			if (done) throw new Error(`Fixture server exited before listening: ${output}`);
+			output += decoder.decode(value, { stream: true });
+			const origin = output.match(/Listening on (https?:\/\/\S+)/)?.[1];
+			if (origin) return origin;
+		}
+	} finally {
+		reader.releaseLock();
+	}
+}
 
 async function observeAdapterUrl(testCase: AdapterCase): Promise<{
 	requestUrl: string;
 	eventUrl: string;
 }> {
-	const port = String(44000 + Math.floor(Math.random() * 1000));
+	const port = '0';
 	const environment = inheritedEnvironment();
 	for (const key of [
 		'ORIGIN',
@@ -107,24 +124,32 @@ async function observeAdapterUrl(testCase: AdapterCase): Promise<{
 	const server = Bun.spawn(['bun', 'build/index.js'], {
 		cwd: fixtureRoot,
 		env: environment,
-		stdout: 'ignore',
-		stderr: 'pipe'
+		stdout: 'pipe',
+		stderr: 'inherit'
 	});
-
 	try {
+		const serverOrigin = await Promise.race([
+			readServerOrigin(server.stdout),
+			server.exited.then((exitCode) => {
+				throw new Error(`Fixture server exited before listening (${exitCode})`);
+			}),
+			Bun.sleep(2_500).then(() => {
+				throw new Error('Fixture server did not start');
+			})
+		]);
 		let response: Response | undefined;
-		for (let attempt = 0; attempt < 50; attempt += 1) {
+		for (let attempt = 0; attempt < 10; attempt += 1) {
 			try {
-				response = await fetch(`http://127.0.0.1:${port}/`, {
+				response = await fetch(serverOrigin, {
 					headers: { Host: testCase.host, ...testCase.headers }
 				});
 				break;
 			} catch {
-				await Bun.sleep(50);
+				await Bun.sleep(25);
 			}
 		}
 		if (!response) {
-			throw new Error('Fixture server did not start');
+			throw new Error('Fixture server did not accept requests');
 		}
 		expect(response.status).toBe(200);
 		return (await response.json()) as { requestUrl: string; eventUrl: string };
