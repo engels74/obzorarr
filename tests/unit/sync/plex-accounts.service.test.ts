@@ -102,7 +102,7 @@ describe('Plex account reconciliation', () => {
 			if (value.endsWith('/identity'))
 				return response({ MediaContainer: { machineIdentifier: 'machine-test' } });
 			if (value.endsWith('/accounts'))
-				return response({ MediaContainer: { Account: [{ id: 42, name: 'Shared' }] } });
+				return response({ MediaContainer: { Account: [{ id: 42, name: '' }] } });
 			if (value.includes('/api/v2/resources')) return response(ownedResource());
 			expect(value).toBe('https://clients.plex.tv/api/v2/shared_servers/owned/accepted');
 			return response([shared()]);

@@ -38,7 +38,7 @@ export const PLEX_REQUEST_TIMEOUT_MS = 10_000;
 const PmsAccountsSchema = z.object({
 	MediaContainer: z.object({
 		Account: z.array(
-			z.object({ id: z.number().int(), name: z.string().min(1), thumb: z.string().nullish() })
+			z.object({ id: z.number().int(), name: z.string(), thumb: z.string().nullish() })
 		)
 	})
 });
