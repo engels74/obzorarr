@@ -103,6 +103,7 @@ const continueWarning = $derived(
 
 async function runDiagnostic(afterSave = false) {
 	if (diagnosticStatus === 'checking') return;
+	failedDiagramSource = null;
 	const token = ++runToken;
 	browserOrigin = window.location.origin;
 	diagnostic = null;
