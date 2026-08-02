@@ -19,7 +19,7 @@ async function reconcileStartupState(): Promise<void> {
 	const clearedSettings = await clearConflictingDbSettings();
 	if (clearedSettings.length > 0) {
 		logger.info(
-			`Auto-cleared ${clearedSettings.length} DB setting(s) due to ENV precedence: ${clearedSettings.join(', ')}`,
+			`Reconciled ${clearedSettings.length} startup configuration item(s): ${clearedSettings.join(', ')}`,
 			'Startup'
 		);
 	}
