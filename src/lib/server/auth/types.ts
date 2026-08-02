@@ -219,45 +219,6 @@ export interface PollPinOptions {
 	intervalMs?: number;
 }
 
-export const PlexSharedSectionSchema = z.object({
-	id: z.number().int(),
-	key: z.number().int(),
-	title: z.string(),
-	type: z.string().optional(),
-	shared: z.boolean().optional()
-});
-
-export const PlexSharedServerUserSchema = z.object({
-	id: z.number().int(),
-	username: z.string(),
-	email: z.string().optional(),
-	thumb: z.string().optional(),
-	protected: z.boolean().optional(),
-	home: z.boolean().optional(),
-	allowSync: z.boolean().optional(),
-	allowCameraUpload: z.boolean().optional(),
-	allowChannels: z.boolean().optional(),
-	allowTuners: z.boolean().optional(),
-	allowSubtitleAdmin: z.boolean().optional(),
-	filterAll: z.string().optional(),
-	filterMovies: z.string().optional(),
-	filterMusic: z.string().optional(),
-	filterPhotos: z.string().optional(),
-	filterTelevision: z.string().optional(),
-	restricted: z.boolean().optional(),
-	sections: z.array(PlexSharedSectionSchema).optional()
-});
-
-export const PlexSharedServersResponseSchema = z.object({
-	MediaContainer: z.object({
-		friendlyName: z.string().nullish(),
-		identifier: z.string().optional(),
-		machineIdentifier: z.string().optional(),
-		size: z.number().int().optional(),
-		SharedServer: z.array(PlexSharedServerUserSchema).optional()
-	})
-});
-
 export const PlexServerIdentitySchema = z.object({
 	MediaContainer: z.object({
 		machineIdentifier: z.string(),
@@ -267,44 +228,7 @@ export const PlexServerIdentitySchema = z.object({
 	})
 });
 
-export type PlexSharedSection = z.infer<typeof PlexSharedSectionSchema>;
-export type PlexSharedServerUser = z.infer<typeof PlexSharedServerUserSchema>;
-export type PlexSharedServersResponse = z.infer<typeof PlexSharedServersResponseSchema>;
 export type PlexServerIdentity = z.infer<typeof PlexServerIdentitySchema>;
-
-export const PlexFriendSharedServerSchema = z.object({
-	id: z.number().int(),
-	name: z.string().optional(),
-	ownerId: z.number().int().optional(),
-	serverId: z.number().int().optional(),
-	machineIdentifier: z.string().optional(),
-	lastSeenAt: z.string().optional(),
-	numLibraries: z.number().int().optional(),
-	allLibraries: z.boolean().optional(),
-	owned: z.boolean().optional(),
-	pending: z.boolean().optional()
-});
-
-export const PlexFriendSchema = z.object({
-	id: z.number().int(),
-	uuid: z.string().optional(),
-	username: z.string().nullish(),
-	email: z.string().nullish(),
-	friendlyName: z.string().nullish(),
-	title: z.string().optional(),
-	thumb: z.string().optional(),
-	home: z.boolean().optional(),
-	restricted: z.boolean().optional(),
-	status: z.string().optional(),
-	sharedServers: z.array(PlexFriendSharedServerSchema).optional(),
-	sharedSources: z.array(z.unknown()).optional()
-});
-
-export const PlexFriendsResponseSchema = z.array(PlexFriendSchema);
-
-export type PlexFriendSharedServer = z.infer<typeof PlexFriendSharedServerSchema>;
-export type PlexFriend = z.infer<typeof PlexFriendSchema>;
-export type PlexFriendsResponse = z.infer<typeof PlexFriendsResponseSchema>;
 
 export interface NormalizedServerUser {
 	plexId: number;

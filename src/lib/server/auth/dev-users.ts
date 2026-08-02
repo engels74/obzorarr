@@ -1,5 +1,6 @@
 import { getPlexConfig, type PlexConfig } from '$lib/server/admin/settings.service';
 import { logger } from '$lib/server/logging';
+import { fetchCurrentSharedAccounts } from '$lib/server/plex/accounts';
 import { getPlexUserInfo } from './plex-oauth';
 import {
 	type NormalizedServerUser,
@@ -7,31 +8,15 @@ import {
 	PLEX_PRODUCT,
 	PLEX_VERSION,
 	PlexAuthApiError,
-	type PlexFriend,
-	PlexFriendSchema,
-	PlexServerIdentitySchema,
-	type PlexSharedServerUser
+	PlexServerIdentitySchema
 } from './types';
 
-// SECURITY: This module should only be used in development mode.
-
-const PLEX_TV_URL = 'https://plex.tv';
-
-const PLEX_TV_HEADERS = {
-	Accept: 'application/json',
-	'X-Plex-Client-Identifier': PLEX_CLIENT_ID,
-	'X-Plex-Product': PLEX_PRODUCT,
-	'X-Plex-Version': PLEX_VERSION
-} as const;
-
-// Plex server requires these headers to return JSON instead of XML
 const PLEX_SERVER_HEADERS = {
 	Accept: 'application/json',
 	'X-Plex-Client-Identifier': PLEX_CLIENT_ID,
 	'X-Plex-Product': PLEX_PRODUCT,
 	'X-Plex-Version': PLEX_VERSION
 } as const;
-
 const CACHE_DURATION_MS = 5 * 60 * 1000;
 
 interface CachedUsers {
@@ -39,115 +24,19 @@ interface CachedUsers {
 	sharedUsers: NormalizedServerUser[];
 	fetchedAt: number;
 }
-
 let usersCache: CachedUsers | null = null;
 
 async function getServerMachineIdentifier(config: PlexConfig): Promise<string> {
 	if (!config.serverUrl || !config.token) {
-		throw new PlexAuthApiError(
-			'PLEX_SERVER_URL and PLEX_TOKEN must be configured',
-			undefined,
-			'/identity'
-		);
+		throw new PlexAuthApiError('PLEX_SERVER_URL and PLEX_TOKEN must be configured');
 	}
-
-	const endpoint = `${config.serverUrl}/identity`;
-
-	const response = await fetch(endpoint, {
-		headers: {
-			...PLEX_SERVER_HEADERS,
-			'X-Plex-Token': config.token
-		}
+	const response = await fetch(`${config.serverUrl}/identity`, {
+		headers: { ...PLEX_SERVER_HEADERS, 'X-Plex-Token': config.token }
 	});
-
-	if (!response.ok) {
-		throw new PlexAuthApiError(
-			`Failed to get server identity: ${response.status} ${response.statusText}`,
-			response.status,
-			endpoint
-		);
-	}
-
-	const data = await response.json();
-	const result = PlexServerIdentitySchema.safeParse(data);
-
-	if (!result.success) {
-		throw new PlexAuthApiError(
-			`Invalid server identity response: ${result.error.message}`,
-			undefined,
-			endpoint,
-			result.error
-		);
-	}
-
-	return result.data.MediaContainer.machineIdentifier;
-}
-
-async function fetchSharedUsers(
-	machineIdentifier: string,
-	token: string
-): Promise<PlexSharedServerUser[]> {
-	const endpoint = `${PLEX_TV_URL}/api/v2/friends`;
-
-	const response = await fetch(endpoint, {
-		headers: {
-			...PLEX_TV_HEADERS,
-			'X-Plex-Token': token
-		}
-	});
-
-	if (!response.ok) {
-		throw new PlexAuthApiError(
-			`Failed to get friends: ${response.status} ${response.statusText}`,
-			response.status,
-			endpoint
-		);
-	}
-
-	const data = await response.json();
-
-	if (!Array.isArray(data)) {
-		logger.warn(
-			`Invalid friends response: expected array, received ${data === null ? 'null' : typeof data}. Shared users will not be available for dev bypass.`,
-			'DevUsers'
-		);
-		return [];
-	}
-
-	const friends: PlexFriend[] = [];
-	let skipped = 0;
-	for (const entry of data) {
-		const parsed = PlexFriendSchema.safeParse(entry);
-		if (parsed.success) {
-			friends.push(parsed.data);
-		} else {
-			skipped++;
-		}
-	}
-
-	if (skipped > 0) {
-		logger.warn(
-			`Skipped ${skipped} malformed friend record(s) from Plex v2 friends response.`,
-			'DevUsers'
-		);
-	}
-
-	// Keep only friends who actually share this server; the Plex friends endpoint
-	// can include unrelated accounts from the owner account.
-	return friends
-		.filter(
-			(friend): friend is PlexFriend & { username: string } =>
-				typeof friend.username === 'string' && friend.username.length > 0
-		)
-		.filter((friend) =>
-			friend.sharedServers?.some((s) => s.machineIdentifier === machineIdentifier)
-		)
-		.map((friend) => ({
-			id: friend.id,
-			username: friend.username,
-			email: friend.email ?? undefined,
-			thumb: friend.thumb
-		}));
+	if (!response.ok) throw new PlexAuthApiError('Failed to get server identity', response.status);
+	const parsed = PlexServerIdentitySchema.safeParse(await response.json());
+	if (!parsed.success) throw new PlexAuthApiError('Invalid server identity response');
+	return parsed.data.MediaContainer.machineIdentifier;
 }
 
 export async function getServerUsers(): Promise<{
@@ -157,14 +46,14 @@ export async function getServerUsers(): Promise<{
 	if (usersCache && Date.now() - usersCache.fetchedAt < CACHE_DURATION_MS) {
 		return { owner: usersCache.owner, sharedUsers: usersCache.sharedUsers };
 	}
-
 	const config = await getPlexConfig();
-
-	if (!config.token) {
-		throw new PlexAuthApiError('Plex token is not configured', undefined, '/dev-users');
-	}
-
+	if (!config.token) throw new PlexAuthApiError('Plex token is not configured');
 	const ownerData = await getPlexUserInfo(config.token);
+	const machineIdentifier = await getServerMachineIdentifier(config);
+	const shared = await fetchCurrentSharedAccounts(machineIdentifier, config.token);
+	if (shared.status !== 'complete') {
+		throw new PlexAuthApiError('Current shared Plex identity source is unavailable');
+	}
 	const owner: NormalizedServerUser = {
 		plexId: ownerData.id,
 		username: ownerData.username,
@@ -172,78 +61,49 @@ export async function getServerUsers(): Promise<{
 		thumb: ownerData.thumb ?? null,
 		isOwner: true
 	};
-
-	const machineIdentifier = await getServerMachineIdentifier(config);
-	const sharedUsersData = await fetchSharedUsers(machineIdentifier, config.token);
-
-	const sharedUsers: NormalizedServerUser[] = sharedUsersData.map((user) => ({
-		plexId: user.id,
+	const sharedUsers = shared.identities.map((user) => ({
+		plexId: user.plexId,
 		username: user.username,
-		email: user.email ?? null,
-		thumb: user.thumb ?? null,
+		email: null,
+		thumb: user.thumb,
 		isOwner: false
 	}));
-
-	usersCache = {
-		owner,
-		sharedUsers,
-		fetchedAt: Date.now()
-	};
-
+	usersCache = { owner, sharedUsers, fetchedAt: Date.now() };
 	logger.debug(`Fetched ${sharedUsers.length} shared users from Plex server`, 'DevUsers');
-
 	return { owner, sharedUsers };
 }
 
 export async function getServerOwner(): Promise<NormalizedServerUser> {
-	const { owner } = await getServerUsers();
-	return owner;
+	return (await getServerUsers()).owner;
 }
-
 export async function getUserById(plexId: number): Promise<NormalizedServerUser | null> {
 	const { owner, sharedUsers } = await getServerUsers();
-
-	if (owner.plexId === plexId) {
-		return owner;
-	}
-
-	return sharedUsers.find((user) => user.plexId === plexId) ?? null;
+	return owner.plexId === plexId
+		? owner
+		: (sharedUsers.find((user) => user.plexId === plexId) ?? null);
 }
-
 export async function getUserByUsername(username: string): Promise<NormalizedServerUser | null> {
 	const { owner, sharedUsers } = await getServerUsers();
-	const lowerUsername = username.toLowerCase();
-
-	if (owner.username.toLowerCase() === lowerUsername) {
-		return owner;
-	}
-
-	return sharedUsers.find((user) => user.username.toLowerCase() === lowerUsername) ?? null;
+	const normalized = username.trim().toLowerCase();
+	const matches = [owner, ...sharedUsers].filter(
+		(user) => user.username.trim().toLowerCase() === normalized
+	);
+	return matches.length === 1 ? (matches[0] ?? null) : null;
 }
-
 export async function getRandomNonOwnerUser(): Promise<NormalizedServerUser | null> {
 	const { sharedUsers } = await getServerUsers();
-
-	if (sharedUsers.length === 0) {
-		return null;
-	}
-
-	const randomIndex = Math.floor(Math.random() * sharedUsers.length);
-	return sharedUsers[randomIndex] ?? null;
+	return sharedUsers.length
+		? (sharedUsers[Math.floor(Math.random() * sharedUsers.length)] ?? null)
+		: null;
 }
-
 export async function resolveUserIdentifier(
 	identifier: string
 ): Promise<NormalizedServerUser | null> {
 	const numericId = parseInt(identifier, 10);
-
-	if (!Number.isNaN(numericId) && numericId > 0) {
-		return getUserById(numericId);
-	}
-
-	return getUserByUsername(identifier);
+	return !Number.isNaN(numericId) && numericId > 0
+		? getUserById(numericId)
+		: getUserByUsername(identifier);
 }
-
 export function clearUsersCache(): void {
 	usersCache = null;
 }

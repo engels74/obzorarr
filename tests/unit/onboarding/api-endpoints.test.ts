@@ -290,6 +290,9 @@ describe('POST /api/onboarding/select-server', () => {
 		expect(JSON.stringify(body)).not.toContain('server-token-secret');
 		expect(await getAppSetting(AppSettingsKey.PLEX_TOKEN)).toBe('server-token-secret');
 		expect(await getCachedServerName()).toBe('Home Server');
+		expect(await getAppSetting(AppSettingsKey.SERVER_MACHINE_ID)).toBe('a'.repeat(32));
+		expect(await getAppSetting(AppSettingsKey.PLEX_AUTHORITY_EPOCH)).toBe('1');
+		expect(await getAppSetting(AppSettingsKey.PLEX_IDENTITY_PROOF)).toBeNull();
 	});
 
 	it('keeps legacy accessToken compatibility', async () => {

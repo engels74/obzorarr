@@ -1,5 +1,11 @@
+import {
+	AppSettingsKey,
+	getPlexConfig,
+	getPlexConfigFingerprint
+} from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
-import { shareSettings, users } from '$lib/server/db/schema';
+import { appSettings, plexAccounts, shareSettings, users } from '$lib/server/db/schema';
+import { buildPlexIdentityProofValue } from '$lib/server/plex/account-reconciliation';
 import {
 	ShareMode,
 	ShareModeSource,
@@ -14,7 +20,23 @@ export interface TestSharingUserInput {
 	username?: string;
 	isAdmin?: boolean;
 }
+const IDENTITY_CONFIRMED_AT = Date.now();
 
+export async function seedPlexAuthorityForTests(): Promise<void> {
+	const config = await getPlexConfig();
+	const discriminator = getPlexConfigFingerprint(config);
+	await db
+		.insert(appSettings)
+		.values({
+			key: AppSettingsKey.PLEX_AUTHORITY_DISCRIMINATOR,
+			value: discriminator,
+			updatedAt: new Date()
+		})
+		.onConflictDoUpdate({
+			target: appSettings.key,
+			set: { value: discriminator, updatedAt: new Date() }
+		});
+}
 export async function seedSharingUser(overrides: TestSharingUserInput = {}) {
 	const user = {
 		id: overrides.id ?? 42,
@@ -24,7 +46,29 @@ export async function seedSharingUser(overrides: TestSharingUserInput = {}) {
 		isAdmin: overrides.isAdmin ?? false
 	};
 
+	await seedPlexAuthorityForTests();
 	await db.insert(users).values(user);
+	if (user.accountId !== null) {
+		await db.insert(plexAccounts).values({
+			accountId: user.accountId,
+			plexId: user.plexId,
+			username: user.username,
+			isOwner: user.accountId === 1,
+			updatedAt: new Date(IDENTITY_CONFIRMED_AT)
+		});
+		const proofValue = await buildPlexIdentityProofValue('machine-test', IDENTITY_CONFIRMED_AT);
+		await db
+			.insert(appSettings)
+			.values({
+				key: AppSettingsKey.PLEX_IDENTITY_PROOF,
+				value: proofValue,
+				updatedAt: new Date(IDENTITY_CONFIRMED_AT)
+			})
+			.onConflictDoUpdate({
+				target: appSettings.key,
+				set: { value: proofValue, updatedAt: new Date(IDENTITY_CONFIRMED_AT) }
+			});
+	}
 
 	return user;
 }

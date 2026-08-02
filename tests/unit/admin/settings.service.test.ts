@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'bun:test';
 import { env } from '$env/dynamic/private';
 import {
 	AnonymizationMode,
+	API_CONFIG_KEYS,
 	AppSettingsKey,
 	clearConflictingDbSettings,
 	clearPlayHistory,
@@ -24,6 +25,7 @@ import {
 	getDefaultYear,
 	getFunFactFrequency,
 	getPlexConfig,
+	getPlexConfigFingerprint,
 	getUITheme,
 	getWrappedLogoMode,
 	getWrappedTheme,
@@ -949,6 +951,19 @@ describe('Admin Settings Service', () => {
 					dynamicEnv.PLEX_ALLOW_INSECURE_LOCAL_HTTP = previousAllowInsecure;
 				}
 			});
+
+			it('fingerprints equivalent Plex URLs with the same authority discriminator', () => {
+				const canonical = getPlexConfigFingerprint({
+					serverUrl: 'https://plex.example.com:32400',
+					token: 'same-token'
+				});
+				const nonCanonical = getPlexConfigFingerprint({
+					serverUrl: '  https://PLEX.example.com:32400///  ',
+					token: 'same-token'
+				});
+
+				expect(nonCanonical).toBe(canonical);
+			});
 		});
 
 		describe('clearConflictingDbSettings', () => {
@@ -1025,7 +1040,7 @@ describe('Admin Settings Service', () => {
 				}
 			});
 
-			it('preserves cached machineId when ENV Plex config is a placeholder', async () => {
+			it('clears a legacy cached machineId when ENV Plex config is a placeholder', async () => {
 				const dynamicEnv = env as Record<string, string | undefined>;
 				const previousPlexServerUrl = dynamicEnv.PLEX_SERVER_URL;
 				const previousPlexToken = dynamicEnv.PLEX_TOKEN;
@@ -1037,9 +1052,144 @@ describe('Admin Settings Service', () => {
 
 					const cleared = await clearConflictingDbSettings();
 
-					expect(cleared).not.toContain('SERVER_MACHINE_ID');
+					expect(cleared).toContain('PLEX_AUTHORITY');
 					const machineId = await getAppSetting(AppSettingsKey.SERVER_MACHINE_ID);
-					expect(machineId).toBe('cached-machine-id');
+					expect(machineId).toBeNull();
+				} finally {
+					dynamicEnv.PLEX_SERVER_URL = previousPlexServerUrl;
+					dynamicEnv.PLEX_TOKEN = previousPlexToken;
+				}
+			});
+
+			it('preserves unchanged ENV Plex authority and advances A to B to A without intermediate reconciliation', async () => {
+				const dynamicEnv = env as Record<string, string | undefined>;
+				const previousPlexServerUrl = dynamicEnv.PLEX_SERVER_URL;
+				const previousPlexToken = dynamicEnv.PLEX_TOKEN;
+				const machineId = 'env-machine';
+
+				const seedProof = async (serverUrl: string, token: string, epoch: string) => {
+					const fingerprint = getPlexConfigFingerprint({ serverUrl, token });
+					await setAppSetting(AppSettingsKey.PLEX_AUTHORITY_EPOCH, epoch);
+					await setAppSetting(
+						AppSettingsKey.PLEX_AUTHORITY_DISCRIMINATOR,
+						getPlexConfigFingerprint({ serverUrl, token })
+					);
+					await setAppSetting(AppSettingsKey.SERVER_MACHINE_ID, machineId);
+					await setAppSetting(
+						AppSettingsKey.PLEX_IDENTITY_PROOF,
+						JSON.stringify({ configFingerprint: fingerprint, machineIdentifier: machineId })
+					);
+				};
+
+				try {
+					dynamicEnv.PLEX_SERVER_URL = 'https://env-a.example.com:32400';
+					dynamicEnv.PLEX_TOKEN = 'env-token-a';
+					await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, 'https://shadowed.example.com');
+					await setAppSetting(AppSettingsKey.PLEX_TOKEN, 'shadowed-token');
+					await seedProof(dynamicEnv.PLEX_SERVER_URL, dynamicEnv.PLEX_TOKEN, '7');
+
+					const unchanged = await clearConflictingDbSettings();
+					expect(unchanged).toContain('PLEX_SERVER_URL');
+					expect(unchanged).toContain('PLEX_TOKEN');
+					expect(unchanged).not.toContain('PLEX_AUTHORITY');
+					expect(await getAppSetting(AppSettingsKey.PLEX_AUTHORITY_EPOCH)).toBe('7');
+					expect(await getAppSetting(AppSettingsKey.SERVER_MACHINE_ID)).toBe(machineId);
+					expect(await getAppSetting(AppSettingsKey.PLEX_IDENTITY_PROOF)).not.toBeNull();
+
+					expect(await clearConflictingDbSettings()).toEqual([]);
+					expect(await getAppSetting(AppSettingsKey.PLEX_AUTHORITY_EPOCH)).toBe('7');
+
+					dynamicEnv.PLEX_SERVER_URL = 'https://env-b.example.com:32400';
+					dynamicEnv.PLEX_TOKEN = 'env-token-b';
+					expect(await clearConflictingDbSettings()).toContain('PLEX_AUTHORITY');
+					expect(await getAppSetting(AppSettingsKey.PLEX_AUTHORITY_EPOCH)).toBe('8');
+					expect(await getAppSetting(AppSettingsKey.SERVER_MACHINE_ID)).toBeNull();
+					expect(await getAppSetting(AppSettingsKey.PLEX_IDENTITY_PROOF)).toBeNull();
+
+					dynamicEnv.PLEX_SERVER_URL = 'https://env-a.example.com:32400';
+					dynamicEnv.PLEX_TOKEN = 'env-token-a';
+					expect(await clearConflictingDbSettings()).toContain('PLEX_AUTHORITY');
+					expect(await getAppSetting(AppSettingsKey.PLEX_AUTHORITY_EPOCH)).toBe('9');
+				} finally {
+					dynamicEnv.PLEX_SERVER_URL = previousPlexServerUrl;
+					dynamicEnv.PLEX_TOKEN = previousPlexToken;
+				}
+			});
+			it('advances through configured to unconfigured to the same configured authority', async () => {
+				const dynamicEnv = env as Record<string, string | undefined>;
+				const previousPlexServerUrl = dynamicEnv.PLEX_SERVER_URL;
+				const previousPlexToken = dynamicEnv.PLEX_TOKEN;
+				const authority = {
+					serverUrl: 'https://env-a.example.com:32400',
+					token: 'env-token-a'
+				};
+
+				try {
+					dynamicEnv.PLEX_SERVER_URL = authority.serverUrl;
+					dynamicEnv.PLEX_TOKEN = authority.token;
+					await setAppSetting(AppSettingsKey.PLEX_AUTHORITY_EPOCH, '20');
+					await setAppSetting(
+						AppSettingsKey.PLEX_AUTHORITY_DISCRIMINATOR,
+						getPlexConfigFingerprint(authority)
+					);
+
+					expect(await clearConflictingDbSettings()).toEqual([]);
+					expect(await getAppSetting(AppSettingsKey.PLEX_AUTHORITY_EPOCH)).toBe('20');
+
+					dynamicEnv.PLEX_SERVER_URL = '';
+					dynamicEnv.PLEX_TOKEN = '';
+					expect(await clearConflictingDbSettings()).toContain('PLEX_AUTHORITY');
+					expect(await getAppSetting(AppSettingsKey.PLEX_AUTHORITY_EPOCH)).toBe('21');
+
+					dynamicEnv.PLEX_SERVER_URL = authority.serverUrl;
+					dynamicEnv.PLEX_TOKEN = authority.token;
+					expect(await clearConflictingDbSettings()).toContain('PLEX_AUTHORITY');
+					expect(await getAppSetting(AppSettingsKey.PLEX_AUTHORITY_EPOCH)).toBe('22');
+					expect(await clearConflictingDbSettings()).toEqual([]);
+					expect(await getAppSetting(AppSettingsKey.PLEX_AUTHORITY_EPOCH)).toBe('22');
+				} finally {
+					dynamicEnv.PLEX_SERVER_URL = previousPlexServerUrl;
+					dynamicEnv.PLEX_TOKEN = previousPlexToken;
+				}
+			});
+
+			it('fails closed for malformed and legacy authority discriminators', async () => {
+				const dynamicEnv = env as Record<string, string | undefined>;
+				const previousPlexServerUrl = dynamicEnv.PLEX_SERVER_URL;
+				const previousPlexToken = dynamicEnv.PLEX_TOKEN;
+				const authority = {
+					serverUrl: 'https://env-a.example.com:32400',
+					token: 'env-token-a'
+				};
+
+				try {
+					dynamicEnv.PLEX_SERVER_URL = authority.serverUrl;
+					dynamicEnv.PLEX_TOKEN = authority.token;
+					await setAppSetting(AppSettingsKey.PLEX_AUTHORITY_EPOCH, '90071992547409931234567890');
+					await setAppSetting(AppSettingsKey.PLEX_AUTHORITY_DISCRIMINATOR, 'malformed');
+					await setAppSetting(AppSettingsKey.SERVER_MACHINE_ID, 'stale-machine');
+
+					expect(await clearConflictingDbSettings()).toContain('PLEX_AUTHORITY');
+					expect(await getAppSetting(AppSettingsKey.PLEX_AUTHORITY_EPOCH)).toBe(
+						'90071992547409931234567891'
+					);
+					expect(await getAppSetting(AppSettingsKey.SERVER_MACHINE_ID)).toBeNull();
+
+					await deleteAppSetting(AppSettingsKey.PLEX_AUTHORITY_DISCRIMINATOR);
+					expect(await clearConflictingDbSettings()).toContain('PLEX_AUTHORITY');
+					expect(await getAppSetting(AppSettingsKey.PLEX_AUTHORITY_EPOCH)).toBe(
+						'90071992547409931234567892'
+					);
+
+					await setAppSetting(
+						AppSettingsKey.PLEX_AUTHORITY_DISCRIMINATOR,
+						getPlexConfigFingerprint(authority)
+					);
+					await setAppSetting(AppSettingsKey.PLEX_AUTHORITY_EPOCH, 'not-an-epoch');
+					await setAppSetting(AppSettingsKey.SERVER_MACHINE_ID, 'stale-machine');
+					expect(await clearConflictingDbSettings()).toContain('PLEX_AUTHORITY');
+					expect(await getAppSetting(AppSettingsKey.PLEX_AUTHORITY_EPOCH)).toBe('1');
+					expect(await getAppSetting(AppSettingsKey.SERVER_MACHINE_ID)).toBeNull();
 				} finally {
 					dynamicEnv.PLEX_SERVER_URL = previousPlexServerUrl;
 					dynamicEnv.PLEX_TOKEN = previousPlexToken;
@@ -1341,6 +1491,80 @@ describe('Admin Settings Service', () => {
 			expect(await getAppSetting(AppSettingsKey.PLEX_TOKEN)).toBe('plex-secret');
 			expect(await getAppSetting(AppSettingsKey.OPENAI_API_KEY)).toBe('sk-new');
 			expect(await getAppSetting(AppSettingsKey.OPENAI_MODEL)).toBe('gpt-4o');
+		});
+
+		it('advances only Plex authority changes and clears stale machine proof atomically', async () => {
+			await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, 'http://plex.example.com:32400');
+			await setAppSetting(AppSettingsKey.PLEX_TOKEN, 'plex-secret');
+			await setAppSetting(AppSettingsKey.PLEX_AUTHORITY_EPOCH, '7');
+			await setAppSetting(AppSettingsKey.SERVER_MACHINE_ID, 'machine-old');
+			await setAppSetting(AppSettingsKey.PLEX_IDENTITY_PROOF, '{"proof":"old"}');
+
+			const unrelated = await setApiConfigAtomic({
+				values: {
+					plexServerUrl: undefined,
+					plexToken: undefined,
+					openaiApiKey: 'sk-new',
+					openaiBaseUrl: undefined,
+					openaiModel: undefined
+				},
+				locks: allUnlocked,
+				submittedVersion: new Date(Date.now() + 60_000).toISOString()
+			});
+			expect(unrelated).toMatchObject({ status: 'ok', plexCredentialsChanged: false });
+			expect(await getAppSetting(AppSettingsKey.PLEX_AUTHORITY_EPOCH)).toBe('7');
+			expect(await getAppSetting(AppSettingsKey.SERVER_MACHINE_ID)).toBe('machine-old');
+			expect(await getAppSetting(AppSettingsKey.PLEX_IDENTITY_PROOF)).toBe('{"proof":"old"}');
+
+			const changed = await setApiConfigAtomic({
+				values: {
+					plexServerUrl: 'http://plex-new.example.com:32400',
+					plexToken: undefined,
+					openaiApiKey: undefined,
+					openaiBaseUrl: undefined,
+					openaiModel: undefined
+				},
+				locks: allUnlocked,
+				submittedVersion: new Date(Date.now() + 120_000).toISOString()
+			});
+			expect(changed).toMatchObject({ status: 'ok', plexCredentialsChanged: true });
+			expect(await getAppSetting(AppSettingsKey.PLEX_AUTHORITY_EPOCH)).toBe('8');
+			expect(await getAppSetting(AppSettingsKey.SERVER_MACHINE_ID)).toBeNull();
+			expect(await getAppSetting(AppSettingsKey.PLEX_IDENTITY_PROOF)).toBeNull();
+		});
+		it('does not let newer authority bookkeeping reject a fresh API config version', async () => {
+			await setAppSetting(AppSettingsKey.API_CONFIG_VERSION, 'config-version');
+			const submittedVersion = await getAppSettingsUpdatedAt(API_CONFIG_KEYS);
+			expect(submittedVersion).not.toBeNull();
+
+			await setAppSetting(AppSettingsKey.PLEX_AUTHORITY_EPOCH, '7');
+			await setAppSetting(AppSettingsKey.PLEX_AUTHORITY_DISCRIMINATOR, 'a'.repeat(64));
+
+			const fresh = await setApiConfigAtomic({
+				values: {
+					plexServerUrl: undefined,
+					plexToken: undefined,
+					openaiApiKey: undefined,
+					openaiBaseUrl: undefined,
+					openaiModel: 'gpt-4o'
+				},
+				locks: allUnlocked,
+				submittedVersion: submittedVersion!.toISOString()
+			});
+			expect(fresh.status).toBe('ok');
+
+			const stale = await setApiConfigAtomic({
+				values: {
+					plexServerUrl: undefined,
+					plexToken: undefined,
+					openaiApiKey: undefined,
+					openaiBaseUrl: undefined,
+					openaiModel: 'gpt-4.1'
+				},
+				locks: allUnlocked,
+				submittedVersion: submittedVersion!.toISOString()
+			});
+			expect(stale.status).toBe('conflict');
 		});
 
 		it('clears echoed-back keys when submitted as empty string', async () => {

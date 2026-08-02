@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { and, eq } from 'drizzle-orm';
+import { AppSettingsKey } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
-import { shareSettings, users } from '$lib/server/db/schema';
+import { appSettings, plexAccounts, shareSettings, users } from '$lib/server/db/schema';
+import { buildPlexIdentityProofValue } from '$lib/server/plex/account-reconciliation';
 import {
 	getOwnerWrappedHref,
 	getShareIdentifier,
@@ -12,6 +14,7 @@ import { ShareMode, ShareModeSource } from '$lib/server/sharing/types';
 import { load as loadServerWrapped } from '../../../src/routes/wrapped/[year=year]/+page.server';
 import { actions, load } from '../../../src/routes/wrapped/[year=year]/u/[identifier]/+page.server';
 import { resetSharedTestDb } from '../../helpers/db';
+import { seedPlexAuthorityForTests } from '../../helpers/sharing';
 
 type LoadArgs = Parameters<typeof load>[0];
 type ServerLoadArgs = Parameters<typeof loadServerWrapped>[0];
@@ -30,14 +33,37 @@ const OTHER_YEAR = 2023;
 
 const CURRENT_YEAR_TOKEN = '550e8400-e29b-41d4-a716-446655440000';
 const OTHER_YEAR_TOKEN_FOR_PRESEED = '660e8400-e29b-41d4-a716-446655440111';
+const IDENTITY_CONFIRMED_AT = Date.now();
 
 async function seedUser(userId: number, plexId: number, accountId: number): Promise<void> {
+	await seedPlexAuthorityForTests();
 	await db.insert(users).values({
 		id: userId,
 		plexId,
 		accountId,
 		username: `user-${userId}`
 	});
+	await db.insert(plexAccounts).values({
+		accountId,
+		plexId,
+		username: `user-${userId}`,
+		isOwner: accountId === 1,
+		updatedAt: new Date(IDENTITY_CONFIRMED_AT)
+	});
+	await db
+		.insert(appSettings)
+		.values({
+			key: AppSettingsKey.PLEX_IDENTITY_PROOF,
+			value: await buildPlexIdentityProofValue('machine-test', IDENTITY_CONFIRMED_AT),
+			updatedAt: new Date(IDENTITY_CONFIRMED_AT)
+		})
+		.onConflictDoUpdate({
+			target: appSettings.key,
+			set: {
+				value: await buildPlexIdentityProofValue('machine-test', IDENTITY_CONFIRMED_AT),
+				updatedAt: new Date(IDENTITY_CONFIRMED_AT)
+			}
+		});
 }
 
 async function seedShareSettings(options: {
@@ -339,6 +365,86 @@ describe('wrapped/[year=year]/u/[identifier] loader: identifier validation (F-30
 		expect(data.userId).toBe(USER_ID);
 	});
 
+	it('revokes every non-admin identifier when the active Plex mapping is removed and restores access after re-entitlement', async () => {
+		const slug = await getShareIdentifier(USER_ID, ORIGIN_YEAR);
+		const token = '00000000-0000-4000-8000-000000000000';
+		await db
+			.update(shareSettings)
+			.set({
+				mode: ShareMode.PRIVATE_LINK,
+				modeSource: ShareModeSource.EXPLICIT,
+				shareToken: token
+			})
+			.where(and(eq(shareSettings.userId, USER_ID), eq(shareSettings.year, ORIGIN_YEAR)));
+		await db.delete(plexAccounts).where(eq(plexAccounts.accountId, 200002));
+
+		await expectStatus(slug, 404);
+		await expectStatus(token, 404);
+		await expectStatus(String(USER_ID), 404);
+
+		await db.insert(plexAccounts).values({
+			accountId: 200002,
+			plexId: 100002,
+			username: `user-${USER_ID}`,
+			isOwner: false,
+			updatedAt: new Date(IDENTITY_CONFIRMED_AT)
+		});
+		const restored = await invokeLoad({
+			year: ORIGIN_YEAR,
+			identifier: token,
+			availableYears: [ORIGIN_YEAR]
+		});
+		expect(restored.userId).toBe(USER_ID);
+	});
+
+	it('rejects a removed owner numeric GET before creating share settings', async () => {
+		await db.delete(shareSettings);
+		await db.delete(plexAccounts).where(eq(plexAccounts.accountId, 200002));
+
+		try {
+			await invokeLoad({
+				year: ORIGIN_YEAR,
+				identifier: String(USER_ID),
+				availableYears: [ORIGIN_YEAR],
+				currentUser: {
+					id: USER_ID,
+					plexId: 100002,
+					username: `user-${USER_ID}`,
+					isAdmin: false
+				}
+			});
+			expect.unreachable('Expected removed owner to receive a 404');
+		} catch (err) {
+			expect((err as { status?: number }).status).toBe(404);
+		}
+
+		expect(await db.select().from(shareSettings)).toHaveLength(0);
+	});
+
+	it('rejects a removed slug before private-link access can mint a token', async () => {
+		const slug = 'A'.repeat(22);
+		await db.delete(shareSettings);
+		await setGlobalShareDefaults({
+			defaultShareMode: ShareMode.PRIVATE_LINK,
+			allowUserControl: false
+		});
+		await db.insert(shareSettings).values({
+			userId: USER_ID,
+			year: ORIGIN_YEAR,
+			mode: ShareMode.PRIVATE_LINK,
+			modeSource: ShareModeSource.DEFAULT,
+			shareToken: null,
+			publicSlug: slug,
+			canUserControl: false
+		});
+		await db.delete(plexAccounts).where(eq(plexAccounts.accountId, 200002));
+
+		await expectStatus(slug, 404);
+
+		const [unchanged] = await db.select().from(shareSettings);
+		expect(unchanged).toMatchObject({ publicSlug: slug, shareToken: null });
+	});
+
 	it('resolves a valid UUID share token to the matching user', async () => {
 		const VALID_TOKEN = '550e8400-e29b-41d4-a716-446655441234';
 		await setGlobalShareDefaults({
@@ -519,7 +625,7 @@ describe('wrapped/[year=year]/u/[identifier] loader: shareToken payload gating',
 		}
 	});
 
-	it('returns 404 when an admin accesses a private-link wrapped via numeric URL', async () => {
+	it('allows an admin to inspect private-link history via the numeric URL', async () => {
 		await setGlobalShareDefaults({
 			defaultShareMode: ShareMode.PRIVATE_LINK,
 			allowUserControl: false
@@ -532,22 +638,20 @@ describe('wrapped/[year=year]/u/[identifier] loader: shareToken payload gating',
 		});
 		await seedUser(ADMIN_ID, 100008, 200008);
 
-		try {
-			await invokeLoad({
-				year: YEAR,
-				identifier: String(USER_ID),
-				availableYears: [YEAR],
-				currentUser: {
-					id: ADMIN_ID,
-					plexId: 100008,
-					username: `user-${ADMIN_ID}`,
-					isAdmin: true
-				}
-			});
-			expect.unreachable('Expected numeric private-link admin URL to be rejected');
-		} catch (err) {
-			expect((err as { status?: number }).status).toBe(404);
-		}
+		const data = await invokeLoad({
+			year: YEAR,
+			identifier: String(USER_ID),
+			availableYears: [YEAR],
+			currentUser: {
+				id: ADMIN_ID,
+				plexId: 100008,
+				username: `user-${ADMIN_ID}`,
+				isAdmin: true
+			}
+		});
+
+		expect(data.isAdmin).toBe(true);
+		expect(data.canonicalUrl).toBe(`/wrapped/${YEAR}/u/${USER_ID}`);
 	});
 
 	it('exposes the canonical token to the owner even when the floor raises effectiveMode above private-link', async () => {

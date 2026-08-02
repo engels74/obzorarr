@@ -391,6 +391,28 @@ export async function getShareSettingsReadOnly(
 	return toShareSettings(record, globalDefault, globalAllowUserControl);
 }
 
+export async function getShareSettingsReadOnlyOrDefault(
+	userId: number,
+	year: number
+): Promise<ShareSettings> {
+	const existing = await getShareSettingsReadOnly(userId, year);
+	if (existing) return existing;
+
+	const [mode, canUserControl] = await Promise.all([
+		getGlobalDefaultShareMode(),
+		getGlobalAllowUserControl()
+	]);
+	return {
+		userId,
+		year,
+		mode,
+		storedMode: mode,
+		modeSource: ShareModeSource.DEFAULT,
+		shareToken: null,
+		canUserControl
+	};
+}
+
 function toShareSettings(
 	record: ShareSettingsRecord,
 	globalDefault: ShareModeType,
