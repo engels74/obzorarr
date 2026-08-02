@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import {
+	diagramForReverseProxyDiagnostic,
 	documentationForDiagnostic,
 	documentationForGuide,
 	presentReverseProxyDiagnostic,
@@ -214,6 +215,66 @@ describe('reverse proxy presenter', () => {
 		expect(brokenView.nextAction).toContain('exactly http or https');
 		expect(brokenView.nextAction).toContain('Restart Obzorarr');
 		expect(brokenView.consequence).toContain('rejected the unusable forwarding metadata');
+	});
+
+	it('selects the matching diagram for every diagnostic result state', () => {
+		const protocolMissing = diagnostic('review-proxy', 'partial');
+		protocolMissing.facts.forwardedHeaders.pair.protoPresent = false;
+		protocolMissing.facts.forwardedHeaders.pair.hostPresent = true;
+
+		const forwardedConflict = diagnostic('review-proxy');
+		forwardedConflict.facts.originComparison.forwardedPairMatchesBrowser = false;
+
+		const environmentEnabledWorking = diagnostic('env-controlled', 'usable', {
+			enabled: true,
+			source: 'env',
+			isLocked: true
+		});
+		const environmentEnabledBroken = diagnostic('env-controlled', 'invalid-proto', {
+			enabled: true,
+			source: 'env',
+			isLocked: true
+		});
+		const environmentDisabledCorrect = diagnostic('env-controlled', 'missing', {
+			source: 'env',
+			isLocked: true
+		});
+		environmentDisabledCorrect.facts.originComparison.browserMatchesRequestUrl = true;
+		const environmentDisabledNeeded = diagnostic('env-controlled', 'usable', {
+			source: 'env',
+			isLocked: true
+		});
+		const environmentDisabledBroken = diagnostic('env-controlled', 'missing', {
+			source: 'env',
+			isLocked: true
+		});
+
+		const states = {
+			'browser-address-unavailable': diagnostic('unable-to-determine'),
+			'correct-without-trust': diagnostic('leave-disabled'),
+			'environment-disabled-broken': environmentDisabledBroken,
+			'environment-disabled-correct': environmentDisabledCorrect,
+			'environment-disabled-needed': environmentDisabledNeeded,
+			'environment-enabled-broken': environmentEnabledBroken,
+			'environment-enabled-working': environmentEnabledWorking,
+			'forwarded-address-conflict': forwardedConflict,
+			'forwarded-match-boundary-unverified': diagnostic('confirm-trust-boundary'),
+			'headers-missing': diagnostic('review-proxy', 'missing'),
+			'host-invalid': diagnostic('review-proxy', 'invalid-host'),
+			'host-missing': diagnostic('review-proxy', 'partial'),
+			'host-unsafe': diagnostic('review-proxy', 'unsafe-host'),
+			'protocol-invalid': diagnostic('review-proxy', 'invalid-proto'),
+			'protocol-missing': protocolMissing,
+			'trust-enabled-broken': diagnostic('review-proxy', 'invalid-proto', {
+				enabled: true,
+				source: 'db'
+			}),
+			'trust-working': diagnostic('appears-working')
+		} as const;
+
+		for (const expected of Object.keys(states) as Array<keyof typeof states>) {
+			expect(diagramForReverseProxyDiagnostic(states[expected])).toBe(expected);
+		}
 	});
 
 	it('keeps documentation official, purpose-scoped, and provider-complete', () => {

@@ -11,6 +11,9 @@ export const REVERSE_PROXY_COPY = {
 	panelSubtitle: 'Verify the public host and protocol Obzorarr receives from your proxy',
 	rerunButton: 'Re-run diagnostic',
 	rerunButtonInProgress: 'Re-checking…',
+	diagnosticFailedHeadline: 'Diagnostic could not finish',
+	diagnosticFailedExplanation:
+		'The check itself failed. This does not show that the reverse proxy is configured incorrectly.',
 	detailsButton: 'Technical evidence and repair guides',
 	savedVerifying: 'Setting saved. Obzorarr is checking the new result…',
 	savedUnverified:
@@ -18,6 +21,25 @@ export const REVERSE_PROXY_COPY = {
 	continueWarning:
 		'Continuing keeps the detected host/protocol problem. Public links, Plex callbacks, or CSRF origin checks may use the wrong origin.'
 } as const;
+
+export type ReverseProxyDiagramId =
+	| 'browser-address-unavailable'
+	| 'correct-without-trust'
+	| 'environment-disabled-broken'
+	| 'environment-disabled-correct'
+	| 'environment-disabled-needed'
+	| 'environment-enabled-broken'
+	| 'environment-enabled-working'
+	| 'forwarded-address-conflict'
+	| 'forwarded-match-boundary-unverified'
+	| 'headers-missing'
+	| 'host-invalid'
+	| 'host-missing'
+	| 'host-unsafe'
+	| 'protocol-invalid'
+	| 'protocol-missing'
+	| 'trust-enabled-broken'
+	| 'trust-working';
 
 const SAFETY_NOTICE =
 	'Trust forwarding headers only when Obzorarr is reachable through a proxy that removes or overwrites visitor-supplied X-Forwarded-Proto and X-Forwarded-Host values. Never enable TRUST_PROXY for a directly exposed app.';
@@ -239,6 +261,70 @@ export function presentReverseProxyDiagnostic(
 				safetyNotice: SAFETY_NOTICE,
 				documentationIds: [...PROXY_REPAIR_DOCUMENTATION_IDS]
 			};
+		default: {
+			const exhaustive: never = diagnostic.action;
+			return exhaustive;
+		}
+	}
+}
+
+export function diagramForReverseProxyDiagnostic(
+	diagnostic: ReverseProxyDiagnostic
+): ReverseProxyDiagramId {
+	const pair = diagnostic.facts.forwardedHeaders.pair;
+	const comparison = diagnostic.facts.originComparison;
+
+	switch (diagnostic.action) {
+		case 'unable-to-determine':
+			return 'browser-address-unavailable';
+		case 'leave-disabled':
+			return 'correct-without-trust';
+		case 'confirm-trust-boundary':
+			return 'forwarded-match-boundary-unverified';
+		case 'appears-working':
+			return 'trust-working';
+		case 'env-controlled':
+			if (
+				diagnostic.facts.trustProxy.enabled &&
+				pair.isUsable &&
+				comparison.browserMatchesEffectiveApp === true
+			) {
+				return 'environment-enabled-working';
+			}
+			if (!diagnostic.facts.trustProxy.enabled && comparison.browserMatchesRequestUrl === true) {
+				return 'environment-disabled-correct';
+			}
+			if (
+				!diagnostic.facts.trustProxy.enabled &&
+				pair.isUsable &&
+				comparison.forwardedPairMatchesBrowser === true &&
+				comparison.browserMatchesRequestUrl === false
+			) {
+				return 'environment-disabled-needed';
+			}
+			return diagnostic.facts.trustProxy.enabled
+				? 'environment-enabled-broken'
+				: 'environment-disabled-broken';
+		case 'review-proxy':
+			if (diagnostic.facts.trustProxy.enabled) return 'trust-enabled-broken';
+			switch (pair.status) {
+				case 'missing':
+					return 'headers-missing';
+				case 'partial':
+					return pair.protoPresent ? 'host-missing' : 'protocol-missing';
+				case 'invalid-proto':
+					return 'protocol-invalid';
+				case 'unsafe-host':
+					return 'host-unsafe';
+				case 'invalid-host':
+					return 'host-invalid';
+				case 'usable':
+					return 'forwarded-address-conflict';
+				default: {
+					const exhaustive: never = pair.status;
+					return exhaustive;
+				}
+			}
 		default: {
 			const exhaustive: never = diagnostic.action;
 			return exhaustive;
