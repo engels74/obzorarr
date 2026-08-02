@@ -619,8 +619,7 @@ export async function setApiConfigAtomic(opts: {
 			(!opts.locks.plexToken && Boolean(opts.values.plexToken));
 		const authorityChanged =
 			plexAuthorityWasSubmitted &&
-			(plexCredentialsChanged ||
-				currentValues.get(AppSettingsKey.PLEX_AUTHORITY_DISCRIMINATOR) !== nextDiscriminator);
+			currentValues.get(AppSettingsKey.PLEX_AUTHORITY_DISCRIMINATOR) !== nextDiscriminator;
 		if (authorityChanged) {
 			const nextEpoch = (
 				parsePlexAuthorityEpoch(currentValues.get(AppSettingsKey.PLEX_AUTHORITY_EPOCH) ?? null) + 1n

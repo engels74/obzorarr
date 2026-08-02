@@ -1532,6 +1532,48 @@ describe('Admin Settings Service', () => {
 			expect(await getAppSetting(AppSettingsKey.SERVER_MACHINE_ID)).toBeNull();
 			expect(await getAppSetting(AppSettingsKey.PLEX_IDENTITY_PROOF)).toBeNull();
 		});
+
+		it('retains authority proof when a submitted Plex URL has the same normalized fingerprint', async () => {
+			const dynamicEnv = env as Record<string, string | undefined>;
+			const previousPlexServerUrl = dynamicEnv.PLEX_SERVER_URL;
+			const previousPlexToken = dynamicEnv.PLEX_TOKEN;
+			const serverUrl = 'https://plex.example.com:32400';
+			const token = 'plex-secret';
+
+			try {
+				dynamicEnv.PLEX_SERVER_URL = '';
+				dynamicEnv.PLEX_TOKEN = '';
+				await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, serverUrl);
+				await setAppSetting(AppSettingsKey.PLEX_TOKEN, token);
+				await setAppSetting(
+					AppSettingsKey.PLEX_AUTHORITY_DISCRIMINATOR,
+					getPlexConfigFingerprint({ serverUrl, token })
+				);
+				await setAppSetting(AppSettingsKey.PLEX_AUTHORITY_EPOCH, '7');
+				await setAppSetting(AppSettingsKey.SERVER_MACHINE_ID, 'machine-old');
+				await setAppSetting(AppSettingsKey.PLEX_IDENTITY_PROOF, '{"proof":"old"}');
+
+				const result = await setApiConfigAtomic({
+					values: {
+						plexServerUrl: '  https://PLEX.example.com:32400///  ',
+						plexToken: undefined,
+						openaiApiKey: undefined,
+						openaiBaseUrl: undefined,
+						openaiModel: undefined
+					},
+					locks: allUnlocked,
+					submittedVersion: new Date(Date.now() + 60_000).toISOString()
+				});
+
+				expect(result).toMatchObject({ status: 'ok', plexCredentialsChanged: true });
+				expect(await getAppSetting(AppSettingsKey.PLEX_AUTHORITY_EPOCH)).toBe('7');
+				expect(await getAppSetting(AppSettingsKey.SERVER_MACHINE_ID)).toBe('machine-old');
+				expect(await getAppSetting(AppSettingsKey.PLEX_IDENTITY_PROOF)).toBe('{"proof":"old"}');
+			} finally {
+				dynamicEnv.PLEX_SERVER_URL = previousPlexServerUrl;
+				dynamicEnv.PLEX_TOKEN = previousPlexToken;
+			}
+		});
 		it('does not let newer authority bookkeeping reject a fresh API config version', async () => {
 			await setAppSetting(AppSettingsKey.API_CONFIG_VERSION, 'config-version');
 			const submittedVersion = await getAppSettingsUpdatedAt(API_CONFIG_KEYS);
