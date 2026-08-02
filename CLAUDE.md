@@ -131,7 +131,7 @@ initializationHandle → securityHeadersHandle → authHandle → onboardingHand
 
 ## Additional Documentation
 
-- `README.md` — Read before touching reverse-proxy trust (`ORIGIN` vs `TRUST_PROXY`), Plex identity reconciliation, or the `qa:wrapped-lookup` script; it is the deepest prose on those subsystems.
+- `README.md` — User-facing only: the onboarding/bootstrap-token flow, `ORIGIN` vs `TRUST_PROXY`, and the observable rules of Plex identity matching. Keep it concise; the authoritative detail for those subsystems lives in the code (`security/proxy-handle.ts`, `plex/account-reconciliation.ts`) and in the gotchas above.
 - `tests/helpers/README.md` — Read before adding or modifying test helpers, DB fixtures, or module mocks.
 - `.augment/rules/bun-svelte-pro.md` — Consult for Svelte 5 runes, SvelteKit load/action, and Bun SQLite idioms when unsure of a modern pattern.
 - `.env.example` — Read when adding an environment variable; it documents which settings are optional and how the runtime treats placeholder values.

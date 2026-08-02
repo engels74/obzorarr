@@ -133,58 +133,80 @@ bun run dev
 > env-locked field render its `ENV` badge), run `bun run dev:env`, which loads `.env` via
 > `--env-file`.
 
-## Reverse proxy header trust
+## First-Time Setup
 
-For a single public origin, set `ORIGIN` to the exact browser-facing origin, including any
-non-default port. The pinned Bun adapter uses it to construct SvelteKit's `request.url` before
-Obzorarr's hooks run, and Obzorarr also uses it as the environment-controlled CSRF origin:
+The first time you open the web UI, Obzorarr runs a short onboarding wizard:
+**Claim → Security → Reverse proxy → Connect → Sync → Configure**.
+
+### The claim token
+
+So nobody can grab your fresh install before you do, the first step asks for a one-time
+**bootstrap token**. Obzorarr prints it to the server console — it is never shown in the browser:
+
+```
+Obzorarr initial setup requires a bootstrap claim.
+Setup URL: http://localhost:3000/onboarding/claim
+Bootstrap token: xxxx-xxxx-xxxx
+```
+
+With Docker, read it from the container logs:
+
+```bash
+docker logs obzorarr
+```
+
+The token expires after 15 minutes and only one browser can hold the claim at a time. If it lapses,
+restart Obzorarr to print a new one.
+
+The remaining steps connect your Plex server (or confirm the values you set via `PLEX_SERVER_URL` /
+`PLEX_TOKEN`), run the first history sync, and let you choose which slides users see. Anything set
+here can be changed later under **Admin → Settings**.
+
+## Running Behind a Reverse Proxy
+
+Obzorarr needs to know the address **your browser** uses, not the internal one it listens on.
+Otherwise login redirects, share links, and CSRF checks get built from the wrong hostname.
+
+Set `ORIGIN` to your public URL, including the port if it isn't 80 or 443:
 
 ```env
 ORIGIN=https://obzorarr.example.com
 ```
 
-`TRUST_PROXY` is a separate, optional in-app URL rewrite. When enabled, Obzorarr replaces the
-SvelteKit event URL's host and protocol from `X-Forwarded-Host` and `X-Forwarded-Proto`; it does
-not change `request.url` or client-IP handling. Leave it disabled when `ORIGIN` or the adapter's
-normal Host handling already gives Obzorarr the correct public origin.
+That covers most setups. `TRUST_PROXY` is a separate, optional switch: when enabled, Obzorarr takes
+the hostname and protocol from the `X-Forwarded-Host` and `X-Forwarded-Proto` headers your proxy
+sends instead. Only turn it on when **both** of these are true:
 
-Enable `TRUST_PROXY=true` only when Obzorarr cannot be reached around the proxy and the last
-trusted hop removes or overwrites visitor-supplied values for both headers. A matching diagnostic
-shows that the values are consistent with the browser origin; it cannot prove the proxy boundary
-from one request. Environment-controlled changes require an Obzorarr restart.
+- Obzorarr can only be reached through the proxy — nothing can hit it directly.
+- Your proxy sets both headers itself, overwriting whatever a visitor sends.
 
-Use the onboarding or **Admin → Settings → Security** diagnostic to compare the browser,
-forwarded, and effective app origins. Provider guidance in the diagnostic reflects differing
-defaults: Caddy manages both headers by default, while Nginx, Nginx Proxy Manager, and Apache
-need provider-specific handling. Client-IP trust is configured separately through the Bun
-adapter's `ADDRESS_HEADER` and `XFF_DEPTH` settings.
-## Plex identity reconciliation
+If either is false, a visitor can forge those headers and make Obzorarr build links pointing at a
+domain they control. When in doubt, leave `TRUST_PROXY` off and rely on `ORIGIN`.
 
-Plex watch-history account IDs are PMS-local identifiers, not Plex Home identities. The server owner is always attributed to local `accountId=1`; do not infer or change that value from a Plex account ID. Shared-user attribution is created only when the accepted Plex share and the PMS `/accounts` response correlate on the exact account identity. A Plex Home member, a login user, or a historical play row alone is not sufficient evidence of that mapping.
+Onboarding and **Admin → Settings → Security** include a diagnostic that compares what your browser
+sees, what the proxy forwards, and what Obzorarr actually uses, with hints for Caddy, Nginx, Nginx
+Proxy Manager, and Apache. Changing either variable through the environment requires a restart.
+(Client-IP detection is configured separately, via the Bun adapter's `ADDRESS_HEADER` and
+`XFF_DEPTH`.)
 
-During each normal sync, Obzorarr reads Plex's accepted-shares endpoint. Plex currently returns the complete accepted-share collection as one unpaged JSON array. Pagination or count metadata is accepted only when it proves the returned array is complete; contradictory metadata, malformed entries, duplicate identities, a failed request, or a non-array response makes the result partial or failed. A complete reconciliation also requires the owner identity, the local PMS accounts response, and proof that the configured server is owned by the authenticated Plex account.
+## How Plex Users Are Matched
 
-Only a complete reconciliation replaces the snapshot. Partial or failed observations retain the prior mapping rows and proof; they do not remove users or guess new matches. A complete snapshot removes mappings for shares that are no longer accepted. If a share is removed, its public lookup stops resolving once that snapshot is applied; after re-entitlement, run a normal sync and wait for a new complete snapshot. Never repair this by manually changing account IDs or blindly backfilling history.
+Plex watch history records a *server-local* account ID rather than a global Plex identity, so on
+every sync Obzorarr rebuilds the mapping between those local IDs and real Plex users by comparing
+your server's account list with the users you've shared the server with. In practice:
 
-Mappings and their proof expire after 24 hours. They are also invalidated when the effective Plex URL/token configuration or PMS machine authority changes. Environment-controlled Plex settings override DB settings; changing either authority requires restarting with the intended configuration, then completing a normal sync to establish a fresh proof. If the authority changes during reconciliation, the work is discarded rather than applied.
+- **You, the server owner, are always local account `1`.** Never edit account IDs by hand.
+- **A user only gets a Wrapped once their share is confirmed.** If the check comes back incomplete
+  (Plex unreachable, partial response), Obzorarr keeps the previous mapping instead of guessing.
+- **Un-sharing removes access** — that user's public Wrapped link stops resolving. Re-share and run
+  a sync to restore it.
+- **Mappings go stale after 24 hours** and are re-proved by the next sync. They also reset whenever
+  the Plex URL or token changes — back up your database before changing either, then restart and
+  run a normal sync.
 
-Public Wrapped lookup deliberately uses the same generic not-found/denial response for an unknown identifier, a non-public profile, and a missing or stale identity mapping. This avoids revealing which condition applies. Treat the response as an authorization outcome, not evidence that a particular Plex user exists.
-
-### Safe reconciliation after deployment
-
-1. Ensure no sync is running, and take a consistent backup of the SQLite database and configuration before changing Plex authority.
-2. Confirm the effective Plex configuration in the admin UI without copying credentials into tickets, shell history, or logs. Account for environment-locked settings before editing DB-backed settings.
-3. Restart after any environment authority change. Run one normal incremental sync from the admin sync flow; reconciliation runs before history processing. Do not start a year backfill to repair identities.
-4. Confirm the sync completed and use ordinary read-only UI/public lookup checks with non-sensitive test identities. A generic public denial is expected when mapping freshness or public eligibility is absent.
-5. On an unexpected attribution change, stop further syncs, restore the backed-up database/configuration as a matched pair, restart, and rerun the normal sync only after the effective authority is verified. Do not merge rows or manufacture mappings.
-
-For disposable HTTP QA only, create a new empty database path and run:
-
-```bash
-DATABASE_PATH=/path/to/new/disposable/wrapped-lookup-e2e.db bun run qa:wrapped-lookup
-```
-
-`qa:wrapped-lookup` refuses a missing path, production-looking paths, and pre-existing database paths. It must never be pointed at a production, staging, development, or retained backup database.
+Public Wrapped links deliberately return the same "not found" response for an unknown user, a
+private profile, and a stale mapping, so the page can't be used to discover who has an account on
+your server.
 
 ## License
 
