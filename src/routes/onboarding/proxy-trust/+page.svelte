@@ -3,14 +3,37 @@ import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 import CheckIcon from '@lucide/svelte/icons/check';
 import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
+import { prefersReducedMotion } from 'svelte/motion';
+import { fade } from 'svelte/transition';
+import browserAddressUnavailableDiagram from '$lib/assets/onboarding/proxy-trust/browser-address-unavailable.png';
+import checkingDiagram from '$lib/assets/onboarding/proxy-trust/checking.png';
+import correctWithoutTrustDiagram from '$lib/assets/onboarding/proxy-trust/correct-without-trust.png';
+import diagnosticFailedDiagram from '$lib/assets/onboarding/proxy-trust/diagnostic-failed.png';
+import environmentDisabledBrokenDiagram from '$lib/assets/onboarding/proxy-trust/environment-disabled-broken.png';
+import environmentDisabledCorrectDiagram from '$lib/assets/onboarding/proxy-trust/environment-disabled-correct.png';
+import environmentDisabledNeededDiagram from '$lib/assets/onboarding/proxy-trust/environment-disabled-needed.png';
+import environmentEnabledBrokenDiagram from '$lib/assets/onboarding/proxy-trust/environment-enabled-broken.png';
+import environmentEnabledWorkingDiagram from '$lib/assets/onboarding/proxy-trust/environment-enabled-working.png';
+import forwardedAddressConflictDiagram from '$lib/assets/onboarding/proxy-trust/forwarded-address-conflict.png';
+import forwardedMatchBoundaryUnverifiedDiagram from '$lib/assets/onboarding/proxy-trust/forwarded-match-boundary-unverified.png';
+import headersMissingDiagram from '$lib/assets/onboarding/proxy-trust/headers-missing.png';
+import hostInvalidDiagram from '$lib/assets/onboarding/proxy-trust/host-invalid.png';
+import hostMissingDiagram from '$lib/assets/onboarding/proxy-trust/host-missing.png';
+import hostUnsafeDiagram from '$lib/assets/onboarding/proxy-trust/host-unsafe.png';
+import protocolInvalidDiagram from '$lib/assets/onboarding/proxy-trust/protocol-invalid.png';
+import protocolMissingDiagram from '$lib/assets/onboarding/proxy-trust/protocol-missing.png';
+import trustEnabledBrokenDiagram from '$lib/assets/onboarding/proxy-trust/trust-enabled-broken.png';
+import trustWorkingDiagram from '$lib/assets/onboarding/proxy-trust/trust-working.png';
 import SubmitButton from '$lib/components/forms/SubmitButton.svelte';
 import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
 import { Button } from '$lib/components/ui/button';
 import {
+	diagramForReverseProxyDiagnostic,
 	documentationForGuide,
 	presentReverseProxyDiagnostic,
 	REVERSE_PROXY_COPY,
-	REVERSE_PROXY_PROVIDER_GUIDES
+	REVERSE_PROXY_PROVIDER_GUIDES,
+	type ReverseProxyDiagramId
 } from '$lib/copy/reverse-proxy';
 import type { ReverseProxyDiagnostic } from '$lib/security/reverse-proxy';
 import { submitAction } from '$lib/utils/submit-action';
@@ -27,8 +50,37 @@ let copiedGuide = $state<string | null>(null);
 let runToken = 0;
 let initialRun = false;
 let handledTrustProxySuccess = false;
+let failedDiagramSource: string | null = $state(null);
+
+const DIAGNOSTIC_DIAGRAMS: Record<ReverseProxyDiagramId, string> = {
+	'browser-address-unavailable': browserAddressUnavailableDiagram,
+	'correct-without-trust': correctWithoutTrustDiagram,
+	'environment-disabled-broken': environmentDisabledBrokenDiagram,
+	'environment-disabled-correct': environmentDisabledCorrectDiagram,
+	'environment-disabled-needed': environmentDisabledNeededDiagram,
+	'environment-enabled-broken': environmentEnabledBrokenDiagram,
+	'environment-enabled-working': environmentEnabledWorkingDiagram,
+	'forwarded-address-conflict': forwardedAddressConflictDiagram,
+	'forwarded-match-boundary-unverified': forwardedMatchBoundaryUnverifiedDiagram,
+	'headers-missing': headersMissingDiagram,
+	'host-invalid': hostInvalidDiagram,
+	'host-missing': hostMissingDiagram,
+	'host-unsafe': hostUnsafeDiagram,
+	'protocol-invalid': protocolInvalidDiagram,
+	'protocol-missing': protocolMissingDiagram,
+	'trust-enabled-broken': trustEnabledBrokenDiagram,
+	'trust-working': trustWorkingDiagram
+};
 
 const presentation = $derived(diagnostic ? presentReverseProxyDiagnostic(diagnostic) : null);
+const diagramSource = $derived(
+	diagnosticStatus === 'failure'
+		? diagnosticFailedDiagram
+		: diagnosticStatus === 'success' && diagnostic
+			? DIAGNOSTIC_DIAGRAMS[diagramForReverseProxyDiagnostic(diagnostic)]
+			: checkingDiagram
+);
+const diagramTransitionDuration = $derived(prefersReducedMotion.current ? 0 : 180);
 const applicableProviderGuides = $derived(
 	presentation && presentation.documentationIds.length > 1
 		? REVERSE_PROXY_PROVIDER_GUIDES.filter((guide) =>
@@ -51,6 +103,7 @@ const continueWarning = $derived(
 
 async function runDiagnostic(afterSave = false) {
 	if (diagnosticStatus === 'checking') return;
+	failedDiagramSource = null;
 	const token = ++runToken;
 	browserOrigin = window.location.origin;
 	diagnostic = null;
@@ -122,9 +175,26 @@ async function copyGuide(id: string, text: string) {
 }
 </script>
 
-<OnboardingCard title={REVERSE_PROXY_COPY.panelTitle} subtitle={REVERSE_PROXY_COPY.panelSubtitle}>
+<OnboardingCard
+	title={REVERSE_PROXY_COPY.panelTitle}
+	subtitle={REVERSE_PROXY_COPY.panelSubtitle}
+	class="proxy-onboarding"
+>
 	<div class="proxy-content">
 		{#if form?.trustProxyError}<div class="inline-error" role="alert">{form.trustProxyError}</div>{/if}
+		<div class="diagram-frame" aria-hidden="true">
+			{#if failedDiagramSource !== diagramSource}
+				{#key diagramSource}
+					<img
+						src={diagramSource}
+						alt=""
+						draggable="false"
+						onerror={(event) => (failedDiagramSource = event.currentTarget.getAttribute('src'))}
+						transition:fade={{ duration: diagramTransitionDuration }}
+					/>
+				{/key}
+			{/if}
+		</div>
 		{#if diagnosticStatus === 'checking'}
 			<div class="status-card neutral" role="status" aria-live="polite" aria-busy="true">
 				<LoaderCircleIcon class="size-5 animate-spin" aria-hidden="true" />
@@ -132,8 +202,13 @@ async function copyGuide(id: string, text: string) {
 			</div>
 		{:else if diagnosticStatus === 'failure'}
 			<div class="status-card danger" role="alert">
-				<span>{savedState === 'unverified' ? REVERSE_PROXY_COPY.savedUnverified : diagnosticError}</span>
-				<Button type="button" class="tap-target" onclick={() => runDiagnostic(savedState === 'unverified')}>{REVERSE_PROXY_COPY.rerunButton}</Button>
+				<span aria-hidden="true">!</span>
+				<div>
+					<strong>{REVERSE_PROXY_COPY.diagnosticFailedHeadline}</strong>
+					<p>{savedState === 'unverified' ? REVERSE_PROXY_COPY.savedUnverified : diagnosticError}</p>
+					<p>{REVERSE_PROXY_COPY.diagnosticFailedExplanation}</p>
+					<Button type="button" class="tap-target" onclick={() => runDiagnostic(savedState === 'unverified')}>{REVERSE_PROXY_COPY.rerunButton}</Button>
+				</div>
 			</div>
 		{:else if presentation && diagnostic}
 			<div class="status-card {presentation.tone}" role="status" aria-live="polite">
@@ -217,8 +292,30 @@ async function copyGuide(id: string, text: string) {
 
 <style>
 	.proxy-content, .details-panel, .continue-area { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+	:global(.proxy-onboarding.proxy-onboarding) { max-width: 760px; }
+	.diagram-frame {
+		position: relative;
+		display: grid;
+		place-items: center;
+		aspect-ratio: 2069 / 760;
+		min-width: 0;
+		overflow: hidden;
+		border: 1px solid rgba(96, 165, 250, .18);
+		border-radius: .875rem;
+		background:
+			radial-gradient(circle at 50% 45%, rgba(59, 130, 246, .1), transparent 68%),
+			rgba(0, 0, 0, .12);
+	}
+	.diagram-frame img {
+		grid-area: 1 / 1;
+		width: 100%;
+		height: 100%;
+		object-fit: contain;
+		user-select: none;
+	}
 	.status-card { display: flex; gap: .75rem; padding: 1rem; border: 1px solid rgba(255,255,255,.16); border-radius: .75rem; overflow-wrap: anywhere; }
 	.status-card p { margin: .35rem 0 0; }
+	.status-card :global(.tap-target) { margin-top: .75rem; }
 	.status-card.success { border-color: rgba(34,197,94,.55); }
 	.status-card.warning { border-color: rgba(245,158,11,.7); }
 	.status-card.danger { border-color: rgba(239,68,68,.7); }
@@ -237,5 +334,8 @@ async function copyGuide(id: string, text: string) {
 	.copy-status { min-height: 1.25rem; font-size: .875rem; }
 	.safety, .inline-error { padding: .75rem; border-left: 3px solid currentColor; overflow-wrap: anywhere; }
 	.continue-area p { margin: 0; max-width: 32rem; overflow-wrap: anywhere; }
-	@media (max-width: 480px) { dl { grid-template-columns: 1fr; } }
+	@media (max-width: 480px) {
+		.diagram-frame { width: calc(100% + 1.5rem); margin-inline: -.75rem; }
+		dl { grid-template-columns: 1fr; }
+	}
 </style>
