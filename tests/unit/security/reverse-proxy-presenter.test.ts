@@ -219,6 +219,7 @@ describe('reverse proxy presenter', () => {
 
 	it('selects the matching diagram for every diagnostic result state', () => {
 		const protocolMissing = diagnostic('review-proxy', 'partial');
+		protocolMissing.facts.forwardedHeaders.present = ['X-Forwarded-Host'];
 		protocolMissing.facts.forwardedHeaders.pair.protoPresent = false;
 		protocolMissing.facts.forwardedHeaders.pair.hostPresent = true;
 
