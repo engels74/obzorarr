@@ -253,52 +253,103 @@ async function request(url: string, init?: RequestInit): Promise<Response> {
 	}
 }
 
+async function collectOutput(
+	stream: ReadableStream<Uint8Array>,
+	onOutput: (output: string) => void
+): Promise<string> {
+	const reader = stream.getReader();
+	const decoder = new TextDecoder();
+	let output = '';
+	while (true) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		output += decoder.decode(value, { stream: true });
+		onOutput(output);
+	}
+	output += decoder.decode();
+	onOutput(output);
+	return output;
+}
+
 try {
 	await run(['bun', 'scripts/migrate.ts'], { ...process.env, DATABASE_PATH: databasePath });
 	seedDatabase();
-	portReservation = Bun.serve({
-		hostname: '127.0.0.1',
-		port: 0,
-		fetch: () => new Response(null, { status: 503 })
-	});
-	const port = portReservation.port;
-	await portReservation.stop(true);
-	portReservation = undefined;
-	const baseUrl = `http://127.0.0.1:${port}`;
-	const childEnv = {
-		...process.env,
-		DATABASE_PATH: databasePath,
-		HOST: '127.0.0.1',
-		PORT: String(port),
-		ORIGIN: baseUrl,
-		NODE_ENV: 'production'
-	};
-	delete childEnv.SOCKET_PATH;
-	childEnv.PLEX_SERVER_URL = '';
-	childEnv.PLEX_TOKEN = '';
-	server = Bun.spawn(['bun', './build'], { env: childEnv, stdout: 'pipe', stderr: 'pipe' });
-	void new Response(server.stdout).text().then((value) => {
-		stdout = value;
-	});
-	void new Response(server.stderr).text().then((value) => {
-		stderr = value;
-	});
 	const deadline = Date.now() + timeoutMs;
+	const maxLaunchAttempts = 3;
+	let baseUrl = '';
 	let ready = false;
 	let readinessStatus: number | null = null;
-	while (Date.now() < deadline) {
-		if (server.exitCode !== null) break;
-		try {
-			const readiness = await request(`${baseUrl}/`);
-			readinessStatus = readiness.status;
-			ready = true;
-			break;
-		} catch {
-			// Startup polling is deliberately bounded by QA_TIMEOUT_MS.
+
+	for (let attempt = 1; attempt <= maxLaunchAttempts && Date.now() < deadline; attempt += 1) {
+		portReservation = Bun.serve({
+			hostname: '127.0.0.1',
+			port: 0,
+			fetch: () => new Response(null, { status: 503 })
+		});
+		const port = portReservation.port;
+		await portReservation.stop(true);
+		portReservation = undefined;
+		const candidateBaseUrl = `http://127.0.0.1:${port}`;
+		const childEnv = {
+			...process.env,
+			DATABASE_PATH: databasePath,
+			HOST: '127.0.0.1',
+			PORT: String(port),
+			ORIGIN: candidateBaseUrl,
+			NODE_ENV: 'production'
+		};
+		delete childEnv.SOCKET_PATH;
+		childEnv.PLEX_SERVER_URL = '';
+		childEnv.PLEX_TOKEN = '';
+
+		let childListening = false;
+		stdout = '';
+		stderr = '';
+		server = Bun.spawn(['bun', './build'], { env: childEnv, stdout: 'pipe', stderr: 'pipe' });
+		const stdoutTask = collectOutput(server.stdout, (output) => {
+			stdout = output;
+			if (output.includes(`Listening on ${candidateBaseUrl}/`)) childListening = true;
+		});
+		const stderrTask = collectOutput(server.stderr, (output) => {
+			stderr = output;
+		});
+
+		while (Date.now() < deadline) {
+			if (server.exitCode !== null) break;
+			if (!childListening) {
+				await Bun.sleep(100);
+				continue;
+			}
+			try {
+				const readiness = await request(`${candidateBaseUrl}/`);
+				readinessStatus = readiness.status;
+				if (server.exitCode === null) {
+					baseUrl = candidateBaseUrl;
+					ready = true;
+					break;
+				}
+			} catch {
+				// Startup polling is deliberately bounded by QA_TIMEOUT_MS.
+			}
+			await Bun.sleep(200);
 		}
-		await Bun.sleep(200);
+
+		if (ready) break;
+		if (server.exitCode === null) await stopSubprocess(server, shutdownTimeoutMs);
+		await Promise.all([stdoutTask, stderrTask]);
+		const bindCollision = /EADDRINUSE|address already in use|port .* in use/i.test(
+			`${stdout}\n${stderr}`
+		);
+		if (bindCollision && attempt < maxLaunchAttempts) {
+			server = undefined;
+			continue;
+		}
+		fail(
+			`server did not become ready within ${timeoutMs}ms (last status: ${readinessStatus ?? 'none'}). ${stderr || stdout}`
+		);
 	}
-	if (server.exitCode !== null || !ready)
+
+	if (!ready)
 		fail(
 			`server did not become ready within ${timeoutMs}ms (last status: ${readinessStatus ?? 'none'}). ${stderr || stdout}`
 		);
