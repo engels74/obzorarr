@@ -1,9 +1,13 @@
 import { fail, redirect } from '@sveltejs/kit';
+import { and, eq, gte, lt } from 'drizzle-orm';
 import { z } from 'zod';
 import { getPublicLandingLookupEnabled } from '$lib/server/admin/settings.service';
+import { db } from '$lib/server/db/client';
+import { playHistory } from '$lib/server/db/schema';
 import { logger } from '$lib/server/logging';
 import { getEffectiveShareMode, getPublicShareIdentifier } from '$lib/server/sharing/service';
 import { ShareMode } from '$lib/server/sharing/types';
+import { createYearFilter } from '$lib/server/stats/utils';
 import { triggerLiveSyncIfNeeded } from '$lib/server/sync/live-sync';
 import { findUserByUsername } from '$lib/server/sync/plex-accounts.service';
 import type { Actions, PageServerLoad } from './$types';
@@ -70,6 +74,21 @@ export const actions: Actions = {
 		};
 
 		if (!userResult) {
+			return fail(404, publicLookupFailure);
+		}
+		const yearFilter = createYearFilter(currentYear);
+		const history = await db
+			.select({ id: playHistory.id })
+			.from(playHistory)
+			.where(
+				and(
+					eq(playHistory.accountId, userResult.accountId),
+					gte(playHistory.viewedAt, yearFilter.startTimestamp),
+					lt(playHistory.viewedAt, yearFilter.endTimestamp + 1)
+				)
+			)
+			.limit(1);
+		if (!history[0]) {
 			return fail(404, publicLookupFailure);
 		}
 

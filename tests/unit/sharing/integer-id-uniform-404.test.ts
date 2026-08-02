@@ -1,10 +1,9 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
-import { db } from '$lib/server/db/client';
-import { users } from '$lib/server/db/schema';
 import { setGlobalShareDefaults } from '$lib/server/sharing/service';
 import { ShareMode, WRAPPED_NOT_FOUND_MESSAGE } from '$lib/server/sharing/types';
 import { load } from '../../../src/routes/wrapped/[year=year]/u/[identifier]/+page.server';
 import { resetSharedTestDb } from '../../helpers/db';
+import { seedSharingUser } from '../../helpers/sharing';
 
 // ISSUE-011: integer-identifier path (/wrapped/{year}/u/{id}) must resolve to
 // the uniform anti-enumeration 404 for any caller who is NOT the owner or an
@@ -31,7 +30,7 @@ interface TestUser {
 }
 
 async function seedUser(userId: number): Promise<void> {
-	await db.insert(users).values({
+	await seedSharingUser({
 		id: userId,
 		plexId: 100000 + userId,
 		accountId: 200000 + userId,

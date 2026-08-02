@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { and, between, eq, inArray, sql } from 'drizzle-orm';
 import { env } from '$env/dynamic/private';
 import { db } from '$lib/server/db/client';
@@ -36,6 +37,9 @@ export const AppSettingsKey = {
 	WRAPPED_LOGO_MODE: 'wrapped_logo_mode',
 	SERVER_NAME: 'server_name',
 	SERVER_MACHINE_ID: 'server_machine_id',
+	PLEX_IDENTITY_PROOF: 'plex_identity_proof',
+	PLEX_AUTHORITY_EPOCH: 'plex_authority_epoch',
+	PLEX_AUTHORITY_DISCRIMINATOR: 'plex_authority_discriminator',
 	FUN_FACT_FREQUENCY: 'fun_fact_frequency',
 	FUN_FACT_CUSTOM_COUNT: 'fun_fact_custom_count',
 	FUN_FACTS_AI_PERSONA: 'fun_facts_ai_persona',
@@ -452,21 +456,35 @@ export interface SetApiConfigResult {
 
 /**
  * Atomically validates that the API config keys have not changed since
- * `submittedVersion` and, if so, writes any non-empty, non-locked values in a
- * single SQLite transaction. Returns `'conflict'` when the submitted version
- * is stale; the caller should run cache-invalidation side effects (e.g.
- * `clearCachedServerMachineId`) after commit when `plexCredentialsChanged`.
+ * `submittedVersion` and, if so, writes any non-empty, non-locked values,
+ * authority epoch/discriminator, and cache/proof invalidation in one SQLite
+ * transaction. Returns `'conflict'` when the submitted version is stale.
  */
 export async function setApiConfigAtomic(opts: {
 	values: SetApiConfigInput;
 	locks: SetApiConfigLocks;
 	submittedVersion: string;
 }): Promise<SetApiConfigResult> {
-	return db.transaction(async (tx) => {
-		const rows = await tx
-			.select({ updatedAt: appSettings.updatedAt })
+	return db.transaction((tx) => {
+		const configRows = tx
+			.select({
+				key: appSettings.key,
+				value: appSettings.value,
+				updatedAt: appSettings.updatedAt
+			})
 			.from(appSettings)
-			.where(inArray(appSettings.key, API_CONFIG_KEYS as unknown as string[]));
+			.where(inArray(appSettings.key, API_CONFIG_KEYS as unknown as string[]))
+			.all();
+		const authorityRows = tx
+			.select({ key: appSettings.key, value: appSettings.value })
+			.from(appSettings)
+			.where(
+				inArray(appSettings.key, [
+					AppSettingsKey.PLEX_AUTHORITY_EPOCH,
+					AppSettingsKey.PLEX_AUTHORITY_DISCRIMINATOR
+				])
+			)
+			.all();
 
 		// Treat a missing/blank submittedVersion as a stale tab regardless of row
 		// count — defends against the fresh-install/all-cleared loophole where the
@@ -479,38 +497,36 @@ export async function setApiConfigAtomic(opts: {
 		// version bump share the same DB floor. With no rows, `maxMs = 0` is
 		// fine — `Date.now()` dominates inside `nextOccVersionDate`.
 		let maxMs = 0;
-		for (const row of rows) {
+		for (const row of configRows) {
 			const t = row.updatedAt.getTime();
 			if (t > maxMs) maxMs = t;
 		}
-		if (rows.length > 0 && submittedMs < maxMs) {
+		if (configRows.length > 0 && submittedMs < maxMs) {
 			return { status: 'conflict', plexCredentialsChanged: false };
 		}
+		const currentValues = new Map(
+			[...configRows, ...authorityRows].map((row) => [row.key, row.value])
+		);
 
 		const now = nextOccVersionDate(maxMs);
 		let plexCredentialsChanged = false;
 
-		const upsert = async (key: AppSettingsKeyType, value: string) => {
-			await tx
-				.insert(appSettings)
+		const upsert = (key: AppSettingsKeyType, value: string) => {
+			tx.insert(appSettings)
 				.values({ key, value, updatedAt: now })
 				.onConflictDoUpdate({
 					target: appSettings.key,
 					set: { value, updatedAt: now }
-				});
+				})
+				.run();
 		};
 
 		// Secret keys: never echoed back to the client. `undefined` (field absent)
 		// AND `''` (field present but blank) both mean "leave the stored secret
 		// alone" — explicit clearing is done via dedicated actions.
-		const writeSecret = async (
-			key: AppSettingsKeyType,
-			value: string | undefined,
-			locked: boolean
-		) => {
-			if (locked) return;
-			if (value === undefined || value === '') return;
-			await upsert(key, value);
+		const writeSecret = (key: AppSettingsKeyType, value: string | undefined, locked: boolean) => {
+			if (locked || value === undefined || value === '') return;
+			upsert(key, value);
 		};
 
 		// Echoed-back keys (URLs, model name): the client renders the current
@@ -518,78 +534,106 @@ export async function setApiConfigAtomic(opts: {
 		// different panel that doesn't include this field) is a strict no-op.
 		// `''` means "user cleared the field" → delete the row so
 		// resolveConfigValue falls through to env / default.
-		const writeOrClearEchoed = async (
+		const writeOrClearEchoed = (
 			key: AppSettingsKeyType,
 			value: string | undefined,
 			locked: boolean
 		) => {
-			if (locked) return;
-			if (value === undefined) return;
+			if (locked || value === undefined) return;
 			if (value === '') {
-				await tx.delete(appSettings).where(eq(appSettings.key, key));
+				tx.delete(appSettings).where(eq(appSettings.key, key)).run();
 				return;
 			}
-			await upsert(key, value);
+			upsert(key, value);
 		};
 
-		// PLEX_SERVER_URL is an echoed-back key: a non-undefined submission means the
-		// user touched the field. Both a write (non-empty) and an explicit clear ('')
-		// are credential changes — clearing the URL invalidates the cached machineId
-		// just as much as pointing at a different server, since the next resolution
-		// falls through to env / default which may target a different Plex instance.
-		if (opts.values.plexServerUrl !== undefined && !opts.locks.plexServerUrl) {
+		const submittedServerUrl =
+			opts.values.plexServerUrl === '' ? undefined : opts.values.plexServerUrl;
+		if (
+			opts.values.plexServerUrl !== undefined &&
+			!opts.locks.plexServerUrl &&
+			currentValues.get(AppSettingsKey.PLEX_SERVER_URL) !== submittedServerUrl
+		) {
 			plexCredentialsChanged = true;
 		}
-		// PLEX_TOKEN is a secret key: writeSecret no-ops on both `undefined` and `''`,
-		// so a non-truthy submission causes no DB change. Flag only when the value
-		// will actually be written.
-		if (opts.values.plexToken && !opts.locks.plexToken) {
+		if (
+			opts.values.plexToken &&
+			!opts.locks.plexToken &&
+			currentValues.get(AppSettingsKey.PLEX_TOKEN) !== opts.values.plexToken
+		) {
 			plexCredentialsChanged = true;
 		}
 
-		await writeOrClearEchoed(
+		writeOrClearEchoed(
 			AppSettingsKey.PLEX_SERVER_URL,
 			opts.values.plexServerUrl,
 			opts.locks.plexServerUrl
 		);
 		if (opts.values.plexServerUrl !== undefined && !opts.locks.plexServerUrl) {
 			if (opts.values.plexServerUrl === '') {
-				await tx
-					.delete(appSettings)
-					.where(eq(appSettings.key, AppSettingsKey.PLEX_ALLOW_INSECURE_LOCAL_HTTP));
+				tx.delete(appSettings)
+					.where(eq(appSettings.key, AppSettingsKey.PLEX_ALLOW_INSECURE_LOCAL_HTTP))
+					.run();
 			} else if (
 				opts.values.plexAllowInsecureLocalHttp &&
 				shouldPersistPlexInsecureLocalHttpOptIn(opts.values.plexServerUrl)
 			) {
-				await upsert(AppSettingsKey.PLEX_ALLOW_INSECURE_LOCAL_HTTP, 'true');
+				upsert(AppSettingsKey.PLEX_ALLOW_INSECURE_LOCAL_HTTP, 'true');
 			} else {
-				await tx
-					.delete(appSettings)
-					.where(eq(appSettings.key, AppSettingsKey.PLEX_ALLOW_INSECURE_LOCAL_HTTP));
+				tx.delete(appSettings)
+					.where(eq(appSettings.key, AppSettingsKey.PLEX_ALLOW_INSECURE_LOCAL_HTTP))
+					.run();
 			}
 		}
-		await writeSecret(AppSettingsKey.PLEX_TOKEN, opts.values.plexToken, opts.locks.plexToken);
-		await writeSecret(
-			AppSettingsKey.OPENAI_API_KEY,
-			opts.values.openaiApiKey,
-			opts.locks.openaiApiKey
-		);
-		await writeOrClearEchoed(
+		writeSecret(AppSettingsKey.PLEX_TOKEN, opts.values.plexToken, opts.locks.plexToken);
+		writeSecret(AppSettingsKey.OPENAI_API_KEY, opts.values.openaiApiKey, opts.locks.openaiApiKey);
+		writeOrClearEchoed(
 			AppSettingsKey.OPENAI_BASE_URL,
 			opts.values.openaiBaseUrl,
 			opts.locks.openaiBaseUrl
 		);
-		await writeOrClearEchoed(
+		writeOrClearEchoed(
 			AppSettingsKey.OPENAI_MODEL,
 			opts.values.openaiModel,
 			opts.locks.openaiModel
 		);
 
+		const prospectiveServerUrl =
+			!opts.locks.plexServerUrl && opts.values.plexServerUrl !== undefined
+				? (submittedServerUrl ?? '')
+				: (currentValues.get(AppSettingsKey.PLEX_SERVER_URL) ?? '');
+		const prospectiveToken =
+			!opts.locks.plexToken && opts.values.plexToken
+				? opts.values.plexToken
+				: (currentValues.get(AppSettingsKey.PLEX_TOKEN) ?? '');
+		const plexEnv = getPlexEnvConfig();
+		const effectivePlexAuthority = {
+			serverUrl: isAuthoritativePlexServerUrl(plexEnv.serverUrl, plexEnv.token)
+				? plexEnv.serverUrl
+				: prospectiveServerUrl,
+			token: isAuthoritativeEnvValue(plexEnv.token) ? plexEnv.token : prospectiveToken
+		};
+		const nextDiscriminator = getPlexConfigFingerprint(effectivePlexAuthority);
+		const plexAuthorityWasSubmitted =
+			(!opts.locks.plexServerUrl && opts.values.plexServerUrl !== undefined) ||
+			(!opts.locks.plexToken && Boolean(opts.values.plexToken));
+		const authorityChanged =
+			plexAuthorityWasSubmitted &&
+			currentValues.get(AppSettingsKey.PLEX_AUTHORITY_DISCRIMINATOR) !== nextDiscriminator;
+		if (authorityChanged) {
+			const nextEpoch = (
+				parsePlexAuthorityEpoch(currentValues.get(AppSettingsKey.PLEX_AUTHORITY_EPOCH) ?? null) + 1n
+			).toString();
+			upsert(AppSettingsKey.PLEX_AUTHORITY_DISCRIMINATOR, nextDiscriminator);
+			upsert(AppSettingsKey.PLEX_AUTHORITY_EPOCH, nextEpoch);
+			tx.delete(appSettings).where(eq(appSettings.key, AppSettingsKey.SERVER_MACHINE_ID)).run();
+			tx.delete(appSettings).where(eq(appSettings.key, AppSettingsKey.PLEX_IDENTITY_PROOF)).run();
+		}
 		// Bookkeeping: bump the API_CONFIG_VERSION marker on every successful
 		// transaction so `max(updatedAt)` over API_CONFIG_KEYS strictly advances —
 		// even if the only mutation above was a delete (which would otherwise
 		// leave the version unchanged or regressed, defeating the OCC check).
-		await upsert(AppSettingsKey.API_CONFIG_VERSION, now.toISOString());
+		upsert(AppSettingsKey.API_CONFIG_VERSION, now.toISOString());
 
 		return { status: 'ok', plexCredentialsChanged };
 	});
@@ -606,7 +650,7 @@ export async function setApiConfigAtomic(opts: {
  * itself.
  */
 export async function clearApiConfigKey(key: (typeof API_CONFIG_KEYS)[number]): Promise<void> {
-	await db.transaction(async (tx) => {
+	db.transaction((tx) => {
 		// Read `max(updatedAt)` over ALL `API_CONFIG_KEYS` rows BEFORE the DELETE
 		// so the row about to be cleared still contributes to `dbFloorMs`. If we
 		// scanned after deleting, the deleted row's prior `updatedAt` would be
@@ -618,21 +662,35 @@ export async function clearApiConfigKey(key: (typeof API_CONFIG_KEYS)[number]): 
 		// inside the transaction keeps the floor consistent with concurrent
 		// writers and mirrors the floor scan in `setApiConfigAtomic` so both
 		// write paths share the same OCC window.
-		const rows = await tx
+		const rows = tx
 			.select({ updatedAt: appSettings.updatedAt })
 			.from(appSettings)
-			.where(inArray(appSettings.key, API_CONFIG_KEYS as unknown as string[]));
+			.where(inArray(appSettings.key, API_CONFIG_KEYS as unknown as string[]))
+			.all();
 		let dbFloorMs = 0;
 		for (const row of rows) {
 			const t = row.updatedAt.getTime();
 			if (t > dbFloorMs) dbFloorMs = t;
 		}
+		const authorityRows = tx
+			.select({ key: appSettings.key, value: appSettings.value })
+			.from(appSettings)
+			.where(
+				inArray(appSettings.key, [
+					AppSettingsKey.PLEX_SERVER_URL,
+					AppSettingsKey.PLEX_TOKEN,
+					AppSettingsKey.PLEX_AUTHORITY_EPOCH,
+					AppSettingsKey.PLEX_AUTHORITY_DISCRIMINATOR
+				])
+			)
+			.all();
+		const authorityValues = new Map(authorityRows.map((row) => [row.key, row.value]));
+		const targetRow = authorityRows.find((row) => row.key === key);
 
-		await tx.delete(appSettings).where(eq(appSettings.key, key));
+		tx.delete(appSettings).where(eq(appSettings.key, key)).run();
 
 		const now = nextOccVersionDate(dbFloorMs);
-		await tx
-			.insert(appSettings)
+		tx.insert(appSettings)
 			.values({
 				key: AppSettingsKey.API_CONFIG_VERSION,
 				value: now.toISOString(),
@@ -641,7 +699,48 @@ export async function clearApiConfigKey(key: (typeof API_CONFIG_KEYS)[number]): 
 			.onConflictDoUpdate({
 				target: appSettings.key,
 				set: { value: now.toISOString(), updatedAt: now }
-			});
+			})
+			.run();
+		if (
+			targetRow &&
+			(key === AppSettingsKey.PLEX_SERVER_URL || key === AppSettingsKey.PLEX_TOKEN)
+		) {
+			const plexEnv = getPlexEnvConfig();
+			const effectivePlexAuthority = {
+				serverUrl: isAuthoritativePlexServerUrl(plexEnv.serverUrl, plexEnv.token)
+					? plexEnv.serverUrl
+					: key === AppSettingsKey.PLEX_SERVER_URL
+						? ''
+						: (authorityValues.get(AppSettingsKey.PLEX_SERVER_URL) ?? ''),
+				token: isAuthoritativeEnvValue(plexEnv.token)
+					? plexEnv.token
+					: key === AppSettingsKey.PLEX_TOKEN
+						? ''
+						: (authorityValues.get(AppSettingsKey.PLEX_TOKEN) ?? '')
+			};
+			const nextDiscriminator = getPlexConfigFingerprint(effectivePlexAuthority);
+			if (authorityValues.get(AppSettingsKey.PLEX_AUTHORITY_DISCRIMINATOR) !== nextDiscriminator) {
+				const nextEpoch = (
+					parsePlexAuthorityEpoch(
+						authorityValues.get(AppSettingsKey.PLEX_AUTHORITY_EPOCH) ?? null
+					) + 1n
+				).toString();
+				tx.delete(appSettings).where(eq(appSettings.key, AppSettingsKey.SERVER_MACHINE_ID)).run();
+				tx.delete(appSettings).where(eq(appSettings.key, AppSettingsKey.PLEX_IDENTITY_PROOF)).run();
+				for (const [authorityKey, value] of [
+					[AppSettingsKey.PLEX_AUTHORITY_DISCRIMINATOR, nextDiscriminator],
+					[AppSettingsKey.PLEX_AUTHORITY_EPOCH, nextEpoch]
+				] as const) {
+					tx.insert(appSettings)
+						.values({ key: authorityKey, value, updatedAt: now })
+						.onConflictDoUpdate({
+							target: appSettings.key,
+							set: { value, updatedAt: now }
+						})
+						.run();
+				}
+			}
+		}
 	});
 }
 
@@ -783,12 +882,143 @@ export async function getCachedServerMachineId(): Promise<string | null> {
 	return getAppSetting(AppSettingsKey.SERVER_MACHINE_ID);
 }
 
+function parsePlexAuthorityEpoch(value: string | null): bigint {
+	if (!value || !/^[1-9]\d*$/.test(value)) return 0n;
+	return BigInt(value);
+}
+
 export async function setCachedServerMachineId(machineId: string): Promise<void> {
-	await setAppSetting(AppSettingsKey.SERVER_MACHINE_ID, machineId);
+	db.transaction((tx) => {
+		const rows = tx
+			.select({ key: appSettings.key, value: appSettings.value })
+			.from(appSettings)
+			.where(
+				inArray(appSettings.key, [
+					AppSettingsKey.SERVER_MACHINE_ID,
+					AppSettingsKey.PLEX_AUTHORITY_EPOCH
+				])
+			)
+			.all();
+		const values = new Map(rows.map((row) => [row.key, row.value]));
+		const currentMachine = values.get(AppSettingsKey.SERVER_MACHINE_ID) ?? null;
+		const currentEpoch = parsePlexAuthorityEpoch(
+			values.get(AppSettingsKey.PLEX_AUTHORITY_EPOCH) ?? null
+		);
+		if (currentMachine === machineId && currentEpoch > 0n) return;
+		const now = new Date();
+		const nextEpoch = (currentEpoch + 1n).toString();
+		for (const [key, value] of [
+			[AppSettingsKey.SERVER_MACHINE_ID, machineId],
+			[AppSettingsKey.PLEX_AUTHORITY_EPOCH, nextEpoch]
+		] as const) {
+			tx.insert(appSettings)
+				.values({ key, value, updatedAt: now })
+				.onConflictDoUpdate({
+					target: appSettings.key,
+					set: { value, updatedAt: now }
+				})
+				.run();
+		}
+		tx.delete(appSettings).where(eq(appSettings.key, AppSettingsKey.PLEX_IDENTITY_PROOF)).run();
+	});
 }
 
 export async function clearCachedServerMachineId(): Promise<void> {
-	await deleteAppSetting(AppSettingsKey.SERVER_MACHINE_ID);
+	db.transaction((tx) => {
+		const rows = tx
+			.select({ key: appSettings.key, value: appSettings.value })
+			.from(appSettings)
+			.where(
+				inArray(appSettings.key, [
+					AppSettingsKey.SERVER_MACHINE_ID,
+					AppSettingsKey.PLEX_AUTHORITY_EPOCH
+				])
+			)
+			.all();
+		const values = new Map(rows.map((row) => [row.key, row.value]));
+		const currentMachine = values.get(AppSettingsKey.SERVER_MACHINE_ID);
+		if (currentMachine === undefined) return;
+		const nextEpoch = (
+			parsePlexAuthorityEpoch(values.get(AppSettingsKey.PLEX_AUTHORITY_EPOCH) ?? null) + 1n
+		).toString();
+		const now = new Date();
+		tx.delete(appSettings).where(eq(appSettings.key, AppSettingsKey.SERVER_MACHINE_ID)).run();
+		tx.delete(appSettings).where(eq(appSettings.key, AppSettingsKey.PLEX_IDENTITY_PROOF)).run();
+		tx.insert(appSettings)
+			.values({ key: AppSettingsKey.PLEX_AUTHORITY_EPOCH, value: nextEpoch, updatedAt: now })
+			.onConflictDoUpdate({
+				target: appSettings.key,
+				set: { value: nextEpoch, updatedAt: now }
+			})
+			.run();
+	});
+}
+
+export async function setPlexConnectionAuthority(options: {
+	serverUrl: string;
+	token: string;
+	machineId: string | null;
+}): Promise<void> {
+	db.transaction((tx) => {
+		const rows = tx
+			.select({ key: appSettings.key, value: appSettings.value })
+			.from(appSettings)
+			.where(
+				inArray(appSettings.key, [
+					AppSettingsKey.PLEX_SERVER_URL,
+					AppSettingsKey.PLEX_TOKEN,
+					AppSettingsKey.SERVER_MACHINE_ID,
+					AppSettingsKey.PLEX_AUTHORITY_EPOCH,
+					AppSettingsKey.PLEX_AUTHORITY_DISCRIMINATOR
+				])
+			)
+			.all();
+		const values = new Map(rows.map((row) => [row.key, row.value]));
+		const currentEpoch = parsePlexAuthorityEpoch(
+			values.get(AppSettingsKey.PLEX_AUTHORITY_EPOCH) ?? null
+		);
+		const nextDiscriminator = getPlexConfigFingerprint({
+			serverUrl: options.serverUrl,
+			token: options.token
+		});
+		const changed =
+			values.get(AppSettingsKey.PLEX_AUTHORITY_DISCRIMINATOR) !== nextDiscriminator ||
+			(values.get(AppSettingsKey.SERVER_MACHINE_ID) ?? null) !== options.machineId;
+		if (!changed && currentEpoch > 0n) return;
+
+		const now = new Date();
+		const nextEpoch = (currentEpoch + 1n).toString();
+		for (const [key, value] of [
+			[AppSettingsKey.PLEX_SERVER_URL, options.serverUrl],
+			[AppSettingsKey.PLEX_TOKEN, options.token],
+			[AppSettingsKey.PLEX_AUTHORITY_DISCRIMINATOR, nextDiscriminator],
+			[AppSettingsKey.PLEX_AUTHORITY_EPOCH, nextEpoch]
+		] as const) {
+			tx.insert(appSettings)
+				.values({ key, value, updatedAt: now })
+				.onConflictDoUpdate({
+					target: appSettings.key,
+					set: { value, updatedAt: now }
+				})
+				.run();
+		}
+		if (options.machineId) {
+			tx.insert(appSettings)
+				.values({
+					key: AppSettingsKey.SERVER_MACHINE_ID,
+					value: options.machineId,
+					updatedAt: now
+				})
+				.onConflictDoUpdate({
+					target: appSettings.key,
+					set: { value: options.machineId, updatedAt: now }
+				})
+				.run();
+		} else {
+			tx.delete(appSettings).where(eq(appSettings.key, AppSettingsKey.SERVER_MACHINE_ID)).run();
+		}
+		tx.delete(appSettings).where(eq(appSettings.key, AppSettingsKey.PLEX_IDENTITY_PROOF)).run();
+	});
 }
 
 export async function getFunFactFrequency(): Promise<FunFactFrequencyConfig> {
@@ -1126,6 +1356,24 @@ export interface PlexConfig {
 	token: string;
 }
 
+export function getPlexConfigFingerprint(config: PlexConfig): string {
+	let serverUrl = config.serverUrl;
+	if (serverUrl) {
+		try {
+			serverUrl = normalizePlexServerUrl(serverUrl, { allowInsecureLocalHttp: true });
+		} catch {
+			// Keep invalid values distinct. getPlexConfig() rejects them, so they can
+			// never satisfy the current-authority proof check.
+		}
+	}
+	return createHash('sha256')
+		.update('obzorarr:plex-config-fingerprint-v1\0')
+		.update(serverUrl)
+		.update('\0')
+		.update(config.token)
+		.digest('hex');
+}
+
 /**
  * Centralizes env-over-DB precedence and URL normalization so Plex callers never
  * accidentally use a shadowed or unsafe server URL.
@@ -1197,99 +1445,122 @@ export async function getTrustProxy(): Promise<boolean> {
 }
 
 /**
- * Removes DB values shadowed by authoritative ENV settings so the admin UI
- * cannot display stale, ignored configuration as if it were active.
+ * Removes DB values shadowed by authoritative ENV settings and atomically
+ * reconciles the durable Plex authority discriminator at startup. A real
+ * effective-config transition advances the epoch and invalidates machine/proof;
+ * an unchanged normalized authority preserves all three.
  */
 export async function clearConflictingDbSettings(): Promise<string[]> {
-	const clearedSettings: string[] = [];
 	const plexEnv = getPlexEnvConfig();
 	const openaiEnv = getOpenAIEnvConfig();
 	const csrfEnvOrigin = env.ORIGIN ?? '';
 	const trustProxyEnv = (env.TRUST_PROXY ?? '').trim();
+	const effectivePlexConfig = await getPlexConfig();
+	const effectivePlexFingerprint = getPlexConfigFingerprint(effectivePlexConfig);
 
-	// `authoritative` mirrors exactly what config resolution would treat as
-	// env-locked, so a DB row is only cleared when its env value actually wins.
-	// PLEX_SERVER_URL uses the token-aware Plex predicate (ISSUE-002) so a real
-	// localhost deployment (localhost URL + real token) clears the stale
-	// onboarding row, while a bare .env.example copy does not.
 	const envToDbMapping: Array<{
-		envValue: string;
 		dbKey: AppSettingsKeyType;
 		label: string;
 		authoritative: boolean;
 	}> = [
 		{
-			envValue: plexEnv.serverUrl,
 			dbKey: AppSettingsKey.PLEX_SERVER_URL,
 			label: 'PLEX_SERVER_URL',
 			authoritative: isAuthoritativePlexServerUrl(plexEnv.serverUrl, plexEnv.token)
 		},
 		{
-			envValue: plexEnv.token,
 			dbKey: AppSettingsKey.PLEX_TOKEN,
 			label: 'PLEX_TOKEN',
 			authoritative: isAuthoritativeEnvValue(plexEnv.token)
 		},
 		{
-			envValue: openaiEnv.apiKey,
 			dbKey: AppSettingsKey.OPENAI_API_KEY,
 			label: 'OPENAI_API_KEY',
 			authoritative: isAuthoritativeEnvValue(openaiEnv.apiKey)
 		},
 		{
-			envValue: openaiEnv.baseUrl,
 			dbKey: AppSettingsKey.OPENAI_BASE_URL,
 			label: 'OPENAI_BASE_URL',
 			authoritative: isAuthoritativeEnvValue(openaiEnv.baseUrl)
 		},
 		{
-			envValue: openaiEnv.model,
 			dbKey: AppSettingsKey.OPENAI_MODEL,
 			label: 'OPENAI_MODEL',
 			authoritative: isAuthoritativeEnvValue(openaiEnv.model)
 		},
 		{
-			envValue: csrfEnvOrigin,
 			dbKey: AppSettingsKey.CSRF_ORIGIN,
 			label: 'CSRF_ORIGIN',
 			authoritative: isAuthoritativeEnvValue(csrfEnvOrigin)
 		},
 		{
-			envValue: trustProxyEnv,
 			dbKey: AppSettingsKey.TRUST_PROXY,
 			label: 'TRUST_PROXY',
 			authoritative: isAuthoritativeEnvValue(trustProxyEnv)
 		}
 	];
 
-	const dbSettings = await getAllAppSettings();
+	return db.transaction((tx) => {
+		const rows = tx.select().from(appSettings).all();
+		const values = new Map(rows.map((row) => [row.key, row.value]));
+		const clearedSettings: string[] = [];
 
-	for (const { dbKey, label, authoritative } of envToDbMapping) {
-		// Only an env value that config resolution would actually treat as
-		// authoritative may clear a conflicting DB row. Otherwise a shipped
-		// .env.example placeholder like `http://localhost:32400` would delete a
-		// real admin-configured value and resolution would fall through to empty.
-		if (authoritative && dbSettings[dbKey]) {
-			await deleteAppSetting(dbKey);
-			clearedSettings.push(label);
+		for (const { dbKey, label, authoritative } of envToDbMapping) {
+			if (authoritative && values.has(dbKey)) {
+				tx.delete(appSettings).where(eq(appSettings.key, dbKey)).run();
+				clearedSettings.push(label);
+			}
 		}
-	}
 
-	// If either Plex config key is driven by an env var, the cached machineId may
-	// have been derived from a different PLEX_SERVER_URL/PLEX_TOKEN (e.g. the env
-	// changed between restarts). Drop the cache so the next call to
-	// getConfiguredServerMachineId() re-fetches /identity against the current config.
-	const plexServerUrlAuthoritative = isAuthoritativePlexServerUrl(plexEnv.serverUrl, plexEnv.token);
-	const plexTokenAuthoritative = isAuthoritativeEnvValue(plexEnv.token);
-	if (
-		(plexServerUrlAuthoritative || plexTokenAuthoritative) &&
-		dbSettings[AppSettingsKey.SERVER_MACHINE_ID]
-	) {
-		await deleteAppSetting(AppSettingsKey.SERVER_MACHINE_ID);
-		clearedSettings.push('SERVER_MACHINE_ID');
-	}
+		const currentDiscriminator = values.get(AppSettingsKey.PLEX_AUTHORITY_DISCRIMINATOR);
+		const currentEpoch = parsePlexAuthorityEpoch(
+			values.get(AppSettingsKey.PLEX_AUTHORITY_EPOCH) ?? null
+		);
+		const hasPriorAuthorityState =
+			currentDiscriminator !== undefined ||
+			currentEpoch > 0n ||
+			values.has(AppSettingsKey.SERVER_MACHINE_ID) ||
+			values.has(AppSettingsKey.PLEX_IDENTITY_PROOF);
+		if (!hasPriorAuthorityState) {
+			if (!effectivePlexConfig.serverUrl && !effectivePlexConfig.token) return clearedSettings;
+			const now = new Date();
+			for (const [key, value] of [
+				[AppSettingsKey.PLEX_AUTHORITY_DISCRIMINATOR, effectivePlexFingerprint],
+				[AppSettingsKey.PLEX_AUTHORITY_EPOCH, '1']
+			] as const) {
+				tx.insert(appSettings)
+					.values({ key, value, updatedAt: now })
+					.onConflictDoUpdate({
+						target: appSettings.key,
+						set: { value, updatedAt: now }
+					})
+					.run();
+			}
+			return clearedSettings;
+		}
 
-	return clearedSettings;
+		if (currentDiscriminator === effectivePlexFingerprint && currentEpoch > 0n)
+			return clearedSettings;
+
+		const nextEpoch = (currentEpoch + 1n).toString();
+		const now = new Date();
+		tx.delete(appSettings).where(eq(appSettings.key, AppSettingsKey.SERVER_MACHINE_ID)).run();
+		tx.delete(appSettings).where(eq(appSettings.key, AppSettingsKey.PLEX_IDENTITY_PROOF)).run();
+		for (const [key, value] of [
+			[AppSettingsKey.PLEX_AUTHORITY_DISCRIMINATOR, effectivePlexFingerprint],
+			[AppSettingsKey.PLEX_AUTHORITY_EPOCH, nextEpoch]
+		] as const) {
+			tx.insert(appSettings)
+				.values({ key, value, updatedAt: now })
+				.onConflictDoUpdate({
+					target: appSettings.key,
+					set: { value, updatedAt: now }
+				})
+				.run();
+		}
+		clearedSettings.push('PLEX_AUTHORITY');
+		return clearedSettings;
+	});
 }
 
 /**

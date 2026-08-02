@@ -2,11 +2,10 @@ import { error, json } from '@sveltejs/kit';
 import { z } from 'zod';
 import {
 	AppSettingsKey,
-	clearCachedServerMachineId,
 	deleteAppSetting,
 	setAppSetting,
-	setCachedServerMachineId,
-	setCachedServerName
+	setCachedServerName,
+	setPlexConnectionAuthority
 } from '$lib/server/admin/settings.service';
 import {
 	PLEX_CLIENT_ID,
@@ -172,8 +171,11 @@ export const POST: RequestHandler = async ({ request, locals, cookies, url }) =>
 			});
 		}
 
-		await setAppSetting(AppSettingsKey.PLEX_SERVER_URL, serverUrl);
-		await setAppSetting(AppSettingsKey.PLEX_TOKEN, accessToken);
+		await setPlexConnectionAuthority({
+			serverUrl,
+			token: accessToken,
+			machineId: testResult.machineIdentifier ?? null
+		});
 		if (
 			parseResult.data.allowInsecureLocalHttp === true &&
 			shouldPersistPlexInsecureLocalHttpOptIn(serverUrl)
@@ -183,13 +185,6 @@ export const POST: RequestHandler = async ({ request, locals, cookies, url }) =>
 			await deleteAppSetting(AppSettingsKey.PLEX_ALLOW_INSECURE_LOCAL_HTTP);
 		}
 		await setCachedServerName(serverName);
-		if (testResult.machineIdentifier) {
-			await setCachedServerMachineId(testResult.machineIdentifier);
-		} else {
-			// Server URL/token just changed. Drop any machineId cached from a
-			// previous server so membership matching doesn't reuse a stale id.
-			await clearCachedServerMachineId();
-		}
 
 		logger.info(
 			`Onboarding: Server configured serverNameHash=${fingerprintPlexIdentifier(

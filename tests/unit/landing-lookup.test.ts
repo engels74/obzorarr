@@ -2,12 +2,20 @@ import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import { isRedirect } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import {
+	AppSettingsKey,
 	getPublicLandingLookupEnabled,
 	setPublicLandingLookupEnabled
 } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
-import { appSettings, plexAccounts, shareSettings, users } from '$lib/server/db/schema';
+import {
+	appSettings,
+	playHistory,
+	plexAccounts,
+	shareSettings,
+	users
+} from '$lib/server/db/schema';
 import { logger } from '$lib/server/logging';
+import { buildPlexIdentityProofValue } from '$lib/server/plex/account-reconciliation';
 import {
 	isValidSlugFormat,
 	resolveSlug,
@@ -17,6 +25,7 @@ import { ShareMode, ShareModeSource } from '$lib/server/sharing/types';
 import type { LiveSyncResult } from '$lib/server/sync/live-sync';
 import * as liveSync from '$lib/server/sync/live-sync';
 import { load as loadWrapped } from '../../src/routes/wrapped/[year=year]/u/[identifier]/+page.server';
+import { seedPlexAuthorityForTests } from '../helpers/sharing';
 
 let liveSyncResult: LiveSyncResult = {
 	triggered: false,
@@ -46,11 +55,14 @@ interface TestCookies {
 }
 
 async function seedUser(mode?: (typeof ShareMode)[keyof typeof ShareMode]): Promise<void> {
+	const confirmedAt = Date.now();
+	await seedPlexAuthorityForTests();
 	await db.insert(plexAccounts).values({
 		accountId: 123,
 		plexId: 456,
 		username: 'alice',
-		isOwner: false
+		isOwner: false,
+		updatedAt: new Date(confirmedAt)
 	});
 	await db.insert(users).values({
 		id: USER_ID,
@@ -58,6 +70,20 @@ async function seedUser(mode?: (typeof ShareMode)[keyof typeof ShareMode]): Prom
 		accountId: 123,
 		username: 'alice',
 		isAdmin: false
+	});
+	await db.insert(playHistory).values({
+		historyKey: 'landing-lookup-history',
+		ratingKey: 'landing-lookup-history',
+		title: 'Landing lookup history',
+		type: 'movie',
+		viewedAt: Math.floor(Date.UTC(YEAR, 0, 2) / 1000),
+		accountId: 123,
+		librarySectionId: 1
+	});
+	await db.insert(appSettings).values({
+		key: AppSettingsKey.PLEX_IDENTITY_PROOF,
+		value: await buildPlexIdentityProofValue('machine-test', confirmedAt),
+		updatedAt: new Date(confirmedAt)
 	});
 
 	if (mode) {
@@ -101,6 +127,7 @@ async function invokeLookup(username: string, ip: string, cookies: TestCookies =
 describe('landing username lookup', () => {
 	beforeEach(async () => {
 		await db.delete(shareSettings);
+		await db.delete(playHistory);
 		await db.delete(appSettings);
 		await db.delete(users);
 		await db.delete(plexAccounts);
@@ -228,6 +255,25 @@ describe('landing username lookup', () => {
 			}
 		});
 		expect(liveSyncCalls).toEqual([]);
+	});
+
+	it('returns the generic failure before live sync or slug creation when current-year history is absent', async () => {
+		await setGlobalShareDefaults({ defaultShareMode: ShareMode.PUBLIC, allowUserControl: false });
+		await seedUser();
+		await db.delete(playHistory);
+
+		const result = await invokeLookup('ALICE', '198.51.100.17');
+
+		expect(result).toEqual({
+			status: 404,
+			data: {
+				error: 'No publicly shared Wrapped found for that username.',
+				username: 'ALICE',
+				requiresAuth: false
+			}
+		});
+		expect(liveSyncCalls).toEqual([]);
+		expect(await db.select().from(shareSettings)).toHaveLength(0);
 	});
 
 	it('uses public lookup as the default even when the global share default is private', async () => {

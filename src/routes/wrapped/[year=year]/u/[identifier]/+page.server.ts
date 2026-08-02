@@ -14,6 +14,7 @@ import {
 	getGlobalDefaultShareMode,
 	getOrCreateShareSettings,
 	getOwnerWrappedHref,
+	getShareSettingsReadOnlyOrDefault,
 	isPureNumericId,
 	isValidTokenFormat,
 	regenerateShareToken,
@@ -40,6 +41,7 @@ import {
 } from '$lib/server/slides';
 import { calculateUserStats } from '$lib/server/stats/engine';
 import { triggerLiveSyncIfNeeded } from '$lib/server/sync/live-sync';
+import { hasFreshPlexAccountMapping } from '$lib/server/sync/plex-accounts.service';
 import { hasWatchHistory } from '$lib/stats/types';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -48,6 +50,13 @@ import type { Actions, PageServerLoad } from './$types';
 // $lib/server/sharing/types). Every anonymous "cannot view" outcome (non-existent
 // id, existing-but-private-oauth, existing-but-private-link-without-token) returns
 // this exact status+body so an anonymous caller can't tell them apart.
+
+async function resolveActiveUserId(
+	userId: number,
+	currentUser?: App.Locals['user']
+): Promise<number | null> {
+	return currentUser?.isAdmin || (await hasFreshPlexAccountMapping(userId)) ? userId : null;
+}
 
 async function resolveUserIdFromIdentifier(
 	identifier: string,
@@ -62,7 +71,9 @@ async function resolveUserIdFromIdentifier(
 			// would reject any signed-in owner/admin trying to mutate share settings
 			// through a token URL once the floor is raised.
 			const tokenResult = await checkTokenAccess({ token: identifier, currentUser });
-			return tokenResult.year === year ? tokenResult.userId : null;
+			return tokenResult.year === year
+				? await resolveActiveUserId(tokenResult.userId, currentUser)
+				: null;
 		} catch (err) {
 			if (err instanceof InvalidShareTokenError || err instanceof ShareAccessDeniedError) {
 				return null;
@@ -90,13 +101,15 @@ async function resolveUserIdFromIdentifier(
 			.from(users)
 			.where(eq(users.id, userId))
 			.limit(1);
-		return userRow[0]?.id ?? null;
+		return userRow[0] ? resolveActiveUserId(userRow[0].id, currentUser) : null;
 	}
 
 	// DF-04: opaque public/oauth slug. Resolves to its owning (userId, year);
 	// the caller still enforces owner/admin authorization for mutations.
 	const resolved = await resolveSlug(identifier);
-	return resolved && resolved.year === year ? resolved.userId : null;
+	return resolved && resolved.year === year
+		? resolveActiveUserId(resolved.userId, currentUser)
+		: null;
 }
 
 export const load: PageServerLoad = async ({ params, locals, parent, setHeaders }) => {
@@ -106,8 +119,6 @@ export const load: PageServerLoad = async ({ params, locals, parent, setHeaders 
 	if (Number.isNaN(year) || year < 2000 || year > 2100) {
 		error(404, 'Invalid year');
 	}
-
-	triggerLiveSyncIfNeeded('user-wrapped').catch(() => {});
 
 	const { identifier } = params;
 	let userId: number;
@@ -182,24 +193,27 @@ export const load: PageServerLoad = async ({ params, locals, parent, setHeaders 
 		if (!userExists[0]) {
 			error(404, WRAPPED_NOT_FOUND_MESSAGE);
 		}
+		if (!locals.user?.isAdmin && !(await hasFreshPlexAccountMapping(userId))) {
+			error(404, WRAPPED_NOT_FOUND_MESSAGE);
+		}
 
-		try {
-			await checkWrappedAccess({
-				userId,
-				year,
-				currentUser: locals.user
-			});
-		} catch (err) {
-			// Only owner/admin reach here. Preserve private-link-requires-token
-			// (the owner/admin must use the token URL) while keeping the 404 body
-			// byte-identical to the anti-enumeration 404 for the access-denied case.
-			if (err instanceof ShareAccessDeniedError) {
-				error(404, WRAPPED_NOT_FOUND_MESSAGE);
+		if (!locals.user?.isAdmin) {
+			try {
+				await checkWrappedAccess({
+					userId,
+					year,
+					currentUser: locals.user
+				});
+			} catch (err) {
+				// The owner must still use the token URL for private-link mode.
+				if (err instanceof ShareAccessDeniedError) {
+					error(404, WRAPPED_NOT_FOUND_MESSAGE);
+				}
+				if (err instanceof InvalidShareTokenError) {
+					error(404, 'This share link is invalid, expired, or has been revoked.');
+				}
+				throw err;
 			}
-			if (err instanceof InvalidShareTokenError) {
-				error(404, 'This share link is invalid, expired, or has been revoked.');
-			}
-			throw err;
 		}
 	} else {
 		// DF-04: opaque public/oauth slug path. The slug only names the resource;
@@ -212,6 +226,9 @@ export const load: PageServerLoad = async ({ params, locals, parent, setHeaders 
 			error(404, WRAPPED_NOT_FOUND_MESSAGE);
 		}
 		userId = resolved.userId;
+		if (!locals.user?.isAdmin && !(await hasFreshPlexAccountMapping(userId))) {
+			error(404, WRAPPED_NOT_FOUND_MESSAGE);
+		}
 
 		try {
 			await checkWrappedAccess({
@@ -247,6 +264,11 @@ export const load: PageServerLoad = async ({ params, locals, parent, setHeaders 
 	if (!user) {
 		error(404, 'User not found');
 	}
+	if (!locals.user?.isAdmin && !(await hasFreshPlexAccountMapping(userId))) {
+		error(404, WRAPPED_NOT_FOUND_MESSAGE);
+	}
+
+	triggerLiveSyncIfNeeded('user-wrapped').catch(() => {});
 
 	const statsAccountId = await resolveStatsAccountId(user);
 	const stats = await calculateUserStats(statsAccountId, year);
@@ -307,23 +329,29 @@ export const load: PageServerLoad = async ({ params, locals, parent, setHeaders 
 	const slides = intersperseFunFacts(baseSlides, funFacts);
 
 	const logoVisibility = await getLogoVisibility(userId, year);
-	const shareSettings = await getOrCreateShareSettings({ userId, year });
+	const readOnlyAdminNumeric = isAdmin && isPureNumericId(identifier);
+	const shareSettings = readOnlyAdminNumeric
+		? await getShareSettingsReadOnlyOrDefault(userId, year)
+		: await getOrCreateShareSettings({ userId, year });
 
 	const globalFloorForUrl = await getGlobalDefaultShareMode();
 	const effectiveModeForUrl = getMoreRestrictiveMode(shareSettings.mode, globalFloorForUrl);
 	const needsTokenForUrl = effectiveModeForUrl === ShareMode.PRIVATE_LINK;
-	// Owner/admin keep their canonical token even when the floor raises the
-	// effective mode above PRIVATE_LINK, so the share modal stays stable
-	// across reloads. Lazy-mint only when PRIVATE_LINK is actually reachable.
-	const rawTokenForOwner = ownerOrAdmin
-		? (shareSettings.shareToken ?? (needsTokenForUrl ? await ensureShareToken(userId, year) : null))
-		: null;
-	// Owner/admin get the opaque share href (slug for public/oauth, token for
-	// private-link). A non-owner always arrived via the opaque identifier itself
-	// (numeric ids are owner/admin-only now), so we echo what they came in on.
-	const currentUrl = ownerOrAdmin
-		? await getOwnerWrappedHref(userId, year)
-		: `/wrapped/${year}/u/${identifier}`;
+	// Admin numeric history inspection must remain read-only and must not expose
+	// or mint another user's private-link token.
+	const rawTokenForOwner = readOnlyAdminNumeric
+		? null
+		: ownerOrAdmin
+			? (shareSettings.shareToken ??
+				(needsTokenForUrl ? await ensureShareToken(userId, year) : null))
+			: null;
+	// A non-owner normally arrives via an opaque identifier. Admin numeric
+	// history inspection intentionally stays on the numeric URL.
+	const currentUrl = readOnlyAdminNumeric
+		? `/wrapped/${year}/u/${userId}`
+		: ownerOrAdmin
+			? await getOwnerWrappedHref(userId, year)
+			: `/wrapped/${year}/u/${identifier}`;
 
 	const exposedShareToken = ownerOrAdmin ? rawTokenForOwner : null;
 	const signedStats = await signStatsThumbnails(stats, {
@@ -377,6 +405,9 @@ export const actions: Actions = {
 		const year = parseInt(params.year, 10);
 		if (Number.isNaN(year)) {
 			return fail(400, { error: 'Invalid year' });
+		}
+		if (!locals.user.isAdmin && !(await hasFreshPlexAccountMapping(locals.user.id))) {
+			return fail(404, { error: WRAPPED_NOT_FOUND_MESSAGE });
 		}
 
 		const formData = await request.formData();

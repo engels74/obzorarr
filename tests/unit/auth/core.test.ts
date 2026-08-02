@@ -38,7 +38,6 @@ import {
 	PLEX_PRODUCT,
 	PLEX_VERSION,
 	PlexAuthApiError,
-	PlexFriendSchema,
 	SESSION_DURATION_MS,
 	SessionExpiredError
 } from '$lib/server/auth/types';
@@ -141,16 +140,6 @@ describe('auth core contracts', () => {
 			expect(errors[0]).not.toBeInstanceOf(SessionExpiredError);
 			expect(errors[1]).toBeInstanceOf(PinExpiredError);
 			expect(errors[1]).not.toBeInstanceOf(PlexAuthApiError);
-		});
-
-		it.each([
-			['null username', { id: 42, username: null, email: 'x@example.com' }, true],
-			['null email', { id: 42, username: 'someone', email: null }, true],
-			['both names nullish', { id: 42, username: null, email: null }, true],
-			['string username and email', { id: 42, username: 'someone', email: 'x@example.com' }, true],
-			['missing id', { username: 'someone', email: null }, false]
-		] as const)('PlexFriendSchema handles %s', (_name, payload, success) => {
-			expect(PlexFriendSchema.safeParse(payload).success).toBe(success);
 		});
 	});
 
@@ -413,6 +402,18 @@ describe('Plex OAuth module', () => {
 				email: 'test@example.com',
 				thumb: USER.thumb
 			});
+		});
+
+		it('forwards a caller-provided abort signal to bound owner lookup latency', async () => {
+			const signal = AbortSignal.abort(new DOMException('Timed out', 'TimeoutError'));
+			fetchMock.mockImplementation((_url: string | URL | Request, init?: RequestInit) => {
+				expect(init?.signal).toBe(signal);
+				return Promise.reject(signal.reason);
+			});
+
+			await expect(getPlexUserInfo('valid-token', { signal })).rejects.toBeInstanceOf(
+				PlexAuthApiError
+			);
 		});
 
 		it.each([

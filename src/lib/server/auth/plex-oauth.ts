@@ -151,7 +151,10 @@ export async function pollPinForToken(
 }
 
 /** Validate Plex's external profile payload before onboarding/auth code trusts its identifiers. */
-export async function getPlexUserInfo(authToken: string): Promise<PlexUser> {
+export async function getPlexUserInfo(
+	authToken: string,
+	options: { signal?: AbortSignal } = {}
+): Promise<PlexUser> {
 	const endpoint = `${PLEX_TV_URL}/api/v2/user`;
 
 	try {
@@ -160,7 +163,8 @@ export async function getPlexUserInfo(authToken: string): Promise<PlexUser> {
 			headers: {
 				...PLEX_TV_HEADERS,
 				'X-Plex-Token': authToken
-			}
+			},
+			signal: options.signal
 		});
 
 		if (!response.ok) {

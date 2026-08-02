@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { db } from '$lib/server/db/client';
-import { shareSettings, users } from '$lib/server/db/schema';
+import { shareSettings } from '$lib/server/db/schema';
 import { getShareIdentifier, setGlobalShareDefaults } from '$lib/server/sharing/service';
 import { ShareMode, ShareModeSource, WRAPPED_NOT_FOUND_MESSAGE } from '$lib/server/sharing/types';
 import { load } from '../../../src/routes/wrapped/[year=year]/u/[identifier]/+page.server';
 import { resetSharedTestDb } from '../../helpers/db';
+import { seedSharingUser } from '../../helpers/sharing';
 
 // ISSUE-009: anonymous-denial uniformity across ALL token-path exits + the slug
 // path. For an anonymous caller, every "cannot view" outcome must return a
@@ -34,7 +35,7 @@ interface TestUser {
 }
 
 async function seedUser(userId: number): Promise<void> {
-	await db.insert(users).values({
+	await seedSharingUser({
 		id: userId,
 		plexId: 100000 + userId,
 		accountId: 200000 + userId,

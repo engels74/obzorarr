@@ -6,7 +6,6 @@ import {
 	AppSettingsKey,
 	type ConfigSource,
 	clearApiConfigKey,
-	clearCachedServerMachineId,
 	getApiConfigWithSources,
 	getAppSettingsUpdatedAt,
 	isPlexInsecureLocalHttpAllowed,
@@ -253,10 +252,6 @@ export const actions: Actions = requireAdminActions({
 					conflict: true,
 					error: API_CONFIG_OCC_MESSAGE
 				});
-			}
-
-			if (result.plexCredentialsChanged) {
-				await clearCachedServerMachineId();
 			}
 
 			// The sibling panel may save next before invalidateAll finishes, so it

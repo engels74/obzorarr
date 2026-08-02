@@ -38,7 +38,7 @@ function createMockIdentityResponse() {
 			})
 	};
 }
-function createMockFriendsResponse(
+function createMockAcceptedSharesResponse(
 	sharedUsers: Array<{ id: number; username: string; email?: string; thumb?: string }> = []
 ) {
 	return {
@@ -46,12 +46,19 @@ function createMockFriendsResponse(
 		headers: createMockHeaders(),
 		json: () =>
 			Promise.resolve(
-				sharedUsers.map((u, index) => ({
-					id: u.id,
-					username: u.username,
-					email: u.email,
-					thumb: u.thumb,
-					sharedServers: [{ id: 1000 + index, machineIdentifier: DEV_MACHINE_ID }]
+				sharedUsers.map((user, index) => ({
+					id: 1000 + index,
+					machineIdentifier: DEV_MACHINE_ID,
+					accepted: true,
+					deletedAt: null,
+					leftAt: null,
+					invitedId: user.id,
+					invited: {
+						id: user.id,
+						username: user.username,
+						email: user.email,
+						thumb: user.thumb
+					}
 				}))
 			)
 	};
@@ -88,8 +95,8 @@ describe('dev-users module', () => {
 			if (urlStr.includes('/identity')) {
 				return Promise.resolve(createMockIdentityResponse() as Response);
 			}
-			if (urlStr.includes('/api/v2/friends')) {
-				return Promise.resolve(createMockFriendsResponse(sharedUsers) as Response);
+			if (urlStr.includes('/api/v2/shared_servers/owned/accepted')) {
+				return Promise.resolve(createMockAcceptedSharesResponse(sharedUsers) as Response);
 			}
 			return Promise.reject(new Error(`Unexpected URL: ${urlStr}`));
 		}) as typeof fetch);
@@ -158,6 +165,10 @@ describe('dev-users module', () => {
 			else expect(user).toMatchObject(expected);
 		});
 	});
+	it('fails closed when owner and shared identities have the same case-insensitive username', async () => {
+		setupFetchMock([{ id: 1001, username: 'serverowner' }]);
+		expect(await getUserByUsername('ServerOwner')).toBeNull();
+	});
 	describe('getRandomNonOwnerUser', () => {
 		it('returns a shared user (not owner)', async () => {
 			setupFetchMock();
@@ -209,17 +220,17 @@ describe('dev-users module', () => {
 						headers: createMockHeaders()
 					} as Response);
 				}
-				return Promise.resolve(createMockFriendsResponse([]) as Response);
+				return Promise.resolve(createMockAcceptedSharesResponse([]) as Response);
 			}) as typeof fetch);
 			await expect(getServerUsers()).rejects.toThrow('Failed to get server identity');
 		});
-		it('throws error when friends endpoint returns non-ok response', async () => {
+		it('throws error when the accepted-shares endpoint returns non-ok response', async () => {
 			fetchMock = spyOn(globalThis, 'fetch').mockImplementation(((url: URL | RequestInfo) => {
 				const urlStr = url.toString();
 				if (urlStr.includes('/identity')) {
 					return Promise.resolve(createMockIdentityResponse() as Response);
 				}
-				if (urlStr.includes('/api/v2/friends')) {
+				if (urlStr.includes('/api/v2/shared_servers/owned/accepted')) {
 					return Promise.resolve({
 						ok: false,
 						status: 403,
@@ -229,7 +240,9 @@ describe('dev-users module', () => {
 				}
 				return Promise.reject(new Error(`Unexpected URL: ${urlStr}`));
 			}) as typeof fetch);
-			await expect(getServerUsers()).rejects.toThrow('Failed to get friends');
+			await expect(getServerUsers()).rejects.toThrow(
+				'Current shared Plex identity source is unavailable'
+			);
 		});
 		it('throws error when identity response has invalid schema', async () => {
 			fetchMock = spyOn(globalThis, 'fetch').mockImplementation(((url: URL | RequestInfo) => {
@@ -241,17 +254,17 @@ describe('dev-users module', () => {
 						json: () => Promise.resolve({ invalid: 'data' })
 					} as Response);
 				}
-				return Promise.resolve(createMockFriendsResponse([]) as Response);
+				return Promise.resolve(createMockAcceptedSharesResponse([]) as Response);
 			}) as typeof fetch);
 			await expect(getServerUsers()).rejects.toThrow('Invalid server identity response');
 		});
-		it('returns empty shared users when friends response has invalid schema', async () => {
+		it('rejects a shared-user response with an invalid schema', async () => {
 			fetchMock = spyOn(globalThis, 'fetch').mockImplementation(((url: URL | RequestInfo) => {
 				const urlStr = url.toString();
 				if (urlStr.includes('/identity')) {
 					return Promise.resolve(createMockIdentityResponse() as Response);
 				}
-				if (urlStr.includes('/api/v2/friends')) {
+				if (urlStr.includes('/api/v2/shared_servers/owned/accepted')) {
 					return Promise.resolve({
 						ok: true,
 						headers: createMockHeaders(),
@@ -260,17 +273,17 @@ describe('dev-users module', () => {
 				}
 				return Promise.reject(new Error(`Unexpected URL: ${urlStr}`));
 			}) as typeof fetch);
-			const result = await getServerUsers();
-			expect(result.owner).toBeDefined();
-			expect(result.sharedUsers).toHaveLength(0);
+			await expect(getServerUsers()).rejects.toThrow(
+				'Current shared Plex identity source is unavailable'
+			);
 		});
-		it('throws error when friends response fails to parse as JSON', async () => {
+		it('rejects a shared-user response that fails to parse as JSON', async () => {
 			fetchMock = spyOn(globalThis, 'fetch').mockImplementation(((url: URL | RequestInfo) => {
 				const urlStr = url.toString();
 				if (urlStr.includes('/identity')) {
 					return Promise.resolve(createMockIdentityResponse() as Response);
 				}
-				if (urlStr.includes('/api/v2/friends')) {
+				if (urlStr.includes('/api/v2/shared_servers/owned/accepted')) {
 					return Promise.resolve({
 						ok: true,
 						headers: createMockHeaders('application/xml; charset=utf-8'),
@@ -279,15 +292,17 @@ describe('dev-users module', () => {
 				}
 				return Promise.reject(new Error(`Unexpected URL: ${urlStr}`));
 			}) as typeof fetch);
-			await expect(getServerUsers()).rejects.toThrow('Unexpected token <');
+			await expect(getServerUsers()).rejects.toThrow(
+				'Current shared Plex identity source is unavailable'
+			);
 		});
-		it('throws error when JSON response is malformed', async () => {
+		it('rejects malformed shared-user JSON', async () => {
 			fetchMock = spyOn(globalThis, 'fetch').mockImplementation(((url: URL | RequestInfo) => {
 				const urlStr = url.toString();
 				if (urlStr.includes('/identity')) {
 					return Promise.resolve(createMockIdentityResponse() as Response);
 				}
-				if (urlStr.includes('/api/v2/friends')) {
+				if (urlStr.includes('/api/v2/shared_servers/owned/accepted')) {
 					return Promise.resolve({
 						ok: true,
 						headers: createMockHeaders('application/json'),
@@ -296,7 +311,9 @@ describe('dev-users module', () => {
 				}
 				return Promise.reject(new Error(`Unexpected URL: ${urlStr}`));
 			}) as typeof fetch);
-			await expect(getServerUsers()).rejects.toThrow('Unexpected end of JSON input');
+			await expect(getServerUsers()).rejects.toThrow(
+				'Current shared Plex identity source is unavailable'
+			);
 		});
 	});
 });
