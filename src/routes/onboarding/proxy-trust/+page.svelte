@@ -188,7 +188,7 @@ async function copyGuide(id: string, text: string) {
 						src={diagramSource}
 						alt=""
 						draggable="false"
-						onerror={() => (failedDiagramSource = diagramSource)}
+						onerror={(event) => (failedDiagramSource = event.currentTarget.getAttribute('src'))}
 						transition:fade={{ duration: diagramTransitionDuration }}
 					/>
 				{/key}
