@@ -80,7 +80,7 @@ export async function verifyOwnedServerResource(
 				(resource) =>
 					resource.clientIdentifier === machineIdentifier &&
 					resource.owned === true &&
-					(resource.provides?.split(',').includes('server') ||
+					(resource.provides?.split(',').some((provide) => provide.trim() === 'server') ||
 						resource.product === 'Plex Media Server')
 			)
 		);

@@ -9,7 +9,7 @@ import {
 	PLEX_ACCOUNT_FRESHNESS_MS,
 	runPlexAccountReconciliation
 } from '$lib/server/plex/account-reconciliation';
-import { fetchCurrentSharedAccounts } from '$lib/server/plex/accounts';
+import { fetchCurrentSharedAccounts, verifyOwnedServerResource } from '$lib/server/plex/accounts';
 import { resetSharedTestDb } from '../../helpers/db';
 
 const config = { serverUrl: 'http://pms.test', token: 'test-token' };
@@ -86,6 +86,22 @@ afterEach(() => {
 	ownerSpy.mockRestore();
 });
 
+describe('owned Plex resource verification', () => {
+	it('accepts a server capability token surrounded by whitespace', async () => {
+		const fetchImpl = (async () =>
+			response([
+				{
+					name: 'Test server',
+					product: 'Other',
+					clientIdentifier: 'machine-test',
+					provides: 'player, server',
+					owned: true
+				}
+			])) as unknown as typeof fetch;
+
+		expect(await verifyOwnedServerResource('machine-test', 'test-token', fetchImpl)).toBe(true);
+	});
+});
 describe('Plex account reconciliation', () => {
 	it('uses accepted shares with header-only token and creates the local identity bridge', async () => {
 		const requests: { url: string; init: RequestInit }[] = [];
