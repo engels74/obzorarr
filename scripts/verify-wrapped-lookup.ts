@@ -1,8 +1,8 @@
 import { Database } from 'bun:sqlite';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, realpathSync, rmSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, isAbsolute, resolve, sep } from 'node:path';
+import { basename, dirname, isAbsolute, resolve, sep } from 'node:path';
 import { stopSubprocess } from './subprocess';
 
 const databasePathInput = process.env.DATABASE_PATH;
@@ -24,6 +24,40 @@ function fail(message: string): never {
 	throw new Error(`Wrapped lookup QA: ${message}`);
 }
 
+function pathEntryExists(path: string): boolean {
+	try {
+		lstatSync(path);
+		return true;
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false;
+		throw error;
+	}
+}
+
+function assertDatabaseEntriesAbsent(path: string): void {
+	if (pathEntryExists(path) || pathEntryExists(`${path}-wal`) || pathEntryExists(`${path}-shm`)) {
+		fail('DATABASE_PATH and its WAL/SHM sidecars must not already exist.');
+	}
+}
+
+function resolvePathThroughSymlinks(path: string): string {
+	let existingPath = resolve(path);
+	const missingComponents: string[] = [];
+
+	while (!pathEntryExists(existingPath)) {
+		const parent = dirname(existingPath);
+		if (parent === existingPath) break;
+		missingComponents.unshift(basename(existingPath));
+		existingPath = parent;
+	}
+
+	try {
+		return resolve(realpathSync(existingPath), ...missingComponents);
+	} catch {
+		fail('DATABASE_PATH must not contain dangling or cyclic symlinks.');
+	}
+}
+
 function isDisposablePath(path: string): boolean {
 	const tempRoot = realpathSync(tmpdir());
 	const resolved = resolve(path);
@@ -42,22 +76,25 @@ function removeDatabaseFiles(path: string): void {
 if (!databasePathInput) fail('DATABASE_PATH must explicitly name a new disposable database file.');
 if (!isAbsolute(databasePathInput)) fail('DATABASE_PATH must be an absolute disposable path.');
 if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) fail('QA_TIMEOUT_MS must be a positive number.');
-const databasePath = resolve(databasePathInput);
+const requestedDatabasePath = resolve(databasePathInput);
+assertDatabaseEntriesAbsent(requestedDatabasePath);
+const databasePath = resolvePathThroughSymlinks(requestedDatabasePath);
 if (!isDisposablePath(databasePath))
 	fail('DATABASE_PATH must be under the system temp directory or a test/tmp directory.');
-if (/(?:^|[._/-])prod(?:uction)?(?:[._/-]|$)/i.test(databasePath))
-	fail('DATABASE_PATH must not look like a production database path.');
 if (
-	existsSync(databasePath) ||
-	existsSync(`${databasePath}-wal`) ||
-	existsSync(`${databasePath}-shm`)
-) {
-	fail('DATABASE_PATH and its WAL/SHM sidecars must not already exist.');
-}
+	[requestedDatabasePath, databasePath].some((path) =>
+		/(?:^|[._/-])prod(?:uction)?(?:[._/-]|$)/i.test(path)
+	)
+)
+	fail('DATABASE_PATH must not look like a production database path.');
+assertDatabaseEntriesAbsent(databasePath);
 if (!existsSync('./build'))
 	fail('Missing ./build. Run the normal build gate before this QA script.');
 
 mkdirSync(dirname(databasePath), { recursive: true });
+const canonicalParent = realpathSync(dirname(databasePath));
+if (resolve(canonicalParent, basename(databasePath)) !== databasePath)
+	fail('DATABASE_PATH parent changed while validating the disposable path.');
 let server: ReturnType<typeof Bun.spawn> | undefined;
 let portReservation: ReturnType<typeof Bun.serve> | undefined;
 let stdout = '';
