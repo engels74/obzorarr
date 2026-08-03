@@ -26,16 +26,25 @@ Obzorarr is a **"Wrapped for Plex"** application that syncs viewing history from
 ## Features
 
 <p align="center">
-  <img src="public/readme/gifs/wrapped-demo.gif" alt="Wrapped Demo" width="700">
+  <picture>
+    <source srcset="public/readme/motion/wrapped-demo.webp" type="image/webp">
+    <img src="public/readme/motion/wrapped-demo.gif" alt="Obzorarr Wrapped story mode" width="800">
+  </picture>
 </p>
 
 - **Yearly Statistics** — Total watch time, top movies, shows, and genres
-- **Animated Slideshow** — Beautiful, interactive presentation of your viewing habits
-- **Watch Patterns** — Monthly and hourly distribution charts
+- **19 Slide Types** — From watch streaks and binge sessions to decade breakdowns and series completion
+- **Two Ways to Watch** — An animated story-mode slideshow, or a scrollable single-page recap
+- **Watch Patterns** — Monthly, hourly, and weekday distribution charts
 - **Percentile Rankings** — See how you compare to other users on your server
+- **Server Wrapped** — A server-wide recap with a top-viewers leaderboard
+- **Privacy Modes** — Real, hybrid, or fully anonymous names, with one-click privacy presets
+- **Five Themes** — UI and Wrapped themes are chosen independently
+- **Slide Editor** — Reorder, enable, or disable slides and add your own custom ones
 - **Plex OAuth** — Secure authentication with your Plex account
-- **Automatic Sync** — Scheduled background sync of viewing history
-- **AI Fun Facts** — Optional AI-generated personalized insights
+- **Automatic Sync** — Scheduled background sync of viewing history, with live progress
+- **Reverse-Proxy Diagnostic** — Compares what your browser sees, what the proxy forwards, and what Obzorarr uses
+- **AI Fun Facts** — Optional AI-generated personalized insights (falls back to built-in templates)
 
 ## Issues & Support
 
@@ -43,39 +52,174 @@ Found a bug or have a feature request? Please submit issues and feature requests
 
 ## Screenshots
 
+Every screenshot below is captured from a running instance. Usernames are rendered by
+Obzorarr's own anonymisation mode, and server addresses are demo values.
+
 <details>
-<summary><strong>Admin Dashboard</strong></summary>
+<summary><strong>Onboarding</strong></summary>
 <br>
 
-|                                     Dashboard                                      |                                     Settings                                      |                                Sync Management                                |
-| :--------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------: | :---------------------------------------------------------------------------: |
-| <img src="public/readme/screenshots/admin-dashboard/01-dashboard.png" width="400"> | <img src="public/readme/screenshots/admin-dashboard/02-settings.png" width="400"> | <img src="public/readme/screenshots/admin-dashboard/03-sync.png" width="400"> |
+First run walks through seven steps: **Claim → Security → Reverse proxy → Connect → Sync → Configure → Done**.
 
 <p align="center">
-  <img src="public/readme/gifs/admin-demo.gif" alt="Admin Demo" width="600">
+  <picture>
+    <source srcset="public/readme/motion/onboarding-demo.webp" type="image/webp">
+    <img src="public/readme/motion/onboarding-demo.gif" alt="Obzorarr onboarding wizard" width="800">
+  </picture>
+</p>
+
+|                                        Claim setup                                         |                                       CSRF origin                                       |
+| :----------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------: |
+| <img src="public/readme/stills/onboarding/01-claim.webp" width="400" alt="Claim setup step"> | <img src="public/readme/stills/onboarding/02-csrf.webp" width="400" alt="CSRF origin step"> |
+
+|                                            Reverse-proxy trust                                            |                                            Proxy diagnostic                                             |
+| :---------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------: |
+| <img src="public/readme/stills/onboarding/03-proxy-trust.webp" width="400" alt="Reverse proxy trust step"> | <img src="public/readme/stills/onboarding/03b-proxy-trust-diagnostic.webp" width="400" alt="Proxy diagnostic evidence"> |
+
+|                                          Server picker                                          |                                            Connection choice                                            |
+| :-----------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------: |
+| <img src="public/readme/stills/onboarding/04-plex-picker.webp" width="400" alt="Plex server picker"> | <img src="public/readme/stills/onboarding/04b-plex-connections.webp" width="400" alt="Plex connection choice"> |
+
+|                                            Connected                                             |                                          Sync in progress                                           |
+| :-------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------: |
+| <img src="public/readme/stills/onboarding/04c-plex-connected.webp" width="400" alt="Plex server connected"> | <img src="public/readme/stills/onboarding/05b-sync-progress.webp" width="400" alt="First sync running"> |
+
+|                                          Sync complete                                           |                                         Choose slides                                          |
+| :------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------: |
+| <img src="public/readme/stills/onboarding/05c-sync-complete.webp" width="400" alt="First sync complete"> | <img src="public/readme/stills/onboarding/06-configure-3-slides.webp" width="400" alt="Slide selection"> |
+
+|                                         Pick a theme                                          |                                        Setup complete                                        |
+| :---------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------: |
+| <img src="public/readme/stills/onboarding/06-configure-1-appearance.webp" width="400" alt="Theme selection"> | <img src="public/readme/stills/onboarding/07-complete.webp" width="400" alt="Setup complete"> |
+
+</details>
+
+<details>
+<summary><strong>Admin</strong></summary>
+<br>
+
+<p align="center">
+  <picture>
+    <source srcset="public/readme/motion/admin-demo.webp" type="image/webp">
+    <img src="public/readme/motion/admin-demo.gif" alt="Obzorarr admin panel" width="800">
+  </picture>
+</p>
+
+|                                    Dashboard                                     |                                   Wrapped overview                                    |                                   Slide editor                                   |
+| :--------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------: |
+| <img src="public/readme/stills/admin/01-dashboard.webp" width="270" alt="Admin dashboard"> | <img src="public/readme/stills/admin/02-wrapped.webp" width="270" alt="Wrapped overview"> | <img src="public/readme/stills/admin/03-slides.webp" width="270" alt="Slide order editor"> |
+
+|                                   Sync (idle)                                    |                                   Sync running                                    |                                     Users                                     |
+| :---------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------: |
+| <img src="public/readme/stills/admin/04-sync.webp" width="270" alt="Sync command centre"> | <img src="public/readme/stills/admin/04b-sync-running.webp" width="270" alt="Sync running with live progress"> | <img src="public/readme/stills/admin/05-users.webp" width="270" alt="User management"> |
+
+|                                    Live logs                                     |                                     Settings                                      |                                    Connections                                    |
+| :---------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------: |
+| <img src="public/readme/stills/admin/06-logs.webp" width="270" alt="Live log stream"> | <img src="public/readme/stills/admin/07-settings.webp" width="270" alt="Settings index"> | <img src="public/readme/stills/admin/08-settings-connections.webp" width="270" alt="Plex connection settings"> |
+
+|                                    Appearance                                     |                                     Privacy                                     |                                     Security                                      |
+| :-----------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------: |
+| <img src="public/readme/stills/admin/09-settings-appearance.webp" width="270" alt="Appearance settings"> | <img src="public/readme/stills/admin/10-settings-privacy.webp" width="270" alt="Privacy settings"> | <img src="public/readme/stills/admin/11-settings-security.webp" width="270" alt="Security settings"> |
+
+|                                      Data                                       |                                     System                                      |
+| :---------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------: |
+| <img src="public/readme/stills/admin/12-settings-data.webp" width="270" alt="Data settings"> | <img src="public/readme/stills/admin/13-settings-system.webp" width="270" alt="System settings"> |
+
+</details>
+
+<details>
+<summary><strong>Your Wrapped</strong></summary>
+<br>
+
+Story mode plays the slides one at a time; scroll mode puts the whole recap on a single page.
+
+|                                    Total time                                     |                                    Top movies                                     |                                     Top shows                                      |
+| :-----------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------: |
+| <img src="public/readme/stills/wrapped/01-total-time.webp" width="270" alt="Total watch time"> | <img src="public/readme/stills/wrapped/02-top-movies.webp" width="270" alt="Top movies"> | <img src="public/readme/stills/wrapped/03-top-shows.webp" width="270" alt="Top shows"> |
+
+|                                      Genres                                       |                                    Viewing patterns                                    |                                   Weekday patterns                                   |
+| :-----------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------: |
+| <img src="public/readme/stills/wrapped/05-genres.webp" width="270" alt="Favourite genres"> | <img src="public/readme/stills/wrapped/06-distribution.webp" width="270" alt="Monthly and hourly distribution"> | <img src="public/readme/stills/wrapped/07-weekday-patterns.webp" width="270" alt="Weekday patterns"> |
+
+|                                   Movies vs shows                                    |                                     By decade                                      |                                  Series completion                                   |
+| :---------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------: |
+| <img src="public/readme/stills/wrapped/09-content-type.webp" width="270" alt="Content type split"> | <img src="public/readme/stills/wrapped/10-decade.webp" width="270" alt="Release decade breakdown"> | <img src="public/readme/stills/wrapped/11-series-completion.webp" width="270" alt="Series completion"> |
+
+|                                     Rewatches                                      |                                     Marathon day                                     |                                   Longest streak                                    |
+| :-------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------: |
+| <img src="public/readme/stills/wrapped/13-rewatch.webp" width="270" alt="Most rewatched"> | <img src="public/readme/stills/wrapped/14-marathon.webp" width="270" alt="Biggest marathon day"> | <img src="public/readme/stills/wrapped/15-streak.webp" width="270" alt="Longest watch streak"> |
+
+|                                   Year comparison                                    |                                     Percentile                                      |                                   Binge sessions                                    |
+| :---------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------: |
+| <img src="public/readme/stills/wrapped/17-year-comparison.webp" width="270" alt="Year-over-year comparison"> | <img src="public/readme/stills/wrapped/18-percentile.webp" width="270" alt="Percentile ranking"> | <img src="public/readme/stills/wrapped/19-binge.webp" width="270" alt="Binge sessions"> |
+
+|                                    First and last                                     |                                      Fun fact                                      |                                       Summary                                       |
+| :---------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------: |
+| <img src="public/readme/stills/wrapped/20-first-last.webp" width="270" alt="First and last watch of the year"> | <img src="public/readme/stills/wrapped/04-fun-fact.webp" width="270" alt="Fun fact slide"> | <img src="public/readme/stills/wrapped/21-summary.webp" width="270" alt="Wrapped summary"> |
+
+**Scroll mode** — the same recap as one continuous page:
+
+|                                     Scroll mode (top)                                      |                                    Scroll mode (further down)                                    |
+| :--------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------: |
+| <img src="public/readme/stills/wrapped-modes/01-scroll-top.webp" width="400" alt="Scroll mode top"> | <img src="public/readme/stills/wrapped-modes/02-scroll-mid.webp" width="400" alt="Scroll mode further down"> |
+
+**On a phone** — the Wrapped experience is built portrait-first:
+
+<p align="center">
+  <img src="public/readme/stills/mobile/01-slide.webp" width="200" alt="Mobile Wrapped slide">
+  <img src="public/readme/stills/mobile/02-slide.webp" width="200" alt="Mobile Wrapped slide">
+  <img src="public/readme/stills/mobile/03-slide.webp" width="200" alt="Mobile Wrapped slide">
 </p>
 
 </details>
 
 <details>
-<summary><strong>Wrapped Presentation</strong></summary>
+<summary><strong>Themes</strong></summary>
 <br>
 
-|                                    Total Time                                     |                                    Top Movies                                     |
-| :-------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------: |
-| <img src="public/readme/screenshots/wrapped-pages/01-total-time.png" width="500"> | <img src="public/readme/screenshots/wrapped-pages/02-top-movies.png" width="500"> |
+Five presets ship with Obzorarr. The **admin UI theme** and the **Wrapped theme** are set
+independently under **Admin → Settings → Appearance**, so the panel you work in and the recap your
+users see do not have to match.
 
-|                                    Top Shows                                     |                                    Genres                                     |
-| :------------------------------------------------------------------------------: | :---------------------------------------------------------------------------: |
-| <img src="public/readme/screenshots/wrapped-pages/03-top-shows.png" width="500"> | <img src="public/readme/screenshots/wrapped-pages/04-genres.png" width="500"> |
+**UI themes** — the admin dashboard in each preset:
 
-|                                Percentile Ranking                                 |                                    Fun Facts                                    |
-| :-------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------: |
-| <img src="public/readme/screenshots/wrapped-pages/05-percentile.png" width="500"> | <img src="public/readme/screenshots/wrapped-pages/06-fun-fact.png" width="500"> |
+<p align="center">
+  <img src="public/readme/stills/themes/ui-themes-montage.webp" alt="Admin UI in all five themes" width="900">
+</p>
 
-|                                    Summary                                     |                                       Share                                        |
-| :----------------------------------------------------------------------------: | :--------------------------------------------------------------------------------: |
-| <img src="public/readme/screenshots/wrapped-pages/07-summary.png" width="500"> | <img src="public/readme/screenshots/wrapped-pages/08-share-modal.png" width="500"> |
+**Wrapped themes** — the same slide in each preset:
+
+<p align="center">
+  <img src="public/readme/stills/themes/wrapped-themes-montage.webp" alt="Wrapped slide in all five themes" width="900">
+</p>
+
+</details>
+
+<details>
+<summary><strong>Sharing &amp; privacy</strong></summary>
+<br>
+
+Names shown below come from Obzorarr's **anonymous** privacy mode, which renders every user as
+`User #1`, `User #2`, and so on. **Real** and **hybrid** (you see your own name, everyone else is
+anonymised) are the other options — see **Admin → Settings → Privacy**.
+
+|                                       Share modal                                       |                                     Public Wrapped                                     |
+| :-----------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------: |
+| <img src="public/readme/stills/wrapped-public/01-share-modal.webp" width="400" alt="Share modal with share link"> | <img src="public/readme/stills/wrapped-public/02-public-wrapped.webp" width="400" alt="Public Wrapped seen by a visitor"> |
+
+|                                     Server Wrapped                                      |                                      Top viewers                                       |
+| :-----------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------: |
+| <img src="public/readme/stills/wrapped-public/03-server-wrapped.webp" width="400" alt="Server-wide Wrapped"> | <img src="public/readme/stills/wrapped-server/18-top-viewers.webp" width="400" alt="Top viewers leaderboard, anonymised"> |
+
+</details>
+
+<details>
+<summary><strong>For your users</strong></summary>
+<br>
+
+|                                     Landing page                                      |                                       Dashboard                                       |                                  Sharing preferences                                   |
+| :---------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------: |
+| <img src="public/readme/stills/user/01-landing.webp" width="270" alt="Landing page"> | <img src="public/readme/stills/user/02-dashboard.webp" width="270" alt="User dashboard"> | <img src="public/readme/stills/user/03-dashboard-settings.webp" width="270" alt="User sharing preferences"> |
 
 </details>
 
@@ -133,6 +277,14 @@ bun run dev
 > env-locked field render its `ENV` badge), run `bun run dev:env`, which loads `.env` via
 > `--env-file`.
 
+When `PLEX_SERVER_URL` and `PLEX_TOKEN` come from the environment, onboarding and
+**Admin → Settings → Connections** show them as read-only with an `ENV` badge — the value is owned
+by your container config, not the database:
+
+<p align="center">
+  <img src="public/readme/stills/onboarding/04-plex-env-locked.webp" width="500" alt="Connect step with server URL and token locked by environment variables">
+</p>
+
 ## First-Time Setup
 
 The first time you open the web UI, Obzorarr runs a short onboarding wizard:
@@ -157,6 +309,10 @@ docker logs obzorarr
 
 The token expires after 15 minutes and only one browser can hold the claim at a time. If it lapses,
 restart Obzorarr to print a new one.
+
+<p align="center">
+  <img src="public/readme/stills/onboarding/01-claim.webp" width="500" alt="Claim setup step asking for the bootstrap token">
+</p>
 
 The remaining steps connect your Plex server (or confirm the values you set via `PLEX_SERVER_URL` /
 `PLEX_TOKEN`), run the first history sync, and let you choose which slides users see. Anything set
@@ -189,6 +345,10 @@ Proxy Manager, and Apache. Changing either variable through the environment requ
 (Client-IP detection is configured separately, via the Bun adapter's `ADDRESS_HEADER` and
 `XFF_DEPTH`.)
 
+|                                       Reverse-proxy step                                        |                                     Technical evidence                                      |
+| :-------------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------: |
+| <img src="public/readme/stills/onboarding/03-proxy-trust.webp" width="400" alt="Reverse proxy trust step"> | <img src="public/readme/stills/onboarding/03b-proxy-trust-diagnostic.webp" width="400" alt="Reverse proxy diagnostic evidence and repair guides"> |
+
 ## How Plex Users Are Matched
 
 Plex watch history records a *server-local* account ID rather than a global Plex identity, so on
@@ -207,6 +367,15 @@ your server's account list with the users you've shared the server with. In prac
 Public Wrapped links deliberately return the same "not found" response for an unknown user, a
 private profile, and a stale mapping, so the page can't be used to discover who has an account on
 your server.
+
+Whether real usernames appear at all is a separate setting. **Admin → Settings → Privacy** offers
+five presets — from *Maximum Privacy* (members-only, anonymous names) to *Public Showcase* (public
+recap, real names) — and a *Names in stats* control with **Real**, **Anonymous** (`User #1`,
+`User #2`, …), and **Hybrid** (you see your own name, everyone else is anonymised).
+
+<p align="center">
+  <img src="public/readme/stills/admin/10-settings-privacy.webp" width="600" alt="Privacy settings with presets and a before/after preview">
+</p>
 
 ## License
 
