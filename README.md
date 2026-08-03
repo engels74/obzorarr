@@ -293,7 +293,8 @@ The first time you open the web UI, Obzorarr runs a short onboarding wizard:
 ### The claim token
 
 So nobody can grab your fresh install before you do, the first step asks for a one-time
-**bootstrap token**. Obzorarr prints it to the server console — it is never shown in the browser:
+**bootstrap token**. Obzorarr prints it to the server console — on a fresh install it is never
+shown in the browser:
 
 ```
 Obzorarr initial setup requires a bootstrap claim.
@@ -317,6 +318,20 @@ restart Obzorarr to print a new one.
 The remaining steps connect your Plex server (or confirm the values you set via `PLEX_SERVER_URL` /
 `PLEX_TOKEN`), run the first history sync, and let you choose which slides users see. Anything set
 here can be changed later under **Admin → Settings**.
+
+### Starting over
+
+**Admin → Settings → Data** has a *Danger zone* with **Reset instance**, which deletes everything
+Obzorarr has stored and drops you back at the claim screen, signed out. Before wiping, it shows you
+a fresh claim token to paste on the next screen — that one lasts 60 minutes, since you have to sign
+in to Plex, reconfigure, and sync again. It is also printed to the console as usual, so losing the
+tab is recoverable.
+
+Your watch statistics come back: they re-sync from Plex. Everything else does not — all settings,
+every per-user share setting, and **every share link you have already handed out stops working**,
+along with any manual curation and the log history. Anything configured through environment
+variables (Plex, OpenAI, `ORIGIN`, `TRUST_PROXY`) is not in the database, so it survives and the new
+setup arrives partly pre-filled. Resetting is refused while a sync is running.
 
 ## Running Behind a Reverse Proxy
 
@@ -370,8 +385,9 @@ your server.
 
 Whether real usernames appear at all is a separate setting. **Admin → Settings → Privacy** offers
 five presets — from *Maximum Privacy* (members-only, anonymous names) to *Public Showcase* (public
-recap, real names) — and a *Names in stats* control with **Real**, **Anonymous** (`User #1`,
-`User #2`, …), and **Hybrid** (you see your own name, everyone else is anonymised).
+recap, real names) — plus a *Custom* card that lights up once you change anything underneath, and a
+*Names in stats* control with **Real**, **Anonymous** (`User #1`, `User #2`, …), and **Hybrid** (you
+see your own name, everyone else is anonymised).
 
 <p align="center">
   <img src="public/readme/stills/admin/10-settings-privacy.webp" width="600" alt="Privacy settings with presets and a before/after preview">
