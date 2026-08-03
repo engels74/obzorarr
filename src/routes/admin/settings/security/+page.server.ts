@@ -193,7 +193,7 @@ export const actions: Actions = requireAdminActions({
 					requireConfirmation: true,
 					attemptedOrigin: normalizedOrigin,
 					requestOrigin,
-					csrfMismatchMessage: `Saving "${normalizedOrigin}" while loaded from "${requestOrigin}" will lock THIS browser out of admin POST operations until you reload the admin from "${normalizedOrigin}". To recover, open the admin at "${normalizedOrigin}" and update the CSRF origin again from this same page — no server restart or database edit is required. Confirm to proceed anyway.`
+					csrfMismatchMessage: `Saving "${normalizedOrigin}" while loaded from "${requestOrigin}" will lock THIS browser out of admin POST operations until you reload the admin from "${normalizedOrigin}". To recover, open the admin at "${normalizedOrigin}" and update the CSRF origin again from this same page. No server restart or database edit is required. Confirm to proceed anyway.`
 				});
 			}
 
@@ -203,7 +203,7 @@ export const actions: Actions = requireAdminActions({
 					return {
 						success: true,
 						warning: true,
-						message: `CSRF origin saved to "${normalizedOrigin}". Your current browser origin is "${requestOrigin}" — you may now be locked out.`
+						message: `CSRF origin saved to "${normalizedOrigin}". Your current browser origin is "${requestOrigin}", so you may now be locked out.`
 					};
 				}
 				return { success: true, message: 'CSRF origin updated' };
@@ -223,8 +223,8 @@ export const actions: Actions = requireAdminActions({
 		try {
 			await deleteAppSetting(AppSettingsKey.CSRF_ORIGIN);
 			const message = env.ORIGIN
-				? 'CSRF origin cleared. Application now uses environment variable.'
-				: 'CSRF origin cleared. CSRF protection is currently disabled — set ORIGIN env or re-add an origin.';
+				? 'CSRF origin cleared. Obzorarr now uses the ORIGIN environment variable.'
+				: 'CSRF origin cleared. CSRF protection is now off. Set the ORIGIN environment variable or add an origin again.';
 			return { success: true, message };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to clear CSRF origin';
@@ -249,7 +249,7 @@ export const actions: Actions = requireAdminActions({
 				return {
 					success: true,
 					message:
-						'CSRF origin skip enabled. CSRF origin validation is now relaxed — set a proper ORIGIN when possible.'
+						'CSRF origin skip enabled. Origin validation is now relaxed. Set a real ORIGIN when you can.'
 				};
 			}
 			const csrfConfig = await getCsrfConfigWithSource();
@@ -292,7 +292,8 @@ export const actions: Actions = requireAdminActions({
 		});
 		if (!parsed.success) {
 			return fail(400, {
-				diagnosticError: parsed.error.issues[0]?.message ?? 'Could not read browser origin safely'
+				diagnosticError:
+					parsed.error.issues[0]?.message ?? 'Could not read the browser origin safely'
 			});
 		}
 

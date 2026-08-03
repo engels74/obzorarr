@@ -34,7 +34,7 @@ function markAvatarFailed(userId: number): void {
 </script>
 
 <svelte:head>
-	<title>Users — Admin — Obzorarr</title>
+	<title>Users - Admin - Obzorarr</title>
 </svelte:head>
 
 <div class="users-page">
@@ -90,15 +90,15 @@ function markAvatarFailed(userId: number): void {
 				synced {data.syncedViewerCount === 1 ? 'viewer' : 'viewers'}
 				(distinct Plex accounts seen in play history across all years) appear in server-wide stats.
 				Non-registered
-				viewers aren't listed individually here — their names on the server-wide Wrapped are
-				controlled by the global
+				viewers aren't listed individually here. Their names on the server-wide Wrapped come from
+				the global
 				<a href="/admin/settings/privacy" class="synced-viewers-link">anonymization setting</a>,
 				not per-user. Per-user share controls below apply only once you grant a user control.
 			</p>
 		</div>
 
 		{#if data.users.length === 0}
-			<p class="empty-message">No users found. Users will appear after authenticating via Plex.</p>
+			<p class="empty-message">No users yet. They appear here after signing in with Plex.</p>
 		{:else}
 			<div class="users-table-wrapper">
 				<table class="users-table">
@@ -326,7 +326,7 @@ function markAvatarFailed(userId: number): void {
 		<div class="legend-grid">
 			<div class="legend-item">
 				<span class="share-mode public">Public</span>
-				<span class="legend-desc">Anyone can view the wrapped page</span>
+				<span class="legend-desc">Anyone can view the Wrapped page</span>
 			</div>
 			<div class="legend-item">
 				<span class="share-mode oauth">OAuth</span>

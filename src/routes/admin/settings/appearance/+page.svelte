@@ -147,7 +147,7 @@ function getThemeDescription(theme: string): string {
 </script>
 
 <svelte:head>
-	<title>Appearance — Settings — Obzorarr</title>
+	<title>Appearance - Settings - Obzorarr</title>
 </svelte:head>
 
 <div class="space-y-6 p-6 max-w-4xl">

@@ -90,7 +90,7 @@ function formatUptime(seconds: number): string {
 </script>
 
 <svelte:head>
-	<title>System — Settings — Obzorarr</title>
+	<title>System - Settings - Obzorarr</title>
 </svelte:head>
 
 <div class="space-y-6 p-6 max-w-4xl">
@@ -138,7 +138,7 @@ function formatUptime(seconds: number): string {
 							/>
 						{/snippet}
 					</Form.Control>
-					<Form.Description>Older entries dropped once this ceiling is reached. Range 1,000–1,000,000.</Form.Description>
+					<Form.Description>Obzorarr drops older entries once the count reaches this ceiling. Range 1,000–1,000,000.</Form.Description>
 					<Form.FieldErrors />
 					{#if maxCountError}
 						<p class="text-sm text-destructive">{maxCountError}</p>
@@ -208,7 +208,7 @@ function formatUptime(seconds: number): string {
 				</div>
 				<div>
 					<dt class="text-muted-foreground">Bun</dt>
-					<dd class="font-mono">{data.systemInfo.bunVersion ?? '—'}</dd>
+					<dd class="font-mono">{data.systemInfo.bunVersion ?? 'Unknown'}</dd>
 				</div>
 			</dl>
 		</CardContent>

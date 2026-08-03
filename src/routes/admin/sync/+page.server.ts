@@ -175,7 +175,7 @@ export const actions: Actions = requireAdminActions({
 			await setAppSetting(AppSettingsKey.SYNC_CRON_EXPRESSION, parsed.data.cronExpression);
 			const isActive = isSchedulerConfigured();
 			const message = isActive
-				? 'Schedule updated successfully'
+				? 'Schedule updated'
 				: 'Schedule saved. Click "Initialize" to activate it.';
 			return { success: true, message, cronExpression: parsed.data.cronExpression };
 		} catch (error) {

@@ -215,7 +215,7 @@ function formatRelativeTime(isoDate: string | null): string {
 
 function formatDuration(start: string, end: string | null, status?: string): string {
 	if (status === 'running') return 'In progress';
-	if (!end) return '—';
+	if (!end) return 'Unknown';
 	return formatDurationMs(new Date(end).getTime() - new Date(start).getTime());
 }
 
@@ -275,7 +275,7 @@ async function goToPage(page: number) {
 </script>
 
 <svelte:head>
-	<title>Sync — Admin — Obzorarr</title>
+	<title>Sync - Admin - Obzorarr</title>
 </svelte:head>
 
 <div class="sync-command-center">
@@ -288,8 +288,8 @@ async function goToPage(page: number) {
 				</svg>
 			</div>
 			<div class="header-text">
-				<h1>Sync Command</h1>
-				<p class="header-subtitle">Plex Data Synchronization Center</p>
+				<h1>Plex Sync</h1>
+				<p class="header-subtitle">Start a sync, manage the schedule, and review past runs</p>
 			</div>
 		</div>
 		<div class="header-stats">

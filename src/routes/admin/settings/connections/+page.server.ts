@@ -270,7 +270,8 @@ export const actions: Actions = requireAdminActions({
 
 			return { success: true, message, apiConfigVersion: newApiConfigVersion };
 		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Failed to update settings';
+			const message =
+				error instanceof Error ? error.message : 'Failed to update the connection settings';
 			return fail(500, { error: message });
 		}
 	},

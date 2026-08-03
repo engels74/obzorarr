@@ -144,7 +144,7 @@ const PRESET_SECTION_LABELS: Record<PrivacyPresetSection, string> = {
  */
 function presetConflictMessage(staleSections: readonly PrivacyPresetSection[]): string {
 	const names = staleSections.map((section) => PRESET_SECTION_LABELS[section]).join(', ');
-	return `${OCC_CONFLICT_MESSAGE} Nothing was applied — changed since this page loaded: ${names}.`;
+	return `${OCC_CONFLICT_MESSAGE} Nothing was applied. Changed since this page loaded: ${names}.`;
 }
 
 /**
