@@ -1,9 +1,14 @@
 <script lang="ts">
 import CalculatorIcon from '@lucide/svelte/icons/calculator';
+import CheckIcon from '@lucide/svelte/icons/check';
+import CopyIcon from '@lucide/svelte/icons/copy';
+import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
 import Trash2Icon from '@lucide/svelte/icons/trash-2';
+import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 import { enhance } from '$app/forms';
-import { invalidateAll } from '$app/navigation';
+import { goto, invalidateAll } from '$app/navigation';
 import { SettingsActionBar } from '$lib/components/settings/index.js';
+import { Alert, AlertDescription } from '$lib/components/ui/alert/index.js';
 import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
 import { Button } from '$lib/components/ui/button/index.js';
 import {
@@ -13,6 +18,7 @@ import {
 	CardHeader,
 	CardTitle
 } from '$lib/components/ui/card/index.js';
+import { Input } from '$lib/components/ui/input/index.js';
 import { Label } from '$lib/components/ui/label/index.js';
 import * as Select from '$lib/components/ui/select/index.js';
 import { handleFormToast } from '$lib/utils/form-toast';
@@ -55,6 +61,45 @@ const cacheYearLabel = $derived(
 const historyYearLabel = $derived(
 	yearOptions.find((o) => o.value === historyYear)?.label ?? 'All years'
 );
+
+// --- Complete reset (Danger zone) -----------------------------------------
+// Two-stage confirmation. Stage 1 explains the consequences and writes nothing.
+// Stage 2 asks the server to mint the claim token needed AFTER the wipe, shows
+// it, and only then offers the destructive button behind a type-to-confirm
+// field. Closing either dialog is a pure client-side dismissal.
+let resetExplainOpen = $state(false);
+let resetConfirmOpen = $state(false);
+let isPreparingReset = $state(false);
+let isResetting = $state(false);
+let resetToken = $state<string | null>(null);
+// Populated from the mint response; falls back to the server-declared TTL.
+let resetTokenExpiresInMinutes = $state<number | null>(null);
+let resetConfirmation = $state('');
+let tokenCopied = $state(false);
+
+let resetConfirmationMatches = $derived(resetConfirmation === data.resetConfirmationPhrase);
+
+function closeResetFlow() {
+	resetExplainOpen = false;
+	resetConfirmOpen = false;
+	// Drop the token from client memory on dismissal; the instance is untouched.
+	resetToken = null;
+	resetConfirmation = '';
+	tokenCopied = false;
+}
+
+async function copyResetToken() {
+	if (!resetToken) return;
+	try {
+		await navigator.clipboard.writeText(resetToken);
+		tokenCopied = true;
+	} catch {
+		tokenCopied = false;
+		handleFormToast({
+			error: 'Could not copy automatically. Select the token and copy it manually.'
+		});
+	}
+}
 </script>
 
 <svelte:head>
@@ -205,6 +250,76 @@ const historyYearLabel = $derived(
 			</SettingsActionBar>
 		</CardContent>
 	</Card>
+
+	<!-- Danger zone: deliberately last, visually separated, and destructive in a
+	     way the per-year clear actions above are not. -->
+	<Card class="border-destructive/50">
+		<CardHeader>
+			<CardTitle class="flex items-center gap-2 text-destructive">
+				<TriangleAlertIcon class="size-5" />
+				Danger zone
+			</CardTitle>
+			<CardDescription>
+				Deletes everything Obzorarr has stored and returns this instance to the first-run
+				setup screen. This is not one of the per-year actions above — it clears all
+				{data.resetTableCount} database tables at once.
+			</CardDescription>
+		</CardHeader>
+		<CardContent class="space-y-4">
+			<div class="space-y-3 rounded-lg border border-border bg-muted/30 p-4 text-sm">
+				<div class="space-y-1">
+					<p class="font-medium">Comes back on its own</p>
+					<p class="text-muted-foreground">
+						Obzorarr only needs your Plex login. Watch statistics are re-synced from the
+						official Plex API, so play history and every Wrapped statistic built from it can
+						be rebuilt by running a fresh sync once you finish setup again.
+					</p>
+				</div>
+				<div class="space-y-1">
+					<p class="font-medium">Gone for good</p>
+					<p class="text-muted-foreground">
+						Every setting: privacy and sharing configuration, themes, slide configuration and
+						custom slides, log settings and fun-fact configuration. All per-user share
+						settings and every existing share link —
+						<strong>any link you have already handed out to a user stops working</strong>, and
+						a new one will not be the same link. Any custom year ranges or other curation you
+						did by hand. And the entire log history.
+					</p>
+				</div>
+				<div class="space-y-1">
+					<p class="font-medium">Set by environment variables</p>
+					<p class="text-muted-foreground">
+						Anything configured through the environment (Plex, OpenAI, ORIGIN, TRUST_PROXY) is
+						not stored in the database, so it survives untouched. On an env-configured server
+						the new setup will already be filled in and locked for those steps — it is not a
+						completely blank slate.
+					</p>
+				</div>
+			</div>
+
+			{#if data.syncRunning}
+				<Alert>
+					<TriangleAlertIcon />
+					<AlertDescription>
+						A sync is running. Resetting is blocked until it finishes or you cancel it on the
+						Sync page — wiping mid-sync would leave the database half-written.
+					</AlertDescription>
+				</Alert>
+			{/if}
+
+			<SettingsActionBar>
+				<Button
+					variant="destructive"
+					class="tap-target"
+					onclick={() => (resetExplainOpen = true)}
+					disabled={data.syncRunning || isPreparingReset || isResetting}
+				>
+					<RotateCcwIcon />
+					Reset instance
+				</Button>
+			</SettingsActionBar>
+		</CardContent>
+	</Card>
 </div>
 
 <AlertDialog.Root bind:open={clearCacheDialogOpen}>
@@ -292,6 +407,187 @@ const historyYearLabel = $derived(
 			>
 				<AlertDialog.Action type="submit" class="tap-target" disabled={isClearingHistory}>
 					{isClearingHistory ? 'Clearing…' : 'Clear play history'}
+				</AlertDialog.Action>
+			</form>
+		</AlertDialog.Footer>
+	</AlertDialog.Content>
+</AlertDialog.Root>
+
+<!-- Reset stage 1: explain, then mint the token. Nothing is written until the
+     admin presses Continue, and even that only mints an in-memory token. -->
+<AlertDialog.Root bind:open={resetExplainOpen}>
+	<AlertDialog.Content>
+		<AlertDialog.Header>
+			<AlertDialog.Title>Reset this Obzorarr instance?</AlertDialog.Title>
+			<AlertDialog.Description>
+				This deletes every row Obzorarr has stored and sends you back to the first-run setup
+				screen, signed out.
+			</AlertDialog.Description>
+		</AlertDialog.Header>
+		<div class="space-y-3 text-sm">
+			<div class="space-y-1">
+				<p class="font-medium">What comes back</p>
+				<p class="text-muted-foreground">
+					Your watch statistics. Obzorarr re-syncs them from the official Plex API, so play
+					history and everything the Wrapped pages calculate from it can be rebuilt with a
+					fresh sync after you sign in to Plex again.
+				</p>
+			</div>
+			<div class="space-y-1">
+				<p class="font-medium">What does not</p>
+				<p class="text-muted-foreground">
+					All of your settings — privacy and sharing, themes, slides and custom slides, log
+					settings, fun facts. Every per-user share setting and share link, so
+					<strong>any link already shared with a user will stop working</strong>. Any custom
+					year ranges or other hand-made curation. And the whole log history.
+				</p>
+			</div>
+			<p class="text-muted-foreground">
+				Anything you configured with environment variables (Plex, OpenAI, ORIGIN, TRUST_PROXY)
+				is not in the database and survives, so parts of the new setup will already be filled
+				in for you.
+			</p>
+		</div>
+		<AlertDialog.Footer>
+			<AlertDialog.Cancel disabled={isPreparingReset} onclick={closeResetFlow}>
+				Cancel
+			</AlertDialog.Cancel>
+			<form
+				method="POST"
+				action="?/prepareInstanceReset"
+				use:enhance={({ cancel }) => {
+					if (isPreparingReset) {
+						cancel();
+						return;
+					}
+					isPreparingReset = true;
+					return async ({ result }) => {
+						try {
+							if (result.type === 'success') {
+								const payload = result.data as
+									| { token?: string; expiresInMinutes?: number }
+									| undefined;
+								resetToken = payload?.token ?? null;
+								resetTokenExpiresInMinutes = payload?.expiresInMinutes ?? null;
+								resetConfirmation = '';
+								tokenCopied = false;
+								resetExplainOpen = false;
+								resetConfirmOpen = true;
+							} else if (result.type === 'failure' || result.type === 'error') {
+								handleFormToast(
+									result.type === 'failure'
+										? (result.data as { error?: string })
+										: { error: result.error.message }
+								);
+								closeResetFlow();
+							}
+						} finally {
+							isPreparingReset = false;
+						}
+					};
+				}}
+				style="display: contents;"
+			>
+				<AlertDialog.Action type="submit" class="tap-target" disabled={isPreparingReset}>
+					{isPreparingReset ? 'Preparing…' : 'Continue'}
+				</AlertDialog.Action>
+			</form>
+		</AlertDialog.Footer>
+	</AlertDialog.Content>
+</AlertDialog.Root>
+
+<!-- Reset stage 2: the token the admin needs on the very next screen, plus the
+     type-to-confirm gate on the destructive submit. -->
+<AlertDialog.Root bind:open={resetConfirmOpen}>
+	<AlertDialog.Content>
+		<AlertDialog.Header>
+			<AlertDialog.Title>Copy your setup token, then wipe</AlertDialog.Title>
+			<AlertDialog.Description>
+				You need this token on the very next screen to claim the fresh setup. It expires in
+				{resetTokenExpiresInMinutes ?? data.resetTokenTtlMinutes} minutes and is not stored anywhere —
+				if you lose it, it is also printed in the server console.
+			</AlertDialog.Description>
+		</AlertDialog.Header>
+		<div class="space-y-4">
+			<div class="flex items-center gap-2">
+				<code
+					class="flex-1 select-all rounded-md border border-border bg-muted px-3 py-2 font-mono text-base tracking-widest"
+					data-testid="reset-claim-token">{resetToken ?? ''}</code
+				>
+				<Button variant="outline" class="tap-target" onclick={copyResetToken}>
+					{#if tokenCopied}
+						<CheckIcon />
+						Copied
+					{:else}
+						<CopyIcon />
+						Copy
+					{/if}
+				</Button>
+			</div>
+			<div class="space-y-2">
+				<Label for="reset-confirmation">
+					Type {data.resetConfirmationPhrase} to confirm
+				</Label>
+				<Input
+					id="reset-confirmation"
+					autocomplete="off"
+					placeholder={data.resetConfirmationPhrase}
+					bind:value={resetConfirmation}
+				/>
+			</div>
+		</div>
+		<AlertDialog.Footer>
+			<AlertDialog.Cancel disabled={isResetting} onclick={closeResetFlow}>Cancel</AlertDialog.Cancel>
+			<form
+				method="POST"
+				action="?/resetInstance"
+				use:enhance={({ formData, cancel }) => {
+					if (isResetting || !resetConfirmationMatches) {
+						cancel();
+						return;
+					}
+					isResetting = true;
+					formData.set('confirmation', resetConfirmation);
+					return async ({ result }) => {
+						if (result.type === 'redirect') {
+							// The wipe succeeded: the session cookie is gone, so navigate to the
+							// onboarding claim screen with a full invalidation. Release the flag
+							// either way: if the navigation throws, this component is still
+							// mounted and would otherwise stay stuck on a disabled "Wiping…"
+							// with a dead Cancel button, trapping the admin on the dialog that
+							// holds the token they still need. Re-enabling costs nothing — the
+							// wipe already happened, so a second submit never reaches the action:
+							// onboardingHandle 303s it because app_settings is empty, and the
+							// deleted session cookie means the admin guard would refuse it anyway.
+							try {
+								await goto(result.location, { invalidateAll: true });
+							} finally {
+								isResetting = false;
+							}
+							return;
+						}
+						try {
+							if (result.type === 'failure' || result.type === 'error') {
+								handleFormToast(
+									result.type === 'failure'
+										? (result.data as { error?: string })
+										: { error: result.error.message }
+								);
+							}
+							await invalidateAll();
+						} finally {
+							isResetting = false;
+						}
+					};
+				}}
+				style="display: contents;"
+			>
+				<AlertDialog.Action
+					type="submit"
+					class="tap-target"
+					disabled={isResetting || !resetConfirmationMatches}
+				>
+					{isResetting ? 'Wiping…' : 'Wipe now'}
 				</AlertDialog.Action>
 			</form>
 		</AlertDialog.Footer>

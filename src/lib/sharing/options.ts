@@ -403,3 +403,37 @@ export const PRIVACY_PRESETS: PrivacyPreset[] = [
 		}
 	}
 ];
+
+/**
+ * The preset ONBOARDING's "Custom" card seeds on its first pick of a session, so
+ * an admin who starts from Custom begins from the recommended baseline instead of
+ * whatever the raw factory defaults happen to be. The admin privacy route never
+ * seeds — see `customPresetSeedValues` in `$lib/sharing/preset-logic` for why.
+ */
+export const DEFAULT_PRIVACY_PRESET_ID: PrivacyPresetId = 'balanced';
+
+/**
+ * Descriptor for the client-only "Custom" card rendered LAST in both preset
+ * grids (onboarding + admin).
+ *
+ * Deliberately NOT a member of {@link PRIVACY_PRESETS}: that array is the set of
+ * shipped value-maps every matcher iterates, and a pseudo-entry with no `values`
+ * would force each consumer to skip it. Custom has no value-map by definition —
+ * it represents "whatever the live fields currently say" — and no
+ * `exposureSummary` either, because both pages already render a live exposure
+ * preview panel next to the grid.
+ *
+ * Its `id` mirrors the `'custom'` arm of `PrivacyPresetMatch` in
+ * `preset-logic.ts`; it is never persisted, submitted, or added to a Zod enum.
+ */
+export interface CustomPrivacyPresetCard {
+	id: 'custom';
+	label: string;
+	description: string;
+}
+
+export const CUSTOM_PRIVACY_PRESET: CustomPrivacyPresetCard = {
+	id: 'custom',
+	label: 'Custom',
+	description: 'Your own combination of the options below.'
+};

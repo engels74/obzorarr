@@ -5,6 +5,7 @@ export {
 	clearOnboardingClaimCookie,
 	createBootstrapToken,
 	generateBootstrapToken,
+	getBootstrapTokenExpiresAt,
 	hasActiveOnboardingClaim,
 	hasAnyActiveOnboardingClaim,
 	isBootstrapTokenExpired,
@@ -13,8 +14,11 @@ export {
 	type OnboardingClaimCookieContext,
 	OnboardingClaimRequiredError,
 	printOnboardingBootstrapBanner,
+	RESET_BOOTSTRAP_TOKEN_TTL_MINUTES,
+	RESET_BOOTSTRAP_TOKEN_TTL_MS,
 	renewOnboardingClaim,
 	requireActiveOnboardingClaim,
+	resetBootstrapBannerState,
 	validateBootstrapToken
 } from './bootstrap';
 

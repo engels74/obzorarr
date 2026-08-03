@@ -10,6 +10,7 @@ import LockIcon from '@lucide/svelte/icons/lock';
 import ScaleIcon from '@lucide/svelte/icons/scale';
 import ShieldCheckIcon from '@lucide/svelte/icons/shield-check';
 import ShieldUserIcon from '@lucide/svelte/icons/shield-user';
+import SlidersHorizontalIcon from '@lucide/svelte/icons/sliders-horizontal';
 import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 import UserCogIcon from '@lucide/svelte/icons/user-cog';
 import UsersIcon from '@lucide/svelte/icons/users';
@@ -41,11 +42,14 @@ import * as Form from '$lib/components/ui/form/index.js';
 import { RadioGroup, RadioGroupItem } from '$lib/components/ui/radio-group/index.js';
 import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 import {
+	CUSTOM_PRIVACY_PRESET,
 	PRIVACY_PRESETS,
 	PRIVACY_PREVIEW_ROW_TOOLTIPS,
 	PRIVACY_PREVIEW_VALUE_TOOLTIPS,
 	type PrivacyPreset,
 	type PrivacyPresetId,
+	type PrivacyPresetPrivacyKey,
+	type PrivacyPresetValues,
 	type PrivacyPreviewRowKey,
 	publicLandingLookupCopy,
 	shareDefaultCopy
@@ -56,7 +60,8 @@ import {
 	PREVIEW_NAME_DISPLAY_LABELS,
 	PREVIEW_PER_USER_DEFAULT_LABELS,
 	PREVIEW_RECAP_VISIBILITY_LABELS,
-	type PrivacyPreviewModel
+	type PrivacyPreviewModel,
+	resolvePresetSelection
 } from '$lib/sharing/preset-logic';
 import { handleFormToast } from '$lib/utils/form-toast';
 import { surfaceOccConflict } from '$lib/utils/occ-form';
@@ -124,6 +129,9 @@ const serverWrappedForm = superForm(data.serverWrappedForm, {
 				anonymizationMode: updated.data.anonymizationMode,
 				serverWrappedShareMode: updated.data.serverWrappedShareMode
 			};
+			// A completed save is proof of interaction: without this latch the Custom
+			// highlight vanishes the moment unsavedSectionCount drops back to 0.
+			privacyInteracted = true;
 			handleFormToast({ success: true, message: updated.message ?? 'Saved' });
 		} else {
 			handleFormToast({ error: updated.message ?? 'Validation failed' });
@@ -147,6 +155,9 @@ const userDefaultsForm = superForm(data.userDefaultsForm, {
 				defaultShareMode: updated.data.defaultShareMode,
 				allowUserControl: updated.data.allowUserControl
 			};
+			// A completed save is proof of interaction: without this latch the Custom
+			// highlight vanishes the moment unsavedSectionCount drops back to 0.
+			privacyInteracted = true;
 			handleFormToast({ success: true, message: updated.message ?? 'Saved' });
 		} else {
 			handleFormToast({ error: updated.message ?? 'Validation failed' });
@@ -169,6 +180,9 @@ const publicLandingLookupForm = superForm(data.publicLandingLookupForm, {
 			savedPublicLandingLookup = {
 				publicLandingLookup: updated.data.publicLandingLookup
 			};
+			// A completed save is proof of interaction: without this latch the Custom
+			// highlight vanishes the moment unsavedSectionCount drops back to 0.
+			privacyInteracted = true;
 			handleFormToast({ success: true, message: updated.message ?? 'Saved' });
 		} else {
 			handleFormToast({ error: updated.message ?? 'Validation failed' });
@@ -184,6 +198,12 @@ const {
 let bulkApplyDialogOpen = $state(false);
 let isBulkApplying = $state(false);
 
+// Latching "the admin has touched this section during this page load". The gate
+// that reads it, `privacyTouched`, is declared with the rest of the preset logic
+// below; this lives up here because the accordion toggle and the three form
+// `onUpdated` callbacks above all set it.
+let privacyInteracted = $state(false);
+
 // Advanced controls stay collapsed until the administrator opens them or stages
 // a preset. Public lookup no longer creates a contradictory default state.
 let advancedOpen = $state(false);
@@ -195,6 +215,10 @@ let advancedOpen = $state(false);
 let advancedSectionRef = $state<HTMLDivElement | null>(null);
 async function handleAdvancedToggle(open: boolean): Promise<void> {
 	if (!open) return;
+	// Opening the accordion is an interaction with the privacy controls, and it is
+	// the only way to reach them — latching here is what keeps the Custom
+	// highlight from decaying when an edit is staged and then reverted.
+	privacyInteracted = true;
 	await tick();
 	advancedSectionRef?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -251,15 +275,54 @@ let unsavedSectionCount = $derived(
 	(serverWrappedUnsaved ? 1 : 0) + (userDefaultsUnsaved ? 1 : 0) + (publicLandingUnsaved ? 1 : 0)
 );
 
+// Mirrors onboarding's `privacyTouched` gate (ISSUE-001): the Custom card only
+// lights up once the admin has actually interacted. Without the gate a
+// persisted-but-off-preset configuration would light Custom on load, before the
+// admin had touched anything.
+//
+// The flag must LATCH. Deriving it purely from a card-click flag OR
+// `unsavedSectionCount > 0` made it DECAY: an admin who only edited Advanced
+// controls saw Custom light up, then lose the highlight the moment they pressed
+// Save — the baselines advance, `unsavedSectionCount` drops back to 0, and the
+// radiogroup ended up with no card checked (moving the roving tab stop back to
+// the first card) even though they had just deliberately saved an off-preset
+// configuration. Saving is the opposite of "hasn't touched anything yet".
+//
+// So every way of interacting with this section latches `privacyInteracted`
+// (declared above the accordion toggle that sets it): clicking any preset card,
+// expanding the Advanced accordion (the only route to those controls), and a
+// successful save of any of the three sections. `unsavedSectionCount > 0` stays
+// as a safety net for a control rendered outside the accordion.
+let privacyTouched = $derived(privacyInteracted || unsavedSectionCount > 0);
+
+// Sticky "the admin explicitly clicked the Custom card" flag. While set, Custom
+// stays highlighted even when the staged values happen to match a shipped preset
+// — which on this route is simply "the admin clicked Custom while their saved
+// configuration still matches a preset", since the click stages nothing.
+// Cleared by clicking any of the five real cards.
+let customPresetChosen = $state(false);
+
+// The card that renders as selected: the derived five-field match, the sticky
+// Custom flag, or no card at all before the admin has interacted.
+let selectedPresetCard = $derived(
+	resolvePresetSelection(selectedPreset, privacyTouched, customPresetChosen)
+);
+
 // Applying a preset is pure client-side state mutation across the three stores.
 // It writes the FIVE admin-owned fields and NEVER touches logoMode. Persistence
 // still flows through each section's existing Save button + OCC group.
+function assignPresetValues(values: Pick<PrivacyPresetValues, PrivacyPresetPrivacyKey>) {
+	$serverWrappedData.anonymizationMode = values.anonymizationMode;
+	$serverWrappedData.serverWrappedShareMode = values.serverWrappedShareMode;
+	$userDefaultsData.defaultShareMode = values.defaultShareMode;
+	$userDefaultsData.allowUserControl = values.allowUserControl;
+	$publicLandingLookupData.publicLandingLookup = values.publicLandingLookup;
+}
+
 function applyPrivacyPreset(preset: PrivacyPreset) {
-	$serverWrappedData.anonymizationMode = preset.values.anonymizationMode;
-	$serverWrappedData.serverWrappedShareMode = preset.values.serverWrappedShareMode;
-	$userDefaultsData.defaultShareMode = preset.values.defaultShareMode;
-	$userDefaultsData.allowUserControl = preset.values.allowUserControl;
-	$publicLandingLookupData.publicLandingLookup = preset.values.publicLandingLookup;
+	privacyInteracted = true;
+	customPresetChosen = false;
+	assignPresetValues(preset.values);
 	// ISSUE-006: applying a preset stages unsaved changes whose per-section Save
 	// buttons live inside the (possibly collapsed) Advanced accordion. Auto-expand
 	// so the "{n} unsaved sections" alert never points at hidden Save buttons.
@@ -269,12 +332,46 @@ function applyPrivacyPreset(preset: PrivacyPreset) {
 	advancedOpen = true;
 }
 
+// Custom is a pure highlight change on this route: it stages NOTHING. The admin
+// gate is false on load for an already-off-preset persisted config — that is
+// exactly the ISSUE-001 state — so seeding Balanced through
+// `customPresetSeedValues(privacyTouched)` would silently overwrite the
+// administrator's saved privacy settings. Making the gate latch (above) does not
+// change that: a fresh load has latched nothing either way. Admins who do want
+// that baseline click the Balanced card, which sits in the same radiogroup.
+// Advanced is still expanded — Custom's whole point is the controls below it.
+function selectCustomPreset() {
+	privacyInteracted = true;
+	customPresetChosen = true;
+	advancedOpen = true;
+}
+
 // Use the same APG roving-tabindex radio pattern as onboarding: the selected
-// card is the single Tab stop, with the first card reachable for Custom state.
+// card is the single Tab stop, with the first card reachable when no card is
+// selected. The Custom card occupies the final index (PRIVACY_PRESETS.length).
 let presetButtons = $state<(HTMLButtonElement | null)[]>([]);
 
+const CUSTOM_PRESET_INDEX = PRIVACY_PRESETS.length;
+
+function selectPresetAtIndex(index: number): boolean {
+	if (index === CUSTOM_PRESET_INDEX) {
+		selectCustomPreset();
+		return true;
+	}
+	const preset = PRIVACY_PRESETS[index];
+	if (!preset) return false;
+	applyPrivacyPreset(preset);
+	return true;
+}
+
+let presetTabIndex = $derived.by(() => {
+	if (selectedPresetCard === 'custom') return CUSTOM_PRESET_INDEX;
+	const i = PRIVACY_PRESETS.findIndex((p) => p.id === selectedPresetCard);
+	return i === -1 ? 0 : i;
+});
+
 function handlePresetKeydown(event: KeyboardEvent, index: number) {
-	const last = PRIVACY_PRESETS.length - 1;
+	const last = CUSTOM_PRESET_INDEX;
 	let target: number;
 	switch (event.key) {
 		case 'ArrowRight':
@@ -294,10 +391,8 @@ function handlePresetKeydown(event: KeyboardEvent, index: number) {
 		default:
 			return;
 	}
-	const targetPreset = PRIVACY_PRESETS[target];
-	if (!targetPreset) return;
 	event.preventDefault();
-	applyPrivacyPreset(targetPreset);
+	if (!selectPresetAtIndex(target)) return;
 	presetButtons[target]?.focus();
 }
 
@@ -416,11 +511,11 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 						bind:this={presetButtons[i]}
 						type="button"
 						role="radio"
-						aria-checked={selectedPreset === preset.id}
-						tabindex={selectedPreset === preset.id || (selectedPreset === 'custom' && i === 0) ? 0 : -1}
+						aria-checked={selectedPresetCard === preset.id}
+						tabindex={i === presetTabIndex ? 0 : -1}
 						onclick={() => applyPrivacyPreset(preset)}
 						onkeydown={(event) => handlePresetKeydown(event, i)}
-						class={selectedPreset === preset.id
+						class={selectedPresetCard === preset.id
 						? 'flex flex-col items-start gap-2 rounded-lg border border-primary bg-primary/5 p-4 text-left ring-1 ring-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
 						: 'flex flex-col items-start gap-2 rounded-lg border border-border p-4 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'}
 						>
@@ -432,6 +527,29 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 						<span class="text-xs font-medium text-primary/80">{preset.exposureSummary}</span>
 					</button>
 				{/each}
+				<!-- Sixth card: client-only "Custom". Rendered outside the {#each} so
+				     PRIVACY_PRESETS stays exactly the five shipped value-maps. It holds the
+				     final roving-tabindex slot (CUSTOM_PRESET_INDEX) and carries no
+				     exposureSummary — the Preview card below already states what the staged
+				     fields expose. -->
+				<button
+					bind:this={presetButtons[CUSTOM_PRESET_INDEX]}
+					type="button"
+					role="radio"
+					aria-checked={selectedPresetCard === 'custom'}
+					tabindex={CUSTOM_PRESET_INDEX === presetTabIndex ? 0 : -1}
+					onclick={selectCustomPreset}
+					onkeydown={(event) => handlePresetKeydown(event, CUSTOM_PRESET_INDEX)}
+					class={selectedPresetCard === 'custom'
+					? 'flex flex-col items-start gap-2 rounded-lg border border-primary bg-primary/5 p-4 text-left ring-1 ring-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+					: 'flex flex-col items-start gap-2 rounded-lg border border-border p-4 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'}
+					>
+					<span class="flex items-center gap-2 text-sm font-medium">
+						<SlidersHorizontalIcon class="size-4 text-primary" />
+						{CUSTOM_PRIVACY_PRESET.label}
+					</span>
+					<span class="text-xs text-muted-foreground">{CUSTOM_PRIVACY_PRESET.description}</span>
+				</button>
 			</div>
 			{#if selectedPreset === 'custom'}
 				<p class="text-sm italic text-muted-foreground">

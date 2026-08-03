@@ -42,8 +42,10 @@ export {
 	getSyncHistory,
 	getYearStartTimestamp,
 	isSyncRunning,
+	releaseRunningSyncSlot,
 	SyncError,
-	startSync
+	startSync,
+	tryClaimRunningSyncSlot
 } from './service';
 export type {
 	SchedulerOptions,
