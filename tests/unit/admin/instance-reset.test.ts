@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import { sql } from 'drizzle-orm';
 import {
+	claimSyncSlotForReset,
 	INSTANCE_RESET_TABLES,
 	isResetBlockedBySync,
 	RESET_CONFIRMATION_PHRASE,
-	RESET_SYNC_RUNNING_MESSAGE
+	RESET_SYNC_RUNNING_MESSAGE,
+	releaseResetSyncClaim
 } from '$lib/server/admin/reset.service';
 import { AppSettingsKey, getAppSetting, setAppSetting } from '$lib/server/admin/settings.service';
 import { db } from '$lib/server/db/client';
@@ -23,6 +25,7 @@ import {
 	syncStatus,
 	users
 } from '$lib/server/db/schema';
+import { logger } from '$lib/server/logging';
 import {
 	claimOnboardingInstance,
 	clearBootstrapToken,
@@ -35,7 +38,16 @@ import {
 	RESET_BOOTSTRAP_TOKEN_TTL_MS,
 	validateBootstrapToken
 } from '$lib/server/onboarding';
-import { clearSyncProgress, startSyncProgress } from '$lib/server/sync';
+import {
+	clearSyncProgress,
+	isSyncRunning,
+	SyncError,
+	startBackgroundSync,
+	startSync,
+	startSyncProgress,
+	tryClaimRunningSyncSlot
+} from '$lib/server/sync';
+import { reconcileInterruptedSyncs } from '$lib/server/sync/reconcile';
 import { actions } from '../../../src/routes/admin/settings/data/+page.server';
 import { sharedTestDbTables } from '../../helpers/db';
 import {
@@ -303,6 +315,116 @@ describe('instance reset — refusal paths', () => {
 			expect(await countRows(appSettings)).toBeGreaterThan(0);
 		}
 	);
+});
+
+describe('instance reset — sync exclusion is a hold, not a check', () => {
+	it('holds the running-sync slot so no sync can start between the check and the wipe', async () => {
+		await seedEveryTable();
+
+		// This is the exact window the bare isResetBlockedBySync() check left open:
+		// resetInstance still has to `await logger.forceFlush()` before it deletes,
+		// and every await yields the loop. Standing in for the Cron tick / second
+		// admin tab / live-sync trigger that could fire there, assert that while the
+		// reset's claim is held EVERY sync entry path is refused before it writes.
+		const claimId = await claimSyncSlotForReset();
+		expect(claimId).not.toBeNull();
+
+		expect(await tryClaimRunningSyncSlot()).toBeNull();
+		// No plex-client mock is needed: the claim rejects at startSync's first
+		// statement, before syncPlexAccounts or any network call.
+		await expect(startSync()).rejects.toThrow(SyncError);
+		expect(await startBackgroundSync()).toEqual({
+			started: false,
+			error: 'A sync is already in progress'
+		});
+		expect(await isSyncRunning()).toBe(true);
+
+		// Nothing the refused starters did touched application data.
+		expect(await countRows(playHistory)).toBe(1);
+
+		await releaseResetSyncClaim(claimId as number);
+		expect(await isSyncRunning()).toBe(false);
+	});
+
+	it('refuses a second reset while the first still holds the slot', async () => {
+		await seedEveryTable();
+
+		const claimId = await claimSyncSlotForReset();
+		expect(claimId).not.toBeNull();
+
+		expect(await claimSyncSlotForReset()).toBeNull();
+		expect(await runReset()).toMatchObject({
+			status: 409,
+			data: { error: RESET_SYNC_RUNNING_MESSAGE }
+		});
+		expect(await countRows(users)).toBe(1);
+
+		await releaseResetSyncClaim(claimId as number);
+	});
+
+	it('releases the slot when the wipe path throws, instead of blocking sync forever', async () => {
+		await seedEveryTable();
+
+		// Any failure inside the destructive try — here the pre-wipe log flush —
+		// must hand the slot back. A leaked claim is a permanent `running` row: no
+		// sync and no further reset could ever start again until a restart
+		// reconciled it.
+		const flushSpy = spyOn(logger, 'forceFlush').mockImplementation(() => {
+			throw new Error('flush failed');
+		});
+		try {
+			expect(await runReset()).toMatchObject({ status: 500 });
+		} finally {
+			flushSpy.mockRestore();
+		}
+
+		expect(await isSyncRunning()).toBe(false);
+		expect(await countRows(syncStatus)).toBe(1);
+		expect(await claimSyncSlotForReset()).not.toBeNull();
+		expect(await countRows(users)).toBe(1);
+	});
+
+	it('releases the slot when the wipe transaction itself rolls back', async () => {
+		await seedEveryTable();
+
+		// The claim is committed before the transaction opens, so a rollback leaves
+		// the claim row standing while every deletion is undone — the one failure
+		// shape where "the wipe released it for us" is false.
+		const txSpy = spyOn(db, 'transaction').mockImplementation(() => {
+			throw new Error('rolled back');
+		});
+		try {
+			expect(await runReset()).toMatchObject({ status: 500 });
+		} finally {
+			txSpy.mockRestore();
+		}
+
+		expect(await isSyncRunning()).toBe(false);
+		expect(await countRows(users)).toBe(1);
+		expect(await countRows(playHistory)).toBe(1);
+	});
+
+	it('sweeps a claim orphaned by a crash mid-reset on the next startup', async () => {
+		const claimId = await claimSyncSlotForReset();
+		expect(claimId).not.toBeNull();
+
+		// Standing in for the process dying while the hold is up: the row would
+		// otherwise block every future sync AND every future reset forever.
+		expect(await reconcileInterruptedSyncs()).toBe(1);
+		expect(await isSyncRunning()).toBe(false);
+		expect(await claimSyncSlotForReset()).not.toBeNull();
+	});
+
+	it('leaves no phantom sync row behind after a successful reset', async () => {
+		await seedEveryTable();
+
+		await expectRedirect(() => runReset(), '/onboarding/claim');
+
+		// The claim row is deleted by the wipe itself (sync_status is one of the
+		// reset tables), so the fresh instance starts with an empty sync history.
+		expect(await countRows(syncStatus)).toBe(0);
+		expect(await isSyncRunning()).toBe(false);
+	});
 });
 
 describe('instance reset — post-reset state', () => {

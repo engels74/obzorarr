@@ -1,10 +1,12 @@
 import { fail, redirect } from '@sveltejs/kit';
 import {
+	claimSyncSlotForReset,
 	INSTANCE_RESET_TABLES,
 	isResetBlockedBySync,
 	RESET_CONFIRMATION_MISMATCH_MESSAGE,
 	RESET_CONFIRMATION_PHRASE,
 	RESET_SYNC_RUNNING_MESSAGE,
+	releaseResetSyncClaim,
 	wipeInstanceData
 } from '$lib/server/admin/reset.service';
 import {
@@ -179,26 +181,43 @@ export const actions: Actions = requireAdminActions({
 			return fail(400, { error: RESET_CONFIRMATION_MISMATCH_MESSAGE });
 		}
 
-		if (await isResetBlockedBySync()) {
-			return fail(409, { error: RESET_SYNC_RUNNING_MESSAGE });
-		}
-
 		const actor = locals.user ? `${locals.user.username} (id ${locals.user.id})` : 'unknown admin';
 		let deletedRows: number;
+
+		// Not a check but a HOLD: claiming the single running-sync slot is what makes
+		// the sync refusal atomic with the wipe. `await logger.forceFlush()` below
+		// yields, so a bare isResetBlockedBySync() left a window in which a Cron
+		// callback, a second admin tab or a live-sync trigger — any of which may
+		// already be suspended on its own await — could claim the slot and then
+		// repopulate the freshly emptied tables. While this claim is held every sync
+		// entry path is rejected before it writes a single row.
+		// INVARIANT: nothing may sit between this claim and the `try` below, or a
+		// throw there would leak the claim and block sync until the next restart.
+		const syncClaimId = await claimSyncSlotForReset();
+		if (syncClaimId === null) {
+			return fail(409, { error: RESET_SYNC_RUNNING_MESSAGE });
+		}
 		try {
 			// Flush first so log entries buffered before the reset are written into the
 			// table that is about to be deleted, instead of landing in the fresh one.
 			await logger.forceFlush();
+			// Also deletes the claim row above — sync_status is one of the wiped tables.
 			deletedRows = wipeInstanceData();
 		} catch (error) {
+			// The wipe did not happen, so the hold has to go back or it would block
+			// every future sync and every future reset until the next restart.
+			await releaseResetSyncClaim(syncClaimId);
 			// Form actions bypass handleError, so sanitize before this reaches the client.
 			logger.error(`Instance reset failed: ${String(error)}`, 'AdminReset');
 			return fail(500, { error: sanitizeApiError(error) });
 		}
 
-		// The scheduler's cron configuration lived in the app_settings rows just
-		// deleted, and the in-memory progress snapshot describes a sync of an
-		// instance that no longer exists.
+		// The hold ended with the wipe (it deleted its own claim row), so from here
+		// the instance is protected by onboardingHandle redirecting new requests
+		// rather than by the slot. Stopping the scheduler closes the one path that
+		// does not go through a request: its cron configuration lived in the
+		// app_settings rows just deleted, and the in-memory progress snapshot
+		// describes a sync of an instance that no longer exists.
 		stopSyncScheduler();
 		clearSyncProgress();
 

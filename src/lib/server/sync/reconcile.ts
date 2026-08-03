@@ -7,7 +7,9 @@ import { logger } from '$lib/server/logging';
  * Marks any pre-existing `running` sync rows as failed. A crash or restart
  * mid-sync leaves `status='running'` forever, which would otherwise permanently
  * block every future sync via the atomic single-flight claim in
- * `createSyncRecord` (ISSUE-001, restart deadlock). The server startup hook
+ * `tryClaimRunningSyncSlot` (ISSUE-001, restart deadlock). The instance reset
+ * holds that same slot across its wipe, so this also sweeps a claim orphaned by
+ * a crash mid-reset. The server startup hook
  * invokes this after the database client has finished evaluating and before
  * SvelteKit serves a request, so it cannot clobber a sync started by this
  * process.

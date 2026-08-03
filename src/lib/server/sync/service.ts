@@ -114,10 +114,16 @@ export async function isSyncRunning(): Promise<boolean> {
  * insert a `running` row. The Drizzle query builder cannot express
  * `INSERT ... WHERE NOT EXISTS`, so a raw `sql` statement is required (M-1).
  *
+ * Exported because the instance reset claims the SAME slot for the duration of
+ * its wipe: holding it is what makes "refuse while a sync is running" atomic
+ * with the delete instead of a check with a window after it. A second copy of
+ * this statement would fork the single-flight boundary, so callers must reuse
+ * this one.
+ *
  * Returns the new sync id, or `null` when a sync is already running (zero rows
  * inserted) — callers treat `null` as "already in progress".
  */
-async function createSyncRecord(): Promise<number | null> {
+export async function tryClaimRunningSyncSlot(): Promise<number | null> {
 	// `started_at` is a Drizzle `timestamp` column → stored as Unix seconds.
 	const nowSeconds = Math.floor(Date.now() / 1000);
 
@@ -130,6 +136,19 @@ async function createSyncRecord(): Promise<number | null> {
 
 	const record = rows[0];
 	return record ? record.id : null;
+}
+
+/**
+ * Drop a slot claimed by {@link tryClaimRunningSyncSlot} without recording a
+ * sync that never ran.
+ *
+ * Deletes rather than marking the row `failed`: a non-sync holder (the instance
+ * reset) must not leave a phantom entry in the admin sync history. A sync that
+ * genuinely started uses completeSyncRecord/failSyncRecord/cancelSyncRecord
+ * instead, so its row survives for the audit trail.
+ */
+export async function releaseRunningSyncSlot(syncId: number): Promise<void> {
+	await db.delete(syncStatus).where(eq(syncStatus.id, syncId));
 }
 
 // Re-exported from the focused `reconcile` module for callers that need to
@@ -210,7 +229,7 @@ export async function startSync(options: StartSyncOptions = {}): Promise<SyncRes
 	// Atomically claim the single running slot. This is the authoritative
 	// single-flight boundary (ISSUE-001): a zero-row result means another sync
 	// already holds the slot, so we reject without arming any progress state.
-	const syncId = await createSyncRecord();
+	const syncId = await tryClaimRunningSyncSlot();
 	if (syncId === null) {
 		logger.info('Rejected duplicate sync start: a sync is already in progress', 'Sync');
 		throw new SyncError('A sync operation is already in progress');

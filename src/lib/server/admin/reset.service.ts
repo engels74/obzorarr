@@ -32,7 +32,12 @@ import {
 	syncStatus,
 	users
 } from '$lib/server/db/schema';
-import { getSyncProgress, isSyncRunning } from '$lib/server/sync';
+import {
+	getSyncProgress,
+	isSyncRunning,
+	releaseRunningSyncSlot,
+	tryClaimRunningSyncSlot
+} from '$lib/server/sync';
 
 /** Exact phrase the admin must type before the destructive action will run. */
 export const RESET_CONFIRMATION_PHRASE = 'RESET';
@@ -81,10 +86,58 @@ const RESET_DELETE_ORDER: InstanceResetTableName[] = Object.keys(
  * in-memory progress snapshot (set by the live/background sync path). Wiping
  * mid-sync would leave the database half-populated by the writes that land after
  * the transaction commits.
+ *
+ * ADVISORY ONLY — a check, not a hold. Use it for the non-destructive stages
+ * (the "can I offer this button" load, `prepareInstanceReset`). The destructive
+ * stage must use {@link claimSyncSlotForReset} instead, because anything that
+ * merely checks leaves a window before the delete.
  */
 export async function isResetBlockedBySync(): Promise<boolean> {
 	if (getSyncProgress()?.status === 'running') return true;
 	return isSyncRunning();
+}
+
+/**
+ * Take the reset's exclusive hold on syncing, or refuse.
+ *
+ * `isResetBlockedBySync()` answers "is a sync running *now*", which is not
+ * enough for the wipe: the destructive action still has to `await` (the log
+ * flush) before it deletes, and any starter already suspended on its own await
+ * resumes in that gap. A Cron callback, a second admin tab hitting the Sync
+ * page, or a live-sync trigger on any request could therefore claim the slot
+ * AFTER the check and keep inserting `play_history` rows into the just-emptied
+ * database — a "reset" instance that is silently repopulated.
+ *
+ * So the reset claims the single running-sync slot itself, through the very same
+ * atomic `INSERT ... WHERE NOT EXISTS` every sync entry path funnels through
+ * (`startSync` → {@link tryClaimRunningSyncSlot}). While the reset holds it, any
+ * sync that tries to start is rejected *before* it writes anything, and the
+ * refusal is therefore atomic with the wipe rather than racing it.
+ *
+ * The in-memory progress check stays in front because the snapshot and the row
+ * are written at different moments: `startBackgroundSync` arms progress first,
+ * and a finishing sync writes its terminal `sync_status` row before its progress
+ * turns non-running. The check can only fail closed, and it is what keeps the
+ * reset from wiping while the UI still shows a sync in flight.
+ *
+ * Returns the claimed sync id (pass it to {@link releaseResetSyncClaim} if the
+ * wipe does not happen), or `null` when a sync already holds the slot.
+ */
+export async function claimSyncSlotForReset(): Promise<number | null> {
+	if (getSyncProgress()?.status === 'running') return null;
+	return tryClaimRunningSyncSlot();
+}
+
+/**
+ * Give the slot back when the wipe did NOT run (an error before or during the
+ * transaction). A successful wipe needs no release: `sync_status` is one of the
+ * tables it deletes, so the claim disappears with it.
+ *
+ * Skipping this would leave a permanent `running` row that blocks every future
+ * sync AND every future reset until the next restart reconciles it.
+ */
+export async function releaseResetSyncClaim(syncId: number): Promise<void> {
+	await releaseRunningSyncSlot(syncId);
 }
 
 /**
