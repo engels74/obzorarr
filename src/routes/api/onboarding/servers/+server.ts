@@ -116,7 +116,7 @@ export const GET: RequestHandler = async ({ cookies, locals, url }) => {
 		if (err instanceof Error && 'code' in err) {
 			const authErr = err as { code: string };
 			if (authErr.code === 'PLEX_API_ERROR') {
-				error(502, 'Unable to connect to Plex. Please try again.');
+				error(502, 'Could not reach Plex. Try again.');
 			}
 		}
 

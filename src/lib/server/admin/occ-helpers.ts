@@ -8,7 +8,7 @@ import { getAppSettingsUpdatedAt } from './settings.service';
  *
  * The external-OCC path uses a different shape — see `OCC_CONFLICT_CODE`.
  */
-export const OCC_CONFLICT_MESSAGE = 'Settings changed in another tab. Please reload.';
+export const OCC_CONFLICT_MESSAGE = 'Settings changed in another tab. Reload and try again.';
 
 /**
  * Sentinel `code` discriminator for the external-OCC conflict shape.

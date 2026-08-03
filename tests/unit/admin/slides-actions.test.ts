@@ -283,7 +283,7 @@ describe('admin slides actions', () => {
 
 			// ISSUE-006: the rejection is now branch-specific (the <script> branch),
 			// still routed to fieldErrors.content via slideErrorToFail.
-			const scriptReason = "Remove <script> tags — inline scripts aren't allowed in slide content.";
+			const scriptReason = 'Remove <script> tags. Slide content cannot include inline scripts.';
 			expect(result).toMatchObject({
 				status: 400,
 				data: {

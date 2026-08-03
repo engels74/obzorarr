@@ -96,7 +96,7 @@ describe('handleError — not-found demotion (ISSUE-010)', () => {
 			expect(infoSpy).not.toHaveBeenCalled();
 			expect(errorSpy).toHaveBeenCalledTimes(1);
 			expect(errorSpy.mock.calls[0]?.[1]).toBe('ErrorHandler');
-			expect(result).toEqual({ message: 'An unexpected error occurred' });
+			expect(result).toEqual({ message: 'Something went wrong. Try again.' });
 		} finally {
 			infoSpy.mockRestore();
 			errorSpy.mockRestore();
@@ -176,7 +176,7 @@ describe('handleError — 4xx demotion to WARN (ISSUE-009)', () => {
 			expect(warnSpy).not.toHaveBeenCalled();
 			expect(errorSpy).toHaveBeenCalledTimes(1);
 			expect(errorSpy.mock.calls[0]?.[1]).toBe('ErrorHandler');
-			expect(result).toEqual({ message: 'An unexpected error occurred' });
+			expect(result).toEqual({ message: 'Something went wrong. Try again.' });
 		} finally {
 			warnSpy.mockRestore();
 			errorSpy.mockRestore();
@@ -198,7 +198,7 @@ describe('handleError — 4xx demotion to WARN (ISSUE-009)', () => {
 			expect(warnSpy).not.toHaveBeenCalled();
 			expect(errorSpy).toHaveBeenCalledTimes(1);
 			expect(errorSpy.mock.calls[0]?.[1]).toBe('ErrorHandler');
-			expect(result).toEqual({ message: 'An unexpected error occurred' });
+			expect(result).toEqual({ message: 'Something went wrong. Try again.' });
 		} finally {
 			warnSpy.mockRestore();
 			errorSpy.mockRestore();

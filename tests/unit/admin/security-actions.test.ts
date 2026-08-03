@@ -127,7 +127,7 @@ describe('security nested route — updateCsrfOrigin (OCC + set + clear)', () =>
 		const result = await run(csrfRequest({ csrfOrigin: ORIGIN, settingsVersion: '' }));
 		expect(result).toMatchObject({
 			status: 409,
-			data: { conflict: true, error: 'Settings changed in another tab. Please reload.' }
+			data: { conflict: true, error: 'Settings changed in another tab. Reload and try again.' }
 		});
 	});
 

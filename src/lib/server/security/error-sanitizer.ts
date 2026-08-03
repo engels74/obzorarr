@@ -31,13 +31,13 @@ export function sanitizeConnectionError(error: unknown): string {
 
 export function classifyConnectionError(error: Error): string {
 	if (error.name === 'AbortError') {
-		return 'Connection timed out - the server may be unreachable';
+		return 'Connection timed out. The server may be unreachable.';
 	}
 
 	const message = error.message;
 
 	if (message.includes('certificate') || message.includes('SSL') || message.includes('TLS')) {
-		return 'SSL certificate error - check your server configuration';
+		return 'SSL certificate error. Check your server configuration.';
 	}
 
 	if (
@@ -45,7 +45,7 @@ export function classifyConnectionError(error: Error): string {
 		message.includes('ECONNREFUSED') ||
 		message.includes('getaddrinfo')
 	) {
-		return 'Could not connect to server - check the URL and ensure the server is reachable';
+		return 'Could not connect to the server. Check the URL and make sure the server is reachable.';
 	}
 
 	return sanitizeConnectionError(error);

@@ -40,21 +40,21 @@ export function handleFormToast(form: FormShape): void {
 				const data = (form as Extract<ActionResult, { type: 'success' }>).data as
 					| { message?: string }
 					| undefined;
-				toast.success(data?.message ?? 'Operation completed successfully');
+				toast.success(data?.message ?? 'Saved');
 				return;
 			}
 			case 'failure': {
 				const data = (form as Extract<ActionResult, { type: 'failure' }>).data as
 					| { error?: string; message?: string }
 					| undefined;
-				toast.error(data?.error ?? data?.message ?? 'An unexpected error occurred');
+				toast.error(data?.error ?? data?.message ?? 'Something went wrong. Try again.');
 				return;
 			}
 			case 'error': {
 				const err = (form as Extract<ActionResult, { type: 'error' }>).error as
 					| { message?: string }
 					| undefined;
-				toast.error(err?.message ?? 'An unexpected error occurred');
+				toast.error(err?.message ?? 'Something went wrong. Try again.');
 				return;
 			}
 			case 'redirect':
@@ -69,11 +69,11 @@ export function handleFormToast(form: FormShape): void {
 			return;
 		}
 		if (form.warning) {
-			toast.warning(form.message ?? 'Please review the warning');
+			toast.warning(form.message ?? 'Review the warning');
 			return;
 		}
 		if (form.success) {
-			toast.success(form.message ?? 'Operation completed successfully');
+			toast.success(form.message ?? 'Saved');
 		}
 	}
 }

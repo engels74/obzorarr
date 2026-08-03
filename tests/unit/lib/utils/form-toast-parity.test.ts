@@ -49,7 +49,7 @@ describe('handleFormToast parity', () => {
 		it('falls back to default success message when none provided', () => {
 			handleFormToast({ success: true });
 			expect(getTestToastCalls()[0]?.variant).toBe('success');
-			expect(getTestToastCalls()[0]?.message).toMatch(/completed/i);
+			expect(getTestToastCalls()[0]?.message).toBe('Saved');
 		});
 
 		it('is a no-op on null / undefined', () => {
@@ -88,12 +88,12 @@ describe('handleFormToast parity', () => {
 		it('uses default messages when data is missing', () => {
 			handleFormToast({ type: 'success', status: 200, data: undefined });
 			expect(getTestToastCalls()[0]?.variant).toBe('success');
-			expect(getTestToastCalls()[0]?.message).toMatch(/completed/i);
+			expect(getTestToastCalls()[0]?.message).toBe('Saved');
 
 			clearTestToastCalls();
 			handleFormToast({ type: 'failure', status: 400, data: undefined });
 			expect(getTestToastCalls()[0]?.variant).toBe('error');
-			expect(getTestToastCalls()[0]?.message).toMatch(/unexpected/i);
+			expect(getTestToastCalls()[0]?.message).toBe('Something went wrong. Try again.');
 		});
 	});
 

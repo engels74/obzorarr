@@ -84,14 +84,14 @@ describe('auth core contracts', () => {
 			[
 				'PinExpiredError',
 				PinExpiredError,
-				'Login session expired. Please try again.',
+				'Login session expired. Sign in again.',
 				'Custom PIN expired message',
 				'PIN_EXPIRED'
 			],
 			[
 				'SessionExpiredError',
 				SessionExpiredError,
-				'Your session has expired. Please log in again.',
+				'Your session expired. Sign in again.',
 				'Custom session expired message',
 				'SESSION_EXPIRED'
 			]

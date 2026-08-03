@@ -342,9 +342,7 @@ export async function runPlexAccountReconciliation(): Promise<number> {
 		!isCanonicalPositiveAuthorityEpoch(beforeObservation.authorityEpoch) ||
 		!hasCurrentAuthorityDiscriminator(beforeObservation)
 	) {
-		throw new PlexAuthApiError(
-			'Plex authority is not configured. Please complete the onboarding process.'
-		);
+		throw new PlexAuthApiError('Plex authority is not configured. Finish onboarding first.');
 	}
 
 	const machineIdentifier = await getServerMachineIdentifier(beforeConfig);

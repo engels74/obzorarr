@@ -547,7 +547,7 @@ export function messageForMembershipFailure(membership: MembershipResult): strin
 			return `Temporary connection issue contacting your Plex server. Please try again${detail}. If this keeps happening, verify PLEX_SERVER_URL and PLEX_TOKEN are correct and the server is online.`;
 		}
 		case 'not_in_resources':
-			return 'The configured Plex server is not listed under your Plex.tv account. Please sign in with the server owner account.';
+			return 'The configured Plex server is not listed under your Plex.tv account. Sign in with the owner account.';
 		default:
 			return 'You are not a member of this Plex server.';
 	}

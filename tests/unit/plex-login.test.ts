@@ -531,7 +531,7 @@ describe('resolveRedirectPinData', () => {
 				{ pinId: 222, expiresAt: new Date(60_000).toISOString(), context: 'onboarding' },
 				2000
 			)
-		).toThrow('Invalid authentication data. Please try again.');
+		).toThrow('Invalid authentication data. Try again.');
 		expect(storage.getItem(PIN_STORAGE_KEY)).toBeNull();
 	});
 
@@ -549,7 +549,7 @@ describe('resolveRedirectPinData', () => {
 				{ pinId: 222, expiresAt: new Date(60_000).toISOString(), context: 'onboarding' },
 				2000
 			)
-		).toThrow('Invalid authentication data. Please try again.');
+		).toThrow('Invalid authentication data. Try again.');
 	});
 });
 
@@ -851,7 +851,7 @@ describe('startPlexLoginPopup', () => {
 		// Second tick: closed popup detected → cancel error fired exactly once.
 		await poll();
 		expect(onError).toHaveBeenCalledTimes(1);
-		expect((onError.mock.calls[0] as string[])[0]).toBe('Sign-in cancelled. You can try again.');
+		expect((onError.mock.calls[0] as string[])[0]).toBe('Sign-in cancelled.');
 		expect(onSuccess).not.toHaveBeenCalled();
 		expect(onPopupBlocked).not.toHaveBeenCalled();
 
@@ -1139,10 +1139,10 @@ describe('startPlexLoginPopup', () => {
 		globalThis.fetch = mock(async (input: string | URL | Request, init?: RequestInit) => {
 			const url = typeof input === 'string' ? input : input.toString();
 			if (url === '/auth/plex' && init?.method === 'POST') {
-				return new Response(
-					JSON.stringify({ message: 'Unable to connect to Plex. Please try again.' }),
-					{ status: 502, headers: { 'Content-Type': 'application/json' } }
-				);
+				return new Response(JSON.stringify({ message: 'Could not reach Plex. Try again.' }), {
+					status: 502,
+					headers: { 'Content-Type': 'application/json' }
+				});
 			}
 			return new Response(
 				JSON.stringify({ pinId: 42, authUrl: 'https://app.plex.tv/auth#?code=ABCD' }),
@@ -1168,9 +1168,7 @@ describe('startPlexLoginPopup', () => {
 		await poll();
 
 		expect(onError).toHaveBeenCalledTimes(1);
-		expect((onError.mock.calls[0] as string[])[0]).toBe(
-			'Unable to connect to Plex. Please try again.'
-		);
+		expect((onError.mock.calls[0] as string[])[0]).toBe('Could not reach Plex. Try again.');
 		expect(onSuccess).not.toHaveBeenCalled();
 
 		await poll();

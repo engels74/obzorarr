@@ -118,7 +118,7 @@ describe('createSessionFromPlexToken', () => {
 		} catch (err) {
 			expect(err).toBeInstanceOf(NotServerMemberError);
 			expect((err as Error).message).toBe(
-				'Only the server owner can configure Obzorarr. Please sign in with the server owner account.'
+				'Only the server owner can configure Obzorarr. Sign in with the owner account.'
 			);
 		}
 		expect(await db.select().from(sessions)).toHaveLength(0);

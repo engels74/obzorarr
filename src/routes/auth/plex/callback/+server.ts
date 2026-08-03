@@ -50,12 +50,12 @@ export const POST: RequestHandler = async ({ request, cookies, url }) => {
 
 			if (err.statusCode === 401) {
 				error(401, {
-					message: 'Invalid or expired auth token. Please try again.'
+					message: 'Invalid or expired auth token. Sign in again.'
 				});
 			}
 
 			error(502, {
-				message: 'Unable to connect to Plex. Please try again.'
+				message: 'Could not reach Plex. Try again.'
 			});
 		}
 
@@ -63,7 +63,7 @@ export const POST: RequestHandler = async ({ request, cookies, url }) => {
 			errorType: err instanceof Error ? err.name : typeof err
 		});
 		error(500, {
-			message: 'An unexpected error occurred.'
+			message: 'Something went wrong. Try again.'
 		});
 	}
 };

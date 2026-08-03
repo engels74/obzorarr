@@ -93,7 +93,7 @@ export const GET: RequestHandler = async ({ cookies, url, request, setHeaders })
 				endpoint: err.endpoint
 			});
 			error(502, {
-				message: 'Unable to connect to Plex. Please try again.'
+				message: 'Could not reach Plex. Try again.'
 			});
 		}
 
@@ -101,7 +101,7 @@ export const GET: RequestHandler = async ({ cookies, url, request, setHeaders })
 			errorType: err instanceof Error ? err.name : typeof err
 		});
 		error(500, {
-			message: 'An unexpected error occurred.'
+			message: 'Something went wrong. Try again.'
 		});
 	}
 };
@@ -138,7 +138,7 @@ export const POST: RequestHandler = async ({ request, cookies, url }) => {
 				endpoint: err.endpoint
 			});
 			error(502, {
-				message: 'Unable to connect to Plex. Please try again.'
+				message: 'Could not reach Plex. Try again.'
 			});
 		}
 
@@ -158,7 +158,7 @@ export const POST: RequestHandler = async ({ request, cookies, url }) => {
 			errorType: err instanceof Error ? err.name : typeof err
 		});
 		error(500, {
-			message: 'An unexpected error occurred.'
+			message: 'Something went wrong. Try again.'
 		});
 	}
 };

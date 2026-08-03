@@ -68,7 +68,7 @@ export function surfaceOccConflict(event: { result: ActionResult; cancel: () => 
 	if (result.type === 'failure' && isOccConflict(result.data)) {
 		const message =
 			(result.data as { error?: string } | undefined)?.error ??
-			'Settings changed in another tab. Please reload.';
+			'Settings changed in another tab. Reload and try again.';
 		toast.error(message, { action: { label: 'Reload', onClick: () => window.location.reload() } });
 		event.cancel();
 	}

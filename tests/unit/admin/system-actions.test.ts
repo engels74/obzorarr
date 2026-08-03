@@ -64,7 +64,7 @@ describe('system nested route — updateLogSettings (Superforms + inline OCC)', 
 			status: 409,
 			data: {
 				conflict: true,
-				error: 'Settings changed in another tab. Please reload.'
+				error: 'Settings changed in another tab. Reload and try again.'
 			}
 		});
 		expect(await getLogRetentionDays()).toBe(7);
@@ -214,7 +214,7 @@ describe('system nested route — updateLogSettings (Superforms + inline OCC)', 
 			status: 409,
 			data: {
 				conflict: true,
-				error: 'Settings changed in another tab. Please reload.'
+				error: 'Settings changed in another tab. Reload and try again.'
 			}
 		});
 	});

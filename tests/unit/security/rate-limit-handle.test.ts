@@ -90,7 +90,7 @@ describe('rateLimitHandle landing page bucket', () => {
 		const body = await blockedResponse?.json();
 		expect(body).toMatchObject({ type: 'failure', status: 429 });
 		expect(parse(body.data)).toEqual({
-			error: `Too many requests. Please try again in ${retryAfterSeconds} second${retryAfterSeconds === 1 ? '' : 's'}.`,
+			error: `Too many requests. Try again in ${retryAfterSeconds} second${retryAfterSeconds === 1 ? '' : 's'}.`,
 			requiresAuth: false
 		});
 	});
@@ -174,7 +174,7 @@ describe('rateLimitHandle enhanced action responses', () => {
 		const body = await blockedResponse?.json();
 		expect(body).toMatchObject({ type: 'failure', status: 429 });
 		expect(parse(body.data)).toEqual({
-			error: `Too many requests. Please try again in ${retryAfterSeconds} second${retryAfterSeconds === 1 ? '' : 's'}.`,
+			error: `Too many requests. Try again in ${retryAfterSeconds} second${retryAfterSeconds === 1 ? '' : 's'}.`,
 			requiresAuth: false
 		});
 	});

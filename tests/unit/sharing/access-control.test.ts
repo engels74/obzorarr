@@ -284,7 +284,7 @@ describe('Sharing Access Control', () => {
 				} catch (error) {
 					expect(error).toBeInstanceOf(ShareAccessDeniedError);
 					expect((error as ShareAccessDeniedError).message).toBe(
-						'Sign in with your Plex account to view this wrapped.'
+						'Sign in with your Plex account to view this Wrapped.'
 					);
 				}
 			});

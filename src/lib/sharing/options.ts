@@ -54,7 +54,7 @@ export const shareModeOptions: OptionCopy<ShareModeType>[] = [
 		value: ShareMode.PRIVATE_OAUTH,
 		label: 'Server Members Only',
 		description:
-			'Any signed-in Plex server member can view — including this person’s real name and full viewing history'
+			'Any signed-in Plex server member can view, including this person’s real name and full viewing history'
 	},
 	{
 		value: ShareMode.PRIVATE_LINK,
@@ -243,7 +243,7 @@ export const PRIVACY_PREVIEW_VALUE_TOOLTIPS: PrivacyPreviewValueTooltips = {
 	namesInStats: {
 		real: 'Wrapped recap output and leaderboards show each person’s actual Plex username.',
 		anonymous:
-			'Usernames are replaced with neutral placeholders like “User #1” everywhere except the admin dashboard — no one is identifiable in public stats.',
+			'Obzorarr replaces usernames with placeholders like “User #1” everywhere except the admin dashboard, so no one is identifiable in public stats.',
 		'hybrid-self-sees-own':
 			'A signed-in member sees their own real name, while everyone else stays anonymized as “User #1”.'
 	},

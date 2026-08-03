@@ -64,7 +64,7 @@ describe('privacy nested route — updateServerWrappedSettings', () => {
 			status: 409,
 			data: {
 				conflict: true,
-				error: 'Settings changed in another tab. Please reload.'
+				error: 'Settings changed in another tab. Reload and try again.'
 			}
 		});
 	});
@@ -217,7 +217,7 @@ describe('privacy nested route — updateUserDefaults', () => {
 			status: 409,
 			data: {
 				conflict: true,
-				error: 'Settings changed in another tab. Please reload.'
+				error: 'Settings changed in another tab. Reload and try again.'
 			}
 		});
 	});
@@ -267,7 +267,7 @@ describe('privacy nested route — updateUserDefaults', () => {
 		);
 		expect(stale).toMatchObject({
 			status: 409,
-			data: { conflict: true, error: 'Settings changed in another tab. Please reload.' }
+			data: { conflict: true, error: 'Settings changed in another tab. Reload and try again.' }
 		});
 		expect(await getGlobalDefaultShareMode()).toBe('public');
 	});
