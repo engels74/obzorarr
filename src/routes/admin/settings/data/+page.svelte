@@ -551,8 +551,19 @@ async function copyResetToken() {
 					return async ({ result }) => {
 						if (result.type === 'redirect') {
 							// The wipe succeeded: the session cookie is gone, so navigate to the
-							// onboarding claim screen with a full invalidation.
-							await goto(result.location, { invalidateAll: true });
+							// onboarding claim screen with a full invalidation. Release the flag
+							// either way: if the navigation throws, this component is still
+							// mounted and would otherwise stay stuck on a disabled "Wiping…"
+							// with a dead Cancel button, trapping the admin on the dialog that
+							// holds the token they still need. Re-enabling costs nothing — the
+							// wipe already happened, so a second submit never reaches the action:
+							// onboardingHandle 303s it because app_settings is empty, and the
+							// deleted session cookie means the admin guard would refuse it anyway.
+							try {
+								await goto(result.location, { invalidateAll: true });
+							} finally {
+								isResetting = false;
+							}
 							return;
 						}
 						try {

@@ -471,6 +471,36 @@ describe('instance reset — Danger zone UI wiring (no DOM harness in this suite
 		expect(src).toContain('{#if data.syncRunning}');
 	});
 
+	it('never strands the dialog in a disabled "Wiping…" state', async () => {
+		const src = await read();
+		// Both stages are gated on their own in-flight flag, and the Cancel button
+		// is disabled with them — so a flag that is never cleared traps the admin on
+		// a dialog whose claim token they still need. Every branch must release it,
+		// including the redirect one where `goto` can throw after a successful wipe.
+		const enhanceBlock = src.slice(
+			src.indexOf('action="?/resetInstance"'),
+			src.indexOf('style="display: contents;"', src.indexOf('action="?/resetInstance"'))
+		);
+		const gotoIdx = enhanceBlock.indexOf('await goto(result.location');
+		expect(gotoIdx).toBeGreaterThan(-1);
+		// The navigation is wrapped, not bare: a `finally` must exist and must come
+		// before the early `return`. Asserted as presence THEN order, because a
+		// missing `finally` yields indexOf === -1, which would satisfy the ordering
+		// comparison on its own.
+		const afterGoto = enhanceBlock.slice(gotoIdx);
+		const finallyIdx = afterGoto.indexOf('} finally {');
+		expect(finallyIdx).toBeGreaterThan(-1);
+		expect(finallyIdx).toBeLessThan(afterGoto.indexOf('return;'));
+		// ...and the other branch releases it too. Asserted as "each branch has its
+		// own release" rather than a total count, so hoisting both into one outer
+		// try/finally would still pass.
+		expect(afterGoto.slice(finallyIdx)).toMatch(/^\} finally \{\n\t+isResetting = false;/);
+		const otherBranch = enhanceBlock.slice(enhanceBlock.indexOf("result.type === 'failure'"));
+		expect(otherBranch).toMatch(/\} finally \{\n\t+isResetting = false;/);
+		// Stage 1 releases its own flag the same way.
+		expect(src).toContain('isPreparingReset = false;');
+	});
+
 	it('states honestly what is lost, including share-link breakage and manual curation', async () => {
 		const prose = await readProse();
 		expect(prose).toContain('re-synced from the official Plex API');
