@@ -126,7 +126,7 @@ const summaryItems = $derived([
 					</svg>
 					<span>
 						Fun facts use the built-in templates because you have not added an OpenAI key. Add one
-						in <strong>Admin → Settings → AI</strong> for AI-generated fun facts.
+						in <strong>Admin → Settings → Connections</strong> for AI-generated fun facts.
 					</span>
 				</div>
 			{/if}
