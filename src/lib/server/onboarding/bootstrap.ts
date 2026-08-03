@@ -9,6 +9,15 @@ import {
 } from '$lib/server/admin/settings.service';
 
 const BOOTSTRAP_TOKEN_TTL_MS = 15 * 60 * 1000;
+/**
+ * The admin-triggered instance reset mints a longer-lived claim token than a
+ * normal first boot: after the wipe the admin has to sign back in to Plex,
+ * re-enter settings and start a fresh sync, and 15 minutes is too tight a window
+ * for that. Only the reset path gets this TTL — the console banner on a genuine
+ * first boot still expires in 15 minutes.
+ */
+export const RESET_BOOTSTRAP_TOKEN_TTL_MS = 60 * 60 * 1000;
+export const RESET_BOOTSTRAP_TOKEN_TTL_MINUTES = RESET_BOOTSTRAP_TOKEN_TTL_MS / 60_000;
 // ISSUE-002: 30 min (was 10). The onboarding claim must outlast a slow off-site
 // Plex OAuth round-trip; the return path lands on a page `load` (renewed there)
 // rather than an onboarding action, and a 10-minute window could lapse mid-flow.
@@ -74,9 +83,28 @@ export function createBootstrapToken(ttlMs = BOOTSTRAP_TOKEN_TTL_MS): string {
 
 export function clearBootstrapToken(): void {
 	activeBootstrapToken = null;
+	resetBootstrapBannerState();
+}
+
+/**
+ * Re-arm the console banner WITHOUT discarding the active bootstrap token.
+ *
+ * `onboardingCompletedCached` latches once onboarding completes and short-circuits
+ * `printOnboardingBootstrapBanner()` for the rest of the process lifetime. After
+ * an instance reset that latch has to drop, or the console fallback banner — the
+ * recovery path for an admin who loses the browser tab — would never print again.
+ * `clearBootstrapToken()` also does this, but it destroys the token the reset flow
+ * has already shown the admin, so the reset path needs this half on its own.
+ */
+export function resetBootstrapBannerState(): void {
 	bannerPrinted = false;
 	bootstrapBannerPromise = null;
 	onboardingCompletedCached = false;
+}
+
+/** Expiry (epoch ms) of the active bootstrap token, or null when none is active. */
+export function getBootstrapTokenExpiresAt(): number | null {
+	return activeBootstrapToken?.expiresAt ?? null;
 }
 
 export function isBootstrapTokenExpired(): boolean {
@@ -131,7 +159,14 @@ async function printBootstrapBanner(): Promise<void> {
 	console.info('Obzorarr initial setup requires a bootstrap claim.');
 	console.info(`Setup URL: ${setupUrl}`);
 	console.info(`Bootstrap token: ${token}`);
-	console.info('This token expires in 15 minutes and is not stored.');
+	// Derived from the live token, not hardcoded: a token minted by the instance
+	// reset carries the longer RESET_BOOTSTRAP_TOKEN_TTL_MS, and this banner is
+	// the fallback an admin falls back to after that reset.
+	const minutesLeft = Math.max(
+		1,
+		Math.round(((activeBootstrapToken?.expiresAt ?? Date.now()) - Date.now()) / 60_000)
+	);
+	console.info(`This token expires in ${minutesLeft} minutes and is not stored.`);
 	console.info('');
 	bannerPrinted = true;
 }

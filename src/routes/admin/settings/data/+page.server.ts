@@ -1,4 +1,12 @@
-import { fail } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
+import {
+	INSTANCE_RESET_TABLES,
+	isResetBlockedBySync,
+	RESET_CONFIRMATION_MISMATCH_MESSAGE,
+	RESET_CONFIRMATION_PHRASE,
+	RESET_SYNC_RUNNING_MESSAGE,
+	wipeInstanceData
+} from '$lib/server/admin/reset.service';
 import {
 	clearPlayHistory,
 	clearStatsCache,
@@ -7,19 +15,36 @@ import {
 } from '$lib/server/admin/settings.service';
 import { getAvailableYears } from '$lib/server/admin/users.service';
 import { requireAdminActions } from '$lib/server/auth/guards';
+import { logout } from '$lib/server/auth/logout';
 import { logger } from '$lib/server/logging';
+import {
+	clearOnboardingClaimCookie,
+	createBootstrapToken,
+	RESET_BOOTSTRAP_TOKEN_TTL_MINUTES,
+	RESET_BOOTSTRAP_TOKEN_TTL_MS,
+	resetBootstrapBannerState
+} from '$lib/server/onboarding';
+import { sanitizeApiError } from '$lib/server/security';
+import { clearSyncProgress, stopSyncScheduler } from '$lib/server/sync';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
-	const [availableYears, playHistoryTotalCount] = await Promise.all([
+	const [availableYears, playHistoryTotalCount, syncRunning] = await Promise.all([
 		getAvailableYears(),
-		countPlayHistory()
+		countPlayHistory(),
+		isResetBlockedBySync()
 	]);
 
 	return {
 		availableYears,
 		currentYear: new Date().getFullYear(),
-		playHistoryTotalCount
+		playHistoryTotalCount,
+		// Drives the disabled/annotated state of the Danger zone reset button. The
+		// action re-checks server-side; this is only an affordance.
+		syncRunning,
+		resetTableCount: Object.keys(INSTANCE_RESET_TABLES).length,
+		resetTokenTtlMinutes: RESET_BOOTSTRAP_TOKEN_TTL_MINUTES,
+		resetConfirmationPhrase: RESET_CONFIRMATION_PHRASE
 	};
 };
 
@@ -105,5 +130,97 @@ export const actions: Actions = requireAdminActions({
 			logger.error(`Failed to clear play history: ${message}`, 'Settings', { year });
 			return fail(500, { error: message });
 		}
+	},
+
+	/**
+	 * Stage 2 of the complete reset: mint the claim token the admin will need on
+	 * the post-wipe onboarding screen, and return it to the browser. Writes
+	 * NOTHING to the database and deletes nothing — dismissing the dialog after
+	 * this call leaves the instance untouched.
+	 *
+	 * Surfacing a bootstrap token in a response narrows the console-only trust
+	 * boundary that normally proves "whoever claims this instance has server
+	 * access". That is acceptable here and only here: the caller is an
+	 * already-authenticated administrator (requireAdminActions), who is strictly
+	 * more privileged in this flow than an anonymous console reader. The token is
+	 * never logged (logging/redactor.ts scrubs Plex tokens, not this one) and never
+	 * returned on any other path.
+	 */
+	prepareInstanceReset: async () => {
+		if (await isResetBlockedBySync()) {
+			return fail(409, { error: RESET_SYNC_RUNNING_MESSAGE });
+		}
+
+		// Minted BEFORE the wipe on purpose: the token lives in a module-level
+		// variable that a DB wipe cannot touch, whereas clearOnboardingClaim() —
+		// the usual way to reset claim state — would destroy it.
+		const token = createBootstrapToken(RESET_BOOTSTRAP_TOKEN_TTL_MS);
+		return {
+			success: true,
+			token,
+			expiresInMinutes: RESET_BOOTSTRAP_TOKEN_TTL_MINUTES
+		};
+	},
+
+	/**
+	 * Stage 3: the destructive step. Deletes every application row, logs the
+	 * administrator out and returns the instance to the onboarding claim screen.
+	 *
+	 * Deliberately does NOT call clearOnboardingClaim()/clearBootstrapToken(): the
+	 * token handed to the admin by `prepareInstanceReset` must still validate after
+	 * this returns. Truncating `app_settings` already removes ONBOARDING_CLAIMED /
+	 * _CLAIM_PROOF_HASH / _CLAIMED_AT and the stored step, which is what
+	 * clearOnboardingClaim would have persisted.
+	 */
+	resetInstance: async ({ request, cookies, locals }) => {
+		const formData = await request.formData();
+		const confirmation = formData.get('confirmation')?.toString() ?? '';
+		if (confirmation !== RESET_CONFIRMATION_PHRASE) {
+			return fail(400, { error: RESET_CONFIRMATION_MISMATCH_MESSAGE });
+		}
+
+		if (await isResetBlockedBySync()) {
+			return fail(409, { error: RESET_SYNC_RUNNING_MESSAGE });
+		}
+
+		const actor = locals.user ? `${locals.user.username} (id ${locals.user.id})` : 'unknown admin';
+		let deletedRows: number;
+		try {
+			// Flush first so log entries buffered before the reset are written into the
+			// table that is about to be deleted, instead of landing in the fresh one.
+			await logger.forceFlush();
+			deletedRows = wipeInstanceData();
+		} catch (error) {
+			// Form actions bypass handleError, so sanitize before this reaches the client.
+			logger.error(`Instance reset failed: ${String(error)}`, 'AdminReset');
+			return fail(500, { error: sanitizeApiError(error) });
+		}
+
+		// The scheduler's cron configuration lived in the app_settings rows just
+		// deleted, and the in-memory progress snapshot describes a sync of an
+		// instance that no longer exists.
+		stopSyncScheduler();
+		clearSyncProgress();
+
+		// The sessions table is gone, so the cookie is already dead — delete it too
+		// so the redirect cannot land in a half-authenticated state.
+		await logout(cookies);
+		clearOnboardingClaimCookie(cookies);
+
+		// Re-arm the console banner without touching the active token: the banner is
+		// the recovery path if the admin loses the tab holding the token.
+		resetBootstrapBannerState();
+
+		// Audit AFTER the wipe — the logs table is one of the tables deleted, so an
+		// entry written before it would delete itself. Also emitted to the console,
+		// which survives regardless.
+		const auditMessage = `Instance reset completed by ${actor}: ${deletedRows} rows deleted across ${
+			Object.keys(INSTANCE_RESET_TABLES).length
+		} tables`;
+		logger.warn(auditMessage, 'AdminReset', { deletedRows });
+		console.info(`[AdminReset] ${auditMessage}`);
+		await logger.forceFlush();
+
+		redirect(303, '/onboarding/claim');
 	}
 });
