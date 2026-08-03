@@ -129,6 +129,9 @@ const serverWrappedForm = superForm(data.serverWrappedForm, {
 				anonymizationMode: updated.data.anonymizationMode,
 				serverWrappedShareMode: updated.data.serverWrappedShareMode
 			};
+			// A completed save is proof of interaction: without this latch the Custom
+			// highlight vanishes the moment unsavedSectionCount drops back to 0.
+			privacyInteracted = true;
 			handleFormToast({ success: true, message: updated.message ?? 'Saved' });
 		} else {
 			handleFormToast({ error: updated.message ?? 'Validation failed' });
@@ -152,6 +155,9 @@ const userDefaultsForm = superForm(data.userDefaultsForm, {
 				defaultShareMode: updated.data.defaultShareMode,
 				allowUserControl: updated.data.allowUserControl
 			};
+			// A completed save is proof of interaction: without this latch the Custom
+			// highlight vanishes the moment unsavedSectionCount drops back to 0.
+			privacyInteracted = true;
 			handleFormToast({ success: true, message: updated.message ?? 'Saved' });
 		} else {
 			handleFormToast({ error: updated.message ?? 'Validation failed' });
@@ -174,6 +180,9 @@ const publicLandingLookupForm = superForm(data.publicLandingLookupForm, {
 			savedPublicLandingLookup = {
 				publicLandingLookup: updated.data.publicLandingLookup
 			};
+			// A completed save is proof of interaction: without this latch the Custom
+			// highlight vanishes the moment unsavedSectionCount drops back to 0.
+			privacyInteracted = true;
 			handleFormToast({ success: true, message: updated.message ?? 'Saved' });
 		} else {
 			handleFormToast({ error: updated.message ?? 'Validation failed' });
@@ -189,6 +198,12 @@ const {
 let bulkApplyDialogOpen = $state(false);
 let isBulkApplying = $state(false);
 
+// Latching "the admin has touched this section during this page load". The gate
+// that reads it, `privacyTouched`, is declared with the rest of the preset logic
+// below; this lives up here because the accordion toggle and the three form
+// `onUpdated` callbacks above all set it.
+let privacyInteracted = $state(false);
+
 // Advanced controls stay collapsed until the administrator opens them or stages
 // a preset. Public lookup no longer creates a contradictory default state.
 let advancedOpen = $state(false);
@@ -200,6 +215,10 @@ let advancedOpen = $state(false);
 let advancedSectionRef = $state<HTMLDivElement | null>(null);
 async function handleAdvancedToggle(open: boolean): Promise<void> {
 	if (!open) return;
+	// Opening the accordion is an interaction with the privacy controls, and it is
+	// the only way to reach them — latching here is what keeps the Custom
+	// highlight from decaying when an edit is staged and then reverted.
+	privacyInteracted = true;
 	await tick();
 	advancedSectionRef?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -257,13 +276,24 @@ let unsavedSectionCount = $derived(
 );
 
 // Mirrors onboarding's `privacyTouched` gate (ISSUE-001): the Custom card only
-// lights up once the admin has actually interacted. Clicking a preset card sets
-// the flag directly; editing any advanced control diverges that section from its
-// saved baseline, which `unsavedSectionCount` already tracks. Without the gate a
+// lights up once the admin has actually interacted. Without the gate a
 // persisted-but-off-preset configuration would light Custom on load, before the
 // admin had touched anything.
-let presetCardClicked = $state(false);
-let privacyTouched = $derived(presetCardClicked || unsavedSectionCount > 0);
+//
+// The flag must LATCH. Deriving it purely from a card-click flag OR
+// `unsavedSectionCount > 0` made it DECAY: an admin who only edited Advanced
+// controls saw Custom light up, then lose the highlight the moment they pressed
+// Save — the baselines advance, `unsavedSectionCount` drops back to 0, and the
+// radiogroup ended up with no card checked (moving the roving tab stop back to
+// the first card) even though they had just deliberately saved an off-preset
+// configuration. Saving is the opposite of "hasn't touched anything yet".
+//
+// So every way of interacting with this section latches `privacyInteracted`
+// (declared above the accordion toggle that sets it): clicking any preset card,
+// expanding the Advanced accordion (the only route to those controls), and a
+// successful save of any of the three sections. `unsavedSectionCount > 0` stays
+// as a safety net for a control rendered outside the accordion.
+let privacyTouched = $derived(privacyInteracted || unsavedSectionCount > 0);
 
 // Sticky "the admin explicitly clicked the Custom card" flag. While set, Custom
 // stays highlighted even when the staged values happen to match a shipped preset
@@ -290,7 +320,7 @@ function assignPresetValues(values: Pick<PrivacyPresetValues, PrivacyPresetPriva
 }
 
 function applyPrivacyPreset(preset: PrivacyPreset) {
-	presetCardClicked = true;
+	privacyInteracted = true;
 	customPresetChosen = false;
 	assignPresetValues(preset.values);
 	// ISSUE-006: applying a preset stages unsaved changes whose per-section Save
@@ -302,16 +332,16 @@ function applyPrivacyPreset(preset: PrivacyPreset) {
 	advancedOpen = true;
 }
 
-// Custom is a pure highlight change on this route: it stages NOTHING. Unlike
-// onboarding's monotonic `privacyTouched` state, the admin gate is derived from
-// `unsavedSectionCount`, so it reads false both on load for an already-off-preset
-// persisted config and again after a successful save. Seeding Balanced through
-// `customPresetSeedValues(privacyTouched)` in either state would silently
-// overwrite the administrator's saved privacy settings. Admins who do want that
-// baseline click the Balanced card, which sits in the same radiogroup. Advanced
-// is still expanded — Custom's whole point is the controls below it.
+// Custom is a pure highlight change on this route: it stages NOTHING. The admin
+// gate is false on load for an already-off-preset persisted config — that is
+// exactly the ISSUE-001 state — so seeding Balanced through
+// `customPresetSeedValues(privacyTouched)` would silently overwrite the
+// administrator's saved privacy settings. Making the gate latch (above) does not
+// change that: a fresh load has latched nothing either way. Admins who do want
+// that baseline click the Balanced card, which sits in the same radiogroup.
+// Advanced is still expanded — Custom's whole point is the controls below it.
 function selectCustomPreset() {
-	presetCardClicked = true;
+	privacyInteracted = true;
 	customPresetChosen = true;
 	advancedOpen = true;
 }

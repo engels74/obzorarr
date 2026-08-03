@@ -80,12 +80,14 @@ export function resolvePresetSelection(
  * already diverged from one — clicking Custom is a pure highlight change and must
  * leave every Advanced setting exactly as it is.
  *
- * `hasInteracted` must therefore be a MONOTONIC session flag, which is only true
- * of onboarding's `let privacyTouched = $state(false)`. The admin privacy route
- * derives its gate from `unsavedSectionCount`, so it drops back to false after a
- * successful save and starts false for a persisted off-preset configuration;
- * seeding there would overwrite real saved settings. Admin consequently never
- * calls this helper — its Custom card stages nothing.
+ * `hasInteracted` is only ever a "has the admin touched anything THIS SESSION"
+ * flag, so it necessarily reads false on a fresh page load. That is harmless in
+ * onboarding, where a fresh load has no persisted configuration to destroy, and
+ * destructive on the admin privacy route, where it always does: the untouched
+ * `'custom'` state there is a real configuration the admin saved (ISSUE-001, see
+ * {@link resolvePresetSelection}), and seeding would silently replace it with
+ * Balanced. Admin consequently never calls this helper — its Custom card stages
+ * nothing, and its own gate latching on interaction does not change that.
  */
 export function customPresetSeedValues(hasInteracted: boolean): PrivacyPresetValues | null {
 	if (hasInteracted) return null;

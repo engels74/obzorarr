@@ -343,12 +343,11 @@ describe('Custom preset card — template wiring (no DOM harness in this suite)'
 	});
 
 	it('admin never seeds from the Custom card — the click stages nothing', async () => {
-		// Regression: admin's `privacyTouched` is $derived(presetCardClicked ||
-		// unsavedSectionCount > 0), so it is false BOTH on load for an already
-		// off-preset persisted config AND again after a successful save. Passing it
-		// to customPresetSeedValues (which seeds Balanced whenever the flag is
-		// false) therefore overwrote the administrator's saved privacy settings on
-		// a plain Custom click. Admin's Custom card must only move the highlight.
+		// Regression: admin's `privacyTouched` reads false on load for an already
+		// off-preset persisted config — the ISSUE-001 state. Passing it to
+		// customPresetSeedValues (which seeds Balanced whenever the flag is false)
+		// therefore overwrote the administrator's saved privacy settings on a plain
+		// Custom click. Admin's Custom card must only move the highlight.
 		const src = await read(ADMIN);
 		// The helper is not imported at all — scoped to the import block so the
 		// explanatory prose above the handler may still name it.
@@ -364,18 +363,51 @@ describe('Custom preset card — template wiring (no DOM harness in this suite)'
 		expect(body).not.toContain('$userDefaultsData');
 		expect(body).not.toContain('$publicLandingLookupData');
 		expect(body).toContain('customPresetChosen = true;');
-		expect(body).toContain('presetCardClicked = true;');
+		expect(body).toContain('privacyInteracted = true;');
 	});
 
-	it('admin exposes the non-monotonic interaction gate the seeding rule must not trust', async () => {
+	it('admin latches its interaction gate instead of deriving a decaying one', async () => {
 		const src = await read(ADMIN);
-		// Pins the derivation the regression above depends on: if this ever becomes
-		// a monotonic $state flag the "never seed" rule can be revisited.
+		// Regression: the gate used to be
+		// `$derived(presetCardClicked || unsavedSectionCount > 0)`, which decayed
+		// back to false the moment a save advanced the section baselines — so
+		// saving an off-preset configuration deselected every card and moved the
+		// roving tab stop back to the first one.
+		expect(src).not.toContain('presetCardClicked');
+		expect(src).toContain('let privacyInteracted = $state(false);');
 		expect(src).toContain(
-			'let privacyTouched = $derived(presetCardClicked || unsavedSectionCount > 0);'
+			'let privacyTouched = $derived(privacyInteracted || unsavedSectionCount > 0);'
 		);
-		// ...and the helper still seeds whenever that flag reads false, which is
-		// exactly why admin must not call it.
+
+		// Every reachable interaction latches, asserted per site rather than by
+		// occurrence count so a latch cannot be moved into a $effect (forbidden on
+		// this page) or commented out while the total still adds up. Each pattern is
+		// anchored to a newline + the statement's own indentation, so a `// `-prefixed
+		// line does not satisfy it.
+		const bodyOf = (opener: string) => {
+			const fn = src.slice(src.indexOf(opener));
+			return fn.slice(0, fn.indexOf('\n}'));
+		};
+		const LATCH = /\n\tprivacyInteracted = true;/;
+		expect(bodyOf('function applyPrivacyPreset(')).toMatch(LATCH);
+		expect(bodyOf('function selectCustomPreset(')).toMatch(LATCH);
+		// The Advanced accordion is the only route to the five privacy controls, so
+		// expanding it is what keeps the highlight from decaying on a staged-then-
+		// reverted edit. Must latch BEFORE the `await`, in the user event's own task.
+		const toggleBody = bodyOf('async function handleAdvancedToggle(');
+		expect(toggleBody).toMatch(LATCH);
+		expect(toggleBody.search(LATCH)).toBeLessThan(toggleBody.indexOf('await tick();'));
+		// ...and each of the three sections' successful save — the exact transition
+		// that used to drop the highlight.
+		const successBranches = [
+			...src.matchAll(
+				/\n\t{3}privacyInteracted = true;\n\t{3}handleFormToast\(\{ success: true, message: updated\.message \?\? 'Saved' \}\);/g
+			)
+		];
+		expect(successBranches).toHaveLength(3);
+
+		// Latching does NOT reopen the seeding rule: a fresh load has latched
+		// nothing either, so the helper would still seed over a persisted config.
 		expect(customPresetSeedValues(false)).not.toBeNull();
 	});
 
