@@ -466,7 +466,12 @@ export const actions: Actions = requireAdminActions({
 			// Reached when `presetId` is absent or empty (see the schema's `.optional()`
 			// note), and it would also catch an id added to PRIVACY_PRESET_IDS without a
 			// matching value-map — failing loudly instead of writing undefined values.
-			return fail(400, { form, error: 'Invalid input' });
+			//
+			// This 400 is SEMANTIC: the payload satisfied the schema, so the returned form
+			// is still `valid` and the client's `guardSettingsUpdate` surfaces this exact
+			// string. It therefore says what happened rather than reusing the generic
+			// schema-failure copy above.
+			return fail(400, { form, error: 'No preset selected' });
 		}
 
 		const submittedVersions: Record<PrivacyPresetSection, string> = {

@@ -64,7 +64,7 @@ import {
 	resolvePresetSelection
 } from '$lib/sharing/preset-logic';
 import { handleFormToast } from '$lib/utils/form-toast';
-import { surfaceOccConflict } from '$lib/utils/occ-form';
+import { isOccConflict, isPostValidationFailure, surfaceOccConflict } from '$lib/utils/occ-form';
 import type { PageData } from './$types';
 
 interface Props {
@@ -73,24 +73,35 @@ interface Props {
 
 let { data }: Props = $props();
 
-// superForm `onUpdate` guard for the three settings forms. Runs the shared OCC
-// stale-write guard first (cancels on fail(409,{conflict:true}) — ISSUE-006),
-// then also cancels on a *server-side* failure whose form is still schema-valid:
-// the actions return `fail(500, { form, error })` from their catch blocks AFTER
-// validation, so `onUpdated`'s `form.valid` stays true and would otherwise fire a
-// false "Saved" toast + advance the saved baseline even though nothing persisted.
-// fail(400) validation failures have `form.valid === false` and are left alone so
-// they still reach `onUpdated`'s else branch to render field errors. (Locally
-// scoped — the shared occ-form helper is intentionally not generalised here.)
+// superForm `onUpdate` guard for the four forms on this route. Runs the shared
+// OCC stale-write guard first (cancels on fail(409,{conflict:true}) — ISSUE-006),
+// then cancels every OTHER post-validation failure.
+//
+// The discriminator is the RETURNED FORM's own `valid` flag, not the status code.
+// An action that fails AFTER `superValidate` passed hands back a form that is
+// still `valid`, so `onUpdated` takes its success branch and would fire a false
+// "Saved" toast and advance the saved baseline even though nothing persisted.
+// That covers both the `fail(500, { form, error })` catch blocks and
+// `applyPrivacyPreset`'s semantic `fail(400, { form, error: 'Invalid input' })`,
+// which is schema-valid because `presetId` is `.optional()` — a status-only test
+// let that one through to `onUpdated`, where it surfaced the client's own
+// "Unknown preset" instead of the action's message.
+//
+// Schema failures are still left alone: they carry `form.valid === false` and must
+// reach `onUpdated`'s else branch, which renders the field errors. The two
+// predicates live in `$lib/utils/occ-form` because they classify a failure PAYLOAD,
+// which is not route-specific; the toast/cancel policy assembled from them is what
+// stays local to this page.
 function guardSettingsUpdate(event: { result: ActionResult; cancel: () => void }): void {
 	surfaceOccConflict(event);
 	const { result } = event;
-	if (result.type === 'failure' && result.status >= 500) {
-		const message =
-			(result.data as { error?: string } | undefined)?.error ?? 'Failed to save. Please try again.';
-		handleFormToast({ error: message });
-		event.cancel();
-	}
+	if (result.type !== 'failure') return;
+	// Already surfaced and cancelled above; a second toast would double up.
+	if (isOccConflict(result.data)) return;
+	if (!isPostValidationFailure(result.data)) return;
+	const failure = result.data as { error?: string } | undefined;
+	handleFormToast({ error: failure?.error ?? 'Failed to save. Please try again.' });
+	event.cancel();
 }
 
 // Per-section "last saved" baselines. Each advances ONLY after its own section
@@ -210,6 +221,11 @@ const presetForm = superForm(data.presetForm, {
 			handleFormToast({ error: updated.message ?? 'Validation failed' });
 			return;
 		}
+		// Unreachable since `guardSettingsUpdate` began cancelling post-validation
+		// failures: reaching here with a valid form means the result was a `success`,
+		// which proves the action's own `PRIVACY_PRESETS.find` matched. Retained
+		// deliberately — the action anticipates an id added to `PRIVACY_PRESET_IDS`
+		// without a value-map, and a toast beats `assignPresetValues(undefined)`.
 		const applied = PRIVACY_PRESETS.find((candidate) => candidate.id === updated.data.presetId);
 		if (!applied) {
 			handleFormToast({ error: 'Unknown preset' });

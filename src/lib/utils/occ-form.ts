@@ -28,6 +28,32 @@ export function isOccConflict(data: unknown): boolean {
 }
 
 /**
+ * Whether an action `failure` payload is a POST-VALIDATION failure, i.e. one the
+ * action returned after `superValidate` already passed.
+ *
+ * Such a payload hands back a form that is still `valid`, so superForm's
+ * `onUpdated` takes its SUCCESS branch — the trap behind ISSUE-006, where a
+ * discarded stale write fired a "Saved" toast. Status codes do not discriminate
+ * it: an action can `fail(400, { form, error })` semantically on a payload that
+ * satisfied its schema (`applyPrivacyPreset`'s `!preset` guard does exactly that,
+ * because `presetId` is `.optional()`), while a genuine schema failure carries
+ * `form.valid === false` and must be left to `onUpdated`'s field-error branch.
+ *
+ * ORDERING CONTRACT: an OCC conflict returned after the pre-write check is ALSO a
+ * post-validation failure, so a caller that runs {@link surfaceOccConflict} must
+ * early-return on `isOccConflict(result.data)` before consulting this predicate.
+ * `surfaceOccConflict` cancels but does not stop the caller, so skipping that
+ * early return toasts every 409 twice.
+ *
+ * Kept next to {@link isOccConflict} because both inspect the same failure payload
+ * and both are consumed at the `onUpdate` layer.
+ */
+export function isPostValidationFailure(data: unknown): boolean {
+	const d = data as { form?: { valid?: boolean } } | undefined;
+	return d?.form?.valid === true;
+}
+
+/**
  * superForm `onUpdate` guard for OCC stale-writes.
  *
  * An OCC stale-write returns `fail(409, { form, conflict, error })` AFTER

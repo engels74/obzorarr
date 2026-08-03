@@ -289,9 +289,30 @@ describe('privacy nested route — applyPrivacyPreset rejects non-presets', () =
 		expect(result).toMatchObject({ status: 400, data: { error: 'Invalid input' } });
 	});
 
-	it('rejects a missing presetId as a 400', async () => {
+	it('rejects a missing presetId as a 400 that names the actual problem', async () => {
 		const result = await runApply({ ...versionsAt(EPOCH) });
-		expect(result).toMatchObject({ status: 400, data: { error: 'Invalid input' } });
+		// Distinct from the generic schema-failure copy: this 400 is the one the client
+		// surfaces verbatim, so it has to say what happened.
+		expect(result).toMatchObject({ status: 400, data: { error: 'No preset selected' } });
+	});
+
+	it('splits the two 400 shapes on form.valid, which is what the client keys on', async () => {
+		// `presetId` is `.optional()`, so an ABSENT field passes the schema and is only
+		// refused afterwards by the `!preset` guard: the returned form is still valid,
+		// so superForm's `onUpdated` would take its SUCCESS branch. The client's
+		// `guardSettingsUpdate` therefore cancels on `form.valid`, not on the status.
+		const missing = (await runApply({ ...versionsAt(EPOCH) })) as {
+			data: { form: { valid: boolean } };
+		};
+		expect(missing.data.form.valid).toBe(true);
+
+		// A value the enum rejects fails validation instead, and MUST stay valid ===
+		// false so it reaches `onUpdated`'s field-error branch rather than a toast.
+		const unknown = (await runApply({
+			presetId: 'ultra-private',
+			...versionsAt(EPOCH)
+		})) as { data: { form: { valid: boolean } } };
+		expect(unknown.data.form.valid).toBe(false);
 	});
 });
 
@@ -331,6 +352,26 @@ describe('privacy preset apply — client wiring (no DOM harness in this suite)'
 		const form = src.slice(src.indexOf('const presetForm = superForm('));
 		expect(form.slice(0, form.indexOf('\n});'))).toContain('onUpdate: guardSettingsUpdate');
 		expect(src).toContain('surfaceOccConflict(event);');
+	});
+
+	it('cancels every post-validation failure instead of testing the status code', async () => {
+		const src = await read();
+		// `applyPrivacyPreset` returns fail(400, { form, error }) from its `!preset`
+		// guard on a payload that PASSED the schema (`presetId` is `.optional()`), so
+		// the returned form is still `valid` and `onUpdated` took its success branch —
+		// surfacing the client's own "Unknown preset" instead of the action's message.
+		// A `status >= 500` test cannot see that.
+		const guard = bodyOf(src, 'function guardSettingsUpdate(');
+		expect(guard).toContain('if (!isPostValidationFailure(result.data)) return;');
+		// No status arithmetic left anywhere in the guard, spelled or destructured.
+		expect(guard).not.toContain('result.status');
+		expect(guard).not.toContain('status');
+		// The OCC 409 is already surfaced and cancelled by surfaceOccConflict; falling
+		// through would toast twice, since a post-write 409 is post-validation too.
+		const surfaceAt = guard.indexOf('surfaceOccConflict(event);');
+		const occReturnAt = guard.indexOf('if (isOccConflict(result.data)) return;');
+		expect(surfaceAt).toBeGreaterThan(-1);
+		expect(occReturnAt).toBeGreaterThan(surfaceAt);
 	});
 
 	it('persists on a card click and only stages on the arrow keys', async () => {
