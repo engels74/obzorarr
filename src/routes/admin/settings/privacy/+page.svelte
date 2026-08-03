@@ -55,7 +55,6 @@ import {
 	shareDefaultCopy
 } from '$lib/sharing/options';
 import {
-	customPresetSeedValues,
 	derivePreview,
 	matchPresetPrivacy,
 	PREVIEW_NAME_DISPLAY_LABELS,
@@ -268,7 +267,8 @@ let privacyTouched = $derived(presetCardClicked || unsavedSectionCount > 0);
 
 // Sticky "the admin explicitly clicked the Custom card" flag. While set, Custom
 // stays highlighted even when the staged values happen to match a shipped preset
-// (exactly what happens right after Custom seeds Balanced on a first pick).
+// — which on this route is simply "the admin clicked Custom while their saved
+// configuration still matches a preset", since the click stages nothing.
 // Cleared by clicking any of the five real cards.
 let customPresetChosen = $state(false);
 
@@ -302,13 +302,15 @@ function applyPrivacyPreset(preset: PrivacyPreset) {
 	advancedOpen = true;
 }
 
-// Picking Custom seeds Balanced ONLY as the first interaction of the session;
-// afterwards it moves the highlight and stages nothing (customPresetSeedValues
-// owns that rule). Advanced is expanded either way — Custom's whole point is the
-// controls below it.
+// Custom is a pure highlight change on this route: it stages NOTHING. Unlike
+// onboarding's monotonic `privacyTouched` state, the admin gate is derived from
+// `unsavedSectionCount`, so it reads false both on load for an already-off-preset
+// persisted config and again after a successful save. Seeding Balanced through
+// `customPresetSeedValues(privacyTouched)` in either state would silently
+// overwrite the administrator's saved privacy settings. Admins who do want that
+// baseline click the Balanced card, which sits in the same radiogroup. Advanced
+// is still expanded — Custom's whole point is the controls below it.
 function selectCustomPreset() {
-	const seed = customPresetSeedValues(privacyTouched);
-	if (seed) assignPresetValues(seed);
 	presetCardClicked = true;
 	customPresetChosen = true;
 	advancedOpen = true;

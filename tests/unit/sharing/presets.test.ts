@@ -332,18 +332,52 @@ describe('Custom preset card — template wiring (no DOM harness in this suite)'
 		}
 	);
 
-	it.each([ONBOARDING, ADMIN])(
-		'%s delegates the Custom click seeding rule to customPresetSeedValues',
-		async (path) => {
-			const src = await read(path);
-			const fn = src.slice(src.indexOf('function selectCustomPreset('));
-			const body = fn.slice(0, fn.indexOf('\n}'));
-			// The only mutation path is the seed helper — no unconditional field writes.
-			expect(body).toContain('const seed = customPresetSeedValues(privacyTouched);');
-			expect(body).toContain('if (seed) assignPresetValues(seed);');
-			expect(body).toContain('customPresetChosen = true;');
-		}
-	);
+	it('onboarding delegates the Custom click seeding rule to customPresetSeedValues', async () => {
+		const src = await read(ONBOARDING);
+		const fn = src.slice(src.indexOf('function selectCustomPreset('));
+		const body = fn.slice(0, fn.indexOf('\n}'));
+		// The only mutation path is the seed helper — no unconditional field writes.
+		expect(body).toContain('const seed = customPresetSeedValues(privacyTouched);');
+		expect(body).toContain('if (seed) assignPresetValues(seed);');
+		expect(body).toContain('customPresetChosen = true;');
+	});
+
+	it('admin never seeds from the Custom card — the click stages nothing', async () => {
+		// Regression: admin's `privacyTouched` is $derived(presetCardClicked ||
+		// unsavedSectionCount > 0), so it is false BOTH on load for an already
+		// off-preset persisted config AND again after a successful save. Passing it
+		// to customPresetSeedValues (which seeds Balanced whenever the flag is
+		// false) therefore overwrote the administrator's saved privacy settings on
+		// a plain Custom click. Admin's Custom card must only move the highlight.
+		const src = await read(ADMIN);
+		// The helper is not imported at all — scoped to the import block so the
+		// explanatory prose above the handler may still name it.
+		const importBlock = src.slice(0, src.indexOf("} from '$lib/sharing/preset-logic'"));
+		expect(importBlock).not.toContain('customPresetSeedValues');
+		const fn = src.slice(src.indexOf('function selectCustomPreset('));
+		const body = fn.slice(0, fn.indexOf('\n}'));
+		expect(body).not.toContain('customPresetSeedValues');
+		expect(body).not.toContain('assignPresetValues');
+		// ...and no inlined equivalent: the three superForm stores are the only
+		// staging surface (see assignPresetValues), so the click must not touch them.
+		expect(body).not.toContain('$serverWrappedData');
+		expect(body).not.toContain('$userDefaultsData');
+		expect(body).not.toContain('$publicLandingLookupData');
+		expect(body).toContain('customPresetChosen = true;');
+		expect(body).toContain('presetCardClicked = true;');
+	});
+
+	it('admin exposes the non-monotonic interaction gate the seeding rule must not trust', async () => {
+		const src = await read(ADMIN);
+		// Pins the derivation the regression above depends on: if this ever becomes
+		// a monotonic $state flag the "never seed" rule can be revisited.
+		expect(src).toContain(
+			'let privacyTouched = $derived(presetCardClicked || unsavedSectionCount > 0);'
+		);
+		// ...and the helper still seeds whenever that flag reads false, which is
+		// exactly why admin must not call it.
+		expect(customPresetSeedValues(false)).not.toBeNull();
+	});
 
 	it.each([ONBOARDING, ADMIN])(
 		'%s gates the selected card on the interaction flag via resolvePresetSelection',

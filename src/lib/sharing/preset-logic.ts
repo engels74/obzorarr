@@ -55,9 +55,11 @@ export function shouldShowCustomPresetNote(
  *   must not light up there either, so an untouched `'custom'` selects NO card —
  *   exactly the pre-Custom-card behaviour.
  * - `customChosen` — the sticky "admin explicitly clicked Custom" flag. It wins
- *   over `match` so that clicking Custom on a fresh install (which seeds the
- *   Balanced values) does not immediately snap the highlight back to Balanced.
- *   Clicking any of the five real cards clears it.
+ *   over `match` so the highlight does not immediately snap back to a shipped
+ *   preset: in onboarding because clicking Custom seeds the Balanced values, and
+ *   on the admin route because the saved configuration may already match a preset
+ *   while the click itself stages nothing. Clicking any of the five real cards
+ *   clears it.
  */
 export function resolvePresetSelection(
 	match: PrivacyPresetMatch,
@@ -72,11 +74,18 @@ export function resolvePresetSelection(
  * The values the Custom card seeds when it is clicked, or `null` when the click
  * must not mutate anything.
  *
- * Seeding happens ONLY on the first interaction of the session: Custom then acts
- * as "start from the recommended baseline and tweak it". Once the admin has
- * interacted — whether they are sitting on a shipped preset or have already
- * diverged from one — clicking Custom is a pure highlight change and must leave
- * every Advanced setting exactly as it is.
+ * ONBOARDING-ONLY rule. Seeding happens on the first interaction of the session:
+ * Custom then acts as "start from the recommended baseline and tweak it". Once
+ * the admin has interacted — whether they are sitting on a shipped preset or have
+ * already diverged from one — clicking Custom is a pure highlight change and must
+ * leave every Advanced setting exactly as it is.
+ *
+ * `hasInteracted` must therefore be a MONOTONIC session flag, which is only true
+ * of onboarding's `let privacyTouched = $state(false)`. The admin privacy route
+ * derives its gate from `unsavedSectionCount`, so it drops back to false after a
+ * successful save and starts false for a persisted off-preset configuration;
+ * seeding there would overwrite real saved settings. Admin consequently never
+ * calls this helper — its Custom card stages nothing.
  */
 export function customPresetSeedValues(hasInteracted: boolean): PrivacyPresetValues | null {
 	if (hasInteracted) return null;

@@ -405,9 +405,10 @@ export const PRIVACY_PRESETS: PrivacyPreset[] = [
 ];
 
 /**
- * The preset the "Custom" card seeds on its FIRST pick of a session, so an
- * admin who starts from Custom begins from the recommended baseline instead of
- * whatever the raw factory defaults happen to be.
+ * The preset ONBOARDING's "Custom" card seeds on its first pick of a session, so
+ * an admin who starts from Custom begins from the recommended baseline instead of
+ * whatever the raw factory defaults happen to be. The admin privacy route never
+ * seeds — see `customPresetSeedValues` in `$lib/sharing/preset-logic` for why.
  */
 export const DEFAULT_PRIVACY_PRESET_ID: PrivacyPresetId = 'balanced';
 
