@@ -69,7 +69,7 @@ async function runTest() {
 		}
 	} catch {
 		testResult = 'failure';
-		testError = 'Network error - could not complete test';
+		testError = 'Network error while testing the origin.';
 	}
 }
 
@@ -119,7 +119,7 @@ function useDetectedOrigin() {
 }
 </script>
 
-<OnboardingCard title="Security Settings" subtitle="Configure CSRF protection for your application">
+<OnboardingCard title="Security Settings" subtitle="Set the origin URL that CSRF checks accept">
 	<div class="csrf-content" bind:this={contentRef}>
 		<div class="icon-container" bind:this={iconRef}>
 			<div class="icon-wrapper">
@@ -230,8 +230,8 @@ function useDetectedOrigin() {
 			</div>
 
 			<p class="info-text animate-item">
-				CSRF protection is configured via the <code>ORIGIN</code> environment variable. This setting is
-				locked and cannot be changed here.
+				The <code>ORIGIN</code> environment variable sets CSRF protection, so you cannot change it
+				here.
 			</p>
 
 			<div class="locked-docs animate-item">
@@ -302,12 +302,12 @@ function useDetectedOrigin() {
 							<circle cx="12" cy="12" r="10" />
 							<path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round" />
 						</svg>
-						<span>Origin verified - CSRF protection will work correctly</span>
+						<span>Origin verified. CSRF checks will accept this URL.</span>
 					</div>
 				{/if}
 				<p class="input-hint">
-					Enter the public URL where users will access Obzorarr. This protects against cross-site
-					request forgery attacks.
+					Enter the public URL where users reach Obzorarr. Obzorarr rejects form posts that come from
+					any other origin.
 				</p>
 			</div>
 
@@ -326,14 +326,14 @@ function useDetectedOrigin() {
 					/>
 				</svg>
 				<div class="callout-content">
-					<span class="callout-title">Why configure CSRF protection?</span>
+					<span class="callout-title">What CSRF protection does</span>
 					<span class="callout-text">
 						{#if data.detection.isReverseProxy}
-							You appear to be accessing through a reverse proxy. Setting the correct origin URL
-							ensures form submissions are validated against the actual URL users see.
+							You are connecting through a reverse proxy. Set the origin to the URL your users see so
+							Obzorarr checks form posts against that URL.
 						{:else}
-							CSRF protection validates that form submissions come from your application's domain.
-							If you plan to use a reverse proxy later, you can configure this setting now.
+							Obzorarr checks that form posts come from your own domain. Set this now if you plan to
+							add a reverse proxy later.
 						{/if}
 					</span>
 					<div class="callout-links">

@@ -118,7 +118,7 @@ describe('onboarding completion page', () => {
 			'template mode when AI was requested without a key',
 			'?notice=ai-key-missing',
 			false,
-			'Template mode — add an OpenAI key to enable AI',
+			'Template mode: add an OpenAI key for AI fun facts',
 			async () => {
 				await setFunFactFrequency(FunFactFrequency.MANY);
 				await setAppSetting(AppSettingsKey.OPENAI_BASE_URL, 'https://api.example.com/v1');

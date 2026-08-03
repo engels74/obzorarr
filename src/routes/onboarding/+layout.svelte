@@ -78,7 +78,7 @@ $effect(() => {
 		</main>
 
 		<footer class="onboarding-footer">
-			<p>Your Plex viewing history, beautifully wrapped.</p>
+			<p>Your Plex viewing history, wrapped for the year.</p>
 		</footer>
 	</div>
 </div>

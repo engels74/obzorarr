@@ -201,7 +201,7 @@ describe('onboarding CSRF actions', () => {
 		expect(result).toEqual({
 			status: 400,
 			data: {
-				testError: 'Could not detect browser origin. Ensure you are accessing via HTTP/HTTPS.'
+				testError: 'Could not detect the browser origin. Open Obzorarr over HTTP or HTTPS.'
 			}
 		});
 		expect(await getOnboardingStep()).toBe(OnboardingSteps.CSRF);

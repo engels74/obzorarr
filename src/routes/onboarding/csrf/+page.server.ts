@@ -123,7 +123,7 @@ async function saveCsrfOrigin({
 	const actualOrigin = getRequestOrigin(request);
 	if (!actualOrigin) {
 		return fail(400, {
-			error: 'Could not detect browser origin. Ensure you are accessing via HTTP/HTTPS.'
+			error: 'Could not detect the browser origin. Open Obzorarr over HTTP or HTTPS.'
 		});
 	}
 
@@ -177,7 +177,7 @@ export const actions: Actions = {
 		const actualOrigin = getRequestOrigin(request);
 		if (!actualOrigin) {
 			return fail(400, {
-				testError: 'Could not detect browser origin. Ensure you are accessing via HTTP/HTTPS.'
+				testError: 'Could not detect the browser origin. Open Obzorarr over HTTP or HTTPS.'
 			});
 		}
 

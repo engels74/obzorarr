@@ -85,7 +85,7 @@ export const actions: Actions = {
 		try {
 			const plexToken = await getSessionPlexToken(sessionId);
 			if (!plexToken) {
-				return fail(401, { error: 'Session expired. Please sign in again.' });
+				return fail(401, { error: 'Session expired. Sign in again.' });
 			}
 
 			const membership = await verifyServerMembership(plexToken);
@@ -108,8 +108,7 @@ export const actions: Actions = {
 
 			if (!membership.isOwner) {
 				return fail(403, {
-					error:
-						'Only the server owner can configure Obzorarr. Please sign in with the server owner account.'
+					error: 'Only the server owner can configure Obzorarr. Sign in with the owner account.'
 				});
 			}
 
@@ -135,7 +134,7 @@ export const actions: Actions = {
 			);
 
 			return fail(500, {
-				error: 'Failed to verify admin status. Please try again.'
+				error: 'Could not verify admin status. Try again.'
 			});
 		}
 	},
@@ -250,7 +249,7 @@ export const actions: Actions = {
 
 		const plexToken = await getSessionPlexToken(sessionId);
 		if (!plexToken) {
-			return fail(401, { error: 'Session expired. Please sign in again.' });
+			return fail(401, { error: 'Session expired. Sign in again.' });
 		}
 
 		let membership: MembershipResult;
@@ -271,7 +270,7 @@ export const actions: Actions = {
 				`Ownership override verification failed: ${err instanceof Error ? err.message : String(err)}`,
 				'Onboarding'
 			);
-			return fail(500, { error: 'Failed to verify server ownership. Please try again.' });
+			return fail(500, { error: 'Could not verify server ownership. Try again.' });
 		}
 
 		const apiConfig = await getApiConfigWithSources();
@@ -289,7 +288,7 @@ export const actions: Actions = {
 			if (membership.reason !== 'not_in_resources' || !membership.configuredMachineId) {
 				return fail(403, {
 					error: membership.isMember
-						? 'Only the server owner can use the admin override. Please sign in with the server owner account.'
+						? 'Only the server owner can use the admin override. Sign in with the owner account.'
 						: messageForMembershipFailure(membership)
 				});
 			}

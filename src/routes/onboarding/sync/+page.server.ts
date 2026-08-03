@@ -70,14 +70,14 @@ export const actions: Actions = {
 
 			logger.info(`Onboarding: Initial sync started for year ${currentYear}`, 'Onboarding');
 
-			return { success: true, message: 'Sync started successfully' };
+			return { success: true, message: 'Sync started' };
 		} catch (err) {
 			logger.error(
 				`Failed to start sync: ${err instanceof Error ? err.message : String(err)}`,
 				'Onboarding'
 			);
 
-			return fail(500, { error: 'Failed to start sync. Please try again.' });
+			return fail(500, { error: 'Could not start the sync. Try again.' });
 		}
 	},
 

@@ -107,7 +107,7 @@ const summaryItems = $derived([
 
 			<div class="completion-header" class:visible={showContent}>
 				<h1 class="completion-title">Setup Complete!</h1>
-				<p class="completion-subtitle">Your Plex Wrapped is ready to go</p>
+				<p class="completion-subtitle">Your Plex Wrapped is ready</p>
 			</div>
 
 			{#if data.notice === 'ai-key-missing'}
@@ -125,8 +125,8 @@ const summaryItems = $derived([
 						<line x1="12" y1="16" x2="12.01" y2="16" />
 					</svg>
 					<span>
-						AI Fun Facts will use built-in templates because no OpenAI key was provided. Add a key
-						in <strong>Admin → Settings → AI</strong> to enable AI-generated fun facts.
+						Fun facts use the built-in templates because you have not added an OpenAI key. Add one
+						in <strong>Admin → Settings → AI</strong> for AI-generated fun facts.
 					</span>
 				</div>
 			{/if}
