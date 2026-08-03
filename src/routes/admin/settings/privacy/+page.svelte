@@ -64,7 +64,7 @@ import {
 	resolvePresetSelection
 } from '$lib/sharing/preset-logic';
 import { handleFormToast } from '$lib/utils/form-toast';
-import { surfaceOccConflict } from '$lib/utils/occ-form';
+import { isOccConflict, isPostValidationFailure, surfaceOccConflict } from '$lib/utils/occ-form';
 import type { PageData } from './$types';
 
 interface Props {
@@ -73,24 +73,35 @@ interface Props {
 
 let { data }: Props = $props();
 
-// superForm `onUpdate` guard for the three settings forms. Runs the shared OCC
-// stale-write guard first (cancels on fail(409,{conflict:true}) — ISSUE-006),
-// then also cancels on a *server-side* failure whose form is still schema-valid:
-// the actions return `fail(500, { form, error })` from their catch blocks AFTER
-// validation, so `onUpdated`'s `form.valid` stays true and would otherwise fire a
-// false "Saved" toast + advance the saved baseline even though nothing persisted.
-// fail(400) validation failures have `form.valid === false` and are left alone so
-// they still reach `onUpdated`'s else branch to render field errors. (Locally
-// scoped — the shared occ-form helper is intentionally not generalised here.)
+// superForm `onUpdate` guard for the four forms on this route. Runs the shared
+// OCC stale-write guard first (cancels on fail(409,{conflict:true}) — ISSUE-006),
+// then cancels every OTHER post-validation failure.
+//
+// The discriminator is the RETURNED FORM's own `valid` flag, not the status code.
+// An action that fails AFTER `superValidate` passed hands back a form that is
+// still `valid`, so `onUpdated` takes its success branch and would fire a false
+// "Saved" toast and advance the saved baseline even though nothing persisted.
+// That covers both the `fail(500, { form, error })` catch blocks and
+// `applyPrivacyPreset`'s semantic `fail(400, { form, error: 'Invalid input' })`,
+// which is schema-valid because `presetId` is `.optional()` — a status-only test
+// let that one through to `onUpdated`, where it surfaced the client's own
+// "Unknown preset" instead of the action's message.
+//
+// Schema failures are still left alone: they carry `form.valid === false` and must
+// reach `onUpdated`'s else branch, which renders the field errors. The two
+// predicates live in `$lib/utils/occ-form` because they classify a failure PAYLOAD,
+// which is not route-specific; the toast/cancel policy assembled from them is what
+// stays local to this page.
 function guardSettingsUpdate(event: { result: ActionResult; cancel: () => void }): void {
 	surfaceOccConflict(event);
 	const { result } = event;
-	if (result.type === 'failure' && result.status >= 500) {
-		const message =
-			(result.data as { error?: string } | undefined)?.error ?? 'Failed to save. Please try again.';
-		handleFormToast({ error: message });
-		event.cancel();
-	}
+	if (result.type !== 'failure') return;
+	// Already surfaced and cancelled above; a second toast would double up.
+	if (isOccConflict(result.data)) return;
+	if (!isPostValidationFailure(result.data)) return;
+	const failure = result.data as { error?: string } | undefined;
+	handleFormToast({ error: failure?.error ?? 'Failed to save. Please try again.' });
+	event.cancel();
 }
 
 // Per-section "last saved" baselines. Each advances ONLY after its own section
@@ -194,6 +205,63 @@ const {
 	enhance: publicLandingLookupEnhance,
 	submitting: publicLandingLookupSubmitting
 } = publicLandingLookupForm;
+
+// Fourth form: the "apply preset" write. It owns no controls of its own — the
+// preset cards and the Apply button both submit it — and it spans all THREE OCC
+// groups, so a successful apply advances every section's baseline AND its
+// settingsVersion. See `applyPrivacyPreset` in +page.server.ts for the
+// all-or-nothing partial-conflict policy behind the shared version.
+// svelte-ignore state_referenced_locally
+const presetForm = superForm(data.presetForm, {
+	resetForm: false,
+	invalidateAll: false,
+	onUpdate: guardSettingsUpdate,
+	onUpdated({ form: updated }) {
+		if (!updated.valid) {
+			handleFormToast({ error: updated.message ?? 'Validation failed' });
+			return;
+		}
+		// Unreachable since `guardSettingsUpdate` began cancelling post-validation
+		// failures: reaching here with a valid form means the result was a `success`,
+		// which proves the action's own `PRIVACY_PRESETS.find` matched. Retained
+		// deliberately — the action anticipates an id added to `PRIVACY_PRESET_IDS`
+		// without a value-map, and a toast beats `assignPresetValues(undefined)`.
+		const applied = PRIVACY_PRESETS.find((candidate) => candidate.id === updated.data.presetId);
+		if (!applied) {
+			handleFormToast({ error: 'Unknown preset' });
+			return;
+		}
+		// The server wrote all three groups in one transaction, so the staged values
+		// ARE the saved values now: advance the stores, the three settingsVersions
+		// and all three baselines together. That is what makes the Advanced sections
+		// below read as saved rather than staged.
+		assignPresetValues(applied.values);
+		$serverWrappedData.settingsVersion = updated.data.serverWrappedVersion;
+		$userDefaultsData.settingsVersion = updated.data.userDefaultsVersion;
+		$publicLandingLookupData.settingsVersion = updated.data.publicLandingLookupVersion;
+		savedServerWrapped = {
+			anonymizationMode: applied.values.anonymizationMode,
+			serverWrappedShareMode: applied.values.serverWrappedShareMode
+		};
+		savedUserDefaults = {
+			defaultShareMode: applied.values.defaultShareMode,
+			allowUserControl: applied.values.allowUserControl
+		};
+		savedPublicLandingLookup = { publicLandingLookup: applied.values.publicLandingLookup };
+		customPresetChosen = false;
+		privacyInteracted = true;
+		// The action keeps its name through the whole flow: the button says "Apply
+		// Balanced", so the toast says "Applied the Balanced preset" — not a generic
+		// "Saved" that gives no hint which of six cards actually landed.
+		handleFormToast({ success: true, message: `Applied the ${applied.label} preset` });
+	}
+});
+const { enhance: presetEnhance, submitting: presetSubmitting } = presetForm;
+
+// The <form> the preset cards submit programmatically. Its hidden inputs are
+// rendered from the highlighted card and the three sections' live
+// settingsVersions, so a submit always carries current values.
+let presetFormEl = $state<HTMLFormElement | null>(null);
 
 let bulkApplyDialogOpen = $state(false);
 let isBulkApplying = $state(false);
@@ -308,9 +376,8 @@ let selectedPresetCard = $derived(
 	resolvePresetSelection(selectedPreset, privacyTouched, customPresetChosen)
 );
 
-// Applying a preset is pure client-side state mutation across the three stores.
-// It writes the FIVE admin-owned fields and NEVER touches logoMode. Persistence
-// still flows through each section's existing Save button + OCC group.
+// Staging the five admin-owned fields across the three stores. NEVER touches
+// logoMode — that lives on the Appearance route and its own OCC group.
 function assignPresetValues(values: Pick<PrivacyPresetValues, PrivacyPresetPrivacyKey>) {
 	$serverWrappedData.anonymizationMode = values.anonymizationMode;
 	$serverWrappedData.serverWrappedShareMode = values.serverWrappedShareMode;
@@ -319,17 +386,68 @@ function assignPresetValues(values: Pick<PrivacyPresetValues, PrivacyPresetPriva
 	$publicLandingLookupData.publicLandingLookup = values.publicLandingLookup;
 }
 
-function applyPrivacyPreset(preset: PrivacyPreset) {
+/**
+ * Whether a preset interaction also PERSISTS.
+ *
+ * `persist` is what a card click (mouse, Enter, Space) and the explicit Apply
+ * button use: one `?/applyPrivacyPreset` POST writes all five fields across the
+ * three OCC groups atomically, so nothing is left staged. The POST is still
+ * skipped when it would write values that are already persisted — see
+ * `presetMatchesSaved` below.
+ *
+ * `stage-only` is what the roving-tabindex ARROW keys use. An APG radiogroup moves
+ * its selection as focus moves, and firing one three-section write per ArrowRight
+ * would be absurd; the arrows stage, and the Apply button commits what they landed
+ * on. That is also why the button is not redundant with the cards.
+ */
+type PresetCommit = 'persist' | 'stage-only';
+
+/**
+ * Whether `preset` is EXACTLY what the three per-section baselines already hold,
+ * i.e. whether applying it would write values that are already persisted.
+ *
+ * Read from the saved baselines rather than the staged stores, so a card that
+ * has only staged still counts as "not saved yet". Shared by the Apply button's
+ * enablement and by the card-click path, because those two must never disagree
+ * about whether there is anything to write.
+ */
+function presetMatchesSaved(preset: PrivacyPreset): boolean {
+	return (
+		matchPresetPrivacy({
+			anonymizationMode: savedServerWrapped.anonymizationMode,
+			defaultShareMode: savedUserDefaults.defaultShareMode,
+			serverWrappedShareMode: savedServerWrapped.serverWrappedShareMode,
+			publicLandingLookup: savedPublicLandingLookup.publicLandingLookup,
+			allowUserControl: savedUserDefaults.allowUserControl
+		}) === preset.id
+	);
+}
+
+async function applyPrivacyPreset(preset: PrivacyPreset, commit: PresetCommit = 'persist') {
+	// The in-flight guard comes BEFORE any mutation. An apply already writing all
+	// three groups rewrites the stores and clears `customPresetChosen` from its own
+	// response, so staging another card underneath it only flickers the highlight
+	// and the "After you save" preview before snapping back to what that apply
+	// wrote — a click that visibly did nothing.
+	if ($presetSubmitting) return;
 	privacyInteracted = true;
 	customPresetChosen = false;
 	assignPresetValues(preset.values);
-	// ISSUE-006: applying a preset stages unsaved changes whose per-section Save
-	// buttons live inside the (possibly collapsed) Advanced accordion. Auto-expand
-	// so the "{n} unsaved sections" alert never points at hidden Save buttons.
-	// Only ever opens — never force-collapses — and both the card click and the
-	// keyboard arrow handler route through here. (No state-in-$effect: this is an
-	// explicit user action, respecting the file's no-effect-writes rule.)
-	advancedOpen = true;
+	if (commit === 'stage-only') return;
+	// A card click on the preset that is ALREADY persisted has nothing to write.
+	// Submitting anyway would stamp a strictly-advancing `updatedAt` on all three
+	// OCC groups (see `setPrivacyPresetAtomic`), 409-ing every other admin tab over
+	// a write that changed no value. This is the same condition the Apply button
+	// disables itself on, and `presetApplyStatus` already says "… is the saved
+	// configuration", so the skip is explained rather than silent. The staging
+	// above still ran, which is what reverts unsaved Advanced edits back to the
+	// card the admin just clicked.
+	if (presetMatchesSaved(preset)) return;
+	// Let the staged values reach `presetIdToSubmit`'s hidden input before the
+	// native submit reads the form. (No state-in-$effect: this is an explicit user
+	// action, respecting the file's no-effect-writes rule.)
+	await tick();
+	presetFormEl?.requestSubmit();
 }
 
 // Custom is a pure highlight change on this route: it stages NOTHING. The admin
@@ -339,8 +457,14 @@ function applyPrivacyPreset(preset: PrivacyPreset) {
 // administrator's saved privacy settings. Making the gate latch (above) does not
 // change that: a fresh load has latched nothing either way. Admins who do want
 // that baseline click the Balanced card, which sits in the same radiogroup.
-// Advanced is still expanded — Custom's whole point is the controls below it.
+// Advanced is still expanded — Custom's whole point is the controls below it, and
+// the only way to reach an off-preset configuration is to edit them and save that
+// section. Custom therefore also has nothing for the Apply button to write.
 function selectCustomPreset() {
+	// Same in-flight rule as the shipped cards: a running apply clears
+	// `customPresetChosen` in its own `onUpdated`, so highlighting Custom
+	// underneath it would only be undone.
+	if ($presetSubmitting) return;
 	privacyInteracted = true;
 	customPresetChosen = true;
 	advancedOpen = true;
@@ -353,16 +477,61 @@ let presetButtons = $state<(HTMLButtonElement | null)[]>([]);
 
 const CUSTOM_PRESET_INDEX = PRIVACY_PRESETS.length;
 
+// Called by the roving-tabindex ARROW keys only, so every branch stages without
+// writing: `applyPrivacyPreset(preset, 'stage-only')` for a shipped preset and
+// `selectCustomPreset()` — which stages nothing at all — for the Custom slot.
+//
+// Returns false while an apply is in flight, because both of those refuse to move
+// the selection then. Reporting that refusal keeps the roving tab stop on the
+// still-selected card instead of letting focus desync from `aria-checked`.
 function selectPresetAtIndex(index: number): boolean {
+	if ($presetSubmitting) return false;
 	if (index === CUSTOM_PRESET_INDEX) {
 		selectCustomPreset();
 		return true;
 	}
 	const preset = PRIVACY_PRESETS[index];
 	if (!preset) return false;
-	applyPrivacyPreset(preset);
+	applyPrivacyPreset(preset, 'stage-only');
 	return true;
 }
+
+// What the explicit Apply button would write: the highlighted card resolved to a
+// shipped preset. `null` for the Custom card (no value-map by definition) and
+// before the admin has interacted at all, which is exactly when there is nothing
+// to apply.
+let applicablePreset = $derived(
+	PRIVACY_PRESETS.find((preset) => preset.id === selectedPresetCard) ?? null
+);
+
+// Whether the highlighted preset is ALREADY what is persisted. Read from the
+// per-section saved baselines, not the staged stores, so the button is enabled
+// exactly when applying would change something on the server — which is what keeps
+// it from feeling like a duplicate of the card click that just persisted.
+let applicablePresetIsSaved = $derived(
+	applicablePreset !== null && presetMatchesSaved(applicablePreset)
+);
+
+let canApplyPreset = $derived(
+	applicablePreset !== null && !applicablePresetIsSaved && !$presetSubmitting
+);
+
+// The submitted preset id. Empty for Custom and for "no card highlighted", both of
+// which also disable the button — the action's Zod enum rejects either anyway.
+let presetIdToSubmit = $derived(applicablePreset?.id ?? '');
+
+// One line that states the truth about the selection relative to what is saved.
+// This is the whole reason the Apply button reads as deliberate rather than
+// redundant: it always says why it is or is not available.
+let presetApplyStatus = $derived.by(() => {
+	if ($presetSubmitting) return 'Applying to all three sections…';
+	if (selectedPresetCard === 'custom') {
+		return 'Custom has no values of its own. Set the controls in Advanced options, then save that section.';
+	}
+	if (!applicablePreset) return 'Pick a preset to save it across all three sections at once.';
+	if (applicablePresetIsSaved) return `${applicablePreset.label} is the saved configuration.`;
+	return `${applicablePreset.label} is selected but not saved yet.`;
+});
 
 let presetTabIndex = $derived.by(() => {
 	if (selectedPresetCard === 'custom') return CUSTOM_PRESET_INDEX;
@@ -494,16 +663,22 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 		<CardHeader>
 			<CardTitle>Privacy presets</CardTitle>
 			<CardDescription>
-				Pick a recommended starting point, then save each affected section below. These presets
-				stage five privacy fields here; the full onboarding presets also set the Wrapped logo to
-				Always Show.
+				A preset is one privacy posture. Picking a card saves all five fields it owns across the
+				three sections below in one write — the Save buttons down there are only for
+				hand-editing a single field. The full onboarding presets also set the Wrapped logo to
+				Always Show; this page does not.
 			</CardDescription>
 		</CardHeader>
 		<CardContent class="space-y-4">
+			<!-- `aria-busy` rather than `disabled` on the cards: every handler below
+			     refuses to move the selection while an apply is in flight, and the
+			     native attribute would drop the card out of the tab order and break
+			     the single roving tab stop `presetTabIndex` maintains. -->
 			<div
 				class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
 				role="radiogroup"
 				aria-label="Privacy preset"
+				aria-busy={$presetSubmitting}
 			>
 				{#each PRIVACY_PRESETS as preset, i (preset.id)}
 					{@const PresetIcon = presetIcons[preset.id]}
@@ -556,6 +731,53 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 					Custom configuration — your settings don’t match a preset.
 				</p>
 			{/if}
+			<!-- The commit surface. A card click already submits this form; the button is
+			     the deliberate, visible route for the keyboard path (arrow keys move the
+			     radiogroup selection without writing) and for re-applying after an
+			     Advanced edit landed on a preset. Its status line states why it is or is
+			     not available, so the two affordances never read as duplicates. -->
+			<form
+				method="POST"
+				action="?/applyPrivacyPreset"
+				bind:this={presetFormEl}
+				use:presetEnhance
+			>
+				<input type="hidden" name="presetId" value={presetIdToSubmit} />
+				<input
+					type="hidden"
+					name="serverWrappedVersion"
+					value={$serverWrappedData.settingsVersion}
+				/>
+				<input type="hidden" name="userDefaultsVersion" value={$userDefaultsData.settingsVersion} />
+				<input
+					type="hidden"
+					name="publicLandingLookupVersion"
+					value={$publicLandingLookupData.settingsVersion}
+				/>
+				<SettingsActionBar align="between">
+					<!-- Described-by rather than a live region: the status changes on every
+					     arrow-key move through the radiogroup, and an aria-live line would
+					     talk over the card being announced. As a description it instead
+					     gives the (often disabled) button its reason. -->
+					<p id="preset-apply-status" class="text-xs text-muted-foreground">
+						{presetApplyStatus}
+					</p>
+					<Button
+						type="submit"
+						class="tap-target"
+						disabled={!canApplyPreset}
+						aria-describedby="preset-apply-status"
+					>
+						{#if $presetSubmitting}
+							Applying…
+						{:else if applicablePreset}
+							Apply {applicablePreset.label}
+						{:else}
+							Apply preset
+						{/if}
+					</Button>
+				</SettingsActionBar>
+			</form>
 			<div class="flex items-start gap-2 rounded-lg border border-border bg-muted/30 p-3 text-sm">
 				<ImageIcon class="mt-0.5 size-4 shrink-0 text-muted-foreground" />
 				<div class="space-y-1">
@@ -586,7 +808,13 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 					<TriangleAlertIcon />
 					<AlertDescription>
 						{unsavedSectionCount} unsaved section{unsavedSectionCount === 1 ? '' : 's'} — staged changes
-						aren't live until you save each section below.
+						aren't live yet.
+						{#if applicablePreset}
+							Apply {applicablePreset.label} above to save all of them at once, or save each section
+							below.
+						{:else}
+							Save each section below.
+						{/if}
 					</AlertDescription>
 				</Alert>
 			{/if}
@@ -885,7 +1113,9 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 			</AlertDialog.Description>
 		</AlertDialog.Header>
 		<AlertDialog.Footer>
-			<AlertDialog.Cancel disabled={isBulkApplying}>Cancel</AlertDialog.Cancel>
+			<!-- `tap-target` on BOTH footer buttons: the 44px min-size utility on the
+			     Action alone made it visibly taller than a bare 36px Cancel. -->
+			<AlertDialog.Cancel class="tap-target" disabled={isBulkApplying}>Cancel</AlertDialog.Cancel>
 			<form
 				method="POST"
 				action="?/bulkApplyShareDefaults"

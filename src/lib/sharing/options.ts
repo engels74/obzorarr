@@ -273,17 +273,25 @@ export const PRIVACY_PREVIEW_VALUE_TOOLTIPS: PrivacyPreviewValueTooltips = {
 };
 
 /**
- * Privacy preset identifiers. A preset bundles a recommended combination of the
- * existing privacy/sharing fields behind one visual card. Presets are NEVER a
- * persisted field — selecting one just mutates the existing form state; the
- * active preset is recomputed from field values on load (see `preset-logic.ts`).
+ * Privacy preset identifiers, as a tuple so the admin route's Zod enum is built
+ * from the same source the preset cards iterate — a new preset cannot become
+ * clickable without also becoming submittable.
+ *
+ * A preset is never a persisted FIELD: no `app_settings` row stores an id. The
+ * admin "apply preset" action submits an id purely as a discriminator, resolves
+ * it to a {@link PrivacyPreset} server-side, and writes only the ordinary
+ * privacy/sharing values. The active preset is still recomputed from field values
+ * on load (see `preset-logic.ts`).
  */
-export type PrivacyPresetId =
-	| 'maximum-privacy'
-	| 'internal-community'
-	| 'balanced'
-	| 'public-showcase'
-	| 'anonymous-public';
+export const PRIVACY_PRESET_IDS = [
+	'maximum-privacy',
+	'internal-community',
+	'balanced',
+	'public-showcase',
+	'anonymous-public'
+] as const;
+
+export type PrivacyPresetId = (typeof PRIVACY_PRESET_IDS)[number];
 
 /**
  * The exact set of fields a preset configures. EXACTLY six keys, mirroring the

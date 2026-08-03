@@ -8,8 +8,9 @@ import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 import { enhance } from '$app/forms';
 import { goto, invalidateAll } from '$app/navigation';
 import { SettingsActionBar } from '$lib/components/settings/index.js';
-import { Alert, AlertDescription } from '$lib/components/ui/alert/index.js';
+import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert/index.js';
 import * as AlertDialog from '$lib/components/ui/alert-dialog/index.js';
+import { Badge } from '$lib/components/ui/badge/index.js';
 import { Button } from '$lib/components/ui/button/index.js';
 import {
 	Card,
@@ -251,32 +252,38 @@ async function copyResetToken() {
 		</CardContent>
 	</Card>
 
-	<!-- Danger zone: deliberately last, visually separated, and destructive in a
-	     way the per-year clear actions above are not. -->
+	<!-- The only irreversible action on this page. The severity badge carries the
+	     alarm so the title is free to say plainly WHAT the action does, and the
+	     three blocks below use the same three labels as the confirm dialog — an
+	     admin must never read two vocabularies for the same three facts. -->
 	<Card class="border-destructive/50">
 		<CardHeader>
-			<CardTitle class="flex items-center gap-2 text-destructive">
-				<TriangleAlertIcon class="size-5" />
+			<Badge variant="destructive" class="mb-1">
+				<TriangleAlertIcon />
 				Danger zone
-			</CardTitle>
+			</Badge>
+			<CardTitle class="text-destructive">Reset this Obzorarr instance</CardTitle>
 			<CardDescription>
-				Deletes everything Obzorarr has stored and returns this instance to the first-run
-				setup screen. This is not one of the per-year actions above — it clears all
-				{data.resetTableCount} database tables at once.
+				Clears all {data.resetTableCount} database tables at once and returns this instance to the
+				first-run setup screen. This is not one of the per-year actions above, and it cannot be
+				undone.
 			</CardDescription>
 		</CardHeader>
 		<CardContent class="space-y-4">
 			<div class="space-y-3 rounded-lg border border-border bg-muted/30 p-4 text-sm">
+				<p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+					Where your data ends up
+				</p>
 				<div class="space-y-1">
-					<p class="font-medium">Comes back on its own</p>
+					<p class="font-medium">What comes back</p>
 					<p class="text-muted-foreground">
-						Obzorarr only needs your Plex login. Watch statistics are re-synced from the
-						official Plex API, so play history and every Wrapped statistic built from it can
-						be rebuilt by running a fresh sync once you finish setup again.
+						Your watch statistics. Obzorarr only needs your Plex login, and play history is
+						re-synced from the official Plex API — so play history and every Wrapped statistic
+						built from it can be rebuilt by running a fresh sync once you finish setup again.
 					</p>
 				</div>
 				<div class="space-y-1">
-					<p class="font-medium">Gone for good</p>
+					<p class="font-medium">What does not</p>
 					<p class="text-muted-foreground">
 						Every setting: privacy and sharing configuration, themes, slide configuration and
 						custom slides, log settings and fun-fact configuration. All per-user share
@@ -287,11 +294,11 @@ async function copyResetToken() {
 					</p>
 				</div>
 				<div class="space-y-1">
-					<p class="font-medium">Set by environment variables</p>
+					<p class="font-medium">What is untouched</p>
 					<p class="text-muted-foreground">
 						Anything configured through the environment (Plex, OpenAI, ORIGIN, TRUST_PROXY) is
-						not stored in the database, so it survives untouched. On an env-configured server
-						the new setup will already be filled in and locked for those steps — it is not a
+						not stored in the database, so it survives. On an env-configured server the new
+						setup will already be filled in and locked for those steps — it is not a
 						completely blank slate.
 					</p>
 				</div>
@@ -300,14 +307,19 @@ async function copyResetToken() {
 			{#if data.syncRunning}
 				<Alert>
 					<TriangleAlertIcon />
+					<AlertTitle>Reset is on hold while a sync runs</AlertTitle>
 					<AlertDescription>
-						A sync is running. Resetting is blocked until it finishes or you cancel it on the
-						Sync page — wiping mid-sync would leave the database half-written.
+						Wiping mid-sync would leave the database half-written. Wait for the sync to finish, or
+						cancel it on the <a href="/admin/sync">Sync</a> page.
 					</AlertDescription>
 				</Alert>
 			{/if}
 
-			<SettingsActionBar>
+			<SettingsActionBar align="between">
+				<p class="text-xs text-muted-foreground">
+					Takes three steps: you read what is lost, copy a fresh setup token, then type
+					{data.resetConfirmationPhrase} to confirm.
+				</p>
 				<Button
 					variant="destructive"
 					class="tap-target"
@@ -332,7 +344,10 @@ async function copyResetToken() {
 			</AlertDialog.Description>
 		</AlertDialog.Header>
 		<AlertDialog.Footer>
-			<AlertDialog.Cancel disabled={isClearingCache}>Cancel</AlertDialog.Cancel>
+			<!-- `tap-target` on BOTH footer buttons: the 44px min-size utility on the
+			     Action alone made it visibly taller than a bare 36px Cancel. Cancel and
+			     the confirm button are equal-weight siblings, so they size identically. -->
+			<AlertDialog.Cancel class="tap-target" disabled={isClearingCache}>Cancel</AlertDialog.Cancel>
 			<form
 				method="POST"
 				action="?/clearCache"
@@ -359,7 +374,15 @@ async function copyResetToken() {
 				}}
 				style="display: contents;"
 			>
-				<AlertDialog.Action type="submit" class="tap-target" disabled={isClearingCache}>
+				<!-- Destructive variant to match the trigger that opened this dialog: the
+				     confirm button must not read as a friendlier action than the button
+				     the admin just pressed. -->
+				<AlertDialog.Action
+					type="submit"
+					variant="destructive"
+					class="tap-target"
+					disabled={isClearingCache}
+				>
 					{isClearingCache ? 'Clearing…' : 'Clear cache'}
 				</AlertDialog.Action>
 			</form>
@@ -378,7 +401,7 @@ async function copyResetToken() {
 			</AlertDialog.Description>
 		</AlertDialog.Header>
 		<AlertDialog.Footer>
-			<AlertDialog.Cancel disabled={isClearingHistory}>Cancel</AlertDialog.Cancel>
+			<AlertDialog.Cancel class="tap-target" disabled={isClearingHistory}>Cancel</AlertDialog.Cancel>
 			<form
 				method="POST"
 				action="?/clearPlayHistory"
@@ -405,7 +428,12 @@ async function copyResetToken() {
 				}}
 				style="display: contents;"
 			>
-				<AlertDialog.Action type="submit" class="tap-target" disabled={isClearingHistory}>
+				<AlertDialog.Action
+					type="submit"
+					variant="destructive"
+					class="tap-target"
+					disabled={isClearingHistory}
+				>
 					{isClearingHistory ? 'Clearing…' : 'Clear play history'}
 				</AlertDialog.Action>
 			</form>
@@ -425,6 +453,9 @@ async function copyResetToken() {
 			</AlertDialog.Description>
 		</AlertDialog.Header>
 		<div class="space-y-3 text-sm">
+			<p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+				Where your data ends up
+			</p>
 			<div class="space-y-1">
 				<p class="font-medium">What comes back</p>
 				<p class="text-muted-foreground">
@@ -442,14 +473,21 @@ async function copyResetToken() {
 					year ranges or other hand-made curation. And the whole log history.
 				</p>
 			</div>
-			<p class="text-muted-foreground">
-				Anything you configured with environment variables (Plex, OpenAI, ORIGIN, TRUST_PROXY)
-				is not in the database and survives, so parts of the new setup will already be filled
-				in for you.
-			</p>
+			<div class="space-y-1">
+				<p class="font-medium">What is untouched</p>
+				<p class="text-muted-foreground">
+					Anything you configured with environment variables (Plex, OpenAI, ORIGIN, TRUST_PROXY)
+					is not in the database and survives, so parts of the new setup will already be filled
+					in for you.
+				</p>
+			</div>
 		</div>
 		<AlertDialog.Footer>
-			<AlertDialog.Cancel disabled={isPreparingReset} onclick={closeResetFlow}>
+			<AlertDialog.Cancel
+				class="tap-target"
+				disabled={isPreparingReset}
+				onclick={closeResetFlow}
+			>
 				Cancel
 			</AlertDialog.Cancel>
 			<form
@@ -537,7 +575,9 @@ async function copyResetToken() {
 			</div>
 		</div>
 		<AlertDialog.Footer>
-			<AlertDialog.Cancel disabled={isResetting} onclick={closeResetFlow}>Cancel</AlertDialog.Cancel>
+			<AlertDialog.Cancel class="tap-target" disabled={isResetting} onclick={closeResetFlow}>
+				Cancel
+			</AlertDialog.Cancel>
 			<form
 				method="POST"
 				action="?/resetInstance"
@@ -582,8 +622,11 @@ async function copyResetToken() {
 				}}
 				style="display: contents;"
 			>
+				<!-- The one irreversible submit on the page reads destructive. Stage 1's
+				     Continue stays primary on purpose: it only mints a token. -->
 				<AlertDialog.Action
 					type="submit"
+					variant="destructive"
 					class="tap-target"
 					disabled={isResetting || !resetConfirmationMatches}
 				>

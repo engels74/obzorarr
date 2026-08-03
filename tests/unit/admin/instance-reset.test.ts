@@ -603,4 +603,78 @@ describe('instance reset — Danger zone UI wiring (no DOM harness in this suite
 			expect(call).not.toContain('token');
 		}
 	});
+
+	it('titles the card with what the action does and keeps severity as a badge eyebrow', async () => {
+		// "Danger zone" alone signals severity but never says what the button does.
+		// The retitle must not trade the severity signal away to gain the "what".
+		const src = await read();
+		const dangerIdx = src.indexOf('<Card class="border-destructive/50">');
+		const cardBlock = src.slice(dangerIdx, src.indexOf('</Card>', dangerIdx));
+		expect(cardBlock).toContain(
+			'<CardTitle class="text-destructive">Reset this Obzorarr instance</CardTitle>'
+		);
+		const badgeIdx = cardBlock.indexOf('<Badge');
+		const badge = cardBlock.slice(badgeIdx, cardBlock.indexOf('</Badge>'));
+		expect(badge).toContain('variant="destructive"');
+		expect(badge).toContain('Danger zone');
+		expect(badge).toContain('<TriangleAlertIcon />');
+		// Eyebrow, so it reads above the title rather than replacing it.
+		expect(badgeIdx).toBeLessThan(cardBlock.indexOf('<CardTitle'));
+	});
+
+	it('frames the three-way data classification with a lead-in', async () => {
+		// The box used to open on a bare "Comes back on its own" — meaningless read
+		// cold, because nothing above it said what the three blocks classify.
+		const prose = await readProse();
+		expect(prose).toContain('Where your data ends up');
+		expect(prose).not.toContain('Comes back on its own');
+		expect(prose).not.toContain('Gone for good');
+		expect(prose).not.toContain('Set by environment variables');
+	});
+
+	it('uses one vocabulary for the three facts in the card and the confirm dialog', async () => {
+		// The card and the stage-1 dialog state the same three facts. They must not
+		// label them differently, or an admin reads two vocabularies for one truth.
+		const src = await read();
+		const labels = ['What comes back', 'What does not', 'What is untouched'];
+		const cardIdx = src.indexOf('<Card class="border-destructive/50">');
+		const cardBlock = src.slice(cardIdx, src.indexOf('</Card>', cardIdx));
+		const prepareIdx = src.indexOf('action="?/prepareInstanceReset"');
+		const dialogBlock = src.slice(src.lastIndexOf('<AlertDialog.Root', prepareIdx), prepareIdx);
+		for (const surface of [cardBlock, dialogBlock]) {
+			expect(surface).toContain('Where your data ends up');
+			let cursor = -1;
+			for (const label of labels) {
+				const at = surface.indexOf(`<p class="font-medium">${label}</p>`);
+				expect(at).toBeGreaterThan(cursor);
+				cursor = at;
+			}
+		}
+	});
+
+	it('sizes Cancel and the confirm button identically in every dialog on the page', async () => {
+		// `.tap-target` is the 44px WCAG min-size utility. It used to sit on the
+		// Action only — which lives inside a <form>, so the omission on the bare
+		// 36px Cancel was easy to miss — and the pair rendered visibly mismatched.
+		const src = await read();
+		const footers = src.split('<AlertDialog.Footer>').slice(1);
+		expect(footers).toHaveLength(4);
+		for (const raw of footers) {
+			const footer = raw.slice(0, raw.indexOf('</AlertDialog.Footer>'));
+			for (const tag of ['<AlertDialog.Cancel', '<AlertDialog.Action']) {
+				const start = footer.indexOf(tag);
+				expect(start).toBeGreaterThan(-1);
+				expect(footer.slice(start, footer.indexOf('>', start))).toContain('tap-target');
+			}
+		}
+	});
+
+	it('names the sync-blocked state and where to clear it', async () => {
+		const src = await read();
+		const start = src.indexOf('{#if data.syncRunning}');
+		const block = src.slice(start, src.indexOf('{/if}', start));
+		expect(block).toContain('<AlertTitle>');
+		// The copy tells the admin where to go, not just that they cannot proceed.
+		expect(block).toContain('href="/admin/sync"');
+	});
 });

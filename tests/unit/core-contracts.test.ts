@@ -20,7 +20,7 @@ import pkg from '../../package.json';
 import { match as matchYear } from '../../src/params/year';
 import { sharedTestDbTables } from '../helpers/db';
 
-const { isOccConflict } = await import('$lib/utils/occ-form');
+const { isOccConflict, isPostValidationFailure } = await import('$lib/utils/occ-form');
 const envAny = env as Record<string, string | undefined>;
 
 const REAL_CHROME_UA =
@@ -262,6 +262,28 @@ describe('core client/server utility contracts', () => {
 			[null, false]
 		] as const)('isOccConflict(%p) -> %s', (payload, expected) => {
 			expect(isOccConflict(payload)).toBe(expected);
+		});
+
+		// The discriminator a page-local `onUpdate` guard needs: a failure whose
+		// returned form is still `valid` slipped past validation, so `onUpdated` would
+		// take its SUCCESS branch. Status codes do not answer that question — see
+		// `applyPrivacyPreset`'s semantic `fail(400, { form, error })`. Note the true
+		// row that also carries `conflict: true`: an OCC 409 is post-validation too,
+		// which is why the caller must early-return on `isOccConflict` first.
+		it.each([
+			[{ form: { valid: true } }, true],
+			[{ form: { valid: true }, error: 'Invalid input' }, true],
+			[{ form: { valid: true }, conflict: true, error: 'reload' }, true],
+			[{ form: { valid: false } }, false],
+			[{ form: { valid: false }, error: 'Invalid input' }, false],
+			[{ form: {} }, false],
+			[{ form: null }, false],
+			[{ error: 'Failed to save' }, false],
+			[{}, false],
+			[undefined, false],
+			[null, false]
+		] as const)('isPostValidationFailure(%p) -> %s', (payload, expected) => {
+			expect(isPostValidationFailure(payload)).toBe(expected);
 		});
 	});
 
