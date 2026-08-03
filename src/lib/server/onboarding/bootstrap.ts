@@ -7,6 +7,7 @@ import {
 	getCsrfOrigin,
 	setAppSetting
 } from '$lib/server/admin/settings.service';
+import { logger } from '$lib/server/logging';
 
 const BOOTSTRAP_TOKEN_TTL_MS = 15 * 60 * 1000;
 /**
@@ -278,11 +279,52 @@ export async function requireActiveOnboardingClaim(
 	}
 }
 
+/**
+ * Claim the single onboarding setup session, or report why the claim was refused.
+ *
+ * The first statement is a completion guard, and it exists because of the admin
+ * instance reset. A bootstrap token normally only exists on an un-onboarded
+ * instance, but `prepareInstanceReset` (stage 2 of `/admin/settings/data`) mints
+ * one on a fully live instance and hands it straight to the browser, before any
+ * wipe — the token lives in module state, so minting after the wipe is not an
+ * option. Dismissing that dialog is deliberately side-effect-free, which leaves a
+ * valid 60-minute token in memory on a running install. Nothing upstream notices:
+ * `/onboarding` sits in `onboardingHandle`'s skipPaths, and a form action bypasses
+ * the layout `load` that would otherwise redirect. So completion has to be checked
+ * here or the dismissal is not side-effect-free after all.
+ *
+ * It sits ABOVE the renew branch on purpose: `renewOnboardingClaim()` writes
+ * ONBOARDING_CLAIMED_AT, so guarding below it would leave a live `app_settings`
+ * mutation path — half the residue this removes.
+ *
+ * It refuses and never clears. Burning the token here would turn any reachable
+ * POST into a way to strand a reset mid-flight (mint, attacker posts garbage,
+ * token dead, admin wipes and cannot claim). Refusing is enough: this is the only
+ * caller of `validateBootstrapToken()`, so while the flag is set the token has no
+ * capability surface at all. After the wipe the key reads back `null` and the very
+ * same token claims normally.
+ *
+ * The flag is read with a raw `getAppSetting` rather than `isOnboardingComplete()`
+ * because `status.ts` imports `clearOnboardingClaim` from this module and the
+ * back-import would close a cycle (`printBootstrapBanner()` reads it directly for
+ * the same reason). It is NOT read from the `onboardingCompletedCached` latch:
+ * that is a console-banner optimisation which `resetBootstrapBannerState()`
+ * deliberately drops mid-reset, and it must never be load-bearing for an
+ * authorization decision.
+ */
 export async function claimOnboardingInstance(
 	cookies: Cookies,
 	token: string,
 	context: OnboardingClaimCookieContext = {}
 ): Promise<'claimed' | 'renewed' | 'already-claimed' | 'invalid-token'> {
+	if ((await getAppSetting(AppSettingsKey.ONBOARDING_COMPLETED)) === 'true') {
+		// No token, prefix or length in this message: logging/redactor.ts scrubs Plex
+		// tokens, not bootstrap tokens, so anything passed here lands unredacted in
+		// the `logs` table.
+		logger.warn('Onboarding claim refused: instance already onboarded', 'Onboarding');
+		return 'invalid-token';
+	}
+
 	if (await renewOnboardingClaim(cookies, context)) {
 		return 'renewed';
 	}

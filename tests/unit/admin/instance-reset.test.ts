@@ -70,6 +70,7 @@ const anonymousLocals = {} as App.Locals;
 
 let cookies: OnboardingTestCookies;
 let consoleInfoSpy: ReturnType<typeof spyOn>;
+let consoleWarnSpy: ReturnType<typeof spyOn>;
 
 function resetRequest(confirmation: string): Request {
 	const formData = new FormData();
@@ -146,12 +147,19 @@ beforeEach(async () => {
 	clearSyncProgress();
 	cookies = setOnboardingSessionCookie(createOnboardingCookies(), 'session-under-test');
 	consoleInfoSpy = spyOn(console, 'info').mockImplementation(() => {});
+	// The claim guard warns on every refusal; silence it so the suite output stays
+	// readable.
+	consoleWarnSpy = spyOn(console, 'warn').mockImplementation(() => {});
 });
 
-afterEach(() => {
+afterEach(async () => {
 	consoleInfoSpy.mockRestore();
+	consoleWarnSpy.mockRestore();
 	clearBootstrapToken();
 	clearSyncProgress();
+	// Drain the buffered guard warning instead of leaving its 100ms timer to fire
+	// during a later test file's `logs` assertions.
+	await logger.forceFlush();
 });
 
 describe('instance reset — authorization', () => {
@@ -235,6 +243,15 @@ describe('instance reset — claim token survival', () => {
 		const prepared = (await runPrepare()) as { token: string; expiresInMinutes: number };
 		expect(validateBootstrapToken(prepared.token)).toBe(true);
 
+		// Before the wipe the very same token buys nothing: claimOnboardingInstance()
+		// refuses outright while ONBOARDING_COMPLETED is set (seedEveryTable() sets
+		// it), which is what makes dismissing this dialog genuinely side-effect-free.
+		// Asserted here so refuse-before and claim-after are pinned by one token —
+		// this fails loudly if anyone makes the guard burn the token instead.
+		expect(await claimOnboardingInstance(createOnboardingCookies(), prepared.token)).toBe(
+			'invalid-token'
+		);
+
 		await expectRedirect(() => runReset(), '/onboarding/claim');
 
 		// The whole point of the locked sequencing: a naive clearOnboardingClaim()
@@ -246,6 +263,33 @@ describe('instance reset — claim token survival', () => {
 		const freshCookies = createOnboardingCookies();
 		expect(await claimOnboardingInstance(freshCookies, prepared.token)).toBe('claimed');
 		expect(await getOnboardingStep()).toBe(OnboardingSteps.CLAIM);
+	});
+
+	it('leaves the token unusable when the admin dismisses the prepare dialog instead of resetting', async () => {
+		await seedEveryTable();
+
+		const prepared = (await runPrepare()) as { token: string; expiresInMinutes: number };
+
+		// Dismissal posts nothing, so the token really is still live in module memory
+		// for its full 60 minutes — that is the documented behaviour, not the bug.
+		expect(validateBootstrapToken(prepared.token)).toBe(true);
+
+		// The bug was that this token could then be spent against the running
+		// instance: /onboarding is in onboardingHandle's skipPaths and a form action
+		// bypasses the layout load, so nothing upstream refuses the POST.
+		expect(await claimOnboardingInstance(createOnboardingCookies(), prepared.token)).toBe(
+			'invalid-token'
+		);
+
+		expect(await getAppSetting(AppSettingsKey.ONBOARDING_CLAIMED)).toBeNull();
+		expect(await getAppSetting(AppSettingsKey.ONBOARDING_CLAIM_PROOF_HASH)).toBeNull();
+		expect(await getAppSetting(AppSettingsKey.ONBOARDING_CLAIMED_AT)).toBeNull();
+		// The raw row, not getOnboardingStep(): that helper defaults to CLAIM when the
+		// row is missing and so cannot tell "never written" from "written then wiped".
+		expect(await getAppSetting(AppSettingsKey.ONBOARDING_CURRENT_STEP)).toBeNull();
+		// And the live instance is untouched.
+		expect(await getAppSetting(AppSettingsKey.ONBOARDING_COMPLETED)).toBe('true');
+		expect(await countRows(users)).toBe(1);
 	});
 
 	it('mints a 60-minute token on the reset path and leaves first boot at 15 minutes', async () => {
