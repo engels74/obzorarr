@@ -6,6 +6,7 @@ import GlobeIcon from '@lucide/svelte/icons/globe';
 import InfoIcon from '@lucide/svelte/icons/info';
 import ScaleIcon from '@lucide/svelte/icons/scale';
 import ShieldCheckIcon from '@lucide/svelte/icons/shield-check';
+import SlidersHorizontalIcon from '@lucide/svelte/icons/sliders-horizontal';
 import UsersRoundIcon from '@lucide/svelte/icons/users-round';
 import VenetianMaskIcon from '@lucide/svelte/icons/venetian-mask';
 import { animate } from 'motion';
@@ -17,23 +18,27 @@ import OnboardingCard from '$lib/components/onboarding/OnboardingCard.svelte';
 import { Button } from '$lib/components/ui/button';
 import * as Tooltip from '$lib/components/ui/tooltip';
 import {
+	CUSTOM_PRIVACY_PRESET,
 	PRIVACY_PRESETS,
 	PRIVACY_PREVIEW_ROW_TOOLTIPS,
 	PRIVACY_PREVIEW_VALUE_TOOLTIPS,
 	type PrivacyPreset,
 	type PrivacyPresetId,
+	type PrivacyPresetValues,
 	type PrivacyPreviewRowKey,
 	publicLandingLookupCopy,
 	type ServerWrappedShareModeValue,
 	shareDefaultCopy
 } from '$lib/sharing/options';
 import {
+	customPresetSeedValues,
 	derivePreview,
 	matchPresetFull,
 	PREVIEW_LOGO_VISIBILITY_LABELS,
 	PREVIEW_NAME_DISPLAY_LABELS,
 	PREVIEW_PER_USER_DEFAULT_LABELS,
 	PREVIEW_RECAP_VISIBILITY_LABELS,
+	resolvePresetSelection,
 	shouldShowCustomPresetNote
 } from '$lib/sharing/preset-logic';
 import { handleFormToast } from '$lib/utils/form-toast';
@@ -65,9 +70,16 @@ let advancedPrivacyOpen = $state(false);
 // Tracks whether the admin has actively touched the privacy controls (picked a
 // preset card or edited an Advanced Option). On a fresh install the seeded
 // values can resolve to 'custom' before any interaction; the "Custom
-// configuration" note is gated on this flag so it never accuses the admin of
-// off-preset choices they haven't made yet (ISSUE-001).
+// configuration" note AND the Custom card's selected styling are both gated on
+// this flag so neither accuses the admin of off-preset choices they haven't made
+// yet (ISSUE-001).
 let privacyTouched = $state(false);
+
+// Sticky "the admin explicitly clicked the Custom card" flag. While set, Custom
+// stays highlighted even when the live values happen to match a shipped preset
+// (which is exactly what happens right after Custom seeds Balanced on a first
+// pick). Cleared by clicking any of the five real cards.
+let customPresetChosen = $state(false);
 
 let selectedPreset = $derived(
 	matchPresetFull({
@@ -91,33 +103,69 @@ let privacyPreview = $derived(
 	})
 );
 
+function assignPresetValues(values: PrivacyPresetValues) {
+	anonymizationMode = values.anonymizationMode;
+	defaultShareMode = values.defaultShareMode;
+	serverWrappedShareMode = values.serverWrappedShareMode;
+	publicLandingLookup = values.publicLandingLookup;
+	allowUserControl = values.allowUserControl;
+	wrappedLogoMode = values.logoMode;
+}
+
 function applyPrivacyPreset(preset: PrivacyPreset) {
 	privacyTouched = true;
-	anonymizationMode = preset.values.anonymizationMode;
-	defaultShareMode = preset.values.defaultShareMode;
-	serverWrappedShareMode = preset.values.serverWrappedShareMode;
-	publicLandingLookup = preset.values.publicLandingLookup;
-	allowUserControl = preset.values.allowUserControl;
-	wrappedLogoMode = preset.values.logoMode;
+	customPresetChosen = false;
+	assignPresetValues(preset.values);
 }
+
+// Picking Custom seeds Balanced ONLY as the first interaction of the session;
+// afterwards it moves the highlight and mutates nothing (customPresetSeedValues
+// owns that rule).
+function selectCustomPreset() {
+	const seed = customPresetSeedValues(privacyTouched);
+	if (seed) assignPresetValues(seed);
+	privacyTouched = true;
+	customPresetChosen = true;
+}
+
+// The card that renders as selected: the derived match, the sticky Custom flag,
+// or nothing at all on an untouched fresh install.
+let selectedPresetCard = $derived(
+	resolvePresetSelection(selectedPreset, privacyTouched, customPresetChosen)
+);
 
 // WAI-ARIA radiogroup keyboard support for the preset selector. The cards are
 // native <button role="radio"> (Space/Enter already activate them); this adds
 // roving tabindex + arrow/Home/End navigation so the group behaves like a real
 // radio group for assistive tech. `presetButtons` is populated by bind:this on
-// each card, indexed by position in PRIVACY_PRESETS.
+// each card, indexed by position in PRIVACY_PRESETS — with the Custom card
+// occupying the final index (PRIVACY_PRESETS.length).
 let presetButtons = $state<(HTMLButtonElement | undefined)[]>([]);
 
-// Index of the card that holds tabindex=0. When a preset is selected, that card
-// is the tab stop; when the config matches no preset ('custom'), the first card
-// keeps the group reachable.
+const CUSTOM_PRESET_INDEX = PRIVACY_PRESETS.length;
+
+function selectPresetAtIndex(index: number): boolean {
+	if (index === CUSTOM_PRESET_INDEX) {
+		selectCustomPreset();
+		return true;
+	}
+	const preset = PRIVACY_PRESETS[index];
+	if (!preset) return false;
+	applyPrivacyPreset(preset);
+	return true;
+}
+
+// Index of the card that holds tabindex=0. When a card is selected, that card is
+// the tab stop; when nothing is selected (untouched fresh install), the first
+// card keeps the group reachable.
 let presetTabIndex = $derived.by(() => {
-	const i = PRIVACY_PRESETS.findIndex((p) => p.id === selectedPreset);
+	if (selectedPresetCard === 'custom') return CUSTOM_PRESET_INDEX;
+	const i = PRIVACY_PRESETS.findIndex((p) => p.id === selectedPresetCard);
 	return i === -1 ? 0 : i;
 });
 
 function handlePresetKeydown(event: KeyboardEvent, index: number) {
-	const last = PRIVACY_PRESETS.length - 1;
+	const last = CUSTOM_PRESET_INDEX;
 	let target: number;
 	switch (event.key) {
 		case 'ArrowRight':
@@ -138,9 +186,7 @@ function handlePresetKeydown(event: KeyboardEvent, index: number) {
 			return;
 	}
 	event.preventDefault();
-	const preset = PRIVACY_PRESETS[target];
-	if (!preset) return;
-	applyPrivacyPreset(preset);
+	if (!selectPresetAtIndex(target)) return;
 	presetButtons[target]?.focus();
 }
 
@@ -561,9 +607,9 @@ function getThemeColors(themeValue: string) {
 										<button
 											type="button"
 											class="preset-card"
-											class:selected={selectedPreset === preset.id}
+											class:selected={selectedPresetCard === preset.id}
 											role="radio"
-											aria-checked={selectedPreset === preset.id}
+											aria-checked={selectedPresetCard === preset.id}
 											tabindex={i === presetTabIndex ? 0 : -1}
 											bind:this={presetButtons[i]}
 											onclick={() => applyPrivacyPreset(preset)}
@@ -589,6 +635,30 @@ function getThemeColors(themeValue: string) {
 											</span>
 										</button>
 									{/each}
+									<!-- Sixth card: client-only "Custom". Rendered outside the {#each} so
+									     PRIVACY_PRESETS stays exactly the five shipped value-maps. It holds
+									     the final roving-tabindex slot (CUSTOM_PRESET_INDEX) and carries no
+									     exposureSummary — the live "What this means" panel below already
+									     states what the current fields expose. -->
+									<button
+										type="button"
+										class="preset-card"
+										class:selected={selectedPresetCard === 'custom'}
+										role="radio"
+										aria-checked={selectedPresetCard === 'custom'}
+										tabindex={CUSTOM_PRESET_INDEX === presetTabIndex ? 0 : -1}
+										bind:this={presetButtons[CUSTOM_PRESET_INDEX]}
+										onclick={selectCustomPreset}
+										onkeydown={(e) => handlePresetKeydown(e, CUSTOM_PRESET_INDEX)}
+									>
+										<span class="preset-card-icon">
+											<SlidersHorizontalIcon />
+										</span>
+										<span class="preset-card-body">
+											<span class="preset-card-label">{CUSTOM_PRIVACY_PRESET.label}</span>
+											<span class="preset-card-desc">{CUSTOM_PRIVACY_PRESET.description}</span>
+										</span>
+									</button>
 								</div>
 								{#if shouldShowCustomPresetNote(selectedPreset, privacyTouched)}
 									<p class="preset-custom-note" role="status">

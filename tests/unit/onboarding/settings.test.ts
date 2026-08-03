@@ -21,7 +21,7 @@ import {
 	getServerWrappedShareMode
 } from '$lib/server/sharing/service';
 import { initializeDefaultSlideConfig } from '$lib/server/slides/config.service';
-import { matchPresetFull } from '$lib/sharing/preset-logic';
+import { matchPresetFull, resolvePresetSelection } from '$lib/sharing/preset-logic';
 import { actions } from '../../../src/routes/onboarding/settings/+page.server';
 import {
 	claimOnboardingCookies,
@@ -336,10 +336,13 @@ describe('onboarding privacy preset — cosmetic-only display fix (ISSUE-003)', 
 		// (b) softened, non-accusatory neutral note that makes the silent default explicit.
 		expect(src).toContain('continue with the current');
 
-		// The selected-highlight remains driven solely by selectedPreset (which stays
-		// 'custom' on a fresh seed → no card highlighted). The badge must not add its
-		// own selection state.
-		expect(src).toContain('class:selected={selectedPreset === preset.id}');
+		// The selected-highlight is driven solely by `selectedPresetCard`, the
+		// interaction-gated resolution of the derived match. On a fresh seed the match
+		// is 'custom' and nothing has been touched, so NO card highlights — not even
+		// the Custom card. The badge must not add its own selection state.
+		expect(src).toContain('class:selected={selectedPresetCard === preset.id}');
+		expect(src).toContain("class:selected={selectedPresetCard === 'custom'}");
+		expect(resolvePresetSelection(matchPresetFull(FRESH_SEED), false, false)).toBeNull();
 		const badgeBlock = src.match(/\{#if preset\.id === 'balanced'\}[\s\S]*?\{\/if\}/)?.[0] ?? '';
 		expect(badgeBlock).not.toContain('selected');
 		expect(badgeBlock).not.toContain('applyPrivacyPreset');

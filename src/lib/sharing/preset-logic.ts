@@ -13,6 +13,7 @@
  * dashboards, settings, or administration.
  */
 import {
+	DEFAULT_PRIVACY_PRESET_ID,
 	PRIVACY_PRESETS,
 	type PrivacyPresetId,
 	type PrivacyPresetPrivacyKey,
@@ -39,6 +40,47 @@ export function shouldShowCustomPresetNote(
 	hasInteracted: boolean
 ): boolean {
 	return selectedPreset === 'custom' && hasInteracted;
+}
+
+/**
+ * Which preset card renders as SELECTED, or `null` when no card is selected.
+ *
+ * Three inputs, because the visual selection is not simply the derived match:
+ *
+ * - `match` — what the live field values resolve to ('custom' when they match no
+ *   shipped preset).
+ * - `hasInteracted` — the `privacyTouched` gate. On a fresh install the seeded
+ *   defaults can incidentally resolve to `'custom'` before the admin touches
+ *   anything (ISSUE-001, see {@link shouldShowCustomPresetNote}); the Custom card
+ *   must not light up there either, so an untouched `'custom'` selects NO card —
+ *   exactly the pre-Custom-card behaviour.
+ * - `customChosen` — the sticky "admin explicitly clicked Custom" flag. It wins
+ *   over `match` so that clicking Custom on a fresh install (which seeds the
+ *   Balanced values) does not immediately snap the highlight back to Balanced.
+ *   Clicking any of the five real cards clears it.
+ */
+export function resolvePresetSelection(
+	match: PrivacyPresetMatch,
+	hasInteracted: boolean,
+	customChosen: boolean
+): PrivacyPresetMatch | null {
+	if (match !== 'custom' && !customChosen) return match;
+	return hasInteracted ? 'custom' : null;
+}
+
+/**
+ * The values the Custom card seeds when it is clicked, or `null` when the click
+ * must not mutate anything.
+ *
+ * Seeding happens ONLY on the first interaction of the session: Custom then acts
+ * as "start from the recommended baseline and tweak it". Once the admin has
+ * interacted — whether they are sitting on a shipped preset or have already
+ * diverged from one — clicking Custom is a pure highlight change and must leave
+ * every Advanced setting exactly as it is.
+ */
+export function customPresetSeedValues(hasInteracted: boolean): PrivacyPresetValues | null {
+	if (hasInteracted) return null;
+	return PRIVACY_PRESETS.find((preset) => preset.id === DEFAULT_PRIVACY_PRESET_ID)?.values ?? null;
 }
 
 /**
