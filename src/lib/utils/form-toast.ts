@@ -26,6 +26,19 @@ function isLegacyResponse(value: object): value is LegacyFormResponse {
 }
 
 /**
+ * Fallback success text for a `{ success: true }` result that carries no
+ * `message`. Deliberately operation-neutral: this branch cannot know what the
+ * action did, and not every caller is a save. `admin/slides` toggles, reorders
+ * AND deletes through one `$effect` on the `form` prop, and `?/deleteCustom`
+ * returns a bare `{ success: true }` — a 'Saved' fallback announces the wrong
+ * outcome for a delete. Whoever DOES know the operation supplies the message:
+ * the action (`'Sync started'` from `?/startSync`) or the caller (`'Logs
+ * cleared'` in the logs enhance callback, `'Saved'` on the settings cards).
+ * Keep this string generic instead of guessing on their behalf.
+ */
+const GENERIC_SUCCESS_MESSAGE = 'Done';
+
+/**
  * Toast a form-action result. Accepts both the legacy `FormResponse` shape
  * (kept compatible during the Superforms incremental migration across
  * PR-2/3) and the Superforms-native `ActionResult` shape returned by
@@ -40,7 +53,7 @@ export function handleFormToast(form: FormShape): void {
 				const data = (form as Extract<ActionResult, { type: 'success' }>).data as
 					| { message?: string }
 					| undefined;
-				toast.success(data?.message ?? 'Saved');
+				toast.success(data?.message ?? GENERIC_SUCCESS_MESSAGE);
 				return;
 			}
 			case 'failure': {
@@ -73,7 +86,7 @@ export function handleFormToast(form: FormShape): void {
 			return;
 		}
 		if (form.success) {
-			toast.success(form.message ?? 'Saved');
+			toast.success(form.message ?? GENERIC_SUCCESS_MESSAGE);
 		}
 	}
 }
