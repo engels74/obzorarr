@@ -272,6 +272,117 @@ export function nextOccVersionDate(dbFloorMs: number): Date {
 export type OccWriteResult = { status: 'ok'; version: Date } | { status: 'conflict' };
 
 /**
+ * A drizzle transaction handle as produced by `db.transaction(...)`. Named so the
+ * in-transaction OCC gate and row writers below can be shared between the
+ * single-group `set*Atomic` writers and the cross-group `setPrivacyPresetAtomic`.
+ */
+type SettingsTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * The OCC gate every atomic settings write runs INSIDE its transaction: read
+ * `max(updatedAt)` over `keys`, reject a stale/blank `submittedVersion`, and
+ * return the strictly-advancing timestamp the caller must stamp its rows with.
+ *
+ * Extracted so a multi-group write can gate several key groups against one
+ * transaction snapshot. Semantics are byte-for-byte the ones the three
+ * single-group writers used inline before:
+ *   - a missing/blank/unparseable `submittedVersion` is a conflict regardless of
+ *     row count (closes the fresh-install/all-cleared loophole where a row-count
+ *     gate would silently skip OCC);
+ *   - with rows present, `submittedMs < maxMs` is a conflict;
+ *   - the write timestamp comes from `nextOccVersionDate(maxMs)`, so it shares
+ *     the DB floor the check just read and `max(updatedAt)` strictly advances.
+ */
+async function occGateInTx(
+	tx: SettingsTx,
+	keys: readonly string[],
+	submittedVersion: string
+): Promise<OccWriteResult> {
+	const rows = await tx
+		.select({ updatedAt: appSettings.updatedAt })
+		.from(appSettings)
+		.where(inArray(appSettings.key, keys as unknown as string[]));
+
+	const submittedMs = submittedVersion ? Date.parse(submittedVersion) : Number.NaN;
+	if (Number.isNaN(submittedMs)) {
+		return { status: 'conflict' };
+	}
+	let maxMs = 0;
+	for (const row of rows) {
+		const t = row.updatedAt.getTime();
+		if (t > maxMs) maxMs = t;
+	}
+	if (rows.length > 0 && submittedMs < maxMs) {
+		return { status: 'conflict' };
+	}
+
+	return { status: 'ok', version: nextOccVersionDate(maxMs) };
+}
+
+/** Upsert a single `app_settings` row inside `tx` at the OCC-issued timestamp. */
+async function upsertSettingInTx(
+	tx: SettingsTx,
+	key: string,
+	value: string,
+	now: Date
+): Promise<void> {
+	await tx
+		.insert(appSettings)
+		.values({ key, value, updatedAt: now })
+		.onConflictDoUpdate({ target: appSettings.key, set: { value, updatedAt: now } });
+}
+
+/** The two `SERVER_WRAPPED_SETTINGS_KEYS` rows. */
+async function writeServerWrappedRowsInTx(
+	tx: SettingsTx,
+	opts: { anonymizationMode: AnonymizationModeType; serverWrappedShareMode: string },
+	now: Date
+): Promise<void> {
+	await upsertSettingInTx(tx, AppSettingsKey.ANONYMIZATION_MODE, opts.anonymizationMode, now);
+	await upsertSettingInTx(
+		tx,
+		ShareSettingsKey.SERVER_WRAPPED_SHARE_MODE,
+		opts.serverWrappedShareMode,
+		now
+	);
+}
+
+/**
+ * The two `USER_DEFAULTS_SETTINGS_KEYS` rows, plus the private-link token purge
+ * that has always been part of this write (see `setUserDefaultsAtomic` below for
+ * why it does NOT fan out to explicit per-user overrides).
+ */
+async function writeUserDefaultsRowsInTx(
+	tx: SettingsTx,
+	opts: { defaultShareMode: string; allowUserControl: boolean },
+	now: Date
+): Promise<void> {
+	await upsertSettingInTx(tx, ShareSettingsKey.DEFAULT_SHARE_MODE, opts.defaultShareMode, now);
+	await upsertSettingInTx(
+		tx,
+		ShareSettingsKey.ALLOW_USER_CONTROL,
+		String(opts.allowUserControl),
+		now
+	);
+
+	if (opts.defaultShareMode !== ShareMode.PRIVATE_LINK) {
+		await tx
+			.update(shareSettings)
+			.set({ shareToken: null })
+			.where(eq(shareSettings.modeSource, ShareModeSource.DEFAULT));
+	}
+}
+
+/** The single `PUBLIC_LANDING_LOOKUP_SETTINGS_KEYS` row. */
+async function writePublicLandingLookupRowInTx(
+	tx: SettingsTx,
+	enabled: boolean,
+	now: Date
+): Promise<void> {
+	await upsertSettingInTx(tx, AppSettingsKey.PUBLIC_LANDING_LOOKUP, String(enabled), now);
+}
+
+/**
  * Atomically validates that the "Server-wide Wrapped" settings (anonymization
  * mode + server-wide share mode) have not changed since `submittedVersion`
  * and, if so, writes both values in a single SQLite transaction. Returns
@@ -283,57 +394,11 @@ export async function setServerWrappedSettingsAtomic(opts: {
 	submittedVersion: string;
 }): Promise<OccWriteResult> {
 	return db.transaction(async (tx) => {
-		const rows = await tx
-			.select({ updatedAt: appSettings.updatedAt })
-			.from(appSettings)
-			.where(inArray(appSettings.key, SERVER_WRAPPED_SETTINGS_KEYS as unknown as string[]));
+		const gate = await occGateInTx(tx, SERVER_WRAPPED_SETTINGS_KEYS, opts.submittedVersion);
+		if (gate.status === 'conflict') return gate;
 
-		// Treat a missing/blank submittedVersion as a stale tab regardless of row
-		// count — defends against the fresh-install/all-cleared loophole where the
-		// row-count gate would silently skip OCC.
-		const submittedMs = opts.submittedVersion ? Date.parse(opts.submittedVersion) : Number.NaN;
-		if (Number.isNaN(submittedMs)) {
-			return { status: 'conflict' };
-		}
-		// Compute `maxMs` over the existing rows so the OCC check and the write
-		// timestamp share the same DB floor. With no rows, `maxMs = 0` is fine —
-		// `Date.now()` dominates inside `nextOccVersionDate`.
-		let maxMs = 0;
-		for (const row of rows) {
-			const t = row.updatedAt.getTime();
-			if (t > maxMs) maxMs = t;
-		}
-		if (rows.length > 0 && submittedMs < maxMs) {
-			return { status: 'conflict' };
-		}
-
-		const now = nextOccVersionDate(maxMs);
-
-		await tx
-			.insert(appSettings)
-			.values({
-				key: AppSettingsKey.ANONYMIZATION_MODE,
-				value: opts.anonymizationMode,
-				updatedAt: now
-			})
-			.onConflictDoUpdate({
-				target: appSettings.key,
-				set: { value: opts.anonymizationMode, updatedAt: now }
-			});
-
-		await tx
-			.insert(appSettings)
-			.values({
-				key: ShareSettingsKey.SERVER_WRAPPED_SHARE_MODE,
-				value: opts.serverWrappedShareMode,
-				updatedAt: now
-			})
-			.onConflictDoUpdate({
-				target: appSettings.key,
-				set: { value: opts.serverWrappedShareMode, updatedAt: now }
-			});
-
-		return { status: 'ok', version: now };
+		await writeServerWrappedRowsInTx(tx, opts, gate.version);
+		return gate;
 	});
 }
 
@@ -359,63 +424,11 @@ export async function setUserDefaultsAtomic(opts: {
 	submittedVersion: string;
 }): Promise<OccWriteResult> {
 	return db.transaction(async (tx) => {
-		const rows = await tx
-			.select({ updatedAt: appSettings.updatedAt })
-			.from(appSettings)
-			.where(inArray(appSettings.key, USER_DEFAULTS_SETTINGS_KEYS as unknown as string[]));
+		const gate = await occGateInTx(tx, USER_DEFAULTS_SETTINGS_KEYS, opts.submittedVersion);
+		if (gate.status === 'conflict') return gate;
 
-		// Treat a missing/blank submittedVersion as a stale tab regardless of row
-		// count — defends against the fresh-install/all-cleared loophole.
-		const submittedMs = opts.submittedVersion ? Date.parse(opts.submittedVersion) : Number.NaN;
-		if (Number.isNaN(submittedMs)) {
-			return { status: 'conflict' };
-		}
-		// Compute `maxMs` over the existing rows so the OCC check and the write
-		// timestamp share the same DB floor. With no rows, `maxMs = 0` is fine —
-		// `Date.now()` dominates inside `nextOccVersionDate`.
-		let maxMs = 0;
-		for (const row of rows) {
-			const t = row.updatedAt.getTime();
-			if (t > maxMs) maxMs = t;
-		}
-		if (rows.length > 0 && submittedMs < maxMs) {
-			return { status: 'conflict' };
-		}
-
-		const now = nextOccVersionDate(maxMs);
-
-		await tx
-			.insert(appSettings)
-			.values({
-				key: ShareSettingsKey.DEFAULT_SHARE_MODE,
-				value: opts.defaultShareMode,
-				updatedAt: now
-			})
-			.onConflictDoUpdate({
-				target: appSettings.key,
-				set: { value: opts.defaultShareMode, updatedAt: now }
-			});
-
-		await tx
-			.insert(appSettings)
-			.values({
-				key: ShareSettingsKey.ALLOW_USER_CONTROL,
-				value: String(opts.allowUserControl),
-				updatedAt: now
-			})
-			.onConflictDoUpdate({
-				target: appSettings.key,
-				set: { value: String(opts.allowUserControl), updatedAt: now }
-			});
-
-		if (opts.defaultShareMode !== ShareMode.PRIVATE_LINK) {
-			await tx
-				.update(shareSettings)
-				.set({ shareToken: null })
-				.where(eq(shareSettings.modeSource, ShareModeSource.DEFAULT));
-		}
-
-		return { status: 'ok', version: now };
+		await writeUserDefaultsRowsInTx(tx, opts, gate.version);
+		return gate;
 	});
 }
 
@@ -1595,41 +1608,121 @@ export async function setPublicLandingLookupEnabledAtomic(opts: {
 	submittedVersion: string;
 }): Promise<OccWriteResult> {
 	return db.transaction(async (tx) => {
-		const rows = await tx
-			.select({ updatedAt: appSettings.updatedAt })
-			.from(appSettings)
-			.where(inArray(appSettings.key, PUBLIC_LANDING_LOOKUP_SETTINGS_KEYS as unknown as string[]));
+		const gate = await occGateInTx(tx, PUBLIC_LANDING_LOOKUP_SETTINGS_KEYS, opts.submittedVersion);
+		if (gate.status === 'conflict') return gate;
 
-		// Treat a missing/blank submittedVersion as a stale tab regardless of row
-		// count — defends against the fresh-install/all-cleared loophole.
-		const submittedMs = opts.submittedVersion ? Date.parse(opts.submittedVersion) : Number.NaN;
-		if (Number.isNaN(submittedMs)) {
-			return { status: 'conflict' };
+		await writePublicLandingLookupRowInTx(tx, opts.enabled, gate.version);
+		return gate;
+	});
+}
+
+/**
+ * The three OCC key groups a privacy preset spans, in the order they appear on
+ * the admin Privacy route. Used as the conflict discriminator by
+ * {@link setPrivacyPresetAtomic}.
+ */
+export const PRIVACY_PRESET_SECTIONS = {
+	SERVER_WRAPPED: 'serverWrapped',
+	USER_DEFAULTS: 'userDefaults',
+	PUBLIC_LANDING_LOOKUP: 'publicLandingLookup'
+} as const;
+
+export type PrivacyPresetSection =
+	(typeof PRIVACY_PRESET_SECTIONS)[keyof typeof PRIVACY_PRESET_SECTIONS];
+
+/**
+ * Result of {@link setPrivacyPresetAtomic}. On success it carries the single
+ * `updatedAt` the transaction stamped on all three OCC groups, so the calling
+ * action can hand every section a fresh `settingsVersion` without a post-write
+ * re-read (see `OccWriteResult` for why that re-read is a TOCTOU hole). On
+ * conflict it names every stale group, so the client can say which sections moved
+ * underneath it — and, because the write is all-or-nothing, nothing was applied.
+ */
+export type PrivacyPresetWriteResult =
+	| { status: 'ok'; version: Date }
+	| { status: 'conflict'; staleSections: PrivacyPresetSection[] };
+
+/**
+ * Atomically applies a privacy preset across all THREE OCC groups the admin
+ * Privacy route splits its controls into (server-wide wrapped, user sharing
+ * defaults, public landing lookup) in a single SQLite transaction.
+ *
+ * Why this exists rather than three sequential `set*Atomic` calls: a preset is
+ * one coherent privacy posture, and three separate transactions can leave a
+ * half-applied configuration behind when the third group turns out to be stale —
+ * e.g. names already anonymized while public lookup stayed on. Gating all three
+ * groups against ONE transaction snapshot and writing only if every gate passes
+ * makes a partial apply unreachable, so "partial conflict" collapses to "the
+ * whole apply was refused, and here is every section that moved".
+ *
+ * The write reuses the same in-transaction OCC gate and row writers as the
+ * single-group writers above, so there is exactly one implementation of each
+ * rule — including the private-link share-token purge inside
+ * `writeUserDefaultsRowsInTx`.
+ *
+ * `logoMode` is deliberately NOT written: it lives on the Appearance route and
+ * its own OCC group, and the admin preset match covers only the five fields this
+ * route owns.
+ */
+export async function setPrivacyPresetAtomic(opts: {
+	anonymizationMode: AnonymizationModeType;
+	serverWrappedShareMode: string;
+	defaultShareMode: string;
+	allowUserControl: boolean;
+	publicLandingLookup: boolean;
+	submittedVersions: Record<PrivacyPresetSection, string>;
+}): Promise<PrivacyPresetWriteResult> {
+	return db.transaction(async (tx) => {
+		const gates = [
+			{
+				section: PRIVACY_PRESET_SECTIONS.SERVER_WRAPPED,
+				gate: await occGateInTx(
+					tx,
+					SERVER_WRAPPED_SETTINGS_KEYS,
+					opts.submittedVersions.serverWrapped
+				)
+			},
+			{
+				section: PRIVACY_PRESET_SECTIONS.USER_DEFAULTS,
+				gate: await occGateInTx(
+					tx,
+					USER_DEFAULTS_SETTINGS_KEYS,
+					opts.submittedVersions.userDefaults
+				)
+			},
+			{
+				section: PRIVACY_PRESET_SECTIONS.PUBLIC_LANDING_LOOKUP,
+				gate: await occGateInTx(
+					tx,
+					PUBLIC_LANDING_LOOKUP_SETTINGS_KEYS,
+					opts.submittedVersions.publicLandingLookup
+				)
+			}
+		];
+
+		const staleSections = gates
+			.filter(({ gate }) => gate.status === 'conflict')
+			.map(({ section }) => section);
+		if (staleSections.length > 0) {
+			// All-or-nothing: return before ANY write, so a stale group can never
+			// leave the other two applied.
+			return { status: 'conflict', staleSections };
 		}
-		// Compute `maxMs` over the existing rows so the OCC check and the write
-		// timestamp share the same DB floor. With no rows, `maxMs = 0` is fine —
-		// `Date.now()` dominates inside `nextOccVersionDate`.
-		let maxMs = 0;
-		for (const row of rows) {
-			const t = row.updatedAt.getTime();
-			if (t > maxMs) maxMs = t;
-		}
-		if (rows.length > 0 && submittedMs < maxMs) {
-			return { status: 'conflict' };
-		}
 
-		const now = nextOccVersionDate(maxMs);
-		const value = String(opts.enabled);
+		// One shared version across all three groups. Each gate's own
+		// `nextOccVersionDate` value already clears that group's floor, so the
+		// maximum of the three clears all of them — and one preset apply then reads
+		// as one version rather than three near-identical ones. The `: 0` arm is
+		// unreachable: the guard above returned on any conflicting gate.
+		const version = new Date(
+			Math.max(...gates.map(({ gate }) => (gate.status === 'ok' ? gate.version.getTime() : 0)))
+		);
 
-		await tx
-			.insert(appSettings)
-			.values({ key: AppSettingsKey.PUBLIC_LANDING_LOOKUP, value, updatedAt: now })
-			.onConflictDoUpdate({
-				target: appSettings.key,
-				set: { value, updatedAt: now }
-			});
+		await writeServerWrappedRowsInTx(tx, opts, version);
+		await writeUserDefaultsRowsInTx(tx, opts, version);
+		await writePublicLandingLookupRowInTx(tx, opts.publicLandingLookup, version);
 
-		return { status: 'ok', version: now };
+		return { status: 'ok', version };
 	});
 }
 

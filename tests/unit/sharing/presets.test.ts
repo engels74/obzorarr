@@ -164,7 +164,7 @@ describe('shouldShowCustomPresetNote (ISSUE-001: gate the "Custom configuration"
 	});
 });
 
-describe('negative guard: preset is never a persisted or submitted field', () => {
+describe('negative guard: a preset is never a persisted field', () => {
 	const read = async (path: string) => await Bun.file(path).text();
 
 	it('onboarding +page.svelte never submits a "preset" form field', async () => {
@@ -189,6 +189,39 @@ describe('negative guard: preset is never a persisted or submitted field', () =>
 		const src = await read('src/routes/admin/settings/privacy/+page.server.ts');
 		expect(/^\s*preset\s*:/m.test(src)).toBe(false);
 		expect(/formData\.get\(\s*["']preset["']/.test(src)).toBe(false);
+	});
+
+	it('submits a preset id only as a discriminator, and stores no row for it', async () => {
+		// The admin "apply preset" action DOES receive an id (`presetId`) so one
+		// request can write all three sections atomically. It resolves that id to a
+		// PRIVACY_PRESETS entry server-side and writes only ordinary privacy values:
+		// no app_settings key exists for a preset, and the active preset is still
+		// recomputed from field values on load.
+		const server = await read('src/routes/admin/settings/privacy/+page.server.ts');
+		expect(server).toContain('presetId: z.enum(PRIVACY_PRESET_IDS).optional()');
+		expect(server).toContain(
+			'PRIVACY_PRESETS.find((candidate) => candidate.id === form.data.presetId)'
+		);
+
+		// No app_settings key stores a preset, so nothing can persist one.
+		const settingsService = await read('src/lib/server/admin/settings.service.ts');
+		const keyTable = settingsService.slice(
+			settingsService.indexOf('export const AppSettingsKey = {'),
+			settingsService.indexOf(
+				'} as const;',
+				settingsService.indexOf('export const AppSettingsKey = {')
+			)
+		);
+		expect(keyTable.toLowerCase()).not.toContain('preset');
+
+		// The atomic writer takes the resolved VALUES, never an id.
+		const writer = settingsService.slice(
+			settingsService.indexOf('export async function setPrivacyPresetAtomic(')
+		);
+		const signature = writer.slice(0, writer.indexOf('}): Promise'));
+		expect(signature).not.toContain('presetId');
+		expect(signature).toContain('anonymizationMode');
+		expect(signature).toContain('publicLandingLookup');
 	});
 });
 

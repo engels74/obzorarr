@@ -374,7 +374,15 @@ async function copyResetToken() {
 				}}
 				style="display: contents;"
 			>
-				<AlertDialog.Action type="submit" class="tap-target" disabled={isClearingCache}>
+				<!-- Destructive variant to match the trigger that opened this dialog: the
+				     confirm button must not read as a friendlier action than the button
+				     the admin just pressed. -->
+				<AlertDialog.Action
+					type="submit"
+					variant="destructive"
+					class="tap-target"
+					disabled={isClearingCache}
+				>
 					{isClearingCache ? 'Clearing…' : 'Clear cache'}
 				</AlertDialog.Action>
 			</form>
@@ -420,7 +428,12 @@ async function copyResetToken() {
 				}}
 				style="display: contents;"
 			>
-				<AlertDialog.Action type="submit" class="tap-target" disabled={isClearingHistory}>
+				<AlertDialog.Action
+					type="submit"
+					variant="destructive"
+					class="tap-target"
+					disabled={isClearingHistory}
+				>
 					{isClearingHistory ? 'Clearing…' : 'Clear play history'}
 				</AlertDialog.Action>
 			</form>
@@ -609,8 +622,11 @@ async function copyResetToken() {
 				}}
 				style="display: contents;"
 			>
+				<!-- The one irreversible submit on the page reads destructive. Stage 1's
+				     Continue stays primary on purpose: it only mints a token. -->
 				<AlertDialog.Action
 					type="submit"
+					variant="destructive"
 					class="tap-target"
 					disabled={isResetting || !resetConfirmationMatches}
 				>
