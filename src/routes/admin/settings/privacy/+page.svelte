@@ -375,7 +375,9 @@ function assignPresetValues(values: Pick<PrivacyPresetValues, PrivacyPresetPriva
  *
  * `persist` is what a card click (mouse, Enter, Space) and the explicit Apply
  * button use: one `?/applyPrivacyPreset` POST writes all five fields across the
- * three OCC groups atomically, so nothing is left staged.
+ * three OCC groups atomically, so nothing is left staged. The POST is still
+ * skipped when it would write values that are already persisted — see
+ * `presetMatchesSaved` below.
  *
  * `stage-only` is what the roving-tabindex ARROW keys use. An APG radiogroup moves
  * its selection as focus moves, and firing one three-section write per ArrowRight
@@ -384,11 +386,47 @@ function assignPresetValues(values: Pick<PrivacyPresetValues, PrivacyPresetPriva
  */
 type PresetCommit = 'persist' | 'stage-only';
 
+/**
+ * Whether `preset` is EXACTLY what the three per-section baselines already hold,
+ * i.e. whether applying it would write values that are already persisted.
+ *
+ * Read from the saved baselines rather than the staged stores, so a card that
+ * has only staged still counts as "not saved yet". Shared by the Apply button's
+ * enablement and by the card-click path, because those two must never disagree
+ * about whether there is anything to write.
+ */
+function presetMatchesSaved(preset: PrivacyPreset): boolean {
+	return (
+		matchPresetPrivacy({
+			anonymizationMode: savedServerWrapped.anonymizationMode,
+			defaultShareMode: savedUserDefaults.defaultShareMode,
+			serverWrappedShareMode: savedServerWrapped.serverWrappedShareMode,
+			publicLandingLookup: savedPublicLandingLookup.publicLandingLookup,
+			allowUserControl: savedUserDefaults.allowUserControl
+		}) === preset.id
+	);
+}
+
 async function applyPrivacyPreset(preset: PrivacyPreset, commit: PresetCommit = 'persist') {
+	// The in-flight guard comes BEFORE any mutation. An apply already writing all
+	// three groups rewrites the stores and clears `customPresetChosen` from its own
+	// response, so staging another card underneath it only flickers the highlight
+	// and the "After you save" preview before snapping back to what that apply
+	// wrote — a click that visibly did nothing.
+	if ($presetSubmitting) return;
 	privacyInteracted = true;
 	customPresetChosen = false;
 	assignPresetValues(preset.values);
-	if (commit === 'stage-only' || $presetSubmitting) return;
+	if (commit === 'stage-only') return;
+	// A card click on the preset that is ALREADY persisted has nothing to write.
+	// Submitting anyway would stamp a strictly-advancing `updatedAt` on all three
+	// OCC groups (see `setPrivacyPresetAtomic`), 409-ing every other admin tab over
+	// a write that changed no value. This is the same condition the Apply button
+	// disables itself on, and `presetApplyStatus` already says "… is the saved
+	// configuration", so the skip is explained rather than silent. The staging
+	// above still ran, which is what reverts unsaved Advanced edits back to the
+	// card the admin just clicked.
+	if (presetMatchesSaved(preset)) return;
 	// Let the staged values reach `presetIdToSubmit`'s hidden input before the
 	// native submit reads the form. (No state-in-$effect: this is an explicit user
 	// action, respecting the file's no-effect-writes rule.)
@@ -407,6 +445,10 @@ async function applyPrivacyPreset(preset: PrivacyPreset, commit: PresetCommit = 
 // the only way to reach an off-preset configuration is to edit them and save that
 // section. Custom therefore also has nothing for the Apply button to write.
 function selectCustomPreset() {
+	// Same in-flight rule as the shipped cards: a running apply clears
+	// `customPresetChosen` in its own `onUpdated`, so highlighting Custom
+	// underneath it would only be undone.
+	if ($presetSubmitting) return;
 	privacyInteracted = true;
 	customPresetChosen = true;
 	advancedOpen = true;
@@ -422,7 +464,12 @@ const CUSTOM_PRESET_INDEX = PRIVACY_PRESETS.length;
 // Called by the roving-tabindex ARROW keys only, so every branch stages without
 // writing: `applyPrivacyPreset(preset, 'stage-only')` for a shipped preset and
 // `selectCustomPreset()` — which stages nothing at all — for the Custom slot.
+//
+// Returns false while an apply is in flight, because both of those refuse to move
+// the selection then. Reporting that refusal keeps the roving tab stop on the
+// still-selected card instead of letting focus desync from `aria-checked`.
 function selectPresetAtIndex(index: number): boolean {
+	if ($presetSubmitting) return false;
 	if (index === CUSTOM_PRESET_INDEX) {
 		selectCustomPreset();
 		return true;
@@ -446,14 +493,7 @@ let applicablePreset = $derived(
 // exactly when applying would change something on the server — which is what keeps
 // it from feeling like a duplicate of the card click that just persisted.
 let applicablePresetIsSaved = $derived(
-	applicablePreset !== null &&
-		matchPresetPrivacy({
-			anonymizationMode: savedServerWrapped.anonymizationMode,
-			defaultShareMode: savedUserDefaults.defaultShareMode,
-			serverWrappedShareMode: savedServerWrapped.serverWrappedShareMode,
-			publicLandingLookup: savedPublicLandingLookup.publicLandingLookup,
-			allowUserControl: savedUserDefaults.allowUserControl
-		}) === applicablePreset.id
+	applicablePreset !== null && presetMatchesSaved(applicablePreset)
 );
 
 let canApplyPreset = $derived(
@@ -614,10 +654,15 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 			</CardDescription>
 		</CardHeader>
 		<CardContent class="space-y-4">
+			<!-- `aria-busy` rather than `disabled` on the cards: every handler below
+			     refuses to move the selection while an apply is in flight, and the
+			     native attribute would drop the card out of the tab order and break
+			     the single roving tab stop `presetTabIndex` maintains. -->
 			<div
 				class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
 				role="radiogroup"
 				aria-label="Privacy preset"
+				aria-busy={$presetSubmitting}
 			>
 				{#each PRIVACY_PRESETS as preset, i (preset.id)}
 					{@const PresetIcon = presetIcons[preset.id]}

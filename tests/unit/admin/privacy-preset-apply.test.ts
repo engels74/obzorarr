@@ -338,12 +338,72 @@ describe('privacy preset apply — client wiring (no DOM harness in this suite)'
 		// The card click is the persist path.
 		expect(src).toContain('onclick={() => applyPrivacyPreset(preset)}');
 		const apply = bodyOf(src, 'async function applyPrivacyPreset(');
-		expect(apply).toContain("if (commit === 'stage-only' || $presetSubmitting) return;");
+		expect(apply).toContain("if (commit === 'stage-only') return;");
 		expect(apply).toContain('presetFormEl?.requestSubmit();');
 		// Arrow keys must NOT fire one three-section write per keypress.
 		const dispatch = bodyOf(src, 'function selectPresetAtIndex(');
 		expect(dispatch).toContain("applyPrivacyPreset(preset, 'stage-only');");
 		expect(dispatch).not.toContain('applyPrivacyPreset(preset);');
+	});
+
+	it('skips the submit when the clicked card is already the saved configuration', async () => {
+		const src = await read();
+		// A redundant apply is not free: `setPrivacyPresetAtomic` stamps a
+		// strictly-advancing `updatedAt` on all three OCC groups, so a no-op card
+		// click would 409 every other admin tab without changing a single value.
+		const apply = bodyOf(src, 'async function applyPrivacyPreset(');
+		expect(apply).toContain('if (presetMatchesSaved(preset)) return;');
+		// The skip must be decided BEFORE the submit and AFTER staging, so clicking
+		// the saved card still reverts unsaved Advanced edits back to that preset.
+		const stageAt = apply.indexOf('assignPresetValues(preset.values);');
+		const skipAt = apply.indexOf('if (presetMatchesSaved(preset)) return;');
+		const submitAt = apply.indexOf('presetFormEl?.requestSubmit();');
+		expect(stageAt).toBeGreaterThan(-1);
+		expect(skipAt).toBeGreaterThan(stageAt);
+		expect(submitAt).toBeGreaterThan(skipAt);
+		// One implementation of "is this preset already persisted", shared with the
+		// Apply button, or the click path and the button could disagree.
+		expect(src).toContain(
+			'let applicablePresetIsSaved = $derived(\n\tapplicablePreset !== null && presetMatchesSaved(applicablePreset)\n);'
+		);
+	});
+
+	it('refuses every radiogroup mutation while an apply is in flight', async () => {
+		const src = await read();
+		// The guard has to precede the staging call: the in-flight apply rewrites the
+		// stores from its own response, so staging underneath it flickers the
+		// highlight and the "After you save" preview and is then silently undone.
+		const apply = bodyOf(src, 'async function applyPrivacyPreset(');
+		const guardAt = apply.indexOf('if ($presetSubmitting) return;');
+		const stageAt = apply.indexOf('assignPresetValues(preset.values);');
+		expect(guardAt).toBeGreaterThan(-1);
+		expect(stageAt).toBeGreaterThan(guardAt);
+		expect(apply.indexOf('privacyInteracted = true;')).toBeGreaterThan(guardAt);
+		expect(apply.indexOf('customPresetChosen = false;')).toBeGreaterThan(guardAt);
+		// Pinned as the FIRST statement rather than merely ahead of today's three
+		// mutations, so a fourth one added above the guard cannot re-open the defect.
+		const firstStatement = apply
+			.split('\n')
+			.slice(1)
+			.map((line) => line.trim())
+			.find((line) => line.length > 0 && !line.startsWith('//'));
+		expect(firstStatement).toBe('if ($presetSubmitting) return;');
+		// Custom mutates only the highlight, but `onUpdated` clears
+		// `customPresetChosen`, so it would be undone just the same.
+		const custom = bodyOf(src, 'function selectCustomPreset(');
+		const customGuardAt = custom.indexOf('if ($presetSubmitting) return;');
+		expect(customGuardAt).toBeGreaterThan(-1);
+		expect(custom.indexOf('customPresetChosen = true;')).toBeGreaterThan(customGuardAt);
+		// Reporting the refusal keeps the roving tab stop on the still-selected card
+		// instead of moving focus to a card that never became aria-checked.
+		const dispatch = bodyOf(src, 'function selectPresetAtIndex(');
+		expect(dispatch).toContain('if ($presetSubmitting) return false;');
+		// The refusal is total, so the group has to say it is busy. Not the native
+		// `disabled` attribute: that drops the card out of the tab order and breaks
+		// the single roving tab stop.
+		const group = src.slice(src.indexOf('role="radiogroup"'));
+		expect(group.slice(0, group.indexOf('>'))).toContain('aria-busy={$presetSubmitting}');
+		expect(src).not.toContain('disabled={$presetSubmitting}');
 	});
 
 	it('offers an explicit Apply button that is enabled only when it would change something', async () => {
@@ -362,8 +422,7 @@ describe('privacy preset apply — client wiring (no DOM harness in this suite)'
 		);
 		// "Already saved" is measured against the per-section saved baselines, not the
 		// staged stores, or the button would disable itself the moment a card staged.
-		const saved = src.slice(src.indexOf('let applicablePresetIsSaved = $derived('));
-		const savedBlock = saved.slice(0, saved.indexOf('\n);'));
+		const savedBlock = bodyOf(src, 'function presetMatchesSaved(');
 		expect(savedBlock).toContain('savedServerWrapped.anonymizationMode');
 		expect(savedBlock).toContain('savedUserDefaults.defaultShareMode');
 		expect(savedBlock).toContain('savedPublicLandingLookup.publicLandingLookup');
