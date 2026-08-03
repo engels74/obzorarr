@@ -159,7 +159,7 @@ $effect(() => {
 			{/if}
 		{:else}
 			<p class="empty-message">No rewatches this year</p>
-			<p class="empty-hint">Looks like you're always exploring new content!</p>
+			<p class="empty-hint">Every play this year was something new.</p>
 		{/if}
 
 		{#if children}

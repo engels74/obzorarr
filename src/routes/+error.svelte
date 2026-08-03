@@ -26,11 +26,11 @@ const title = $derived.by(() => {
 
 const description = $derived.by(() => {
 	if (message) return message;
-	if (status === 404) return "We couldn't find the page you were looking for.";
+	if (status === 404) return "That page doesn't exist.";
 	if (status === 403) return "You don't have permission to view this page.";
-	if (status === 429) return 'Please slow down and try again in a moment.';
-	if (status >= 500) return 'An unexpected error occurred on the server.';
-	return 'An unexpected error occurred.';
+	if (status === 429) return 'Wait a moment, then try again.';
+	if (status >= 500) return 'The server hit an unexpected error.';
+	return 'Something went wrong.';
 });
 
 function goBack(): void {

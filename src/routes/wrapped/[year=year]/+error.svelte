@@ -38,17 +38,17 @@ const description = $derived.by(() => {
 	// land here; render the same generic 404 description for both rather than
 	// leaking two different raw messages. Narrowed to ONLY those two cases (plus an
 	// empty message) so other explicit 404s — e.g. the loader's user-safe
-	// "This share link is invalid, expired, or has been revoked." — still surface
+	// "This share link is invalid, expired, or revoked." — still surface
 	// their own actionable copy via the `if (message)` branch below. The
 	// isNoDataForYear empty-state above is checked first, so it stays untouched.
 	if (status === 404 && (!message || message === 'Not Found' || message === 'Invalid year')) {
-		return "We couldn't find the page you were looking for.";
+		return "That page doesn't exist.";
 	}
 	if (message) return message;
 	if (status === 403) return "You don't have permission to view this page.";
-	if (status === 429) return 'Please slow down and try again in a moment.';
-	if (status >= 500) return 'An unexpected error occurred on the server.';
-	return 'An unexpected error occurred.';
+	if (status === 429) return 'Wait a moment, then try again.';
+	if (status >= 500) return 'The server hit an unexpected error.';
+	return 'Something went wrong.';
 });
 
 function goBack(): void {

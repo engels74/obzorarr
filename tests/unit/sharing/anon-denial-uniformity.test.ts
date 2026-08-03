@@ -231,7 +231,7 @@ describe('wrapped/[year]/u/[identifier]: ISSUE-009 anonymous-denial uniformity',
 		expect(outcome.status).toBe(404);
 		// Authenticated callers keep the legacy differentiated message, NOT the
 		// anonymous anti-enumeration body.
-		expect(outcome.message).toBe('This share link is invalid, expired, or has been revoked.');
+		expect(outcome.message).toBe('This share link is invalid, expired, or revoked.');
 		expect(outcome.message).not.toBe(WRAPPED_NOT_FOUND_MESSAGE);
 	});
 

@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 // Source guards for dashboard empty-state invariants (ISSUE-003, ISSUE-004).
 // Pins the subtitle gate and the no-data personal-card affordance so regressions
-// cannot silently reintroduce the unconditional "ready to explore" subtitle or
+// cannot silently reintroduce the unconditional "ready to view" subtitle or
 // a link-bearing no-data card that would hit the ISSUE-001 incident class.
 
 const PROJECT_ROOT = join(import.meta.dir, '..', '..', '..');
@@ -15,19 +15,19 @@ async function readSource(relPath: string): Promise<string> {
 const DASHBOARD_PAGE = 'src/routes/dashboard/+page.svelte';
 
 describe('ISSUE-003 source-guard — dashboard subtitle is data-aware', () => {
-	it('subtitle "ready to explore" only appears inside the {#if data.wrappedHref} branch', async () => {
+	it('subtitle "ready to view" only appears inside the {#if data.wrappedHref} branch', async () => {
 		const src = await readSource(DASHBOARD_PAGE);
-		// The entire truthy branch must contain the "ready to explore" copy.
+		// The entire truthy branch must contain the "ready to view" copy.
 		const ifIdx = src.indexOf('{#if data.wrappedHref}');
 		expect(ifIdx).toBeGreaterThan(-1);
 		const elseIdx = src.indexOf('{:else}', ifIdx);
 		expect(elseIdx).toBeGreaterThan(ifIdx);
 		const truthyBranch = src.slice(ifIdx, elseIdx);
-		expect(truthyBranch).toContain('ready to explore');
-		// The "ready to explore" copy must NOT appear outside the truthy branch.
+		expect(truthyBranch).toContain('ready to view');
+		// The "ready to view" copy must NOT appear outside the truthy branch.
 		// Everything before the first {#if data.wrappedHref} must not have it.
 		const beforeIf = src.slice(0, ifIdx);
-		expect(beforeIf).not.toContain('ready to explore');
+		expect(beforeIf).not.toContain('ready to view');
 	});
 
 	it('{:else} branch contains the empty-state subtitle copy', async () => {
@@ -43,8 +43,8 @@ describe('ISSUE-003 source-guard — dashboard subtitle is data-aware', () => {
 		// The else branch must contain the empty-state subtitle text.
 		expect(elseBranch).toContain('viewing history synced yet');
 		expect(elseBranch).toContain('Wrapped will appear here');
-		// The "ready to explore" copy must NOT leak into the else branch.
-		expect(elseBranch).not.toContain('ready to explore');
+		// The "ready to view" copy must NOT leak into the else branch.
+		expect(elseBranch).not.toContain('ready to view');
 	});
 });
 

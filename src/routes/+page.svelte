@@ -124,7 +124,7 @@ function handleContinueWithRedirect(): void {
 	try {
 		commitRedirectFromPopupBlocked(pendingPinId, pendingAuthUrl, 'landing');
 	} catch (err) {
-		oauthError = err instanceof Error ? err.message : 'Failed to initiate redirect login';
+		oauthError = err instanceof Error ? err.message : 'Could not start the redirect login';
 	}
 }
 
@@ -149,8 +149,7 @@ function handleCancelRedirect(): void {
 			</h1>
 
 			<p class="hero-description">
-				Discover your Plex viewing journey. Beautiful statistics, stunning animations, and shareable
-				summaries of your media consumption.
+				See what you watched on Plex this year, with stats and animated slides you can share.
 			</p>
 
 			{#if data.publicLookupEnabled}
@@ -210,11 +209,11 @@ function handleCancelRedirect(): void {
 							</SubmitButton>
 						</div>
 						<p id="username-help" class="lookup-help">
-							Search a Plex username. Eligible pages open without sign-in; unknown and opted-out users
-							receive the same response.
+							Search a Plex username. Eligible pages open without sign-in, and unknown or opted-out
+							usernames return the same response.
 						</p>
 						<p class="lookup-boundary">
-							This opens only a Wrapped page. Dashboards, settings, and admin controls remain protected.
+							This opens only a Wrapped page. Dashboards, settings, and admin controls still need sign-in.
 						</p>
 						<p class="lookup-status" role="status" aria-live="polite">
 							{isLookingUp ? 'Looking for that Wrapped…' : ''}
@@ -264,7 +263,7 @@ function handleCancelRedirect(): void {
 			{/if}
 
 			<div class="login-section">
-				<p class="login-prompt">Sign in to access your protected dashboard or change settings.</p>
+				<p class="login-prompt">Sign in to reach your dashboard or change your settings.</p>
 				<Button
 					type="button"
 					class="login-button secondary tap-target"

@@ -32,7 +32,7 @@ const streakEmoji = $derived.by(() => {
 
 const streakMessage = $derived.by(() => {
 	if (!watchStreak) return '';
-	if (watchStreak.longestStreak >= 30) return 'Incredible dedication!';
+	if (watchStreak.longestStreak >= 30) return 'A month or more!';
 	if (watchStreak.longestStreak >= 14) return 'Two weeks strong!';
 	if (watchStreak.longestStreak >= 7) return 'A full week!';
 	if (watchStreak.longestStreak >= 3) return 'Building momentum!';

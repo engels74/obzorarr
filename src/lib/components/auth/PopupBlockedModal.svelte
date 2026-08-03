@@ -79,8 +79,8 @@ function handleCancel(): void {
 				</svg>
 			</div>
 			<p>
-				Continue in this window instead. You'll be redirected to Plex to sign in, then back here
-				automatically.
+				Continue in this window instead. Obzorarr sends you to Plex to sign in and brings you back
+				here.
 			</p>
 		</div>
 

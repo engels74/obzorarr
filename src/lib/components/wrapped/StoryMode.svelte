@@ -387,7 +387,7 @@ function handleSlideAnimationComplete(): void {}
 	bind:this={container}
 	class="story-mode {klass}"
 	role="application"
-	aria-label="Story presentation - use arrow keys to navigate"
+	aria-label="Story presentation. Use the arrow keys to move between slides."
 	onclick={handleClick}
 	ontouchstart={handleTouchStart}
 	ontouchend={handleTouchEnd}

@@ -54,8 +54,8 @@ async function handlePermanentDismiss() {
 			<ShieldAlert class="icon" />
 		</div>
 		<div class="banner-text">
-			<strong>Security Warning:</strong> CSRF protection is not configured. Your application may be vulnerable
-			to cross-site request forgery attacks.
+			<strong>Security Warning:</strong> CSRF protection is not configured, so Obzorarr accepts form
+			posts from any origin.
 		</div>
 		<div class="banner-actions">
 			<a href="/admin/settings?tab=security" class="configure-button">
@@ -82,16 +82,14 @@ async function handlePermanentDismiss() {
 			</div>
 			<AlertDialog.Title>Dismiss Security Warning?</AlertDialog.Title>
 			<AlertDialog.Description>
-				CSRF (Cross-Site Request Forgery) protection helps prevent malicious websites from making
-				unauthorized requests on behalf of your users. Without it, attackers could potentially
-				perform actions as authenticated users.
+				CSRF (Cross-Site Request Forgery) protection stops other websites from making requests on
+				behalf of your users. Without it, an attacker can act as a signed-in user.
 			</AlertDialog.Description>
 		</AlertDialog.Header>
 
 		<div class="warning-card">
 			<p>
-				By dismissing this warning, you acknowledge that you understand the security implications
-				and accept the associated risks.
+				Dismissing this warning means you accept that risk.
 			</p>
 		</div>
 
@@ -110,10 +108,9 @@ async function handlePermanentDismiss() {
 			<div class="dialog-icon danger">
 				<ShieldAlert class="icon" />
 			</div>
-			<AlertDialog.Title>Are You Absolutely Sure?</AlertDialog.Title>
+			<AlertDialog.Title>Dismiss the warning for good?</AlertDialog.Title>
 			<AlertDialog.Description>
-				This will permanently dismiss the CSRF security warning. The warning will not appear again
-				unless you manually reset it in the admin settings.
+				The CSRF security warning will not appear again unless you reset it in the admin settings.
 			</AlertDialog.Description>
 		</AlertDialog.Header>
 

@@ -375,7 +375,7 @@ $effect(() => {
 						<path d="M7 11V7a5 5 0 0 1 10 0v4" />
 					</svg>
 					<p class="members-only-text">
-						Visible to Plex server members only — recipients must sign in with their Plex
+						Visible to Plex server members only. Recipients must sign in with their Plex
 						account to open this Wrapped.
 					</p>
 				</div>
@@ -398,8 +398,8 @@ $effect(() => {
 						<path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
 					</svg>
 					<p class="members-only-text">
-						Shared via private link — anyone with this link can open this Wrapped without
-						signing in. Treat the link like a password and only share it with people you trust.
+						Shared via private link. Anyone with this link can open this Wrapped without
+						signing in, so treat it like a password and share it only with people you trust.
 					</p>
 				</div>
 			{/if}
@@ -476,8 +476,8 @@ $effect(() => {
 												>
 													Privacy settings
 												</a>
-												to self-share — note this lowers the floor for
-												<strong>all users</strong> server-wide, not just you.
+												to self-share. That lowers the floor for
+												<strong>all users</strong> on the server, not only you.
 											{:else}
 												Contact your admin to change the server-wide floor.
 											{/if}
