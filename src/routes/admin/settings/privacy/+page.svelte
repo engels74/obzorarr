@@ -61,7 +61,7 @@ import {
 	PREVIEW_PER_USER_DEFAULT_LABELS,
 	PREVIEW_RECAP_VISIBILITY_LABELS,
 	type PrivacyPreviewModel,
-	resolvePresetSelection
+	resolvePersistedPresetSelection
 } from '$lib/sharing/preset-logic';
 import { handleFormToast } from '$lib/utils/form-toast';
 import { isOccConflict, isPostValidationFailure, surfaceOccConflict } from '$lib/utils/occ-form';
@@ -140,9 +140,6 @@ const serverWrappedForm = superForm(data.serverWrappedForm, {
 				anonymizationMode: updated.data.anonymizationMode,
 				serverWrappedShareMode: updated.data.serverWrappedShareMode
 			};
-			// A completed save is proof of interaction: without this latch the Custom
-			// highlight vanishes the moment unsavedSectionCount drops back to 0.
-			privacyInteracted = true;
 			handleFormToast({ success: true, message: updated.message ?? 'Saved' });
 		} else {
 			handleFormToast({ error: updated.message ?? 'Validation failed' });
@@ -166,9 +163,6 @@ const userDefaultsForm = superForm(data.userDefaultsForm, {
 				defaultShareMode: updated.data.defaultShareMode,
 				allowUserControl: updated.data.allowUserControl
 			};
-			// A completed save is proof of interaction: without this latch the Custom
-			// highlight vanishes the moment unsavedSectionCount drops back to 0.
-			privacyInteracted = true;
 			handleFormToast({ success: true, message: updated.message ?? 'Saved' });
 		} else {
 			handleFormToast({ error: updated.message ?? 'Validation failed' });
@@ -191,9 +185,6 @@ const publicLandingLookupForm = superForm(data.publicLandingLookupForm, {
 			savedPublicLandingLookup = {
 				publicLandingLookup: updated.data.publicLandingLookup
 			};
-			// A completed save is proof of interaction: without this latch the Custom
-			// highlight vanishes the moment unsavedSectionCount drops back to 0.
-			privacyInteracted = true;
 			handleFormToast({ success: true, message: updated.message ?? 'Saved' });
 		} else {
 			handleFormToast({ error: updated.message ?? 'Validation failed' });
@@ -249,7 +240,6 @@ const presetForm = superForm(data.presetForm, {
 		};
 		savedPublicLandingLookup = { publicLandingLookup: applied.values.publicLandingLookup };
 		customPresetChosen = false;
-		privacyInteracted = true;
 		// The action keeps its name through the whole flow: the button says "Apply
 		// Balanced", so the toast says "Applied the Balanced preset" — not a generic
 		// "Saved" that gives no hint which of six cards actually landed.
@@ -266,12 +256,6 @@ let presetFormEl = $state<HTMLFormElement | null>(null);
 let bulkApplyDialogOpen = $state(false);
 let isBulkApplying = $state(false);
 
-// Latching "the admin has touched this section during this page load". The gate
-// that reads it, `privacyTouched`, is declared with the rest of the preset logic
-// below; this lives up here because the accordion toggle and the three form
-// `onUpdated` callbacks above all set it.
-let privacyInteracted = $state(false);
-
 // Advanced controls stay collapsed until the administrator opens them or stages
 // a preset. Public lookup no longer creates a contradictory default state.
 let advancedOpen = $state(false);
@@ -283,10 +267,6 @@ let advancedOpen = $state(false);
 let advancedSectionRef = $state<HTMLDivElement | null>(null);
 async function handleAdvancedToggle(open: boolean): Promise<void> {
 	if (!open) return;
-	// Opening the accordion is an interaction with the privacy controls, and it is
-	// the only way to reach them — latching here is what keeps the Custom
-	// highlight from decaying when an edit is staged and then reverted.
-	privacyInteracted = true;
 	await tick();
 	advancedSectionRef?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -343,26 +323,6 @@ let unsavedSectionCount = $derived(
 	(serverWrappedUnsaved ? 1 : 0) + (userDefaultsUnsaved ? 1 : 0) + (publicLandingUnsaved ? 1 : 0)
 );
 
-// Mirrors onboarding's `privacyTouched` gate (ISSUE-001): the Custom card only
-// lights up once the admin has actually interacted. Without the gate a
-// persisted-but-off-preset configuration would light Custom on load, before the
-// admin had touched anything.
-//
-// The flag must LATCH. Deriving it purely from a card-click flag OR
-// `unsavedSectionCount > 0` made it DECAY: an admin who only edited Advanced
-// controls saw Custom light up, then lose the highlight the moment they pressed
-// Save — the baselines advance, `unsavedSectionCount` drops back to 0, and the
-// radiogroup ended up with no card checked (moving the roving tab stop back to
-// the first card) even though they had just deliberately saved an off-preset
-// configuration. Saving is the opposite of "hasn't touched anything yet".
-//
-// So every way of interacting with this section latches `privacyInteracted`
-// (declared above the accordion toggle that sets it): clicking any preset card,
-// expanding the Advanced accordion (the only route to those controls), and a
-// successful save of any of the three sections. `unsavedSectionCount > 0` stays
-// as a safety net for a control rendered outside the accordion.
-let privacyTouched = $derived(privacyInteracted || unsavedSectionCount > 0);
-
 // Sticky "the admin explicitly clicked the Custom card" flag. While set, Custom
 // stays highlighted even when the staged values happen to match a shipped preset
 // — which on this route is simply "the admin clicked Custom while their saved
@@ -370,10 +330,19 @@ let privacyTouched = $derived(privacyInteracted || unsavedSectionCount > 0);
 // Cleared by clicking any of the five real cards.
 let customPresetChosen = $state(false);
 
-// The card that renders as selected: the derived five-field match, the sticky
-// Custom flag, or no card at all before the admin has interacted.
+// The card that renders as selected: the sticky Custom flag, otherwise the
+// five-field match over the live store values. Always a card.
+//
+// NOT interaction-gated. This route used to reuse onboarding's resolver together
+// with a session-scoped "has the admin touched anything yet" flag, so an
+// untouched `'custom'` selected nothing at all — and on the admin route
+// "untouched" means "this is the configuration the administrator saved". Every
+// page load of an off-preset configuration therefore rendered six cards with
+// `aria-checked="false"`, and the roving tab stop fell back to the first card.
+// Suppressing an untouched `'custom'` is an onboarding-only rule about
+// fresh-install seeds (ISSUE-001); see `resolvePersistedPresetSelection`.
 let selectedPresetCard = $derived(
-	resolvePresetSelection(selectedPreset, privacyTouched, customPresetChosen)
+	resolvePersistedPresetSelection(selectedPreset, customPresetChosen)
 );
 
 // Staging the five admin-owned fields across the three stores. NEVER touches
@@ -430,7 +399,6 @@ async function applyPrivacyPreset(preset: PrivacyPreset, commit: PresetCommit = 
 	// and the "After you save" preview before snapping back to what that apply
 	// wrote — a click that visibly did nothing.
 	if ($presetSubmitting) return;
-	privacyInteracted = true;
 	customPresetChosen = false;
 	assignPresetValues(preset.values);
 	if (commit === 'stage-only') return;
@@ -450,13 +418,12 @@ async function applyPrivacyPreset(preset: PrivacyPreset, commit: PresetCommit = 
 	presetFormEl?.requestSubmit();
 }
 
-// Custom is a pure highlight change on this route: it stages NOTHING. The admin
-// gate is false on load for an already-off-preset persisted config — that is
-// exactly the ISSUE-001 state — so seeding Balanced through
-// `customPresetSeedValues(privacyTouched)` would silently overwrite the
-// administrator's saved privacy settings. Making the gate latch (above) does not
-// change that: a fresh load has latched nothing either way. Admins who do want
-// that baseline click the Balanced card, which sits in the same radiogroup.
+// Custom is a pure highlight change on this route: it stages NOTHING. Seeding
+// Balanced through `customPresetSeedValues` — onboarding's rule — would silently
+// overwrite the administrator's saved privacy settings, because on this route an
+// off-preset configuration is real persisted state rather than an untouched
+// fresh-install seed. Admins who do want that baseline click the Balanced card,
+// which sits in the same radiogroup.
 // Advanced is still expanded — Custom's whole point is the controls below it, and
 // the only way to reach an off-preset configuration is to edit them and save that
 // section. Custom therefore also has nothing for the Apply button to write.
@@ -465,14 +432,15 @@ function selectCustomPreset() {
 	// `customPresetChosen` in its own `onUpdated`, so highlighting Custom
 	// underneath it would only be undone.
 	if ($presetSubmitting) return;
-	privacyInteracted = true;
 	customPresetChosen = true;
 	advancedOpen = true;
 }
 
 // Use the same APG roving-tabindex radio pattern as onboarding: the selected
-// card is the single Tab stop, with the first card reachable when no card is
-// selected. The Custom card occupies the final index (PRIVACY_PRESETS.length).
+// card is the single Tab stop. A card is always selected on this route (the
+// selection is derived straight from the live values), so the group's tab stop
+// always lands on it. The Custom card occupies the final index
+// (PRIVACY_PRESETS.length).
 let presetButtons = $state<(HTMLButtonElement | null)[]>([]);
 
 const CUSTOM_PRESET_INDEX = PRIVACY_PRESETS.length;
@@ -497,9 +465,8 @@ function selectPresetAtIndex(index: number): boolean {
 }
 
 // What the explicit Apply button would write: the highlighted card resolved to a
-// shipped preset. `null` for the Custom card (no value-map by definition) and
-// before the admin has interacted at all, which is exactly when there is nothing
-// to apply.
+// shipped preset. `null` for the Custom card, which has no value-map by
+// definition and therefore nothing to apply.
 let applicablePreset = $derived(
 	PRIVACY_PRESETS.find((preset) => preset.id === selectedPresetCard) ?? null
 );
@@ -516,8 +483,8 @@ let canApplyPreset = $derived(
 	applicablePreset !== null && !applicablePresetIsSaved && !$presetSubmitting
 );
 
-// The submitted preset id. Empty for Custom and for "no card highlighted", both of
-// which also disable the button — the action's Zod enum rejects either anyway.
+// The submitted preset id. Empty for Custom, which also disables the button —
+// the action's Zod enum rejects it anyway.
 let presetIdToSubmit = $derived(applicablePreset?.id ?? '');
 
 // One line that states the truth about the selection relative to what is saved.
@@ -528,6 +495,9 @@ let presetApplyStatus = $derived.by(() => {
 	if (selectedPresetCard === 'custom') {
 		return 'Custom has no values of its own. Set the controls in Advanced options, then save that section.';
 	}
+	// Unreachable: `selectedPresetCard` is always a card, and the 'custom' arm
+	// returned above. Kept because `.find()` is typed `| undefined` and the two
+	// lines below read `applicablePreset.label`.
 	if (!applicablePreset) return 'Pick a preset to save it across all three sections at once.';
 	if (applicablePresetIsSaved) return `${applicablePreset.label} is the saved configuration.`;
 	return `${applicablePreset.label} is selected but not saved yet.`;
@@ -536,6 +506,8 @@ let presetApplyStatus = $derived.by(() => {
 let presetTabIndex = $derived.by(() => {
 	if (selectedPresetCard === 'custom') return CUSTOM_PRESET_INDEX;
 	const i = PRIVACY_PRESETS.findIndex((p) => p.id === selectedPresetCard);
+	// `-1` is unreachable — a non-'custom' selection is always a shipped id — but
+	// falling back to the first card keeps the group Tab-reachable regardless.
 	return i === -1 ? 0 : i;
 });
 

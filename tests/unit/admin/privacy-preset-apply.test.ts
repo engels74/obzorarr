@@ -419,10 +419,9 @@ describe('privacy preset apply — client wiring (no DOM harness in this suite)'
 		const stageAt = apply.indexOf('assignPresetValues(preset.values);');
 		expect(guardAt).toBeGreaterThan(-1);
 		expect(stageAt).toBeGreaterThan(guardAt);
-		expect(apply.indexOf('privacyInteracted = true;')).toBeGreaterThan(guardAt);
 		expect(apply.indexOf('customPresetChosen = false;')).toBeGreaterThan(guardAt);
-		// Pinned as the FIRST statement rather than merely ahead of today's three
-		// mutations, so a fourth one added above the guard cannot re-open the defect.
+		// Pinned as the FIRST statement rather than merely ahead of today's
+		// mutations, so a new one added above the guard cannot re-open the defect.
 		const firstStatement = apply
 			.split('\n')
 			.slice(1)

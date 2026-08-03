@@ -43,31 +43,58 @@ export function shouldShowCustomPresetNote(
 }
 
 /**
- * Which preset card renders as SELECTED, or `null` when no card is selected.
+ * Which preset card renders as SELECTED for a flow whose field values come from
+ * PERSISTED settings — i.e. the admin privacy route. Always returns a card.
  *
- * Three inputs, because the visual selection is not simply the derived match:
+ * The selection is a pure function of what the live fields currently say:
  *
- * - `match` — what the live field values resolve to ('custom' when they match no
- *   shipped preset).
- * - `hasInteracted` — the `privacyTouched` gate. On a fresh install the seeded
- *   defaults can incidentally resolve to `'custom'` before the admin touches
- *   anything (ISSUE-001, see {@link shouldShowCustomPresetNote}); the Custom card
- *   must not light up there either, so an untouched `'custom'` selects NO card —
- *   exactly the pre-Custom-card behaviour.
+ * - `match` — what those values resolve to ('custom' when they match no shipped
+ *   preset). An off-preset combination on this route is a real configuration an
+ *   administrator saved, so Custom is simply the honest answer, on the first
+ *   paint of a fresh load exactly as much as mid-session.
  * - `customChosen` — the sticky "admin explicitly clicked Custom" flag. It wins
  *   over `match` so the highlight does not immediately snap back to a shipped
- *   preset: in onboarding because clicking Custom seeds the Balanced values, and
- *   on the admin route because the saved configuration may already match a preset
- *   while the click itself stages nothing. Clicking any of the five real cards
- *   clears it.
+ *   preset when the click itself stages nothing (the saved configuration may
+ *   already match one). Clicking any of the five real cards clears it.
+ *
+ * Deliberately NOT interaction-gated. Suppressing an untouched `'custom'` is an
+ * onboarding-only rule about unseeded fresh-install defaults (ISSUE-001, see
+ * {@link resolvePresetSelection}); applying it here meant a session-scoped "has
+ * the admin touched anything yet" flag decided the highlight, so every page load
+ * of a saved off-preset configuration selected NO card and left `aria-checked`
+ * false on all six.
+ */
+export function resolvePersistedPresetSelection(
+	match: PrivacyPresetMatch,
+	customChosen: boolean
+): PrivacyPresetMatch {
+	return customChosen ? 'custom' : match;
+}
+
+/**
+ * {@link resolvePersistedPresetSelection} plus ONBOARDING's untouched-state
+ * guard, returning `null` when no card is selected.
+ *
+ * On a fresh install the seeded values can incidentally resolve to `'custom'`
+ * (the raw defaults match no shipped preset) before the admin touches anything
+ * (ISSUE-001, see {@link shouldShowCustomPresetNote}). The Custom card must not
+ * light up there, so an untouched `'custom'` selection collapses to NO card —
+ * exactly the pre-Custom-card behaviour. Every other selection, including a live
+ * `'custom'` reached by editing an Advanced Option, resolves the same way it does
+ * on the admin route.
+ *
+ * ONBOARDING-ONLY. The admin privacy route calls
+ * {@link resolvePersistedPresetSelection} directly: its values are persisted
+ * settings, not fresh-install seeds, so it has no untouched state to protect.
  */
 export function resolvePresetSelection(
 	match: PrivacyPresetMatch,
 	hasInteracted: boolean,
 	customChosen: boolean
 ): PrivacyPresetMatch | null {
-	if (match !== 'custom' && !customChosen) return match;
-	return hasInteracted ? 'custom' : null;
+	const selected = resolvePersistedPresetSelection(match, customChosen);
+	if (selected === 'custom' && !hasInteracted) return null;
+	return selected;
 }
 
 /**
@@ -83,11 +110,11 @@ export function resolvePresetSelection(
  * `hasInteracted` is only ever a "has the admin touched anything THIS SESSION"
  * flag, so it necessarily reads false on a fresh page load. That is harmless in
  * onboarding, where a fresh load has no persisted configuration to destroy, and
- * destructive on the admin privacy route, where it always does: the untouched
- * `'custom'` state there is a real configuration the admin saved (ISSUE-001, see
- * {@link resolvePresetSelection}), and seeding would silently replace it with
- * Balanced. Admin consequently never calls this helper — its Custom card stages
- * nothing, and its own gate latching on interaction does not change that.
+ * destructive on the admin privacy route, where it always does: an off-preset
+ * state there is a real configuration the admin saved, and seeding would
+ * silently replace it with Balanced. Admin consequently never calls this helper
+ * — its Custom card stages nothing and only moves the highlight (see
+ * {@link resolvePersistedPresetSelection}).
  */
 export function customPresetSeedValues(hasInteracted: boolean): PrivacyPresetValues | null {
 	if (hasInteracted) return null;
