@@ -24,7 +24,7 @@ const adminLocals = {
 	user: { id: 1, plexId: 1, username: 'admin', isAdmin: true }
 } as unknown as App.Locals;
 
-const OCC_MESSAGE = 'Settings changed in another tab. Please reload.';
+const OCC_MESSAGE = 'Settings changed in another tab. Reload and try again.';
 
 beforeEach(async () => {
 	await resetSharedTestDb();

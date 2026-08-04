@@ -44,7 +44,7 @@ Obzorarr is a **"Wrapped for Plex"** application that syncs viewing history from
 - **Plex OAuth** — Secure authentication with your Plex account
 - **Automatic Sync** — Scheduled background sync of viewing history, with live progress
 - **Reverse-Proxy Diagnostic** — Compares what your browser sees, what the proxy forwards, and what Obzorarr uses
-- **AI Fun Facts** — Optional AI-generated personalized insights (falls back to built-in templates)
+- **AI Fun Facts** — Optional AI-written fun facts, with the built-in templates as the fallback
 
 ## Issues & Support
 
@@ -327,11 +327,11 @@ a fresh claim token to paste on the next screen — that one lasts 60 minutes, s
 in to Plex, reconfigure, and sync again. It is also printed to the console as usual, so losing the
 tab is recoverable.
 
-Your watch statistics come back: they re-sync from Plex. Everything else does not — all settings,
-every per-user share setting, and **every share link you have already handed out stops working**,
-along with any manual curation and the log history. Anything configured through environment
-variables (Plex, OpenAI, `ORIGIN`, `TRUST_PROXY`) is not in the database, so it survives and the new
-setup arrives partly pre-filled. Resetting is refused while a sync is running.
+Your watch statistics come back: they re-sync from Plex. Everything else does not. That covers all
+settings, every per-user share setting, and **every share link you have already handed out stops
+working**, along with any manual curation and the log history. Anything configured through
+environment variables (Plex, OpenAI, `ORIGIN`, `TRUST_PROXY`) is not in the database, so it survives
+and the new setup arrives partly pre-filled. Obzorarr refuses to reset while a sync is running.
 
 ## Running Behind a Reverse Proxy
 

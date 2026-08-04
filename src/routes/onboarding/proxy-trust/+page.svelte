@@ -132,7 +132,7 @@ async function runDiagnostic(afterSave = false) {
 	} catch {
 		if (token !== runToken) return;
 		diagnosticStatus = 'failure';
-		diagnosticError = 'Network error - could not complete diagnostic';
+		diagnosticError = 'Network error while running the diagnostic.';
 		if (afterSave) savedState = 'unverified';
 	}
 }

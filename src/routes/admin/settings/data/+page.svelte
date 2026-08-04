@@ -97,14 +97,14 @@ async function copyResetToken() {
 	} catch {
 		tokenCopied = false;
 		handleFormToast({
-			error: 'Could not copy automatically. Select the token and copy it manually.'
+			error: 'Copy failed. Select the token and copy it yourself.'
 		});
 	}
 }
 </script>
 
 <svelte:head>
-	<title>Data — Settings — Obzorarr</title>
+	<title>Data - Settings - Obzorarr</title>
 </svelte:head>
 
 <div class="space-y-6 p-6 max-w-4xl">
@@ -112,8 +112,8 @@ async function copyResetToken() {
 		<CardHeader>
 			<CardTitle>Stats cache</CardTitle>
 			<CardDescription>
-				Counts and clears cached per-year wrapped statistics. Clearing the cache forces a
-				rebuild on next wrapped page view.
+				Counts and clears cached per-year Wrapped statistics. Clearing the cache forces a
+				rebuild the next time someone opens a Wrapped page.
 			</CardDescription>
 		</CardHeader>
 		<CardContent class="space-y-4">
@@ -277,9 +277,9 @@ async function copyResetToken() {
 				<div class="space-y-1">
 					<p class="font-medium">What comes back</p>
 					<p class="text-muted-foreground">
-						Your watch statistics. Obzorarr only needs your Plex login, and play history is
-						re-synced from the official Plex API — so play history and every Wrapped statistic
-						built from it can be rebuilt by running a fresh sync once you finish setup again.
+						Your watch statistics. Obzorarr only needs your Plex login, and it re-syncs play history
+						from the official Plex API, so a fresh sync after setup rebuilds play history and every
+						Wrapped statistic built from it.
 					</p>
 				</div>
 				<div class="space-y-1">
@@ -287,10 +287,10 @@ async function copyResetToken() {
 					<p class="text-muted-foreground">
 						Every setting: privacy and sharing configuration, themes, slide configuration and
 						custom slides, log settings and fun-fact configuration. All per-user share
-						settings and every existing share link —
+						settings and every existing share link, so
 						<strong>any link you have already handed out to a user stops working</strong>, and
 						a new one will not be the same link. Any custom year ranges or other curation you
-						did by hand. And the entire log history.
+						did by hand, plus the entire log history.
 					</p>
 				</div>
 				<div class="space-y-1">
@@ -298,8 +298,8 @@ async function copyResetToken() {
 					<p class="text-muted-foreground">
 						Anything configured through the environment (Plex, OpenAI, ORIGIN, TRUST_PROXY) is
 						not stored in the database, so it survives. On an env-configured server the new
-						setup will already be filled in and locked for those steps — it is not a
-						completely blank slate.
+						setup arrives with those steps already filled in and locked, so you do not start
+						from a blank slate.
 					</p>
 				</div>
 			</div>
@@ -339,8 +339,8 @@ async function copyResetToken() {
 		<AlertDialog.Header>
 			<AlertDialog.Title>Clear stats cache?</AlertDialog.Title>
 			<AlertDialog.Description>
-				Removes cached wrapped statistics for {cacheYearLabel.toLowerCase()}. Wrapped pages
-				will rebuild their stats from the play history on next view.
+				Removes cached Wrapped statistics for {cacheYearLabel.toLowerCase()}. Wrapped pages
+				rebuild their stats from the play history on the next view.
 			</AlertDialog.Description>
 		</AlertDialog.Header>
 		<AlertDialog.Footer>
@@ -395,9 +395,8 @@ async function copyResetToken() {
 		<AlertDialog.Header>
 			<AlertDialog.Title>Clear play history?</AlertDialog.Title>
 			<AlertDialog.Description>
-				Permanently deletes play history records for {historyYearLabel.toLowerCase()}. This
-				cannot be undone. Wrapped pages backed by deleted records will be empty until a
-				resync repopulates them.
+				Deletes the play history records for {historyYearLabel.toLowerCase()} for good. Wrapped
+				pages built from those records stay empty until a resync refills them.
 			</AlertDialog.Description>
 		</AlertDialog.Header>
 		<AlertDialog.Footer>
@@ -467,7 +466,7 @@ async function copyResetToken() {
 			<div class="space-y-1">
 				<p class="font-medium">What does not</p>
 				<p class="text-muted-foreground">
-					All of your settings — privacy and sharing, themes, slides and custom slides, log
+					All of your settings: privacy and sharing, themes, slides and custom slides, log
 					settings, fun facts. Every per-user share setting and share link, so
 					<strong>any link already shared with a user will stop working</strong>. Any custom
 					year ranges or other hand-made curation. And the whole log history.
@@ -542,8 +541,8 @@ async function copyResetToken() {
 			<AlertDialog.Title>Copy your setup token, then wipe</AlertDialog.Title>
 			<AlertDialog.Description>
 				You need this token on the very next screen to claim the fresh setup. It expires in
-				{resetTokenExpiresInMinutes ?? data.resetTokenTtlMinutes} minutes and is not stored anywhere —
-				if you lose it, it is also printed in the server console.
+				{resetTokenExpiresInMinutes ?? data.resetTokenTtlMinutes} minutes and Obzorarr stores it
+				nowhere. If you lose it, look for it in the server console.
 			</AlertDialog.Description>
 		</AlertDialog.Header>
 		<div class="space-y-4">

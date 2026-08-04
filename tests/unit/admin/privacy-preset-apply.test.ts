@@ -22,7 +22,7 @@ const adminLocals = {
 } as unknown as App.Locals;
 
 const EPOCH = new Date(0).toISOString();
-const OCC_MESSAGE = 'Settings changed in another tab. Please reload.';
+const OCC_MESSAGE = 'Settings changed in another tab. Reload and try again.';
 
 function makeRequest(action: string, fields: Record<string, string>): Request {
 	const formData = new FormData();

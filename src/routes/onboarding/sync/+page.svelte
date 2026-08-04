@@ -339,7 +339,7 @@ function formatNumber(n: number): string {
 				<div class="warning-content">
 					<p class="warning-title">Sync will continue</p>
 					<p class="warning-text">
-						Navigate away anytime - the sync runs independently on the server.
+						Leave this page anytime. The sync keeps running on the server.
 					</p>
 				</div>
 			</div>
@@ -354,14 +354,14 @@ function formatNumber(n: number): string {
 						stroke-linejoin="round"
 					/>
 				</svg>
-				<span>Your viewing history has been synced successfully!</span>
+				<span>Obzorarr finished syncing your viewing history.</span>
 			</div>
 		{/if}
 
 		{#if hasStarted && !hasFailed}
 			<p class="continue-hint">
 				{#if isComplete}
-					You're all set! Continue to customize your experience.
+					Continue to choose your privacy and appearance settings.
 				{:else}
 					You can continue while sync runs in the background.
 				{/if}

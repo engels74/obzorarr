@@ -55,7 +55,7 @@ describe('sync updateSchedule action (ISSUE-004 / ISSUE-005)', () => {
 		setupSyncScheduler({ cronExpression: '0 0 * * *', startImmediately: true });
 		const result = (await run('0 6 * * *')) as { success: boolean; message: string };
 		expect(result.success).toBe(true);
-		expect(result.message).toBe('Schedule updated successfully');
+		expect(result.message).toBe('Schedule updated');
 	});
 
 	it('rejects an invalid cron with a 400 and echoes the bad value back', async () => {

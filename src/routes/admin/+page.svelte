@@ -124,7 +124,7 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 </script>
 
 <svelte:head>
-	<title>Dashboard — Admin — Obzorarr</title>
+	<title>Dashboard - Admin - Obzorarr</title>
 </svelte:head>
 
 <div class="dashboard">
@@ -252,7 +252,7 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 				{#if syncStatus === 'inactive'}
 					<div class="scheduler-cta">
 						<p class="scheduler-cta-text">
-							No automatic sync is scheduled. Set one up so your viewing history stays up to date.
+							No automatic sync is scheduled. Add one to keep viewing history current.
 						</p>
 						<a href="/admin/sync" class="scheduler-cta-link" onclick={handleAdminNavigation}>
 							<span>Configure schedule</span>

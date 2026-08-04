@@ -149,7 +149,8 @@ export const actions: Actions = requireUserActions({
 					currentMode
 				});
 			}
-			const message = error instanceof Error ? error.message : 'Failed to update settings';
+			const message =
+				error instanceof Error ? error.message : 'Could not save your sharing settings';
 			return fail(500, { error: message, action: 'updateShareMode', currentMode });
 		}
 	},
@@ -170,7 +171,7 @@ export const actions: Actions = requireUserActions({
 
 			if (shareSettings.mode !== 'private-link') {
 				return fail(400, {
-					error: 'Can only regenerate token when in private-link mode',
+					error: 'Switch to private-link mode before regenerating the token',
 					action: 'regenerateToken'
 				});
 			}
@@ -189,7 +190,8 @@ export const actions: Actions = requireUserActions({
 			if (error instanceof PermissionExceededError) {
 				return fail(403, { error: error.message, action: 'regenerateToken' });
 			}
-			const message = error instanceof Error ? error.message : 'Failed to regenerate token';
+			const message =
+				error instanceof Error ? error.message : 'Could not regenerate the share link';
 			return fail(500, { error: message, action: 'regenerateToken' });
 		}
 	},
@@ -224,7 +226,8 @@ export const actions: Actions = requireUserActions({
 				action: 'updateLogoPreference'
 			};
 		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Failed to update preference';
+			const message =
+				error instanceof Error ? error.message : 'Could not save your logo preference';
 			return fail(500, { error: message, action: 'updateLogoPreference' });
 		}
 	}

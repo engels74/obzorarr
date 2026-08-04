@@ -246,7 +246,8 @@ export const actions: Actions = requireAdminActions({
 			);
 			return { form, success: true, message: 'Logo visibility mode updated' };
 		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Failed to update mode';
+			const message =
+				error instanceof Error ? error.message : 'Failed to update the logo visibility mode';
 			return fail(500, { form, error: message });
 		}
 	}

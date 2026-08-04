@@ -77,7 +77,7 @@ const showOpenaiKeyWarning = $derived(!data.hasEffectiveOpenAIKey && !openaiApiK
 </script>
 
 <svelte:head>
-	<title>Connections — Settings — Obzorarr</title>
+	<title>Connections - Settings - Obzorarr</title>
 </svelte:head>
 
 <div class="space-y-6 p-6 max-w-4xl">
@@ -85,11 +85,11 @@ const showOpenaiKeyWarning = $derived(!data.hasEffectiveOpenAIKey && !openaiApiK
 		<CardHeader>
 			<CardTitle>Plex server</CardTitle>
 			<CardDescription>
-				URL + auth token for the Plex Media Server obzorarr syncs from.
+				URL and auth token for the Plex Media Server Obzorarr syncs from.
 				{#if plexAnyLocked}
-					Locked fields are set via environment variables and can only be changed there.
-					Placeholder env values (e.g. the shipped <code>.env.example</code> defaults) are
-					ignored and leave the field editable here.
+					Environment variables set the locked fields, so change them there. Obzorarr ignores
+					placeholder env values (for example the shipped <code>.env.example</code> defaults) and
+					leaves those fields editable here.
 				{/if}
 			</CardDescription>
 		</CardHeader>
@@ -152,7 +152,7 @@ const showOpenaiKeyWarning = $derived(!data.hasEffectiveOpenAIKey && !openaiApiK
 						<Label for="plexToken">
 							Plex token
 							{#if settings.plexToken.hasValue}
-								<span class="text-xs text-muted-foreground">(stored — leave blank to keep)</span>
+								<span class="text-xs text-muted-foreground">(stored, leave blank to keep)</span>
 							{/if}
 						</Label>
 						{#if plexTokenLocked}
@@ -248,8 +248,8 @@ const showOpenaiKeyWarning = $derived(!data.hasEffectiveOpenAIKey && !openaiApiK
 		<CardHeader>
 			<CardTitle>OpenAI / fun facts</CardTitle>
 			<CardDescription>
-				API credentials for the optional OpenAI-driven fun-fact generator. Falls back to the
-				template generator when unset.
+				API credentials for the optional OpenAI fun-fact generator. Obzorarr uses the built-in
+				templates when these are empty.
 				<!-- DF-017: the AI persona (fun_facts_ai_persona) and per-slide config are
 				     DB-only by design — set once in the onboarding wizard. A post-install
 				     selector UI is a tracked follow-up; edit these directly in app_settings /
@@ -312,7 +312,7 @@ const showOpenaiKeyWarning = $derived(!data.hasEffectiveOpenAIKey && !openaiApiK
 						<Label for="openaiApiKey">
 							OpenAI API key
 							{#if settings.openaiApiKey.hasValue}
-								<span class="text-xs text-muted-foreground">(stored — leave blank to keep)</span>
+								<span class="text-xs text-muted-foreground">(stored, leave blank to keep)</span>
 							{/if}
 						</Label>
 						{#if openaiApiKeyLocked}
@@ -330,9 +330,8 @@ const showOpenaiKeyWarning = $derived(!data.hasEffectiveOpenAIKey && !openaiApiK
 					/>
 					{#if showOpenaiKeyWarning}
 						<p class="ai-key-warning" role="status">
-							No OpenAI API key is in effect, so AI fun facts will not run — the built-in
-							template generator is used instead. Enter a key above (or set
-							<code>OPENAI_API_KEY</code>) to enable AI-generated fun facts.
+							No OpenAI API key is in effect, so fun facts come from the built-in templates. Enter a
+							key above, or set <code>OPENAI_API_KEY</code>, for AI-generated fun facts.
 						</p>
 					{/if}
 				</div>

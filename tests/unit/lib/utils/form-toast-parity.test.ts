@@ -46,10 +46,14 @@ describe('handleFormToast parity', () => {
 			expect(getTestToastCalls()).toEqual([{ variant: 'success', message: 'saved' }]);
 		});
 
-		it('falls back to default success message when none provided', () => {
+		it('falls back to an operation-neutral success message when none provided', () => {
+			// The util cannot know what the action did — `admin/slides` routes toggles,
+			// reorders AND `?/deleteCustom` (a bare `{ success: true }`) through one
+			// `$effect` on the `form` prop, so the fallback must never claim "Saved".
 			handleFormToast({ success: true });
 			expect(getTestToastCalls()[0]?.variant).toBe('success');
-			expect(getTestToastCalls()[0]?.message).toMatch(/completed/i);
+			expect(getTestToastCalls()[0]?.message).toBe('Done');
+			expect(getTestToastCalls()[0]?.message).not.toMatch(/saved/i);
 		});
 
 		it('is a no-op on null / undefined', () => {
@@ -88,12 +92,12 @@ describe('handleFormToast parity', () => {
 		it('uses default messages when data is missing', () => {
 			handleFormToast({ type: 'success', status: 200, data: undefined });
 			expect(getTestToastCalls()[0]?.variant).toBe('success');
-			expect(getTestToastCalls()[0]?.message).toMatch(/completed/i);
+			expect(getTestToastCalls()[0]?.message).toBe('Done');
 
 			clearTestToastCalls();
 			handleFormToast({ type: 'failure', status: 400, data: undefined });
 			expect(getTestToastCalls()[0]?.variant).toBe('error');
-			expect(getTestToastCalls()[0]?.message).toMatch(/unexpected/i);
+			expect(getTestToastCalls()[0]?.message).toBe('Something went wrong. Try again.');
 		});
 	});
 

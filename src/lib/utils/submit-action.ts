@@ -34,7 +34,7 @@ export async function submitAction<T = unknown>(
 		// plain text, or the body was truncated). Map this to a typed error
 		// outcome so callers can rely on the `SubmitOutcome<T>` contract.
 		console.error('[submitAction] deserialize failed:', err);
-		return { type: 'error', error: { message: 'An unexpected error occurred' } };
+		return { type: 'error', error: { message: 'Something went wrong. Try again.' } };
 	}
 
 	if (result.type === 'success') {

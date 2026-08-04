@@ -40,7 +40,7 @@ export function slideErrorToFail(err: unknown): SlideActionFail {
 				});
 				return {
 					status: 500,
-					body: { error: 'Slide could not be saved. Please try again.' }
+					body: { error: 'Could not save the slide. Try again.' }
 				};
 		}
 	}
@@ -53,5 +53,5 @@ export function slideErrorToFail(err: unknown): SlideActionFail {
 	logger.error(`Unexpected slide action error: ${detail}`, 'SlideError', {
 		code: err instanceof SlideError ? err.code : undefined
 	});
-	return { status: 500, body: { error: 'An unexpected error occurred' } };
+	return { status: 500, body: { error: 'Something went wrong. Try again.' } };
 }

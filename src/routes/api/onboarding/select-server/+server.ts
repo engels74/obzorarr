@@ -70,7 +70,7 @@ async function testConnection(url: string, accessToken: string): Promise<Connect
 		});
 
 		if (response.status === 401) {
-			return { success: false, error: 'Authentication failed - the access token may be invalid' };
+			return { success: false, error: 'Authentication failed. Check the access token.' };
 		}
 
 		if (!response.ok) {

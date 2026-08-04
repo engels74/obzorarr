@@ -110,7 +110,7 @@ export function detectUnsafeHtml(content: string): UnsafeHtmlDetection {
 	if (/<script[^>]*>/i.test(content)) {
 		return {
 			unsafe: true,
-			reason: "Remove <script> tags — inline scripts aren't allowed in slide content."
+			reason: 'Remove <script> tags. Slide content cannot include inline scripts.'
 		};
 	}
 

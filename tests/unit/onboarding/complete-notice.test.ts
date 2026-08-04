@@ -6,7 +6,7 @@ import {
 
 describe('_deriveAiKeyMissingNotice (ISSUE-010 stale-notice reconciliation)', () => {
 	it('shows the notice when fun facts were requested but no effective key exists', () => {
-		// Toggle fun facts on, leave it on, no key -> Template mode + notice.
+		// Toggle fun facts on, leave it on, no key -> template mode + notice.
 		expect(_deriveAiKeyMissingNotice(false, true)).toBe('ai-key-missing');
 	});
 
@@ -36,7 +36,7 @@ describe('_deriveFunFactsSummary (ISSUE-001 Done-page copy consistency)', () => 
 	it('shows template mode when fun facts were enabled but no key was provided', () => {
 		// No key + ai-key-missing notice -> built-in templates, not "Disabled".
 		expect(_deriveFunFactsSummary(false, true, frequency)).toBe(
-			'Template mode — add an OpenAI key to enable AI'
+			'Template mode: add an OpenAI key for AI fun facts'
 		);
 	});
 

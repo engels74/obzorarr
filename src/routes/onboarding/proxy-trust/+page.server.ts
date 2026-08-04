@@ -147,7 +147,8 @@ export const actions: Actions = {
 		});
 		if (!parsed.success) {
 			return fail(400, {
-				diagnosticError: parsed.error.issues[0]?.message ?? 'Could not read browser origin safely'
+				diagnosticError:
+					parsed.error.issues[0]?.message ?? 'Could not read the browser origin safely'
 			});
 		}
 
@@ -186,7 +187,7 @@ export const actions: Actions = {
 		if (!browserOriginParsed.success) {
 			return fail(400, {
 				trustProxyError:
-					browserOriginParsed.error.issues[0]?.message ?? 'Could not read browser origin safely'
+					browserOriginParsed.error.issues[0]?.message ?? 'Could not read the browser origin safely'
 			});
 		}
 

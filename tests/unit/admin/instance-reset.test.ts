@@ -547,12 +547,12 @@ describe('instance reset — Danger zone UI wiring (no DOM harness in this suite
 
 	it('states honestly what is lost, including share-link breakage and manual curation', async () => {
 		const prose = await readProse();
-		expect(prose).toContain('re-synced from the official Plex API');
+		expect(prose).toContain('re-syncs play history from the official Plex API');
 		expect(prose).toContain('any link you have already handed out to a user stops working');
 		expect(prose).toContain('other curation you did by hand');
 		// Env-configured settings survive; the copy must not promise a blank slate.
 		expect(prose).toContain('TRUST_PROXY');
-		expect(prose).toContain('not a completely blank slate');
+		expect(prose).toContain('you do not start');
 	});
 
 	it('keeps both dialogs dismissible with no side effects', async () => {
@@ -591,7 +591,7 @@ describe('instance reset — Danger zone UI wiring (no DOM harness in this suite
 		expect(src).toContain('onclick={copyResetToken}');
 		expect(src).toContain('navigator.clipboard.writeText(resetToken)');
 		expect(src).toContain(
-			'{resetTokenExpiresInMinutes ?? data.resetTokenTtlMinutes} minutes and is not stored anywhere'
+			'{resetTokenExpiresInMinutes ?? data.resetTokenTtlMinutes} minutes and Obzorarr stores it'
 		);
 	});
 

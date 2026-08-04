@@ -391,7 +391,7 @@ export const actions: Actions = {
 			);
 
 			return fail(500, {
-				error: 'Failed to save settings. Please try again.'
+				error: 'Could not save your settings. Try again.'
 			});
 		}
 	},

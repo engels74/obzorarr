@@ -205,7 +205,7 @@ $effect(() => {
 			</Tooltip.Provider>
 		{:else}
 			<p class="empty-message">No genre data available</p>
-			<p class="empty-hint">Genre information will be available in a future update</p>
+			<p class="empty-hint">Obzorarr does not collect genre data yet</p>
 		{/if}
 
 		{#if children}

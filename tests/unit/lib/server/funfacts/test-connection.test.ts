@@ -140,7 +140,7 @@ describe('testOpenAIConnection', () => {
 
 		expect(result).toEqual({
 			success: false,
-			error: 'Authentication failed — check your API key — Unauthorized'
+			error: 'Authentication failed. Check your API key. (Unauthorized)'
 		});
 	});
 
@@ -153,7 +153,7 @@ describe('testOpenAIConnection', () => {
 
 		expect(result).toEqual({
 			success: false,
-			error: 'Model not found or base URL is incorrect — Not Found'
+			error: 'Model not found or base URL is incorrect (Not Found)'
 		});
 	});
 
@@ -166,7 +166,7 @@ describe('testOpenAIConnection', () => {
 
 		expect(result).toEqual({
 			success: false,
-			error: 'Request failed: 500 Internal Server Error — Server Error'
+			error: 'Request failed: 500 Internal Server Error (Server Error)'
 		});
 	});
 
@@ -221,7 +221,7 @@ describe('testOpenAIConnection', () => {
 		expect(result).toEqual({
 			success: false,
 			error:
-				"Request failed: 400 Bad Request — Unsupported parameter: 'max_tokens' is not supported with this model."
+				"Request failed: 400 Bad Request (Unsupported parameter: 'max_tokens' is not supported with this model.)"
 		});
 	});
 

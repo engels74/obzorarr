@@ -25,14 +25,14 @@ export class NotServerMemberError extends AuthError {
 }
 
 export class PinExpiredError extends AuthError {
-	constructor(message = 'Login session expired. Please try again.') {
+	constructor(message = 'Login session expired. Sign in again.') {
 		super(message, 'PIN_EXPIRED');
 		this.name = 'PinExpiredError';
 	}
 }
 
 export class SessionExpiredError extends AuthError {
-	constructor(message = 'Your session has expired. Please log in again.') {
+	constructor(message = 'Your session expired. Sign in again.') {
 		super(message, 'SESSION_EXPIRED');
 		this.name = 'SessionExpiredError';
 	}

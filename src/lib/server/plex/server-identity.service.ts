@@ -72,7 +72,7 @@ export async function fetchServerIdentity(
 			return {
 				identity: null,
 				errorReason:
-					'Authentication failed - the PLEX_TOKEN may be invalid or no longer authorized for this server'
+					'Authentication failed. The PLEX_TOKEN may be invalid or no longer authorized for this server.'
 			};
 		}
 

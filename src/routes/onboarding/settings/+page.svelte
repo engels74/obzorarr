@@ -357,8 +357,8 @@ function getThemeColors(themeValue: string) {
 </script>
 
 <OnboardingCard
-	title="Configure Your Experience"
-	subtitle="Customize how Obzorarr looks and behaves. You can always change these later."
+	title="Configure Obzorarr"
+	subtitle="Set how Obzorarr looks and behaves. You can change all of it later."
 >
 	{#snippet children()}
 		<div class="settings-container">
@@ -447,7 +447,7 @@ function getThemeColors(themeValue: string) {
 						try {
 							if (result.type === 'failure') {
 								const payload = result.data as { error?: string } | undefined;
-								const message = payload?.error ?? 'Failed to save settings. Please try again.';
+								const message = payload?.error ?? 'Could not save your settings. Try again.';
 								submitError = message;
 								const isBaseUrlError = /openai\s*base\s*url/i.test(message);
 								const isApiKeyError =
@@ -471,14 +471,14 @@ function getThemeColors(themeValue: string) {
 								handleFormToast({ error: message });
 							} else if (result.type === 'error') {
 								const message =
-									result.error?.message ?? 'Failed to save settings. Please try again.';
+									result.error?.message ?? 'Could not save your settings. Try again.';
 								submitError = message;
 								handleFormToast({ error: message });
 							}
 							await update();
 						} catch (err) {
 							const message =
-								err instanceof Error ? err.message : 'Failed to save settings. Please try again.';
+								err instanceof Error ? err.message : 'Could not save your settings. Try again.';
 							submitError = message;
 							handleFormToast({ error: message });
 						} finally {
@@ -531,7 +531,7 @@ function getThemeColors(themeValue: string) {
 						<div class="step-fields">
 							<div class="setting-group">
 								<span class="setting-label">Dashboard Theme</span>
-								<p class="setting-description">Applied to the dashboard and admin pages</p>
+								<p class="setting-description">Used on the dashboard and admin pages</p>
 								<div class="theme-swatches">
 									{#each data.themeOptions as option}
 										{@const colors = getThemeColors(option.value)}
@@ -557,7 +557,7 @@ function getThemeColors(themeValue: string) {
 
 							<div class="setting-group">
 								<span class="setting-label">Wrapped Presentation Theme</span>
-								<p class="setting-description">Applied to the animated year-end slideshow</p>
+								<p class="setting-description">Used on the animated year-end slideshow</p>
 								<div class="theme-swatches">
 									{#each data.themeOptions as option}
 										{@const colors = getThemeColors(option.value)}
@@ -599,7 +599,7 @@ function getThemeColors(themeValue: string) {
 							<div class="setting-group preset-section">
 								<span class="setting-label">Privacy Preset</span>
 								<p class="setting-description">
-									Pick a starting point — then fine-tune anything in Advanced Options.
+									Pick a starting point, then adjust anything in Advanced Options.
 								</p>
 								<div class="preset-grid" role="radiogroup" aria-label="Privacy preset">
 									{#each PRIVACY_PRESETS as preset, i (preset.id)}
@@ -662,11 +662,11 @@ function getThemeColors(themeValue: string) {
 								</div>
 								{#if shouldShowCustomPresetNote(selectedPreset, privacyTouched)}
 									<p class="preset-custom-note" role="status">
-										Custom configuration — your choices don’t match a preset.
+										Custom configuration: your choices don’t match a preset.
 									</p>
 								{:else if selectedPreset === 'custom'}
 									<p class="preset-custom-note preset-custom-note-neutral" role="status">
-										No preset selected yet — pick one above, or continue with the current
+										No preset selected yet. Pick one above, or continue with the current
 										defaults.
 									</p>
 								{/if}
@@ -763,7 +763,7 @@ function getThemeColors(themeValue: string) {
 									</dl>
 								</Tooltip.Provider>
 								<div class="preview-boundary">
-									<strong>Protected areas stay protected.</strong>
+									<strong>Sign-in still guards everything else.</strong>
 									{publicLandingLookupCopy.protectedBoundary}
 									{shareDefaultCopy.summary}
 								</div>
@@ -812,7 +812,7 @@ function getThemeColors(themeValue: string) {
 
 							<div class="setting-group">
 								<span class="setting-label">Wrapped Page Logo</span>
-								<p class="setting-description">Control logo visibility on wrapped pages</p>
+								<p class="setting-description">Control logo visibility on Wrapped pages</p>
 								<div class="radio-cards">
 									{#each data.wrappedLogoOptions as option}
 										<label class="radio-card" class:selected={wrappedLogoMode === option.value}>
@@ -1003,7 +1003,7 @@ function getThemeColors(themeValue: string) {
 							</div>
 							<div class="step-title">
 								<h3>AI Features</h3>
-								<p>AI-powered fun facts and insights</p>
+								<p>Fun facts written by an OpenAI model</p>
 							</div>
 						</div>
 
@@ -1054,7 +1054,7 @@ function getThemeColors(themeValue: string) {
 								<div class="setting-group">
 									<label class="field-label" for="onboarding-openai-api-key">OpenAI API Key</label>
 									<p class="setting-description">
-										Your key is stored server-side and not returned to the browser once saved.
+										Obzorarr stores your key on the server and never returns it to the browser.
 									</p>
 									<input
 										id="onboarding-openai-api-key"
@@ -1075,8 +1075,8 @@ function getThemeColors(themeValue: string) {
 									{/if}
 									{#if showAiKeyWarning}
 										<p class="ai-key-warning" role="status">
-											Enter an OpenAI API key for AI fun facts to work — without it, the
-											built-in template generator is used.
+											Enter an OpenAI API key to use AI fun facts. Without a key, Obzorarr
+											falls back to the built-in templates.
 										</p>
 									{/if}
 								</div>
@@ -1142,7 +1142,7 @@ function getThemeColors(themeValue: string) {
 																};
 													} else if (result.type === 'error') {
 														const message =
-															result.error.message ?? 'An error occurred while testing connection';
+															result.error.message ?? 'The connection test failed';
 														handleFormToast({ error: message });
 														testAIResult = { type: 'error', message };
 													} else {
@@ -1152,7 +1152,7 @@ function getThemeColors(themeValue: string) {
 													}
 												} catch {
 													const message =
-														'Failed to test connection. Please check your network and try again.';
+														'Could not run the connection test. Check your network and try again.';
 													handleFormToast({ error: message });
 													testAIResult = { type: 'error', message };
 												} finally {
@@ -1177,7 +1177,7 @@ function getThemeColors(themeValue: string) {
 
 								<div class="setting-group">
 									<span class="setting-label">AI Persona</span>
-									<p class="setting-description">Tone used when generating AI fun facts</p>
+									<p class="setting-description">Tone for AI-generated fun facts</p>
 									<div class="frequency-options">
 										{#each aiPersonaOptions as option}
 											<label
@@ -1221,7 +1221,7 @@ function getThemeColors(themeValue: string) {
 				disabled={isFirstSubStep || isSubmitting}
 				title={isFirstSubStep ? 'You are on the first step' : undefined}
 				aria-label={isFirstSubStep
-					? 'Previous step (unavailable — this is the first step)'
+					? 'Previous step (unavailable, this is the first step)'
 					: 'Go to previous step'}
 				onclick={prevSubStep}
 			>

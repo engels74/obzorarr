@@ -180,7 +180,7 @@ $effect(() => {
 			<div class="no-data">
 				<span class="no-data-icon">📅</span>
 				<p class="empty-message">No release year data available</p>
-				<p class="empty-hint">Release year data will be available after the next sync</p>
+				<p class="empty-hint">Release years appear after the next sync</p>
 			</div>
 		{/if}
 

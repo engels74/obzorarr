@@ -129,7 +129,8 @@ export const actions: Actions = requireAdminActions({
 			form.data.settingsVersion = settingsVersionISO(new Date(maxWrittenMs));
 			return { form, success: true, message: 'Logging settings updated' };
 		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Failed to update settings';
+			const message =
+				error instanceof Error ? error.message : 'Failed to update the logging settings';
 			return fail(500, { form, error: message });
 		}
 	}

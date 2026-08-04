@@ -339,7 +339,8 @@ export const actions: Actions = requireAdminActions({
 				funFactFrequency
 			};
 		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Failed to update frequency';
+			const message =
+				error instanceof Error ? error.message : 'Failed to update the fun-fact frequency';
 			return fail(500, { error: message });
 		}
 	}

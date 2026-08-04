@@ -174,7 +174,7 @@ export function _deriveFunFactsSummary(
 		return formatFunFactFrequency(frequency);
 	}
 	if (aiKeyMissing) {
-		return 'Template mode — add an OpenAI key to enable AI';
+		return 'Template mode: add an OpenAI key for AI fun facts';
 	}
 	return 'Disabled';
 }

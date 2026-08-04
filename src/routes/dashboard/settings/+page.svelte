@@ -105,7 +105,7 @@ function getShareIcon(mode: string): string {
 }
 
 const shareModeDescriptions: Record<string, string> = {
-	public: 'Anyone can view your wrapped page',
+	public: 'Anyone can view your Wrapped page',
 	'private-oauth': 'Only Plex server members can view',
 	'private-link': 'Anyone with the special link can view'
 };
@@ -159,9 +159,9 @@ function formatRelativeDate(date: Date | null): string {
 function getLogoModeDescription(): string {
 	switch (data.wrappedLogoMode) {
 		case 'always_show':
-			return 'The logo is always shown on all wrapped pages (set by admin)';
+			return 'Your admin shows the logo on every Wrapped page';
 		case 'always_hide':
-			return 'The logo is always hidden on all wrapped pages (set by admin)';
+			return 'Your admin hides the logo on every Wrapped page';
 		default:
 			return '';
 	}
@@ -189,7 +189,7 @@ function getLogoModeDescription(): string {
 			<section class="section">
 				<h2>Sharing Settings</h2>
 				<p class="section-description">
-					Control who can view your {data.currentYear} Wrapped page.
+					Choose who can view your {data.currentYear} Wrapped page.
 				</p>
 
 				{#if data.shareSettings.canUserControl}
@@ -346,8 +346,8 @@ function getLogoModeDescription(): string {
 						{#if data.shareSettings.mode === 'private-link'}
 							<div class="token-actions">
 								<p class="token-hint">
-									This link contains a private token. Only people with this exact link can view your
-									wrapped page.
+									This link contains a private token. Only people with this exact link can open your
+									Wrapped page.
 								</p>
 								<button
 									type="button"
@@ -363,7 +363,7 @@ function getLogoModeDescription(): string {
 					<div class="info-banner" role="status" aria-live="polite">
 						<span class="info-icon">ℹ️</span>
 						<div class="info-content">
-							<strong>Sharing settings are managed by your server administrator</strong>
+							<strong>Your server administrator manages sharing settings</strong>
 							<p>
 								Your current sharing mode is: <span class="mode-badge"
 									>{getShareIcon(data.shareSettings.mode)}
@@ -434,7 +434,7 @@ function getLogoModeDescription(): string {
 			<section class="section">
 				<h2>Logo Visibility</h2>
 				<p class="section-description">
-					Control whether the Obzorarr logo appears on your wrapped page.
+					Choose whether the Obzorarr logo appears on your Wrapped page.
 				</p>
 
 				{#if data.canControlLogo}
@@ -457,7 +457,7 @@ function getLogoModeDescription(): string {
 						<div
 							class="privacy-card-grid two-col"
 							role="radiogroup"
-							aria-label="Logo visibility on your wrapped page"
+							aria-label="Logo visibility on your Wrapped page"
 						>
 							<label class="privacy-card" class:selected={selectedLogoPreference === 'show'}>
 								<input
@@ -470,7 +470,7 @@ function getLogoModeDescription(): string {
 								/>
 								<span class="card-icon" aria-hidden="true">✅</span>
 								<span class="card-title">Show logo</span>
-								<span class="card-desc">Display the Obzorarr logo on your wrapped page</span>
+								<span class="card-desc">Show the Obzorarr logo on your Wrapped page</span>
 							</label>
 
 							<label class="privacy-card" class:selected={selectedLogoPreference === 'hide'}>
@@ -484,7 +484,7 @@ function getLogoModeDescription(): string {
 								/>
 								<span class="card-icon" aria-hidden="true">🚫</span>
 								<span class="card-title">Hide logo</span>
-								<span class="card-desc">Hide the logo for a cleaner presentation</span>
+								<span class="card-desc">Hide the Obzorarr logo on your Wrapped page</span>
 							</label>
 						</div>
 
@@ -498,7 +498,7 @@ function getLogoModeDescription(): string {
 					<div class="info-banner">
 						<span class="info-icon">ℹ️</span>
 						<div class="info-content">
-							<strong>Logo visibility is managed by your server administrator</strong>
+							<strong>Your server administrator controls logo visibility</strong>
 							<p>{getLogoModeDescription()}</p>
 						</div>
 					</div>
@@ -582,8 +582,8 @@ function getLogoModeDescription(): string {
 			<AlertDialog.Header>
 				<AlertDialog.Title>Regenerate Share Link?</AlertDialog.Title>
 				<AlertDialog.Description>
-					This will create a new private link and invalidate the current one. Anyone using the old
-					link will no longer have access to your wrapped page.
+					A new private link replaces the current one. The old link stops working for everyone who
+					already has it.
 				</AlertDialog.Description>
 			</AlertDialog.Header>
 			<AlertDialog.Footer>
@@ -609,7 +609,7 @@ function getLogoModeDescription(): string {
 									}
 								} else if (result.type === 'error') {
 									handleFormToast({
-										error: result.error?.message ?? 'Failed to regenerate share link.'
+										error: result.error?.message ?? 'Could not regenerate the share link.'
 									});
 								}
 

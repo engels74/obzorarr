@@ -33,7 +33,7 @@ function hasLookupSyncMarker(layoutData: LayoutData): boolean {
 
 const MIN_LOADING_DISPLAY_MS = 300;
 const FAILED_LIVE_SYNC_MESSAGE =
-	"Couldn't refresh your viewing history from Plex. Showing your most recent data.";
+	'Could not refresh your viewing history from Plex. Showing the most recent data instead.';
 
 let isLoading = $state(
 	untrack(() => (canUseSyncStatus(data) ? (data.syncStatus?.inProgress ?? false) : false))

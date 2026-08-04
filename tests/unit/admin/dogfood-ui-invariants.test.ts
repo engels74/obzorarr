@@ -269,20 +269,20 @@ describe('DF-16 source-guard — admin dashboard scheduler-cta callout', () => {
 });
 
 describe('ISSUE-005 source-guard — admin <title> separator uniformity', () => {
-	// All admin document titles use an em-dash separator. Dashboard and Wrapped
-	// previously used a hyphen; this guard pins the em-dash so the separator
-	// stays consistent across admin pages.
+	// Every document title in the app uses a hyphen separator. This guard pins the
+	// hyphen on the two admin pages that historically drifted, so the separator
+	// stays consistent with the dashboard, onboarding, and Wrapped titles.
 
-	it('admin dashboard title uses the em-dash separator', async () => {
+	it('admin dashboard title uses the hyphen separator', async () => {
 		const src = await readSource(ADMIN_DASHBOARD);
-		expect(src).toContain('<title>Dashboard — Admin — Obzorarr</title>');
-		expect(src).not.toContain('<title>Dashboard - Admin - Obzorarr</title>');
+		expect(src).toContain('<title>Dashboard - Admin - Obzorarr</title>');
+		expect(src).not.toContain('<title>Dashboard — Admin — Obzorarr</title>');
 	});
 
-	it('admin wrapped hub title uses the em-dash separator', async () => {
+	it('admin wrapped hub title uses the hyphen separator', async () => {
 		const src = await readSource(ADMIN_WRAPPED);
-		expect(src).toContain('<title>Wrapped — Admin — Obzorarr</title>');
-		expect(src).not.toContain('<title>Wrapped - Admin - Obzorarr</title>');
+		expect(src).toContain('<title>Wrapped - Admin - Obzorarr</title>');
+		expect(src).not.toContain('<title>Wrapped — Admin — Obzorarr</title>');
 	});
 });
 

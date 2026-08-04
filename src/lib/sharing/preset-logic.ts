@@ -259,7 +259,7 @@ export function derivePreview(
 export const PREVIEW_NAME_DISPLAY_LABELS: Record<PrivacyPreviewModel['nameDisplay'], string> = {
 	real: 'Real usernames',
 	anonymous: 'Anonymous (hidden)',
-	'hybrid-self-sees-own': 'Hybrid — each sees their own name'
+	'hybrid-self-sees-own': 'Hybrid: each sees their own name'
 };
 
 export const PREVIEW_RECAP_VISIBILITY_LABELS: Record<

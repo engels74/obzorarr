@@ -28,7 +28,7 @@ export const CONTENT_COMPARISON_TEMPLATES = defineTemplateCategory('content-comp
 	{
 		id: 'show-explorer',
 		factTemplate: '{Subject} jumped between {uniqueShows} different TV shows',
-		comparisonTemplate: 'A true explorer of the television landscape!',
+		comparisonTemplate: 'A true explorer of television!',
 		icon: '🔍',
 		requiredStats: ['uniqueShows'],
 		minThresholds: { uniqueShows: 5 }

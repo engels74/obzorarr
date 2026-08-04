@@ -38,7 +38,7 @@ export const BEHAVIORAL_TEMPLATES = defineTemplateCategory('behavioral-insight',
 	{
 		id: 'peak-month',
 		factTemplate: '{peakMonthName} was {possessive} biggest viewing month',
-		comparisonTemplate: '{Subject} really went all-in that month!',
+		comparisonTemplate: '{Subject} went all-in that month!',
 		icon: '📅',
 		requiredStats: ['peakMonth', 'plays'],
 		// Avoid declaring a "biggest month" from a token amount of viewing data.

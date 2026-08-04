@@ -103,7 +103,7 @@ async function runDiagnostic({ userInitiated = false }: { userInitiated?: boolea
 	} catch {
 		if (myToken !== diagnosticRunToken) return;
 		diagnosticStatus = 'failure';
-		diagnosticError = 'Network error - could not complete diagnostic';
+		diagnosticError = 'Network error while running the diagnostic.';
 		if (userInitiated) toast.error(diagnosticError);
 	}
 }
@@ -153,7 +153,7 @@ const applicableProviderGuides = $derived(
 </script>
 
 <svelte:head>
-	<title>Security — Settings — Obzorarr</title>
+	<title>Security - Settings - Obzorarr</title>
 </svelte:head>
 
 <div class="space-y-6 p-6 max-w-4xl">
@@ -236,7 +236,7 @@ const applicableProviderGuides = $derived(
 				</form>
 			{:else}
 				<p class="text-sm text-muted-foreground">
-					CSRF origin is set via environment variable and cannot be changed here.
+					The <code>ORIGIN</code> environment variable sets the CSRF origin, so you cannot change it here.
 				</p>
 			{/if}
 
@@ -405,7 +405,7 @@ const applicableProviderGuides = $derived(
 							<div><span class="fact-label">Browser origin</span><span class="fact-value">{diagnostic.facts.browserOrigin.origin ?? 'not available'}</span></div>
 							<div><span class="fact-label">Effective app origin</span><span class="fact-value">{diagnostic.facts.origins.effectiveApp ?? 'not available'}</span></div>
 							<div><span class="fact-label">Forwarded origin</span><span class="fact-value">{diagnostic.facts.origins.forwardedPair ?? 'not available'}</span></div>
-							<div><span class="fact-label">TRUST_PROXY</span><span class="fact-value">{diagnostic.facts.trustProxy.enabled ? 'Enabled' : 'Disabled'} — {diagnostic.facts.trustProxy.source}{#if diagnostic.facts.trustProxy.isLocked} (locked){/if}</span></div>
+							<div><span class="fact-label">TRUST_PROXY</span><span class="fact-value">{diagnostic.facts.trustProxy.enabled ? 'Enabled' : 'Disabled'}, {diagnostic.facts.trustProxy.source}{#if diagnostic.facts.trustProxy.isLocked} (locked){/if}</span></div>
 						</div>
 						<p class="safety-note">{presentation.safetyNotice}</p>
 						{#if applicableProviderGuides.length > 0}
@@ -455,7 +455,7 @@ const applicableProviderGuides = $derived(
 
 			{#if security.trustProxyLocked}
 				<p class="text-sm text-muted-foreground">
-					Reverse-proxy header trust is managed via environment variable and cannot be changed here.
+					The <code>TRUST_PROXY</code> environment variable controls header trust, so you cannot change it here.
 				</p>
 			{:else if security.trustProxyValue}
 				<form

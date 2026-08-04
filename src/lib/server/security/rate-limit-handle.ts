@@ -85,7 +85,7 @@ export const rateLimitHandle: Handle = async ({ event, resolve }) => {
 						type: 'failure',
 						status: 429,
 						data: stringify({
-							error: `Too many requests. Please try again in ${retryAfterSeconds} second${retryAfterSeconds === 1 ? '' : 's'}.`,
+							error: `Too many requests. Try again in ${retryAfterSeconds} second${retryAfterSeconds === 1 ? '' : 's'}.`,
 							requiresAuth: false
 						})
 					}),

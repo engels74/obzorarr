@@ -291,7 +291,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 </script>
 
 <svelte:head>
-	<title>Slides — Admin — Obzorarr</title>
+	<title>Slides - Admin - Obzorarr</title>
 </svelte:head>
 
 <div class="admin-container">
@@ -306,8 +306,8 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 			<div class="section-title-content">
 				<h2>Slide Order</h2>
 				<p class="section-description">
-					Drag and drop, or use the move up/down buttons, to reorder. Toggle to enable or
-					disable slides.
+					Drag and drop, or use the move up/down buttons, to reorder. Toggle a row to enable or
+					disable that slide.
 				</p>
 			</div>
 			<Button type="button" class="add-button tap-target" onclick={openNewEditor}>
@@ -472,7 +472,7 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 	<section class="section">
 		<h2>Fun Fact Frequency</h2>
 		<p class="section-description">
-			Control how many fun facts appear interspersed throughout the wrapped presentation.
+			Choose how many fun facts appear between slides in the Wrapped presentation.
 		</p>
 
 		<!-- ISSUE-012: tell the admin whether fun facts are AI-generated (OpenAI key
@@ -480,14 +480,13 @@ function getCustomSlideForEdit(item: UnifiedSlideItem) {
 		{#if data.aiFunFactsActive}
 			<p class="ai-status ai-status-active" role="status">
 				<SparklesIcon class="ai-status-icon" aria-hidden="true" />
-				AI fun facts active — generated with your configured OpenAI key.
+				AI fun facts are active, generated with your OpenAI key.
 			</p>
 		{:else}
 			<p class="ai-status ai-status-fallback" role="status">
 				<SparklesIcon class="ai-status-icon" aria-hidden="true" />
-				Template fallback — no OpenAI key configured, so fun facts use the built-in
-				generator. Add a key in
-				<a href="/admin/settings/connections">Settings → Connections</a> to enable AI fun facts.
+				No OpenAI key configured, so fun facts come from the built-in templates. Add a key in
+				<a href="/admin/settings/connections">Settings → Connections</a> for AI fun facts.
 			</p>
 		{/if}
 

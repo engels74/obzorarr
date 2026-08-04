@@ -60,7 +60,7 @@ export async function testOpenAIConnection(
 		if (response.status === 401) {
 			return {
 				success: false,
-				error: appendErrorDetail('Authentication failed — check your API key', statusDetail)
+				error: appendErrorDetail('Authentication failed. Check your API key.', statusDetail)
 			};
 		}
 		if (response.status === 404) {
@@ -93,5 +93,5 @@ export async function testOpenAIConnection(
 }
 
 function appendErrorDetail(message: string, detail: string | null): string {
-	return detail ? `${message} — ${detail}` : message;
+	return detail ? `${message} (${detail})` : message;
 }

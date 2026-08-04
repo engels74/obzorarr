@@ -299,7 +299,7 @@ export const handleError: HandleServerError = async ({ error, event }) => {
 	logger.error(`Unexpected error: ${error}`, 'ErrorHandler', metadata);
 
 	return {
-		message: 'An unexpected error occurred'
+		message: 'Something went wrong. Try again.'
 	};
 };
 

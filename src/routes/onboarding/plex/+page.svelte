@@ -168,7 +168,7 @@ async function fetchServers() {
 					body: new FormData()
 				});
 				await invalidateAll();
-				throw new Error('Session expired. Please sign in again.');
+				throw new Error('Session expired. Sign in again.');
 			}
 			const errorData = await response.json().catch(() => ({}));
 			throw new Error((errorData as { message?: string }).message || 'Failed to fetch servers');
@@ -236,7 +236,7 @@ function handleContinueWithRedirect(): void {
 	try {
 		commitRedirectFromPopupBlocked(pendingPinId, pendingAuthUrl, 'onboarding');
 	} catch (err) {
-		oauthError = err instanceof Error ? err.message : 'Failed to initiate redirect login';
+		oauthError = err instanceof Error ? err.message : 'Could not start the redirect login';
 	}
 }
 
@@ -320,7 +320,7 @@ function getConnectionInfo(connection: { uri: string; local: boolean; relay: boo
 			type: 'secure',
 			description: 'Encrypted connection',
 			tooltip:
-				'This connection uses plex.direct with TLS/SSL encryption. Your data is securely encrypted in transit, providing protection against eavesdropping and tampering.',
+				'This connection uses plex.direct with TLS encryption. Traffic is encrypted in transit, so nobody on the network can read or alter it.',
 			isSSL: true
 		};
 	}
@@ -369,14 +369,14 @@ function sortConnections(
 
 async function testCustomConnection(server: (typeof servers)[0]) {
 	if (!customUrl.trim()) {
-		customUrlTestResult = { success: false, error: 'Please enter a URL' };
+		customUrlTestResult = { success: false, error: 'Enter a URL' };
 		return;
 	}
 
 	try {
 		new URL(customUrl);
 	} catch {
-		customUrlTestResult = { success: false, error: 'Please enter a valid URL' };
+		customUrlTestResult = { success: false, error: 'Enter a valid URL' };
 		return;
 	}
 
@@ -496,7 +496,7 @@ function formatServerUrl(url: string | null): string {
 
 <OnboardingCard
 	title="Connect Your Plex Server"
-	subtitle="Link your Plex Media Server to unlock your personalized viewing journey"
+	subtitle="Connect the Plex Media Server that holds your viewing history"
 >
 	<div class="plex-content" bind:this={contentRef}>
 		<div class="plex-icon-wrapper animate-item" bind:this={iconRef}>
@@ -723,8 +723,7 @@ function formatServerUrl(url: string | null): string {
 					<div class="error-content">
 						<p class="error-title">Admin Access Required</p>
 						<p class="error-message">
-							Only the Plex server owner can configure Obzorarr. Please sign in with the server
-							owner account.
+							Only the Plex server owner can configure Obzorarr. Sign in with the owner account.
 						</p>
 					</div>
 				</div>
@@ -794,8 +793,8 @@ function formatServerUrl(url: string | null): string {
 					<div class="error-content">
 						<p class="error-title">Server Owner Required</p>
 						<p class="error-message">
-							You must be a server owner to configure Obzorarr. Please sign in with an account that
-							owns a Plex server.
+							Only a Plex server owner can configure Obzorarr. Sign in with an account that owns a
+							server.
 						</p>
 					</div>
 				</div>
@@ -810,7 +809,7 @@ function formatServerUrl(url: string | null): string {
 						</div>
 					{:else if ownedServers.length === 0}
 						<div class="no-servers">
-							<p>No servers found where you are the owner.</p>
+							<p>No servers found that you own.</p>
 							<p class="no-servers-hint">You must be the owner of a Plex server to use Obzorarr.</p>
 						</div>
 					{:else}
@@ -1007,7 +1006,7 @@ function formatServerUrl(url: string | null): string {
 												onclick={toggleCustomUrl}
 												disabled={isSavingServer || isTestingCustomUrl}
 											>
-												<span>Using a reverse proxy? Enter custom URL</span>
+												<span>Enter a custom URL for a reverse proxy</span>
 												<svg
 													class="toggle-chevron"
 													class:rotated={showCustomUrl}

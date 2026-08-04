@@ -569,7 +569,11 @@ export async function regenerateShareToken(userId: number, year: number): Promis
 	}
 
 	if (settings.mode !== ShareMode.PRIVATE_LINK) {
-		throw new ShareError('Can only regenerate token for private-link mode', 'INVALID_MODE', 400);
+		throw new ShareError(
+			'Switch to private-link mode before regenerating the token',
+			'INVALID_MODE',
+			400
+		);
 	}
 
 	// Defense-in-depth: if the server-wide floor is more restrictive than

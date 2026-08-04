@@ -202,7 +202,7 @@ async function fetchPin(redirectUrl?: string): Promise<PinResponse> {
 		const errData = (await response.json().catch(() => ({}))) as {
 			message?: string;
 		};
-		throw new Error(errData.message || 'Failed to initiate login');
+		throw new Error(errData.message || 'Could not start login');
 	}
 	return (await response.json()) as PinResponse;
 }
@@ -267,7 +267,7 @@ export function resolveRedirectPinData(
 			pinData = JSON.parse(storedData) as StoredRedirectPinData;
 		} catch {
 			removeStoredRedirectPinData(storage);
-			throw new Error('Invalid authentication data. Please try again.');
+			throw new Error('Invalid authentication data. Try again.');
 		}
 
 		if (
@@ -276,13 +276,13 @@ export function resolveRedirectPinData(
 			(pinData.context !== 'landing' && pinData.context !== 'onboarding')
 		) {
 			removeStoredRedirectPinData(storage);
-			throw new Error('Invalid authentication data. Please try again.');
+			throw new Error('Invalid authentication data. Try again.');
 		}
 
 		const pinAge = now - pinData.createdAt;
 		if (pinAge > PIN_MAX_AGE_MS) {
 			removeStoredRedirectPinData(storage);
-			throw new Error('Authentication session expired. Please try again.');
+			throw new Error('Authentication session expired. Sign in again.');
 		}
 
 		return pinData;
@@ -291,7 +291,7 @@ export function resolveRedirectPinData(
 	if (serverPinFallback) {
 		const expiresAt = Date.parse(serverPinFallback.expiresAt);
 		if (!Number.isFinite(expiresAt) || expiresAt <= now) {
-			throw new Error('Authentication session expired. Please try again.');
+			throw new Error('Authentication session expired. Sign in again.');
 		}
 
 		return {
@@ -301,7 +301,7 @@ export function resolveRedirectPinData(
 		};
 	}
 
-	throw new Error('No pending authentication found. Please try again.');
+	throw new Error('No pending sign-in found. Start again.');
 }
 
 export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginController {
@@ -353,7 +353,7 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 			opts.onPopupBlocked(pinId, authUrl);
 		} catch {
 			if (cancelled) return;
-			opts.onError('Unable to prepare redirect. Please try again.');
+			opts.onError('Could not prepare the redirect. Try again.');
 		}
 	};
 
@@ -399,14 +399,14 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 						if (pollResponse.status === 401) {
 							pinExpired = true;
 							cleanup();
-							opts.onError('Authentication expired. Please try again.');
+							opts.onError('Sign-in expired. Try again.');
 							return;
 						}
 						const errData = (await pollResponse.json().catch(() => ({}))) as {
 							message?: string;
 						};
 						cleanup();
-						opts.onError(errData.message || 'Login failed. Please try again.');
+						opts.onError(errData.message || 'Login failed. Try again.');
 						return;
 					}
 
@@ -442,7 +442,7 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 					// cancel so the landing page can surface feedback (ISSUE-015).
 					if (popupClosed) {
 						cleanup();
-						opts.onError('Sign-in cancelled. You can try again.');
+						opts.onError('Sign-in cancelled.');
 						return;
 					}
 				} catch (err) {
@@ -484,7 +484,7 @@ export function startPlexLoginPopup(opts: PlexLoginPopupOptions): PlexLoginContr
 				if (finished) return;
 				timedOut = true;
 				cleanup();
-				opts.onError('Authentication timed out. Please try again.');
+				opts.onError('Sign-in timed out. Try again.');
 			}, LOGIN_TIMEOUT_MS);
 		} catch (err) {
 			if (cancelled) return;
@@ -517,7 +517,7 @@ export async function startPlexLoginRedirect(opts: PlexLoginRedirectOptions): Pr
 		storePinForRedirect(pinId, opts.context, storage);
 		location.href = authUrl;
 	} catch (err) {
-		opts.onError(err instanceof Error ? err.message : 'Failed to initiate login');
+		opts.onError(err instanceof Error ? err.message : 'Could not start login');
 	}
 }
 
@@ -530,7 +530,7 @@ export function commitRedirectFromPopupBlocked(
 		storePinForRedirect(pinId, context);
 	} catch {
 		throw new Error(
-			'Unable to save login state. Storage may be blocked. Please enable cookies/storage for this site.'
+			'Could not save login state. Enable cookies and storage for this site, then try again.'
 		);
 	}
 	window.location.href = authUrl;

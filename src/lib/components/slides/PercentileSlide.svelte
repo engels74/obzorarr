@@ -29,7 +29,7 @@ const isTopPerformer = $derived(topPercentage <= 10);
 const message = $derived.by(() => {
 	if (topPercentage <= 1) return "You're the #1 viewer!";
 	if (topPercentage <= 5) return "You're in the top 5%!";
-	if (topPercentage <= 10) return "You're a super fan!";
+	if (topPercentage <= 10) return "You're in the top 10%!";
 	if (topPercentage <= 25) return "You're in the top quarter!";
 	if (topPercentage <= 50) return 'You watch more than most!';
 	return 'Keep watching!';

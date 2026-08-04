@@ -86,7 +86,8 @@ export const actions: Actions = requireAdminActions({
 
 			return { success: true, message: 'User permission updated' };
 		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Failed to update permission';
+			const message =
+				error instanceof Error ? error.message : 'Failed to update the user permission';
 			return fail(500, { error: message });
 		}
 	}

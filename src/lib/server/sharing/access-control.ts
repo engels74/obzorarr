@@ -117,10 +117,10 @@ export async function checkWrappedAccess(
 			case 'invalid_token':
 				throw new InvalidShareTokenError();
 			case 'not_authenticated':
-				throw new ShareAccessDeniedError('Sign in with your Plex account to view this wrapped.');
+				throw new ShareAccessDeniedError('Sign in with your Plex account to view this Wrapped.');
 			case 'mode_requires_auth':
 				throw new ShareAccessDeniedError(
-					'This wrapped is visible only to members of this Plex server. Sign in with your Plex account to view.'
+					'This Wrapped is visible only to members of this Plex server. Sign in with your Plex account to view it.'
 				);
 			default:
 				throw new ShareAccessDeniedError();
@@ -174,7 +174,7 @@ export async function checkTokenAccess(
 	if (ShareModePrivacyLevel[settings.mode] > ShareModePrivacyLevel[ShareMode.PRIVATE_LINK]) {
 		if (!currentUser) {
 			throw new ShareAccessDeniedError(
-				'This wrapped is visible only to members of this Plex server. Sign in with your Plex account to view.'
+				'This Wrapped is visible only to members of this Plex server. Sign in with your Plex account to view it.'
 			);
 		}
 		return {
@@ -201,7 +201,7 @@ export async function checkTokenAccess(
 		if (ShareModePrivacyLevel[effectiveMode] > ShareModePrivacyLevel[ShareMode.PRIVATE_LINK]) {
 			if (!currentUser) {
 				throw new ShareAccessDeniedError(
-					'This wrapped is visible only to members of this Plex server. Sign in with your Plex account to view.'
+					'This Wrapped is visible only to members of this Plex server. Sign in with your Plex account to view it.'
 				);
 			}
 			return {
@@ -255,10 +255,10 @@ export async function checkServerWrappedAccess(
 	if (!result.allowed) {
 		switch (result.denialReason) {
 			case 'not_authenticated':
-				throw new ShareAccessDeniedError('Sign in with your Plex account to view this wrapped.');
+				throw new ShareAccessDeniedError('Sign in with your Plex account to view this Wrapped.');
 			case 'mode_requires_auth':
 				throw new ShareAccessDeniedError(
-					'This wrapped is visible only to members of this Plex server. Sign in with your Plex account to view.'
+					'This Wrapped is visible only to members of this Plex server. Sign in with your Plex account to view it.'
 				);
 			default:
 				throw new ShareAccessDeniedError();

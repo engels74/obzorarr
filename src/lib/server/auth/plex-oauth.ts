@@ -147,7 +147,7 @@ export async function pollPinForToken(
 		await new Promise((resolve) => setTimeout(resolve, intervalMs));
 	}
 
-	throw new PinExpiredError('Login timed out. Please try again.');
+	throw new PinExpiredError('Login timed out. Try again.');
 }
 
 /** Validate Plex's external profile payload before onboarding/auth code trusts its identifiers. */

@@ -244,26 +244,26 @@ describe('server slide error/type contracts', () => {
 			'CREATE_FAILED',
 			new SlideError('Insert returned no row', 'CREATE_FAILED'),
 			500,
-			{ error: 'Slide could not be saved. Please try again.' }
+			{ error: 'Could not save the slide. Try again.' }
 		],
 		[
 			'UPDATE_FAILED',
 			new SlideError('Update returned no row', 'UPDATE_FAILED'),
 			500,
-			{ error: 'Slide could not be saved. Please try again.' }
+			{ error: 'Could not save the slide. Try again.' }
 		],
 		[
 			'generic Error',
 			new Error('UNIQUE constraint failed: custom_slides.sort_order'),
 			500,
-			{ error: 'An unexpected error occurred' }
+			{ error: 'Something went wrong. Try again.' }
 		],
-		['non-Error throwable', 'something', 500, { error: 'An unexpected error occurred' }],
+		['non-Error throwable', 'something', 500, { error: 'Something went wrong. Try again.' }],
 		[
 			'unknown SlideError code',
 			new SlideError('Unknown failure', 'TOTALLY_NEW_CODE'),
 			500,
-			{ error: 'An unexpected error occurred' }
+			{ error: 'Something went wrong. Try again.' }
 		]
 	] as const)('maps %s safely', (_name, error, status, body) => {
 		const result = slideErrorToFail(error);

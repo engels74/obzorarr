@@ -148,7 +148,7 @@ export const load: PageServerLoad = async ({ params, locals, parent, setHeaders 
 					404,
 					isAnonymous
 						? WRAPPED_NOT_FOUND_MESSAGE
-						: 'This share link is invalid, expired, or has been revoked.'
+						: 'This share link is invalid, expired, or revoked.'
 				);
 			}
 		} catch (err) {
@@ -157,7 +157,7 @@ export const load: PageServerLoad = async ({ params, locals, parent, setHeaders 
 					404,
 					isAnonymous
 						? WRAPPED_NOT_FOUND_MESSAGE
-						: 'This share link is invalid, expired, or has been revoked.'
+						: 'This share link is invalid, expired, or revoked.'
 				);
 			}
 			if (err instanceof ShareAccessDeniedError) {
@@ -210,7 +210,7 @@ export const load: PageServerLoad = async ({ params, locals, parent, setHeaders 
 					error(404, WRAPPED_NOT_FOUND_MESSAGE);
 				}
 				if (err instanceof InvalidShareTokenError) {
-					error(404, 'This share link is invalid, expired, or has been revoked.');
+					error(404, 'This share link is invalid, expired, or revoked.');
 				}
 				throw err;
 			}
@@ -251,7 +251,7 @@ export const load: PageServerLoad = async ({ params, locals, parent, setHeaders 
 					404,
 					isAnonymous
 						? WRAPPED_NOT_FOUND_MESSAGE
-						: 'This share link is invalid, expired, or has been revoked.'
+						: 'This share link is invalid, expired, or revoked.'
 				);
 			}
 			throw err;
@@ -418,7 +418,7 @@ export const actions: Actions = {
 			await setUserLogoPreference(locals.user.id, year, showLogo);
 			return { success: true, showLogo };
 		} catch (err) {
-			const message = err instanceof Error ? err.message : 'Failed to update preference';
+			const message = err instanceof Error ? err.message : 'Could not save your logo preference';
 			return fail(500, { error: message });
 		}
 	},
@@ -488,7 +488,7 @@ export const actions: Actions = {
 					}
 				});
 			}
-			const message = err instanceof Error ? err.message : 'Failed to update share settings';
+			const message = err instanceof Error ? err.message : 'Could not save the share settings';
 			return fail(500, { error: message });
 		}
 	},
@@ -520,7 +520,7 @@ export const actions: Actions = {
 			}
 
 			if (settings.mode !== ShareMode.PRIVATE_LINK) {
-				return fail(400, { error: 'Can only regenerate token for private-link mode' });
+				return fail(400, { error: 'Switch to private-link mode before regenerating the token' });
 			}
 
 			const newToken = await regenerateShareToken(userId, year);
@@ -540,7 +540,7 @@ export const actions: Actions = {
 			if (err instanceof PermissionExceededError) {
 				return fail(403, { error: err.message });
 			}
-			const message = err instanceof Error ? err.message : 'Failed to regenerate token';
+			const message = err instanceof Error ? err.message : 'Could not regenerate the share link';
 			return fail(500, { error: message });
 		}
 	}

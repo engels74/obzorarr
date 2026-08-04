@@ -25,7 +25,7 @@ const COOKIE_OPTIONS = {
 };
 
 const ONBOARDING_OWNER_REQUIRED_MESSAGE =
-	'Only the server owner can configure Obzorarr. Please sign in with the server owner account.';
+	'Only the server owner can configure Obzorarr. Sign in with the owner account.';
 
 // SvelteKit throws a bare `Error` (no subclass/`.code`) when `cookies.set(...)` runs
 // after the response is generated, so this trailing substring of its message is the
@@ -179,7 +179,7 @@ export async function completePlexPinLogin(
 ): Promise<PinLoginResult> {
 	const transaction = await getPinTransactionForRequest(pinId, cookies);
 	if (!transaction) {
-		throw new PinExpiredError('Login session expired or invalid. Please try again.');
+		throw new PinExpiredError('Login session expired or invalid. Sign in again.');
 	}
 
 	if (!transaction.callbackVerified) {

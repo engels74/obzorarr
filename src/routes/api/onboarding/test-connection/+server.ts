@@ -113,7 +113,7 @@ export const POST: RequestHandler = async ({ request, locals, cookies, url }) =>
 				return json(
 					{
 						success: false,
-						error: 'Authentication failed - the access token may be invalid'
+						error: 'Authentication failed. Check the access token.'
 					},
 					{ status: 401 }
 				);
@@ -216,7 +216,7 @@ export const POST: RequestHandler = async ({ request, locals, cookies, url }) =>
 		return json(
 			{
 				success: false,
-				error: 'An unexpected error occurred'
+				error: 'Something went wrong. Try again.'
 			},
 			{ status: 500 }
 		);

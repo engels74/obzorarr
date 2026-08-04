@@ -148,7 +148,7 @@ export const actions: Actions = requireAdminActions({
 			const total = result.byAge + result.byCount;
 			const message =
 				total === 0
-					? 'Cleanup completed: no log entries needed to be removed'
+					? 'Cleanup finished with nothing to remove'
 					: `Cleanup completed: removed ${total} log ${total === 1 ? 'entry' : 'entries'} (${result.byAge} by age, ${result.byCount} by count)`;
 			return { success: true, message };
 		} catch (error) {

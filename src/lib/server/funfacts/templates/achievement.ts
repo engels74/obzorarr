@@ -58,7 +58,7 @@ export const ACHIEVEMENT_TEMPLATES = defineTemplateCategory('achievement', [
 	{
 		id: 'double-digit-movies',
 		factTemplate: '{Subject} watched {possessive} favorite movie {topMovieCount} times',
-		comparisonTemplate: '{Subject} really love that film!',
+		comparisonTemplate: '{Subject} love that film!',
 		icon: '🔁',
 		requiredStats: ['topMovieCount'],
 		minThresholds: { topMovieCount: 10 },

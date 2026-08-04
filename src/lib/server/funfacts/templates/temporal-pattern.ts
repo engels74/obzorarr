@@ -11,7 +11,7 @@ export const TEMPORAL_TEMPLATES = defineTemplateCategory('temporal-pattern', [
 	{
 		id: 'year-bookends',
 		factTemplate: 'From "{firstWatchTitle}" to "{lastWatchTitle}"',
-		comparisonTemplate: 'What a viewing journey this year has been!',
+		comparisonTemplate: 'What a year of watching!',
 		icon: '📖',
 		requiredStats: ['firstWatchTitle', 'lastWatchTitle']
 	},
@@ -25,7 +25,7 @@ export const TEMPORAL_TEMPLATES = defineTemplateCategory('temporal-pattern', [
 	{
 		id: 'year-participant',
 		factTemplate: '{Subject} were an active viewer in {year}',
-		comparisonTemplate: "Here's to another year of great content!",
+		comparisonTemplate: 'Bring on another year of great content!',
 		icon: '🎊',
 		requiredStats: [],
 		minThresholds: {}

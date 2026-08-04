@@ -547,7 +547,7 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 </script>
 
 <svelte:head>
-	<title>Privacy — Settings — Obzorarr</title>
+	<title>Privacy - Settings - Obzorarr</title>
 </svelte:head>
 
 <div class="space-y-6 p-6 max-w-4xl">
@@ -636,9 +636,9 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 			<CardTitle>Privacy presets</CardTitle>
 			<CardDescription>
 				A preset is one privacy posture. Picking a card saves all five fields it owns across the
-				three sections below in one write — the Save buttons down there are only for
-				hand-editing a single field. The full onboarding presets also set the Wrapped logo to
-				Always Show; this page does not.
+				three sections below in one write. The Save buttons down there are only for hand-editing a
+				single field. The full onboarding presets also set the Wrapped logo to Always Show; this
+				page does not.
 			</CardDescription>
 		</CardHeader>
 		<CardContent class="space-y-4">
@@ -700,7 +700,7 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 			</div>
 			{#if selectedPreset === 'custom'}
 				<p class="text-sm italic text-muted-foreground">
-					Custom configuration — your settings don’t match a preset.
+					Custom configuration: your settings don’t match a preset.
 				</p>
 			{/if}
 			<!-- The commit surface. A card click already submits this form; the button is
@@ -779,7 +779,7 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 				<Alert>
 					<TriangleAlertIcon />
 					<AlertDescription>
-						{unsavedSectionCount} unsaved section{unsavedSectionCount === 1 ? '' : 's'} — staged changes
+						{unsavedSectionCount} unsaved section{unsavedSectionCount === 1 ? '' : 's'}. Staged changes
 						aren't live yet.
 						{#if applicablePreset}
 							Apply {applicablePreset.label} above to save all of them at once, or save each section
@@ -825,8 +825,8 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 			<CardTitle>Server-wide wrapped sharing</CardTitle>
 			<CardDescription>
 				Controls anonymization and the share mode for the aggregate server-wide /wrapped recap
-				only. It does NOT change who can view individual users' personal Wrapped pages — that
-				is governed by the per-user default share mode below.
+				only. It does NOT change who can view individual users' personal Wrapped pages; the
+				per-user default share mode below does that.
 			</CardDescription>
 		</CardHeader>
 		<CardContent>
@@ -967,7 +967,7 @@ const presetIcons: Record<PrivacyPresetId, Component> = {
 			<CardDescription>
 				Default share mode for newly-created users, and whether users can change their own
 				share settings. This default is also the privacy floor for every user's personal
-				Wrapped page — raise or lower it here (not via the server-wide recap control above) to
+				Wrapped page. Raise or lower it here, not via the server-wide recap control above, to
 				change who can view personal Wrapped pages.
 			</CardDescription>
 		</CardHeader>

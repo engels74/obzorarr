@@ -33,7 +33,7 @@ function handleConfigNavigation(event: MouseEvent): void {
 </script>
 
 <svelte:head>
-	<title>Wrapped — Admin — Obzorarr</title>
+	<title>Wrapped - Admin - Obzorarr</title>
 </svelte:head>
 
 <div class="wrapped-hub">
@@ -50,13 +50,13 @@ function handleConfigNavigation(event: MouseEvent): void {
 				<span class="year-display">{data.year}</span>
 				<span class="title-text">Wrapped</span>
 			</h1>
-			<p class="hero-subtitle">Discover viewing journeys and manage the wrapped experience</p>
+			<p class="hero-subtitle">Preview Wrapped pages and configure how they look</p>
 			{#if data.availableYears.length > 0}
 				<form method="GET" class="year-form">
 					<select
 						name="year"
 						class="year-selector"
-						aria-label="Select wrapped year"
+						aria-label="Select Wrapped year"
 						disabled={data.availableYears.length === 1}
 						title={data.availableYears.length === 1 ? 'Only one year of data available' : undefined}
 						onchange={(e) => e.currentTarget.form?.requestSubmit()}
@@ -97,7 +97,7 @@ function handleConfigNavigation(event: MouseEvent): void {
 						<div class="card-text">
 							<h2 class="card-title">My Wrapped</h2>
 							<p class="card-description">
-								Your personal viewing journey and stats for {data.year}
+								Your own viewing stats for {data.year}
 							</p>
 						</div>
 						<div class="card-cta">
@@ -118,10 +118,10 @@ function handleConfigNavigation(event: MouseEvent): void {
 					</div>
 					<div class="card-text">
 						<h2 class="card-title">Server Wrapped</h2>
-						<p class="card-description">Server-wide viewing stats and community highlights</p>
+						<p class="card-description">Combined viewing stats for everyone on the server</p>
 					</div>
 					<div class="card-cta">
-						<span class="cta-text">Explore together</span>
+						<span class="cta-text">View the recap</span>
 						<ArrowRight class="cta-arrow" />
 					</div>
 				</div>

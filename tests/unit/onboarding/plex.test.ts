@@ -146,8 +146,7 @@ describe('onboarding Plex owner verification', () => {
 			expect(result).toMatchObject({
 				status: 403,
 				data: {
-					error:
-						'Only the server owner can configure Obzorarr. Please sign in with the server owner account.'
+					error: 'Only the server owner can configure Obzorarr. Sign in with the owner account.'
 				}
 			});
 		} finally {

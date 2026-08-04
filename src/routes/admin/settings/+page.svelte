@@ -48,7 +48,7 @@ const sections = [
 </script>
 
 <svelte:head>
-	<title>Settings — Admin — Obzorarr</title>
+	<title>Settings - Admin - Obzorarr</title>
 </svelte:head>
 
 <div class="hub">

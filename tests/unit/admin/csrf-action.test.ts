@@ -239,7 +239,7 @@ describe('admin updateCsrfOrigin action', () => {
 		expect(result.status).toBe(409);
 		expect(result.data).toMatchObject({
 			conflict: true,
-			error: 'Settings changed in another tab. Please reload.'
+			error: 'Settings changed in another tab. Reload and try again.'
 		});
 		expect(await getAppSetting(AppSettingsKey.CSRF_ORIGIN)).toBeNull();
 	});

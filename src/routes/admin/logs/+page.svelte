@@ -344,7 +344,7 @@ $effect(() => {
 </script>
 
 <svelte:head>
-	<title>Logs — Admin — Obzorarr</title>
+	<title>Logs - Admin - Obzorarr</title>
 </svelte:head>
 
 <div class="logs-page">
@@ -648,7 +648,7 @@ $effect(() => {
 		<AlertDialog.Header>
 			<AlertDialog.Title>Clear all logs?</AlertDialog.Title>
 			<AlertDialog.Description>
-				This will permanently delete every log entry. This action cannot be undone.
+				Deletes every log entry. You cannot undo this.
 			</AlertDialog.Description>
 		</AlertDialog.Header>
 		<AlertDialog.Footer>
@@ -700,8 +700,8 @@ $effect(() => {
 		<AlertDialog.Header>
 			<AlertDialog.Title>Run cleanup now?</AlertDialog.Title>
 			<AlertDialog.Description>
-				Logs older than {data.settings.retentionDays} days will be deleted, and only the {data.settings.maxCount.toLocaleString()}
-				newest will be kept. This cannot be undone.
+				Deletes logs older than {data.settings.retentionDays} days and keeps only the {data.settings.maxCount.toLocaleString()}
+				newest. You cannot undo this.
 			</AlertDialog.Description>
 		</AlertDialog.Header>
 		<AlertDialog.Footer>

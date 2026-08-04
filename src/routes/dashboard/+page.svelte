@@ -25,10 +25,10 @@ let { data }: Props = $props();
 			</div>
 			<h1 class="page-title">{data.user.username}</h1>
 			{#if data.wrappedHref}
-				<p class="page-subtitle">Your Plex Wrapped for {data.currentYear} is ready to explore</p>
+				<p class="page-subtitle">Your Plex Wrapped for {data.currentYear} is ready to view</p>
 			{:else}
 				<p class="page-subtitle">
-					No {data.currentYear} viewing history synced yet — your Wrapped will appear here once you have activity
+					No {data.currentYear} viewing history synced yet. Your Wrapped will appear here once you watch something
 				</p>
 			{/if}
 		</div>
@@ -48,7 +48,7 @@ let { data }: Props = $props();
 				<div class="card-content">
 					<h2 class="card-title">My Wrapped</h2>
 					<p class="card-description">
-						Discover your personal viewing journey - your top shows, movies, and more
+						Your top shows and movies for the year, plus how your viewing changed
 					</p>
 				</div>
 				<div class="card-action">
@@ -84,11 +84,11 @@ let { data }: Props = $props();
 			<div class="card-content">
 				<h2 class="card-title">Server Wrapped</h2>
 				<p class="card-description">
-					See how the entire server watched together - trending content and shared favorites
+					Trending titles and shared favorites from everyone on the server
 				</p>
 			</div>
 			<div class="card-action">
-				<span>Explore server stats</span>
+				<span>View server stats</span>
 				<ArrowRight class="card-arrow" />
 			</div>
 		</a>
