@@ -41,6 +41,35 @@ export async function persistSyncSchedulerState(state: SyncSchedulerStateType): 
 	await setAppSetting(AppSettingsKey.SYNC_SCHEDULER_STATE, state);
 }
 
+/** Tail of the queue of in-flight scheduler mutations. */
+let schedulerMutationChain: Promise<unknown> = Promise.resolve();
+
+/**
+ * Runs `mutate` only after every previously queued scheduler mutation settled.
+ *
+ * Writing the durable state before touching the croner instance keeps a SINGLE
+ * request consistent, but it cannot make the pair indivisible. Two overlapping
+ * requests can both commit before either reaches its live change, and the live
+ * change is not always symmetric with the row it just wrote: `resume` on a
+ * scheduler another request has since stopped silently does nothing, leaving
+ * `SYNC_SCHEDULER_STATE` claiming `running` for a process with no job. A
+ * restart would then restore a state the admin never saw.
+ *
+ * Serializing the whole precondition/persist/apply triple removes that window:
+ * every mutation observes the finished result of the previous one, so the row
+ * and the live instance always agree once the queue drains.
+ */
+export function withSchedulerMutation<T>(mutate: () => Promise<T>): Promise<T> {
+	const result = schedulerMutationChain.then(mutate, mutate);
+	// Absorb rejections into the chain so one failed action cannot wedge every
+	// later one, while callers still receive the original rejection.
+	schedulerMutationChain = result.then(
+		() => undefined,
+		() => undefined
+	);
+	return result;
+}
+
 export async function readSyncSchedulerState(): Promise<SyncSchedulerStateType | null> {
 	return parseSchedulerState(await getAppSetting(AppSettingsKey.SYNC_SCHEDULER_STATE));
 }

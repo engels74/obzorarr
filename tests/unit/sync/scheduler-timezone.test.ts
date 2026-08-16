@@ -391,4 +391,72 @@ describe('scheduler actions persist operator intent', () => {
 		expect(await restoreSyncScheduler()).toBeNull();
 		expect(isSchedulerConfigured()).toBe(false);
 	});
+
+	it('refuses to pause or resume when no scheduler is configured', async () => {
+		stopSyncScheduler();
+
+		for (const [action, name] of [
+			[actions.pauseScheduler as PauseSchedulerAction, 'pauseScheduler'],
+			[actions.resumeScheduler as ResumeSchedulerAction, 'resumeScheduler']
+		] as const) {
+			expect(await runAction(action, formRequest(name))).toMatchObject({
+				status: 400,
+				data: { error: 'No schedule is configured. Initialize it first.' }
+			});
+		}
+
+		// Nothing may claim a run state the process cannot honour.
+		expect(await readSyncSchedulerState()).toBeNull();
+	});
+});
+
+describe('overlapping scheduler actions converge', () => {
+	/** The run state the live croner instance is actually in. */
+	function liveState(): string {
+		if (!isSchedulerConfigured()) return SyncSchedulerState.STOPPED;
+		return getSchedulerStatus().isPaused ? SyncSchedulerState.PAUSED : SyncSchedulerState.RUNNING;
+	}
+
+	// `resumeSyncScheduler` silently does nothing once the instance is gone, so
+	// an unserialized resume racing a stop used to leave SYNC_SCHEDULER_STATE on
+	// `running` with no job behind it, and the next restart restored a state the
+	// admin never saw.
+	const conflictingPairs: ReadonlyArray<readonly [string, string]> = [
+		['pauseScheduler', 'resumeScheduler'],
+		['resumeScheduler', 'pauseScheduler'],
+		['initScheduler', 'pauseScheduler'],
+		['pauseScheduler', 'initScheduler'],
+		['stopScheduler', 'resumeScheduler'],
+		['resumeScheduler', 'stopScheduler'],
+		['initScheduler', 'stopScheduler'],
+		['updateSchedule', 'stopScheduler'],
+		['stopScheduler', 'updateSchedule']
+	];
+
+	for (const [first, second] of conflictingPairs) {
+		it(`keeps the row and the live scheduler in agreement for ${first} || ${second}`, async () => {
+			await runAction(
+				actions.initScheduler as InitSchedulerAction,
+				formRequest('initScheduler', { cronExpression: '0 0 * * *' })
+			);
+
+			for (let iteration = 0; iteration < 25; iteration++) {
+				await Promise.all([
+					runAction(
+						actions[first as keyof typeof actions] as InitSchedulerAction,
+						formRequest(first, { cronExpression: '0 0 * * *' })
+					),
+					runAction(
+						actions[second as keyof typeof actions] as InitSchedulerAction,
+						formRequest(second, { cronExpression: '0 0 * * *' })
+					)
+				]);
+
+				expect({ iteration, state: liveState() }).toEqual({
+					iteration,
+					state: (await readSyncSchedulerState()) as string
+				});
+			}
+		});
+	}
 });
