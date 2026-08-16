@@ -3,12 +3,19 @@ import { fail } from '@sveltejs/kit';
 import { zod4 } from 'sveltekit-superforms/adapters';
 import { superValidate } from 'sveltekit-superforms/server';
 import { z } from 'zod';
+import { listSupportedTimezones, validateTimezone } from '$lib/cron/timezone';
 import {
 	inlineOccCheck,
 	OCC_CONFLICT_MESSAGE,
 	settingsVersionISO
 } from '$lib/server/admin/occ-helpers';
-import { getAppSettingsUpdatedAt, LOG_SETTINGS_KEYS } from '$lib/server/admin/settings.service';
+import {
+	getAppSettingsUpdatedAt,
+	getSchedulerTimezoneConfigWithSource,
+	LOG_SETTINGS_KEYS,
+	SCHEDULER_TIMEZONE_SETTINGS_KEYS,
+	setSchedulerTimezoneAtomic
+} from '$lib/server/admin/settings.service';
 import { requireAdminActions } from '$lib/server/auth/guards';
 import {
 	getLogMaxCount,
@@ -17,8 +24,10 @@ import {
 	logger,
 	setDebugEnabled,
 	setLogMaxCount,
-	setLogRetentionDays
+	setLogRetentionDays,
+	updateLogRetentionSchedulerTimezone
 } from '$lib/server/logging';
+import { applySyncSchedulerTimezone } from '$lib/server/sync/scheduler-state';
 import { getAppVersion } from '$lib/server/version';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -43,15 +52,45 @@ const LogSettingsSchema = z.object({
 	settingsVersion: z.string().min(1, 'Missing settings version (reload the page)')
 });
 
+/**
+ * OCC strategy: INLINE `settingsVersion`, same shape as `LogSettingsSchema`, on
+ * its own key group so the two System-tab forms never false-409 each other.
+ * Validation is delegated to the shared `validateTimezone` so the field error,
+ * the env-var reconciliation and the scheduler all accept exactly one set of
+ * zone identifiers.
+ */
+const SchedulerTimezoneSchema = z.object({
+	timezone: z
+		.string()
+		.trim()
+		.superRefine((value, ctx) => {
+			const error = validateTimezone(value);
+			if (error) {
+				ctx.addIssue({ code: z.ZodIssueCode.custom, message: error });
+			}
+		}),
+	settingsVersion: z.string().min(1, 'Missing settings version (reload the page)')
+});
+
 export const load: PageServerLoad = async () => {
-	const [logRetentionDays, logMaxCount, logDebugEnabled, logSettingsUpdatedAt] = await Promise.all([
+	const [
+		logRetentionDays,
+		logMaxCount,
+		logDebugEnabled,
+		logSettingsUpdatedAt,
+		timezoneConfig,
+		timezoneSettingsUpdatedAt
+	] = await Promise.all([
 		getLogRetentionDays(),
 		getLogMaxCount(),
 		isDebugEnabled(),
-		getAppSettingsUpdatedAt(LOG_SETTINGS_KEYS)
+		getAppSettingsUpdatedAt(LOG_SETTINGS_KEYS),
+		getSchedulerTimezoneConfigWithSource(),
+		getAppSettingsUpdatedAt(SCHEDULER_TIMEZONE_SETTINGS_KEYS)
 	]);
 
 	const logSettingsVersion = settingsVersionISO(logSettingsUpdatedAt);
+	const timezoneVersion = settingsVersionISO(timezoneSettingsUpdatedAt);
 
 	const form = await superValidate(
 		{
@@ -60,17 +99,32 @@ export const load: PageServerLoad = async () => {
 			debugEnabled: logDebugEnabled,
 			settingsVersion: logSettingsVersion
 		},
-		zod4(LogSettingsSchema)
+		zod4(LogSettingsSchema),
+		{ id: 'logSettings' }
+	);
+
+	const timezoneForm = await superValidate(
+		{ timezone: timezoneConfig.timezone.value, settingsVersion: timezoneVersion },
+		zod4(SchedulerTimezoneSchema),
+		{ id: 'schedulerTimezone' }
 	);
 
 	return {
 		form,
+		timezoneForm,
 		logSettings: {
 			retentionDays: logRetentionDays,
 			maxCount: logMaxCount,
 			debugEnabled: logDebugEnabled
 		},
 		logSettingsVersion,
+		schedulerTimezone: {
+			value: timezoneConfig.timezone.value,
+			source: timezoneConfig.timezone.source,
+			isLocked: timezoneConfig.timezone.isLocked,
+			supportedZones: listSupportedTimezones()
+		},
+		timezoneVersion,
 		systemInfo: {
 			uptimeSeconds: Math.floor(process.uptime()),
 			osPlatform: osPlatform(),
@@ -82,8 +136,66 @@ export const load: PageServerLoad = async () => {
 };
 
 export const actions: Actions = requireAdminActions({
+	updateSchedulerTimezone: async ({ request }) => {
+		const form = await superValidate(request, zod4(SchedulerTimezoneSchema), {
+			id: 'schedulerTimezone'
+		});
+		if (!form.valid) {
+			if (form.errors.settingsVersion?.length) {
+				return fail(409, { form, conflict: true, error: OCC_CONFLICT_MESSAGE });
+			}
+			return fail(400, {
+				form,
+				error: form.errors.timezone?.[0] ?? 'Invalid input'
+			});
+		}
+
+		const timezoneConfig = await getSchedulerTimezoneConfigWithSource();
+		if (timezoneConfig.timezone.isLocked) {
+			return fail(400, {
+				form,
+				error: 'The TZ environment variable sets the timezone and it cannot be changed here'
+			});
+		}
+
+		if (
+			(await inlineOccCheck(form.data.settingsVersion, SCHEDULER_TIMEZONE_SETTINGS_KEYS)).status ===
+			'conflict'
+		) {
+			return fail(409, { form, conflict: true, error: OCC_CONFLICT_MESSAGE });
+		}
+
+		try {
+			// The `inlineOccCheck` above is only a pre-write guard; the write itself
+			// re-checks the version inside its transaction so two admins submitting
+			// different zones against the same `settingsVersion` cannot both land.
+			const result = await setSchedulerTimezoneAtomic({
+				timezone: form.data.timezone,
+				submittedVersion: form.data.settingsVersion
+			});
+			if (result.status === 'conflict') {
+				return fail(409, { form, conflict: true, error: OCC_CONFLICT_MESSAGE });
+			}
+
+			// The env-lock branch above already returned, so the stored value IS the
+			// effective one and both live jobs can be re-pointed at it immediately.
+			const { timezone } = result;
+			applySyncSchedulerTimezone(timezone);
+			updateLogRetentionSchedulerTimezone(timezone);
+			logger.info(`Scheduler timezone set to ${timezone}`, 'Settings');
+
+			form.data.timezone = timezone;
+			form.data.settingsVersion = settingsVersionISO(result.version);
+			return { form, success: true, message: `Scheduler timezone set to ${timezone}` };
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : 'Failed to update the scheduler timezone';
+			return fail(500, { form, error: message });
+		}
+	},
+
 	updateLogSettings: async ({ request }) => {
-		const form = await superValidate(request, zod4(LogSettingsSchema));
+		const form = await superValidate(request, zod4(LogSettingsSchema), { id: 'logSettings' });
 		if (!form.valid) {
 			// Promote blank/missing settingsVersion to 409 — matches the monolith's
 			// inline-OCC pattern. Superforms aggregates leaf field errors as

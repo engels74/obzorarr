@@ -3,15 +3,23 @@ import { logger } from './logger';
 import { runRetentionCleanup } from './service';
 
 const DEFAULT_CRON_EXPRESSION = '0 3 * * *';
-const DEFAULT_TIMEZONE = 'UTC';
 const JOB_NAME = 'log-retention';
 
 let retentionScheduler: Cron | null = null;
 
-export function setupLogRetentionScheduler(
-	cronExpression: string = DEFAULT_CRON_EXPRESSION,
-	timezone: string = DEFAULT_TIMEZONE
-): Cron {
+export interface LogRetentionSchedulerOptions {
+	/**
+	 * IANA zone the cleanup expression is interpreted in. Required for the same
+	 * reason as `SchedulerOptions.timezone`: a defaulted zone hides the fact that
+	 * a caller never resolved the configured one.
+	 */
+	timezone: string;
+	cronExpression?: string;
+}
+
+export function setupLogRetentionScheduler(options: LogRetentionSchedulerOptions): Cron {
+	const { cronExpression = DEFAULT_CRON_EXPRESSION, timezone } = options;
+
 	if (retentionScheduler) {
 		stopLogRetentionScheduler();
 	}
@@ -55,6 +63,21 @@ export function stopLogRetentionScheduler(): void {
 		retentionScheduler = null;
 		logger.info('Log retention scheduler stopped', 'Retention');
 	}
+}
+
+/**
+ * Re-applies `timezone` to the live retention job, keeping its expression.
+ * Returns `null` when no scheduler is configured — the next setup reads the new
+ * zone anyway.
+ */
+export function updateLogRetentionSchedulerTimezone(timezone: string): Cron | null {
+	if (!retentionScheduler) {
+		return null;
+	}
+	return setupLogRetentionScheduler({
+		cronExpression: retentionScheduler.getPattern() ?? DEFAULT_CRON_EXPRESSION,
+		timezone
+	});
 }
 
 export async function triggerRetentionCleanup(): Promise<{ byAge: number; byCount: number }> {

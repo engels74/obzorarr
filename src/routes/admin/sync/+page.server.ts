@@ -1,7 +1,12 @@
 import { fail } from '@sveltejs/kit';
 import { z } from 'zod';
 import { CRON_REQUIRED_MESSAGE, validateCronExpression } from '$lib/cron/validation';
-import { AppSettingsKey, getAppSetting, setAppSetting } from '$lib/server/admin/settings.service';
+import {
+	AppSettingsKey,
+	getAppSetting,
+	getSchedulerTimezoneConfigWithSource,
+	setAppSetting
+} from '$lib/server/admin/settings.service';
 import { requireAdminActions } from '$lib/server/auth/guards';
 import { cancelSync } from '$lib/server/sync/progress';
 import {
@@ -14,6 +19,11 @@ import {
 	stopSyncScheduler,
 	updateSchedulerCron
 } from '$lib/server/sync/scheduler';
+import {
+	persistSyncSchedulerState,
+	SyncSchedulerState,
+	withSchedulerMutation
+} from '$lib/server/sync/scheduler-state';
 import {
 	getLastSuccessfulSync,
 	getPlayHistoryCount,
@@ -45,19 +55,30 @@ const UpdateScheduleSchema = z.object({
 
 const HISTORY_PAGE_SIZE = 8;
 
+/** Shown when pause/resume is submitted with no scheduler configured. */
+const NO_SCHEDULER_MESSAGE = 'No schedule is configured. Initialize it first.';
+
 export const load: PageServerLoad = async ({ url }) => {
 	const pageParam = url.searchParams.get('page');
 	const page = Math.max(1, parseInt(pageParam ?? '1', 10) || 1);
 
-	const [isRunning, lastSync, paginatedHistory, schedulerStatus, historyCount, storedCron] =
-		await Promise.all([
-			isSyncRunning(),
-			getLastSuccessfulSync(),
-			getSyncHistory({ page, pageSize: HISTORY_PAGE_SIZE }),
-			getSchedulerStatus(),
-			getPlayHistoryCount(),
-			getAppSetting(AppSettingsKey.SYNC_CRON_EXPRESSION)
-		]);
+	const [
+		isRunning,
+		lastSync,
+		paginatedHistory,
+		schedulerStatus,
+		historyCount,
+		storedCron,
+		timezoneConfig
+	] = await Promise.all([
+		isSyncRunning(),
+		getLastSuccessfulSync(),
+		getSyncHistory({ page, pageSize: HISTORY_PAGE_SIZE }),
+		getSchedulerStatus(),
+		getPlayHistoryCount(),
+		getAppSetting(AppSettingsKey.SYNC_CRON_EXPRESSION),
+		getSchedulerTimezoneConfigWithSource()
+	]);
 
 	const currentYear = new Date().getFullYear();
 	const availableYears = Array.from({ length: currentYear - 2000 + 1 }, (_, i) => currentYear - i);
@@ -93,7 +114,9 @@ export const load: PageServerLoad = async ({ url }) => {
 			isPaused: schedulerStatus.isPaused,
 			nextRun: schedulerStatus.nextRun?.toISOString() ?? null,
 			previousRun: schedulerStatus.previousRun?.toISOString() ?? null,
-			cronExpression: schedulerStatus.cronExpression ?? storedCron
+			cronExpression: schedulerStatus.cronExpression ?? storedCron,
+			timezone: timezoneConfig.timezone.value,
+			timezoneSource: timezoneConfig.timezone.source
 		},
 		historyCount,
 		availableYears
@@ -171,23 +194,45 @@ export const actions: Actions = requireAdminActions({
 		}
 
 		try {
-			updateSchedulerCron(parsed.data.cronExpression);
-			await setAppSetting(AppSettingsKey.SYNC_CRON_EXPRESSION, parsed.data.cronExpression);
-			const isActive = isSchedulerConfigured();
-			const message = isActive
-				? 'Schedule updated'
-				: 'Schedule saved. Click "Initialize" to activate it.';
-			return { success: true, message, cronExpression: parsed.data.cronExpression };
+			return await withSchedulerMutation(async () => {
+				const { timezone } = await getSchedulerTimezoneConfigWithSource();
+				updateSchedulerCron(parsed.data.cronExpression, timezone.value);
+				await setAppSetting(AppSettingsKey.SYNC_CRON_EXPRESSION, parsed.data.cronExpression);
+				const isActive = isSchedulerConfigured();
+				const message = isActive
+					? 'Schedule updated'
+					: 'Schedule saved. Click "Initialize" to activate it.';
+				return { success: true, message, cronExpression: parsed.data.cronExpression };
+			});
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to update schedule';
 			return fail(500, { error: message });
 		}
 	},
 
+	// Every scheduler mutation runs inside `withSchedulerMutation` and writes its
+	// durable intent BEFORE touching the live croner instance.
+	//
+	// Persist-first means a failed write leaves both sides on the previous state
+	// and reports the error, rather than returning a 500 for a scheduler that has
+	// already flipped. Serializing means overlapping requests cannot both commit
+	// before either applies its change — which mattered because the live calls are
+	// not symmetric with the rows they follow: `resumeSyncScheduler` silently does
+	// nothing once another request has stopped the scheduler, so an unserialized
+	// resume could leave the row on `running` with no job to restore.
+	//
+	// `isSchedulerConfigured` is therefore checked INSIDE the serialized section:
+	// checking it outside would let a stop land between the check and the write.
 	pauseScheduler: async () => {
 		try {
-			pauseSyncScheduler();
-			return { success: true, message: 'Scheduler paused' };
+			return await withSchedulerMutation(async () => {
+				if (!isSchedulerConfigured()) {
+					return fail(400, { error: NO_SCHEDULER_MESSAGE });
+				}
+				await persistSyncSchedulerState(SyncSchedulerState.PAUSED);
+				pauseSyncScheduler();
+				return { success: true, message: 'Scheduler paused' };
+			});
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to pause scheduler';
 			return fail(500, { error: message });
@@ -196,18 +241,29 @@ export const actions: Actions = requireAdminActions({
 
 	resumeScheduler: async () => {
 		try {
-			resumeSyncScheduler();
-			return { success: true, message: 'Scheduler resumed' };
+			return await withSchedulerMutation(async () => {
+				if (!isSchedulerConfigured()) {
+					return fail(400, { error: NO_SCHEDULER_MESSAGE });
+				}
+				await persistSyncSchedulerState(SyncSchedulerState.RUNNING);
+				resumeSyncScheduler();
+				return { success: true, message: 'Scheduler resumed' };
+			});
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to resume scheduler';
 			return fail(500, { error: message });
 		}
 	},
 
+	// No precondition guard: stopping an already-stopped scheduler is idempotent
+	// and `stopped` describes the live instance either way.
 	stopScheduler: async () => {
 		try {
-			stopSyncScheduler();
-			return { success: true, message: 'Scheduler stopped' };
+			return await withSchedulerMutation(async () => {
+				await persistSyncSchedulerState(SyncSchedulerState.STOPPED);
+				stopSyncScheduler();
+				return { success: true, message: 'Scheduler stopped' };
+			});
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to stop scheduler';
 			return fail(500, { error: message });
@@ -231,12 +287,20 @@ export const actions: Actions = requireAdminActions({
 		}
 
 		try {
-			setupSyncScheduler({
-				cronExpression: parsed.data.cronExpression,
-				startImmediately: true
+			return await withSchedulerMutation(async () => {
+				const { timezone } = await getSchedulerTimezoneConfigWithSource();
+				// Same persist-then-apply ordering as pause/resume/stop above. The
+				// expression is already schema-validated, so committing the durable
+				// intent first cannot persist a schedule the restore path would reject.
+				await setAppSetting(AppSettingsKey.SYNC_CRON_EXPRESSION, parsed.data.cronExpression);
+				await persistSyncSchedulerState(SyncSchedulerState.RUNNING);
+				setupSyncScheduler({
+					cronExpression: parsed.data.cronExpression,
+					timezone: timezone.value,
+					startImmediately: true
+				});
+				return { success: true, message: 'Scheduler initialized' };
 			});
-			await setAppSetting(AppSettingsKey.SYNC_CRON_EXPRESSION, parsed.data.cronExpression);
-			return { success: true, message: 'Scheduler initialized' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to initialize scheduler';
 			return fail(500, { error: message });

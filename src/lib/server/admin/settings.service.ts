@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { and, between, eq, inArray, sql } from 'drizzle-orm';
 import { env } from '$env/dynamic/private';
+import { DEFAULT_TIMEZONE, normalizeTimezone, TIMEZONE_UNKNOWN_MESSAGE } from '$lib/cron/timezone';
 import { db } from '$lib/server/db/client';
 import { appSettings, cachedStats, playHistory, shareSettings } from '$lib/server/db/schema';
 import {
@@ -34,6 +35,15 @@ export const AppSettingsKey = {
 	ENABLED_YEARS: 'enabled_years',
 	ANONYMIZATION_MODE: 'anonymization_mode',
 	SYNC_CRON_EXPRESSION: 'sync_cron_expression',
+	/**
+	 * Operator intent for the sync scheduler (`running` / `paused` / `stopped`).
+	 * The croner instance only lives in process memory, so this row is what lets
+	 * `restoreSyncScheduler()` rebuild the schedule after a restart instead of
+	 * silently leaving the instance without automatic syncs.
+	 */
+	SYNC_SCHEDULER_STATE: 'sync_scheduler_state',
+	/** IANA zone every scheduler runs in. Shadowed by the `TZ` env var. */
+	SCHEDULER_TIMEZONE: 'scheduler_timezone',
 	WRAPPED_LOGO_MODE: 'wrapped_logo_mode',
 	SERVER_NAME: 'server_name',
 	SERVER_MACHINE_ID: 'server_machine_id',
@@ -184,6 +194,13 @@ export const LOG_SETTINGS_KEYS = [
  * `getAppSettingsUpdatedAt(...)` helper that the multi-key OCC paths use.
  */
 export const TRUST_PROXY_SETTINGS_KEYS = [AppSettingsKey.TRUST_PROXY] as const;
+
+/**
+ * Single-key OCC tuple for the System tab "Scheduler timezone" field. Kept out
+ * of `LOG_SETTINGS_KEYS` so saving the retention form and saving the timezone
+ * cannot false-409 each other, matching the split between the privacy groups.
+ */
+export const SCHEDULER_TIMEZONE_SETTINGS_KEYS = [AppSettingsKey.SCHEDULER_TIMEZONE] as const;
 
 /**
  * Single-key OCC tuple for the Privacy tab "Allow public Wrapped lookup" toggle.
@@ -380,6 +397,65 @@ async function writePublicLandingLookupRowInTx(
 	now: Date
 ): Promise<void> {
 	await upsertSettingInTx(tx, AppSettingsKey.PUBLIC_LANDING_LOOKUP, String(enabled), now);
+}
+
+/**
+ * Synchronous sibling of {@link occGateInTx}, with byte-for-byte identical
+ * conflict semantics.
+ *
+ * drizzle's bun-sqlite driver invokes the `db.transaction` callback
+ * synchronously inside bun:sqlite's `BEGIN`/`COMMIT` wrapper. An `async`
+ * callback therefore returns a promise at its first `await` and the transaction
+ * COMMITS right there, leaving the rest of the callback — the gate's verdict and
+ * the row write — running outside any transaction. Two interleaved requests can
+ * then both read the same pre-write version and both write, which is exactly the
+ * lost update OCC exists to prevent.
+ *
+ * Keeping the gate and the write in one synchronous callback (`.all()` /
+ * `.run()`, never `await`) is what makes check-then-write indivisible: JS is
+ * single-threaded, so nothing can interleave between BEGIN and COMMIT.
+ * `clearConflictingDbSettings` uses the same synchronous-callback shape.
+ */
+function occGateInTxSync(
+	tx: SettingsTx,
+	keys: readonly string[],
+	submittedVersion: string
+): OccWriteResult {
+	const rows = tx
+		.select({ updatedAt: appSettings.updatedAt })
+		.from(appSettings)
+		.where(inArray(appSettings.key, keys as unknown as string[]))
+		.all();
+
+	const submittedMs = submittedVersion ? Date.parse(submittedVersion) : Number.NaN;
+	if (Number.isNaN(submittedMs)) {
+		return { status: 'conflict' };
+	}
+	let maxMs = 0;
+	for (const row of rows) {
+		const t = row.updatedAt.getTime();
+		if (t > maxMs) maxMs = t;
+	}
+	if (rows.length > 0 && submittedMs < maxMs) {
+		return { status: 'conflict' };
+	}
+
+	return { status: 'ok', version: nextOccVersionDate(maxMs) };
+}
+
+/** The single `SCHEDULER_TIMEZONE_SETTINGS_KEYS` row, already canonicalized. */
+function writeSchedulerTimezoneRowInTxSync(
+	tx: SettingsTx,
+	canonicalTimezone: string,
+	now: Date
+): void {
+	tx.insert(appSettings)
+		.values({ key: AppSettingsKey.SCHEDULER_TIMEZONE, value: canonicalTimezone, updatedAt: now })
+		.onConflictDoUpdate({
+			target: appSettings.key,
+			set: { value: canonicalTimezone, updatedAt: now }
+		})
+		.run();
 }
 
 /**
@@ -1457,6 +1533,94 @@ export async function getTrustProxy(): Promise<boolean> {
 	return config.trustProxy.value === 'true';
 }
 
+export interface SchedulerTimezoneConfigWithSource {
+	timezone: ConfigValue<string>;
+}
+
+/**
+ * Env-over-DB resolution for the zone every scheduler runs in.
+ *
+ * `TZ` is the env authority because it is the container-wide timezone
+ * convention (Docker images set it, and the runtime already uses it for local
+ * time), so an operator who sets `TZ=Europe/Copenhagen` gets scheduled syncs in
+ * that zone without a second, app-specific variable.
+ *
+ * Both sides are canonicalized through `normalizeTimezone` before they can win:
+ * an unknown `TZ` degrades to "not set" instead of env-locking the admin field
+ * to a zone croner cannot honour (mirrors how `getTrustProxyConfigWithSource`
+ * normalizes its raw env value), and an unknown stored row falls back to the
+ * default rather than throwing inside a scheduler constructor.
+ */
+export async function getSchedulerTimezoneConfigWithSource(): Promise<SchedulerTimezoneConfigWithSource> {
+	const dbSettings = await getAllAppSettings();
+	const envValue = normalizeTimezone(env.TZ ?? '') ?? '';
+	const resolved = resolveConfigValue(
+		dbSettings,
+		AppSettingsKey.SCHEDULER_TIMEZONE,
+		envValue,
+		DEFAULT_TIMEZONE
+	);
+	const canonical = normalizeTimezone(resolved.value);
+	if (!canonical) {
+		return { timezone: { value: DEFAULT_TIMEZONE, source: 'default', isLocked: false } };
+	}
+	return { timezone: { ...resolved, value: canonical } };
+}
+
+export async function getSchedulerTimezone(): Promise<string> {
+	return (await getSchedulerTimezoneConfigWithSource()).timezone.value;
+}
+
+/**
+ * {@link setSchedulerTimezoneAtomic} result. Extends {@link OccWriteResult} with
+ * the canonical zone the transaction stored, so the caller can echo the
+ * normalized identifier (`europe/copenhagen` -> `Europe/Copenhagen`) without a
+ * post-write re-read.
+ */
+export type SchedulerTimezoneWriteResult =
+	| { status: 'ok'; version: Date; timezone: string }
+	| { status: 'conflict' };
+
+/**
+ * Atomically validates that the scheduler timezone has not changed since
+ * `submittedVersion` and, if so, writes its canonical form in a single SQLite
+ * transaction. Returns `'conflict'` when the submitted version is stale.
+ *
+ * The `inlineOccCheck` in the action is only a pre-write guard: two admins
+ * submitting different zones against the same `settingsVersion` can both clear
+ * it before either write runs. Re-running the check inside this transaction is
+ * what actually stops the later write from silently clobbering the earlier one.
+ * `nextOccVersionDate` (via {@link occGateInTxSync}) additionally guarantees a
+ * strictly advancing `updatedAt`, so two saves landing in the same wall-clock
+ * millisecond cannot mint identical versions that let a stale tab slip past the
+ * strict `<` comparison.
+ *
+ * The transaction callback is deliberately SYNCHRONOUS — see
+ * {@link occGateInTxSync} for why an `async` callback would commit at its first
+ * `await` and reopen the very window this closes.
+ *
+ * The zone is normalized before the transaction opens so an unknown identifier
+ * fails without holding a write transaction. `validateTimezone` in the route
+ * schema already rejects those with a 400; this throw is defense in depth for
+ * any non-form caller.
+ */
+export async function setSchedulerTimezoneAtomic(opts: {
+	timezone: string;
+	submittedVersion: string;
+}): Promise<SchedulerTimezoneWriteResult> {
+	const canonical = normalizeTimezone(opts.timezone);
+	if (!canonical) {
+		throw new Error(TIMEZONE_UNKNOWN_MESSAGE);
+	}
+	return db.transaction((tx) => {
+		const gate = occGateInTxSync(tx, SCHEDULER_TIMEZONE_SETTINGS_KEYS, opts.submittedVersion);
+		if (gate.status === 'conflict') return gate;
+
+		writeSchedulerTimezoneRowInTxSync(tx, canonical, gate.version);
+		return { ...gate, timezone: canonical };
+	});
+}
+
 /**
  * Removes DB values shadowed by authoritative ENV settings and atomically
  * reconciles the durable Plex authority discriminator at startup. A real
@@ -1468,6 +1632,7 @@ export async function clearConflictingDbSettings(): Promise<string[]> {
 	const openaiEnv = getOpenAIEnvConfig();
 	const csrfEnvOrigin = env.ORIGIN ?? '';
 	const trustProxyEnv = (env.TRUST_PROXY ?? '').trim();
+	const schedulerTimezoneEnv = env.TZ ?? '';
 	const effectivePlexConfig = await getPlexConfig();
 	const effectivePlexFingerprint = getPlexConfigFingerprint(effectivePlexConfig);
 
@@ -1510,6 +1675,13 @@ export async function clearConflictingDbSettings(): Promise<string[]> {
 			dbKey: AppSettingsKey.TRUST_PROXY,
 			label: 'TRUST_PROXY',
 			authoritative: isAuthoritativeEnvValue(trustProxyEnv)
+		},
+		{
+			dbKey: AppSettingsKey.SCHEDULER_TIMEZONE,
+			label: 'TZ',
+			// Only a zone the runtime knows shadows the stored row — an unparseable
+			// `TZ` must not delete a working timezone the admin picked in the UI.
+			authoritative: normalizeTimezone(schedulerTimezoneEnv) !== null
 		}
 	];
 

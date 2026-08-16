@@ -52,7 +52,7 @@ describe('sync updateSchedule action (ISSUE-004 / ISSUE-005)', () => {
 	});
 
 	it('reports a plain "updated" message when the scheduler is already active', async () => {
-		setupSyncScheduler({ cronExpression: '0 0 * * *', startImmediately: true });
+		setupSyncScheduler({ cronExpression: '0 0 * * *', timezone: 'UTC', startImmediately: true });
 		const result = (await run('0 6 * * *')) as { success: boolean; message: string };
 		expect(result.success).toBe(true);
 		expect(result.message).toBe('Schedule updated');

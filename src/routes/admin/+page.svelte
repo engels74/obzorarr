@@ -267,7 +267,10 @@ const lastSyncStatus = $derived(data.lastSync?.status ?? 'unknown');
 						<span class="sync-value">
 							{formatDate(data.schedulerStatus.nextRun)}
 							{#if data.schedulerStatus.cronExpression}
-								<span class="sync-cron">(cron {data.schedulerStatus.cronExpression} UTC)</span>
+								<span class="sync-cron"
+								>(cron {data.schedulerStatus.cronExpression}
+								{data.schedulerStatus.timezone})</span
+							>
 							{/if}
 						</span>
 					</div>

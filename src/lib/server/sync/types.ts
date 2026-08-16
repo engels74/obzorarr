@@ -52,8 +52,14 @@ export interface SyncStatusRecord {
 }
 
 export interface SchedulerOptions {
+	/**
+	 * IANA zone the cron expression is interpreted in. Required so a scheduler
+	 * can never be constructed without stating its zone: an optional field with a
+	 * UTC default is exactly how every call site silently ran in UTC while the
+	 * deployment was configured for another zone.
+	 */
+	timezone: string;
 	cronExpression?: string;
-	timezone?: string;
 	protect?: boolean;
 	startImmediately?: boolean;
 }

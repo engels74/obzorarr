@@ -1,3 +1,4 @@
+import { getSchedulerTimezone } from '$lib/server/admin/settings.service';
 import { getSyncedViewerCount, getUserCount } from '$lib/server/admin/users.service';
 import { calculateServerStats } from '$lib/server/stats/engine';
 import { getSchedulerStatus } from '$lib/server/sync/scheduler';
@@ -18,7 +19,8 @@ export const load: PageServerLoad = async () => {
 		lastSync,
 		schedulerStatus,
 		serverStats,
-		isRunning
+		isRunning,
+		schedulerTimezone
 	] = await Promise.all([
 		getUserCount(),
 		getSyncedViewerCount(),
@@ -26,7 +28,8 @@ export const load: PageServerLoad = async () => {
 		getLastSuccessfulSync(),
 		getSchedulerStatus(),
 		calculateServerStats(year, { cacheTtlSeconds: 3600 }).catch(() => null),
-		isSyncRunning()
+		isSyncRunning(),
+		getSchedulerTimezone()
 	]);
 
 	return {
@@ -52,7 +55,8 @@ export const load: PageServerLoad = async () => {
 					isPaused: schedulerStatus.isPaused,
 					nextRun: schedulerStatus.nextRun?.toISOString() ?? null,
 					previousRun: schedulerStatus.previousRun?.toISOString() ?? null,
-					cronExpression: schedulerStatus.cronExpression
+					cronExpression: schedulerStatus.cronExpression,
+					timezone: schedulerTimezone
 				}
 			: null,
 		stats: serverStats

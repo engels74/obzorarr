@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
+import { afterAll, afterEach, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
+import { Cron as ImportedCron } from 'croner';
 import { db } from '$lib/server/db/client';
 import { appSettings, logs } from '$lib/server/db/schema';
 import { Logger, logger as realLogger } from '$lib/server/logging/logger';
@@ -64,6 +65,11 @@ function messagesFrom(rows: Awaited<ReturnType<typeof logRows>>) {
 	return rows.map((row) => row.message);
 }
 
+// Snapshot the real class BY VALUE before `mock.module` runs: that call mutates
+// the existing `croner` namespace in place, so holding the namespace object (or
+// re-reading `.Cron` later) would hand back the double instead of the original.
+const RealCron = ImportedCron;
+
 let mockCronInstances: MockCron[] = [];
 
 class MockCron {
@@ -93,6 +99,18 @@ class MockCron {
 	stop(): void {
 		this.stopped = true;
 		this.running = false;
+	}
+
+	pause(): void {
+		this.running = false;
+	}
+
+	resume(): void {
+		this.running = true;
+	}
+
+	getPattern(): string {
+		return this.expression;
 	}
 
 	isRunning(): boolean {
@@ -132,7 +150,19 @@ class MockCron {
 	}
 }
 
+// `mock.module` is process-global and is NOT undone when a file finishes, so
+// this double would otherwise be handed to every test file that runs after this
+// one. That made the suite order-dependent: files asserting real cron semantics
+// (next-run instants, timezone re-pointing) passed locally, where they sort
+// ahead of this file, and failed on CI, where they sort after it. `afterAll`
+// puts the real module back so those files always get genuine croner.
+//
+// MockCron still implements the app's full croner surface (`getPattern`,
+// `pause`, `resume`, ...) so nothing inside THIS file hits a missing method.
 mock.module('croner', () => ({ Cron: MockCron }));
+afterAll(() => {
+	mock.module('croner', () => ({ Cron: RealCron }));
+});
 const retention = await import('$lib/server/logging/retention');
 
 describe('logging service and logger', () => {
@@ -453,13 +483,13 @@ describe('logging retention scheduler', () => {
 	});
 
 	it.each([
-		['defaults', undefined, undefined, '0 3 * * *', 'UTC'],
-		['custom cron', '0 6 * * *', undefined, '0 6 * * *', 'UTC'],
+		['default cron', undefined, 'UTC', '0 3 * * *', 'UTC'],
+		['custom cron', '0 6 * * *', 'UTC', '0 6 * * *', 'UTC'],
 		['custom timezone', '0 3 * * *', 'America/New_York', '0 3 * * *', 'America/New_York']
 	] as const)(
 		'creates scheduler with %s',
 		(_name, cronExpression, timezone, expectedExpression, expectedTimezone) => {
-			retention.setupLogRetentionScheduler(cronExpression, timezone);
+			retention.setupLogRetentionScheduler({ cronExpression, timezone });
 
 			expect(mockCronInstances).toHaveLength(1);
 			expect(mockCronInstances[0]).toMatchObject({
@@ -471,9 +501,9 @@ describe('logging retention scheduler', () => {
 	);
 
 	it('replaces existing schedulers and logs configuration', () => {
-		retention.setupLogRetentionScheduler();
+		retention.setupLogRetentionScheduler({ timezone: 'UTC' });
 		const firstScheduler = mockCronInstances[0];
-		retention.setupLogRetentionScheduler('0 6 * * *');
+		retention.setupLogRetentionScheduler({ cronExpression: '0 6 * * *', timezone: 'UTC' });
 
 		expect(mockCronInstances).toHaveLength(2);
 		expect(firstScheduler?._isStopped()).toBe(true);
@@ -485,7 +515,7 @@ describe('logging retention scheduler', () => {
 	});
 
 	it('callback logs cleanup success and failure', async () => {
-		retention.setupLogRetentionScheduler();
+		retention.setupLogRetentionScheduler({ timezone: 'UTC' });
 		await mockCronInstances[0]?._triggerCallback();
 		expect(cleanupSpy).toHaveBeenCalled();
 		expect(
@@ -506,7 +536,7 @@ describe('logging retention scheduler', () => {
 	});
 
 	it('catch handler and manual trigger log the expected scheduler events', async () => {
-		retention.setupLogRetentionScheduler();
+		retention.setupLogRetentionScheduler({ timezone: 'UTC' });
 		mockCronInstances[0]?._triggerCatchHandler(new Error('Cron error'));
 		expect(
 			errorSpy.mock.calls.some((call: LoggerSpyCall) => call[0].includes('Log retention job'))
@@ -521,7 +551,7 @@ describe('logging retention scheduler', () => {
 		['running scheduler', true, true],
 		['no scheduler', false, false]
 	] as const)('stops idempotently with %s', (_name, configured, shouldLog) => {
-		if (configured) retention.setupLogRetentionScheduler();
+		if (configured) retention.setupLogRetentionScheduler({ timezone: 'UTC' });
 		const scheduler = mockCronInstances[0];
 		infoSpy.mockClear();
 
@@ -542,7 +572,7 @@ describe('logging retention scheduler', () => {
 			previousRun: null
 		});
 
-		retention.setupLogRetentionScheduler();
+		retention.setupLogRetentionScheduler({ timezone: 'UTC' });
 		const cronInstance = mockCronInstances[0];
 		const previousDate = new Date(Date.now() - DAY_MS);
 		cronInstance?._setPreviousRun(previousDate);
@@ -564,7 +594,7 @@ describe('logging retention scheduler', () => {
 	] as const)(
 		'isRetentionSchedulerConfigured returns %s state',
 		(_name, createScheduler, expected) => {
-			if (createScheduler) retention.setupLogRetentionScheduler();
+			if (createScheduler) retention.setupLogRetentionScheduler({ timezone: 'UTC' });
 			if (!expected && createScheduler) retention.stopLogRetentionScheduler();
 
 			expect(retention.isRetentionSchedulerConfigured()).toBe(expected);
