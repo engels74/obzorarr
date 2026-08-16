@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { and, between, eq, inArray, sql } from 'drizzle-orm';
 import { env } from '$env/dynamic/private';
+import { DEFAULT_TIMEZONE, normalizeTimezone, TIMEZONE_UNKNOWN_MESSAGE } from '$lib/cron/timezone';
 import { db } from '$lib/server/db/client';
 import { appSettings, cachedStats, playHistory, shareSettings } from '$lib/server/db/schema';
 import {
@@ -34,6 +35,15 @@ export const AppSettingsKey = {
 	ENABLED_YEARS: 'enabled_years',
 	ANONYMIZATION_MODE: 'anonymization_mode',
 	SYNC_CRON_EXPRESSION: 'sync_cron_expression',
+	/**
+	 * Operator intent for the sync scheduler (`running` / `paused` / `stopped`).
+	 * The croner instance only lives in process memory, so this row is what lets
+	 * `restoreSyncScheduler()` rebuild the schedule after a restart instead of
+	 * silently leaving the instance without automatic syncs.
+	 */
+	SYNC_SCHEDULER_STATE: 'sync_scheduler_state',
+	/** IANA zone every scheduler runs in. Shadowed by the `TZ` env var. */
+	SCHEDULER_TIMEZONE: 'scheduler_timezone',
 	WRAPPED_LOGO_MODE: 'wrapped_logo_mode',
 	SERVER_NAME: 'server_name',
 	SERVER_MACHINE_ID: 'server_machine_id',
@@ -184,6 +194,13 @@ export const LOG_SETTINGS_KEYS = [
  * `getAppSettingsUpdatedAt(...)` helper that the multi-key OCC paths use.
  */
 export const TRUST_PROXY_SETTINGS_KEYS = [AppSettingsKey.TRUST_PROXY] as const;
+
+/**
+ * Single-key OCC tuple for the System tab "Scheduler timezone" field. Kept out
+ * of `LOG_SETTINGS_KEYS` so saving the retention form and saving the timezone
+ * cannot false-409 each other, matching the split between the privacy groups.
+ */
+export const SCHEDULER_TIMEZONE_SETTINGS_KEYS = [AppSettingsKey.SCHEDULER_TIMEZONE] as const;
 
 /**
  * Single-key OCC tuple for the Privacy tab "Allow public Wrapped lookup" toggle.
@@ -1457,6 +1474,68 @@ export async function getTrustProxy(): Promise<boolean> {
 	return config.trustProxy.value === 'true';
 }
 
+export interface SchedulerTimezoneConfigWithSource {
+	timezone: ConfigValue<string>;
+}
+
+/**
+ * Env-over-DB resolution for the zone every scheduler runs in.
+ *
+ * `TZ` is the env authority because it is the container-wide timezone
+ * convention (Docker images set it, and the runtime already uses it for local
+ * time), so an operator who sets `TZ=Europe/Copenhagen` gets scheduled syncs in
+ * that zone without a second, app-specific variable.
+ *
+ * Both sides are canonicalized through `normalizeTimezone` before they can win:
+ * an unknown `TZ` degrades to "not set" instead of env-locking the admin field
+ * to a zone croner cannot honour (mirrors how `getTrustProxyConfigWithSource`
+ * normalizes its raw env value), and an unknown stored row falls back to the
+ * default rather than throwing inside a scheduler constructor.
+ */
+export async function getSchedulerTimezoneConfigWithSource(): Promise<SchedulerTimezoneConfigWithSource> {
+	const dbSettings = await getAllAppSettings();
+	const envValue = normalizeTimezone(env.TZ ?? '') ?? '';
+	const resolved = resolveConfigValue(
+		dbSettings,
+		AppSettingsKey.SCHEDULER_TIMEZONE,
+		envValue,
+		DEFAULT_TIMEZONE
+	);
+	const canonical = normalizeTimezone(resolved.value);
+	if (!canonical) {
+		return { timezone: { value: DEFAULT_TIMEZONE, source: 'default', isLocked: false } };
+	}
+	return { timezone: { ...resolved, value: canonical } };
+}
+
+export async function getSchedulerTimezone(): Promise<string> {
+	return (await getSchedulerTimezoneConfigWithSource()).timezone.value;
+}
+
+/**
+ * Persists the canonical form of `timezone` and returns it with the `updatedAt`
+ * it wrote, so the OCC caller derives the next `settingsVersion` from this
+ * mutation rather than a post-write `max(updatedAt)` re-read (that re-read can
+ * observe a concurrent writer and hand the client a version it never wrote).
+ */
+export async function setSchedulerTimezone(
+	timezone: string
+): Promise<{ timezone: string; updatedAt: Date }> {
+	const canonical = normalizeTimezone(timezone);
+	if (!canonical) {
+		throw new Error(TIMEZONE_UNKNOWN_MESSAGE);
+	}
+	const now = new Date();
+	await db
+		.insert(appSettings)
+		.values({ key: AppSettingsKey.SCHEDULER_TIMEZONE, value: canonical, updatedAt: now })
+		.onConflictDoUpdate({
+			target: appSettings.key,
+			set: { value: canonical, updatedAt: now }
+		});
+	return { timezone: canonical, updatedAt: now };
+}
+
 /**
  * Removes DB values shadowed by authoritative ENV settings and atomically
  * reconciles the durable Plex authority discriminator at startup. A real
@@ -1468,6 +1547,7 @@ export async function clearConflictingDbSettings(): Promise<string[]> {
 	const openaiEnv = getOpenAIEnvConfig();
 	const csrfEnvOrigin = env.ORIGIN ?? '';
 	const trustProxyEnv = (env.TRUST_PROXY ?? '').trim();
+	const schedulerTimezoneEnv = env.TZ ?? '';
 	const effectivePlexConfig = await getPlexConfig();
 	const effectivePlexFingerprint = getPlexConfigFingerprint(effectivePlexConfig);
 
@@ -1510,6 +1590,13 @@ export async function clearConflictingDbSettings(): Promise<string[]> {
 			dbKey: AppSettingsKey.TRUST_PROXY,
 			label: 'TRUST_PROXY',
 			authoritative: isAuthoritativeEnvValue(trustProxyEnv)
+		},
+		{
+			dbKey: AppSettingsKey.SCHEDULER_TIMEZONE,
+			label: 'TZ',
+			// Only a zone the runtime knows shadows the stored row — an unparseable
+			// `TZ` must not delete a working timezone the admin picked in the UI.
+			authoritative: normalizeTimezone(schedulerTimezoneEnv) !== null
 		}
 	];
 
