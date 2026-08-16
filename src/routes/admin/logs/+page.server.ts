@@ -1,5 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import { z } from 'zod';
+import { getSchedulerTimezone } from '$lib/server/admin/settings.service';
 import { requireAdminActions } from '$lib/server/auth/guards';
 import {
 	deleteAllLogs,
@@ -61,8 +62,10 @@ function normalizeSearchParam(search: string | null): string | undefined {
 }
 
 export const load: PageServerLoad = async ({ url }) => {
+	// Startup configures this job; the guard only covers an instance whose
+	// scheduler start failed, and it must use the same configured timezone.
 	if (!isRetentionSchedulerConfigured()) {
-		setupLogRetentionScheduler();
+		setupLogRetentionScheduler({ timezone: await getSchedulerTimezone() });
 	}
 
 	const levelsParam = url.searchParams.get('levels');

@@ -10,8 +10,7 @@ import {
 import { isSyncRunning, startSync } from './service';
 import type { SchedulerOptions, SchedulerStatus, SyncResult } from './types';
 
-const DEFAULT_CRON_EXPRESSION = '0 0 * * *';
-const DEFAULT_TIMEZONE = 'UTC';
+export const DEFAULT_CRON_EXPRESSION = '0 0 * * *';
 const JOB_NAME = 'plex-sync';
 const PROGRESS_LOG_INTERVAL = 10;
 
@@ -23,10 +22,10 @@ let schedulerInstance: Cron | null = null;
 // versus "Inactive" deterministically.
 let pausedByOperator = false;
 
-export function setupSyncScheduler(options: SchedulerOptions = {}): Cron {
+export function setupSyncScheduler(options: SchedulerOptions): Cron {
 	const {
 		cronExpression = DEFAULT_CRON_EXPRESSION,
-		timezone = DEFAULT_TIMEZONE,
+		timezone,
 		protect = true,
 		startImmediately = true
 	} = options;
@@ -229,7 +228,7 @@ export async function startBackgroundSync(
 	return { started: true };
 }
 
-export function updateSchedulerCron(cronExpression: string, timezone?: string): Cron | null {
+export function updateSchedulerCron(cronExpression: string, timezone: string): Cron | null {
 	// Preserve the prior run-state when only the cron changes (ISSUE-012):
 	// - INACTIVE (no instance): stay inactive — do NOT create or start an
 	//   instance. The new expression is persisted to app_settings
@@ -247,10 +246,22 @@ export function updateSchedulerCron(cronExpression: string, timezone?: string): 
 	const wasActive = prior.isRunning && !prior.isPaused;
 	return setupSyncScheduler({
 		cronExpression,
-		timezone: timezone ?? DEFAULT_TIMEZONE,
+		timezone,
 		protect: true,
 		startImmediately: wasActive
 	});
+}
+
+/**
+ * Re-applies `timezone` to the live scheduler without changing its expression or
+ * run state. Returns `null` when no scheduler is configured — the new zone is
+ * persisted by the caller and picked up by the next setup/restore.
+ */
+export function updateSchedulerTimezone(timezone: string): Cron | null {
+	if (schedulerInstance === null) {
+		return null;
+	}
+	return updateSchedulerCron(schedulerInstance.getPattern() ?? DEFAULT_CRON_EXPRESSION, timezone);
 }
 
 export function isSchedulerConfigured(): boolean {

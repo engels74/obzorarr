@@ -453,13 +453,13 @@ describe('logging retention scheduler', () => {
 	});
 
 	it.each([
-		['defaults', undefined, undefined, '0 3 * * *', 'UTC'],
-		['custom cron', '0 6 * * *', undefined, '0 6 * * *', 'UTC'],
+		['default cron', undefined, 'UTC', '0 3 * * *', 'UTC'],
+		['custom cron', '0 6 * * *', 'UTC', '0 6 * * *', 'UTC'],
 		['custom timezone', '0 3 * * *', 'America/New_York', '0 3 * * *', 'America/New_York']
 	] as const)(
 		'creates scheduler with %s',
 		(_name, cronExpression, timezone, expectedExpression, expectedTimezone) => {
-			retention.setupLogRetentionScheduler(cronExpression, timezone);
+			retention.setupLogRetentionScheduler({ cronExpression, timezone });
 
 			expect(mockCronInstances).toHaveLength(1);
 			expect(mockCronInstances[0]).toMatchObject({
@@ -471,9 +471,9 @@ describe('logging retention scheduler', () => {
 	);
 
 	it('replaces existing schedulers and logs configuration', () => {
-		retention.setupLogRetentionScheduler();
+		retention.setupLogRetentionScheduler({ timezone: 'UTC' });
 		const firstScheduler = mockCronInstances[0];
-		retention.setupLogRetentionScheduler('0 6 * * *');
+		retention.setupLogRetentionScheduler({ cronExpression: '0 6 * * *', timezone: 'UTC' });
 
 		expect(mockCronInstances).toHaveLength(2);
 		expect(firstScheduler?._isStopped()).toBe(true);
@@ -485,7 +485,7 @@ describe('logging retention scheduler', () => {
 	});
 
 	it('callback logs cleanup success and failure', async () => {
-		retention.setupLogRetentionScheduler();
+		retention.setupLogRetentionScheduler({ timezone: 'UTC' });
 		await mockCronInstances[0]?._triggerCallback();
 		expect(cleanupSpy).toHaveBeenCalled();
 		expect(
@@ -506,7 +506,7 @@ describe('logging retention scheduler', () => {
 	});
 
 	it('catch handler and manual trigger log the expected scheduler events', async () => {
-		retention.setupLogRetentionScheduler();
+		retention.setupLogRetentionScheduler({ timezone: 'UTC' });
 		mockCronInstances[0]?._triggerCatchHandler(new Error('Cron error'));
 		expect(
 			errorSpy.mock.calls.some((call: LoggerSpyCall) => call[0].includes('Log retention job'))
@@ -521,7 +521,7 @@ describe('logging retention scheduler', () => {
 		['running scheduler', true, true],
 		['no scheduler', false, false]
 	] as const)('stops idempotently with %s', (_name, configured, shouldLog) => {
-		if (configured) retention.setupLogRetentionScheduler();
+		if (configured) retention.setupLogRetentionScheduler({ timezone: 'UTC' });
 		const scheduler = mockCronInstances[0];
 		infoSpy.mockClear();
 
@@ -542,7 +542,7 @@ describe('logging retention scheduler', () => {
 			previousRun: null
 		});
 
-		retention.setupLogRetentionScheduler();
+		retention.setupLogRetentionScheduler({ timezone: 'UTC' });
 		const cronInstance = mockCronInstances[0];
 		const previousDate = new Date(Date.now() - DAY_MS);
 		cronInstance?._setPreviousRun(previousDate);
@@ -564,7 +564,7 @@ describe('logging retention scheduler', () => {
 	] as const)(
 		'isRetentionSchedulerConfigured returns %s state',
 		(_name, createScheduler, expected) => {
-			if (createScheduler) retention.setupLogRetentionScheduler();
+			if (createScheduler) retention.setupLogRetentionScheduler({ timezone: 'UTC' });
 			if (!expected && createScheduler) retention.stopLogRetentionScheduler();
 
 			expect(retention.isRetentionSchedulerConfigured()).toBe(expected);

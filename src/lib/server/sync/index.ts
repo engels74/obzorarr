@@ -25,6 +25,7 @@ export {
 	updateSyncProgress
 } from './progress';
 export {
+	DEFAULT_CRON_EXPRESSION,
 	getSchedulerStatus,
 	isSchedulerConfigured,
 	pauseSyncScheduler,
@@ -33,8 +34,17 @@ export {
 	startBackgroundSync,
 	stopSyncScheduler,
 	triggerImmediateSync,
-	updateSchedulerCron
+	updateSchedulerCron,
+	updateSchedulerTimezone
 } from './scheduler';
+export {
+	applySyncSchedulerTimezone,
+	persistSyncSchedulerState,
+	readSyncSchedulerState,
+	restoreSyncScheduler,
+	SyncSchedulerState,
+	type SyncSchedulerStateType
+} from './scheduler-state';
 export {
 	getLastSuccessfulSync,
 	getPlayHistoryCount,

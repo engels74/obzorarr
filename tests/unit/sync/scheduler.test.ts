@@ -14,14 +14,14 @@ describe('getSchedulerStatus pause/resume', () => {
 	});
 
 	it('returns isPaused=false and isRunning=true after setup with startImmediately', () => {
-		setupSyncScheduler({ cronExpression: '0 0 * * *', startImmediately: true });
+		setupSyncScheduler({ cronExpression: '0 0 * * *', timezone: 'UTC', startImmediately: true });
 		const status = getSchedulerStatus();
 		expect(status.isRunning).toBe(true);
 		expect(status.isPaused).toBe(false);
 	});
 
 	it('returns isPaused=true after pauseSyncScheduler — ISSUE-005 regression guard', () => {
-		setupSyncScheduler({ cronExpression: '0 0 * * *', startImmediately: true });
+		setupSyncScheduler({ cronExpression: '0 0 * * *', timezone: 'UTC', startImmediately: true });
 		pauseSyncScheduler();
 		const status = getSchedulerStatus();
 		expect(status.isPaused).toBe(true);
@@ -30,7 +30,7 @@ describe('getSchedulerStatus pause/resume', () => {
 	});
 
 	it('returns isPaused=false and isRunning=true after resumeSyncScheduler', () => {
-		setupSyncScheduler({ cronExpression: '0 0 * * *', startImmediately: true });
+		setupSyncScheduler({ cronExpression: '0 0 * * *', timezone: 'UTC', startImmediately: true });
 		pauseSyncScheduler();
 		resumeSyncScheduler();
 		const status = getSchedulerStatus();
@@ -39,14 +39,14 @@ describe('getSchedulerStatus pause/resume', () => {
 	});
 
 	it('clears the paused flag on stop so a fresh setup never inherits stale state', () => {
-		setupSyncScheduler({ cronExpression: '0 0 * * *', startImmediately: true });
+		setupSyncScheduler({ cronExpression: '0 0 * * *', timezone: 'UTC', startImmediately: true });
 		pauseSyncScheduler();
 		stopSyncScheduler();
 		const stoppedStatus = getSchedulerStatus();
 		expect(stoppedStatus.isRunning).toBe(false);
 		expect(stoppedStatus.isPaused).toBe(false);
 
-		setupSyncScheduler({ cronExpression: '0 0 * * *', startImmediately: true });
+		setupSyncScheduler({ cronExpression: '0 0 * * *', timezone: 'UTC', startImmediately: true });
 		const restartedStatus = getSchedulerStatus();
 		expect(restartedStatus.isRunning).toBe(true);
 		expect(restartedStatus.isPaused).toBe(false);
@@ -65,7 +65,11 @@ describe('croner instance re-arms on resume — ISSUE-001 regression guard', () 
 	// _states.paused, so a resume that stopped/killed the instance (the reported
 	// INACTIVE symptom) would leave it false. nextRun() must be a future fire.
 	it('underlying Cron reports isRunning()===true and a future nextRun after setup->pause->resume', () => {
-		const cron = setupSyncScheduler({ cronExpression: '0 0 * * *', startImmediately: true });
+		const cron = setupSyncScheduler({
+			cronExpression: '0 0 * * *',
+			timezone: 'UTC',
+			startImmediately: true
+		});
 		expect(cron.isRunning()).toBe(true);
 
 		pauseSyncScheduler();
@@ -91,7 +95,7 @@ describe('updateSchedulerCron preserves run-state — ISSUE-012 regression guard
 		expect(before.isPaused).toBe(false);
 		expect(before.cronExpression).toBeNull();
 
-		updateSchedulerCron('0 6 * * *');
+		updateSchedulerCron('0 6 * * *', 'UTC');
 
 		const after = getSchedulerStatus();
 		expect(after.isRunning).toBe(false);
@@ -99,11 +103,11 @@ describe('updateSchedulerCron preserves run-state — ISSUE-012 regression guard
 	});
 
 	it('keeps a PAUSED scheduler paused after a cron update', () => {
-		setupSyncScheduler({ cronExpression: '0 0 * * *', startImmediately: true });
+		setupSyncScheduler({ cronExpression: '0 0 * * *', timezone: 'UTC', startImmediately: true });
 		pauseSyncScheduler();
 		expect(getSchedulerStatus().isPaused).toBe(true);
 
-		updateSchedulerCron('0 3 * * *');
+		updateSchedulerCron('0 3 * * *', 'UTC');
 
 		const after = getSchedulerStatus();
 		expect(after.isPaused).toBe(true);
@@ -112,10 +116,10 @@ describe('updateSchedulerCron preserves run-state — ISSUE-012 regression guard
 	});
 
 	it('keeps an ACTIVE scheduler active after a cron update', () => {
-		setupSyncScheduler({ cronExpression: '0 0 * * *', startImmediately: true });
+		setupSyncScheduler({ cronExpression: '0 0 * * *', timezone: 'UTC', startImmediately: true });
 		expect(getSchedulerStatus().isRunning).toBe(true);
 
-		updateSchedulerCron('0 12 * * *');
+		updateSchedulerCron('0 12 * * *', 'UTC');
 
 		const after = getSchedulerStatus();
 		expect(after.isRunning).toBe(true);

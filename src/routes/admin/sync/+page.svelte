@@ -561,7 +561,10 @@ async function goToPage(page: number) {
 								<span class="time-label">Next sync</span>
 								<span class="time-value"
 										>{formatDate(data.schedulerStatus.nextRun)}{#if data.schedulerStatus.cronExpression}
-											<span class="time-cron">(cron {data.schedulerStatus.cronExpression} UTC)</span>
+											<span class="time-cron"
+												>(cron {data.schedulerStatus.cronExpression}
+												{data.schedulerStatus.timezone})</span
+											>
 										{/if}</span
 									>
 							</div>
@@ -683,6 +686,15 @@ async function goToPage(page: number) {
 							Save disabled: {cronError}
 						</span>
 					{/if}
+
+					<p class="cron-timezone">
+						Times run in <strong>{data.schedulerStatus.timezone}</strong>
+						{#if data.schedulerStatus.timezoneSource === 'env'}
+							(set by the <code>TZ</code> environment variable).
+						{:else}
+							(<a href="/admin/settings/system">change in System settings</a>).
+						{/if}
+					</p>
 
 					<div class="cron-presets">
 						{#each cronPresets as preset}
@@ -1591,6 +1603,17 @@ async function goToPage(page: number) {
 		.cron-error {
 			font-size: 0.75rem;
 			color: oklch(var(--destructive));
+		}
+
+		.cron-timezone {
+			margin: 0;
+			font-size: 0.75rem;
+			color: oklch(var(--muted-foreground));
+		}
+
+		.cron-timezone a {
+			color: oklch(var(--primary));
+			text-decoration: underline;
 		}
 
 		/* SubmitButton child-renders the real <button>, so the cron commit

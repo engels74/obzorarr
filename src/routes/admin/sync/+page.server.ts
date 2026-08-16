@@ -1,7 +1,12 @@
 import { fail } from '@sveltejs/kit';
 import { z } from 'zod';
 import { CRON_REQUIRED_MESSAGE, validateCronExpression } from '$lib/cron/validation';
-import { AppSettingsKey, getAppSetting, setAppSetting } from '$lib/server/admin/settings.service';
+import {
+	AppSettingsKey,
+	getAppSetting,
+	getSchedulerTimezoneConfigWithSource,
+	setAppSetting
+} from '$lib/server/admin/settings.service';
 import { requireAdminActions } from '$lib/server/auth/guards';
 import { cancelSync } from '$lib/server/sync/progress';
 import {
@@ -14,6 +19,7 @@ import {
 	stopSyncScheduler,
 	updateSchedulerCron
 } from '$lib/server/sync/scheduler';
+import { persistSyncSchedulerState, SyncSchedulerState } from '$lib/server/sync/scheduler-state';
 import {
 	getLastSuccessfulSync,
 	getPlayHistoryCount,
@@ -49,15 +55,23 @@ export const load: PageServerLoad = async ({ url }) => {
 	const pageParam = url.searchParams.get('page');
 	const page = Math.max(1, parseInt(pageParam ?? '1', 10) || 1);
 
-	const [isRunning, lastSync, paginatedHistory, schedulerStatus, historyCount, storedCron] =
-		await Promise.all([
-			isSyncRunning(),
-			getLastSuccessfulSync(),
-			getSyncHistory({ page, pageSize: HISTORY_PAGE_SIZE }),
-			getSchedulerStatus(),
-			getPlayHistoryCount(),
-			getAppSetting(AppSettingsKey.SYNC_CRON_EXPRESSION)
-		]);
+	const [
+		isRunning,
+		lastSync,
+		paginatedHistory,
+		schedulerStatus,
+		historyCount,
+		storedCron,
+		timezoneConfig
+	] = await Promise.all([
+		isSyncRunning(),
+		getLastSuccessfulSync(),
+		getSyncHistory({ page, pageSize: HISTORY_PAGE_SIZE }),
+		getSchedulerStatus(),
+		getPlayHistoryCount(),
+		getAppSetting(AppSettingsKey.SYNC_CRON_EXPRESSION),
+		getSchedulerTimezoneConfigWithSource()
+	]);
 
 	const currentYear = new Date().getFullYear();
 	const availableYears = Array.from({ length: currentYear - 2000 + 1 }, (_, i) => currentYear - i);
@@ -93,7 +107,9 @@ export const load: PageServerLoad = async ({ url }) => {
 			isPaused: schedulerStatus.isPaused,
 			nextRun: schedulerStatus.nextRun?.toISOString() ?? null,
 			previousRun: schedulerStatus.previousRun?.toISOString() ?? null,
-			cronExpression: schedulerStatus.cronExpression ?? storedCron
+			cronExpression: schedulerStatus.cronExpression ?? storedCron,
+			timezone: timezoneConfig.timezone.value,
+			timezoneSource: timezoneConfig.timezone.source
 		},
 		historyCount,
 		availableYears
@@ -171,7 +187,8 @@ export const actions: Actions = requireAdminActions({
 		}
 
 		try {
-			updateSchedulerCron(parsed.data.cronExpression);
+			const { timezone } = await getSchedulerTimezoneConfigWithSource();
+			updateSchedulerCron(parsed.data.cronExpression, timezone.value);
 			await setAppSetting(AppSettingsKey.SYNC_CRON_EXPRESSION, parsed.data.cronExpression);
 			const isActive = isSchedulerConfigured();
 			const message = isActive
@@ -187,6 +204,7 @@ export const actions: Actions = requireAdminActions({
 	pauseScheduler: async () => {
 		try {
 			pauseSyncScheduler();
+			await persistSyncSchedulerState(SyncSchedulerState.PAUSED);
 			return { success: true, message: 'Scheduler paused' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to pause scheduler';
@@ -197,6 +215,7 @@ export const actions: Actions = requireAdminActions({
 	resumeScheduler: async () => {
 		try {
 			resumeSyncScheduler();
+			await persistSyncSchedulerState(SyncSchedulerState.RUNNING);
 			return { success: true, message: 'Scheduler resumed' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to resume scheduler';
@@ -207,6 +226,7 @@ export const actions: Actions = requireAdminActions({
 	stopScheduler: async () => {
 		try {
 			stopSyncScheduler();
+			await persistSyncSchedulerState(SyncSchedulerState.STOPPED);
 			return { success: true, message: 'Scheduler stopped' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to stop scheduler';
@@ -231,11 +251,14 @@ export const actions: Actions = requireAdminActions({
 		}
 
 		try {
+			const { timezone } = await getSchedulerTimezoneConfigWithSource();
 			setupSyncScheduler({
 				cronExpression: parsed.data.cronExpression,
+				timezone: timezone.value,
 				startImmediately: true
 			});
 			await setAppSetting(AppSettingsKey.SYNC_CRON_EXPRESSION, parsed.data.cronExpression);
+			await persistSyncSchedulerState(SyncSchedulerState.RUNNING);
 			return { success: true, message: 'Scheduler initialized' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to initialize scheduler';

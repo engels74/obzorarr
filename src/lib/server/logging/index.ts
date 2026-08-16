@@ -2,9 +2,11 @@ export { logger } from './logger';
 export {
 	getRetentionSchedulerStatus,
 	isRetentionSchedulerConfigured,
+	type LogRetentionSchedulerOptions,
 	setupLogRetentionScheduler,
 	stopLogRetentionScheduler,
-	triggerRetentionCleanup
+	triggerRetentionCleanup,
+	updateLogRetentionSchedulerTimezone
 } from './retention';
 export {
 	deleteAllLogs,
