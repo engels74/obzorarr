@@ -1,7 +1,11 @@
 <script lang="ts">
 import BugIcon from '@lucide/svelte/icons/bug';
 import { superForm } from 'sveltekit-superforms';
-import { SettingsActionBar, SettingsToggleRow } from '$lib/components/settings/index.js';
+import {
+	SettingsActionBar,
+	SettingsStatusPill,
+	SettingsToggleRow
+} from '$lib/components/settings/index.js';
 import { Button } from '$lib/components/ui/button/index.js';
 import {
 	Card,
@@ -53,6 +57,27 @@ const form = superForm(data.form, {
 
 const { form: formData, enhance, submitting } = form;
 
+// svelte-ignore state_referenced_locally
+const timezoneForm = superForm(data.timezoneForm, {
+	resetForm: false,
+	onUpdate: surfaceOccConflict,
+	onUpdated({ form: updated }) {
+		if (updated.valid) {
+			handleFormToast({ success: true, message: updated.message ?? 'Settings saved' });
+			return;
+		}
+		handleFormToast({ error: updated.errors.timezone?.[0] ?? 'Validation failed' });
+	}
+});
+
+const {
+	form: timezoneData,
+	enhance: timezoneEnhance,
+	submitting: timezoneSubmitting
+} = timezoneForm;
+
+const timezoneLocked = $derived(data.schedulerTimezone.isLocked);
+
 // Block submit when the visible inputs are out of the server-validated range.
 // The HTML5 min/max attributes only clamp some browsers' UI, so a user can
 // still paste -1 / 999999 and trigger a silent no-op save without this check.
@@ -94,6 +119,75 @@ function formatUptime(seconds: number): string {
 </svelte:head>
 
 <div class="space-y-6 p-6 max-w-4xl">
+	<Card>
+		<CardHeader>
+			<div class="flex items-center gap-2">
+				<CardTitle>Scheduler timezone</CardTitle>
+				{#if timezoneLocked}
+					<SettingsStatusPill tone="warning">ENV</SettingsStatusPill>
+				{/if}
+			</div>
+			<CardDescription>
+				Zone the automatic sync schedule and the log retention cleanup are interpreted in. Source:
+				<strong>{data.schedulerTimezone.source}</strong>.
+			</CardDescription>
+		</CardHeader>
+		<CardContent>
+			{#if timezoneLocked}
+				<p class="text-sm text-muted-foreground">
+					The <code>TZ</code> environment variable sets the timezone to
+					<strong>{data.schedulerTimezone.value}</strong>, so you cannot change it here.
+				</p>
+			{:else}
+				<form
+					method="POST"
+					action="?/updateSchedulerTimezone"
+					use:timezoneEnhance
+					class="space-y-4"
+				>
+					<Form.Field form={timezoneForm} name="timezone">
+						<Form.Control>
+							{#snippet children({ props })}
+								<Form.Label>Timezone</Form.Label>
+								<Input
+									type="text"
+									list="scheduler-timezones"
+									autocomplete="off"
+									spellcheck="false"
+									placeholder="Europe/Copenhagen"
+									{...props}
+									bind:value={$timezoneData.timezone}
+								/>
+								<datalist id="scheduler-timezones">
+									{#each data.schedulerTimezone.supportedZones as zone (zone)}
+										<option value={zone}></option>
+									{/each}
+								</datalist>
+							{/snippet}
+						</Form.Control>
+						<Form.Description>
+							IANA name, for example <code>Europe/Copenhagen</code>. Setting <code>TZ</code> in the
+							container environment overrides this field.
+						</Form.Description>
+						<Form.FieldErrors />
+					</Form.Field>
+
+					<input
+						type="hidden"
+						name="settingsVersion"
+						bind:value={$timezoneData.settingsVersion}
+					/>
+
+					<SettingsActionBar>
+						<Button type="submit" class="tap-target" disabled={$timezoneSubmitting}>
+							{$timezoneSubmitting ? 'Saving…' : 'Save timezone'}
+						</Button>
+					</SettingsActionBar>
+				</form>
+			{/if}
+		</CardContent>
+	</Card>
+
 	<Card>
 		<CardHeader>
 			<CardTitle>Logging</CardTitle>
