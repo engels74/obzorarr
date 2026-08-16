@@ -201,10 +201,18 @@ export const actions: Actions = requireAdminActions({
 		}
 	},
 
+	// Persist the operator's intent BEFORE touching the live croner instance.
+	// The in-memory scheduler is process state that a restart rebuilds from
+	// `SYNC_SCHEDULER_STATE`, so the row is the authority: writing it first means
+	// a failed write leaves both sides on the previous state and reports the
+	// error, instead of returning a 500 for a scheduler that has already flipped.
+	// It also orders overlapping requests consistently — each request applies its
+	// change only after its own commit, so the last commit is the last live
+	// mutation and a restart cannot restore the opposite state.
 	pauseScheduler: async () => {
 		try {
-			pauseSyncScheduler();
 			await persistSyncSchedulerState(SyncSchedulerState.PAUSED);
+			pauseSyncScheduler();
 			return { success: true, message: 'Scheduler paused' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to pause scheduler';
@@ -214,8 +222,8 @@ export const actions: Actions = requireAdminActions({
 
 	resumeScheduler: async () => {
 		try {
-			resumeSyncScheduler();
 			await persistSyncSchedulerState(SyncSchedulerState.RUNNING);
+			resumeSyncScheduler();
 			return { success: true, message: 'Scheduler resumed' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to resume scheduler';
@@ -225,8 +233,8 @@ export const actions: Actions = requireAdminActions({
 
 	stopScheduler: async () => {
 		try {
-			stopSyncScheduler();
 			await persistSyncSchedulerState(SyncSchedulerState.STOPPED);
+			stopSyncScheduler();
 			return { success: true, message: 'Scheduler stopped' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to stop scheduler';
@@ -252,13 +260,16 @@ export const actions: Actions = requireAdminActions({
 
 		try {
 			const { timezone } = await getSchedulerTimezoneConfigWithSource();
+			// Same persist-then-apply ordering as pause/resume/stop above. The
+			// expression is already schema-validated, so committing the durable
+			// intent first cannot persist a schedule the restore path would reject.
+			await setAppSetting(AppSettingsKey.SYNC_CRON_EXPRESSION, parsed.data.cronExpression);
+			await persistSyncSchedulerState(SyncSchedulerState.RUNNING);
 			setupSyncScheduler({
 				cronExpression: parsed.data.cronExpression,
 				timezone: timezone.value,
 				startImmediately: true
 			});
-			await setAppSetting(AppSettingsKey.SYNC_CRON_EXPRESSION, parsed.data.cronExpression);
-			await persistSyncSchedulerState(SyncSchedulerState.RUNNING);
 			return { success: true, message: 'Scheduler initialized' };
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to initialize scheduler';

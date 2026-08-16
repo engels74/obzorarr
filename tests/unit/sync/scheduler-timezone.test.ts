@@ -1,5 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import { env } from '$env/dynamic/private';
+// Namespace import so the persist-failure test can spy on the live `setAppSetting`
+// binding without `mock.module` (which is process-global and leaks across files).
+import * as settingsService from '$lib/server/admin/settings.service';
 import {
 	AppSettingsKey,
 	clearConflictingDbSettings,
@@ -297,6 +300,33 @@ describe('scheduler actions persist operator intent', () => {
 
 		await runAction(actions.stopScheduler as StopSchedulerAction, formRequest('stopScheduler'));
 		expect(await readSyncSchedulerState()).toBe(SyncSchedulerState.STOPPED);
+	});
+
+	it('leaves the live scheduler untouched when the durable write fails', async () => {
+		await runAction(
+			actions.initScheduler as InitSchedulerAction,
+			formRequest('initScheduler', { cronExpression: '0 0 * * *' })
+		);
+		expect(getSchedulerStatus().isPaused).toBe(false);
+
+		// Persisting the operator's intent runs BEFORE the live croner instance is
+		// touched, so a failed write must report the error with both sides still on
+		// the previous state — never a 500 for a scheduler that already flipped.
+		const spy = spyOn(settingsService, 'setAppSetting').mockRejectedValueOnce(
+			new Error('disk full')
+		);
+		try {
+			const result = await runAction(
+				actions.pauseScheduler as PauseSchedulerAction,
+				formRequest('pauseScheduler')
+			);
+			expect(result).toMatchObject({ status: 500 });
+		} finally {
+			spy.mockRestore();
+		}
+
+		expect(getSchedulerStatus().isPaused).toBe(false);
+		expect(await readSyncSchedulerState()).toBe(SyncSchedulerState.RUNNING);
 	});
 
 	it('does not resurrect a stopped scheduler on the next restart', async () => {
