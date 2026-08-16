@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
+import { afterAll, afterEach, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
+import { Cron as ImportedCron } from 'croner';
 import { db } from '$lib/server/db/client';
 import { appSettings, logs } from '$lib/server/db/schema';
 import { Logger, logger as realLogger } from '$lib/server/logging/logger';
@@ -63,6 +64,11 @@ async function logRows() {
 function messagesFrom(rows: Awaited<ReturnType<typeof logRows>>) {
 	return rows.map((row) => row.message);
 }
+
+// Snapshot the real class BY VALUE before `mock.module` runs: that call mutates
+// the existing `croner` namespace in place, so holding the namespace object (or
+// re-reading `.Cron` later) would hand back the double instead of the original.
+const RealCron = ImportedCron;
 
 let mockCronInstances: MockCron[] = [];
 
@@ -144,13 +150,19 @@ class MockCron {
 	}
 }
 
-// `mock.module` is process-global and is NOT undone when this file finishes, so
-// every croner method the app calls must exist here: any later test file that
-// constructs a scheduler gets this double, and a missing method surfaces as an
-// order-dependent `TypeError` in whichever file happens to run after this one
-// (`getPattern` did exactly that to the sync-scheduler timezone tests in CI,
-// where this file sorts ahead of them while it sorts after them locally).
+// `mock.module` is process-global and is NOT undone when a file finishes, so
+// this double would otherwise be handed to every test file that runs after this
+// one. That made the suite order-dependent: files asserting real cron semantics
+// (next-run instants, timezone re-pointing) passed locally, where they sort
+// ahead of this file, and failed on CI, where they sort after it. `afterAll`
+// puts the real module back so those files always get genuine croner.
+//
+// MockCron still implements the app's full croner surface (`getPattern`,
+// `pause`, `resume`, ...) so nothing inside THIS file hits a missing method.
 mock.module('croner', () => ({ Cron: MockCron }));
+afterAll(() => {
+	mock.module('croner', () => ({ Cron: RealCron }));
+});
 const retention = await import('$lib/server/logging/retention');
 
 describe('logging service and logger', () => {
