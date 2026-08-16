@@ -330,8 +330,28 @@ tab is recoverable.
 Your watch statistics come back: they re-sync from Plex. Everything else does not. That covers all
 settings, every per-user share setting, and **every share link you have already handed out stops
 working**, along with any manual curation and the log history. Anything configured through
-environment variables (Plex, OpenAI, `ORIGIN`, `TRUST_PROXY`) is not in the database, so it survives
-and the new setup arrives partly pre-filled. Obzorarr refuses to reset while a sync is running.
+environment variables (Plex, OpenAI, `ORIGIN`, `TRUST_PROXY`, `TZ`) is not in the database, so it
+survives and the new setup arrives partly pre-filled. Obzorarr refuses to reset while a sync is
+running.
+
+## Scheduled Syncs and Time Zones
+
+**Admin → Sync** holds the automatic sync schedule as a cron expression. The schedule survives
+restarts: Obzorarr stores the expression and whether you left the scheduler running, paused, or
+stopped, and rebuilds the job on the next boot.
+
+Cron expressions are interpreted in the configured timezone, which also drives the nightly log
+retention cleanup. Obzorarr resolves it in this order:
+
+1. the `TZ` environment variable, when it names a zone the runtime knows (`TZ=Europe/Copenhagen`);
+2. the timezone saved under **Admin → Settings → System**;
+3. `UTC`.
+
+As with every other environment-backed setting, `TZ` wins: the field renders read-only with an `ENV`
+badge, and a database value it shadows is dropped at startup. A `TZ` the runtime cannot resolve is
+ignored rather than applied, so a typo leaves the admin field editable instead of scheduling syncs
+in an unknown zone. Fixed offsets such as `+02:00` are rejected for the same reason a DST-aware zone
+is wanted here: `0 0 * * *` should mean local midnight all year.
 
 ## Running Behind a Reverse Proxy
 
