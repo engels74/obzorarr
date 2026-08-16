@@ -400,6 +400,65 @@ async function writePublicLandingLookupRowInTx(
 }
 
 /**
+ * Synchronous sibling of {@link occGateInTx}, with byte-for-byte identical
+ * conflict semantics.
+ *
+ * drizzle's bun-sqlite driver invokes the `db.transaction` callback
+ * synchronously inside bun:sqlite's `BEGIN`/`COMMIT` wrapper. An `async`
+ * callback therefore returns a promise at its first `await` and the transaction
+ * COMMITS right there, leaving the rest of the callback — the gate's verdict and
+ * the row write — running outside any transaction. Two interleaved requests can
+ * then both read the same pre-write version and both write, which is exactly the
+ * lost update OCC exists to prevent.
+ *
+ * Keeping the gate and the write in one synchronous callback (`.all()` /
+ * `.run()`, never `await`) is what makes check-then-write indivisible: JS is
+ * single-threaded, so nothing can interleave between BEGIN and COMMIT.
+ * `clearConflictingDbSettings` uses the same synchronous-callback shape.
+ */
+function occGateInTxSync(
+	tx: SettingsTx,
+	keys: readonly string[],
+	submittedVersion: string
+): OccWriteResult {
+	const rows = tx
+		.select({ updatedAt: appSettings.updatedAt })
+		.from(appSettings)
+		.where(inArray(appSettings.key, keys as unknown as string[]))
+		.all();
+
+	const submittedMs = submittedVersion ? Date.parse(submittedVersion) : Number.NaN;
+	if (Number.isNaN(submittedMs)) {
+		return { status: 'conflict' };
+	}
+	let maxMs = 0;
+	for (const row of rows) {
+		const t = row.updatedAt.getTime();
+		if (t > maxMs) maxMs = t;
+	}
+	if (rows.length > 0 && submittedMs < maxMs) {
+		return { status: 'conflict' };
+	}
+
+	return { status: 'ok', version: nextOccVersionDate(maxMs) };
+}
+
+/** The single `SCHEDULER_TIMEZONE_SETTINGS_KEYS` row, already canonicalized. */
+function writeSchedulerTimezoneRowInTxSync(
+	tx: SettingsTx,
+	canonicalTimezone: string,
+	now: Date
+): void {
+	tx.insert(appSettings)
+		.values({ key: AppSettingsKey.SCHEDULER_TIMEZONE, value: canonicalTimezone, updatedAt: now })
+		.onConflictDoUpdate({
+			target: appSettings.key,
+			set: { value: canonicalTimezone, updatedAt: now }
+		})
+		.run();
+}
+
+/**
  * Atomically validates that the "Server-wide Wrapped" settings (anonymization
  * mode + server-wide share mode) have not changed since `submittedVersion`
  * and, if so, writes both values in a single SQLite transaction. Returns
@@ -1513,27 +1572,53 @@ export async function getSchedulerTimezone(): Promise<string> {
 }
 
 /**
- * Persists the canonical form of `timezone` and returns it with the `updatedAt`
- * it wrote, so the OCC caller derives the next `settingsVersion` from this
- * mutation rather than a post-write `max(updatedAt)` re-read (that re-read can
- * observe a concurrent writer and hand the client a version it never wrote).
+ * {@link setSchedulerTimezoneAtomic} result. Extends {@link OccWriteResult} with
+ * the canonical zone the transaction stored, so the caller can echo the
+ * normalized identifier (`europe/copenhagen` -> `Europe/Copenhagen`) without a
+ * post-write re-read.
  */
-export async function setSchedulerTimezone(
-	timezone: string
-): Promise<{ timezone: string; updatedAt: Date }> {
-	const canonical = normalizeTimezone(timezone);
+export type SchedulerTimezoneWriteResult =
+	| { status: 'ok'; version: Date; timezone: string }
+	| { status: 'conflict' };
+
+/**
+ * Atomically validates that the scheduler timezone has not changed since
+ * `submittedVersion` and, if so, writes its canonical form in a single SQLite
+ * transaction. Returns `'conflict'` when the submitted version is stale.
+ *
+ * The `inlineOccCheck` in the action is only a pre-write guard: two admins
+ * submitting different zones against the same `settingsVersion` can both clear
+ * it before either write runs. Re-running the check inside this transaction is
+ * what actually stops the later write from silently clobbering the earlier one.
+ * `nextOccVersionDate` (via {@link occGateInTxSync}) additionally guarantees a
+ * strictly advancing `updatedAt`, so two saves landing in the same wall-clock
+ * millisecond cannot mint identical versions that let a stale tab slip past the
+ * strict `<` comparison.
+ *
+ * The transaction callback is deliberately SYNCHRONOUS — see
+ * {@link occGateInTxSync} for why an `async` callback would commit at its first
+ * `await` and reopen the very window this closes.
+ *
+ * The zone is normalized before the transaction opens so an unknown identifier
+ * fails without holding a write transaction. `validateTimezone` in the route
+ * schema already rejects those with a 400; this throw is defense in depth for
+ * any non-form caller.
+ */
+export async function setSchedulerTimezoneAtomic(opts: {
+	timezone: string;
+	submittedVersion: string;
+}): Promise<SchedulerTimezoneWriteResult> {
+	const canonical = normalizeTimezone(opts.timezone);
 	if (!canonical) {
 		throw new Error(TIMEZONE_UNKNOWN_MESSAGE);
 	}
-	const now = new Date();
-	await db
-		.insert(appSettings)
-		.values({ key: AppSettingsKey.SCHEDULER_TIMEZONE, value: canonical, updatedAt: now })
-		.onConflictDoUpdate({
-			target: appSettings.key,
-			set: { value: canonical, updatedAt: now }
-		});
-	return { timezone: canonical, updatedAt: now };
+	return db.transaction((tx) => {
+		const gate = occGateInTxSync(tx, SCHEDULER_TIMEZONE_SETTINGS_KEYS, opts.submittedVersion);
+		if (gate.status === 'conflict') return gate;
+
+		writeSchedulerTimezoneRowInTxSync(tx, canonical, gate.version);
+		return { ...gate, timezone: canonical };
+	});
 }
 
 /**

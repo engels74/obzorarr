@@ -14,7 +14,7 @@ import {
 	getSchedulerTimezoneConfigWithSource,
 	LOG_SETTINGS_KEYS,
 	SCHEDULER_TIMEZONE_SETTINGS_KEYS,
-	setSchedulerTimezone
+	setSchedulerTimezoneAtomic
 } from '$lib/server/admin/settings.service';
 import { requireAdminActions } from '$lib/server/auth/guards';
 import {
@@ -166,15 +166,26 @@ export const actions: Actions = requireAdminActions({
 		}
 
 		try {
+			// The `inlineOccCheck` above is only a pre-write guard; the write itself
+			// re-checks the version inside its transaction so two admins submitting
+			// different zones against the same `settingsVersion` cannot both land.
+			const result = await setSchedulerTimezoneAtomic({
+				timezone: form.data.timezone,
+				submittedVersion: form.data.settingsVersion
+			});
+			if (result.status === 'conflict') {
+				return fail(409, { form, conflict: true, error: OCC_CONFLICT_MESSAGE });
+			}
+
 			// The env-lock branch above already returned, so the stored value IS the
 			// effective one and both live jobs can be re-pointed at it immediately.
-			const { timezone, updatedAt } = await setSchedulerTimezone(form.data.timezone);
+			const { timezone } = result;
 			applySyncSchedulerTimezone(timezone);
 			updateLogRetentionSchedulerTimezone(timezone);
 			logger.info(`Scheduler timezone set to ${timezone}`, 'Settings');
 
 			form.data.timezone = timezone;
-			form.data.settingsVersion = settingsVersionISO(updatedAt);
+			form.data.settingsVersion = settingsVersionISO(result.version);
 			return { form, success: true, message: `Scheduler timezone set to ${timezone}` };
 		} catch (error) {
 			const message =

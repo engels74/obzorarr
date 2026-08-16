@@ -389,6 +389,37 @@ describe('system nested route — updateSchedulerTimezone (Superforms + inline O
 		expect(await getAppSetting(AppSettingsKey.SCHEDULER_TIMEZONE)).toBe('Europe/Copenhagen');
 	});
 
+	it('lets only one of two concurrent same-version saves win', async () => {
+		// Both submissions carry the same `settingsVersion`, so both can clear the
+		// pre-write `inlineOccCheck` before either write runs. Only the OCC gate
+		// inside the write transaction can stop the loser from silently clobbering
+		// the winner's zone.
+		const [a, b] = await Promise.all([
+			run(
+				timezoneRequest({
+					timezone: 'Europe/Copenhagen',
+					settingsVersion: new Date(0).toISOString()
+				})
+			),
+			run(
+				timezoneRequest({
+					timezone: 'America/New_York',
+					settingsVersion: new Date(0).toISOString()
+				})
+			)
+		]);
+
+		const outcomes = [a, b] as Array<{ status?: number; success?: boolean }>;
+		expect(outcomes.filter((r) => r.success === true)).toHaveLength(1);
+		expect(outcomes.filter((r) => r.status === 409)).toHaveLength(1);
+
+		// The winner's zone is the one that survives; the loser wrote nothing.
+		const winner = outcomes.find((r) => r.success === true) as unknown as {
+			form: { data: { timezone: string } };
+		};
+		expect(await getAppSetting(AppSettingsKey.SCHEDULER_TIMEZONE)).toBe(winner.form.data.timezone);
+	});
+
 	it('advances the returned settingsVersion so two consecutive saves both succeed', async () => {
 		const first = (await run(
 			timezoneRequest({

@@ -10,7 +10,7 @@ import {
 	getSchedulerTimezone,
 	getSchedulerTimezoneConfigWithSource,
 	setAppSetting,
-	setSchedulerTimezone
+	setSchedulerTimezoneAtomic
 } from '$lib/server/admin/settings.service';
 import {
 	getSchedulerStatus,
@@ -137,11 +137,63 @@ describe('scheduler timezone resolution (TZ env over DB)', () => {
 	});
 
 	it('stores the canonical identifier and rejects an unknown zone', async () => {
-		const written = await setSchedulerTimezone('europe/copenhagen');
+		const written = await setSchedulerTimezoneAtomic({
+			timezone: 'europe/copenhagen',
+			submittedVersion: new Date(0).toISOString()
+		});
 
-		expect(written.timezone).toBe('Europe/Copenhagen');
+		expect(written).toMatchObject({ status: 'ok', timezone: 'Europe/Copenhagen' });
 		expect(await getAppSetting(AppSettingsKey.SCHEDULER_TIMEZONE)).toBe('Europe/Copenhagen');
-		expect(setSchedulerTimezone('Mars/Olympus_Mons')).rejects.toThrow();
+		expect(
+			setSchedulerTimezoneAtomic({
+				timezone: 'Mars/Olympus_Mons',
+				submittedVersion: new Date(0).toISOString()
+			})
+		).rejects.toThrow();
+	});
+
+	it('rejects a stale version inside the transaction and leaves the stored zone intact', async () => {
+		const first = await setSchedulerTimezoneAtomic({
+			timezone: 'Europe/Copenhagen',
+			submittedVersion: new Date(0).toISOString()
+		});
+		expect(first.status).toBe('ok');
+
+		// Second admin still holding the pre-write version: the in-transaction gate
+		// is the only thing standing between this and a silent lost update, because
+		// the route's pre-write `inlineOccCheck` already passed for both submissions.
+		const second = await setSchedulerTimezoneAtomic({
+			timezone: 'America/New_York',
+			submittedVersion: new Date(0).toISOString()
+		});
+
+		expect(second).toEqual({ status: 'conflict' });
+		expect(await getAppSetting(AppSettingsKey.SCHEDULER_TIMEZONE)).toBe('Europe/Copenhagen');
+	});
+
+	it('advances the stored version even when two writes land in the same millisecond', async () => {
+		const first = await setSchedulerTimezoneAtomic({
+			timezone: 'Europe/Copenhagen',
+			submittedVersion: new Date(0).toISOString()
+		});
+		if (first.status !== 'ok') throw new Error('expected the first write to land');
+
+		const second = await setSchedulerTimezoneAtomic({
+			timezone: 'America/New_York',
+			submittedVersion: first.version.toISOString()
+		});
+		if (second.status !== 'ok') throw new Error('expected the second write to land');
+
+		// Strictly greater, not merely ">=": an exact-ms collision would otherwise
+		// let a third save reusing `first.version` pass the strict `<` OCC check.
+		expect(second.version.getTime()).toBeGreaterThan(first.version.getTime());
+
+		const stale = await setSchedulerTimezoneAtomic({
+			timezone: 'UTC',
+			submittedVersion: first.version.toISOString()
+		});
+		expect(stale).toEqual({ status: 'conflict' });
+		expect(await getAppSetting(AppSettingsKey.SCHEDULER_TIMEZONE)).toBe('America/New_York');
 	});
 });
 
