@@ -95,6 +95,18 @@ class MockCron {
 		this.running = false;
 	}
 
+	pause(): void {
+		this.running = false;
+	}
+
+	resume(): void {
+		this.running = true;
+	}
+
+	getPattern(): string {
+		return this.expression;
+	}
+
 	isRunning(): boolean {
 		return this.running && !this.stopped;
 	}
@@ -132,6 +144,12 @@ class MockCron {
 	}
 }
 
+// `mock.module` is process-global and is NOT undone when this file finishes, so
+// every croner method the app calls must exist here: any later test file that
+// constructs a scheduler gets this double, and a missing method surfaces as an
+// order-dependent `TypeError` in whichever file happens to run after this one
+// (`getPattern` did exactly that to the sync-scheduler timezone tests in CI,
+// where this file sorts ahead of them while it sorts after them locally).
 mock.module('croner', () => ({ Cron: MockCron }));
 const retention = await import('$lib/server/logging/retention');
 
