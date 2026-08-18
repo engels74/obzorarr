@@ -895,10 +895,10 @@ _Source: svelte.dev/docs/svelte/testing (2024-12)_
 
 - **Test files using runes must include `.svelte` in filename** (e.g., `*.svelte.test.ts`).
 
-### biome vs eslint+prettier
+### biome
 
-- **Biome v2.3.0+ supports Svelte files experimentally**, ~35x faster than ESLint+Prettier.
-- **For production stability, use ESLint+Prettier.** Biome lacks Svelte-specific lint rules.
+- **Biome is the single linter and formatter.** v2.3.0+ supports Svelte files experimentally.
+- **Biome carries no Svelte-specific lint rules.** `svelte-check` covers template markup instead.
 
 ```json
 // biome.json
@@ -1472,7 +1472,7 @@ _Source: github.com/Hexagon/croner (2024)_
 | Test runner         | Vitest (browser mode for 2025)                     |
 | Component testing   | vitest-browser-svelte                              |
 | E2E testing         | Playwright                                         |
-| Linting             | ESLint+Prettier (production); Biome (experimental) |
+| Linting             | Biome                                              |
 | Validation          | Zod (server); Valibot (client-heavy)               |
 | Animation (simple)  | Motion or Svelte transitions                       |
 | Animation (complex) | GSAP                                               |
