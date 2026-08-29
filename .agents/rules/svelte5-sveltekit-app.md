@@ -785,7 +785,7 @@ import { expect, test } from "vitest";
 import Button from "./Button.svelte";
 
 test("increments", async () => {
-  const screen = render(Button, { initialCount: 1 });
+  const screen = await render(Button, { initialCount: 1 });
   await screen.getByRole("button").click();
   await expect.element(screen.getByText("Count is 2")).toBeVisible();
 });
