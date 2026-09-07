@@ -1,27 +1,15 @@
 {
 	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
-	"extends": ["config:recommended", "group:allNonMajor"],
-	"customManagers": [
-		{
-			"customType": "regex",
-			"fileMatch": ["^biome\\.json$"],
-			"matchStrings": [
-				"\"\\$schema\":\\s*\"https://biomejs\\.dev/schemas/(?<currentValue>[\\d.]+)/schema\\.json\""
-			],
-			"depNameTemplate": "@biomejs/biome",
-			"datasourceTemplate": "npm"
-		}
-	],
+	"extends": ["github>engels74/automation:default#v1.0.0"],
 	"gitIgnoredAuthors": [
 		"41898282+github-actions[bot]@users.noreply.github.com",
 		"300104067+engels74-bot@users.noreply.github.com"
 	],
 	"packageRules": [
 		{
-			"matchPackageNames": ["@biomejs/biome"],
-			"groupName": "biome"
+			"description": "Review TypeScript 7 when Svelte language tools support its API.",
+			"matchPackageNames": ["typescript"],
+			"allowedVersions": "<7"
 		}
-	],
-	"rebaseWhen": "conflicted",
-	"prConcurrentLimit": 10
+	]
 }

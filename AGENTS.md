@@ -37,7 +37,7 @@ not the exit code, and gate on a full `bun run test`.
 `$lib/*` and `$app/*` resolve through `.svelte-kit/tsconfig.json` for both `svelte-check` and
 `bun test`. If imports suddenly fail to resolve, run `bunx svelte-kit sync`.
 
-Local order matches CI (`.github/workflows/code-quality.yml`): `check:biome` → `check` → `test`,
+Local order matches CI (`.github/workflows/ci.yml`): `check:biome` → `check` → `test`,
 plus `build` and `smoke:production`. Commits are Conventional Commits (enforced at `commit-msg`).
 
 ## Layout
