@@ -4,7 +4,6 @@ name: ci
   push:
     branches:
     - main
-    - feat/standardize-ci-renovate
   workflow_dispatch:
     inputs:
       pr-number:
