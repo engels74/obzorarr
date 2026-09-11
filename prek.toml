@@ -39,5 +39,5 @@ repo = "local"
 hooks = [
   { id = "biome", name = "Format and lint with Biome", entry = "bunx biome check --write", language = "system", types_or = ["javascript", "ts", "svelte", "json", "css"] },
   { id = "svelte-check", name = "TypeScript and Svelte type check", entry = "bun run check", language = "system", pass_filenames = false, stages = ["pre-push"] },
-  { id = "tests", name = "Run test suite", entry = "bun test", language = "system", pass_filenames = false, stages = ["pre-push"] },
+  { id = "tests", name = "Run test suite", entry = "bun run test", language = "system", pass_filenames = false, stages = ["pre-push"] },
 ]

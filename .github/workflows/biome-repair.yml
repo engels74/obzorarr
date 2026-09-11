@@ -1,0 +1,30 @@
+name: Biome repair
+permissions:
+  contents: write
+  pull-requests: read
+  actions: write
+concurrency:
+  group: biome-repair-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+jobs:
+  repair:
+    uses: edbfi/automation/.github/workflows/biome-repair.yml@v1.0.0
+    with:
+      config-files: biome.json
+      source-roots: |
+        src
+        tests
+        scripts
+        vite.config.ts
+        svelte.config.js
+        uno.config.ts
+        drizzle.config.ts
+        components.json
+        tsconfig.json
+      bun-version: 1.4.2
+'on':
+  pull_request_target:
+    types:
+    - opened
+    - synchronize
+    - reopened

@@ -10,8 +10,8 @@
 		"smoke:production": "bun run scripts/smoke-production.ts",
 		"qa:wrapped-lookup": "bun run scripts/verify-wrapped-lookup.ts",
 		"preview": "bun --bun vite preview",
-		"start": "bun ./build",
-		"prepare": "svelte-kit sync || echo ''",
+		"start": "NODE_ENV=production bun ./build/index.js",
+		"prepare": "svelte-kit sync",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"test": "bun test --env-file=.env.test",
@@ -64,5 +64,6 @@
 		"tailwind-merge": "^3.5.0",
 		"tailwind-variants": "^3.2.2",
 		"zod": "^4.3.6"
-	}
+	},
+	"packageManager": "bun@1.4.2"
 }

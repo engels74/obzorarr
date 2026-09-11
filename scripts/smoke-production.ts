@@ -37,7 +37,7 @@ const childEnv = {
 };
 delete childEnv.SOCKET_PATH;
 
-const server = Bun.spawn(['bun', './build'], {
+const server = Bun.spawn(['bun', './build/index.js'], {
 	env: childEnv,
 	stdout: 'pipe',
 	stderr: 'pipe'
@@ -83,4 +83,8 @@ if (!ready) {
 	process.exit(1);
 }
 
-console.log(`Production server became ready on port ${port}`);
+if (server.exitCode !== 0) {
+	throw new Error(`Production server did not shut down cleanly (exit ${server.exitCode})`);
+}
+
+console.log(`Production server became ready on port ${port} and shut down cleanly`);

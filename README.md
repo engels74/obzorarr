@@ -9,12 +9,12 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/engels74/obzorarr/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue.svg" alt="License"></a>
+  <a href="https://github.com/edbfi/obzorarr/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue.svg" alt="License"></a>
   <img src="https://img.shields.io/badge/bun-%23000000.svg?logo=bun&logoColor=white" alt="Bun">
   <img src="https://img.shields.io/badge/SvelteKit-FF3E00?logo=svelte&logoColor=white" alt="SvelteKit">
   <img src="https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white" alt="TypeScript">
   <img src="https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white" alt="SQLite">
-  <a href="https://deepwiki.com/engels74/obzorarr"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+  <a href="https://deepwiki.com/edbfi/obzorarr"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
 </p>
 
 ---
@@ -48,7 +48,7 @@ Obzorarr is a **"Wrapped for Plex"** application that syncs viewing history from
 
 ## Issues & Support
 
-Found a bug or have a feature request? Please submit issues and feature requests to the **[obzorarr-docker repository](https://github.com/engels74/obzorarr-docker/issues)** rather than this repository. This ensures your report reaches the maintainers monitoring issue tracking across the project.
+Found a bug or have a feature request? Please submit issues and feature requests to the **[obzorarr-docker repository](https://github.com/edbfi/obzorarr-docker/issues)** rather than this repository. This ensures your report reaches the maintainers monitoring issue tracking across the project.
 
 ## Screenshots
 
@@ -235,13 +235,13 @@ anonymised) are the other options — see **Admin → Settings → Privacy**.
 
 ## Quick Start
 
-### Docker (Recommended) — [Image Repo](https://github.com/engels74/obzorarr-docker)
+### Docker (Recommended) — [Image Repo](https://github.com/edbfi/obzorarr-docker)
 
 ```yaml
 services:
   obzorarr:
     container_name: obzorarr
-    image: ghcr.io/engels74/obzorarr-docker
+    image: ghcr.io/edbfi/obzorarr-docker
     ports:
       - 3000:3000
     environment:
@@ -262,7 +262,7 @@ Replace `/<host_folder_config>` with your desired config path. Access the web UI
 ### From Source
 
 ```bash
-git clone https://github.com/engels74/obzorarr.git
+git clone https://github.com/edbfi/obzorarr.git
 cd obzorarr
 cp .env.example .env
 bun install
@@ -416,3 +416,14 @@ see your own name, everyone else is anonymised).
 ## License
 
 This project is licensed under the [GNU Affero General Public License v3.0](LICENSE).
+
+## Local development and production startup
+
+Use the Bun version pinned in `package.json` (`packageManager`) for development, CI,
+builds and production. Install dependencies with `bun install --frozen-lockfile`,
+then use `bun run dev` for development.
+
+For production, run `bun run build` followed by `bun run start`. The start script
+sets `NODE_ENV=production` and runs the generated `build/index.js` with Bun. Keep
+`build/`, production `node_modules/`, `package.json` and `drizzle/` together, and
+retain the configured persistent database path.

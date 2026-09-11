@@ -20,6 +20,7 @@ Bun is the only package manager. `bun install` also runs `svelte-kit sync` (`pre
 | `bun run test` | Full suite (`bun test --env-file=.env.test`) |
 | `bun run check:biome` | Lint + format check; `bun run lint:fix` / `bun run format` to autofix |
 | `bun run build` | Production build into `build/` |
+| `bun run start` | Production server from `build/index.js` with `NODE_ENV=production` |
 | `bun run db:generate` | Generate a migration in `drizzle/` from `schema.ts` |
 | `bun run db:migrate` | Apply migrations standalone (the app also migrates on boot) |
 
@@ -37,7 +38,7 @@ not the exit code, and gate on a full `bun run test`.
 `$lib/*` and `$app/*` resolve through `.svelte-kit/tsconfig.json` for both `svelte-check` and
 `bun test`. If imports suddenly fail to resolve, run `bunx svelte-kit sync`.
 
-Local order matches CI (`.github/workflows/code-quality.yml`): `check:biome` → `check` → `test`,
+Local order matches CI (`.github/workflows/ci.yml`): `check:biome` → `check` → `test`,
 plus `build` and `smoke:production`. Commits are Conventional Commits (enforced at `commit-msg`).
 
 ## Layout
