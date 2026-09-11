@@ -13,7 +13,7 @@ Hygiene uses the lockfile's own prek version via `bunx --no-install prek run
 Pre-push now calls the same `.env.test`-aware test command as CI. Dependency install
 also propagates SvelteKit preparation failures instead of masking them.
 
-Shared workflows and actions use immutable full version tags in `engels74/automation`.
+Shared workflows and actions use immutable full version tags in `edbfi/automation`.
 Renovate's shared preset preserves grouped non-major updates, handles Biome package
 and schema versions through the official manager, and updates actions, hooks and Bun.
 TypeScript is capped below 7 until Svelte's compiler API support is verified.

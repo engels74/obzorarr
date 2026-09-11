@@ -25,28 +25,28 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-    - uses: engels74/automation/actions/dispatch-guard@v1.0.0
+    - uses: edbfi/automation/actions/dispatch-guard@v1.0.0
       with:
         token: ${{ github.token }}
         pr-number: ${{ inputs.pr-number }}
         expected-head-sha: ${{ inputs.expected-head-sha }}
   quality:
     needs: guard
-    uses: engels74/automation/.github/workflows/bun.yml@v1.0.0
+    uses: edbfi/automation/.github/workflows/bun.yml@v1.0.0
     with:
       # renovate: datasource=npm depName=bun
       version: 1.4.2
       command: bun run check:biome && bun run check
   test-build:
     needs: guard
-    uses: engels74/automation/.github/workflows/bun.yml@v1.0.0
+    uses: edbfi/automation/.github/workflows/bun.yml@v1.0.0
     with:
       # renovate: datasource=npm depName=bun
       version: 1.4.2
       command: bash .github/scripts/check.sh
   hygiene:
     needs: guard
-    uses: engels74/automation/.github/workflows/bun.yml@v1.0.0
+    uses: edbfi/automation/.github/workflows/bun.yml@v1.0.0
     with:
       # renovate: datasource=npm depName=bun
       version: 1.4.2
@@ -62,12 +62,12 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-    - uses: engels74/automation/actions/dispatch-guard@v1.0.0
+    - uses: edbfi/automation/actions/dispatch-guard@v1.0.0
       with:
         token: ${{ github.token }}
         pr-number: ${{ inputs.pr-number }}
         expected-head-sha: ${{ inputs.expected-head-sha }}
-    - uses: engels74/automation/actions/gate@v1.0.0
+    - uses: edbfi/automation/actions/gate@v1.0.0
       with:
         needs: ${{ toJSON(needs) }}
         required: guard quality test-build hygiene

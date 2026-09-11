@@ -8,7 +8,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   repair:
-    uses: engels74/automation/.github/workflows/biome-repair.yml@v1.0.0
+    uses: edbfi/automation/.github/workflows/biome-repair.yml@v1.0.0
     with:
       config-files: biome.json
       source-roots: |
