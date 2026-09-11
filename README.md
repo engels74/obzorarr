@@ -416,3 +416,14 @@ see your own name, everyone else is anonymised).
 ## License
 
 This project is licensed under the [GNU Affero General Public License v3.0](LICENSE).
+
+## Local development and production startup
+
+Use the Bun version pinned in `package.json` (`packageManager`) for development, CI,
+builds and production. Install dependencies with `bun install --frozen-lockfile`,
+then use `bun run dev` for development.
+
+For production, run `bun run build` followed by `bun run start`. The start script
+sets `NODE_ENV=production` and runs the generated `build/index.js` with Bun. Keep
+`build/`, production `node_modules/`, `package.json` and `drizzle/` together, and
+retain the configured persistent database path.

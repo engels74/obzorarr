@@ -20,6 +20,7 @@ Bun is the only package manager. `bun install` also runs `svelte-kit sync` (`pre
 | `bun run test` | Full suite (`bun test --env-file=.env.test`) |
 | `bun run check:biome` | Lint + format check; `bun run lint:fix` / `bun run format` to autofix |
 | `bun run build` | Production build into `build/` |
+| `bun run start` | Production server from `build/index.js` with `NODE_ENV=production` |
 | `bun run db:generate` | Generate a migration in `drizzle/` from `schema.ts` |
 | `bun run db:migrate` | Apply migrations standalone (the app also migrates on boot) |
 

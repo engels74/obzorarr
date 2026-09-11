@@ -6,7 +6,11 @@ import { syncStatus } from '$lib/server/db/schema';
 import { isRetentionSchedulerConfigured, stopLogRetentionScheduler } from '$lib/server/logging';
 import { createServerInitializer, initializeServer } from '$lib/server/startup';
 import { getSchedulerStatus, stopSyncScheduler } from '$lib/server/sync';
-import { persistSyncSchedulerState, SyncSchedulerState } from '$lib/server/sync/scheduler-state';
+import {
+	persistSyncSchedulerState,
+	readSyncSchedulerState,
+	SyncSchedulerState
+} from '$lib/server/sync/scheduler-state';
 import { resetSharedTestDb } from '../helpers/db';
 
 describe('server startup initialization', () => {
@@ -100,5 +104,10 @@ describe('server startup initialization', () => {
 
 		const runningRows = await db.select().from(syncStatus).where(eq(syncStatus.status, 'running'));
 		expect(runningRows).toHaveLength(1);
+
+		process.emit('sveltekit:shutdown');
+		expect(isRetentionSchedulerConfigured()).toBe(false);
+		expect(getSchedulerStatus().isRunning).toBe(false);
+		expect(await readSyncSchedulerState()).toBe(SyncSchedulerState.RUNNING);
 	});
 });

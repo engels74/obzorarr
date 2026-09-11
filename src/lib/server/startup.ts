@@ -2,8 +2,9 @@ import {
 	clearConflictingDbSettings,
 	getSchedulerTimezone
 } from '$lib/server/admin/settings.service';
-import { logger, setupLogRetentionScheduler } from '$lib/server/logging';
+import { logger, setupLogRetentionScheduler, stopLogRetentionScheduler } from '$lib/server/logging';
 import { reconcileInterruptedSyncs } from '$lib/server/sync/reconcile';
+import { stopSyncScheduler } from '$lib/server/sync/scheduler';
 import { restoreSyncScheduler } from '$lib/server/sync/scheduler-state';
 
 type StartupTask = () => Promise<unknown>;
@@ -49,6 +50,13 @@ async function reconcileStartupState(): Promise<void> {
 	}
 	await reconcileInterruptedSyncs();
 	await startSchedulers();
+	// The adapter stops HTTP on SIGTERM/SIGINT; cron timers must stop too.
+	// Stop only in-memory jobs so persisted operator intent survives a restart.
+	process.once('sveltekit:shutdown', () => {
+		stopSyncScheduler();
+		stopLogRetentionScheduler();
+		void logger.forceFlush();
+	});
 }
 
 export const initializeServer = createServerInitializer(reconcileStartupState);
