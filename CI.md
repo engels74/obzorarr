@@ -16,9 +16,11 @@ also propagates SvelteKit preparation failures instead of masking them.
 Shared workflows and actions use immutable full version tags in `edbfi/automation`.
 Renovate's shared preset preserves grouped non-major updates, handles Biome package
 and schema versions through the official manager, and updates actions, hooks and Bun.
-TypeScript is capped below 7 until Svelte's compiler API support is verified.
-Automerge stays disabled during adoption until the corrected shared policy and
-required checks are configured and validated.
+The v1.1.0 default and automerge presets make all update types eligible, including
+majors and shared-policy updates, without dashboard approval. All five current-head
+checks in `.github/merge-policy.json` must pass; Svelte checks remain required to
+test TypeScript compatibility. The checked merge preserves genuine sign-offs and
+dispatches full CI for the exact merged commit.
 
 The previous CI could rewrite and push code, ignore formatting errors, and skip
 fresh workflow execution after a token-authenticated push. Biome repair now computes
@@ -26,9 +28,11 @@ in isolation with read-only permissions, then publishes only allowlisted changes
 explicitly dispatches full CI for the exact repaired SHA. It cannot edit workflows,
 package manifests or lockfiles. Broad repairs beyond the shared size limits are manual.
 
-Require `ci / required` with up-to-date branches, include administrators, and disable
-force pushes/deletion. CI has read-only permissions, timeouts, lockfile/runtime caches
-and cancellation for superseded runs; only the separate repair publisher can write.
+Other changes retain manual review of the exact head/base, full diff, authors/DCO,
+all expected CI and relevant artifacts before merging through ghmerge. No branch
+protections or repository rulesets are configured. CI has read-only permissions,
+timeouts, lockfile/runtime caches and cancellation for superseded runs; repair and
+checked merging use separate privileged jobs.
 The large offline suite covers server behavior but does not replace real Plex
 integration or visual browser checks. Installed Playwright tooling alone is not
 claimed as browser coverage; no browser test suite is configured in this repository.
